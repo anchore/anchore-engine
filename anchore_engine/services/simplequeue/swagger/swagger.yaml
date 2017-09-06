@@ -1,0 +1,176 @@
+---
+swagger: "2.0"
+info:
+  description: "Simple queue service for anchore-engine"
+  version: "0.9.0"
+  title: "Simple Queue"
+  contact:
+    email: "dev@anchore.com"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+#host: "localhost:83"
+basePath: "/v1"
+tags:
+- name: "simplequeue"
+  description: "Simple Queue Service"
+  externalDocs:
+    description: "Find out more"
+    url: "http://anchore.com"
+schemes:
+- "https"
+- "http"
+
+securityDefinitions:
+  basicAuth:
+    type: basic
+
+security:
+  - basicAuth: []
+
+paths:
+  /status:
+    get:
+      tags:
+      - "simplequeue"
+      summary: "Get the status of the service"
+      description: ""
+      operationId: "status"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          description: "service status"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+  /queues:
+    get:
+      tags:
+      - "simplequeue"
+      summary: "Get list of queues"
+      description: ""
+      operationId: "queues"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          description: "Queue listing"
+          schema:
+            type: array
+            items:
+              type: string
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+  /queues/{queuename}:
+    get:
+      tags:
+      - "simplequeue"
+      summary: "Pop element off of specified queue"
+      description: ""
+      operationId: "dequeue"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "queuename"
+        in: "path"
+        type: string
+        description: "name of queue to pop element from"
+        required: true
+      responses:
+        200:
+          description: "success"
+          description: "Queue element"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+    post:
+      tags:
+      - "simplequeue"
+      summary: "Push element on to specified queue"
+      description: ""
+      operationId: "enqueue"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "queuename"
+        in: path
+        type: string
+        description: "name of queue to pop element from"
+        required: true
+      - name: "forcefirst"
+        in: query
+        type: boolean
+        description: "force element to the front of the queue"
+        default: false
+        required: false
+      - name: "qcount"
+        in: query
+        type: integer
+        description: "number of times element has been in queue"
+        default: 0
+        required: false
+      - name: "bodycontent"
+        in: body
+        schema:
+          type: object
+        description: "object to enqueue"
+        required: true
+      responses:
+        200:
+          description: "success"
+          description: "Queue element"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+  /queues/{queuename}/is_inqueue:
+    post:
+      tags:
+      - "simplequeue"
+      summary: "Check if element is already in specified queue"
+      description: ""
+      operationId: "is_inqueue"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "queuename"
+        in: path
+        type: string
+        description: "name of queue to pop element from"
+        required: true
+      - name: "bodycontent"
+        in: body
+        schema:
+          type: object
+        description: "object to check if in queue"
+        required: true
+      responses:
+        200:
+          description: "success"
+          description: "Queue element"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+  /queues/{queuename}/qlen:
+    get:
+      tags:
+      - "simplequeue"
+      summary: "Get the length of specified queue"
+      description: ""
+      operationId: "qlen"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "queuename"
+        in: "path"
+        type: string
+        description: "name of queue get the length of"
+        required: true
+      responses:
+        200:
+          description: "success"
+          description: "Length of queue"
+          schema:
+            type: string
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"

@@ -1,0 +1,21 @@
+{
+    "kind": "ImageReview",
+    "spec": {
+	"namespace": "mynamespace",
+	"annotations": {
+	    "anchore.image-policy.k8s.io/userId": "admin"
+	},
+	"containers": [
+	    {
+		"image": "docker.io/alpine:latest"
+	    },
+	    {
+		"image": "docker.io/alpine@sha256:0b94d1d1b5eb130dd0253374552445b39470653fb1a1ec2d81490948876e462c"
+	    },
+	    {
+		"image": "mydocker.com:5000/smalltest:latest"
+	    }
+	]
+    },
+    "apiVersion": "imagepolicy.k8s.io/v1alpha1"
+}

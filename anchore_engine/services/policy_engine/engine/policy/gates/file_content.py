@@ -1,0 +1,91 @@
+import re
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
+from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.services.policy_engine.engine.policy.utils import PipeDelimitedStringListValidator
+from anchore_engine.db import AnalysisArtifact
+log = get_logger()
+
+
+class ContentMatchTrigger(BaseTrigger):
+    __trigger_name__ = 'CONTENTMATCH'
+    __description__ = 'Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the FILECHECK_CONTENTMATCH parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches.'
+    __params__ = {
+        'FILECHECK_CONTENTREGEXP': PipeDelimitedStringListValidator()
+    }
+
+    def evaluate(self, image_obj, context):
+        match_filter = self.eval_params.get(self.__params__.keys()[0])
+
+        if match_filter:
+            matches = [x.encode('base64') for x in match_filter.split('|')]
+        else:
+            matches = []
+
+        for thefile, regexps in context.data.get('content_regexp', {}).items():
+            thefile = thefile.encode('ascii', errors='replace')
+            if not regexps:
+                continue
+            for regexp in regexps.keys():
+                if not matches or regexp in matches:
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+
+
+class FilenameMatchTrigger(BaseTrigger):
+    __trigger_name__ = 'FILENAMEMATCH'
+    __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as FILECHECK_NAMEREGEXP parameters.'
+    __params__ = {
+        'FILECHECK_NAMEREGEXP': PipeDelimitedStringListValidator()
+    }
+
+    def evaluate(self, image_obj, context):
+        # decode the param regexes from b64
+        fname_regexps = []
+        regex_param = self.eval_params.get(self.__params__.keys()[0])
+        if regex_param:
+            fname_regexps = regex_param.split('|')
+
+        if not fname_regexps:
+            # Short circuit
+            return
+
+        if context.data.get('filenames'):
+            files = context.data.get('filenames')
+        else:
+            files = image_obj.fs.files().keys()  # returns a map of path -> entry
+
+        for thefile in files:
+            thefile = thefile.encode('ascii', errors='replace')
+            for regexp in fname_regexps:
+                if re.match(regexp, thefile):
+                    self._fire(msg='Application of regexp matched file found in container: file={} regexp={}'.format(thefile, regexp))
+
+
+class FileCheckGate(Gate):
+    __gate_name__ = 'FILECHECK'
+    __triggers__ = [
+        ContentMatchTrigger,
+        FilenameMatchTrigger
+    ]
+
+    def prepare_context(self, image_obj, context):
+        """
+        prepare the context by extracting the file name list once and placing it in the eval context to avoid repeated
+        loads from the db. this is an optimization and could removed.
+
+        :param image_obj:
+        :param context:
+        :return:
+        """
+        if image_obj.fs:
+            extracted_files_json = image_obj.fs.files
+
+            if extracted_files_json:
+                context.data['filenames'] = extracted_files_json.keys()
+
+        content_matches = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'content_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base').all()
+        matches = {}
+        for m in content_matches:
+            matches[m.artifact_key] = m.json_value
+        context.data['content_regexp'] = matches
+
+        return context

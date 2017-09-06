@@ -1,0 +1,131 @@
+import json
+
+import connexion
+
+from anchore_engine.clients import catalog
+import anchore_engine.configuration.localconfig
+import anchore_engine.services.common
+from anchore_engine.subsys import logger
+
+
+def status():
+    try:
+        return_object = {
+            'busy':False,
+            'up':True,
+            'message': 'all good'
+        }
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+        httpcode = 500
+
+    return(return_object, httpcode)
+    #return(json.dumps(return_object, indent=4)+"\n", 200)
+
+def imagepolicywebhook(bodycontent):
+
+    # TODO - while the image policy webhook feature is in k8s beta, we've decided to make any errors that occur during check still respond with 'allowed: True'.  This should be reverted to default to 'False' on any error, once the k8s feature is further along
+
+    return_object = {
+        "apiVersion": "imagepolicy.k8s.io/v1alpha1",
+        "kind": "ImageReview",
+        "status": {
+            "allowed": True,
+            "reason": "all images passed anchore policy evaluation"
+        }
+    }
+    httpcode = 200
+
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+
+        user_auth = request_inputs['auth']
+        method = request_inputs['method']
+        params = request_inputs['params']
+        userId = request_inputs['userId']
+
+        try:
+
+            final_allowed = True
+            reason = "unset"
+
+            try:
+                try:
+                    #incoming = json.loads(bodycontent)
+                    incoming = bodycontent
+                    logger.debug("incoming post data: " + json.dumps(incoming, indent=4))
+                except Exception as err:
+                    raise Exception("could not load post data as json: " + str(err))
+
+                try:
+                    requestUserId = None
+                    # see if the request from k8s contains an anchore policy and/or whitelist name
+                    if 'annotations' in incoming['spec']:
+                        logger.debug("incoming request contains annotations: " + json.dumps(incoming['spec']['annotations'], indent=4))
+                        requestUserId = incoming['spec']['annotations'].pop("anchore.image-policy.k8s.io/userId", None)
+                except Exception as err:
+                    raise Exception("could not parse out annotations: " + str(err))
+
+                if not requestUserId:
+                    raise Exception("need to specify an anchore.image-policy.k8s.io/userId annotation with a valid anchore service username as a value")
+
+                # TODO - get anchore system uber cred to access
+                # this data on behalf of user?  tough...maybe see
+                # if kuber can make request as anchore-system so
+                # that we can switch roles?
+                localconfig = anchore_engine.configuration.localconfig.get_config()
+                system_user_auth = localconfig['system_user_auth']
+                user_record = catalog.get_user(system_user_auth, requestUserId)
+                request_user_auth = (user_record['userId'], user_record['password'])
+
+                reason = "all images passed anchore policy checks"
+                final_action = False
+                for el in incoming['spec']['containers']:
+                    image = el['image']
+                    logger.debug("found image in request: " + str(image))
+                    image_records = catalog.get_image(request_user_auth, tag=image)
+                    if not image_records:
+                        raise Exception("could not find requested image ("+str(image)+") in anchore service DB")
+
+                    for image_record in image_records:
+                        imageDigest = image_record['imageDigest']
+
+                        for image_detail in image_record['image_detail']:
+                            fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ':' + image_detail['tag']
+                            result = catalog.get_eval_latest(request_user_auth, tag=fulltag, imageDigest=imageDigest)
+                            if result:
+                                httpcode = 200
+                                if result['final_action'].upper() not in ['GO', 'WARN']:
+                                    final_action = False
+                                    raise Exception("image failed anchore policy check: " + json.dumps(result, indent=4))
+                                else:
+                                    final_action = True
+                                    
+                            else:
+                                httpcode = 404
+                                final_action = False
+                                raise Exception("no anchore evaluation available for image: " + str(image))
+
+                final_allowed = final_action
+
+            except Exception as err:
+                reason = str(err)
+                final_allowed = False
+                httpcode = 200
+
+            return_object['status']['allowed'] = final_allowed
+            return_object['status']['reason'] = reason
+
+            logger.debug("final return: " + json.dumps(return_object, indent=4))
+            httpcode = 200
+        except Exception as err:
+            return_object['reason'] = str(err)
+            httpcode = 500
+
+    except Exception as err:
+        return_object['reason'] = str(err)
+        httpcode = 500
+
+    return(return_object, httpcode)
+    #return(json.dumps(return_object, indent=4)+"\n", httpcode)

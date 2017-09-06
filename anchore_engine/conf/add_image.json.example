@@ -1,0 +1,6 @@
+{
+    "tag": "mydocker.com:5000/smalltest:latest", 
+    "image_type": "docker",
+    "dockerfile": "FROM alpine:latest\nCMD [\"/bin/echo\", \"HELLO WORLD FROM SMALLTEST.............................\"]\n",
+    "anchore_data": []
+}

@@ -1,0 +1,108 @@
+#!/usr/bin/python
+
+import sys
+import subprocess
+import os
+
+def terminate_service(service, flush_pidfile=False):
+    pidfile = "/var/run/" + service + ".pid"
+    try:
+        thepid = None
+        if os.path.exists(pidfile):
+            with open(pidfile, 'r') as FH:
+                thepid = int(FH.read())
+
+        if thepid:
+            print "Found old pid for service: {}. Terminating it".format(service)
+            try:
+                os.kill(thepid, 0)
+            except OSError:
+                pass
+            else:
+                print "killing old twistd pid: " + str(thepid)
+                os.kill(thepid, 9)
+            if flush_pidfile:
+                os.remove(pidfile)
+    except Exception as err:
+        print "could not shut down running twistd - exception: " + str(err)
+
+service_map = {
+    'analyzer': 'anchore-worker'
+}
+
+configdirs = []
+try:
+    configdirs.append(sys.argv[1])
+except:
+    pass
+
+if not configdirs:
+    configdirs.append("/config")
+
+configfile = configdir = None
+for thedir in configdirs:
+    thefile = os.path.join(thedir, 'config.yaml')
+    if os.path.exists(thefile):
+        configdir = thedir
+        configfile = thefile
+        break
+
+if not configdir or not os.path.exists(configdir):
+    print "cannot locate configdir/config.yaml in ("+str(configdirs)+"): directory needs to exist with a valid config.yaml within"
+    sys.exit(1)
+
+if not configfile or not os.path.exists(configfile):
+    print "cannot locate configfile (config.yaml) in ("+str(configdirs)+"): valid config.yaml must exist"
+    sys.exit(1)
+
+#anchore_service_dir = resource_filename("anchore_engine", None)
+#os.environ['PYTHONPATH'] = anchore_service_dir
+
+startFailed = False
+if 'ANCHORE_ENGINE_SERVICES' in os.environ:
+    services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
+else:
+    services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
+
+pids = []
+for service in services:
+    pidfile = "/var/run/"+service+".pid"
+    logfile = "/var/log/"+service+".log"
+    os.environ['ANCHORE_LOGFILE'] = logfile
+    
+    twistd_cmd = '/bin/twistd'
+    for f in ['/bin/twistd', '/usr/local/bin/twistd']:
+        if os.path.exists(f):
+            twistd_cmd = f
+
+    cmd = [twistd_cmd, '--logger=anchore_engine.subsys.twistd_logger.logger', '--pidfile', pidfile, service, '--config', configdir]
+    print "starting service: " + str(service)
+    print "\t " + ' '.join(cmd)
+    
+    terminate_service(service)
+
+    try:
+        status = subprocess.call(cmd)
+        if status != 0:
+            raise Exception('Service {} returned exit code: {}'.format(service, status))
+
+    except Exception as err:
+        startFailed = True
+        print "service start failed - exception: " + str(err)
+        #try:
+            #print err.output
+        #except:
+            #pass
+
+if startFailed:
+    print "one or more services failed to start. cleanly terminating the others"
+    for service in services:
+        terminate_service(service, flush_pidfile=True)
+
+    sys.exit(1)
+else:
+    try:
+        os.system("tail -F /var/log/anchore*.log* | grep -e '\[FATAL\]' -e '\[ERROR\]' -e '\[WARN\]' -e '\[INFO\]'")
+    except:
+        pass
+sys.exit(0)

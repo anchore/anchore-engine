@@ -1,0 +1,9 @@
+# for dockerhub, use 'docker.io' - for other registries, use the hostname:port form eg 'registry.connect.redhat.com' or 'mydocker.com:5000'
+{
+	"registry": "docker.io",
+	"registry_user": "<mydockerhub_user>",
+	"registry_pass": "<mydockerhub_pass>"
+}
+
+
+	

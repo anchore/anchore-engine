@@ -1,0 +1,6 @@
+include LICENSE
+include requirements.txt
+include README.rst
+include CONTRIBUTING.rst
+include anchore_engine/conf/*
+recursive-include anchore_engine/twisted *

@@ -1,0 +1,131 @@
+# Anchore Service Configuration File
+#
+
+#
+# service_dir: '/root/.anchore_engine'
+# tmp_dir: '/tmp'
+#
+# log_level: 'INFO'
+# host_id: 'unique_host_id_string_override'
+# 
+# internal_ssl_verify: True
+# image_analyze_timeout_seconds: '36000'
+# cleanup_images: True
+#
+# docker_conn: 'unix://var/run/docker.sock'
+# docker_conn_timeout: 600
+#
+
+# A feeds section is available for override, but shouldn't be needed. By default, the 'admin' credentials are used if present, otherwise anonymous access for feed sync is used
+# feeds:
+#   url: https://someurl
+#   token_url: https://someurl/oauth/token
+#   client_url: https://someurl/
+#   username: user
+#   password: password
+
+credentials:
+  default_user: 'admin'
+  users:
+     admin:
+       password: 'foobar'
+       email: 'me@foobar.com'
+       #auto_policy_sync: True
+       external_service_auths:
+         anchoreio:
+           anchorecli:
+             auth: '<anchoreiouser>:<anchoreiopw>'
+  database:
+    db_connect: 'postgresql+pg8000://<postgresuser>:<mysecretpassword>@<postgreshostIP>:<postgreshostport>/postgres'
+    db_connect_args:
+      timeout: 120
+      ssl: False
+    db_pool_size: 30
+    db_pool_max_overflow: 100
+webhooks:
+  # note that any top-level webhook param can be overriden within each specific webhook section
+  # for URLs, the following variables will be filled in by anchore when constructing the final webhook URL: <userId>
+  webhook_user: 'mehuser'
+  webhook_pass: 'mehpass'
+  ssl_verify: False
+  # notification_retry_timeout: 30
+
+  # url must contain <notification_type> which will be filled in by anchore
+  general:
+    url: 'http://localhost:8080/<notification_type>/'
+    #url: 'http://localhost:8080/<notification_type>/<userId>'
+
+  # specific notification type overrides here (will override 'general' for specified type)
+  policy_eval:
+    url: 'http://localhost:8080/policy_eval/'
+    #url: 'http://localhost:8080/policy_eval/<userId>'
+  tag_update:
+    url: 'http://localhost:8080/tag_update/'
+    #url: 'http://localhost:8080/tag_update/<userId>'
+
+  # special webhook for FATAL service events - system will store in DB if not enabled here
+  # error_event:
+  #   url: 'http://localhost:8080/error_event/'
+  #
+
+services:
+  apiext:
+    enabled: True
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 80
+    #port: 443
+    #ssl_enable: True
+    #ssl_cert: '/root/anchore-engine/conf/test.crt'
+    #ssl_key: '/root/anchore-engine/conf/test.key'
+    #ssl_chain: '/root/anchore-engine/conf/chain.crt'
+    require_auth: True
+  catalog:
+    enabled: True
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 82
+    use_db: True
+#    data_volume: '/tmp/archive_data'
+    cycle_timer_seconds: 1
+#    cycle_timers:
+#      image_watcher: 30
+#      policy_eval_queue: 10
+#      analyzer_queue: 5
+#      notifications: 5
+#      history_watcher: 86400
+#      service_watcher: 1
+#      policy_bundle_sync: 3600
+  simplequeue:
+    enabled: True
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 83
+  analyzer:
+    enabled: True
+    cycle_timer_seconds: 1
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 84
+    max_threads: 1
+  kubernetes_webhook:
+    enabled: True
+    #endpoint_hostname: '192.168.1.3'
+    listen: '0.0.0.0'
+    port: 86
+    #port: 8446
+    #ssl_enable: True
+    #ssl_cert: '/root/anchore-engine/conf/test.crt'
+    #ssl_key: '/root/anchore-engine/conf/test.key'
+    #ssl_chain: '/root/anchore-engine/conf/chain.crt'
+  policy_engine:
+    enabled: True
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 87
+    #port: 8447
+    #ssl_enable: True
+    #ssl_cert: '/root/anchore-engine/conf/test.crt'
+    #ssl_key: '/root/anchore-engine/conf/test.key'
+    #ssl_chain: '/root/anchore-engine/conf/chain.crt'
+    require_auth: True

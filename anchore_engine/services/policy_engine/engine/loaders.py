@@ -1,0 +1,386 @@
+import hashlib
+import json
+import re
+
+from anchore_engine.db import DistroNamespace
+from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact
+from .logs import get_logger
+from .util.rpm import split_rpm_filename
+
+log = get_logger()
+
+
+class ImageLoader(object):
+    """
+    Takes an image analysis json and converts it to a set of records for commit to the db.
+
+    Assumes there is a global session wrapper and will add items to the session but does not
+    commit the session itself.
+    """
+
+    def __init__(self, analysis_json):
+        self.start_time = None
+        self.stop_time = None
+        self.image_export_json = analysis_json
+
+    def load(self):
+        """
+        Loads the exported image data into this system for usage.
+
+        :param image_export_json:
+        :return: an initialized Image() record, not persisted to DB yet
+        """
+
+        log.info('Loading image json')
+
+        if type(self.image_export_json) == list and len(self.image_export_json) == 1:
+            image_id = self.image_export_json[0]['image']['imageId']
+            self.image_export_json = self.image_export_json[0]['image']['imagedata']
+            log.info('Detected a direct export format for image id: {} rather than a catalog analysis export'.format(
+                image_id))
+
+        analysis_report = self.image_export_json['analysis_report']
+        image_report = self.image_export_json['image_report']
+
+        image = Image()
+        image.id = image_report['meta']['imageId']
+        image.size = int(image_report['meta']['sizebytes'])
+        repo_digests = image_report['docker_data'].get('RepoDigests', [])
+        repo_tags = image_report['docker_data'].get('RepoTags', [])
+        if len(repo_digests) > 1:
+            log.warn(
+                'Found more than one digest for the image {}. Using the first. Digests: {}, Tags: {}'.format(image.id,
+                                                                                                             repo_digests,
+                                                                                                             repo_tags))
+
+        image.digest = repo_digests[0].split('@', 1)[1] if repo_digests else None
+
+        # Tags handled in another phase using the docker_data in the image record.
+
+        # get initial metadata
+        analyzer_meta = analysis_report['analyzer_meta']['analyzer_meta']['base']
+        if 'LIKEDISTRO' in analyzer_meta:
+            like_dist = analyzer_meta['LIKEDISTRO']
+        else:
+            like_dist = analyzer_meta['DISTRO']
+
+        image.distro_name = analyzer_meta['DISTRO']
+        image.distro_version = analyzer_meta['DISTROVERS']
+        image.like_distro = like_dist
+
+        image.docker_file_mode = image_report['dockerfile_mode']
+
+        # JSON data
+        image.docker_data_json = image_report['docker_data']
+        image.docker_history_json = image_report['docker_history']
+        image.dockerfile_contents = image_report['dockerfile_contents']
+        image.layers_to_dockerfile_json = analysis_report.get('layer_info')
+        image.layers_json = image_report['layers']
+        image.familytree_json = image_report['familytree']
+        image.analyzer_manifest = self.image_export_json['analyzer_manifest']
+
+        # Image content
+
+        # Packages
+        log.info('Loading image packages')
+        image.packages = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
+
+        # FileSystem
+        log.info('Loading image files')
+        image.fs = self.load_fsdump(analysis_report)
+
+        # Npms
+        image.npms = self.load_npms(analysis_report, image)
+
+        # Gems
+        image.gems = self.load_gems(analysis_report, image)
+
+
+        analysis_artifact_loaders = [
+            self.load_retrieved_files,
+            self.load_content_search
+        ]
+        # Content searches
+        image.analysis_artifacts = []
+        for loader in analysis_artifact_loaders:
+            for r in loader(analysis_report, image):
+                image.analysis_artifacts.append(r)
+
+        image.state = 'analyzed'
+        return image
+
+    def load_retrieved_files(self, analysis_report, image_obj):
+        """
+        Loads the analyzer retrieved files from the image, saves them in the db
+
+        :param retrieve_files_json:
+        :param image_obj:
+        :return:
+        """
+        log.info('Loading retrieved files')
+        retrieve_files_json = analysis_report.get('retrieve_files')
+        if not retrieve_files_json:
+            return []
+
+        matches = retrieve_files_json.get('file_content.all', {}).get('base', {})
+        records = []
+
+        for filename, match_string in matches.items():
+            match = AnalysisArtifact()
+            match.image_user_id = image_obj.user_id
+            match.image_id = image_obj.id
+            match.analyzer_id = 'retrieve_files'
+            match.analyzer_type = 'base'
+            match.analyzer_artifact = 'file_content.all'
+            match.artifact_key = filename
+            try:
+                match.binary_value = bytearray(match_string.decode('base64'))
+            except:
+                log.exception('Could not b64 decode the file content for {}'.format(filename))
+                raise
+            records.append(match)
+
+        return records
+
+    def load_content_search(self, analysis_report, image_obj):
+        """
+        Load content search results from analysis if present
+        :param content_search_json:
+        :param image_obj:
+        :return:
+        """
+        log.info('Loading content search results')
+        content_search_json = analysis_report.get('content_search')
+        if not content_search_json:
+            return []
+
+        matches = content_search_json.get('regexp_matches.all', {}).get('base', {})
+        records = []
+
+        for filename, match_string in matches.items():
+            match = AnalysisArtifact()
+            match.image_user_id = image_obj.user_id
+            match.image_id = image_obj.id
+            match.analyzer_id = 'content_search'
+            match.analyzer_type = 'base'
+            match.analyzer_artifact = 'regexp_matches.all'
+            match.artifact_key = filename
+            try:
+                match.json_value = json.loads(match_string)
+            except:
+                log.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
+                match.str_value = match_string
+
+            records.append(match)
+
+        return records
+
+    def load_and_normalize_packages(self, package_analysis_json, image_obj):
+        """
+        Loads and normalizes package data from all distros
+
+        :param image_obj:
+        :param package_analysis_json:
+        :return: list of Package objects that can be added to an image
+        """
+        pkgs = []
+
+        img_distro = DistroNamespace.for_obj(image_obj)
+
+        # pkgs.allinfo handling
+        pkgs_all = package_analysis_json.get('pkgs.allinfo', {}).values()
+        if not pkgs_all:
+            return []
+        else:
+            pkgs_all = pkgs_all[0]
+
+        for pkg_name, metadata_str in pkgs_all.items():
+            metadata = json.loads(metadata_str)
+
+            p = ImagePackage()
+            p.distro_name = image_obj.distro_name
+            p.distro_version = image_obj.distro_version
+            p.like_distro = image_obj.like_distro
+
+            p.name = pkg_name
+            p.version = metadata.get('version')
+            p.origin = metadata.get('origin')
+            p.size = metadata.get('size')
+            p.arch = metadata.get('arch')
+            p.license = metadata.get('license') if metadata.get('license') else metadata.get('lics')
+            p.release = metadata.get('release', 'N/A')
+            p.pkg_type = metadata.get('type')
+            p.src_pkg = metadata.get('sourcepkg')
+            p.image_user_id = image_obj.user_id
+            p.image_id = image_obj.id
+
+            if 'files' in metadata:
+                # Handle file data
+                p.files = metadata.get('files')
+
+            if p.release != 'N/A':
+                p.fullversion = p.version + '-' + p.release
+            else:
+                p.fullversion = p.version
+
+            if img_distro.flavor == 'DEB':
+                cleanvers = re.sub(re.escape("+b") + "\d+.*", "", p.version)
+                spkg = re.sub(re.escape("-" + cleanvers), "", p.src_pkg)
+            else:
+                spkg = re.sub(re.escape("-" + p.version) + ".*", "", p.src_pkg)
+
+            p.normalized_src_pkg = spkg
+            pkgs.append(p)
+
+        if pkgs:
+            return pkgs
+        else:
+            log.warn('Pkg Allinfo not found, reverting to using pkgs.all')
+
+        all_pkgs = package_analysis_json['pkgs.all']['base']
+        all_pkgs_src = package_analysis_json['pkgs_plus_source.all']['base']
+
+        for pkg_name, version in all_pkgs.items():
+            p = ImagePackage()
+            p.image_user_id = image_obj.user_id
+            p.image_id = image_obj.id
+            p.name = pkg_name
+            p.version = version
+            p.fullversion = all_pkgs_src[pkg_name]
+
+            if img_distro.flavor == 'RHEL':
+                name, parsed_version, release, epoch, arch = split_rpm_filename(
+                    pkg_name + '-' + version + '.tmparch.rpm')
+                p.version = parsed_version
+                p.release = release
+                p.pkg_type = 'RPM'
+                p.origin = 'N/A'
+                p.src_pkg = 'N/A'
+                p.license = 'N/A'
+                p.arch = 'N/A'
+            elif img_distro.flavor == 'DEB':
+                try:
+                    p.version, p.release = version.split('-')
+                except:
+                    p.version = version
+                    p.release = None
+
+        return pkgs
+
+    def load_fsdump(self, analysis_report_json):
+        """
+        Returns a single FSDump entity composed of a the compressed and hashed json of the fs entries along with some statistics.
+        This function will pull necessariy bits from the fully analysis to construct a view of the FS suitable for gate eval.
+
+        :param analysis_report_json: the full json analysis report
+        :return:
+        """
+
+        file_entries = {}
+        all_infos = analysis_report_json.get('file_list').get('files.allinfo', {}).get('base', [])
+        file_perms = analysis_report_json.get('file_list').get('files.all', {}).get('base', [])
+        md5_checksums = analysis_report_json.get('file_checksums').get('files.md5sums', {}).get('base', [])
+        sha256_checksums = analysis_report_json.get('file_checksums').get('files.sha256sums', {}).get('base', [])
+        non_pkged = analysis_report_json.get('file_list').get('files.nonpkged', {}).get('base', [])
+        suids = analysis_report_json.get('files.suids', {}).get('base', {})
+        pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', [])
+
+        path_map = {path: json.loads(value) for path, value in all_infos.items()}
+        entry = FilesystemAnalysis()
+        entry.file_count = 0
+        entry.directory_count = 0
+        entry.non_packaged_count = 0
+        entry.suid_count = 0
+        entry.total_entry_count = 0
+
+        # TODO: replace this with the load_fs_item call and convert the returned items to JSON for clarity and consistency.
+        # items = self.load_files(all_infos, suids, checksums, pkgd)
+        # for item in items:
+        #     f = item.json()
+
+        for path, metadata in path_map.items():
+            try:
+                full_path = metadata['fullpath']
+                f = {
+                    'fullpath': full_path,
+                    'name': metadata['name'],
+                    'mode': metadata['mode'],
+                    'permissions': file_perms.get(path),
+                    'linkdst_fullpath': metadata['linkdst_fullpath'],
+                    'linkdst': metadata['linkdst'],
+                    'size': metadata['size'],
+                    'entry_type': metadata['type'],
+                    'is_packaged': path in pkgd,
+                    'md5_checksum': md5_checksums.get(path, 'DIRECTORY_OR_OTHER'),
+                    'sha256_checksum': sha256_checksums.get(path, 'DIRECTORY_OR_OTHER'),
+                    'othernames': [],
+                    'suid': suids.get(path)
+                }
+            except KeyError as e:
+                log.exception('Could not find data for {}'.format(e))
+                raise
+
+            # Increment counters as needed
+            if f['suid']:
+                entry.suid_count += 1
+
+            if not f['is_packaged']:
+                entry.non_packaged_count += 1
+
+            if f['entry_type'] == 'file':
+                entry.file_count += 1
+            elif f['entry_type'] == 'dir':
+                entry.directory_count += 1
+
+            file_entries[path] = f
+
+        # Compress and set the data
+        entry.total_entry_count = len(file_entries)
+        entry.files = file_entries
+        return entry
+
+    def load_npms(self, analysis_json, containing_image):
+        npms_json = analysis_json.get('package_list', {}).get('pkgs.npms',{}).get('base')
+        if not npms_json:
+            return []
+
+        npms = []
+        for path, npm_str in npms_json.items():
+            npm_json = json.loads(npm_str)
+            n = ImageNpm()
+            n.path_hash = hashlib.sha256(path).hexdigest()
+            n.path = path
+            n.name = npm_json.get('name')
+            n.src_pkg = npms_json.get('src_pkg')
+            n.origins_json = npms_json.get('origins')
+            n.licenses_json = npms_json.get('lics')
+            n.latest = npms_json.get('latest')
+            n.versions_json = npms_json.get('versions')
+            n.image_user_id = containing_image.user_id
+            n.image_id = containing_image.id
+            npms.append(n)
+
+        return npms
+
+    def load_gems(self, analysis_json, containing_image):
+        gems_json = analysis_json.get('package_list', {}).get('pkgs.gems', {}).get('base')
+        if not gems_json:
+            return []
+
+        gems = []
+        for path, gem_str in gems_json.items():
+            gem_json = json.loads(gem_str)
+            n = ImageGem()
+            n.path_hash = hashlib.sha256(path).hexdigest()
+            n.path = path
+            n.name = gem_json.get('name')
+            n.src_pkg = gem_json.get('src_pkg')
+            n.origins_json = gem_json.get('origins')
+            n.licenses_json = gem_json.get('lics')
+            n.versions_json = gem_json.get('versions')
+            n.latest = gem_json.get('latest')
+            n.image_user_id = containing_image.user_id
+            n.image_id = containing_image.id
+            gems.append(n)
+
+        return gems
