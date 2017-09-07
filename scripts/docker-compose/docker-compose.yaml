@@ -19,9 +19,9 @@
 #   - export ANCHORE_CLI_USER=admin
 #   - export ANCHORE_CLI_PASS=foobar
 #   - export ANCHORE_CLI_SSL_VERIFY=n
-#   - anchore-cli images getall
-#   - anchore-cli images add alpine
-#   - anchore-cli images get alpine
+#   - anchore-cli image list
+#   - anchore-cli image add alpine
+#   - anchore-cli image get alpine
 #   - ...
 #
 # - stop: docker-compose down --volume
