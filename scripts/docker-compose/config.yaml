@@ -67,6 +67,8 @@ credentials:
     db_connect_args:
       timeout: 120
       ssl: False
+    db_pool_size: 30
+    db_pool_max_overflow: 100
 
 services:
   apiext:
@@ -74,7 +76,7 @@ services:
     require_auth: True
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
-    port: 443
+    port: 8228
     #ssl_enable: True
     #ssl_cert: '/config/selfsigned-example.cert'
     #ssl_key: '/config/selfsigned-example.key'
@@ -83,7 +85,7 @@ services:
     require_auth: False
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
-    port: 8443
+    port: 8338
     #ssl_enable: True
     #ssl_cert: '/config/selfsigned-example.cert'
     #ssl_key: '/config/selfsigned-example.key'

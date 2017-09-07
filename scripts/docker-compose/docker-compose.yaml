@@ -1,21 +1,20 @@
 # example docker-compose file for anchore-engine - to use:
 #
 # Pre-requisites
-# - ensure you have anchore-cli installed
-# - ensure that you have the anchore-engine:latest image and the postgres:latest images available on your local dockerhost
+# - recommend that anchore-cli is installed
 # 
 # Set up persistent volume for anchore-engine (do this once)
 # - create a directory /root/aevolume
 # - create a directory /root/aevolume/db
 # - copy the example (./scripts/docker-compose/config.yaml) to /root/aevolume/config.yaml
-# - edit /root/aevolume/config.yaml and save
+# - edit /root/aevolume/config.yaml and save (only if you need to make changes - not required)
 # - review ./docker-compose.yaml
 #
 # Run, use, stop, restart the anchore-engine with docker-compose
 # - run: docker-compose up -d
 #
-# - use anchore-engine:
-#   - export ANCHORE_CLI_URL=http://localhost:8443/v1
+# - interact with anchore-engine with anchore-cli:
+#   - export ANCHORE_CLI_URL=http://localhost:8228/v1
 #   - export ANCHORE_CLI_USER=admin
 #   - export ANCHORE_CLI_PASS=foobar
 #   - export ANCHORE_CLI_SSL_VERIFY=n
@@ -37,23 +36,24 @@
 version: '2'
 services:
   anchore-engine:
-    image: "anchore-engine"
-    #command: /bin/sleep 3600
+    #image: "anchore-engine"
+    image: docker.io/anchore/anchore-engine:latest
+    #privileged: true
     depends_on:
      - anchore-db
     ports:
-     - "8443:443"
-     - "8444:8443"
+     - "8228:8228"
+     - "8338:8338"
     volumes:
-     - /root/aevolume:/config/
+     - /root/aevolume:/config/:Z
      - /var/run/docker.sock:/var/run/docker.sock
   anchore-db:
     image: "postgres:latest"
     volumes:
-     - /root/aevolume/db/:/var/lib/postgresql/data/pgdata/
+     - /root/aevolume/db/:/var/lib/postgresql/data/pgdata/:Z
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
-    # this is just only here for testing direct/external access to the DB - can be removed
-    ports:
-     - "2345:5432"
+    #uncomment to expose a port to allow direct/external access to the DB, for debugging
+    #ports:
+    # - "2345:5432"
