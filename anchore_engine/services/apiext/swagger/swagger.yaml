@@ -1160,11 +1160,6 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/AnchoreImage"
-  ServiceList:
-    description: A list of service objects
-    type: array
-    items:
-      $ref: "#/definitions/Service"
   StatusResponse:
     type: object
     description: System status response
@@ -1233,11 +1228,6 @@ definitions:
         type: array
         items:
           type: object
-  ImageCheckList:
-    description: "Listing of image policy evaluations"
-    type: array
-    items:
-      type: object
   PolicyEvaluation:
     description: Evaluation response object
     type: object
