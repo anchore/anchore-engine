@@ -7,13 +7,19 @@ import sys
 
 analysis_maxtime = 900
 common_maxtime = 60
-precmd = "docker exec dockercompose_anchore-engine_1 anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
-#precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
 
 try:
     image = str(sys.argv[1])
 except:
     image = "docker.io/alpine:latest"
+
+try:
+    aecontainer = str(sys.argv[2])
+except:
+    aecontainer = "qadc_anchore-engine_1"
+
+precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+#precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
 
 def aecmd(cmd):
     global precmd

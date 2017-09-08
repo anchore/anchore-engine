@@ -7,20 +7,25 @@ import sys
 
 analysis_maxtime = 900
 common_maxtime = 60
-precmd = "docker exec dockercompose_anchore-engine_1 anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
-#precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
-#precmd = "/Users/nurmi/Library/Python/2.7/bin/anchore-cli --json --u admin --p foobar --url https://localhost:8443/v1 --insecure "
 
 try:
     image = str(sys.argv[1])
 except:
     image = "docker.io/alpine:latest"
 
+try:
+    aecontainer = str(sys.argv[2])
+except:
+    aecontainer = "qadc_anchore-engine_1"
+
+precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+#precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
+
 reg = user = pw = None
 try:
-    reg = str(sys.argv[2])
-    user = str(sys.argv[3])
-    pw = str(sys.argv[4])
+    reg = str(sys.argv[3])
+    user = str(sys.argv[4])
+    pw = str(sys.argv[5])
 except:
     pass
 

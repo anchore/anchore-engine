@@ -24,11 +24,11 @@
 #   - anchore-cli image get alpine
 #   - ...
 #
-# - stop: docker-compose down --volume
+# - stop: docker-compose down --volumes
 #
 # Notes:
 # - to start up again, run the same docker-compose up -d as above
-# - to reset the DB, stop anchore engine with docker-compose down --volume as above, then remove all files/directories in /root/aevolume/db/*, and restart
+# - to reset the DB, stop anchore engine with docker-compose down --volumes as above, then remove all files/directories in /root/aevolume/db/*, and restart
 # - if you enable SSL for any services, make sure to do so across the board in your config.yaml, and change the ANCHORE_CLI_URL to use https instead of http
 # - if you change the admin password in config.yaml, make sure to update your ANCHORE_CLI_PASS export as well
 # - if you change the DB password in this file, make sure to also change it in your config.yaml 'db_connect' setting
