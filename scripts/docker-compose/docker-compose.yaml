@@ -6,8 +6,9 @@
 # Set up persistent volume for anchore-engine (do this once)
 # - create a directory /root/aevolume
 # - create a directory /root/aevolume/db
-# - copy the example (./scripts/docker-compose/config.yaml) to /root/aevolume/config.yaml
-# - edit /root/aevolume/config.yaml and save (only if you need to make changes - not required)
+# - create a directory /root/aevolume/config
+# - copy the example (./scripts/docker-compose/config.yaml) to /root/aevolume/config/config.yaml
+# - edit /root/aevolume/config/config.yaml and save (only if you need to make changes - not required)
 # - review ./docker-compose.yaml
 #
 # Run, use, stop, restart the anchore-engine with docker-compose
@@ -45,7 +46,7 @@ services:
      - "8228:8228"
      - "8338:8338"
     volumes:
-     - /root/aevolume:/config/:Z
+     - /root/aevolume/config:/config/:Z
      - /var/run/docker.sock:/var/run/docker.sock
   anchore-db:
     image: "postgres:latest"
