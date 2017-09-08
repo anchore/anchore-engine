@@ -7,7 +7,7 @@ import sys
 
 analysis_maxtime = 900
 common_maxtime = 60
-precmd = "docker exec dockercompose_anchore-engine_1 anchore-cli --json --u admin --p foobar --url http://localhost:443/v1 "
+precmd = "docker exec dockercompose_anchore-engine_1 anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
 #precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
 
 try:
