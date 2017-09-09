@@ -337,6 +337,7 @@ class ExecutablePolicyRule(object):
                 self.configured_trigger = selected_trigger_cls(parent_gate_cls=self.gate_cls, **self.trigger_params)
             except [TriggerNotFoundError, InvalidParameterError, InputParameterValidationError] as e:
                 # Error finding or initializing the trigger
+                log.exception('Policy rule execution exception: {}'.format(e))
                 self.error_exc = TriggerNotFoundError(self.gate_name, self.trigger_name)
                 self.configured_trigger = None
                 raise
@@ -368,7 +369,7 @@ class ExecutablePolicyRule(object):
             try:
                 self.configured_trigger.execute(image_obj, exec_context)
             except TriggerEvaluationError as e:
-                log.exception('Error executing trigger on image {}'.format(image_obj.id))
+                log.exception('Error executing trigger {} on image {}'.format(self.trigger_name, image_obj.id))
                 raise
             except Exception as e:
                 log.exception('Unmapped exception caught during trigger evaluation')
@@ -382,6 +383,7 @@ class ExecutablePolicyRule(object):
                 try:
                     decisions.append(PolicyRuleDecision(trigger_match=match, policy_rule=self))
                 except TriggerEvaluationError as e:
+                    log.exception('Policy rule decision mapping exception: {}'.format(e))
                     self.errors.append(str(e))
 
             return self.errors, decisions

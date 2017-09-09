@@ -3,6 +3,7 @@ import os
 from .utils import LocalTestDataEnvironment, init_db
 from test import init_test_logging
 from anchore_engine.services.policy_engine.engine import logs
+from anchore_engine.db.entities.common import ThreadLocalSession, Session, engine, end_session
 
 class BaseDBUnitTest(unittest.TestCase):
     """
@@ -43,9 +44,27 @@ class NewDBPerTestUnitTest(BaseDBUnitTest):
 
     def tearDown(self):
         print('Tearing down db connection')
-        from anchore_engine.db.entities.common import sessionmaker, engine, ThreadLocalSession, end_session, disconnect
+        self.disconnect()
+
+    def disconnect(self):
+        """
+        Completely tear down the connection to force sqlite to refresh the db
+        :return:
+        """
+        global ThreadLocalSession, Session, engine
+
         end_session()
-        disconnect()
+        if ThreadLocalSession:
+            ThreadLocalSession.close_all()
+            ThreadLocalSession = None
+        if Session:
+            Session.close_all()
+            Session = None
+
+        if engine:
+            engine.dispose()
+            engine = None
+
 
 
 

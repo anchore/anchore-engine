@@ -176,7 +176,12 @@ def problem_from_exception(eval_exception, severity=None):
     prob = PolicyEvaluationProblem()
     prob.details = eval_exception.message
     prob.problem_type = eval_exception.__class__.__name__
-    prob.severity = eval_exception.severity if eval_exception.severity else severity
+    if hasattr(eval_exception, 'severity') and eval_exception.severity:
+        prob.severity = eval_exception.severity
+    elif severity:
+        prob.severity = severity
+    else:
+        prob.severity = 'error'
     return prob
 
 
@@ -218,6 +223,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             try:
                 eval_result = executable_bundle.execute(img_obj, tag, ExecutionContext(db_session=db, configuration={}))
             except Exception as e:
+                log.exception('Error executing policy bundle {} against image {} w/tag {}: {}'.format(bundle['id'], image_id, tag, e.message))
                 abort(Response(response='Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e.message), status=500))
         else:
             # Construct a failure eval with details on the errors and mappings to send to client
@@ -237,6 +243,10 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         resp.created_at = int(time.time())
         resp.evaluation_problems = [problem_from_exception(i) for i in eval_result.errors]
         resp.evaluation_problems += [problem_from_exception(i) for i in eval_result.warnings]
+        if resp.evaluation_problems:
+            for i in resp.evaluation_problems:
+                log.warn('Returning evaluation response for image {}/{} w/tag {} and bundle {} that contains error: {}'.format(user_id, image_id, tag, bundle['id'], json.dumps(i.to_dict())))
+
         return resp.to_dict()
 
     except HTTPException as e:
