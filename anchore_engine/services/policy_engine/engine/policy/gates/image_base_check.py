@@ -3,7 +3,8 @@ import re
 from anchore_engine.clients.catalog import get_image, get_user
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate, TriggerEvaluationError
 from anchore_engine.db import db_users
-
+from anchore_engine.services.policy_engine.engine.logs import get_logger
+log = get_logger()
 
 class BaseOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'BASEOUTOFDATE'
@@ -46,17 +47,19 @@ class BaseOutOfDateTrigger(BaseTrigger):
                 raise TriggerEvaluationError(self, 'Could not locate credentials for querying the catalog')
             try:
                 record = get_image(userId=(creds['userId'], creds['password']), tag=fromline_ref)
-                return record['imageId']
-            except:
+                return record[0]['image_detail'][0]['imageId']
+            except Exception as e:
+                log.exception('Received exception looking up image in catalog by ref: {}. {}'.format(fromline_ref, e))
                 # Assume this means the image is not available
                 return None
 
         elif name_type == 'digest':
             try:
                 record = get_image(userId=(creds['userId'], creds['password']), digest=fromline_ref)
-                return record['imageId']
-            except:
+                return record[0]['image_detail'][0]['imageDigest']
+            except Exception as e:
                 # Assume this means the image is not available
+                log.exception('Received exception looking up image in catalog by ref: {}'.format(fromline_ref, e))
                 return None
         else:
             return None
@@ -74,6 +77,7 @@ class BaseOutOfDateTrigger(BaseTrigger):
                 return
 
             thefromid = self.lookup_image_id_by_ref(context, thefrom_value)
+            log.info('Checking base status: image id = {}, base = {}, base from line = {}, fromid = {}'.format(image_obj.id, realbaseid, thefrom_value, thefromid))
 
             if thefromid and realbaseid != thefromid:
                 self._fire(msg="Image base image (" + str(thefrom_value) + ") ID is (" + str(realbaseid)[0:12] +
