@@ -64,7 +64,7 @@ class SuidDiffGate(Gate):
         """
 
         base_img = image_obj.get_image_base()
-        if base_img.id == image_obj.id:
+        if not base_img or base_img.id == image_obj.id:
             return context # No diffs to compute
 
         img_files = image_obj.fs.files

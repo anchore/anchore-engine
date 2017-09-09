@@ -541,20 +541,12 @@ class Image(Base):
         Get the image that is this image's base image if it exists. Indicated by first entry of the familytree
         :return: Image object
         """
-        base_id = self.familytree_json[0]
+        base_id = self.familytree_json[0] if self.familytree_json else self
         if base_id == self.id:
             return self
         else:
             db = get_thread_scoped_session()
-            imgs = db.query(Image).filter(Image.id == base_id).all()
-            user_zero_img = None
-            for i in imgs:
-                if i.user_id == self.user_id:
-                    return i
-                elif i.user_id == 0:
-                    user_zero_img = i
-            else:
-                return user_zero_img
+            return db.query(Image).get((base_id, self.user_id))
 
     def __repr__(self):
         return '<Image user_id={}, id={}, distro={}, distro_version={}, created_at={}, last_modified={}>'.format(self.user_id, self.id, self.distro_name, self.distro_version, self.created_at, self.last_modified)
