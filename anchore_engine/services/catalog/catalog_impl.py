@@ -666,6 +666,8 @@ def evals(dbsession, request_inputs, bodycontent={}):
                 imageDigest = dbfilter['imageDigest']
                 if 'tag' in dbfilter:
                     evaltag = dbfilter['tag']
+                else:
+                    evaltag = None
                 rc = perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag)
             except Exception as err:
                 logger.error("interactive eval failed, will return any in place evaluation records - exception: " + str(err))
@@ -995,7 +997,7 @@ def get_system_auth(dbsession):
 
     return(system_user_auth)
 
-def perform_vulnerability_scan(userId, imageDigest, dbsession):
+def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None):
     # prepare inputs
     try:
         system_user_auth = get_system_auth(dbsession)
@@ -1005,19 +1007,21 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-        #policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
-        #policyId = policy_record['policyId']
-        #policy_bundle = archive_sys.get_document(userId, 'policy_bundles', policyId)
-
+        if not scantag:
+            raise Exception("must supply a scantag")
     except Exception as err:
         raise Exception("could not gather/prepare all necessary inputs for vulnerability - exception: " + str(err))
 
     client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
 
+    imageIds = []
     for image_detail in image_record['image_detail']:
+        #fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
         imageId = image_detail['imageId']
-        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+        if imageId and imageId not in imageIds:
+            imageIds.append(imageId)
 
+    for imageId in imageIds:
         # do the image load, just in case it was missed in analyze...
         try:
             request = ImageIngressRequest()
@@ -1030,28 +1034,26 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession):
         except Exception as err:
             logger.warn("failed to add/check image")
 
-        #resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)
         resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
         #logger.debug("VULN SCAN: " + str(resp))
         curr_vuln_result = resp.to_dict()
 
         last_vuln_result = {}
         try:
-            last_vuln_result = archive_sys.get_document(userId, 'vulnerability_scan', imageDigest)
+            last_vuln_result = archive_sys.get_document(userId, 'vulnerability_scan', scantag)
         except:
             pass
 
         # compare them
         doqueue = False
         #logger.debug("LAST: " + json.dumps(last_vuln_result, indent=4))
-        #logger.debug("CURR: " + json.dumps(curr_vuln_result, indent=4))        
+        #logger.debug("CURR: " + json.dumps(curr_vuln_result, indent=4))   
 
         vdiff = {}
         if last_vuln_result and curr_vuln_result:
             vdiff = anchore_utils.process_cve_status(old_cves_result=last_vuln_result['legacy_report'], new_cves_result=curr_vuln_result['legacy_report'])
 
-        #logger.debug("DIFF: " + json.dumps(vdiff, indent=4))
-        archive_sys.put_document(userId, 'vulnerability_scan', imageDigest, curr_vuln_result)
+        archive_sys.put_document(userId, 'vulnerability_scan', scantag, curr_vuln_result)
 
         try:
             if vdiff and (vdiff['updated'] or vdiff['added'] or vdiff['removed']):
@@ -1067,7 +1069,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession):
             logger.debug("queueing vulnerability update notification")
             inobj = {
                 'userId': userId,
-                'subscription_key': fulltag,
+                'subscription_key': scantag,
                 'notificationId': str(uuid.uuid4()),
                 'diff_vulnerability_result': vdiff
             }
@@ -1090,21 +1092,26 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         policyId = policy_record['policyId']
         policy_bundle = archive_sys.get_document(userId, 'policy_bundles', policyId)
 
+        if not evaltag:
+            raise Exception("must supply an evaltag")
+
     except Exception as err:
         raise Exception("could not gather/prepare all necessary inputs for policy evaluation - exception: " + str(err))
 
     client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
 
-    tagset = []
+    #tagset = []
     imageId = None
     for image_detail in image_record['image_detail']:
-        imageId = image_detail['imageId']
-        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-        tagset.append(fulltag)
+        try:
+            imageId = image_detail['imageId']
+            break
+        except:
+            pass
+        #fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+        #tagset.append(fulltag)
 
-    if evaltag and evaltag not in tagset:
-        tagset = [evaltag]
-
+    tagset = [evaltag]
     for fulltag in tagset:
         # do the image load, just in case it was missed in analyze...
         try:
@@ -1118,7 +1125,14 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         except Exception as err:
             logger.warn("failed to add/check image")
 
-        resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)
+        logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag) + " : " + json.dumps(policy_bundle, indent=4))
+
+        try:
+            resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)
+        except Exception as err:
+            with open("/tmp/wtf.json", 'w') as OFH:
+                OFH.write(json.dumps(policy_bundle, indent=4))
+            raise err
         # TODO get the final_action
         curr_final_action = resp.final_action.upper()
         

@@ -136,13 +136,50 @@ def handle_feed_sync(*args, **kwargs):
         client = anchore_engine.clients.policy_engine.get_client(user=userId, password=password, verify_ssl=verify)
         resp = client.create_feed_update(FeedUpdateNotification(feed_name='vulnerabilities'))
         if resp:
-            # TODO - raise a flag that something feeds have changed
             logger.debug("feed sync response: " + json.dumps(resp, indent=4))
-
-            # TODO use the response to determine that/if images vulnerability scans have updated since last sync
         else:
             logger.debug("feed sync response is empty")
         feed_sync_updated = True
+
+        with db.session_scope() as dbsession:
+            users = db.db_users.get_all(session=dbsession)
+
+        for user in users:
+            userId = user['userId']
+            if userId == 'anchore-system':
+                continue
+
+            # vulnerability scans
+
+            doperform = False
+            vuln_sub_tags = []
+            for subscription_type in ['vuln_update']:
+                dbfilter = {'subscription_type': subscription_type}
+                with db.session_scope() as dbsession:
+                    subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                for subscription_record in subscription_records:
+                    if subscription_record['active']:
+                        image_info = anchore_engine.services.common.get_image_info(userId, "docker", subscription_record['subscription_key'], registry_lookup=False, registry_creds=(None, None))
+                        dbfilter = {'registry': image_info['registry'], 'repo': image_info['repo'], 'tag': image_info['tag']}
+                        if dbfilter not in vuln_sub_tags:
+                            vuln_sub_tags.append(dbfilter)
+
+            for dbfilter in vuln_sub_tags:
+                with db.session_scope() as dbsession:
+                    image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
+                for image_record in image_records:
+                    if image_record['analysis_status'] == taskstate.complete_state('analyze'):
+                        imageDigest = image_record['imageDigest']
+                        fulltag = dbfilter['registry'] + "/" + dbfilter['repo'] + ":" + dbfilter['tag']
+
+                        doperform = True
+                        if doperform:
+                            logger.debug("calling vuln scan perform: " + str(fulltag) + " : " + str(imageDigest))
+                            with db.session_scope() as dbsession:
+                                try:
+                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=fulltag)
+                                except Exception as err:
+                                    logger.warn("vulnerability scan failed - exception: " + str(err))
 
     except Exception as err:
         logger.warn("failure in feed sync handler - exception: " + str(err))
@@ -590,6 +627,72 @@ def check_policybundle_update(userId, dbsession):
     return(is_updated)
 
 def handle_policyeval(*args, **kwargs):
+    global system_user_auth, bundle_user_is_updated, feed_sync_updated
+    logger.debug("FIRING: policy eval / vuln scan")
+
+    try:
+        all_ready = anchore_engine.services.common.check_services_ready(['policy_engine', 'simplequeue'])
+        if not all_ready:
+            logger.debug("FIRING DONE: policy eval (skipping due to required services not being available)")
+            try:
+                kwargs['mythread']['last_return'] = False
+            except:
+                pass
+            return(True)
+
+        with db.session_scope() as dbsession:
+            feed_updated = check_feedmeta_update(dbsession)
+            users = db.db_users.get_all(session=dbsession)
+
+        for user in users:
+            userId = user['userId']
+            if userId == 'anchore-system':
+                continue
+
+            # policy evaluations
+
+            doperform = False
+            policy_sub_tags = []
+            for subscription_type in ['policy_eval']:
+                dbfilter = {'subscription_type': subscription_type}
+                with db.session_scope() as dbsession:
+                    subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                for subscription_record in subscription_records:
+                    if subscription_record['active']:
+                        image_info = anchore_engine.services.common.get_image_info(userId, "docker", subscription_record['subscription_key'], registry_lookup=False, registry_creds=(None, None))
+                        dbfilter = {'registry': image_info['registry'], 'repo': image_info['repo'], 'tag': image_info['tag']}
+                        if dbfilter not in policy_sub_tags:
+                            policy_sub_tags.append(dbfilter)
+
+            for dbfilter in policy_sub_tags:
+                with db.session_scope() as dbsession:
+                    image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
+                for image_record in image_records:
+                    if image_record['analysis_status'] == taskstate.complete_state('analyze'):
+                        imageDigest = image_record['imageDigest']
+                        fulltag = dbfilter['registry'] + "/" + dbfilter['repo'] + ":" + dbfilter['tag']
+
+                        # TODO - checks to avoid performing eval if nothing has changed
+                        doperform = True
+                        if doperform:
+                            logger.debug("calling policy eval perform: " + str(fulltag) + " : " + str(imageDigest))
+                            with db.session_scope() as dbsession:
+                                try:
+                                    rc = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=fulltag)
+                                except Exception as err:
+                                    logger.warn("policy evaluation failed - exception: " + str(err))
+
+    except Exception as err:
+        logger.warn("failure in policy eval / vuln scan handler - exception: " + str(err))
+
+    logger.debug("FIRING DONE: policy eval / vuln scan")
+    try:
+        kwargs['mythread']['last_return'] = True
+    except:
+        pass
+    return(True)    
+
+def handle_policyeval_orig(*args, **kwargs):
     global system_user_auth, bundle_user_is_updated, feed_sync_updated
     logger.debug("FIRING: policy eval")
 
