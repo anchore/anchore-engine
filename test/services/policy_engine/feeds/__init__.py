@@ -4,7 +4,7 @@ import json
 import logging
 from collections import namedtuple
 
-from anchore_engine.services.policy_engine.engine.feeds import PackagesFeed, VulnerabilityFeed, IFeedSource, SINCE_DATE_FORMAT, FeedMetadata, FeedGroupMetadata
+from anchore_engine.services.policy_engine.engine.feeds import PackagesFeed, VulnerabilityFeed, IFeedSource, FeedMetadata, FeedGroupMetadata
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
