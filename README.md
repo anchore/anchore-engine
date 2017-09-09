@@ -88,19 +88,24 @@ Rather than passing these parameters for every call to the cli they can be store
 Add an image to the Anchore Engine
 
     anchore-cli image add docker.io/library/debian:latest
+    
 List images analyzed by the Anchore Engine
 
     anchore-cli image list
+    
 Get a specific image and see when its status goes to analyzed
 
     anchore-cli image get docker.io/library/debian:latest
+    
 Perform a vulnerability scan on an image
+
 
     anchore-cli image vuln docker.io/library/debian:latest os
 
 List operating system packages present in an image
 
     anchore-cli image content docker.io/library/debian:latest os
+    
 Subscribe to receive webhook notifications when new CVEs are added to an update
 
     anchore-cli subscription activate vuln_update docker.io/library/debian:latest
@@ -108,7 +113,7 @@ Subscribe to receive webhook notifications when new CVEs are added to an update
 
 ## More Information
 
-For further details on use of the Anchore CLI with the Anchore Engine please refer to the Anchore Engine Wiki
+For further details on use of the Anchore CLI with the Anchore Engine please refer to the [Anchore Engine Wiki](https://github.com/anchore/anchore-engine/wiki
 
 
 
