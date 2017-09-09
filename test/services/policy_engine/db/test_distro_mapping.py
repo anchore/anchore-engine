@@ -1,12 +1,13 @@
 import unittest
 import logging
+import os
 
-from tests import LocalTestDataEnvironment
-from kirk.engine.db.models import init_db, DistroNamespace, DistroMapping, DistroTuple, VersionPreservingDistroMapper
+from test.services.policy_engine.utils import LocalTestDataEnvironment, init_db
+from anchore_engine.db.entities.policy_engine import DistroNamespace, DistroMapping, DistroTuple, VersionPreservingDistroMapper
 
 
 class TestDistroMappers(unittest.TestCase):
-    test_env = LocalTestDataEnvironment('/Users/zhill/local_kirk_testing')
+    test_env = LocalTestDataEnvironment(os.environ['ANCHORE_ENGINE_TESTING_HOME'])
 
     app = None
     test_gates = [

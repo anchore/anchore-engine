@@ -1,6 +1,6 @@
 import logging
 import datetime
-
+import os
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask
@@ -12,7 +12,7 @@ from test.services.policy_engine.feeds import reset_feed_sync_time
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
-test_env = LocalTestDataEnvironment(data_dir='/Users/zhill/local_kirk_testing')
+test_env = LocalTestDataEnvironment(os.environ['ANCHORE_ENGINE_TESTING_HOME'])
 test_env.init_feeds()
 
 test_image_ids = {

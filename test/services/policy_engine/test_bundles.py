@@ -1,6 +1,7 @@
 import unittest
 import json
 import copy
+import os
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle
 from anchore_engine.db import get_thread_scoped_session as get_session, end_session, Image
@@ -17,7 +18,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         'name': 'empty_bundle'
 
     }
-    test_env = LocalTestDataEnvironment('/Users/zhill/local_kirk_testing')
+    test_env = LocalTestDataEnvironment(os.environ['ANCHORE_ENGINE_TESTING_HOME'])
 
     test_image_ids = {
         'busybox': 'c75bebcdd211f41b3a460c7bf82970ed6c75acaab9cd4c9a4e125b03ca113798',

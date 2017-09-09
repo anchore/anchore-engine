@@ -1,7 +1,7 @@
 import unittest
 import copy
 import datetime
-from kirk.engine.db.models import ImagePackageVulnerability
+from anchore_engine.db import ImagePackageVulnerability
 
 
 class TestImagePackageVulnerabilityHashing(unittest.TestCase):
