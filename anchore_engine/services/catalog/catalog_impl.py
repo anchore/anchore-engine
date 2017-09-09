@@ -997,7 +997,7 @@ def get_system_auth(dbsession):
 
     return(system_user_auth)
 
-def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None):
+def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, force_refresh=False):
     # prepare inputs
     try:
         system_user_auth = get_system_auth(dbsession)
@@ -1034,7 +1034,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None):
         except Exception as err:
             logger.warn("failed to add/check image")
 
-        resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
+        resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
         #logger.debug("VULN SCAN: " + str(resp))
         curr_vuln_result = resp.to_dict()
 

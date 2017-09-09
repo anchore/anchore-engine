@@ -177,7 +177,7 @@ def handle_feed_sync(*args, **kwargs):
                             logger.debug("calling vuln scan perform: " + str(fulltag) + " : " + str(imageDigest))
                             with db.session_scope() as dbsession:
                                 try:
-                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=fulltag)
+                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=fulltag, force_refresh=False)
                                 except Exception as err:
                                     logger.warn("vulnerability scan failed - exception: " + str(err))
 
@@ -561,36 +561,6 @@ def handle_image_watcher(*args, **kwargs):
         pass
     return(True)
 
-def check_feedmeta_update_orig(dbsession):
-    global last_feed_ts
-
-    feed_updated = True
-
-    latest_feed_ts = 0
-    try:
-        latest_feedmeta = archive.get_document('anchore-system', 'worker_data', 'latest_feedmeta')
-        for feed in latest_feedmeta.keys():
-            for group in latest_feedmeta[feed]['groups'].keys():
-                if 'last_update' in latest_feedmeta[feed]['groups'][group]:
-                    last_updated = latest_feedmeta[feed]['groups'][group]['last_update']
-                    if last_updated > latest_feed_ts:
-                        latest_feed_ts = last_updated
-
-        if latest_feed_ts == 0 or (last_feed_ts != latest_feed_ts):
-            logger.debug("found that feeds have updated: last stored=" + str(last_feed_ts) + " : current stored=" + str(latest_feed_ts))
-            last_feed_ts = latest_feed_ts
-            feed_updated = True
-        else:
-            logger.debug("found that feeds have not updated: last stored=" + str(last_feed_ts) + " : current stored=" + str(latest_feed_ts))
-            feed_updated = False
-
-    except Exception as err:
-        logger.warn("failed archive get/parse for feeds metadata - exception: " + str(err))
-        feed_updated = True
-        last_feed_ts = 0
-
-    return(feed_updated)
-
 def check_feedmeta_update(dbsession):
     global feed_sync_updated
     return(feed_sync_updated)
@@ -686,128 +656,6 @@ def handle_policyeval(*args, **kwargs):
         logger.warn("failure in policy eval / vuln scan handler - exception: " + str(err))
 
     logger.debug("FIRING DONE: policy eval / vuln scan")
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
-    return(True)    
-
-def handle_policyeval_orig(*args, **kwargs):
-    global system_user_auth, bundle_user_is_updated, feed_sync_updated
-    logger.debug("FIRING: policy eval")
-
-    try:
-
-        all_ready = anchore_engine.services.common.check_services_ready(['policy_engine', 'simplequeue'])
-        if not all_ready:
-            logger.debug("FIRING DONE: policy eval (skipping due to required services not being available)")
-            try:
-                kwargs['mythread']['last_return'] = False
-            except:
-                pass
-            return(True)
-
-        with db.session_scope() as dbsession:
-            feed_updated = check_feedmeta_update(dbsession)
-            users = db.db_users.get_all(session=dbsession)
-
-        for user in users:
-            userId = user['userId']
-            if userId == 'anchore-system':
-                continue
-
-            with db.session_scope() as dbsession:
-                bundle_user_is_updated[userId] = check_policybundle_update(userId, dbsession)
-                image_records = db.db_catalog_image.get_all(userId, session=dbsession)
-
-            for image_record in image_records:
-                imageDigest = image_record['imageDigest']
-                logger.debug("processing image: " + str(imageDigest))
-
-                # if image has completed analyze task, then queue for eval
-                currstate = image_record['analysis_status']
-                if currstate == taskstate.complete_state('analyze'):
-                    qobj = {}
-                    qobj['userId'] = userId
-                    qobj['image_record'] = image_record
-
-                    if True:
-                        doprio = False
-                        doqueue = False
-
-                        # gather image specific information to be used to determine whether or not to queue
-                        dbfilter = {'imageDigest':imageDigest}
-                        with db.session_scope() as dbsession:
-                            eval_records = db.db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-                        eval_tags = []
-                        try:
-                            for eval_record in eval_records:
-                                eval_tags.append(eval_record['tag'])
-                        except Exception as err:
-                            logger.warn("could not make eval tags list - exception: " + str(err))
-
-                        subscribed = False
-                        image_tags = []
-                        try:
-                            for image_detail in image_record['image_detail']:
-                                image_fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-                                image_tags.append(image_fulltag)
-
-                                # check to see if user is subscribed
-                                for subscription_type in ['policy_eval', 'vuln_update']:
-                                    dbfilter = {'subscription_type': subscription_type, 'subscription_key': image_fulltag}
-                                    with db.session_scope() as dbsession:
-                                        subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
-                                    for subscription_record in subscription_records:
-                                        if subscription_record['active']:
-                                            subscribed = True
-                                            break
-
-                        except Exception as err:
-                            logger.warn("could not make image tags list - exception: " + str(err))
-
-                        diff_tags = list(set(image_tags).difference(set(eval_tags)))
-
-                        # now, check all conditions that would lead to queueing up for a policy eval (or skipping)
-                        if not eval_records:
-                            # do priority queuing if no eval is present, and queue
-                            logger.debug("image has no existing eval records, queueing image, priority queueing: " + str(imageDigest))
-                            doprio = True
-                            doqueue = True
-                        elif not subscribed:
-                            # if user is not subscribed, do not queue for eval (unless the above condition hits - first time eval)
-                            logger.debug("user is not subscribed to any of this image's tags that needs new policy eval - will not queue for eval: " + str(imageDigest))
-                            doqueue = False
-                        elif feed_updated:
-                            # if feeds have updated, queue for policy eval
-                            logger.debug("feed detected as having changed, queueing image: " + str(imageDigest))
-                            feed_sync_updated = False
-                            doqueue = True
-                        elif bundle_user_is_updated[userId]:
-                            # if the user bundle is updated, queue for policy eval
-                            logger.debug("bundle detected as having changed, queueing image: " + str(imageDigest))
-                            doqueue = True
-                        elif diff_tags:
-                            logger.debug("detected new tag(s) in image ("+str(diff_tags)+") - queueing for eval")
-                            doqueue= True
-
-                        if doqueue:
-                            logger.debug("should perform policy eval / vuln scan for image ("+str(imageDigest)+")")
-                            with db.session_scope() as dbsession:
-                                rc = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession)
-                                rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession)
-                            logger.debug("policy evaluation rc: " +str(rc))
-
-                        else:
-                            logger.debug("skipping image ("+str(imageDigest)+")")
-                    else:
-                        logger.debug("image already queued for eval: " + str(imageDigest))
-                else:
-                    logger.debug("image not analyzed, skipping eval: " + str(imageDigest))
-    except Exception as err:
-        logger.warn("failure in policy eval handler - exception: " + str(err))
-
-    logger.debug("FIRING DONE: policy eval")
     try:
         kwargs['mythread']['last_return'] = True
     except:
