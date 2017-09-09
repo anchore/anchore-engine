@@ -1,8 +1,9 @@
 import re
 
-from anchore_engine.clients.catalog import get_image
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.clients.catalog import get_image, get_user
+from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate, TriggerEvaluationError
 from anchore_engine.db import db_users
+
 
 class BaseOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'BASEOUTOFDATE'
@@ -11,9 +12,9 @@ class BaseOutOfDateTrigger(BaseTrigger):
 
     _catalog_creds = None
 
-    def _get_catalog_creds(self):
+    def _get_catalog_creds(self, session):
         if not self._catalog_creds:
-            self._catalog_creds = db_users.get('admin')
+            self._catalog_creds = db_users.get(userId='admin', session=session)
         return self._catalog_creds
 
     def discover_fromline(self, dockerfile_contents):
@@ -39,20 +40,29 @@ class BaseOutOfDateTrigger(BaseTrigger):
         else:
             name_type = 'tag'
 
-        if name_type == 'tag':
-            record = get_image(userId=(self._get_catalog_creds()['userId'], self._get_catalog_creds()['password']), tag=fromline_ref)
-            image_id = record['imageId']
-        elif name_type == 'digest':
-            record = get_image(userId=(self._get_catalog_creds()['userId'], self._get_catalog_creds()['password']), digest=fromline_ref)
-            image_id = record['imageId']
-        else:
-            image_id = None
+        creds = self._get_catalog_creds(context.db)
 
-        return image_id
+        if name_type == 'tag':
+            if not creds:
+                return None
+                #raise TriggerEvaluationError(self, 'Could not locate credentials for querying the catalog')
+            try:
+                record = get_image(userId=(creds['userId'], creds['password']), tag=fromline_ref)
+                image_id = record['imageId']
+            except:
+                return None
+
+        elif name_type == 'digest':
+            try:
+                record = get_image(userId=(creds['userId'], creds['password']), digest=fromline_ref)
+                image_id = record['imageId']
+            except:
+                return None
+        else:
+            return None
 
     def evaluate(self, image_obj, context):
         if image_obj.dockerfile_mode == 'Actual':
-            # TODO: this is untested, but unused for hosted service...for now.
             realbaseid = None
             if len(image_obj.familytree_json) > 0:
                 realbaseid = image_obj.familytree_json[0]
@@ -63,7 +73,6 @@ class BaseOutOfDateTrigger(BaseTrigger):
                 # Assume this is a digest
                 return
 
-            #(thefrom, thefromid) = anchore.anchore_utils.discover_from_info(idata['dockerfile_contents'])
             thefromid = self.lookup_image_id_by_ref(context, thefrom_value)
 
             if thefromid and realbaseid != thefromid:

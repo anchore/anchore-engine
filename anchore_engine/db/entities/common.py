@@ -305,20 +305,6 @@ def end_session():
         ThreadLocalSession.remove()
 
 
-def disconnect():
-    global ThreadLocalSession, Session, engine
-
-    if ThreadLocalSession:
-        ThreadLocalSession.close_all()
-        ThreadLocalSession = None
-    if Session:
-        Session.close_all()
-        Session = None
-
-    if engine:
-        engine.dispose()
-        engine = None
-
 def init_thread_session():
     """
     Configure a scoped session factory which is a thread-local session cache

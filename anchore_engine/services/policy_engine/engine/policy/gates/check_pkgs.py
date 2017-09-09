@@ -78,6 +78,10 @@ class PkgDiffGate(Gate):
         if base_id != image_obj.id:
             base_img = context.db.query(Image).get((base_id, image_obj.user_id))
             context.data['base_img'] = base_img
+            if not base_img:
+                return context
+            else:
+                context.data['base_img'] = base_img
         else:
             context.data['base_img'] = image_obj
             return context

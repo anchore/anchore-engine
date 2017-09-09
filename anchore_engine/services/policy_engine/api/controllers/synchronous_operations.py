@@ -218,6 +218,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             try:
                 eval_result = executable_bundle.execute(img_obj, tag, ExecutionContext(db_session=db, configuration={}))
             except Exception as e:
+                log.exception('Error executing policy bundle {} against image {} w/tag {}'.format(bundle['id'], image_id, tag))
                 abort(Response(response='Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e.message), status=500))
         else:
             # Construct a failure eval with details on the errors and mappings to send to client

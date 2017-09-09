@@ -225,7 +225,7 @@ class DockerfileGate(Gate):
         if image_obj.dockerfile_contents:
             for line in image_obj.dockerfile_contents.splitlines():
                 line = line.strip()
-                if not line.startswith('#'):
+                if line and not line.startswith('#'):
                     directive, remainder = line.split(' ', 1)
                     directive = directive.upper() # Normalize to all upper
                     if directive not in context.data['prepared_dockerfile']:

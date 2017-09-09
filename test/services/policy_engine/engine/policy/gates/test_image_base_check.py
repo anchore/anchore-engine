@@ -7,6 +7,7 @@ from anchore_engine.services.policy_engine.engine.policy.gates.image_base_check 
 
 class ImageCheckGateTest(GateUnitTest):
     gate_clazz = ImageCheckGate
+    __default_image__ = 'testimage2'
 
 
     def get_initialized_trigger(self, name, config=None, **kwargs):
@@ -24,9 +25,9 @@ class ImageCheckGateTest(GateUnitTest):
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
         print('Fired: {}'.format(t.fired))
-        self.assertGreaterEqual(len(t.fired), 0)
+        self.assertGreaterEqual(len(t.fired), 1)
 
-        img_with_tree = db.query(Image).get((self.test_env.get_images_named('testimage2')[0][0], '0'))
+        img_with_tree = db.query(Image).get((self.test_env.get_images_named('node')[0][0], '0'))
         test_context = gate.prepare_context(img_with_tree, test_context)
         t.evaluate(img_with_tree, test_context)
         print('Fired: {}'.format(t.fired))
