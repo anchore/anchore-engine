@@ -2,12 +2,19 @@ import re
 
 from anchore_engine.clients.catalog import get_image
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-
+from anchore_engine.db import db_users
 
 class BaseOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'BASEOUTOFDATE'
     __description__ = 'triggers if the image\'s base image has been updated since the image was built/analyzed'
     __params__ = {}
+
+    _catalog_creds = None
+
+    def _get_catalog_creds(self):
+        if not self._catalog_creds:
+            self._catalog_creds = db_users.get('admin')
+        return self._catalog_creds
 
     def discover_fromline(self, dockerfile_contents):
         fromline = re.match(".*FROM\s+(\S+).*", dockerfile_contents).group(1)
@@ -33,10 +40,10 @@ class BaseOutOfDateTrigger(BaseTrigger):
             name_type = 'tag'
 
         if name_type == 'tag':
-            record = get_image(tag=fromline_ref)
+            record = get_image(userId=(self._get_catalog_creds()['userId'], self._get_catalog_creds()['password']), tag=fromline_ref)
             image_id = record['imageId']
         elif name_type == 'digest':
-            record = get_image(digest=fromline_ref)
+            record = get_image(userId=(self._get_catalog_creds()['userId'], self._get_catalog_creds()['password']), digest=fromline_ref)
             image_id = record['imageId']
         else:
             image_id = None
