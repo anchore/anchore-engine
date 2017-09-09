@@ -32,9 +32,8 @@ class BaseOutOfDateTrigger(BaseTrigger):
         :param fromline_ref:
         :return: image_id mapped to tag (as far as we know) or None if there isn't one or the reference is a digest rather than tag
         """
-        # TODO: test and fix this.
+
         if re.match('@sha256:[a-f0-9]+$', fromline_ref):
-            name_type = 'digest'
             # it's a digest, no match since those are immutable
             return
         else:
@@ -44,19 +43,20 @@ class BaseOutOfDateTrigger(BaseTrigger):
 
         if name_type == 'tag':
             if not creds:
-                return None
-                #raise TriggerEvaluationError(self, 'Could not locate credentials for querying the catalog')
+                raise TriggerEvaluationError(self, 'Could not locate credentials for querying the catalog')
             try:
                 record = get_image(userId=(creds['userId'], creds['password']), tag=fromline_ref)
-                image_id = record['imageId']
+                return record['imageId']
             except:
+                # Assume this means the image is not available
                 return None
 
         elif name_type == 'digest':
             try:
                 record = get_image(userId=(creds['userId'], creds['password']), digest=fromline_ref)
-                image_id = record['imageId']
+                return record['imageId']
             except:
+                # Assume this means the image is not available
                 return None
         else:
             return None

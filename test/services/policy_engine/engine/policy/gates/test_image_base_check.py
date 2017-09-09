@@ -1,3 +1,4 @@
+import unittest
 from test.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import get_thread_scoped_session, Image
@@ -18,6 +19,14 @@ class ImageCheckGateTest(GateUnitTest):
 
         return trigger, gate, context
 
+    def test_dockerfile_fromline(self):
+        trig = BaseOutOfDateTrigger(parent_gate_cls=ImageCheckGate)
+        docker_contents = 'FROM node:latest\n\nRUN yum upgrade -y && yum -y install wget && yum -y clean all\n\nCMD /bin/bash\n'
+        from_line = trig.discover_fromline(dockerfile_contents=docker_contents)
+        self.assertEqual('node:latest', from_line)
+
+
+    @unittest.skip('cross service dependency, pending mocks')
     def test_base_out_of_date(self):
         t, gate, test_context = self.get_initialized_trigger(BaseOutOfDateTrigger.__trigger_name__)
         db = get_thread_scoped_session()
