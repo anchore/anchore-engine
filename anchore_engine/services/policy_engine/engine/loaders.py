@@ -68,7 +68,7 @@ class ImageLoader(object):
         image.distro_version = analyzer_meta['DISTROVERS']
         image.like_distro = like_dist
 
-        image.docker_file_mode = image_report['dockerfile_mode']
+        image.dockerfile_mode = image_report['dockerfile_mode']
 
         # JSON data
         image.docker_data_json = image_report['docker_data']
