@@ -16,7 +16,10 @@ rm -rf /tmp/anchore-engine-build/anchore-engine
 cp -a Dockerfile /tmp/anchore-engine-build
 
 cd /tmp/anchore-engine-build
-rsync -azP /root/anchore-engine/ /tmp/anchore-engine-build/anchore-engine/
-#git clone git@github.com:anchore/anchore-engine.git
+if [ ! -z "$ANCHORESRCHOME" ]; then
+    rsync -azP /${ANCHORESRCHOME}/anchore-engine/ /tmp/anchore-engine-build/anchore-engine/
+else
+    git clone git@github.com:anchore/anchore-engine.git
+fi
 
 cd /tmp/anchore-engine-build && docker build -t anchore-engine:latest ${cache_directive} . && docker tag anchore-engine:latest anchore/anchore-engine:latest
