@@ -750,7 +750,7 @@ class DistroMapping(Base):
         return [DistroTuple(distro=mapping.from_distro, version=version, flavor=mapping.flavor) for mapping in name_matches]
 
     def __str__(self):
-        return '<DistroMapping>from={} to={}, flavor={}'
+        return '<DistroMapping>from={} to={}, flavor={}'.format(self.from_distro, self.to_distro, self.flavor)
 
 class DistroNamespace(object):
     """
