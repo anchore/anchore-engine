@@ -136,7 +136,6 @@ class InitialFeedSyncTask(IAsyncTask, DispatchableTaskMixin):
     def execute(self):
         log.info('Starting initial feed sync')
         f = DataFeeds.instance()
-        f.refresh()
 
         try:
             updated = []
@@ -144,7 +143,7 @@ class InitialFeedSyncTask(IAsyncTask, DispatchableTaskMixin):
             for g in updated_dict:
                 updated += updated_dict[g]
 
-            log.info('Initail feed sync complete')
+            log.info('Initial feed sync complete')
             return updated
         except:
             log.exception('Failure refreshing and syncing feeds')

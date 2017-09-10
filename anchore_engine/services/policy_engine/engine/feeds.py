@@ -442,7 +442,9 @@ class AnchoreServiceFeed(DataFeed):
         Returns true if this feed has never been successfully synced. Essentially checks the last_full_sync timestamp for existence.
         :return: boolean
         """
-        return not self.metadata or not self.metadata.last_full_sync
+        is_not_synced = not self.metadata or not self.metadata.last_full_sync
+        log.debug('Feed {} has never been synced? {}'.format(self.__feed_name__, is_not_synced))
+        return is_not_synced
 
     def _sync_meta(self):
         """
@@ -1109,8 +1111,16 @@ class DataFeeds(object):
         This function does verify that the expected feeds are available for a sync.
         :return: True on success, raise exception on failure to find a feed
         """
-        self.vulnerabilities.refresh_groups()
-        self.packages.refresh_groups()
+
+        try:
+            self.vulnerabilities.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for vulnerabilities feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
+        try:
+            self.packages.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for vulnerabilities feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
     def sync(self, to_sync=None):
         """
@@ -1136,7 +1146,7 @@ class DataFeeds(object):
 
         return updated_records
 
-    def bulk_sync(self, to_sync=None):
+    def bulk_sync(self, to_sync=None, only_if_unsynced=True):
         """
         Sync all feeds using a bulk sync for each for performance, particularly on initial sync.
         :param to_sync: list of feed names to sync, if None all feeds are synced
@@ -1145,18 +1155,24 @@ class DataFeeds(object):
         updated_records = {}
 
         if to_sync is None or 'vulnerabilities' in to_sync:
-            log.info('Bulk syncing vulnerability feed')
-            try:
-                updated_records['vulnerabilities'] = self.vulnerabilities.bulk_sync()
-            except:
-                log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+            if not only_if_unsynced or self.vulnerabilities.never_synced():
+                log.info('Bulk syncing vulnerability feed')
+                try:
+                    updated_records['vulnerabilities'] = self.vulnerabilities.bulk_sync()
+                except:
+                    log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
 
         if to_sync is None or 'packages' in to_sync:
-            try:
-                log.info('Syncing packages feed')
-                updated_records['packages'] = self.packages.bulk_sync()
-            except:
-                log.exception('Failure updating the packages feed. Continuing with next feed')
+            if not only_if_unsynced or self.packages.never_synced():
+                try:
+                    log.info('Syncing packages feed')
+                    updated_records['packages'] = self.packages.bulk_sync()
+                except:
+                    log.exception('Failure updating the packages feed. Continuing with next feed')
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
 
         return updated_records
 
