@@ -49,6 +49,7 @@ services:
      - /root/aevolume/config:/config/:Z
      - /var/run/docker.sock:/var/run/docker.sock
     logging:
+     driver: "json-file"
      options:
       max-size: 100m
   anchore-db:
@@ -59,6 +60,7 @@ services:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
     logging:
+     driver: "json-file"
      options:
       max-size: 100m
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
