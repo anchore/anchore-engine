@@ -22,8 +22,33 @@ from anchore_engine.clients.feeds.anchore_io.feeds import get_client as get_feed
 
 log = get_logger()
 
-#SINCE_DATE_FORMAT = '%Y-%m-%dT%H:%M' # Minute-level resolution for timestamps
 feed_list_cache = threading.local()
+
+
+def get_feeds_config(full_config):
+    """
+    Returns the feeds-specifc portion of the global config. To centralized this logic.
+    :param full_config:
+    :return: dict that is the feeds configuration
+    """
+    return full_config.get('feeds',{})
+
+def get_selected_feeds_to_sync(config):
+    """
+    Given a configuration dict, determine which feeds should be synced.
+
+    :param config:
+    :return: list of strings of feed names to sync, an empty least means no feeds. Response of None means selective sync is disabled and sync all feeds.
+    """
+
+    feed_config = get_feeds_config(config)
+    if not feed_config:
+        return []
+
+    if feed_config.get('selective_sync', {}).get('enabled', False):
+        return map(lambda x: x[0], filter(lambda x: x[1], feed_config.get('selective_sync', {}).get('feeds', {}).items()))
+    else:
+        return None
 
 
 class SingleTypeMapperFactory(object):
@@ -293,10 +318,21 @@ class AnchoreFeedServiceClient(IFeedSource):
         # if type(since) == datetime.datetime:
         #     since = since.strftime(SINCE_DATE_FORMAT)
 
-        resp = self.client.get_feed_group_data(feed, group, since=since, next_token=next_token)
+        if next_token:
+            if since:
+                resp = self.client.get_feed_group_data(feed, group, since=since, next_token=next_token)
+            else:
+                resp = self.client.get_feed_group_data(feed, group, next_token=next_token)
+        else:
+            if since:
+                resp = self.client.get_feed_group_data(feed, group, since=since)
+            else:
+                resp = self.client.get_feed_group_data(feed, group)
+
         if next_token and resp.next_token and next_token == resp.next_token:
             raise Exception('Service returned same next token as requested, cannot proceed safely. Aborting fetch')
 
+        log.debug('Got data len: {}, token: {}'.format(len(resp.data), resp.next_token))
         return resp.data, resp.next_token
 
     def get_feed_group_data(self, feed, group, since=None):
@@ -540,7 +576,7 @@ class AnchoreServiceFeed(DataFeed):
         new_data = True
         pages = 0
         new_data_deduped = {}  # Dedup by item key
-        while new_data or next_token and (max_pages and pages <= max_pages):
+        while (new_data or next_token) and (max_pages is None or pages <= max_pages):
             new_data, next_token = self.source.get_paged_feed_group_data(self.__feed_name__, group_obj.name,
                                                                          since=since,
                                                                          next_token=next_token)
@@ -550,11 +586,11 @@ class AnchoreServiceFeed(DataFeed):
                 new_data_deduped[self._dedup_data_key(mapped)] = mapped
 
             new_data = None
+            log.debug('Page = {}, new_data = {}, next_token = {}'.format(pages, bool(new_data), bool(next_token), max_pages))
 
         data = new_data_deduped.values()
         new_data_deduped = None
         return data, next_token
-
 
     def _bulk_sync_group(self, group_obj):
         """
@@ -565,11 +601,11 @@ class AnchoreServiceFeed(DataFeed):
         """
 
         fetch_time = time.time()
-        new_data_deduped, next_token = self._get_deduped_data(group_obj, since=group_obj.last_sync)
+        new_data_deduped, next_token = self._get_deduped_data(group_obj)
         fetch_time = time.time() - fetch_time
         log.info('Group data fetch took {} sec'.format(fetch_time))
 
-        log.debug('Merging {} records from group {}'.format(len(new_data_deduped), group_obj.name))
+        log.debug('Adding {} records from group {}'.format(len(new_data_deduped), group_obj.name))
         db_time = time.time()
         db = get_session()
         try:
@@ -1076,24 +1112,51 @@ class DataFeeds(object):
         self.vulnerabilities.refresh_groups()
         self.packages.refresh_groups()
 
-    def sync(self):
+    def sync(self, to_sync=None):
         """
         Sync all feeds.
         :return:
         """
-        updated_records = {}
-        log.info('Performing full feed sync')
-        try:
-            log.info('Syncing vulnerability feed')
-            updated_records['vulnerabilities'] = self.vulnerabilities.sync()
-        except:
-            log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
 
-        try:
-            log.info('Syncing packages feed')
-            updated_records['packages'] = self.packages.sync()
-        except:
-            log.exception('Failure updating the packages feed.')
+        updated_records = {}
+        log.info('Performing feed sync of feeds: {}'.format('all' if to_sync is None else to_sync))
+        if to_sync is None or 'vulnerabilities' in to_sync:
+            try:
+                log.info('Syncing vulnerability feed')
+                updated_records['vulnerabilities'] = self.vulnerabilities.sync()
+            except:
+                log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+
+        if to_sync is None or 'packages' in to_sync:
+            try:
+                log.info('Syncing packages feed')
+                updated_records['packages'] = self.packages.sync()
+            except:
+                log.exception('Failure updating the packages feed.')
+
+        return updated_records
+
+    def bulk_sync(self, to_sync=None):
+        """
+        Sync all feeds using a bulk sync for each for performance, particularly on initial sync.
+        :param to_sync: list of feed names to sync, if None all feeds are synced
+        :return:
+        """
+        updated_records = {}
+
+        if to_sync is None or 'vulnerabilities' in to_sync:
+            log.info('Bulk syncing vulnerability feed')
+            try:
+                updated_records['vulnerabilities'] = self.vulnerabilities.bulk_sync()
+            except:
+                log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+
+        if to_sync is None or 'packages' in to_sync:
+            try:
+                log.info('Syncing packages feed')
+                updated_records['packages'] = self.packages.bulk_sync()
+            except:
+                log.exception('Failure updating the packages feed. Continuing with next feed')
 
         return updated_records
 

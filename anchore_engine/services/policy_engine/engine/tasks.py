@@ -11,7 +11,7 @@ import dateutil.parser
 
 from sqlalchemy.exc import IntegrityError
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, InsufficientAccessTierError, InvalidCredentialsError
-from anchore_engine.db import get_thread_scoped_session as get_session, Image
+from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
@@ -123,6 +123,36 @@ class EchoTask(IAsyncTask, DispatchableTaskMixin):
         return
 
 
+class InitialFeedSyncTask(IAsyncTask, DispatchableTaskMixin):
+    """
+    Special task for the initial feed sync to more efficient methods to get the data loaded the first time.
+
+    """
+    __task_name__ = 'initial_feed_sync'
+
+    def __init__(self, feeds_to_sync=None):
+        self.feed_list = feeds_to_sync
+
+    def execute(self):
+        log.info('Starting initial feed sync')
+        f = DataFeeds.instance()
+        f.refresh()
+
+        try:
+            updated = []
+            updated_dict = f.bulk_sync(to_sync=self.feed_list)
+            for g in updated_dict:
+                updated += updated_dict[g]
+
+            log.info('Initail feed sync complete')
+            return updated
+        except:
+            log.exception('Failure refreshing and syncing feeds')
+            raise
+        finally:
+            end_session()
+
+
 class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
     """
     Scan and sync all configured and available feeds to ensure latest state.
@@ -132,76 +162,38 @@ class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
 
     __task_name__ = 'feed_update'
 
-    def __init__(self, feed=None, group=None, created_at=None):
-        self.feed = feed
-        self.group = group
-        self.received_at = None
-        self.created_at = created_at
+    def __init__(self, feeds_to_sync=None):
+        self.feeds = feeds_to_sync
+        self.created_at = datetime.datetime.utcnow()
 
     def is_full_sync(self):
-        return self.feed is None
-
-    def is_group_sync(self):
-        return self.feed is not None and self.group is not None
+        return self.feeds is None
 
     def execute(self):
         log.info('Starting feed update')
-        try:
-            updated = []
-            if self.is_full_sync():
-                updated_dict = self._full_sync()
-                for g in updated_dict:
-                    updated += updated_dict[g]
-            elif self.is_group_sync():
-                df = DataFeeds.instance()
-                if self.feed == 'vulnerabilities':
-                    log.info('Performing vulnerability sync only')
-                    v = df.vulnerabilities
-                    updated = v.sync(group=self.group, item_processing_fn=self.process_updated_vulnerability)
-                    log.info('Updated vulnerabilities. {} images updated.'.format(len(updated) if updated else 'unknown'))
 
-                elif self.feed == 'packages':
-                   updated = df.packages.sync(group=self.group)
-                   log.info('Synced {} packages'.format(len(updated) if updated else 'unknown'))
-                else:
-                   raise ValueError('Unknown feed name: {}'.format(self.feed))
+        try:
+            f = DataFeeds.instance()
+            updated = []
+            vuln_updates = {}
+            #         try:
+            #             # Update the vulnerabilities with updates to the affected images done within the same transaction scope
+            #             vuln_updates = df.vulnerabilities.sync(item_processing_fn=FeedsUpdateTask.process_updated_vulnerability)
+            #             group_counts = [len(grp_updates) for grp_updates in vuln_updates.values()]
+            #             total_count = reduce(lambda x, y: x + y, group_counts, 0)
+            #             log.info('Processed {} vulnerability updates in {} groups'.format(total_count, len(group_counts)))
+            #
+            updated_dict = f.sync(to_sync=self.feeds)
+            for g in updated_dict:
+                updated += updated_dict[g]
+
+            log.info('Feed sync complete')
             return updated
         except:
             log.exception('Failure refreshing and syncing feeds')
             raise
-
-    def _full_sync(self):
-        """
-        Sync all the feeds and groups.
-
-        :return: dict of cve group names mapped to lists of images updated during the sync for each group
-        """
-
-        try:
-            log.info('Executing full sync')
-            df = DataFeeds.instance()
-
-            log.info('Executing vulnerability feed sync')
-            vuln_updates = {}
-            try:
-                # Update the vulnerabilities with updates to the affected images done within the same transaction scope
-                vuln_updates = df.vulnerabilities.sync(item_processing_fn=FeedsUpdateTask.process_updated_vulnerability)
-                group_counts = [len(grp_updates) for grp_updates in vuln_updates.values()]
-                total_count = reduce(lambda x, y: x + y, group_counts, 0)
-                log.info('Processed {} vulnerability updates in {} groups'.format(total_count, len(group_counts)))
-            except InvalidCredentialsError as e:
-                log.error('Configured credentials are invalid. Either fix configuration or use anonymous credentials')
-
-            try:
-                log.info('Executing package feed sync')
-                df.packages.sync()
-            except InsufficientAccessTierError as e:
-                log.warn('Skipping sync of packages feed due to insufficient privileges of user. Msg: {}'.format(e.message))
-
-            return vuln_updates
-        except:
-            log.exception('Failure processing updates for feeds')
-            raise
+        finally:
+            end_session()
 
     @staticmethod
     def process_updated_vulnerability(db, vulnerability):

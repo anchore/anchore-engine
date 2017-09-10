@@ -749,6 +749,8 @@ class DistroMapping(Base):
         name_matches = db.query(DistroMapping).filter(DistroMapping.to_distro == distro).all()
         return [DistroTuple(distro=mapping.from_distro, version=version, flavor=mapping.flavor) for mapping in name_matches]
 
+    def __str__(self):
+        return '<DistroMapping>from={} to={}, flavor={}'
 
 class DistroNamespace(object):
     """

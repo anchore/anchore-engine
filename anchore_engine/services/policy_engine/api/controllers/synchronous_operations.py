@@ -12,6 +12,7 @@ import connexion
 from flask import abort, jsonify, Response
 from werkzeug.exceptions import HTTPException
 
+from anchore_engine.configuration import localconfig
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, \
     ImageVulnerabilityListing, \
@@ -26,6 +27,7 @@ from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image
+from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL']
@@ -63,7 +65,8 @@ def create_feed_update(notification):
     notification = FeedUpdateNotification.from_dict(notification)
     result = []
     try:
-        task = FeedsUpdateTask()
+        feeds = get_selected_feeds_to_sync(localconfig.get_config())
+        task = FeedsUpdateTask(feeds_to_sync=feeds)
         result = task.execute()
     except HTTPException:
         raise

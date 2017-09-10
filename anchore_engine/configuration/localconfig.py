@@ -28,7 +28,14 @@ DEFAULT_CONFIG = {
         'client_url': 'https://ancho.re/v1/account/users',
         'token_url': 'https://ancho.re/oauth/token',
         'connection_timeout_seconds': 3,
-        'read_timeout_seconds': 60
+        'read_timeout_seconds': 60,
+        'selective_sync': {
+            'enabled': True,
+            'feeds': {
+                'vulnerabilities': True,
+                'packages': False
+            }
+        }
     }
 }
 
@@ -69,30 +76,6 @@ def load_defaults(configdir=None):
             configdir = os.path.join(os.environ['HOME'], ".anchore_engine")
         except:
             configdir = "/root/.anchore_engine"
-
-    # defaults = {
-    #     'service_dir': configdir,
-    #     'tmp_dir': '/tmp',
-    #     'log_level': 'DEBUG',
-    #     'image_analyze_timeout_seconds': '36000',
-    #     'cleanup_images': True,
-    #     'internal_ssl_verify': True,
-    #     'services': {},
-    #     'credentials': {},
-    #     'webhooks': {},
-    #     'default_bundle_file': None,
-    #     'docker_conn': 'unix://var/run/docker.sock',
-    #     'docker_conn_timeout': 600,
-    #     'feeds': {
-    #         'anonymous_user_username': 'anon@ancho.re',
-    #         'anonymous_user_password': 'pbiU2RYZ2XrmYQ',
-    #         'url': 'https://ancho.re/v1/service/feeds',
-    #         'client_url': 'https://ancho.re/v1/account/users',
-    #         'token_url': 'https://ancho.re/oauth/token',
-    #         'connection_timeout': 3,
-    #         'read_timeout': 60
-    #     }
-    # }
 
     localconfig.update(DEFAULT_CONFIG)
     localconfig['service_dir'] = configdir

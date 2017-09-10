@@ -6,6 +6,7 @@ from twisted.web.wsgi import WSGIResource
 # anchore modules
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
+from anchore_engine.configuration import localconfig
 
 temp_logger = None
 
@@ -100,55 +101,12 @@ def _init_feeds():
 
     logger.info('Initializing feeds if necessary')
     from anchore_engine.services.policy_engine.engine import vulnerabilities, feeds
-    from anchore_engine.db import Image, session_scope
-    from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
-    from anchore_engine.services.policy_engine.engine.feeds import InsufficientAccessTierError, InvalidCredentialsError
+    from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask, InitialFeedSyncTask
 
-    if feeds.DataFeeds.instance().vulnerabilities.never_synced():
-        logger.info('Detected that vulnerability feed has never been synced. Now checking for loaded images')
-        with session_scope() as dbsession:
-            image_count = dbsession.query(Image).count()
-            logger.info('Detected {} images in the policy engine db. Threshold is {} for a bulk sync'.format(image_count, image_count_bulk_sync_threshold))
-            if image_count <= image_count_bulk_sync_threshold:
-                logger.info('Performing bulk sync')
-                try:
-                    feeds.DataFeeds.instance().vulnerabilities.bulk_sync()
-                except Exception as e:
-                    logger.exception('Exception thrown during bulk sync of vulnerabilities feed. Failing service initialization')
-                    raise e
 
-                if image_count > 0:
-                    for image in dbsession.query(Image).all():
-                        logger.info('Checking image {}/{} for vulnerabilities'.format(image.user_id, image.id))
-                        vulns = vulnerabilities.vulnerabilities_for_image(image)
-                        logger.info('Found {} vulnerability matches for image {}/{}'.format(len(vulns), image.user_id, image.id))
-                        for v in vulns:
-                            dbsession.add(v)
-                    logger.info('Vulnerability scan of already-loaded images complete')
-            else:
-                logger.info('Performing regular sync, this could take a while')
-                task = FeedsUpdateTask(created_at=datetime.datetime.utcnow())
-                result = task.execute()
-                if result:
-                    updated_image_count = reduce(lambda x, y: x + len(y), result.values(), 0)
-                else:
-                    updated_image_count = 0
-                logger.info('Feed sync task completed with {} image vulnerability match updates'.format(updated_image_count))
-    else:
-        logger.info('Previous vulnerability feed sync detected, skipping initial sync.')
-
-    # if feeds.DataFeeds.instance().packages.never_synced():
-    #     logger.info('Detected that packages feed never been synced. Performing initial sync.')
-    #     try:
-    #         feeds.DataFeeds.instance().packages.bulk_sync()
-    #     except InsufficientAccessTierError as e:
-    #         logger.warn('Skipping packages sync: {}'.format(e))
-    #     except Exception as e:
-    #         logger.exception(
-    #             'Exception thrown during bulk sync of vulnerabilities feed. Failing service initialization')
-    #         raise e
-    # else:
-    #     logger.info('Detected previous packages feed sync, skipping initial sync.')
+    feeds = feeds.get_selected_feeds_to_sync(localconfig.get_config())
+    task = InitialFeedSyncTask(feeds_to_sync=feeds)
+    task.execute()
 
     return True
 
