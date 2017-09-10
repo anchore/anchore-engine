@@ -299,9 +299,9 @@ def end_session():
     Flushes thread-local sessions
     :return:
     """
-    global Session
+    global ThreadLocalSession
 
-    if Session:
+    if ThreadLocalSession:
         ThreadLocalSession.remove()
 
 
