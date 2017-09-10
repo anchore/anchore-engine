@@ -48,6 +48,9 @@ services:
     volumes:
      - /root/aevolume/config:/config/:Z
      - /var/run/docker.sock:/var/run/docker.sock
+    logging:
+     options:
+      max-size: 100m
   anchore-db:
     image: "postgres:latest"
     volumes:
@@ -55,6 +58,9 @@ services:
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
+    logging:
+     options:
+      max-size: 100m
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
     #ports:
     # - "2345:5432"
