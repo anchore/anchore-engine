@@ -607,7 +607,7 @@ class AnchoreServiceFeed(DataFeed):
         fetch_time = time.time() - fetch_time
         log.info('Group data fetch took {} sec'.format(fetch_time))
 
-        log.debug('Adding {} records from group {}'.format(len(new_data_deduped), group_obj.name))
+        log.info('Adding {} records from group {}'.format(len(new_data_deduped), group_obj.name))
         db_time = time.time()
         db = get_session()
         try:
@@ -645,14 +645,14 @@ class AnchoreServiceFeed(DataFeed):
                 fetch_time = time.time()
                 new_data_deduped, next_token = self._get_deduped_data(group_obj, since=group_obj.last_sync, next_token=next_token, max_pages=self.MAX_FEED_SYNC_PAGES)
                 fetch_time = time.time() - fetch_time
-                log.debug('Group data fetch took {} sec'.format(fetch_time))
-                log.debug('Merging {} records from group {}'.format(len(new_data_deduped), group_obj.name))
+                log.info('Group data fetch took {} sec'.format(fetch_time))
+                log.info('Merging {} records from group {}'.format(len(new_data_deduped), group_obj.name))
                 db_time = time.time()
                 for rec in new_data_deduped:
                     merged = db.merge(rec)
                     db.add(merged)
                 db.flush()
-                log.debug('Db merge took {} sec'.format(time.time() - db_time))
+                log.info('Db merge took {} sec'.format(time.time() - db_time))
 
             group_obj.last_sync = datetime.datetime.utcnow()
             db.add(group_obj)
