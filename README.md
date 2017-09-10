@@ -27,8 +27,7 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 3. Edit the config.yaml file to specify your email and password for the admin user.
 If you have a login for the [Anchore Navigator](https://anchore.io) uncomment the configuration options in the external_service_auths section and add your username and password to the auth parameter. This will configure the Anchore Engine to automatically synchronize policy bundles containing policies, whitelists and mappings from the Anchore Navigator.
 
-`
-    
+
     credentials:
       default_user: 'admin'
       users:
@@ -40,7 +39,6 @@ If you have a login for the [Anchore Navigator](https://anchore.io) uncomment th
            #    anchorecli:
            #      auth: 'myanchoreiouser:myanchoreiopass'
            #auto_policy_sync: True
- `  
 
 4. Create a directory to expose as a volume for PostgreSQL data
 
@@ -56,9 +54,9 @@ To run Anchore Engine using Docker Compose the following additional steps must b
 The anchore-engine container needs to be run in in privileged mode to allow access to the Docker Socket.
 Edit docker-compose.yaml to remove the comment (#) from the `privileged: true` configuration parameter.
 
-3. Run 'docker-compose pull' to instruct Docker to download the required container images from DockerHub.
+3. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
 
-4. To start Anchore Engine run 'docker-compose up -d' 
+4. To start Anchore Engine run `docker-compose up -d`
 
 5. To stop the Anchore Engine run `docker-compose down`
 
@@ -98,7 +96,6 @@ Get a specific image and see when its status goes to analyzed
     anchore-cli image get docker.io/library/debian:latest
     
 Perform a vulnerability scan on an image
-
 
     anchore-cli image vuln docker.io/library/debian:latest os
 
