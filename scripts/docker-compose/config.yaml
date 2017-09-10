@@ -41,14 +41,23 @@ internal_ssl_verify: False
 # A feeds section is available for override, but shouldn't be
 # needed. By default, the 'admin' credentials are used if present,
 # otherwise anonymous access for feed sync is used
-#
-# feeds:
-#   url: https://someurl
-#   token_url: https://someurl/oauth/token
-#   client_url: https://someurl/
-#   username: user
-#   password: password
-#
+
+#feeds:
+#  selective_sync:
+#    # If enabled only sync specific feeds instead of all.
+#    enabled: True
+#    feeds:
+#      vulnerabilities: True
+#      # Warning: enabling the package sync causes the service to require much
+#      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
+#      packages: False
+#  anonymous_user_username: anon@ancho.re
+#  anonymous_user_password: pbiU2RYZ2XrmYQ
+#  url: 'https://ancho.re/v1/service/feeds'
+#  client_url: 'https://ancho.re/v1/account/users'
+#  token_url: 'https://ancho.re/oauth/token'
+#  connection_timeout_seconds: 3
+#  read_timeout_seconds: 60
 
 credentials:
   default_user: 'admin'
