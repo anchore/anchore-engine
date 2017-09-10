@@ -619,10 +619,10 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     return return_object, httpcode
 
 
-def import_image(importRequest):
+def import_image(analysis_report):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
-        return_object, httpcode = do_import_image(request_inputs, importRequest)
+        return_object, httpcode = do_import_image(request_inputs, analysis_report)
 
     except Exception as err:
         httpcode = 500

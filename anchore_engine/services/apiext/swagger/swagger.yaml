@@ -30,7 +30,6 @@ tags:
   description: System Management
 - name: Services
   description: Service Management
-
 basePath: "/v1"
 schemes:
 - "http"
@@ -272,16 +271,18 @@ paths:
       operationId: import_image
       summary: Import and image analysis directly
       parameters:
-      - name: importRequest
+      - name: analysis_report
         in: body
         required: true
         schema:
-          $ref: "#/definitions/ImageImportRequest"
+          $ref: "#/definitions/ImageAnalysisReport"
       responses:
         200:
           description: Import task accepted
           schema:
-            $ref: "#/definitions/AnchoreImage"
+            type: array
+            items:
+              $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal error
           schema:
@@ -309,7 +310,10 @@ paths:
         200:
           description: Successfully added image to analysis queue
           schema:
-            $ref: "#/definitions/AnchoreImageList"
+            type: array
+            description: "List of AnchoreImage objects, should be of length 1"
+            items:
+              $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal Error
           schema:
@@ -337,7 +341,10 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/AnchoreImageList"
+            type: array
+            description: "List of AnchoreImage objects"
+            items:
+              $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal Error
           schema:
@@ -358,7 +365,10 @@ paths:
         200:
           description: Image lookup success
           schema:
-            $ref: "#/definitions/AnchoreImage"
+            type: array
+            description: "List of length 1 of AnchoreImage"
+            items:
+              $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal error
           schema:
@@ -393,7 +403,9 @@ paths:
         200:
           description: Image lookup success
           schema:
-            $ref: "#/definitions/AnchoreImage"
+            type: array
+            items:
+              $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal error
           schema:
@@ -776,7 +788,6 @@ paths:
     delete:
       tags:
       - Registries
-      - System
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.registries
       operationId: delete_registry
       summary: Delete a registry configuration
@@ -1106,19 +1117,22 @@ definitions:
       last_updated:
         type: string
         format: "date-time"
+      fulltag:
+        description: "Full docker-pullalbe tag string referencing the image"
+        type: string
+      fullDigest:
+        description: "Full docker-pullable digest string including the registry url and repository necessary get the image"
+        type: string
       userId:
         type: string
       imageId:
         type: string
       registry:
         type: string
-      repository:
+      repo:
         type: string
       dockerfile:
         type: string
-      digest:
-        type: string
-        description: The digest hash itself plus the digest schem. e.g. 'sha256:xxxxx'
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
@@ -1172,13 +1186,9 @@ definitions:
         type: string
       detail:
         type: object
-  ImageImportRequest:
+  ImageAnalysisReport:
     description: "Analysis report json to be imported"
     type: object
-    properties:
-      image_analysis_report:
-        type: object
-        description: The content of the analysis export to be imported
   ApiErrorResponse:
     description: "Generic HTTP API error response"
     type: object
