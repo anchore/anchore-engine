@@ -28,6 +28,7 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 If you have a login for the [Anchore Navigator](https://anchore.io) uncomment the configuration options in the external_service_auths section and add your username and password to the auth parameter. This will configure the Anchore Engine to automatically synchronize policy bundles containing policies, whitelists and mappings from the Anchore Navigator.
 
 
+```
     credentials:
       default_user: 'admin'
       users:
@@ -39,6 +40,7 @@ If you have a login for the [Anchore Navigator](https://anchore.io) uncomment th
            #    anchorecli:
            #      auth: 'myanchoreiouser:myanchoreiopass'
            #auto_policy_sync: True
+```
 
 4. Create a directory to expose as a volume for PostgreSQL data
 
