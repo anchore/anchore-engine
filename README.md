@@ -1,6 +1,6 @@
 # Anchore Engine
 
-The Anchore Engine is an open source project that provides a centralized service for inspection, analysis and certification of container images. The Anchore engine is provide as a Docker container image that can be run standalone or on an orchestration platform such as Kubernetes, Docker Swarm, Rancher or Amazon ECS.
+The Anchore Engine is an open source project that provides a centralized service for inspection, analysis and certification of container images. The Anchore engine is provided as a Docker container image that can be run standalone or on an orchestration platform such as Kubernetes, Docker Swarm, Rancher or Amazon ECS.
 
 The Anchore engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).  
 
