@@ -6,7 +6,7 @@ from anchore_engine import version
 version =  version.version
 package_name = "anchore_engine"
 description = 'Anchore Engine'
-long_description = open('README.rst').read()
+long_description = open('README.md').read()
 url = 'http://www.anchore.com'
 
 with open('requirements.txt') as f:
