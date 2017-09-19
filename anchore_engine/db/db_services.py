@@ -7,6 +7,12 @@ from anchore_engine.db import Service
 
 # specific DB interface helpers for the 'services' table
 
+def make(session=None):
+    if not session:
+        session = db.Session
+
+    return(Service().make())
+
 def add(hostid, servicename, inobj, session=None):
     if not session:
         session = db.Session

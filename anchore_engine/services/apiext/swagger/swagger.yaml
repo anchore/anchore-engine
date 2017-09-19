@@ -809,6 +809,23 @@ paths:
       tags:
       - System
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: get_status
+      summary: Service status
+      description: Get the API service status
+      responses:
+        200:
+          description: Status listing
+          schema:
+            $ref: "#/definitions/StatusResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /system:
+    get:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
       operationId: get_service_detail
       summary: System status
       description: Get the system status including queue lengths
@@ -816,7 +833,7 @@ paths:
         200:
           description: Status listing
           schema:
-            $ref: "#/definitions/StatusResponse"
+            $ref: "#/definitions/SystemStatusResponse"
         500:
           description: Internal error
           schema:
@@ -1174,7 +1191,7 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/AnchoreImage"
-  StatusResponse:
+  SystemStatusResponse:
     type: object
     description: System status response
     properties:
@@ -1186,6 +1203,16 @@ definitions:
         type: string
       detail:
         type: object
+  StatusResponse:
+    type: object
+    description: System status response
+    properties:
+      busy:
+        type: boolean
+      up:
+        type: boolean
+      message:
+        type: string
   ImageAnalysisReport:
     description: "Analysis report json to be imported"
     type: object

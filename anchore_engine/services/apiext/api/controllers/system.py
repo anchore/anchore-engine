@@ -1,5 +1,5 @@
 from connexion import request
-
+import json
 
 # anchore modules
 from anchore_engine.clients import catalog, simplequeue
@@ -12,8 +12,14 @@ def make_response_service(user_auth, service_record, params):
     userId, pw = user_auth
 
     try:
-        for k in ['hostid', 'version', 'base_url', 'status_message', 'servicename']:
+        for k in ['hostid', 'version', 'base_url', 'status', 'status_message', 'servicename']:
             ret[k] = service_record[k]
+        if 'short_description' in service_record:
+            try:
+                ret['service_detail'] = json.loads(service_record['short_description'])
+            except:
+                ret['service_detail'] = str(service_record['short_description'])
+
     except Exception as err:
         raise Exception("failed to format service response: " + str(err))
 
@@ -32,10 +38,39 @@ def ping():
     """
     return
 
+def get_status():
+    """
+    GET /status
+
+    :return: service status object
+    """
+
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    #user_auth = request_inputs['auth']
+    #method = request_inputs['method']
+    #bodycontent = request_inputs['bodycontent']
+    #params = request_inputs['params']
+
+    return_object = {}
+    httpcode = 500
+
+    try:
+        return_object = {
+            'busy':False,
+            'up':True,
+            'message': 'all good'
+        }
+        httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)
+
 def get_service_detail():
     global apiext_status
     """
-    GET /status
+    GET /system/status
 
     :return: list of service details
     """
@@ -47,13 +82,8 @@ def get_service_detail():
     params = request_inputs['params']
 
     httpcode = 500
-
     service_detail = {}
-    return_object = {
-        'busy':False,
-        'up':True,
-        'message': 'all good'
-    }
+
     try:
         try:
             try:
@@ -62,9 +92,17 @@ def get_service_detail():
                     up_services = {}
                     service_records = catalog.get_service(user_auth)
                     for service in service_records:
-                        el = {}
-                        for k in ['hostid', 'servicename', 'base_url', 'status', 'status_message']:
-                            el[k] = service[k]
+                        el = make_response_service(user_auth, service, params)
+
+                        #el = {}
+                        #for k in ['hostid', 'servicename', 'base_url', 'status', 'status_message']:
+                        #    el[k] = service[k]
+
+                        #if 'short_description' in service:
+                        #    try:
+                        #        el['service_detail'] = json.loads(service['short_description'])
+                        #    except:
+                        #        el['service_detail'] = str(service['short_description'])
                         service_detail['service_states'].append(el)
 
                         if el['servicename'] not in up_services:
@@ -110,7 +148,8 @@ def get_service_detail():
         except:
             service_detail = {}
 
-        return_object['detail'] = service_detail
+        #return_object['detail'] = service_detail
+        return_object = service_detail
     except Exception as err:
         return_object = str(err)
 

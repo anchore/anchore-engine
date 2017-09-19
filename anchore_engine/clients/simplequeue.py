@@ -25,7 +25,8 @@ def get_simplequeue_endpoint(userId):
 
         endpoint = service['base_url']
         if endpoint:
-            base_url = '/'.join([endpoint, 'v1', 'queues'])
+            apiversion = service['version']
+            base_url = '/'.join([endpoint, apiversion, 'queues'])
         else:
             raise Exception("cannot load valid endpoint from service record")
 

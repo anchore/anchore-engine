@@ -396,6 +396,13 @@ class Service(Base):
     status_message = Column(String)
     heartbeat = Column(Integer)
 
+    def make(self):
+        ret = {}
+        m = inspect(self)
+        for c in m.attrs:
+            ret[c.key] = None
+        return (ret)
+
     def json(self):
         thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
         return (json.dumps(thedata))

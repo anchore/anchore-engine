@@ -15,7 +15,6 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -30,7 +29,6 @@ def registry_lookup(dbsession, request_inputs):
             input_string = params[t]
             if input_string:
                 input_type = t
-                #image_info = localanchore.parse_dockerimage_string(input_string)
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None,None))
                 break
 
@@ -57,7 +55,6 @@ def registry_lookup(dbsession, request_inputs):
 def image(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -140,7 +137,6 @@ def image(dbsession, request_inputs, bodycontent={}):
             # body
             jsondata = {}
             if bodycontent:
-                #jsondata = json.loads(bodycontent) 
                 jsondata = bodycontent
     
             dockerfile = None
@@ -180,7 +176,6 @@ def image(dbsession, request_inputs, bodycontent={}):
 def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -283,7 +278,6 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 
             jsondata = {}
             if bodycontent:
-                #jsondata = json.loads(bodycontent) 
                 jsondata = bodycontent
 
             updated_image_record = jsondata
@@ -307,7 +301,6 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 def image_import(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -318,7 +311,6 @@ def image_import(dbsession, request_inputs, bodycontent={}):
         jsondata = {}
         if bodycontent:
             try:
-                #jsondata = json.loads(bodycontent)
                 jsondata = bodycontent
             except Exception as err:
                 raise err
@@ -368,7 +360,6 @@ def image_import(dbsession, request_inputs, bodycontent={}):
 def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -405,7 +396,6 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
                 return_object = True
 
         elif method == 'POST':
-            #subscriptiondata = json.loads(bodycontent)
             subscriptiondata = bodycontent
 
             subscription_key = subscription_type = None
@@ -430,7 +420,6 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
             httpcode = 200
 
         elif method == 'PUT':
-            #subscriptiondata = json.loads(bodycontent)
             subscriptiondata = bodycontent
 
             subscription_key = subscription_type = None
@@ -462,7 +451,6 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
 def events(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -473,16 +461,12 @@ def events(dbsession, request_inputs, bodycontent={}):
         jsondata = {}
         if bodycontent:
             try:
-                #jsondata = json.loads(bodycontent)
                 jsondata = bodycontent
             except Exception as err:
                 raise err
         
         if method == 'GET':
-            #if jsondata:
             records = db_eventlog.get_byfilter(session=dbsession, **jsondata)
-            #else:
-            #    records = db_eventlog.get_all(session=dbsession)
             if not records:
                 httpcode = 404
                 raise Exception("events not found in DB")
@@ -526,7 +510,6 @@ def events(dbsession, request_inputs, bodycontent={}):
 def policies(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -537,7 +520,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
         jsondata = {}
         if bodycontent:
             try:
-                #jsondata = json.loads(bodycontent)
                 jsondata = bodycontent
             except Exception as err:
                 raise err
@@ -546,7 +528,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
             policyId = jsondata['policyId']
         else:
             policyId = None
-            #raise Exception ("must include 'policyId' in the json payload for this operation")
 
         if 'active' in jsondata:
             active = jsondata['active']
@@ -607,7 +588,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 httpcode = 404
                 raise Exception("existing policyId not found to update")
             else:
-                #record.update(jsondata)
                 policybundle = jsondata['policybundle']
                 rc =  archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle)
                 rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
@@ -634,7 +614,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
 def evals(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -645,7 +624,6 @@ def evals(dbsession, request_inputs, bodycontent={}):
         jsondata = {}
         if bodycontent:
             try:
-                #jsondata = json.loads(bodycontent)
                 jsondata = bodycontent
             except Exception as err:
                 raise err
@@ -713,7 +691,6 @@ def evals(dbsession, request_inputs, bodycontent={}):
 def users(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -732,7 +709,6 @@ def users(dbsession, request_inputs):
 def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -750,10 +726,16 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
 
         elif method == 'POST':
             try:
-                #jsondata = json.loads(bodycontent)
                 jsondata = bodycontent
                 rc =  archive_sys.put(userId, bucket, archiveid, jsondata)
-                resource_url = "/v1/archive/" + bucket + "/" + archiveid
+                
+                service_records = db_services.get_byname('catalog', session=dbsession)
+                if service_records:
+                    service_record = service_records[0]
+                    resource_url = service_record['base_url'] + "/" + service_record['version'] + "/archive/" + bucket + "/" + archiveid
+                else:
+                    resource_url = "N/A"
+
                 return_object = resource_url
                 httpcode = 200
             except Exception as err:
@@ -767,7 +749,6 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
 def users_userId(dbsession, request_inputs, inuserId):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -798,7 +779,6 @@ def users_userId(dbsession, request_inputs, inuserId):
 def system(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -816,7 +796,6 @@ def system(dbsession, request_inputs):
 def system_services(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -835,7 +814,6 @@ def system_services(dbsession, request_inputs):
 def system_services_servicename(dbsession, request_inputs, inservicename):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -857,7 +835,6 @@ def system_services_servicename(dbsession, request_inputs, inservicename):
 def system_services_servicename_hostId(dbsession, request_inputs, inservicename, inhostId):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -891,7 +868,6 @@ def system_services_servicename_hostId(dbsession, request_inputs, inservicename,
 def system_registries(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -904,7 +880,6 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             return_object = registry_records
             httpcode = 200
         elif method == 'POST':
-            #registrydata = json.loads(bodycontent)
             registrydata = bodycontent
             if 'registry' in registrydata:
                 registry=registrydata['registry']
@@ -927,7 +902,6 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
 def system_registries_registry(dbsession, request_inputs, registry, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -943,7 +917,6 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             return_object = registry_records
             httpcode = 200
         elif method == 'PUT':
-            #registrydata = json.loads(bodycontent)
             registrydata = bodycontent
             registry_record = db_registries.get(registry, userId, session=dbsession)
             if not registry_record:
@@ -954,7 +927,6 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             return_object = db_registries.get(registry, userId, session=dbsession)
             httpcode = 200
         elif method == 'DELETE':
-            #registrydata = json.loads(bodycontent)
             registry_records = db_registries.delete(registry, userId, session=dbsession)
             return_object = registry_records
             httpcode = 200
@@ -966,7 +938,6 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
 def system_subscriptions(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
     userId = request_inputs['userId']
 
@@ -1016,7 +987,6 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
     imageIds = []
     for image_detail in image_record['image_detail']:
-        #fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
         imageId = image_detail['imageId']
         if imageId and imageId not in imageIds:
             imageIds.append(imageId)
@@ -1035,7 +1005,6 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
             logger.warn("failed to add/check image")
 
         resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
-        #logger.debug("VULN SCAN: " + str(resp))
         curr_vuln_result = resp.to_dict()
 
         last_vuln_result = {}
@@ -1046,8 +1015,6 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         # compare them
         doqueue = False
-        #logger.debug("LAST: " + json.dumps(last_vuln_result, indent=4))
-        #logger.debug("CURR: " + json.dumps(curr_vuln_result, indent=4))   
 
         vdiff = {}
         if last_vuln_result and curr_vuln_result:
@@ -1100,7 +1067,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
 
     client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
 
-    #tagset = []
     imageId = None
     for image_detail in image_record['image_detail']:
         try:
@@ -1108,8 +1074,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
             break
         except:
             pass
-        #fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-        #tagset.append(fulltag)
 
     tagset = [evaltag]
     for fulltag in tagset:
@@ -1133,7 +1097,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
             with open("/tmp/wtf.json", 'w') as OFH:
                 OFH.write(json.dumps(policy_bundle, indent=4))
             raise err
-        # TODO get the final_action
         curr_final_action = resp.final_action.upper()
         
         # set up the newest evaluation

@@ -32,6 +32,17 @@ state_graphs = {
             'init': 'active',
             'active':'active'
         }
+    },
+    'service_status': {
+        'base_state': 'registered',
+        'fault_state': 'unavailable',
+        'working_state': 'available',
+        'complete_state': 'available',
+        'transitions': {
+            'init': 'registered',
+            'registered':'available',
+            'available':'available'
+        }
     }
 }
 
