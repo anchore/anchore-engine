@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
     'tmp_dir': '/tmp',
     'log_level': 'DEBUG',
     'image_analyze_timeout_seconds': '36000',
-    'cleanup_images': True,
+    'cleanup_images': False,
     'internal_ssl_verify': True,
     'services': {},
     'credentials': {},
