@@ -60,7 +60,6 @@ internal_ssl_verify: False
 #  read_timeout_seconds: 60
 
 credentials:
-  default_user: 'admin'
   users:
      admin:
        password: 'foobar'

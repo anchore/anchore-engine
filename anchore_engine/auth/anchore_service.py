@@ -23,6 +23,8 @@ class AnchorePasswordChecker:
 
             if not user_record:
                 return defer.fail(credError.UnauthorizedLogin("Invalid user"))
+            elif not user_record['active']:
+                return defer.fail(credError.UnauthorizedLogin("Inactive user"))
             else:
                 #from passlib.hash import pbkdf2_sha256
                 #hashpw = user_record['password']

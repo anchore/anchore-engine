@@ -197,7 +197,9 @@ def validate_config(config):
                 if check_key not in credentials:
                     raise Exception(
                         "no '" + str(check_key) + "' definition in 'credentials' section of configuration file")
-
+                elif not credentials[check_key]:
+                    raise Exception("'"+str(check_key) + "' is in configuration file, but is empty (has no records)")
+                    
             # database checks
             for check_key in ['db_connect', 'db_connect_args']:
                 if check_key not in credentials['database']:
@@ -209,6 +211,8 @@ def validate_config(config):
                 raise Exception("no 'admin' user defined in 'credentials'/'users' section of configuration file")
             else:
                 for username in credentials['users'].keys():
+                    if not credentials['users'][username]:
+                        raise Exception("missing details for user '"+str(username)+"' in configuration file")
                     user = credentials['users'][username]
                     # for check_key in ['password', 'email', 'external_service_auths', 'registry_service_auths']:
                     for check_key in ['password', 'email', 'external_service_auths']:

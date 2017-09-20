@@ -1094,9 +1094,8 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         try:
             resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)
         except Exception as err:
-            with open("/tmp/wtf.json", 'w') as OFH:
-                OFH.write(json.dumps(policy_bundle, indent=4))
             raise err
+
         curr_final_action = resp.final_action.upper()
         
         # set up the newest evaluation

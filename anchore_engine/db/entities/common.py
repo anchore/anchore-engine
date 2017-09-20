@@ -36,7 +36,7 @@ def anchore_now():
 
 
 # some DB management funcs
-def initialize(versions=None, bootstrap_db=False, specific_tables=None):
+def initialize(versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
     """
     Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
 
@@ -127,42 +127,55 @@ def initialize(versions=None, bootstrap_db=False, specific_tables=None):
                 db_anchore.add(versions['service_version'], versions['db_version'], versions, session=dbsession)
                 version_record = db_anchore.get(session=dbsession)
 
-            # system user
-            try:
-                system_user_record = db_users.get('anchore-system', session=dbsession)
-                if not system_user_record:
-                    rc = db_users.add('anchore-system', str(uuid.uuid4()), {}, session=dbsession)
+            if bootstrap_users:
+                # system user
+                try:
                     system_user_record = db_users.get('anchore-system', session=dbsession)
-                localconfig['anchore-system-password'] = system_user_record['password']
-
-            except Exception as err:
-                raise Exception(
-                    "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(
-                        err))
-
-            try:
-                for userId in localconfig['credentials']['users']:
-                    if not localconfig['credentials']['users'][userId]:
-                        localconfig['credentials']['users'][userId] = {}
-
-                    cuser = localconfig['credentials']['users'][userId]
-
-                    password = cuser.pop('password', None)
-                    email = cuser.pop('email', None)
-                    if password and email:
-                        # try:
-                        #    from passlib.hash import pbkdf2_sha256
-                        #    hashpw = pbkdf2_sha256.encrypt(password, rounds=200000, salt_size=16)
-                        #    password = hashpw
-                        # except:
-                        #    pass
-                        db_users.add(userId, password, {'email': email}, session=dbsession)
+                    if not system_user_record:
+                        rc = db_users.add('anchore-system', str(uuid.uuid4()), {'active': True}, session=dbsession)
+                        #system_user_record = db_users.get('anchore-system', session=dbsession)
                     else:
-                        raise Exception("user defined but has empty password/email: " + str(userId))
+                        db_users.update(system_user_record['userId'], system_user_record['password'], {'active': True}, session=dbsession)
+                        #system_user_record = db_users.get('anchore-system', session=dbsession)
 
-            except Exception as err:
-                raise Exception(
-                    "Initialization failed: could not add users from config into DB - exception: " + str(err))
+                    #localconfig['anchore-system-password'] = system_user_record['password']
+
+                except Exception as err:
+                    raise Exception(
+                        "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(
+                            err))
+
+                try:
+                    for userId in localconfig['credentials']['users']:
+                        if not localconfig['credentials']['users'][userId]:
+                            localconfig['credentials']['users'][userId] = {}
+
+                        cuser = localconfig['credentials']['users'][userId]
+
+                        password = cuser.pop('password', None)
+                        email = cuser.pop('email', None)
+                        if password and email:
+                            # try:
+                            #    from passlib.hash import pbkdf2_sha256
+                            #    hashpw = pbkdf2_sha256.encrypt(password, rounds=200000, salt_size=16)
+                            #    password = hashpw
+                            # except:
+                            #    pass
+                            db_users.add(userId, password, {'email': email, 'active': True}, session=dbsession)
+                        else:
+                            raise Exception("user defined but has empty password/email: " + str(userId))
+
+                    user_records = db_users.get_all(session=dbsession)
+                    for user_record in user_records:
+                        if user_record['userId'] == 'anchore-system':
+                            continue
+                        if user_record['userId'] not in localconfig['credentials']['users']:
+                            logger.info("flagging user '"+str(user_record['userId']) + "' as inactive (in DB, not in configuration)")
+                            db_users.update(user_record['userId'], user_record['password'], {'active': False}, session=dbsession)
+
+                except Exception as err:
+                    raise Exception(
+                        "Initialization failed: could not add users from config into DB - exception: " + str(err))
 
         print ("Starting up version: " + json.dumps(versions))
         print ("\tDB version: " + json.dumps(version_record))

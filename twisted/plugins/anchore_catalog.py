@@ -69,7 +69,7 @@ class AnchoreServiceMaker(object):
             log.err("error checking for enabled services, check config file - exception: " + str(err))
             raise Exception("error checking for enabled services, check config file - exception: " + str(err))
 
-        r = anchore_engine.services.common.makeService(slist, options, bootstrap_db=True)
+        r = anchore_engine.services.common.makeService(slist, options, bootstrap_db=True, bootstrap_users=True)
         return(r)
 
 serviceMaker = AnchoreServiceMaker()
