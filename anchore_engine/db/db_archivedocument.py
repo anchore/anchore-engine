@@ -62,7 +62,43 @@ def get_byname(userId, documentName, session=None):
 
     return(ret)
 
-def list_all(userId, session=None, **dbfilter):
+def exists(userId, bucket, archiveId, session=None):
+    if not session:
+        session = db.Session
+
+    ret = {}
+
+    result = session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+
+    from anchore_engine.subsys import logger
+    if result:
+        for i in range(0, len(result.keys())):
+            k = result.keys()[i]
+            ret[k] = result[i]
+        #obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        #ret = obj
+
+    return(ret)
+    
+
+def list_all(session=None, **dbfilter):
+    if not session:
+        session = db.Session
+    ret = []
+
+    results = session.query(ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.userId, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val, ArchiveDocument.created_at, ArchiveDocument.last_updated).filter_by(**dbfilter)
+
+    for result in results:
+        obj = {}
+        for i in range(0,len(result.keys())):
+            k = result.keys()[i]
+            obj[k] = result[i]
+        if obj:
+            ret.append(obj)
+
+    return(ret)
+
+def list_all_byuserId(userId, session=None, **dbfilter):
     if not session:
         session = db.Session
 

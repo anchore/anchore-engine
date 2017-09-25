@@ -128,13 +128,13 @@ def add(policyId, userId, imageDigest, tag, final_action, created_at, inobj, ses
     
     return(True)
 
-def get_all(userId, session=None):
+def get_all(session=None):
     if not session:
         session = db.Session
 
     ret = []
 
-    our_results = session.query(PolicyEval).filter_by(userId=userId)
+    our_results = session.query(PolicyEval)
     for result in our_results:
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
         ret.append(obj)

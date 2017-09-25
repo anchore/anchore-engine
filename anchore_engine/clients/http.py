@@ -1,35 +1,55 @@
 import json
-
+import urllib3
 import requests
 
-#s = requests.session()
-#s.config['keep_alive'] = False
-
-def get(url, **kwargs):
-    return(get_req(url, **kwargs))
-
-def post(url, **kwargs):
-    return(post_req(url, **kwargs))
-
-def put(url, **kwargs):
-    return(put_req(url, **kwargs))
-
-def delete(url, **kwargs):
-    return(delete_req(url, **kwargs))
-
-def get_req(url, **kwargs):
-    return(requests.get(url, **kwargs))
-
-def post_req(url, **kwargs):
-    return(requests.post(url, **kwargs))
-
-def put_req(url, **kwargs):
-    return(requests.put(url, **kwargs))
-
-def delete_req(url, **kwargs):
-    return(requests.delete(url, **kwargs))
+http = urllib3.PoolManager()
 
 def fpost(url, **kwargs):
+    return(fpost_req(url, **kwargs))
+
+def fget(url, **kwargs):
+    return(fget_req(url, **kwargs))
+
+def fput(url, **kwargs):
+    return(fput_req(url, **kwargs))
+
+def fdelete(url, **kwargs):
+    return(fdelete_req(url, **kwargs))
+
+def fpost_urllib(url, **kwargs):
+    global http
+    httpcode = 500
+    rawdata = ""
+    jsondata = {}
+    try:
+        try:
+            headers = kwargs['headers']
+        except:
+            headers = {}
+        try:
+            aheader = urllib3.util.make_headers(basic_auth=':'.join(kwargs['auth']))
+            headers.update(aheader)
+        except:
+            pass
+        try:
+            payload = kwargs['data']
+        except:
+            payload = None
+        
+        r = http.request('POST', url, headers=headers, body=payload)
+        httpcode = r.status
+        rawdata = r.data
+
+        try:
+            jsondata = json.loads(rawdata)
+        except:
+            jsondata = {}
+    except Exception as err:
+        rawdata = str(err)
+
+    return(httpcode, jsondata, rawdata)
+
+def fpost_req(url, **kwargs):
     httpcode = 500
     rawdata = ""
     jsondata = {}
@@ -39,7 +59,7 @@ def fpost(url, **kwargs):
         rawdata = ""
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
-        #rawdata = r.text
+
         try:
             jsondata = json.loads(rawdata)
         except:
@@ -48,7 +68,40 @@ def fpost(url, **kwargs):
         rawdata = str(err)
     return(httpcode, jsondata, rawdata)
 
-def fput(url, **kwargs):
+def fput_urllib(url, **kwargs):
+    global http
+    httpcode = 500
+    rawdata = ""
+    jsondata = {}
+    try:
+        try:
+            headers = kwargs['headers']
+        except:
+            headers = {}
+        try:
+            aheader = urllib3.util.make_headers(basic_auth=':'.join(kwargs['auth']))
+            headers.update(aheader)
+        except:
+            pass
+        try:
+            payload = kwargs['data']
+        except:
+            payload = None
+        
+        r = http.request('PUT', url, headers=headers, body=payload)
+        httpcode = r.status
+        rawdata = r.data
+
+        try:
+            jsondata = json.loads(rawdata)
+        except:
+            jsondata = {}
+    except Exception as err:
+        rawdata = str(err)
+
+    return(httpcode, jsondata, rawdata)
+
+def fput_req(url, **kwargs):
     httpcode = 500
     rawdata = ""
     jsondata = {}
@@ -58,7 +111,7 @@ def fput(url, **kwargs):
         rawdata = ""
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
-        #rawdata = r.text
+
         try:
             jsondata = json.loads(rawdata)
         except:
@@ -67,7 +120,40 @@ def fput(url, **kwargs):
         rawdata = str(err)
     return(httpcode, jsondata, rawdata)
 
-def fget(url, **kwargs):
+def fget_urllib(url, **kwargs):
+    global http
+    httpcode = 500
+    rawdata = ""
+    jsondata = {}
+    try:
+        try:
+            headers = kwargs['headers']
+        except:
+            headers = {}
+        try:
+            aheader = urllib3.util.make_headers(basic_auth=':'.join(kwargs['auth']))
+            headers.update(aheader)
+        except:
+            pass
+        try:
+            payload = kwargs['data']
+        except:
+            payload = None
+        
+        r = http.request('GET', url, headers=headers, body=payload)
+        httpcode = r.status
+        rawdata = r.data
+
+        try:
+            jsondata = json.loads(rawdata)
+        except:
+            jsondata = {}
+    except Exception as err:
+        rawdata = str(err)
+
+    return(httpcode, jsondata, rawdata)
+
+def fget_req(url, **kwargs):
     httpcode = 500
     rawdata = ""
     jsondata = {}
@@ -77,7 +163,7 @@ def fget(url, **kwargs):
         rawdata = ""
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
-        #rawdata = r.text
+
         try:
             jsondata = json.loads(rawdata)
         except:
@@ -87,7 +173,40 @@ def fget(url, **kwargs):
 
     return(httpcode, jsondata, rawdata)
 
-def fdelete(url, **kwargs):
+def fdelete_urllib(url, **kwargs):
+    global http
+    httpcode = 500
+    rawdata = ""
+    jsondata = {}
+    try:
+        try:
+            headers = kwargs['headers']
+        except:
+            headers = {}
+        try:
+            aheader = urllib3.util.make_headers(basic_auth=':'.join(kwargs['auth']))
+            headers.update(aheader)
+        except:
+            pass
+        try:
+            payload = kwargs['data']
+        except:
+            payload = None
+        
+        r = http.request('DELETE', url, headers=headers, body=payload)
+        httpcode = r.status
+        rawdata = r.data
+
+        try:
+            jsondata = json.loads(rawdata)
+        except:
+            jsondata = {}
+    except Exception as err:
+        rawdata = str(err)
+
+    return(httpcode, jsondata, rawdata)
+
+def fdelete_req(url, **kwargs):
     httpcode = 500
     rawdata = ""
     jsondata = {}

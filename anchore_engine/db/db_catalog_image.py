@@ -144,7 +144,7 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
 
     return(ret)
 
-def get_all(userId, session=None):
+def get_all_byuserId(userId, session=None):
     if not session:
         session = db.Session
 
@@ -155,6 +155,25 @@ def get_all(userId, session=None):
         for result in results:
             dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
             imageDigest = dbobj['imageDigest']
+            if dbobj['image_type'] == 'docker':
+                imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
+                dbobj['image_detail'] = imgobj
+            ret.append(dbobj)
+
+    return(ret)
+
+def get_all(session=None):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    results = session.query(CatalogImage).order_by(desc(CatalogImage.created_at))
+    if results:
+        for result in results:
+            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            imageDigest = dbobj['imageDigest']
+            userId = dbobj['userId']
             if dbobj['image_type'] == 'docker':
                 imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
                 dbobj['image_detail'] = imgobj

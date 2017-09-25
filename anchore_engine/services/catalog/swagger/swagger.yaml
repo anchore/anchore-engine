@@ -28,27 +28,6 @@ securityDefinitions:
 security:
   - basicAuth: []
 
-#@api.route("/status", methods=['GET'])
-#@api.route('/image', methods=['GET', 'POST'])
-#@api.route('/image/<imageDigest>', methods=['GET', 'PUT', 'DELETE'])
-#@api.route('/registry_lookup', methods=['GET'])
-#@api.route('/import', methods=['POST'])
-#@api.route('/policies', methods=['GET', 'POST', 'PUT', 'DELETE'])
-#@api.route('/evals', methods=['GET', 'POST', 'PUT', 'DELETE'])
-#@api.route('/subscriptions', methods=['GET', 'POST'])
-#@api.route('/subscriptions/<subscriptionId>', methods=['GET', 'PUT', 'DELETE'])
-#@api.route('/events', methods=['GET', 'POST', 'DELETE'])
-#@api.route("/users", methods=['GET'])
-#@api.route("/users/<inuserId>", methods=['GET', 'DELETE'])
-#@api.route('/archive/<bucket>/<archiveid>', methods=['GET', 'POST'])
-#@api.route("/system", methods=['GET'])
-#@api.route("/system/services", methods=['GET'])
-#@api.route("/system/services/<servicename>", methods=['GET'])
-#@api.route("/system/services/<servicename>/<hostId>", methods=['GET', 'DELETE'])
-#@api.route("/system/registries", methods=['GET', 'POST'])
-#@api.route("/system/registries/<registry>", methods=['GET', 'DELETE', 'PUT'])
-#@api.route("/system/subscriptions", methods=['GET'])
-
 paths:
   /status:
     get:
@@ -928,6 +907,80 @@ paths:
       summary: "Get subscription types"
       description: ""
       operationId: "system_subscriptions_get"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+
+  /system/prune:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get list of resources that can be pruned"
+      description: ""
+      operationId: "system_prune_get"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+
+  /system/prune/{resourcetype}:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get list of candidates for pruning"
+      description: ""
+      operationId: "system_prune_resourcetype_get"
+      parameters:
+      - name: 'resourcetype'
+        in: path
+        type: string
+        description: "resource type"
+        required: true
+      - name: 'dangling'
+        in: query
+        type: boolean
+        description: "filter only disconnected resources"
+        required: false
+      - name: 'olderthan'
+        in: query
+        type: integer
+        description: "filter only resources older than specified number of seconds"
+        required: false
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+    post:
+      tags:
+      - "catalog"
+      summary: "Perform pruning on input resource name"
+      description: ""
+      operationId: "system_prune_resourcetype_post"
+      parameters:
+      - name: 'resourcetype'
+        in: path
+        type: string
+        description: "resource type"
+        required: true
+      - name: 'bodycontent'
+        in: body
+        schema:
+          type: object
+        description: "resource objects to prune"
+        required: true
       produces:
       - "application/json"
       responses:

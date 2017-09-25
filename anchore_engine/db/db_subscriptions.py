@@ -31,7 +31,7 @@ def add(userId, subscription_key, subscription_type, inobj, session=None):
 
     return(True)
 
-def get_all(userId, session=None):
+def get_all_byuserId(userId, session=None):
     if not session:
         session = db.Session
 
@@ -44,13 +44,26 @@ def get_all(userId, session=None):
 
     return(ret)
 
-def get(userId, subscription_key, subscription_type, session=None):
+def get_all(session=None):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    our_results = session.query(Subscription)
+    for result in our_results:
+        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        ret.append(obj)
+
+    return(ret)
+
+def get(userId, subscription_id, session=None):
     if not session:
         session = db.Session
 
     ret = {}
 
-    result = session.query(Subscription).filter_by(userId=userId, subscription_key=subscription_key, subscription_type=subscription_type).first()
+    result = session.query(Subscription).filter_by(userId=userId, subscription_id=subscription_id).first()
 
     if result:
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))

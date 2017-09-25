@@ -1,6 +1,7 @@
 import json
 import uuid
 import hashlib
+import time
 
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
@@ -8,7 +9,7 @@ from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_eventlog, \
-    db_registries, db_services
+    db_registries, db_services, db_archivedocument
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
@@ -86,7 +87,7 @@ def image(dbsession, request_inputs, bodycontent={}):
         if method == 'GET':
             if not input_string:
                 httpcode = 200
-                return_object = db_catalog_image.get_all(userId, session=dbsession)
+                return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession)
             else:
                 if registry_lookup:
                     try:
@@ -172,7 +173,7 @@ def image(dbsession, request_inputs, bodycontent={}):
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
-    
+
 def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -181,6 +182,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 
     return_object = {}
     httpcode = 500
+
     image_info = None
     input_type = None
     
@@ -198,79 +200,17 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
             try:
                 image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                 if image_record:
+                    
+                    return_object, httpcode = do_image_delete(userId, image_record, dbsession)
+                    if httpcode not in range(200,299):
+                        raise Exception(return_object)
 
-                    dodelete = False
-                    msgdelete = "could not make it though delete checks"
-                    image_ids = []
-                    # do some checking before delete
-                    try:
-                        # check one - don't delete anything that is being analyzed
-                        if image_record['analysis_status'] == taskstate.working_state('analyze'):
-                            raise Exception("cannot delete image that is being analyzed")
-
-                        # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
-                        for image_detail in image_record['image_detail']:
-                            fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-                            image_ids.append(image_detail['imageId'])
-                            dbfilter = {}
-                            dbfilter['registry'] = image_detail['registry']
-                            dbfilter['repo'] = image_detail['repo']
-                            dbfilter['tag'] = image_detail['tag']
-
-                            latest_image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
-                            for latest_image_record in latest_image_records:
-                                if latest_image_record['imageDigest'] == image_record['imageDigest']:
-                                    dbfilter = {}
-                                    dbfilter['subscription_key'] = fulltag
-                                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
-                                    for subscription_record in subscription_records:
-                                        if subscription_record['active']:
-                                            raise Exception("cannot delete image that is the latest of its tags, and has active subscription")
-
-                        # checked out - do the delete
-                        dodelete = True
-                        
-                    except Exception as err:
-                        msgdelete = str(err)
-                        dodelete = False
-
-                    if dodelete:
-                        logger.debug("DELETEing image from catalog")
-                        rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
-                        logger.debug("DELETEing image from archive analysis_data")
-                        rc = archive_sys.delete(userId, 'analysis_data', imageDigest)
-                        logger.debug("DELETEing image from archive query_data")
-                        rc = archive_sys.delete(userId, 'query_data', imageDigest)
-                        logger.debug("DELETEing image from policy_engine")
-
-                        # prepare inputs
-                        try:
-                            system_user_auth = get_system_auth(dbsession)
-                            system_userId = system_user_auth[0]
-                            system_password = system_user_auth[1]
-
-                            localconfig = anchore_engine.configuration.localconfig.get_config()
-                            verify = localconfig['internal_ssl_verify']
-
-                            client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
-                            for img_id in set(image_ids):
-                                logger.debug("DELETING image from policy engine userId = {} imageId = {}".format(userId, img_id))
-                                rc = client.delete_image(user_id=userId, image_id=img_id)
-                        except:
-                            logger.exception('Failed deleting image from policy engine')
-                            raise
-
-                        return_object = True
-                        httpcode = 200
-                    else:
-                        httpcode = 409
-                        raise Exception(msgdelete)
                 else:
                     return_object = True
                     httpcode = 200
 
             except Exception as err:
-                httpcode = 500
+                #httpcode = 500
                 raise err
             
         elif method == 'PUT':
@@ -385,15 +325,27 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
                 httpcode = 200
 
         elif method == 'DELETE':
-            dbfilter = {}
-            if subscriptionId:
-                dbfilter['subscription_id'] = subscriptionId
-            rc = db_subscriptions.delete_byfilter(userId, session=dbsession, **dbfilter)
-            if not rc:
-                raise Exception("DB delete failed")
-            else:
-                httpcode = 200
-                return_object = True
+            if not subscriptionId:
+                raise Exception("no subscriptionId passed in to delete")
+
+            httpcode = 200
+            return_object = True
+
+            subscription_record = db_subscriptions.get(userId, subscriptionId, session=dbsession)
+            if subscription_record:
+                rc, httpcode = do_subscription_delete(userId, subscription_record, dbsession, force=True)
+                if httpcode not in range(200,299):
+                    raise Exception(str(rc))
+            
+            #dbfilter = {}
+            #if subscriptionId:
+            #    dbfilter['subscription_id'] = subscriptionId
+            #rc = db_subscriptions.delete_byfilter(userId, session=dbsession, **dbfilter)
+            #if not rc:
+            #    raise Exception("DB delete failed")
+            #else:
+            #    httpcode = 200
+            #    return_object = True
 
         elif method == 'POST':
             subscriptiondata = bodycontent
@@ -564,26 +516,39 @@ def policies(dbsession, request_inputs, bodycontent={}):
             if not policyId:
                 raise Exception ("must include 'policyId' in the json payload for this operation")
 
-            # TODO - this is where a flag that toggled eval record delete could be checked and acted upon
-            rc = db_policybundle.delete(policyId, userId, session=dbsession)
-            if not rc:
-                raise Exception("DB delete failed")
-            else:
+            httpcode = 200
+            return_object = True
 
+            policy_record = db_policybundle.get(userId, policyId, session=dbsession)
+            if policy_record:
                 if 'cleanup_evals' in params and params['cleanup_evals']:
-                    dbfilter = {"policyId": policyId}
-                    eval_records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-                    for eval_record in eval_records:
-                        db_policyeval.delete_record(eval_record, session=dbsession)
+                    cleanup_evals = True
+                else:
+                    cleanup_evals = False
 
-                httpcode = 200
-                return_object = True
+                rc, httpcode = do_policy_delete(userId, policy_record, dbsession, force=True, cleanup_evals=cleanup_evals)
+                if httpcode not in range(200,299):
+                    raise Exception(str(rc))
+
+            #rc = db_policybundle.delete(policyId, userId, session=dbsession)
+            #if not rc:
+            #    raise Exception("DB delete failed")
+            #else:
+
+            #    if 'cleanup_evals' in params and params['cleanup_evals']:
+            #        dbfilter = {"policyId": policyId}
+            #        eval_records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+            #        for eval_record in eval_records:
+            #            db_policyeval.delete_record(eval_record, session=dbsession)
+
+            #    httpcode = 200
+            #    return_object = True
 
         elif method == 'POST' or method == 'PUT':
             if not policyId:
                 raise Exception ("must include 'policyId' in the json payload for this operation")
 
-            record = db_policybundle.get(policyId, userId, session=dbsession)
+            record = db_policybundle.get(userId, policyId, session=dbsession)
             if method == 'PUT' and not record:
                 httpcode = 404
                 raise Exception("existing policyId not found to update")
@@ -591,7 +556,7 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 policybundle = jsondata['policybundle']
                 rc =  archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle)
                 rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
-                record = db_policybundle.get(policyId, userId, active=active, session=dbsession)
+                record = db_policybundle.get(userId, policyId, session=dbsession)
                 record['policybundle'] = jsondata['policybundle']
 
                 if not rc:
@@ -927,9 +892,18 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             return_object = db_registries.get(registry, userId, session=dbsession)
             httpcode = 200
         elif method == 'DELETE':
-            registry_records = db_registries.delete(registry, userId, session=dbsession)
-            return_object = registry_records
+            if not registry:
+                raise Exception("no registryId passed in to delete")
+
             httpcode = 200
+            return_object = True
+            
+            registry_records = db_registries.get(registry, userId, session=dbsession)
+            for registry_record in registry_records:
+                rc, httpcode = do_registry_delete(userId, registry_record, dbsession, force=True)
+                if httpcode not in range(200,299):
+                    raise Exception(str(rc))
+                    
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
@@ -949,6 +923,68 @@ def system_subscriptions(dbsession, request_inputs):
         httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def system_prune_listresources(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    if userId not in anchore_engine.services.common.super_users:
+        httpcode = 401
+        return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
+        return(return_object, httpcode)
+
+    return_object = []
+    httpcode = 500
+
+    try:
+        return_object = anchore_engine.services.common.resource_types
+        httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    if userId not in anchore_engine.services.common.super_users:
+        httpcode = 401
+        return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
+        return(return_object, httpcode)
+
+    if method == 'GET':
+        return_object = {}
+        httpcode = 500
+
+        # param setup
+        dangling = params['dangling']
+        if params['olderthan']:
+            olderthan = int(params['olderthan'])
+        else:
+            olderthan = None
+
+        # get candidates
+        try:
+            return_object, httpcode = get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan)
+        except Exception as err:
+            return_object = anchore_engine.services.common.make_response_error("cannot get prune candidates - exception: " + str(err), in_httpcode=httpcode)
+
+    elif method == 'POST':
+        return_object = {}
+        httpcode = 500
+        
+        # delete input candidates
+        try:
+            return_object, httpcode = delete_prune_candidates(resourcetype, bodycontent, dbsession)
+        except Exception as err:
+            return_object = anchore_engine.services.common.make_response_error("cannot delete prune candidates - exception: " + str(err), in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1227,6 +1263,609 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
     logger.debug("returning: " + json.dumps(ret, indent=4))
     return(ret)
+
+def delete_prune_candidates(resourcetype, bodycontent, dbsession):
+    return_object = {}
+    httpcode = 500
+
+    try:
+        if not bodycontent:
+            httpcode = 404
+            raise Exception("no body content passed to POST")
+        else:
+            resource_types = anchore_engine.services.common.resource_types
+            if resourcetype == 'all':
+                types_to_run = resource_types
+            else:
+                types_to_run = [resourcetype]
+
+            jsondata = bodycontent
+            pruned_resources = []
+            for resource in jsondata['prune_candidates']:
+                httpcode = 500
+
+                input_resourcetype = resource['resourcetype']
+                if input_resourcetype not in types_to_run:
+                    continue
+
+                ruserId = resource['userId']
+
+                if input_resourcetype == 'images':
+                    imageDigest = resource['imageDigest']
+                    image_record = db_catalog_image.get(imageDigest, ruserId, session=dbsession)
+                    if image_record:
+                        rc, httpcode = do_image_delete(ruserId, image_record, dbsession, force=True)
+                        if httpcode in range(200,299):
+                            pruned_resources.append(resource)
+
+                elif input_resourcetype == 'policies':
+                    policyId = resource['policyId']
+                    policy_record = db_policybundle.get(ruserId, policyId, session=dbsession)
+                    if policy_record:
+                        rc, httpcode = do_policy_delete(ruserId, policy_record, dbsession, force=True)
+                        if httpcode in range(200,299):
+                            pruned_resources.append(resource)
+
+                elif input_resourcetype == 'subscriptions':
+                    subscriptionId = resource['subscription_id']
+                    subscription_record = db_subscriptions.get(ruserId, subscriptionId, session=dbsession)
+                    if subscription_record:
+                        rc, httpcode = do_subscription_delete(ruserId, subscription_record, dbsession, force=True)
+                        if httpcode in range(200,299):
+                            pruned_resources.append(resource)
+                        else:
+                            logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
+
+                elif input_resourcetype == 'evaluations':
+                    dbfilter = {'evalId': resource['evalId']}
+                    eval_records = db_policyeval.tsget_byfilter(ruserId, session=dbsession, **dbfilter)
+                    if eval_records:
+                        for eval_record in eval_records:
+                            rc, httpcode = do_evaluation_delete(ruserId, eval_record, dbsession, force=True)
+                            if httpcode in range(200,299):
+                                pruned_resources.append(resource)
+                            else:
+                                logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
+                elif input_resourcetype == 'users':
+                    duserId = resource['userId']
+                    user_record = db_users.get(duserId, session=dbsession)
+                    if user_record:
+                        rc, httpcode = do_user_delete(ruserId, user_record, dbsession, force=True)
+                        if httpcode in range(200,299):
+                            pruned_resources.append(resource)
+                        else:
+                            logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
+                elif input_resourcetype == 'archive':
+                    bucket = resource['bucket']
+                    archiveId = resource['archiveId']
+                    archive_document = db_archivedocument.exists(ruserId, bucket, archiveId, session=dbsession)
+                    if archive_document:
+                        rc, httpcode = do_archive_delete(ruserId, archive_document, dbsession, force=True)
+                        if httpcode in range(200, 299):
+                            pruned_resources.append(resource)
+                        else:
+                            logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
+
+                elif input_resourcetype == 'registries':
+                    registryId = resource['registry']
+                    registry_records = db_registries.get(registryId, ruserId, session=dbsession)
+                    if registry_records:
+                        for registry_record in registry_records:
+                            rc, httpcode = do_registry_delete(ruserId, registry_record, dbsession, force=True)
+                            if httpcode in range(200,299):
+                                pruned_resources.append(resource)
+                            else:
+                                logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
+
+            return_object['pruned_resources'] = pruned_resources
+            httpcode = 200
+
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None):
+    return_object = []
+    httpcode = 500
+
+    try:
+        # get all the things
+        user_records = {}
+        records = db_users.get_all(session=dbsession)
+        for record in records:
+            user_records[record['userId']] = record
+        user_ids = user_records.keys()
+
+        image_records = {}
+        fulltags = []
+        records = db_catalog_image.get_all(session=dbsession)
+        for record in records:
+            image_records[record['imageDigest']] = record
+            for image_detail in record['image_detail']:
+                fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                if fulltag not in fulltags:
+                    fulltags.append(fulltag)
+        image_digests = image_records.keys()
+
+        policy_records = {}
+        records = db_policybundle.get_all(session=dbsession)
+        for record in records:
+            policy_records[record['policyId']] = record
+        policy_ids = policy_records.keys()
+
+        eval_records = {}
+        records = db_policyeval.get_all(session=dbsession)
+        for record in records:
+            eval_records[record['evalId']] = record
+        eval_ids = eval_records.keys()
+
+    except Exception as err:
+        httpcode = 500
+        raise Exception("failed to gather full DB records for pruning run")
+
+    try:
+        resource_types = anchore_engine.services.common.resource_types
+
+        if resourcetype == 'all':
+            types_to_run = resource_types
+        else:
+            types_to_run = [resourcetype]
+
+
+        for resourcetype in types_to_run:
+
+            if resourcetype not in resource_types:
+                httpcode = 404
+                raise Exception("input resource_type ("+str(resourcetype)+") is not in list of available resource_types ("+str(resource_types)+")")
+
+            if resourcetype == 'users':
+                records = user_records.values()
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    if record['userId'] in ['admin', 'anchore-system']:
+                        continue
+
+                    if not record['active']:
+                        dangling_candidate = True
+                        dangling_reason = "user is marked as inactive"
+
+                    result_keys = ['userId', 'created_at']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)                        
+
+                httpcode = 200
+            elif resourcetype == 'registries':
+                records = db_registries.get_all(session=dbsession)
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    registry_id = record['registry']
+                    registry_userId = record['userId']
+
+                    if registry_userId not in user_ids:
+                        logger.debug("candidate registry - registry_userId not in users")
+                        dangling_candidate = True
+                        dangling_reason = "user id owning registry is not a valid user"
+                    else:
+                        pass
+                        #found = False
+                        #for image_record in image_records.values():
+                        #    for image_detail in image_record['image_detail']:
+                        #        image_registry = image_detail['registry']
+                        #        if registry_id == image_registry:
+                        #            found = True
+                        #            break
+                        #    if found:
+                        #        break
+
+                        #if not found:
+                        #    logger.debug("candidate registry - no images in configured registry")
+                        #    dangling_reason = "no images found in DB correspond to registry"
+                        #    dangling_candidate = True
+
+                    result_keys = ['userId', 'created_at', 'registry']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)                        
+
+                httpcode = 200
+
+            elif resourcetype == 'images':
+                records = image_records.values()
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+                    for image_detail in record['image_detail']:
+                        tag_record_age = int(time.time() - image_detail['created_at'])
+                        if tag_record_age > record_age:
+                            record_age = tag_record_age
+
+                    if record['userId'] not in user_ids:
+                        dangling_candidate = True
+
+                    result_keys = ['userId', 'created_at', 'imageDigest']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)                        
+
+            elif resourcetype == 'policies':
+                records = policy_records.values()
+                for record in records:
+                    # dangling_candidate is set if the resource is determined to have no supporting references.  
+                    # prune_candidate is unset if the resource should be held, even if supporting resources cannot 
+                    # be determined.
+
+                    dangling_candidate = False
+                    prune_candidate = True
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    policy_id = record['policyId']
+                    policy_userId = record['userId']
+                    
+                    if record['active']:
+                        dangling_candidate = False
+                        prune_candidate = False
+                    elif record['userId'] not in user_ids:
+                        dangling_candidate = True
+                        dangling_reason = "record userId is not a valid user"
+                    else:
+                        dbfilter = {'policyId': policy_id}
+                        user_eval_records = db_policyeval.tsget_byfilter(policy_userId, session=dbsession, **dbfilter)
+                        if not user_eval_records:
+                            dangling_reason = "no evaluations match policyId"
+                            dangling_candidate = True
+
+                    if prune_candidate:
+                        result_keys = ['userId', 'created_at', 'policyId']
+                        el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                        for k in result_keys:
+                            el[k] = record[k]
+
+                        if dangling:
+                            if dangling_candidate and (not olderthan or record_age > olderthan):
+                                return_object.append(el)
+                        elif olderthan and record_age > olderthan:
+                            el['reason'] = "record age is older than that specified"
+                            return_object.append(el)                        
+
+            elif resourcetype == 'subscriptions':
+                records = db_subscriptions.get_all(session=dbsession)
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    subscription_key = record['subscription_key']
+
+                    if record['userId'] not in user_ids:
+                        dangling_candidate = True
+                        dangling_reason = "record userId is not a valid user"
+                    else:
+                        if subscription_key not in fulltags:
+                            dangling_candidate = True
+                            dangling_reason = "subscription_key (image tag) is not found against any image in DB"
+
+                    result_keys = ['userId', 'created_at', 'subscription_id', 'subscription_type', 'subscription_key']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)
+
+            elif resourcetype == 'archive':
+                bucket_types = anchore_engine.services.common.bucket_types
+
+                records = db_archivedocument.list_all(session=dbsession)
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    archive_bucket = record['bucket']
+                    archive_id = record['archiveId']
+
+                    if archive_bucket not in bucket_types:
+                        dangling_candidate = True
+                        dangling_candidate = "bucket is not in known bucket types"
+                    else:
+                        if archive_bucket == 'analysis_data' and archive_id not in image_digests:
+                            dangling_candidate = True
+                            dangling_reason = "no image digest matches archive id"
+                        elif archive_bucket == 'query_data' and archive_id not in image_digests:
+                            dangling_candidate = True
+                            dangling_reason = "no image digest matches archive id"
+                        elif archive_bucket == 'policy_bundles' and archive_id not in policy_ids:
+                            dangling_candidate = True
+                            dangling_reason = "no policy id matches archive id"
+                        elif archive_bucket == 'policy_evaluations' and archive_id not in eval_ids:
+                            dangling_candidate = True
+                            dangling_reason = "no eval id matches archive id"
+                        elif archive_bucket == 'vulnerability_scan' and archive_id not in fulltags:
+                            dangling_reason = "no image tag matches archive id"
+                            dangling_candidate = True
+
+                    result_keys = ['userId', 'created_at', 'bucket', 'archiveId']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)                        
+
+            elif resourcetype == 'evaluations':
+                #records = db_subscriptions.get_all(session=dbsession)
+                records = eval_records.values()
+                for record in records:
+                    dangling_candidate = False
+                    dangling_reason = "not_set"
+                    record_age = int(time.time() - record['created_at'])
+
+                    if record['userId'] not in user_ids:
+                        dangling_candidate = True
+                        dangling_reason = "record userId is not a valid user"
+                    else:
+                        if record['policyId'] not in policy_ids:
+                            dangling_candidate = True
+                            dangling_reason = "eval record has policy ID that is not in DB"
+                        elif record['imageDigest'] not in image_digests:
+                            dangling_candidate = True
+                            dangling_reason = "eval record has image digest that is not in DB"
+                        elif record['tag'] not in fulltags:
+                            dangling_candidate = True
+                            dangling_reason = "eval record has image tag that is not in DB"
+
+                    result_keys = ['userId', 'created_at', 'evalId', 'policyId']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    for k in result_keys:
+                        el[k] = record[k]
+
+                    if dangling:
+                        if dangling_candidate and (not olderthan or record_age > olderthan):
+                            return_object.append(el)
+                    elif olderthan and record_age > olderthan:
+                        el['reason'] = "record age is older than that specified"
+                        return_object.append(el)
+
+        return_object = {
+            'prune_candidates': return_object
+        }
+        httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def do_image_delete(userId, image_record, dbsession, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        imageDigest = image_record['imageDigest']
+        dodelete = False
+        msgdelete = "could not make it though delete checks"
+        image_ids = []
+
+        if force:
+            dodelete = True
+        else:
+            # do some checking before delete
+            try:
+                # check one - don't delete anything that is being analyzed
+                if image_record['analysis_status'] == taskstate.working_state('analyze'):
+                    raise Exception("cannot delete image that is being analyzed")
+
+                # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
+                for image_detail in image_record['image_detail']:
+                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+
+                    if 'imageId' in image_detail and image_detail['imageId']:
+                        image_ids.append(image_detail['imageId'])
+
+                    dbfilter = {}
+                    dbfilter['registry'] = image_detail['registry']
+                    dbfilter['repo'] = image_detail['repo']
+                    dbfilter['tag'] = image_detail['tag']
+
+                    latest_image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
+                    for latest_image_record in latest_image_records:
+                        if latest_image_record['imageDigest'] == image_record['imageDigest']:
+                            dbfilter = {}
+                            dbfilter['subscription_key'] = fulltag
+                            subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                            for subscription_record in subscription_records:
+                                if subscription_record['active']:
+                                    raise Exception("cannot delete image that is the latest of its tags, and has active subscription")
+
+                # checked out - do the delete
+                dodelete = True
+
+            except Exception as err:
+                msgdelete = str(err)
+                dodelete = False
+
+        if dodelete:
+            logger.debug("DELETEing image from catalog")
+            rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
+            logger.debug("DELETEing image from archive analysis_data")
+            rc = archive_sys.delete(userId, 'analysis_data', imageDigest)
+            logger.debug("DELETEing image from archive query_data")
+            rc = archive_sys.delete(userId, 'query_data', imageDigest)
+            logger.debug("DELETEing image from policy_engine")
+
+            # prepare inputs
+            try:
+                system_user_auth = get_system_auth(dbsession)
+                system_userId = system_user_auth[0]
+                system_password = system_user_auth[1]
+
+                localconfig = anchore_engine.configuration.localconfig.get_config()
+                verify = localconfig['internal_ssl_verify']
+
+                client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+                for img_id in set(image_ids):
+                    logger.debug("DELETING image from policy engine userId = {} imageId = {}".format(userId, img_id))
+                    rc = client.delete_image(user_id=userId, image_id=img_id)
+            except:
+                logger.exception('Failed deleting image from policy engine')
+                raise
+
+            return_object = True
+            httpcode = 200
+        else:
+            httpcode = 409
+            raise Exception(msgdelete)
+    except Exception as err:
+        logger.warn("DELETE failed - exception: " + str(err))
+        return_object = str(err)
+
+    return(return_object, httpcode)
+
+def do_subscription_delete(userId, subscription_record, dbsession, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        dbfilter = {'subscription_id': subscription_record['subscription_id']}
+        rc = db_subscriptions.delete_byfilter(userId, remove=True, session=dbsession, **dbfilter)
+        if not rc:
+            raise Exception("DB delete failed")
+
+        return_object = True
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
+
+def do_policy_delete(userId, policy_record, dbsession, cleanup_evals=False, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        policyId = policy_record['policyId']
+
+        rc = db_policybundle.delete(policyId, userId, session=dbsession)
+        if not rc:
+            httpcode = 500
+            raise Exception("DB delete of policyId ("+str(policyId)+") failed")
+        else:
+            if cleanup_evals:
+                dbfilter = {"policyId": policyId}
+                eval_records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+                for eval_record in eval_records:
+                    db_policyeval.delete_record(eval_record, session=dbsession)
+
+        return_object = True
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
+
+def do_evaluation_delete(userId, eval_record, dbsession, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        rc = db_policyeval.delete_record(eval_record, session=dbsession)
+        if not rc:
+            raise Exception("DB update failed")
+
+        httpcode = 200
+        return_object = True
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
+        
+def do_archive_delete(userId, archive_document, session, force=False):
+    return_object = False
+    httpcode = 500
+    
+    try:        
+        rc = archive_sys.delete(userId, archive_document['bucket'], archive_document['archiveId'])
+        if not rc:
+            raise Exception("archive delete failed")
+
+        return_object = True
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
+
+def do_user_delete(userId, user_record, dbsession, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        userId = user_record['userId']
+        rc = db_users.delete(userId, session=dbsession)
+        if not rc:
+            raise Exception("DB delete failed")
+
+        return_object = True
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
+
+def do_registry_delete(userId, registry_record, dbsession, force=False):
+    return_object = False
+    httpcode = 500
+
+    try:
+        registryId = registry_record['registry']
+        rc = db_registries.delete(registryId, userId, session=dbsession)
+        if not rc:
+            raise Exception("DB delete failed")
+
+        return_object = True
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+
+    return(return_object, httpcode)
 
 
 

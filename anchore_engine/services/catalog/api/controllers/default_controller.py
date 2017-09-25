@@ -555,3 +555,39 @@ def system_subscriptions_get():
         return_object = str(err)
 
     return (return_object, httpcode)
+
+def system_prune_get():
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune_listresources(session, request_inputs)
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
+def system_prune_resourcetype_get(resourcetype, dangling=True, olderthan=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'dangling': dangling, 'olderthan': olderthan})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune(session, request_inputs, resourcetype)
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
+def system_prune_resourcetype_post(resourcetype, bodycontent):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune(session, request_inputs, resourcetype, bodycontent=bodycontent)
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)

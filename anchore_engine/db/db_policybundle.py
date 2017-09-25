@@ -33,7 +33,20 @@ def add(policyId, userId, active, inobj, session=None):
     
     return(True)
 
-def get_all(userId, session=None):
+def get_all(session=None):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    our_results = session.query(PolicyBundle)
+    for result in our_results:
+        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        ret.append(obj)
+
+    return(ret)
+
+def get_all_byuserId(userId, session=None):
     if not session:
         session = db.Session
 
@@ -63,13 +76,12 @@ def get_byfilter(userId, session=None, **dbfilter):
 
     return(ret)
 
-def get(policyId, userId, active=True, session=None):
+def get(userId, policyId, session=None):
     if not session:
         session = db.Session
 
     ret = {}
 
-    #result = session.query(PolicyBundle).filter_by(policyId=policyId).filter_by(userId=userId).filter_by(active=active).first()
     result = session.query(PolicyBundle).filter_by(policyId=policyId).filter_by(userId=userId).first()
     if result:
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))

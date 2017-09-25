@@ -59,7 +59,7 @@ def initializeService(sname, config):
                 if userId == 'anchore-system':
                     continue
 
-                bundle_records = db.db_policybundle.get_all(userId, session=dbsession)
+                bundle_records = db.db_policybundle.get_all_byuserId(userId, session=dbsession)
                 if not bundle_records:
                     logger.debug("user has no policy bundle - installing default: " +str(userId))
                     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -207,7 +207,7 @@ def handle_history_trimmer(*args, **kwargs):
             userId = user['userId']
             image_records = []
             with db.session_scope() as dbsession:
-                image_records = db.db_catalog_image.get_all(userId, session=dbsession)
+                image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
             for image_record in image_records:
                 imageDigest = image_record['imageDigest']
                 imageDigests[imageDigest] = True
@@ -218,7 +218,7 @@ def handle_history_trimmer(*args, **kwargs):
             # look for orphaned archive data
             archive_records = []
             with db.session_scope() as dbsession:
-                archive_records = db.db_archivedocument.list_all(userId, session=dbsession)
+                archive_records = db.db_archivedocument.list_all_byuserId(userId, session=dbsession)
             for record in archive_records:
                 if record['record_state_key'] == 'to_delete':
                     continue
@@ -280,7 +280,7 @@ def handle_history_trimmer(*args, **kwargs):
                 userId = user['userId']
 
                 with db.session_scope() as dbsession:
-                    all_images = db.db_catalog_image.get_all(userId, session=dbsession)
+                    all_images = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
                 for image in all_images:
                     imageDigest = image['imageDigest']
                     #image = all_images[imageDigest]
@@ -291,7 +291,7 @@ def handle_history_trimmer(*args, **kwargs):
                         # TODO remove images? how deep is the remove?
 
                 with db.session_scope() as dbsession:
-                    all_images = db.db_catalog_image.get_all(userId, session=dbsession)
+                    all_images = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
 
                 for image in all_images:
                     #image = all_images[imageDigest]
@@ -339,7 +339,7 @@ def handle_history_trimmer(*args, **kwargs):
                 userId = user['userId']
                 dbfilter = {}
                 with db.session_scope() as dbsession:
-                    all_archive_documents = db.db_archivedocument.list_all(userId, session=dbsession, **dbfilter)
+                    all_archive_documents = db.db_archivedocument.list_all_byuserId(userId, session=dbsession, **dbfilter)
                 for archive_document in all_archive_documents:
                     bucket = archive_document['bucket']
                     archiveId = archive_document['archiveId']
@@ -713,7 +713,7 @@ def handle_policyeval_queue(*args, **kwargs):
             #bundle_user_is_updated[userId] = True
             bundle_user_is_updated[userId] = check_policybundle_update(userId, dbsession)
 
-            image_records = db.db_catalog_image.get_all(userId, session=dbsession)
+            image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
             for image_record in image_records:
                 imageDigest = image_record['imageDigest']
                 logger.debug("processing image: " + str(imageDigest))
@@ -831,7 +831,7 @@ def handle_analyzer_queue(*args, **kwargs):
             if userId == 'anchore-system':
                 continue
 
-            image_records = db.db_catalog_image.get_all(userId, session=dbsession)
+            image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
             for image_record in image_records:
                 imageDigest = image_record['imageDigest']
                 if image_record['image_status'] == taskstate.complete_state('image_status'):
