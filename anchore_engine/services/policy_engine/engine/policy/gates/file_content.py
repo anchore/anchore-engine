@@ -18,15 +18,27 @@ class ContentMatchTrigger(BaseTrigger):
 
         if match_filter:
             matches = [x.encode('base64') for x in match_filter.split('|')]
+            matches_decoded = match_filter.split('|')
         else:
             matches = []
+            matches_decoded = []
 
         for thefile, regexps in context.data.get('content_regexp', {}).items():
             thefile = thefile.encode('ascii', errors='replace')
             if not regexps:
                 continue
             for regexp in regexps.keys():
-                if not matches or regexp in matches:
+                try:
+                    regexp_name, theregexp = regexp.decode('base64').split("=", 1)
+                except:
+                    regexp_name = None
+                    theregexp = regexp.decode('base64')
+
+                if not matches:
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                elif regexp in matches or theregexp in matches_decoded:
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                elif regexp_name and regexp_name in matches_decoded:
                     self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
 
 

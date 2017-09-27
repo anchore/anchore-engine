@@ -11,15 +11,25 @@ fi
 
 set -e
 
+REPOTAG="anchore-engine:latest"
+
 mkdir -p /tmp/anchore-engine-build
 rm -rf /tmp/anchore-engine-build/anchore-engine
-cp -a Dockerfile /tmp/anchore-engine-build
+if [ ! -z "$ANCHOREDOCKERFILEOVERRIDE" ]; then
+    cp -a ${ANCHOREDOCKERFILEOVERRIDE} /tmp/anchore-engine-build/Dockerfile
+    TAG="anchore-engine:dev"
+else
+    cp -a Dockerfile /tmp/anchore-engine-build
+fi
 
 cd /tmp/anchore-engine-build
 if [ ! -z "$ANCHORESRCHOME" ]; then
     rsync -azP /${ANCHORESRCHOME}/anchore-engine/ /tmp/anchore-engine-build/anchore-engine/
+    rsync -azP /${ANCHORESRCHOME}/anchore-cli/ /tmp/anchore-engine-build/anchore-cli/
+    rsync -azP /${ANCHORESRCHOME}/anchore/ /tmp/anchore-engine-build/anchore/
+    TAG="anchore-engine:dev"
 else
     git clone git@github.com:anchore/anchore-engine.git
 fi
 
-cd /tmp/anchore-engine-build && docker build -t anchore-engine:latest ${cache_directive} . && docker tag anchore-engine:latest anchore/anchore-engine:latest
+cd /tmp/anchore-engine-build && docker build -t ${TAG} ${cache_directive} . && docker tag ${TAG} anchore/${TAG}
