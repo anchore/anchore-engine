@@ -1,5 +1,7 @@
 from connexion import request
+import copy
 import json
+import datetime
 
 # anchore modules
 from anchore_engine.clients import catalog, simplequeue
@@ -29,6 +31,23 @@ def make_response_service(user_auth, service_record, params):
 
     return (ret)
 
+def make_response_prune_candidate(user_auth, prune_record, params):
+    ret = {}
+    userId, pw = user_auth
+
+    try:
+        for k in ['reason', 'resourcetype', 'userId']:
+            ret[k] = prune_record[k]
+        ret['created_at'] = datetime.datetime.fromtimestamp(prune_record['created_at']).isoformat()
+
+        ret['resource_ids'] = {}
+        if 'resource_ids' in prune_record:
+            ret['resource_ids'] = copy.deepcopy(prune_record['resource_ids'])
+
+    except Exception as err:
+        raise Exception("failed to format prune response: " + str(err))
+
+    return (ret)
 
 def ping():
     """
@@ -46,10 +65,6 @@ def get_status():
     """
 
     request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
-    #user_auth = request_inputs['auth']
-    #method = request_inputs['method']
-    #bodycontent = request_inputs['bodycontent']
-    #params = request_inputs['params']
 
     return_object = {}
     httpcode = 500
@@ -78,7 +93,6 @@ def get_service_detail():
     request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
     params = request_inputs['params']
 
     httpcode = 500
@@ -262,4 +276,54 @@ def delete_service(servicename, hostid):
 
     return (return_object, httpcode)
 
+def get_system_prune_resourcetypes():
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    user_auth = request_inputs['auth']
 
+    return_object = []
+    httpcode = 500
+    try:
+        return_object = catalog.get_prune_resourcetypes(user_auth)
+        if return_object:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)
+
+def get_system_prune_candidates(resourcetype, dangling=True, olderthan=None):
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'dangling': dangling, 'olderthan': olderthan})
+    user_auth = request_inputs['auth']
+    params = request_inputs['params']
+
+    return_object = {'prune_candidates': []}
+    httpcode = 500
+    try:
+        prune_candidates = catalog.get_prune_candidates(user_auth, resourcetype, dangling=params['dangling'], olderthan=params['olderthan'])
+        if prune_candidates:
+            for p in prune_candidates['prune_candidates']:
+                return_object['prune_candidates'].append(make_response_prune_candidate(user_auth, p, params))
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)
+
+def post_system_prune_candidates(resourcetype, bodycontent):
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    user_auth = request_inputs['auth']
+
+    return_object = []
+    httpcode = 500
+    try:
+        logger.debug("WTD: "+ str(bodycontent))
+        return_object = catalog.perform_prune(user_auth, resourcetype, bodycontent)
+        if return_object:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)

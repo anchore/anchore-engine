@@ -5,6 +5,7 @@ import time
 
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
+import anchore_engine.auth.anchore_resources
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys
 from anchore_engine.clients import localanchore, simplequeue
@@ -932,7 +933,8 @@ def system_prune_listresources(dbsession, request_inputs):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    if userId not in anchore_engine.services.common.super_users:
+    allowed = anchore_engine.auth.anchore_resources.operation_access(userId, "system_prune_listresources", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    if not allowed:
         httpcode = 401
         return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
         return(return_object, httpcode)
@@ -954,7 +956,8 @@ def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    if userId not in anchore_engine.services.common.super_users:
+    allowed = anchore_engine.auth.anchore_resources.operation_access(userId, "system_prune", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    if not allowed:
         httpcode = 401
         return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
         return(return_object, httpcode)
@@ -1264,7 +1267,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
     logger.debug("returning: " + json.dumps(ret, indent=4))
     return(ret)
 
-def delete_prune_candidates(resourcetype, bodycontent, dbsession):
+def delete_prune_candidates(resourcetype, bodycontent, dbsession, resource_user=None):
     return_object = {}
     httpcode = 500
 
@@ -1282,16 +1285,30 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
             jsondata = bodycontent
             pruned_resources = []
             for resource in jsondata['prune_candidates']:
+                logger.debug("considering resource: " + str(resource))
                 httpcode = 500
+
+                skipresource = True
+                try:
+                    if resource_user:
+                        if resource['userId'] == resource_user:
+                            skipresource = False
+                    else:
+                        skipresource = False
+                except:
+                    pass
 
                 input_resourcetype = resource['resourcetype']
                 if input_resourcetype not in types_to_run:
+                    skipresource = True
+
+                if skipresource:
                     continue
 
                 ruserId = resource['userId']
 
                 if input_resourcetype == 'images':
-                    imageDigest = resource['imageDigest']
+                    imageDigest = resource['resource_ids']['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, ruserId, session=dbsession)
                     if image_record:
                         rc, httpcode = do_image_delete(ruserId, image_record, dbsession, force=True)
@@ -1299,7 +1316,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                             pruned_resources.append(resource)
 
                 elif input_resourcetype == 'policies':
-                    policyId = resource['policyId']
+                    policyId = resource['resource_ids']['policyId']
                     policy_record = db_policybundle.get(ruserId, policyId, session=dbsession)
                     if policy_record:
                         rc, httpcode = do_policy_delete(ruserId, policy_record, dbsession, force=True)
@@ -1307,7 +1324,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                             pruned_resources.append(resource)
 
                 elif input_resourcetype == 'subscriptions':
-                    subscriptionId = resource['subscription_id']
+                    subscriptionId = resource['resource_ids']['subscription_id']
                     subscription_record = db_subscriptions.get(ruserId, subscriptionId, session=dbsession)
                     if subscription_record:
                         rc, httpcode = do_subscription_delete(ruserId, subscription_record, dbsession, force=True)
@@ -1317,7 +1334,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                             logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
 
                 elif input_resourcetype == 'evaluations':
-                    dbfilter = {'evalId': resource['evalId']}
+                    dbfilter = {'evalId': resource['resource_ids']['evalId']}
                     eval_records = db_policyeval.tsget_byfilter(ruserId, session=dbsession, **dbfilter)
                     if eval_records:
                         for eval_record in eval_records:
@@ -1327,7 +1344,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                             else:
                                 logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
                 elif input_resourcetype == 'users':
-                    duserId = resource['userId']
+                    duserId = resource['resource_ids']['userId']
                     user_record = db_users.get(duserId, session=dbsession)
                     if user_record:
                         rc, httpcode = do_user_delete(ruserId, user_record, dbsession, force=True)
@@ -1336,8 +1353,8 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                         else:
                             logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
                 elif input_resourcetype == 'archive':
-                    bucket = resource['bucket']
-                    archiveId = resource['archiveId']
+                    bucket = resource['resource_ids']['bucket']
+                    archiveId = resource['resource_ids']['archiveId']
                     archive_document = db_archivedocument.exists(ruserId, bucket, archiveId, session=dbsession)
                     if archive_document:
                         rc, httpcode = do_archive_delete(ruserId, archive_document, dbsession, force=True)
@@ -1347,7 +1364,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
                             logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
 
                 elif input_resourcetype == 'registries':
-                    registryId = resource['registry']
+                    registryId = resource['resource_ids']['registry']
                     registry_records = db_registries.get(registryId, ruserId, session=dbsession)
                     if registry_records:
                         for registry_record in registry_records:
@@ -1365,8 +1382,9 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession):
 
     return(return_object, httpcode)
 
-def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None):
-    return_object = []
+def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None, resource_user=None):
+    return_object = {}
+    prune_candidates = []
     httpcode = 500
 
     try:
@@ -1423,6 +1441,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                 records = user_records.values()
                 for record in records:
                     dangling_candidate = False
+                    prune_candidate = True
                     dangling_reason = "not_set"
                     record_age = int(time.time() - record['created_at'])
 
@@ -1432,24 +1451,31 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                     if not record['active']:
                         dangling_candidate = True
                         dangling_reason = "user is marked as inactive"
+                    else:
+                        prune_candidate = False
 
-                    result_keys = ['userId', 'created_at']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
-                    for k in result_keys:
-                        el[k] = record[k]
+                    if prune_candidate:
+                        result_keys = ['userId', 'created_at']
+                        record_idkeys = ['userId']
+                        el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
+                        for k in result_keys:
+                            el[k] = record[k]
+                        for k in record_idkeys:
+                            el['resource_ids'][k] = record[k]
 
-                    if dangling:
-                        if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
-                    elif olderthan and record_age > olderthan:
-                        el['reason'] = "record age is older than that specified"
-                        return_object.append(el)                        
+                        if dangling:
+                            if dangling_candidate and (not olderthan or record_age > olderthan):
+                                prune_candidates.append(el)
+                        elif olderthan and record_age > olderthan:
+                            el['reason'] = "record age is older than that specified"
+                            prune_candidates.append(el)                        
 
                 httpcode = 200
             elif resourcetype == 'registries':
                 records = db_registries.get_all(session=dbsession)
                 for record in records:
                     dangling_candidate = False
+                    prune_candidate = True
                     dangling_reason = "not_set"
                     record_age = int(time.time() - record['created_at'])
 
@@ -1462,32 +1488,22 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                         dangling_reason = "user id owning registry is not a valid user"
                     else:
                         pass
-                        #found = False
-                        #for image_record in image_records.values():
-                        #    for image_detail in image_record['image_detail']:
-                        #        image_registry = image_detail['registry']
-                        #        if registry_id == image_registry:
-                        #            found = True
-                        #            break
-                        #    if found:
-                        #        break
 
-                        #if not found:
-                        #    logger.debug("candidate registry - no images in configured registry")
-                        #    dangling_reason = "no images found in DB correspond to registry"
-                        #    dangling_candidate = True
 
-                    result_keys = ['userId', 'created_at', 'registry']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    result_keys = ['userId', 'created_at']
+                    record_idkeys = ['registry']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
                     for k in result_keys:
                         el[k] = record[k]
+                    for k in record_idkeys:
+                        el['resource_ids'][k] = record[k]
 
                     if dangling:
                         if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
+                            prune_candidates.append(el)
                     elif olderthan and record_age > olderthan:
                         el['reason'] = "record age is older than that specified"
-                        return_object.append(el)                        
+                        prune_candidates.append(el)                        
 
                 httpcode = 200
 
@@ -1505,17 +1521,20 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                     if record['userId'] not in user_ids:
                         dangling_candidate = True
 
-                    result_keys = ['userId', 'created_at', 'imageDigest']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    result_keys = ['userId', 'created_at']
+                    record_idkeys = ['imageDigest']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
                     for k in result_keys:
                         el[k] = record[k]
+                    for k in record_idkeys:
+                        el['resource_ids'][k] = record[k]
 
                     if dangling:
                         if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
+                            prune_candidates.append(el)
                     elif olderthan and record_age > olderthan:
                         el['reason'] = "record age is older than that specified"
-                        return_object.append(el)                        
+                        prune_candidates.append(el)                        
 
             elif resourcetype == 'policies':
                 records = policy_records.values()
@@ -1546,17 +1565,20 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                             dangling_candidate = True
 
                     if prune_candidate:
-                        result_keys = ['userId', 'created_at', 'policyId']
-                        el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                        result_keys = ['userId', 'created_at']
+                        record_idkeys = ['policyId']
+                        el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
                         for k in result_keys:
                             el[k] = record[k]
+                        for k in record_idkeys:
+                            el['resource_ids'][k] = record[k]
 
                         if dangling:
                             if dangling_candidate and (not olderthan or record_age > olderthan):
-                                return_object.append(el)
+                                prune_candidates.append(el)
                         elif olderthan and record_age > olderthan:
                             el['reason'] = "record age is older than that specified"
-                            return_object.append(el)                        
+                            prune_candidates.append(el)                        
 
             elif resourcetype == 'subscriptions':
                 records = db_subscriptions.get_all(session=dbsession)
@@ -1575,17 +1597,20 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                             dangling_candidate = True
                             dangling_reason = "subscription_key (image tag) is not found against any image in DB"
 
-                    result_keys = ['userId', 'created_at', 'subscription_id', 'subscription_type', 'subscription_key']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    result_keys = ['userId', 'created_at']
+                    record_idkeys = ['subscription_id', 'subscription_type', 'subscription_key']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
                     for k in result_keys:
                         el[k] = record[k]
+                    for k in record_idkeys:
+                        el['resource_ids'][k] = record[k]
 
                     if dangling:
                         if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
+                            prune_candidates.append(el)
                     elif olderthan and record_age > olderthan:
                         el['reason'] = "record age is older than that specified"
-                        return_object.append(el)
+                        prune_candidates.append(el)
 
             elif resourcetype == 'archive':
                 bucket_types = anchore_engine.services.common.bucket_types
@@ -1593,6 +1618,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                 records = db_archivedocument.list_all(session=dbsession)
                 for record in records:
                     dangling_candidate = False
+                    prune_candidate = True
                     dangling_reason = "not_set"
                     record_age = int(time.time() - record['created_at'])
 
@@ -1603,33 +1629,53 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                         dangling_candidate = True
                         dangling_candidate = "bucket is not in known bucket types"
                     else:
-                        if archive_bucket == 'analysis_data' and archive_id not in image_digests:
-                            dangling_candidate = True
-                            dangling_reason = "no image digest matches archive id"
-                        elif archive_bucket == 'query_data' and archive_id not in image_digests:
-                            dangling_candidate = True
-                            dangling_reason = "no image digest matches archive id"
-                        elif archive_bucket == 'policy_bundles' and archive_id not in policy_ids:
-                            dangling_candidate = True
-                            dangling_reason = "no policy id matches archive id"
-                        elif archive_bucket == 'policy_evaluations' and archive_id not in eval_ids:
-                            dangling_candidate = True
-                            dangling_reason = "no eval id matches archive id"
-                        elif archive_bucket == 'vulnerability_scan' and archive_id not in fulltags:
-                            dangling_reason = "no image tag matches archive id"
-                            dangling_candidate = True
+                        #TODO need to change logic to use prune_candidate check
+                        if archive_bucket == 'analysis_data':
+                            if archive_id not in image_digests:
+                                dangling_candidate = True
+                                dangling_reason = "no image digest matches archive id"
+                            else:
+                                prune_candidate = False
+                        elif archive_bucket == 'query_data':
+                            if archive_id not in image_digests:
+                                dangling_candidate = True
+                                dangling_reason = "no image digest matches archive id"
+                            else:
+                                prune_candidate = False
+                        elif archive_bucket == 'policy_bundles':
+                            if archive_id not in policy_ids:
+                                dangling_candidate = True
+                                dangling_reason = "no policy id matches archive id"
+                            else:
+                                prune_candidate = False
+                        elif archive_bucket == 'policy_evaluations':
+                            if archive_id not in eval_ids:
+                                dangling_candidate = True
+                                dangling_reason = "no eval id matches archive id"
+                            else:
+                                prune_candidate = False
+                        elif archive_bucket == 'vulnerability_scan': 
+                            if archive_id not in fulltags:
+                                dangling_reason = "no image tag matches archive id"
+                                dangling_candidate = True
+                            else:
+                                prune_candidate = False
 
-                    result_keys = ['userId', 'created_at', 'bucket', 'archiveId']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
-                    for k in result_keys:
-                        el[k] = record[k]
+                    if prune_candidate:
+                        result_keys = ['userId', 'created_at']
+                        record_idkeys = ['bucket', 'archiveId']
+                        el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
+                        for k in result_keys:
+                            el[k] = record[k]
+                        for k in record_idkeys:
+                            el['resource_ids'][k] = record[k]
 
-                    if dangling:
-                        if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
-                    elif olderthan and record_age > olderthan:
-                        el['reason'] = "record age is older than that specified"
-                        return_object.append(el)                        
+                        if dangling:
+                            if dangling_candidate and (not olderthan or record_age > olderthan):
+                                prune_candidates.append(el)
+                        elif olderthan and record_age > olderthan:
+                            el['reason'] = "record age is older than that specified"
+                            prune_candidates.append(el)                        
 
             elif resourcetype == 'evaluations':
                 #records = db_subscriptions.get_all(session=dbsession)
@@ -1653,20 +1699,34 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None)
                             dangling_candidate = True
                             dangling_reason = "eval record has image tag that is not in DB"
 
-                    result_keys = ['userId', 'created_at', 'evalId', 'policyId']
-                    el = {'reason': dangling_reason, 'resourcetype': resourcetype}
+                    result_keys = ['userId', 'created_at']
+                    record_idkeys = ['evalId', 'policyId']
+                    el = {'reason': dangling_reason, 'resourcetype': resourcetype, 'resource_ids': {}}
                     for k in result_keys:
                         el[k] = record[k]
+                    for k in record_idkeys:
+                        el['resource_ids'][k] = record[k]
 
                     if dangling:
                         if dangling_candidate and (not olderthan or record_age > olderthan):
-                            return_object.append(el)
+                            prune_candidates.append(el)
                     elif olderthan and record_age > olderthan:
                         el['reason'] = "record age is older than that specified"
-                        return_object.append(el)
+                        prune_candidates.append(el)
+
+        if resource_user:
+            filtered_prune_candidates = []
+            for prune_candidate in prune_candidates:
+                try:
+                    if resource_user == prune_candidate['userId']:
+                        filtered_prune_candidates.append(prune_candidate)
+                except:
+                    pass
+
+            prune_candidates = filtered_prune_candidates
 
         return_object = {
-            'prune_candidates': return_object
+            'prune_candidates': prune_candidates
         }
         httpcode = 200
     except Exception as err:

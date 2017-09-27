@@ -852,3 +852,67 @@ def get_event(userId, hostId=None, level=None, message=None):
     ret = http.anchy_get(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
+
+def get_prune_resourcetypes(userId):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+    url = base_url + "/system/prune"
+    
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+    url = base_url + "/system/prune/"+resourcetype+"?dangling="+str(dangling)
+    if olderthan:
+        url = url + "&olderthan="+str(int(olderthan))
+    
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def perform_prune(userId, resourcetype, prune_candidates):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+    url = base_url + "/system/prune/"+resourcetype
+
+    payload = json.dumps(prune_candidates)
+
+    ret = http.anchy_post(url, data=payload, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)

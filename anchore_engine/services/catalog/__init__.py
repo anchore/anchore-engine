@@ -197,48 +197,63 @@ def handle_history_trimmer(*args, **kwargs):
     logger.debug("FIRING: history trimmer")
 
     try:
-        imageDigests = {}
-        fulltags = {}
+        # TODO - deal with configuring these items (per user, via API, via config) - disabled here across the board
+        trim_policies = {
+            'images': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+            'policies': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+            'registries': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+            'subscriptions': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+            'archive': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+            'evaluations': {'prune': False, 'dangling': True, 'olderthan': 12*30*86400}
+        }
+
+        #trim_policies = {
+        #    'images': {'prune': True, 'dangling': True, 'olderthan': 1},
+        #    'policies': {'prune': True, 'dangling': True, 'olderthan': 1},
+        #    'registries': {'prune': True, 'dangling': True, 'olderthan': 1},
+        #    'subscriptions': {'prune': True, 'dangling': True, 'olderthan': 1},
+        #    'archive': {'prune': True, 'dangling': True, 'olderthan': 1},
+        #    'evaluations': {'prune': True, 'dangling': True, 'olderthan': 1}
+        #}
 
         all_users = []
         with db.session_scope() as dbsession:
             all_users = db.db_users.get_all(session=dbsession)
+
         for user in all_users:
             userId = user['userId']
-            image_records = []
-            with db.session_scope() as dbsession:
-                image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
-            for image_record in image_records:
-                imageDigest = image_record['imageDigest']
-                imageDigests[imageDigest] = True
-                for image_detail in image_record['image_detail']:
-                    fulltag = image_detail['registry']+"/"+image_detail['repo']+":"+image_detail['tag']
-                    fulltags[fulltag] = True
+            resource_types = anchore_engine.services.common.resource_types
+            for resourcetype in resource_types:
 
-            # look for orphaned archive data
-            archive_records = []
-            with db.session_scope() as dbsession:
-                archive_records = db.db_archivedocument.list_all_byuserId(userId, session=dbsession)
-            for record in archive_records:
-                if record['record_state_key'] == 'to_delete':
-                    continue
-                if record['bucket'] in ['analysis_data', 'query_data']:
-                    if record['archiveId'] not in imageDigests:
-                        logger.debug("should mark archive document for deletion: " + str(record['archiveId']) + " : " + record['bucket'])
+                prune_candidates = {}
+                httpcode = 500
+
+                try:
+                    if resourcetype in trim_policies and trim_policies[resourcetype]['prune']:
+                        dangling = trim_policies[resourcetype]['dangling']
+                        olderthan = trim_policies[resourcetype]['olderthan']
+
                         with db.session_scope() as dbsession:
-                            db.db_archivedocument.delete(userId, record['bucket'], record['archiveId'], remove=False, session=dbsession)
+                            prune_candidates, httpcode = catalog_impl.get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan, resource_user=userId)
+                        logger.debug("prune candidates " + str(userId) + " : " + str(resourcetype) + " : " + json.dumps(prune_candidates, indent=4))
+                    else:
+                        logger.debug("prune policy absent or disabled for resourcetype " + str(resourcetype) + " - skipping")
+                except Exception as err:
+                    logger.warn("cannot get prune candidates for userId="+str(userId)+" resourcetype="+str(resourcetype) +  " - exception: " + str(err))
+                else:
+                    if httpcode in range(200, 299) and 'prune_candidates' in prune_candidates and prune_candidates['prune_candidates']:
+                        # TODO do the prune
+                        prunes = {}
+                        httpcode = 500
 
-            # look for orphaned subscriptions
-            #with anchore_engine.services.common.session_scope() as dbsession:
-            #    subscription_records = db.db_subscriptions.get_all(userId, session=dbsession)
-            #    for record in subscription_records:
-            #        if record['record_state_key'] == 'to_delete':
-            #            continue
-            #        if record['subscription_type'] in ['tag_update', 'vuln_update', 'policy_eval']:
-            #            if record['subscription_key'] not in fulltags:
-            #                logger.debug("should delete subscription: " + str(record))
-            #                with anchore_engine.services.common.session_scope() as dbsession:
-            #                    db.db_subscriptions.delete(userId, record['subscription_id'], session=dbsession)
+                        with db.session_scope() as dbsession:
+                            prunes, httpcode = catalog_impl.delete_prune_candidates(resourcetype, prune_candidates, dbsession, resource_user=userId)
+
+                        logger.debug("the prune resulted in: " + str(httpcode) + " : " + json.dumps(prunes))
+                        if prunes:
+                            logger.debug("pruned: " + json.dumps(prunes, indent=4))
+                    else:
+                        logger.debug("skipping pruning: " + str(userId) + " : " + str(resourcetype) + " : " + str(httpcode) + " : " + str(prune_candidates))
 
     except Exception as err:
         logger.warn("failure in history trimmer: " + str(err))
@@ -248,137 +263,7 @@ def handle_history_trimmer(*args, **kwargs):
     except:
         pass
 
-    return(True)
-
-    # TODO - this needs work to be safe
-    if False:
-        history_windows = {
-            'policy_evals': 30 * 86400,
-            'images': 30 * 86400,
-            'services': 30 * 86400,
-            'users': 30 * 86400
-        }
-
-        archive_document_cleanup = {
-            'query_data': {},
-            'analysis_data': {},
-            'policy_evaluations': {}
-        }
-
-        try:
-            # TODO services trimmer based on heartbeat and down status?
-
-            with db.session_scope() as dbsession:
-                all_users = db.db_users.get_all(session=dbsession)
-            for user in all_users:
-                logger.debug("TRIMMER: USER: " + str(user.keys()))
-                # TODO need active/inactive/todel user fields in order to trim
-
-            with db.session_scope() as dbsession:
-                all_users = db.db_users.get_all(session=dbsession)
-            for user in all_users:
-                userId = user['userId']
-
-                with db.session_scope() as dbsession:
-                    all_images = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
-                for image in all_images:
-                    imageDigest = image['imageDigest']
-                    #image = all_images[imageDigest]
-                    logger.debug("TRIMMER: IMAGE: " + str(image.keys()))
-                    now = int(time.time())
-                    if (now - image['created_at']) > history_windows['images']:
-                        logger.debug("TRIMMER: IMAGE: should trim entry: " + str(image))
-                        # TODO remove images? how deep is the remove?
-
-                with db.session_scope() as dbsession:
-                    all_images = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
-
-                for image in all_images:
-                    #image = all_images[imageDigest]
-                    imageDigest = image['imageDigest']
-                    for image_detail in image['image_detail']:
-                        fulltag = image_detail['registry']+"/"+image_detail['repo']+":"+image_detail['tag']
-                        dbfilter = {'imageDigest':imageDigest, 'tag':fulltag}
-
-                        with db.session_scope() as dbsession:
-                            all_policy_evals = db.db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-                        logger.debug("TRIMMER: GOT ROWS: " + str(len(all_policy_evals)))
-                        # potentially trim all but the latest
-                        for policy_eval in all_policy_evals[1:]:
-                            logger.debug("TRIMMER: EVAL: " + str(policy_eval.keys()))
-                            now = int(time.time())
-                            if (now - policy_eval['created_at']) > history_windows['policy_evals']:
-                                logger.debug("TRIMMER: EVAL: should trim entry: " + str(policy_eval))
-                                try:
-                                    with db.session_scope() as dbsession:
-                                        rc = db.db_policyeval.delete_record(policy_eval, session=dbsession)
-
-                                    if policy_eval['evalId'] not in archive_document_cleanup['policy_evaluations']:
-                                        if userId not in archive_document_cleanup['policy_evaluations']:
-                                            archive_document_cleanup['policy_evaluations'][userId] = []
-                                        archive_document_cleanup['policy_evaluations'][userId].append(policy_eval['evalId'])
-                                    #rc = archive.delete(userId, 'policy_evaluations', policy_eval['evalId'])
-                                except Exception as err:
-                                    logger.error("failed to delete policy_eval: " + str(err))
-
-
-            for bucket in archive_document_cleanup.keys():
-                for userId in archive_document_cleanup[bucket].keys():
-                    archiveIds = archive_document_cleanup[bucket][userId]
-                    for archiveId in archiveIds:
-                        logger.debug("clearing archive document: " + str(userId) + "@" + str(bucket) + "/" + str(archiveId))
-                        try:
-                            rc = archive.delete(userId, bucket, archiveId)
-                        except Exception as err:
-                            logger.warn("unable to remove archive data: " + str(userId) + "@" + str(bucket) + "/" + str(archiveId) + " - exception: " + str(err))
-
-            # TODO services trimmer based on heartbeat and down status?
-            with db.session_scope() as dbsession:
-                all_users = db.db_users.get_all(session=dbsession)
-            for user in all_users:
-                userId = user['userId']
-                dbfilter = {}
-                with db.session_scope() as dbsession:
-                    all_archive_documents = db.db_archivedocument.list_all_byuserId(userId, session=dbsession, **dbfilter)
-                for archive_document in all_archive_documents:
-                    bucket = archive_document['bucket']
-                    archiveId = archive_document['archiveId']
-                    do_delete = False
-                    with db.session_scope() as dbsession:
-                        if bucket in ['analysis_data', 'query_data']:
-                            record = db.db_catalog_image.get(archiveId, userId, session=dbsession)
-                            if not record:
-                                logger.debug("archive doc in place: " + str(archive_document) + " but no corresponding resource: trim potential")
-                                do_delete = True
-                        elif bucket in ['policy_evaluations']:
-                            dbfilter = {'evalId':archiveId}
-                            record = db.db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-                            if not record:
-                                logger.debug("archive doc in place: " + str(archive_document) + " but no corresponding resource: trim potential")
-                                do_delete = True
-                        elif bucket in ['policy_bundles']:
-                            dbfilter = {'policyId':archiveId}
-                            record = db.db_policybundle.get_byfilter(userId, session=dbsession, **dbfilter)
-                            if not record:
-                                logger.debug("archive doc in place: " + str(archive_document) + " but no corresponding resource: trim potential")
-                                do_delete = True
-                        else:
-                            logger.warn("archive bucket in place ("+str(bucket)+"), but no trim handler available")
-
-                    if do_delete:
-                        # TODO - mark for delete, dont actually delete
-                        rc = archive.delete(userId, bucket, archiveId)
-
-
-        except Exception as err:
-            logger.error("TRIMMER: ERROR: " + str(err))
-
     logger.debug("FIRING DONE: history trimmer")
-
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
 
     return(True)
 
@@ -1062,7 +947,7 @@ threads = {
     'analyzer_queue': {'handler':handle_analyzer_queue, 'args':[], 'thread': None, 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_run': 0, 'last_return': False},
     'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
-    'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
+    'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
     'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 14400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False}
 }
 
