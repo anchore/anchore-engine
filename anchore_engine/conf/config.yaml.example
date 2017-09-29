@@ -2,6 +2,8 @@
 #
 
 #
+# ===Global Section===
+#
 # service_dir: '/root/.anchore_engine'
 # tmp_dir: '/tmp'
 #
@@ -15,15 +17,22 @@ cleanup_images: True
 # docker_conn: 'unix://var/run/docker.sock'
 # docker_conn_timeout: 600
 #
+# allow_awsecr_iam_auto: False
+#
 
-# A feeds section is available for override, but shouldn't be needed. By default, the 'admin' credentials are used if present, otherwise anonymous access for feed sync is used
+# ===Feeds Section===
+#
+# A feeds section is available for override, but shouldn't be
+# needed. By default, the 'admin' credentials are used if present,
+# otherwise anonymous access for feed sync is used
+# 
 #feeds:
 #  selective_sync:
-    # If enabled only sync specific feeds instead of all.
+#    # If enabled only sync specific feeds instead of all.
 #    enabled: True
 #    feeds:
 #      vulnerabilities: True
-      # Warning: enabling the package sync causes the service to require much more memory to do process the significant data volume. We recommend at least 4GB available for the container
+#      # Warning: enabling the package sync causes the service to require much more memory to do process the significant data volume. We recommend at least 4GB available for the container
 #      packages: False
 #  anonymous_user_username: anon@ancho.re
 #  anonymous_user_password: pbiU2RYZ2XrmYQ
@@ -33,6 +42,9 @@ cleanup_images: True
 #  connection_timeout_seconds: 3
 #  read_timeout_seconds: 60
 
+#
+# ===Anchore Engine Users/Credentials Section===
+#
 credentials:
   users:
      admin:
@@ -50,11 +62,15 @@ credentials:
       ssl: False
     db_pool_size: 30
     db_pool_max_overflow: 100
+
+#
+# ===Webhooks Section===
+#
 webhooks:
   # note that any top-level webhook param can be overriden within each specific webhook section
   # for URLs, the following variables will be filled in by anchore when constructing the final webhook URL: <userId>
-  webhook_user: 'mehuser'
-  webhook_pass: 'mehpass'
+  webhook_user: '<webhookuser>'
+  webhook_pass: '<webhookpass>'
   ssl_verify: False
   # notification_retry_timeout: 30
 
@@ -76,6 +92,9 @@ webhooks:
   #   url: 'http://localhost:8080/error_event/'
   #
 
+#
+# ===Services Section===
+#
 services:
   apiext:
     enabled: True

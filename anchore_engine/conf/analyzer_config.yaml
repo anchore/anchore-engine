@@ -25,6 +25,6 @@ content_search:
   regexp_match:
     - "AWS_ACCESS_KEY=(?i).*aws_access_key_id( *=+ *).*(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9]).*"
     - "AWS_SECRET_KEY=(?i).*aws_secret_access_key( *=+ *).*(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=]).*"
-    - "SSH_PRIV_KEY=(?i)-+BEGIN(.*)PRIVATE KEY-+"
+    - "PRIV_KEY=(?i)-+BEGIN(.*)PRIVATE KEY-+"
     - "DOCKER_AUTH=(?i).*\"auth\": *\".+\""
     - "API_KEY=(?i).*api(-|_)key( *=+ *).*(?<![A-Z0-9])[A-Z0-9]{20,60}(?![A-Z0-9]).*"
