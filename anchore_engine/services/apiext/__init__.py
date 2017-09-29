@@ -59,11 +59,9 @@ if False:
             httpcode = return_object['httpcode']
             return(json.dumps(return_object, indent=4), httpcode)
 
-        #return("HI THERE", 401)
-
     @flask_app.teardown_request
     def teardown_session(exception=None):
-        logger.debug("MEH AFTER")
+        logger.debug("AFTER")
 
 # service funcs (must be here)
 def createService(sname, config):
