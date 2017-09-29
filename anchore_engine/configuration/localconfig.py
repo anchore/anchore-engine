@@ -1,9 +1,10 @@
-import json
 import os
-import shutil
+import re
+import json
 import uuid
-
 import yaml
+import shutil
+
 from pkg_resources import resource_filename
 
 from anchore_engine.subsys import logger
@@ -140,12 +141,45 @@ def read_config(configfile=None):
     else:
         try:
             with open(configfile, 'r') as FH:
+                confbuf = FH.read()
+        except Exception as err:
+            raise err
+
+        try:
+            anchore_envs = {}
+            if 'ANCHORE_ENV_FILE' in os.environ and os.path.exists(os.environ['ANCHORE_ENV_FILE']):
                 try:
-                    confdata = yaml.safe_load(FH)
-                    if confdata:
-                        ret.update(confdata)
+                    with open(os.environ['ANCHORE_ENV_FILE'], 'r') as FH:
+                        secret_envbuf = FH.read()
+                    for line in secret_envbuf.splitlines():
+                        try:
+                            (k, v) = line.split("=", 1)
+                            v = re.sub("^(\"|')+", "", v)
+                            v = re.sub("(\"|')+$", "", v)
+                            if re.match("^ANCHORE.*", k):
+                                anchore_envs[k] = str(v)
+                        except Exception as err:
+                            logger.warn("cannot parse line from ANCHORE_ENV_FILE - exception: " + str(err))
                 except Exception as err:
                     raise err
+
+            for e in os.environ.keys():
+                if re.match("^ANCHORE.*", e):
+                    anchore_envs[e] = str(os.environ[e])
+
+            if anchore_envs:
+                confbufcopy = confbuf
+                try:
+                    for e in anchore_envs.keys():
+                        confbufcopy = confbufcopy.replace("${"+str(e)+"}", anchore_envs[e])
+                except Exception as err:
+                    logger.warn("problem replacing configuration variable values with overrides - exception: " + str(err))
+                else:
+                    confbuf = confbufcopy
+
+            confdata = yaml.load(confbuf)
+            if confdata:
+                ret.update(confdata)
         except Exception as err:
             raise err
 
@@ -160,8 +194,13 @@ def read_config(configfile=None):
 def validate_config(config):
     ret = True
     try:
-        # top level checks
+        # ensure there aren't any left over unset variables
+        confbuf = json.dumps(config)
+        patt = re.match(".*(\${ANCHORE.*?}).*", confbuf, re.DOTALL)
+        if patt:
+            raise Exception("variable overrides found in configuration file that are unset ("+str(patt.group(1))+")")
 
+        # top level checks
         if 'services' not in config or not config['services']:
             raise Exception("no 'services' definition in configuration file")
         else:
