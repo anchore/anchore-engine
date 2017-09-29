@@ -425,6 +425,7 @@ class Registry(Base):
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
     record_state_key = Column(String, default="active")
     record_state_val = Column(String)
+    registry_type = Column(String)
 
     registry_user = Column(String)
     registry_pass = Column(String)

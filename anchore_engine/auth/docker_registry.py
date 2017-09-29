@@ -6,6 +6,7 @@ import docker
 import requests
 
 import anchore_engine.configuration.localconfig
+import anchore_engine.auth.common
 from anchore_engine.subsys import logger
 from anchore_engine.vendored import docker_registry_client
 from .skopeo_wrapper import get_image_manifest_skopeo
@@ -46,8 +47,7 @@ def get_authenticated_cli(userId, registry, registry_creds=[]):
         user = pw = None
         for registry_record in registry_creds:
             if registry_record['registry'] == registry:
-                user = registry_record['registry_user']
-                pw = registry_record['registry_pass']
+                user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
 
         if not user or not pw:
             logger.debug("DOCKER CLI: making unauth CLI")
@@ -156,8 +156,9 @@ def get_image_manifest(userId, image_info, registry_creds):
     try:
         for registry_record in registry_creds:
             if registry_record['registry'] == registry:
-                user = registry_record['registry_user']
-                pw = registry_record['registry_pass']
+                user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
+                #user = registry_record['registry_user']
+                #pw = registry_record['registry_pass']
                 registry_verify = registry_record['registry_verify']
                 break
     except:

@@ -403,6 +403,10 @@ def handle_image_watcher(*args, **kwargs):
                 logger.debug("checking image latest info from registry: " + fulltag)
 
                 registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
+                try:
+                    catalog_impl.refresh_registry_creds(registry_creds, dbsession)
+                except Exception as err:
+                    logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=True, registry_creds=registry_creds)
                 logger.spew("checking image: got registry info: " + str(image_info))
@@ -936,6 +940,56 @@ def handle_notifications(*args, **kwargs):
         pass
     return(True)
 
+def handle_catalog_duty (*args, **kwargs):
+    global system_user_auth
+
+    import anchore_engine.auth.aws_ecr
+
+    logger.debug("FIRING: catalog duty cycle")
+
+    if False:
+        try:
+            # TODO - any catalog recuring duty cycle items
+            with db.session_scope() as dbsession:
+                registry_records = db.db_registries.get_all(session=dbsession)
+
+            for registry_record in registry_records:
+                logger.debug("checking registry for up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
+                if 'registry_type' in registry_record and registry_record['registry_type'] in ['awsecr']:
+                    if registry_record['registry_type'] == 'awsecr':
+                        dorefresh = True
+                        if registry_record['registry_meta']:
+                            ecr_data = json.loads(registry_record['registry_meta'])
+                            expiresAt = ecr_data['expiresAt']
+                            if time.time() < expiresAt:
+                                dorefresh =False
+
+                        if dorefresh:
+                            logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
+                            ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
+                            registry_record['registry_meta'] = json.dumps(ecr_data)
+                            with db.session_scope() as dbsession:
+                                db.db_registries.update_record(registry_record, session=dbsession)
+                logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
+        except Exception as err:
+
+            logger.warn("duty cycle failed - exception: " + str(err))
+            logger.debug("FIRING DONE: catalog duty cycle")
+            try:
+                kwargs['mythread']['last_return'] = False
+            except:
+                pass
+            return(True)
+
+
+    logger.debug("FIRING DONE: catalog duty cycle")
+    try:
+        kwargs['mythread']['last_return'] = True
+    except:
+        pass
+
+    return(True)
+
 click = 0
 running = False
 last_run = 0
@@ -948,7 +1002,8 @@ threads = {
     'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
     'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
-    'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 14400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False}
+    'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 14400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
+    'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
 }
 
 system_user_auth = ('anchore-system', '')

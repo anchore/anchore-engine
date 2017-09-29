@@ -15,7 +15,7 @@ def make_response_registry(user_auth, registry_record, params):
     userId, pw = user_auth
 
     try:
-        for k in ['registry', 'userId', 'registry_user', 'registry_verify', 'registry_meta']:
+        for k in ['registry', 'userId', 'registry_user', 'registry_verify', 'registry_type']:
             ret[k] = registry_record[k]
 
         for datekey in ['last_updated', 'created_at']:

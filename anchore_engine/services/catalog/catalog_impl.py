@@ -6,6 +6,7 @@ import time
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.anchore_resources
+import anchore_engine.auth.aws_ecr
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys
 from anchore_engine.clients import localanchore, simplequeue
@@ -41,6 +42,10 @@ def registry_lookup(dbsession, request_inputs):
         else:
             try:
                 registry_creds = db_registries.get_byuserId(userId, session=dbsession)
+                try:
+                    refresh_registry_creds(registry_creds, dbsession)
+                except Exception as err:
+                    logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                 digest, manifest = anchore_engine.services.common.lookup_registry_image(userId, image_info, registry_creds)
                 return_object['digest'] = image_info['registry'] + "/" + image_info['repo'] + "@" + digest
@@ -93,6 +98,10 @@ def image(dbsession, request_inputs, bodycontent={}):
                 if registry_lookup:
                     try:
                         registry_creds = db_registries.get_byuserId(userId, session=dbsession)
+                        try:
+                            refresh_registry_creds(registry_creds, dbsession)
+                        except Exception as err:
+                            logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                         image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
                     except Exception as err:
@@ -152,6 +161,10 @@ def image(dbsession, request_inputs, bodycontent={}):
             image_record = {}
             try:
                 registry_creds = db_registries.get_byuserId(userId, session=dbsession)
+                try:
+                    refresh_registry_creds(registry_creds, dbsession)
+                except Exception as err:
+                    logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                 image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
                 logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
@@ -843,6 +856,11 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
     try:
         if method == 'GET':
             registry_records = db_registries.get_byuserId(userId, session=dbsession)
+            try:
+                refresh_registry_creds(registry_records, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
             return_object = registry_records
             httpcode = 200
         elif method == 'POST':
@@ -852,18 +870,47 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             else:
                 httpcode = 500
                 raise Exception("body does not contain registry key")
-            registry_record = db_registries.get(registry, userId, session=dbsession)
-            if registry_record:
+            registry_records = db_registries.get(registry, userId, session=dbsession)
+            if registry_records:
                 httpcode = 500
                 raise Exception("registry already exists in DB")
 
             rc = db_registries.add(registry, userId, registrydata, session=dbsession)
-            return_object = db_registries.get(registry, userId, session=dbsession)
+            registry_records = db_registries.get(registry, userId, session=dbsession)
+            try:
+                refresh_registry_creds(registry_records, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
+            return_object = registry_records
             httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
+
+def refresh_registry_creds(registry_records, dbsession):
+
+    for registry_record in registry_records:
+        logger.debug("checking registry for up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
+        if 'registry_type' in registry_record and registry_record['registry_type'] in ['awsecr']:
+            if registry_record['registry_type'] == 'awsecr':
+                dorefresh = True
+                if registry_record['registry_meta']:
+                    ecr_data = json.loads(registry_record['registry_meta'])
+                    expiresAt = ecr_data['expiresAt']
+                    if time.time() < expiresAt:
+                        dorefresh =False
+
+                if dorefresh:
+                    logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
+                    ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
+                    registry_record['registry_meta'] = json.dumps(ecr_data)
+                    registry_record['hellothere'] = True
+                    db_registries.update_record(registry_record, session=dbsession)
+
+        logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
+    return(True)
 
 def system_registries_registry(dbsession, request_inputs, registry, bodycontent={}):
     user_auth = request_inputs['auth']
@@ -880,6 +927,12 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             if not registry_records:
                 httpcode = 404
                 raise Exception("registry not found in DB")
+            
+            try:
+                refresh_registry_creds(registry_records, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
             return_object = registry_records
             httpcode = 200
         elif method == 'PUT':
@@ -890,7 +943,13 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
                 raise Exception("could not find existing registry to update")
             
             rc = db_registries.update(registry, userId, registrydata, session=dbsession)
-            return_object = db_registries.get(registry, userId, session=dbsession)
+            registry_records = db_registries.get(registry, userId, session=dbsession)
+            try:
+                refresh_registry_creds(registry_records, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
+            return_object = registry_records
             httpcode = 200
         elif method == 'DELETE':
             if not registry:

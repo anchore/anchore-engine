@@ -1438,6 +1438,9 @@ definitions:
       registry_user:
         type: string
         description: Username portion of credential to use for this registry
+      registry_type:
+        type: string
+        description: Type of registry
       userId:
         type: string
         description: Engine user that owns this registry entry

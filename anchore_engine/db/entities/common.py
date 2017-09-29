@@ -225,17 +225,6 @@ def do_upgrade(inplace, incode):
                     except Exception as err:
                         raise err
 
-                elif db_current == '0.0.2' and db_to == '0.0.3':
-                    print ("upgrade from 0.0.2 to 0.0.3")
-                    try:
-                        table_name = 'subscriptions'
-                        column = Column('foobar', String, primary_key=False)
-                        cn = column.compile(dialect=engine.dialect)
-                        ct = column.type.compile(engine.dialect)
-                        engine.execute('ALTER TABLE %s DROP COLUMN IF EXISTS %s' % (table_name, cn))
-                    except Exception as err:
-                        raise err
-
                 db_current = db_to
 
     if inplace['service_version'] != incode['service_version']:
@@ -248,22 +237,33 @@ def do_upgrade(inplace, incode):
 def db_upgrade_001_002():
     global engine
 
-    table_name = 'catalog_image_docker'
-    column = Column('created_at', Integer, primary_key=False)
+    from anchore_engine.db import db_anchore, db_users, db_registries
+    table_name = 'registries'
+    column = Column('registry_type', String, primary_key=False)
     cn = column.compile(dialect=engine.dialect)
     ct = column.type.compile(engine.dialect)
     engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
 
-    import db.db_users, db.db_catalog_image_docker
     with session_scope() as dbsession:
-        all_users = db.db_users.get_all(session=dbsession)
-        for user in all_users:
-            userId = user['userId']
-            all_records = db.db_catalog_image_docker.get_all(userId, session=dbsession)
-            for record in all_records:
-                if not record['created_at']:
-                    record['created_at'] = time.time()
-                    db.db_catalog_image_docker.update_record(record, session=dbsession)
+        registry_records = db_registries.get_all(session=dbsession)
+        for registry_record in registry_records:
+            try:
+                if not registry_record['registry_type']:
+                    registry_record['registry_type'] = 'docker_v2'
+                    db_registries.update_record(registry_record, session=dbsession)
+            except Exception as err:
+                pass
+
+    #import db.db_users, db.db_catalog_image_docker
+    #with session_scope() as dbsession:
+    #    all_users = db.db_users.get_all(session=dbsession)
+    #    for user in all_users:
+    #        userId = user['userId']
+    #        all_records = db.db_catalog_image_docker.get_all(userId, session=dbsession)
+    #        for record in all_records:
+    #            if not record['created_at']:
+    #                record['created_at'] = time.time()
+    #                db.db_catalog_image_docker.update_record(record, session=dbsession)
 
     return (True)
 

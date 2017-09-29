@@ -243,8 +243,15 @@ def process_analyzer_job(system_user_auth, qobj):
 
                         localconfig = anchore_engine.configuration.localconfig.get_config()
                         verify = localconfig['internal_ssl_verify']
-                    
+
                         client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
+
+                        try:
+                            logger.debug("clearing any existing record in policy engine for image: " + str(imageId))
+                            rc = client.delete_image(user_id=userId, image_id=imageId)
+                        except Exception as err:
+                            logger.warn("exception on pre-delete - exception: " + str(err))
+
                         request = ImageIngressRequest()
                         request.user_id = userId
                         request.image_id = imageId

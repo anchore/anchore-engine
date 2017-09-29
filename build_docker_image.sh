@@ -32,4 +32,11 @@ else
     git clone git@github.com:anchore/anchore-engine.git
 fi
 
-cd /tmp/anchore-engine-build && docker build -t ${TAG} ${cache_directive} . && docker tag ${TAG} anchore/${TAG}
+WHEELVOLUME=""
+if [ ! -z "$ANCHOREWHEELHOUSE" ]; then
+    if [ -d "$ANCHOREWHEELHOUSE" ]; then
+	WHEELVOLUME="-v ${ANCHOREWHEELHOUSE}:/wheelhouse"
+    fi
+fi
+
+cd /tmp/anchore-engine-build && docker build -t ${TAG} ${cache_directive} ${WHEELVOLUME} . && docker tag ${TAG} anchore/${TAG}
