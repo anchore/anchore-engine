@@ -27,6 +27,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+    application.app.url_map.strict_slashes = False
     application.add_api('swagger.yaml')
     app = application
 except Exception as err:

@@ -11,6 +11,7 @@ try:
     # Setup the api server and routing defined by the swagger file
     # Uses the x-swagger-router-controller directive to set which module handles the routes
     application = connexion.FlaskApp(__name__, specification_dir=SWAGGER_DIR)
+    application.app.url_map.strict_slashes = False
     application.add_api(SWAGGER_FILE)
 except:
     traceback.print_exc()

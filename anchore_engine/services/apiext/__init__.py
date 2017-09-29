@@ -14,6 +14,7 @@ from anchore_engine.subsys import logger
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+    application.app.url_map.strict_slashes = False
     application.add_api('swagger.yaml')
     flask_app = application.app
 except Exception as err:
