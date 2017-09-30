@@ -197,67 +197,68 @@ def handle_feed_sync(*args, **kwargs):
 def handle_history_trimmer(*args, **kwargs):
     logger.debug("FIRING: history trimmer")
 
-    try:
-        # TODO - deal with configuring these items (per user, via API, via config) - disabled here across the board
-        trim_policies = {
-            'images': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-            'policies': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-            'registries': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-            'subscriptions': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-            'archive': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-            'evaluations': {'prune': False, 'dangling': True, 'olderthan': 12*30*86400}
-        }
+    if False:
+        try:
+            # TODO - deal with configuring these items (per user, via API, via config) - disabled here across the board
+            trim_policies = {
+                'images': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+                'policies': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+                'registries': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+                'subscriptions': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+                'archive': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
+                'evaluations': {'prune': False, 'dangling': True, 'olderthan': 12*30*86400}
+            }
 
-        #trim_policies = {
-        #    'images': {'prune': True, 'dangling': True, 'olderthan': 1},
-        #    'policies': {'prune': True, 'dangling': True, 'olderthan': 1},
-        #    'registries': {'prune': True, 'dangling': True, 'olderthan': 1},
-        #    'subscriptions': {'prune': True, 'dangling': True, 'olderthan': 1},
-        #    'archive': {'prune': True, 'dangling': True, 'olderthan': 1},
-        #    'evaluations': {'prune': True, 'dangling': True, 'olderthan': 1}
-        #}
+            #trim_policies = {
+            #    'images': {'prune': True, 'dangling': True, 'olderthan': 1},
+            #    'policies': {'prune': True, 'dangling': True, 'olderthan': 1},
+            #    'registries': {'prune': True, 'dangling': True, 'olderthan': 1},
+            #    'subscriptions': {'prune': True, 'dangling': True, 'olderthan': 1},
+            #    'archive': {'prune': True, 'dangling': True, 'olderthan': 1},
+            #    'evaluations': {'prune': True, 'dangling': True, 'olderthan': 1}
+            #}
 
-        all_users = []
-        with db.session_scope() as dbsession:
-            all_users = db.db_users.get_all(session=dbsession)
+            all_users = []
+            with db.session_scope() as dbsession:
+                all_users = db.db_users.get_all(session=dbsession)
 
-        for user in all_users:
-            userId = user['userId']
-            resource_types = anchore_engine.services.common.resource_types
-            for resourcetype in resource_types:
+            for user in all_users:
+                userId = user['userId']
+                resource_types = anchore_engine.services.common.resource_types
+                for resourcetype in resource_types:
 
-                prune_candidates = {}
-                httpcode = 500
+                    prune_candidates = {}
+                    httpcode = 500
 
-                try:
-                    if resourcetype in trim_policies and trim_policies[resourcetype]['prune']:
-                        dangling = trim_policies[resourcetype]['dangling']
-                        olderthan = trim_policies[resourcetype]['olderthan']
+                    try:
+                        if resourcetype in trim_policies and trim_policies[resourcetype]['prune']:
+                            dangling = trim_policies[resourcetype]['dangling']
+                            olderthan = trim_policies[resourcetype]['olderthan']
 
-                        with db.session_scope() as dbsession:
-                            prune_candidates, httpcode = catalog_impl.get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan, resource_user=userId)
-                        logger.debug("prune candidates " + str(userId) + " : " + str(resourcetype) + " : " + json.dumps(prune_candidates, indent=4))
+                            with db.session_scope() as dbsession:
+                                prune_candidates, httpcode = catalog_impl.get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan, resource_user=userId)
+                            logger.debug("prune candidates " + str(userId) + " : " + str(resourcetype) + " : " + json.dumps(prune_candidates, indent=4))
+                        else:
+                            logger.debug("prune policy absent or disabled for resourcetype " + str(resourcetype) + " - skipping")
+                    except Exception as err:
+                        logger.warn("cannot get prune candidates for userId="+str(userId)+" resourcetype="+str(resourcetype) +  " - exception: " + str(err))
                     else:
-                        logger.debug("prune policy absent or disabled for resourcetype " + str(resourcetype) + " - skipping")
-                except Exception as err:
-                    logger.warn("cannot get prune candidates for userId="+str(userId)+" resourcetype="+str(resourcetype) +  " - exception: " + str(err))
-                else:
-                    if httpcode in range(200, 299) and 'prune_candidates' in prune_candidates and prune_candidates['prune_candidates']:
-                        # TODO do the prune
-                        prunes = {}
-                        httpcode = 500
+                        if httpcode in range(200, 299) and 'prune_candidates' in prune_candidates and prune_candidates['prune_candidates']:
+                            # TODO do the prune
+                            prunes = {}
+                            httpcode = 500
 
-                        with db.session_scope() as dbsession:
-                            prunes, httpcode = catalog_impl.delete_prune_candidates(resourcetype, prune_candidates, dbsession, resource_user=userId)
+                            with db.session_scope() as dbsession:
+                                prunes, httpcode = catalog_impl.delete_prune_candidates(resourcetype, prune_candidates, dbsession, resource_user=userId)
 
-                        logger.debug("the prune resulted in: " + str(httpcode) + " : " + json.dumps(prunes))
-                        if prunes:
-                            logger.debug("pruned: " + json.dumps(prunes, indent=4))
-                    else:
-                        logger.debug("skipping pruning: " + str(userId) + " : " + str(resourcetype) + " : " + str(httpcode) + " : " + str(prune_candidates))
+                            logger.debug("the prune resulted in: " + str(httpcode) + " : " + json.dumps(prunes))
+                            if prunes:
+                                logger.debug("pruned: " + json.dumps(prunes, indent=4))
+                        else:
+                            logger.debug("skipping pruning: " + str(userId) + " : " + str(resourcetype) + " : " + str(httpcode) + " : " + str(prune_candidates))
 
-    except Exception as err:
-        logger.warn("failure in history trimmer: " + str(err))
+        except Exception as err:
+            logger.warn("failure in history trimmer: " + str(err))
 
     try:
         kwargs['mythread']['last_return'] = True
@@ -947,42 +948,6 @@ def handle_catalog_duty (*args, **kwargs):
     import anchore_engine.auth.aws_ecr
 
     logger.debug("FIRING: catalog duty cycle")
-
-    if False:
-        try:
-            # TODO - any catalog recuring duty cycle items
-            with db.session_scope() as dbsession:
-                registry_records = db.db_registries.get_all(session=dbsession)
-
-            for registry_record in registry_records:
-                logger.debug("checking registry for up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
-                if 'registry_type' in registry_record and registry_record['registry_type'] in ['awsecr']:
-                    if registry_record['registry_type'] == 'awsecr':
-                        dorefresh = True
-                        if registry_record['registry_meta']:
-                            ecr_data = json.loads(registry_record['registry_meta'])
-                            expiresAt = ecr_data['expiresAt']
-                            if time.time() < expiresAt:
-                                dorefresh =False
-
-                        if dorefresh:
-                            logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
-                            ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
-                            registry_record['registry_meta'] = json.dumps(ecr_data)
-                            with db.session_scope() as dbsession:
-                                db.db_registries.update_record(registry_record, session=dbsession)
-                logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
-        except Exception as err:
-
-            logger.warn("duty cycle failed - exception: " + str(err))
-            logger.debug("FIRING DONE: catalog duty cycle")
-            try:
-                kwargs['mythread']['last_return'] = False
-            except:
-                pass
-            return(True)
-
-
     logger.debug("FIRING DONE: catalog duty cycle")
     try:
         kwargs['mythread']['last_return'] = True
@@ -1002,9 +967,9 @@ threads = {
     'analyzer_queue': {'handler':handle_analyzer_queue, 'args':[], 'thread': None, 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_run': 0, 'last_return': False},
     'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
-    'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
     'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 14400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
-    'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
+    #'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
+    #'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
 }
 
 system_user_auth = ('anchore-system', '')

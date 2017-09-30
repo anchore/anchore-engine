@@ -120,7 +120,6 @@ services:
 #      policy_eval_queue: 10
 #      analyzer_queue: 5
 #      notifications: 5
-#      history_watcher: 86400
 #      service_watcher: 1
 #      policy_bundle_sync: 3600
   simplequeue:

@@ -19,7 +19,7 @@ class PkgVersionDiffTrigger(BaseTrigger):
     def evaluate(self, image_obj, context):
         changes = context.data.get('pkgs_changed', {})
 
-        for name, version in changes:
+        for name, version in changes.items():
             self._fire(instance_id=name + '-' + self.__trigger_name__,
                        msg="Package version in container is different from baseline for pkg - " + name)
 
@@ -43,7 +43,7 @@ class PkgDelTrigger(BaseTrigger):
     def evaluate(self, image_obj, context):
         removed = context.data.get('pkgs_removed', {})
 
-        for name, version in removed:
+        for name, version in removed.items():
             self._fire(instance_id=name + '-' + self.__trigger_name__,
                        msg="Package has been removed to image since base - " + name)
 

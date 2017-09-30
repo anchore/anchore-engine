@@ -112,7 +112,6 @@ services:
       feed_sync: 14400
       analyzer_queue: 1
       notifications: 30
-      history_watcher: 86400
       service_watcher: 15
       policy_bundle_sync: 300
   simplequeue:

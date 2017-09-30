@@ -875,6 +875,11 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                 httpcode = 500
                 raise Exception("registry already exists in DB")
 
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            if (registrydata['registry_user'] == 'awsauto' or registrydata['registry_pass'] == 'awsauto') and not localconfig['allow_awsecr_iam_auto']:
+                httpcode = 406
+                raise Exception("'awsauto' is not enabled in service configuration")
+
             rc = db_registries.add(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)
             try:
@@ -942,6 +947,11 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
                 httpcode = 404
                 raise Exception("could not find existing registry to update")
             
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            if (registrydata['registry_user'] == 'awsauto' or registrydata['registry_pass'] == 'awsauto') and not localconfig['allow_awsecr_iam_auto']:
+                httpcode = 406
+                raise Exception("'awsauto' is not enabled in service configuration")
+
             rc = db_registries.update(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)
             try:
