@@ -236,23 +236,47 @@ def do_upgrade(inplace, incode):
 
 def db_upgrade_001_002():
     global engine
+    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle
 
-    from anchore_engine.db import db_anchore, db_users, db_registries
-    table_name = 'registries'
-    column = Column('registry_type', String, primary_key=False)
-    cn = column.compile(dialect=engine.dialect)
-    ct = column.type.compile(engine.dialect)
-    engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+    try:
 
-    with session_scope() as dbsession:
-        registry_records = db_registries.get_all(session=dbsession)
-        for registry_record in registry_records:
-            try:
-                if not registry_record['registry_type']:
-                    registry_record['registry_type'] = 'docker_v2'
-                    db_registries.update_record(registry_record, session=dbsession)
-            except Exception as err:
-                pass
+        table_name = 'registries'
+        column = Column('registry_type', String, primary_key=False)
+        cn = column.compile(dialect=engine.dialect)
+        ct = column.type.compile(engine.dialect)
+        engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+
+        with session_scope() as dbsession:
+            registry_records = db_registries.get_all(session=dbsession)
+            for registry_record in registry_records:
+                try:
+                    if not registry_record['registry_type']:
+                        registry_record['registry_type'] = 'docker_v2'
+                        db_registries.update_record(registry_record, session=dbsession)
+                except Exception as err:
+                    pass
+    except Exception as err:
+        raise Exception("failed to perform DB registry table upgrade - exception: " + str(err))
+
+    try:
+        table_name = 'policy_bundle'
+        column = Column('policy_source', String, primary_key=False)
+        cn = column.compile(dialect=engine.dialect)
+        ct = column.type.compile(engine.dialect)
+        engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+
+        with session_scope() as dbsession:
+            policy_records = db_policybundle.get_all(session=dbsession)
+            for policy_record in policy_records:
+                try:
+                    if not policy_record['policy_source']:
+                        policy_record['policy_source'] = 'local'
+                        db_policybundle.update_record(policy_record, session=dbsession)
+                except Exception as err:
+                    pass
+
+    except Exception as err:
+        raise Exception("failed to perform DB policy_bundle table upgrade - exception: " + str(err))
 
     #import db.db_users, db.db_catalog_image_docker
     #with session_scope() as dbsession:

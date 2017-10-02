@@ -1206,6 +1206,9 @@ definitions:
       userId:
         type: string
         description: UserId of the user that owns the bundle
+      policy_source:
+        type: string
+        description: Source location of where the policy bundle originated
       policybundle:
         $ref: "#/definitions/PolicyBundle"
   PolicyBundleList:

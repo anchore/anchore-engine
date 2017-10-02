@@ -128,6 +128,16 @@ def set_active_policy(policyId, userId, session=None):
 def update(policyId, userId, active, inobj, session=None):
     return(add(policyId, userId, active, inobj, session=session))
 
+def update_record(input_record, session=None):
+    if not session:
+        session = db.Session
+
+    our_result = session.query(PolicyBundle).filter_by(policyId=input_record['policyId'], userId=input_record['userId']).first()
+    if our_result:
+        our_result.update(input_record)
+        
+    return(True)
+
 def delete(policyId, userId, session=None):
     if not session:
         session = db.Session

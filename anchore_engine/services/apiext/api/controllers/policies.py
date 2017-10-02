@@ -36,7 +36,6 @@ def make_response_policy(user_auth, policy_record, params):
 
     return (ret)
 
-
 def list_policies(detail=None):
     request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'detail': False})
     user_auth = request_inputs['auth']

@@ -102,7 +102,8 @@ if startFailed:
     sys.exit(1)
 else:
     try:
-        os.system("tail -F /var/log/anchore*.log* | grep -e '\[FATAL\]' -e '\[ERROR\]' -e '\[WARN\]' -e '\[INFO\]'")
+        #os.system("tail -F /var/log/anchore*.log* | grep -e '\[FATAL\]' -e '\[ERROR\]' -e '\[WARN\]' -e '\[INFO\]'")
+        os.system("tail -F /var/log/anchore*.log*")
     except:
         pass
 sys.exit(0)

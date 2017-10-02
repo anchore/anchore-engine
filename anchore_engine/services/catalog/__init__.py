@@ -809,16 +809,26 @@ def handle_policy_bundle_sync(*args, **kwargs):
                         if current_policy_bundle and current_policy_bundle == anchore_user_bundle:
                             logger.debug("synced bundle is the same as currently installed/active bundle")
                             do_update = False
+
+                            # special case for upgrade when adding the policy_source column
+                            try:
+                                if current_policy_record['policy_source'] == 'local':
+                                    logger.debug("upgrade case detected - need to write policy_source as anchoreio for existing policy bundle")
+                                    do_update = True
+                            except:
+                                pass
+
                         else:
                             logger.debug("synced bundle is different from currently installed/active bundle")
                             do_update = True
                 except Exception as err:
                     logger.warn("unable to compare synced bundle with current bundle: " + str(err))
 
+
                 if do_update:
 
                     logger.spew("synced bundle object: " + json.dumps(anchore_user_bundle, indent=4))
-                    new_policybundle_record = anchore_engine.services.common.make_policy_record(userId, anchore_user_bundle)
+                    new_policybundle_record = anchore_engine.services.common.make_policy_record(userId, anchore_user_bundle, policy_source="anchore.io")
                     logger.spew("created new bundle record: " + json.dumps(new_policybundle_record, indent=4))
 
                     policyId = new_policybundle_record['policyId']

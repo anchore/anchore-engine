@@ -314,6 +314,7 @@ class PolicyBundle(Base):
     record_state_key = Column(String, default="active")
     record_state_val = Column(String)
     active = Column(Boolean)
+    policy_source = Column(String, default="local")
 
     # policybundle = Column(String)
 
