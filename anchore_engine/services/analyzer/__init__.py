@@ -133,7 +133,7 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
         # query!
         try:
             query_data = localanchore.run_queries(pullstring, image_detail)
-            if not rc:
+            if not query_data:
                 raise Exception("anchore queries failed:")
         except Exception as err:
             logger.error("error on run_queries: " + str(err))
@@ -152,6 +152,15 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
             raise err
 
         logger.spew("TIMING MARK5: " + str(int(time.time()) - timer))
+
+        # augment query data with metadat from image export
+        logger.debug("extracting image metadata to store in query document")
+        try:
+            meta_query = {image_data[0]['image']['imageId']: {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}}
+            query_data['anchore_image_summary'] = meta_query
+        except Exception as err:
+            logger.error("error on extract image metadata from export into query doc")
+            raise err
 
         try:
             logger.debug("removing image: " + str(pullstring))
