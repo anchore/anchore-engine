@@ -30,7 +30,7 @@ CACHE_DIRECTIVE=""
 
 mkdir -p /tmp/anchore-engine-build
 rm -rf /tmp/anchore-engine-build/anchore-engine/
-cp -a ${DOCKERFILE} /tmp/anchore-engine-build/
+cp -a ${DOCKERFILE} /tmp/anchore-engine-build/Dockerfile
 
 cd /tmp/anchore-engine-build/
 
