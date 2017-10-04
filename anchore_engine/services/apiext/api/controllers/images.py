@@ -1,5 +1,8 @@
-import datetime
 import json
+import copy
+import stat
+import time
+import datetime
 
 from flask import request
 
@@ -10,6 +13,211 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
+def get_image_summary(user_auth, image_record):
+    ret = {}
+    if image_record['analysis_status'] != taskstate.complete_state('analyze'):
+        return(ret)
+    # return({})
+    # augment with image summary data, if available
+    try:
+        try:
+            timer = time.time()
+            image_summary_data = catalog.get_document(user_auth, 'image_summary_data', image_record['imageDigest'])
+            logger.debug("TIMER3: " +str(time.time() - timer))
+        except:
+            image_summary_data = {}
+
+        if not image_summary_data:
+            # (re)generate image_content_data document
+            logger.debug("generating image summary data from analysis data")
+            image_data = catalog.get_document(user_auth, 'analysis_data', image_record['imageDigest'])
+
+            image_content_data = {}
+            for content_type in anchore_engine.services.common.image_content_types:
+                try:
+                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
+                except:
+                    image_content_data[content_type] = {}
+            if image_content_data:
+                logger.debug("adding image content data to archive")
+                rc = catalog.put_document(user_auth, 'image_content_data', image_record['imageDigest'], image_content_data)
+
+            image_summary_data = {}
+            try:
+                image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
+            except:
+                image_summary_data = {}
+            if image_summary_data:
+                logger.debug("adding image summary data to archive")
+                rc = catalog.put_document(user_auth, 'image_summary_data', image_record['imageDigest'], image_summary_data)
+
+        image_summary_metadata = copy.deepcopy(image_summary_data)
+        if image_summary_metadata:
+            logger.debug("getting image summary data")
+
+            summary_record = {}
+
+            adm = image_summary_metadata['anchore_distro_meta']
+            air = image_summary_metadata['anchore_image_report']
+            airm = air.pop('meta', {})
+
+            summary_record['distro'] = adm.pop('DISTRO', 'N/A')
+            summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
+
+            al = air.pop('layers', [])
+            ddata = air.pop('docker_data', {})
+
+            summary_record['layer_count'] = str(len(al))
+            
+            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
+
+            summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
+            summary_record['arch'] = ddata.pop('Architecture', 'N/A')
+
+            ret = summary_record
+
+    except Exception as err:
+        logger.warn("cannot get image summary data for image: " + str(image_record['imageDigest']) + " : " + str(err))
+
+    return(ret)
+
+def make_response_content(content_type, content_data):
+    ret = []
+
+    if content_type not in anchore_engine.services.common.image_content_types:
+        logger.warn("input content_type ("+str(content_type)+") not supported ("+str(anchore_engine.services.common.image_content_types)+")")
+        return(ret)
+
+    if not content_data:
+        logger.warn("empty content data given to format - returning empty result")
+        return(ret)
+
+    # type-specific formatting of content data
+    if content_type == 'os':
+#        {
+#            "license": "Unknown", 
+#            "origin": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)", 
+#            "package": "libgcc1", 
+#            "size": 105000, 
+#            "type": "dpkg", 
+#            "version": "1:6.0.1-0ubuntu1"
+#        }, 
+        elkeys = ['license', 'origin', 'size', 'type', 'version']
+        for package in content_data.keys():
+            el = {}
+            try:
+                el['package'] = package
+                for k in elkeys:
+                    if k in content_data[package]:
+                        el[k] = content_data[package][k]
+                    else:
+                        el[k] = None
+            except:
+                el = {}
+            if el:
+                ret.append(el)
+
+    elif content_type == 'npm':
+#        {
+#            "license": "MIT", 
+#            "location": "/usr/local/lib/node_modules/npm/node_modules/npmlog/node_modules/gauge/node_modules/string-width/node_modules/is-fullwidth-code-point/", 
+#            "origin": "Sindre Sorhus (sindresorhus.com)", 
+#            "package": "is-fullwidth-code-point", 
+#            "size": null, 
+#            "type": "NPM", 
+#            "version": "1.0.0"
+#        }
+
+#       "/usr/local/lib/node_modules/npm/package.json": {
+#            "latest": null, 
+#            "lics": [
+#                "Artistic-2.0"
+#            ], 
+#            "name": "npm", 
+#            "origins": [
+#                "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)"
+#            ], 
+#            "sourcepkg": "https://github.com/npm/npm", 
+#            "versions": [
+#                "5.3.0"
+#            ]
+#        }
+        for package in content_data.keys():        
+            el = {}
+            try:
+                el['package'] = content_data[package]['name']
+                el['type'] = 'NPM'
+                el['location'] = package
+                el['version'] = content_data[package]['versions'][0]
+                el['origin'] = ','.join(content_data[package]['origins']) or 'Unknown'
+                el['license'] = ' '.join(content_data[package]['lics']) or 'Unknown'
+            except:
+                el = {}
+            if el:
+                ret.append(el)
+
+    elif content_type == 'gem':
+        for package in content_data.keys():
+            el = {}
+            try:
+                el['package'] = content_data[package]['name']
+                el['type'] = 'GEM'
+                el['location'] = package
+                el['version'] = content_data[package]['versions'][0]
+                el['origin'] = ','.join(content_data[package]['origins']) or 'Unknown'
+                el['license'] = ' '.join(content_data[package]['lics']) or 'Unknown'
+            except:
+                el = {}
+            if el:
+                ret.append(el)
+
+    elif content_type == 'files':
+#        "/var/tmp": {
+#            "fullpath": "/var/tmp", 
+#            "linkdst": null, 
+#            "linkdst_fullpath": null, 
+#            "mode": 17407, 
+#            "name": "/var/tmp", 
+#            "othernames": {
+#                "/var/tmp": true
+#            }, 
+#            "size": 6, 
+#            "type": "dir"
+#        }
+#        {
+#            "filename": "/usr/lib/x86_64-linux-gnu/perl-base/unicore/To/Ea.pl", 
+#            "linkdest": null, 
+#            "mode": "0644", 
+#            "sha256": "c47329b25bb5d6ddf99e6c85d05b8162d6e3b2f885aa7da741d34e6563783716", 
+#            "size": 2980, 
+#            "type": "file"
+#        }
+
+        timer = time.time()
+        for filename in content_data.keys():
+            el = {}
+            try:
+                el['filename'] = filename
+                el['linkdest'] = content_data[filename]['linkdst']
+                el['mode'] = oct(stat.S_IMODE(content_data[filename]['mode']))
+                el['sha256'] = content_data[filename]['sha256']
+                if el['sha256'] == 'DIRECTORY_OR_OTHER':
+                    el['sha256'] = None
+                el['size'] = content_data[filename]['size']
+                el['type'] = content_data[filename]['type']
+
+            except Exception as err:
+                el = {}
+            if el:
+                ret.append(el)        
+        logger.debug("TIMER: " + str(time.time() - timer))
+#        ret = content_data        
+    elif content_type == 'metadata':
+        pass
+    else:
+        ret = content_data
+
+    return(ret)
 
 def make_response_query(queryType, query_data):
     ret = []
@@ -171,7 +379,7 @@ def make_response_policyeval(user_auth, eval_record, params):
     return (ret)
 
 
-def make_response_image(image_record, params={}):
+def make_response_image(user_auth, image_record, params={}):
     ret = image_record
 
     # try to assemble full strings
@@ -204,6 +412,19 @@ def make_response_image(image_record, params={}):
             image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat()
         except:
             pass
+
+
+    image_content_metadata = {}
+    try:
+        image_content_metadata = get_image_summary(user_auth, image_record)
+    except:
+        image_content_metadata = {}
+
+    ret['image_content_metadata'] = image_content_metadata
+    #if extra_data:
+    #    for k in extra_data.keys():
+    #        if k not in ret:
+    #            ret[k] = extra_data[k]
 
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
@@ -304,6 +525,40 @@ def vulnerability_query(request_inputs, queryType, doformat=False):
 
     return (return_object, httpcode)
 
+def get_content(request_inputs, content_type, doformat=False):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    bodycontent = request_inputs['bodycontent']
+    params = request_inputs['params']
+
+    return_object = {}
+    httpcode = 500
+    userId, pw = user_auth
+    try:
+        tag = params.pop('tag', None)
+        imageDigest = params.pop('imageDigest', None)
+        digest = params.pop('digest', None)
+
+        image_reports = catalog.get_image(user_auth, tag=tag, digest=digest, imageDigest=imageDigest)
+        for image_report in image_reports:
+            if image_report['analysis_status'] != taskstate.complete_state('analyze'):
+                httpcode = 404
+                raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
+
+            imageDigest = image_report['imageDigest']
+            timer = time.time()
+            image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
+            logger.debug("TIMER0: " +str(time.time() - timer))
+            return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
+            logger.debug("TIMER1: " +str(time.time() - timer))
+
+        httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)
+
 def query(request_inputs, queryType, doformat=False):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -324,12 +579,10 @@ def query(request_inputs, queryType, doformat=False):
                 httpcode = 404
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
             imageDigest = image_report['imageDigest']
-            # query_data = json.loads(catalog.get_document(user_auth, 'query_data', imageDigest))
             query_data = catalog.get_document(user_auth, 'query_data', imageDigest)
             if not queryType:
                 return_object[imageDigest] = query_data.keys()
             elif queryType in query_data:
-
                 if doformat:
                     return_object[imageDigest] = make_response_query(queryType, query_data[queryType])
                 else:
@@ -344,7 +597,6 @@ def query(request_inputs, queryType, doformat=False):
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
-
 
 # images CRUD
 def list_images(history=None, image_to_get=None):
@@ -473,8 +725,26 @@ def list_image_content_by_imageid(imageId):
 
     return return_object, httpcode
 
-
+# TODO - switch to using content archive document instead of query outputs
 def get_image_content_by_type(imageDigest, ctype):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
+
+        return_object, httpcode = get_content(request_inputs, ctype, doformat=True)
+
+        return_object = {
+            'imageDigest': imageDigest,
+            'content_type': ctype,
+            'content': return_object.values()[0]
+        }
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return return_object, httpcode
+
+def get_image_content_by_type_orig(imageDigest, ctype):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
 
@@ -502,7 +772,6 @@ def get_image_content_by_type(imageDigest, ctype):
         return_object = str(err)
 
     return return_object, httpcode
-
 
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
@@ -646,7 +915,11 @@ def do_import_image(request_inputs, importRequest):
         return_object = []
         image_records = catalog.import_image(user_auth, json.loads(bodycontent))
         for image_record in image_records:
-            return_object.append(make_response_image(image_record, params))
+            #try:
+            #    image_content_metadata = get_image_summary(user_auth, image_record)
+            #except:
+            #    image_content_metadata = {}
+            return_object.append(make_response_image(user_auth, image_record, params))
         httpcode = 200
 
     except Exception as err:
@@ -699,7 +972,11 @@ def images(request_inputs):
                 image_records = catalog.get_image(user_auth, digest=digest, tag=tag, imageId=imageId,
                                                           imageDigest=imageDigest, history=history)
                 for image_record in image_records:
-                    return_object.append(make_response_image(image_record, params))
+                    #try:
+                    #    image_content_metadata = get_image_summary(user_auth, image_record)
+                    #except:
+                    #    image_content_metadata = {}
+                    return_object.append(make_response_image(user_auth, image_record, params))
                 httpcode = 200
             except Exception as err:
                 raise err
@@ -771,7 +1048,11 @@ def images(request_inputs):
 
                 return_object = []
                 for image_record in image_records:
-                    return_object.append(make_response_image(image_record, params))
+                    #try:
+                    #    image_content_metadata = get_image_summary(user_auth, image_record)
+                    #except:
+                    #    image_content_metadata = {}
+                    return_object.append(make_response_image(user_auth, image_record, params))
 
             else:
                 httpcode = 500
@@ -804,7 +1085,17 @@ def images_imageDigest(request_inputs, imageDigest):
             if image_records:
                 return_object = []
                 for image_record in image_records:
-                    return_object.append(make_response_image(image_record, params))
+                    #try:
+                    #    query_data = catalog.get_document(user_auth, 'query_data', imageDigest)
+                    #    if 'anchore_image_summary' in query_data and query_data['anchore_image_summary']:
+                    #        logger.debug("getting image summary data")
+                    #except Exception as err:
+                    #    logger.warn("cannot get image summary data for image: " + str(imageDigest))
+                    #try:
+                    #    image_content_metadata = get_image_summary(user_auth, image_record)
+                    #except:
+                    #    image_content_metadata = {}
+                    return_object.append(make_response_image(user_auth, image_record, params))
                 httpcode = 200
             else:
                 httpcode = 404

@@ -1309,6 +1309,28 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                         new_image_record['image_status'] = taskstate.init_state('image_status', None)
                         if anchore_data:
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
+
+                            #image_content_metadata = {'anchore_image_report': anchore_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': anchore_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
+                            #rc = archive_sys.put_document(userId, 'image_content_metadata', imageDigest, image_content_metadata)
+                            image_content_data = {}
+                            for content_type in anchore_engine.services.common.image_content_types:
+                                try:
+                                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type)
+                                except:
+                                    image_content_data[content_type] = {}
+                            if image_content_data:
+                                logger.debug("adding image content data to archive")
+                                rc = anchore_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
+
+                            image_summary_data = {}
+                            try:
+                                image_summary_data = anchore_engine.services.common.extract_analyzer_content(anchore_data, 'metadata')
+                            except:
+                                image_summary_data = {}
+                            if image_summary_data:
+                                logger.debug("adding image summary data to archive")
+                                rc = archive_sys.put_document(userId, 'image_summary_data', imageDigest, image_summary_data)
+
                             new_image_record['analysis_status'] = taskstate.complete_state('analyze')
                         else:
                             new_image_record['analysis_status'] = taskstate.init_state('analyze', None)
@@ -1854,12 +1876,17 @@ def do_image_delete(userId, image_record, dbsession, force=False):
         if dodelete:
             logger.debug("DELETEing image from catalog")
             rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
-            logger.debug("DELETEing image from archive analysis_data")
-            rc = archive_sys.delete(userId, 'analysis_data', imageDigest)
-            logger.debug("DELETEing image from archive query_data")
-            rc = archive_sys.delete(userId, 'query_data', imageDigest)
-            logger.debug("DELETEing image from policy_engine")
 
+            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data']:
+                logger.debug("DELETEing image from archive " + str(bucket) + "/" + str(imageDigest))
+                rc = archive_sys.delete(userId, bucket, imageDigest)
+
+            #logger.debug("DELETEing image from archive query_data")
+            #rc = archive_sys.delete(userId, 'query_data', imageDigest)
+            #logger.debug("DELETEing image from archive image_content_metadata")
+            #rc = archive_sys.delete(userId, 'image_content_metadata', imageDigest)
+
+            logger.debug("DELETEing image from policy_engine")
             # prepare inputs
             try:
                 system_user_auth = get_system_auth(dbsession)

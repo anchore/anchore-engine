@@ -30,8 +30,9 @@ apiext_status = {}
 latest_service_records = {"service_records": []}
 subscription_types = ['policy_eval', 'tag_update', 'vuln_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
-bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan"]
+bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data"]
 super_users = ['admin', 'anchore-system']
+image_content_types = ['os', 'files', 'npm', 'gem']
 
 def registerService(sname, config, enforce_unique=True):
     ret = False
@@ -604,3 +605,66 @@ def do_request_prep(request, default_params={}):
 
     return(ret)
 
+def extract_analyzer_content(image_data, content_type):
+    ret = {}
+    try:
+        idata = image_data[0]['image']
+        imageId = idata['imageId']
+        
+        if content_type == 'files':
+            try:
+                fcsums = {}
+                if 'files.sha256sums' in idata['imagedata']['analysis_report']['file_checksums']:
+                    adata = idata['imagedata']['analysis_report']['file_checksums']['files.sha256sums']['base']
+                    for k in adata.keys():
+                        fcsums[k] = adata[k]
+
+                if 'files.allinfo' in idata['imagedata']['analysis_report']['file_list']:
+                    adata = idata['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
+                    for k in adata.keys():
+                        avalue = json.loads(adata[k])
+                        if k in fcsums:
+                            avalue['sha256'] = fcsums[k]
+                        ret[k] = avalue
+                        
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif content_type == 'os':
+            try:
+                if 'pkgs.allinfo' in idata['imagedata']['analysis_report']['package_list']:
+                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
+                    for k in adata.keys():
+                        avalue = json.loads(adata[k])
+                        ret[k] = avalue
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif content_type == 'npm':
+            try:
+                if 'pkgs.npms' in idata['imagedata']['analysis_report']['package_list']:
+                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
+                    for k in adata.keys():
+                        avalue = json.loads(adata[k])
+                        ret[k] = avalue
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif content_type == 'gem':
+            try:
+                if 'pkgs.gems' in idata['imagedata']['analysis_report']['package_list']:
+                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
+                    for k in adata.keys():
+                        avalue = json.loads(adata[k])
+                        ret[k] = avalue
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif content_type == 'metadata':
+            try:
+                if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
+                    ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+            
+    except Exception as err:
+        logger.error("exception: " + str(err))
+        raise err
+
+    return(ret)

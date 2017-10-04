@@ -242,6 +242,7 @@ class CatalogImage(Base):
     record_state_val = Column(String)
 
     image_type = Column(String)
+    #image_content_metadata = Column(String)
     analysis_status = Column(String)
     image_status = Column(String)
 

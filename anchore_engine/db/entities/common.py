@@ -219,7 +219,7 @@ def do_upgrade(inplace, incode):
 
                 # this is just example code for now - have a clause for each possible from->to in the upgrade chain
                 if db_current == '0.0.1' and db_to == '0.0.2':
-                    print ("upgrade from 0.0.1 to 0.0.2")
+                    print ("upgrading from 0.0.1 to 0.0.2")
                     try:
                         rc = db_upgrade_001_002()
                     except Exception as err:
@@ -236,7 +236,7 @@ def do_upgrade(inplace, incode):
 
 def db_upgrade_001_002():
     global engine
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle
+    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image
 
     try:
 
@@ -278,16 +278,26 @@ def db_upgrade_001_002():
     except Exception as err:
         raise Exception("failed to perform DB policy_bundle table upgrade - exception: " + str(err))
 
-    #import db.db_users, db.db_catalog_image_docker
-    #with session_scope() as dbsession:
-    #    all_users = db.db_users.get_all(session=dbsession)
-    #    for user in all_users:
-    #        userId = user['userId']
-    #        all_records = db.db_catalog_image_docker.get_all(userId, session=dbsession)
-    #        for record in all_records:
-    #            if not record['created_at']:
-    #                record['created_at'] = time.time()
-    #                db.db_catalog_image_docker.update_record(record, session=dbsession)
+    if False:
+        try:
+            table_name = 'catalog_image'
+            column = Column('image_content_metadata', String, primary_key=False)
+            cn = column.compile(dialect=engine.dialect)
+            ct = column.type.compile(engine.dialect)
+            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+
+            with session_scope() as dbsession:
+                image_records = db_catalog_image.get_all(session=dbsession)
+                for image_record in image_records:
+                    try:
+                        if not image_record['image_content_metadata']:
+                            image_record['image_content_metadata'] = json.dumps({})
+                            db_catalog_image.update_record(image_record, session=dbsession)
+                    except Exception as err:
+                        pass
+
+        except Exception as err:
+            raise Exception("failed to perform DB catalog_image table upgrade - exception: " + str(err))
 
     return (True)
 

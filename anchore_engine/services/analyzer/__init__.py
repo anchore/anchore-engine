@@ -153,15 +153,6 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
 
         logger.spew("TIMING MARK5: " + str(int(time.time()) - timer))
 
-        # augment query data with metadat from image export
-        logger.debug("extracting image metadata to store in query document")
-        try:
-            meta_query = {image_data[0]['image']['imageId']: {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}}
-            query_data['anchore_image_summary'] = meta_query
-        except Exception as err:
-            logger.error("error on extract image metadata from export into query doc")
-            raise err
-
         try:
             logger.debug("removing image: " + str(pullstring))
             rc = localanchore.remove_image(pullstring, docker_remove=do_docker_cleanup,
@@ -174,6 +165,7 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
 
     ret_analyze = image_data
     ret_query = query_data
+
     logger.info("performing analysis on image complete: " + str(pullstring))
     return (ret_analyze, ret_query)
 
@@ -243,8 +235,32 @@ def process_analyzer_job(system_user_auth, qobj):
                         logger.warn("could not get imageId after analysis or from image record - exception: " + str(err))
 
                 logger.debug("archiving analysis data")
-                resource_url = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
-                if resource_url:
+                rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+                if rc:
+                    try:
+                        logger.debug("extracting image content data")
+                        image_content_data = {}
+                        for content_type in anchore_engine.services.common.image_content_types:
+                            try:
+                                image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
+                            except:
+                                image_content_data[content_type] = {}
+
+                        if image_content_data:
+                            logger.debug("adding image content data to archive")
+                            rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
+
+                        image_summary_data = {}
+                        try:
+                            image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
+                        except:
+                            image_summary_data = {}
+                        if image_summary_data:
+                            logger.debug("adding image summary data to archive")
+                            rc = catalog.put_document(user_auth, 'image_summary_data', imageDigest, image_summary_data)
+
+                    except Exception as err:
+                        logger.warn("could not store image content metadata to archive - exception: " + str(err))
 
                     logger.debug("adding image record to policy-engine service (" + str(userId) + " : " + str(imageId) + ")")
                     try:
