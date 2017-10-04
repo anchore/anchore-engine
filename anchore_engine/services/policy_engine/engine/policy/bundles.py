@@ -1,6 +1,7 @@
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import enum
 import copy
+import re
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.util.docker import parse_dockerimage_string
@@ -725,11 +726,133 @@ class ExecutableWhitelistItem(object):
         }
 
 
+class IWhitelistItemIndex(object):
+    """
+    A data structure to lookup potential whitelist items for a given gate output
+    """
+
+    def add(self, item):
+        """
+        Add the whitelist item to the index for lookup
+
+        :param item:
+        :return:
+        """
+        pass
+
+    def candidates_for(self, decision_match):
+        """
+        Return whitelist items that may match the decision. Depending on the implementation may be an exact or fuzzy match.
+
+        :param decision_match:
+        :return: list of ExecutableWhitelistItem objects
+        """
+        raise NotImplementedError()
+
+
+class HybridTriggerIdKeyedItemIndex(IWhitelistItemIndex):
+    """
+    An index that has a primary keyed lookup and a secondary list for unkeyed entries.
+
+    Each gate has its own index composed of a keyed index and an array for any whitelist items that are not triggerid specific
+    """
+
+    GateItemIndex = namedtuple('GateItemIndex', ['keyed','unkeyed'])
+
+    def __init__(self, item_key_fn=None, match_key_fn=None):
+        self.gate_keys = OrderedDict()
+        self.key_fn = item_key_fn
+        self.match_key_fn = match_key_fn
+
+    def add(self, item):
+        key = None
+        if self.key_fn:
+            key = self.key_fn(item)
+
+        gate_name = item.gate.lower()
+
+        if gate_name not in self.gate_keys:
+            self.gate_keys[gate_name] = HybridTriggerIdKeyedItemIndex.GateItemIndex(keyed=OrderedDict(), unkeyed=[])
+
+        if not key:
+            self.gate_keys[gate_name].unkeyed.append(item)
+        else:
+            if key not in self.gate_keys[gate_name].keyed:
+                self.gate_keys[gate_name].keyed[key] = []
+
+            self.gate_keys[gate_name].keyed[key].append(item)
+
+    def candidates_for(self, decision):
+        gate_entry = self.gate_keys.get(decision.match.trigger.gate_cls.__gate_name__.lower())
+        if not gate_entry:
+            return []
+
+        if self.match_key_fn:
+            key = self.match_key_fn(decision)
+        else:
+            key = None
+
+        if key:
+            keyed = gate_entry.keyed.get(key, [])
+        else:
+            keyed = []
+
+        unkeyed = gate_entry.unkeyed
+        return keyed + unkeyed
+
+
+class StandardCVETriggerIdKey(object):
+    cve_trigger_id_regex = re.compile('([A-Za-z0-9\-])+\+\*')
+    supported_gates = [AnchoreSecGate.__gate_name__.lower()]
+
+    @classmethod
+    def whitelist_item_key(cls, item):
+        """
+        Return a key value for the item if the item is an ANCHORESEC gate with trigger_id of the
+        form <CVE>+<pkg> where <pkg> may be '*'. Else return None
+
+        :param item: a whitelist item json
+        :return: a key for a dictionary or None if not hashable/indexable
+        """
+
+        if item.gate.lower() in cls.supported_gates and cls.cve_trigger_id_regex.match(item.trigger_id):
+            return cls.anchoresec_trigger_id_to_parts(item.trigger_id)
+        return None
+
+    @classmethod
+    def anchoresec_trigger_id_to_parts(cls, trigger_id):
+        pieces = trigger_id.split('+', 1)
+        if len(pieces) > 1:
+            cve, pkg = pieces
+            # pkg is either a specific pkg or a wildcard
+            return cve
+        return trigger_id
+
+    @classmethod
+    def decision_item_key(cls, decision):
+        gate = decision.match.trigger.gate_cls.__gate_name__.lower()
+        if gate in cls.supported_gates:
+            return cls.anchoresec_trigger_id_to_parts(decision.match.id)
+        else:
+            return decision.match.id
+
+    @classmethod
+    def noop_key(cls, item):
+        """
+        Always return None, so no keyed lookups are done.
+
+        :param item:
+        :return:
+        """
+        return None
+
+
 class ExecutableWhitelist(VersionedEntityMixin):
     """
     A list of items to whitelist. Executable in the sense that the whitelist can be executed against a policy output
     to result in a WhitelistedPolicyEvaluation.
     """
+    _use_indexes = True
 
     def __init__(self, whitelist_json):
         self.raw = whitelist_json
@@ -743,11 +866,18 @@ class ExecutableWhitelist(VersionedEntityMixin):
         self.name = whitelist_json.get('name')
         self.comment = whitelist_json.get('comment')
 
-        self.items = OrderedDict()
+        self.items = []
+        self.whitelist_item_index = HybridTriggerIdKeyedItemIndex(item_key_fn=StandardCVETriggerIdKey.whitelist_item_key, match_key_fn=StandardCVETriggerIdKey.decision_item_key)
+        self.items_by_gate = OrderedDict()
+
         for item in self.raw.get('items'):
-            if not item.get('gate').lower() in self.items:
-                self.items[item.get('gate').lower()] = []
-            self.items[item.get('gate').lower()].append(ExecutableWhitelistItem(item, self))
+            i = ExecutableWhitelistItem(item, self)
+            self.items.append(i)
+            self.whitelist_item_index.add(i)
+
+            if not item.get('gate').lower() in self.items_by_gate:
+                self.items_by_gate[item.get('gate').lower()] = []
+            self.items_by_gate[item.get('gate').lower()].append(ExecutableWhitelistItem(item, self))
 
     def execute(self, policyrule_decisions):
         """
@@ -762,9 +892,12 @@ class ExecutableWhitelist(VersionedEntityMixin):
 
         processed_decisions = copy.deepcopy(policyrule_decisions)
 
-        # No-op for now
         for decision in processed_decisions:
-            rules = self.items.get(decision.match.trigger.gate_cls.__gate_name__.lower(), [])
+            if ExecutableWhitelist._use_indexes:
+                rules = self.whitelist_item_index.candidates_for(decision)
+            else:
+                rules = self.items_by_gate.get(decision.match.trigger.gate_cls.__gate_name__.lower(), [])
+
             # If whitelist match, wrap it with the match data, else pass thru
             for rule in rules:
                 decision.match = rule.execute(decision.match)
@@ -772,15 +905,12 @@ class ExecutableWhitelist(VersionedEntityMixin):
         return processed_decisions
 
     def json(self):
-        items = []
-        for values in self.items.values():
-            items += [i.json() for i in values]
         return {
             'id': self.id,
             'version': self.version,
             'name': self.name,
             'comment': self.comment,
-            'items': items
+            'items': [i.json() for i in self.items]
         }
 
 
@@ -999,6 +1129,7 @@ def get_bundle(bundle_id):
     :param bundle_id:
     :return:
     """
+    bundle = bundle_cache.get(bundle_id)
 
     raise NotImplementedError('Bundle fetch not enabled')
     # bundle = bundle_cache.get(bundle_id)
