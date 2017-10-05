@@ -6,7 +6,8 @@ from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseT
 from anchore_engine.services.policy_engine.engine.policy.utils import IntegerValidator
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace
-
+from anchore_engine.services.policy_engine.engine.logs import get_logger
+log = get_logger()
 
 class CveSeverityTrigger(BaseTrigger):
     __vuln_levels__ = None
