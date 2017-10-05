@@ -18,7 +18,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         'name': 'empty_bundle'
 
     }
-    test_env = LocalTestDataEnvironment(os.environ['ANCHORE_ENGINE_TESTING_HOME'])
+    test_env = LocalTestDataEnvironment(os.environ['ANCHORE_ENGINE_TEST_HOME'])
 
     test_image_ids = {
         'busybox': 'c75bebcdd211f41b3a460c7bf82970ed6c75acaab9cd4c9a4e125b03ca113798',
@@ -63,6 +63,105 @@ class TestPolicyBundleEval(unittest.TestCase):
         self.assertIsNotNone(evaluation, 'Got None eval')
         print(json.dumps(evaluation.json(), indent=2))
         print(json.dumps(evaluation.as_table_json(), indent=2))
+
+    def testDuplicateRuleEvaluation(self):
+        print('Building executable bundle from default bundle')
+        test_tag = 'docker.io/library/ruby:latest'
+        multi_gate_bundle = {
+            'id': 'multigate1',
+            'name': 'Multigate test1',
+            'version': '1_0',
+            'policies': [
+                {
+                    'id': 'policy1',
+                    'name': 'Test policy1',
+                    'version': '1_0',
+                    'rules': [
+                        {
+                            'gate': 'DOCKERFILECHECK',
+                            'trigger': 'FROMSCRATCH',
+                            'params': [],
+                            'action': 'GO'
+                        },
+                        {
+                            'gate': 'DOCKERFILECHECK',
+                            'trigger': 'FROMSCRATCH',
+                            'params': [],
+                            'action': 'STOP'
+                        },
+                        {
+                            'action': 'stop',
+                            'gate': 'DOCKERFILECHECK',
+                            'trigger': 'DIRECTIVECHECK',
+                            'params': [
+                                {
+                                    'name': 'DIRECTIVES',
+                                    'value': 'RUN'
+                                },
+                                {
+                                    'name': 'CHECK',
+                                    'value': 'exists'
+                                }
+                            ]
+                        },
+                        {
+                            'action': 'STOP',
+                            'gate': 'DOCKERFILECHECK',
+                            'trigger': 'DIRECTIVECHECK',
+                            'params': [
+                                {
+                                    'name': 'DIRECTIVES',
+                                    'value': 'USER'
+                                },
+                                {
+                                    'name': 'CHECK',
+                                    'value': 'not_exists'
+                                }
+                            ]
+                        },
+                        {
+                            'action': 'STOP',
+                            'gate': 'DOCKERFILECHECK',
+                            'trigger': 'DIRECTIVECHECK',
+                            'params': [
+                                {
+                                    'name': 'DIRECTIVES',
+                                    'value': 'RUN'
+                                },
+                                {
+                                    'name': 'CHECK',
+                                    'value': '=',
+                                    'check_value': 'yum update -y'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            'whitelists': [],
+            'mappings': [
+                {
+                    'registry': '*', 'repository': '*', 'image': {'type': 'tag', 'value': '*'}, 'policy_id': 'policy1', 'whitelist_ids': []
+                }
+            ]
+        }
+        built = build_bundle(multi_gate_bundle, for_tag=test_tag)
+        self.assertFalse(built.init_errors)
+        print('Got: {}'.format(built))
+
+        db = get_session()
+        img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+        if not img_obj:
+            self.load_images()
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+
+        self.assertIsNotNone(evaluation, 'Got None eval')
+        print(json.dumps(evaluation.json(), indent=2))
+        print(json.dumps(evaluation.as_table_json(), indent=2))
+
 
     def testWhitelists(self):
         print('Building executable bundle from default bundle')
