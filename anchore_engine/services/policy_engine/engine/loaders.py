@@ -98,7 +98,8 @@ class ImageLoader(object):
 
         analysis_artifact_loaders = [
             self.load_retrieved_files,
-            self.load_content_search
+            self.load_content_search,
+            self.load_secret_search
         ]
         # Content searches
         image.analysis_artifacts = []
@@ -162,6 +163,39 @@ class ImageLoader(object):
             match.image_user_id = image_obj.user_id
             match.image_id = image_obj.id
             match.analyzer_id = 'content_search'
+            match.analyzer_type = 'base'
+            match.analyzer_artifact = 'regexp_matches.all'
+            match.artifact_key = filename
+            try:
+                match.json_value = json.loads(match_string)
+            except:
+                log.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
+                match.str_value = match_string
+
+            records.append(match)
+
+        return records
+
+    def load_secret_search(self, analysis_report, image_obj):
+        """
+        Load content search results from analysis if present
+        :param content_search_json:
+        :param image_obj:
+        :return:
+        """
+        log.info('Loading content search results')
+        content_search_json = analysis_report.get('secret_search')
+        if not content_search_json:
+            return []
+
+        matches = content_search_json.get('regexp_matches.all', {}).get('base', {})
+        records = []
+
+        for filename, match_string in matches.items():
+            match = AnalysisArtifact()
+            match.image_user_id = image_obj.user_id
+            match.image_id = image_obj.id
+            match.analyzer_id = 'secret_search'
             match.analyzer_type = 'base'
             match.analyzer_artifact = 'regexp_matches.all'
             match.artifact_key = filename

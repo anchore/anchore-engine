@@ -18,7 +18,7 @@ retrieve_files:
 # example configuration for the 'content_search' analyze, if installed
 #
 
-content_search:
+secret_search:
   match_params:
     - MAXFILESIZE=10000
     - STOREONMATCH=n
