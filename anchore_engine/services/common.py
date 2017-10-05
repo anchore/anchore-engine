@@ -104,9 +104,7 @@ def check_services_ready(servicelist):
         for s in servicelist:
             required_services_up[s] = False
 
-        #service_records = db.db_services.get_all(session=dbsession)
         service_records = latest_service_records['service_records']
-        #logger.debug("latest service records: " + str(latest_service_records))
         for service_record in service_records:
             if service_record['servicename'] in required_services_up.keys():
                 if service_record['status']:

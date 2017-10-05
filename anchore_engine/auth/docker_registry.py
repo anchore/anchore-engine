@@ -8,7 +8,7 @@ import requests
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
 from anchore_engine.subsys import logger
-from anchore_engine.vendored import docker_registry_client
+from anchore_engine.vendored.docker_registry_client import docker_registry_client
 from .skopeo_wrapper import get_image_manifest_skopeo
 
 docker_clis = {}
@@ -144,6 +144,23 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
         raise err
 
     return(manifest, digest)
+
+def ping_docker_registry(registry_record):
+
+    ret = False
+    try:
+        user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
+        registry = registry_record['registry']
+        verify = registry_record['registry_verify']
+        url = "https://"+registry
+
+        drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify)
+        logger.debug("registry access check success ("+str(url)+","+str(user)+")")
+        ret = True
+    except Exception as err:
+        logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
+        ret = False
+    return(ret)
 
 def get_image_manifest(userId, image_info, registry_creds):
     logger.debug("get_image_manifest input: " + userId + " : " + str(image_info) + " : " + str(time.time()))

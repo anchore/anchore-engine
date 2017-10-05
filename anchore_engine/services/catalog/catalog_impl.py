@@ -911,8 +911,9 @@ def refresh_registry_creds(registry_records, dbsession):
                     logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
                     ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
                     registry_record['registry_meta'] = json.dumps(ecr_data)
-                    registry_record['hellothere'] = True
                     db_registries.update_record(registry_record, session=dbsession)
+
+        registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
 
         logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
     return(True)
