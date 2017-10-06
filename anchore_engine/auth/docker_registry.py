@@ -173,13 +173,21 @@ def get_image_manifest(userId, image_info, registry_creds):
     try:
         for registry_record in registry_creds:
             if registry_record['registry'] == registry:
+                if registry_record['record_state_key'] not in ['active']:
+                    try:
+                        last_try = int(registry_record['record_state_val'])
+                    except:
+                        last_try = 0
+
+                    if (int(time.time()) - last_try) < 60:
+                        logger.debug("SKIPPING REGISTRY ATTEMPT: " + str(registry_record['record_state_key']))
+                        raise Exception("registry not available - " + str(registry_record['record_state_key']))
+
                 user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
-                #user = registry_record['registry_user']
-                #pw = registry_record['registry_pass']
                 registry_verify = registry_record['registry_verify']
                 break
-    except:
-        pass
+    except Exception as err:
+        raise err
 
     if registry == 'docker.io':
         url = "https://index.docker.io"

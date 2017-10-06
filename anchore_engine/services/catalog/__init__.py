@@ -385,6 +385,12 @@ def handle_image_watcher(*args, **kwargs):
             dbfilter['subscription_type'] = 'tag_update'
             subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
 
+            registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
+            try:
+                catalog_impl.refresh_registry_creds(registry_creds, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
         alltags = []
         for subscription_record in subscription_records:
             if not subscription_record['active']:
@@ -399,16 +405,17 @@ def handle_image_watcher(*args, **kwargs):
                 except Exception as err:
                     logger.warn("problem creating taglist for image watcher - exception: " + str(err))
 
+        for registry_record in registry_creds:
+            registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+            logger.debug("REGHELLO: " + str(registry_record['registry']) + " : " + str(registry_status))
+            if not registry_status:
+                registry_record['record_state_key'] = 'auth_failure'
+                registry_record['record_state_val'] = str(int(time.time()))
+                
         logger.debug("checking tags for update: " + str(userId) + " : " + str(alltags))
         for fulltag in alltags:
             try:
                 logger.debug("checking image latest info from registry: " + fulltag)
-
-                registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
-                try:
-                    catalog_impl.refresh_registry_creds(registry_creds, dbsession)
-                except Exception as err:
-                    logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=True, registry_creds=registry_creds)
                 logger.spew("checking image: got registry info: " + str(image_info))
@@ -971,7 +978,7 @@ running = False
 last_run = 0
 
 threads = {
-    'image_watcher': {'handler':handle_image_watcher, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 30, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
+    'image_watcher': {'handler':handle_image_watcher, 'args':[], 'thread': None, 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
     'policy_eval': {'handler':handle_policyeval, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'args':[], 'thread': None, 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'analyzer_queue': {'handler':handle_analyzer_queue, 'args':[], 'thread': None, 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_run': 0, 'last_return': False},

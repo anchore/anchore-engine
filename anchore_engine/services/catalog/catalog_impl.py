@@ -102,7 +102,6 @@ def image(dbsession, request_inputs, bodycontent={}):
                             refresh_registry_creds(registry_creds, dbsession)
                         except Exception as err:
                             logger.warn("failed to refresh registry credentials - exception: " + str(err))
-
                         image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
                     except Exception as err:
                         httpcode = 404
@@ -897,6 +896,16 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
 def refresh_registry_creds(registry_records, dbsession):
 
     for registry_record in registry_records:
+
+        #if registry_record['record_state_key'] in ['auth_failure'] and (int(time.time()) - int(registry_record['record_state_val']) < 30):
+        #    logger.debug("SKIPPING "+str(registry_record['registry']) + " auth check: " + str(time.time()) + " : " + str(registry_record['record_state_val']))
+        #    continue
+        #else:
+        #    try:
+        #        logger.debug("PERFORMING "+str(registry_record['registry']) + " auth check: " + str(registry_record['record_state_val']) + " : " + str(int(time.time()) - int(registry_record['record_state_val'])))
+        #    except:
+        #        pass
+
         logger.debug("checking registry for up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
         if 'registry_type' in registry_record and registry_record['registry_type'] in ['awsecr']:
             if registry_record['registry_type'] == 'awsecr':
@@ -913,7 +922,17 @@ def refresh_registry_creds(registry_records, dbsession):
                     registry_record['registry_meta'] = json.dumps(ecr_data)
                     db_registries.update_record(registry_record, session=dbsession)
 
-        registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+        #registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+        #if not registry_status:
+        #    if registry_record['record_state_key'] not in ['disabled']:
+        #        registry_record['record_state_key'] = 'auth_failure'
+        #        registry_record['record_state_val'] = str(int(time.time()))
+        #        logger.debug("UPDATING: " + str(registry_record))
+        #        db_registries.update_record(registry_record, session=dbsession)
+        #elif registry_record['record_state_key'] not in ['active']:
+        #    registry_record['record_state_key'] = 'active'
+        #    registry_record['record_state_val'] = str(time.time())
+        #    db_registries.update_record(registry_record, session=dbsession)
 
         logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
     return(True)
