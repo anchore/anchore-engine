@@ -190,7 +190,7 @@ def makeService(snames, options, bootstrap_db=False, bootstrap_users=False):
         anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile)
         localconfig = anchore_engine.configuration.localconfig.get_config()
         localconfig['myservices'] = []
-        logger.debug("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
+        logger.spew("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
     except Exception as err:
         log.err("cannot load configuration: exception - " + str(err))
         raise err
@@ -433,10 +433,10 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
                     image_info['imageId'] = imageId
                 except Exception as err:
                     logger.debug("could not extract imageId from fetched manifest - exception: " + str(err))
-                    try:
-                        logger.debug("manifest content: " + json.dumps(image_info['manifest'], indent=4))
-                    except:
-                        pass
+                    #try:
+                    #    logger.debug("manifest content: " + json.dumps(image_info['manifest'], indent=4))
+                    #except:
+                    #    pass
 
             ret.update(image_info)
         else:

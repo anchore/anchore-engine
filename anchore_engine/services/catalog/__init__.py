@@ -137,7 +137,7 @@ def handle_feed_sync(*args, **kwargs):
         client = anchore_engine.clients.policy_engine.get_client(user=userId, password=password, verify_ssl=verify)
         resp = client.create_feed_update(FeedUpdateNotification(feed_name='vulnerabilities'))
         if resp:
-            logger.debug("feed sync response: " + json.dumps(resp, indent=4))
+            logger.debug("feed sync response is not empty")
         else:
             logger.debug("feed sync response is empty")
         feed_sync_updated = True
