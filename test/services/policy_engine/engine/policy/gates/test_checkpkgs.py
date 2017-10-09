@@ -1,5 +1,5 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
-from anchore_engine.services.policy_engine.engine.policy.gates.check_pkgs import PkgDiffGate, PkgVersionDiffTrigger, PkgAddTrigger, PkgDelTrigger, PkgDiffTrigger
+from anchore_engine.services.policy_engine.engine.policy.gates.pkg_diff import PkgDiffGate, PkgVersionDiffTrigger, PkgAddTrigger, PkgDelTrigger, PkgDiffTrigger
 from anchore_engine.db import Image, get_thread_scoped_session
 from test.services.policy_engine.engine.policy.gates import GateUnitTest, init_db
 

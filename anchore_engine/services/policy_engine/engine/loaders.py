@@ -99,8 +99,10 @@ class ImageLoader(object):
         analysis_artifact_loaders = [
             self.load_retrieved_files,
             self.load_content_search,
-            self.load_secret_search
+            self.load_secret_search,
+            self.load_package_verification
         ]
+
         # Content searches
         image.analysis_artifacts = []
         for loader in analysis_artifact_loaders:
@@ -109,6 +111,71 @@ class ImageLoader(object):
 
         image.state = 'analyzed'
         return image
+
+    def load_package_verification(self, analysis_report, image_obj):
+        """
+        Loads package verification analysis data.
+
+        Example entry:
+        {
+          "distro.pkgfilemeta": {
+            "base": {
+              "/usr/share/locale/uk/LC_MESSAGES/grep.mo": "[{\"conffile\": false, \"digest\": \"a48e97c8c0637312144c5da800b96b7b\", \"digestalgo\": \"md5\", \"group\": null, \"mode\": null, \"package\": \"grep\", \"size\": null, \"user\": null}]"
+            }
+          }
+        }
+
+        :param analysis_report:
+        :param image_obj:
+        :return:
+        """
+
+        log.info('Loading package verification data')
+        analyzer = 'file_package_verify'
+        pkgfile_meta = 'distro.pkgfilemeta'
+        verify_result = 'distro.verifyresult'
+        digest_algos = [
+            'sha1',
+            'sha256',
+            'md5'
+        ]
+
+        package_verify_json = analysis_report.get(analyzer)
+        if not package_verify_json:
+            return []
+
+        file_records = package_verify_json.get(pkgfile_meta, {}).get('base', {})
+        verify_records = package_verify_json.get(verify_result, {}).get('base', {})
+
+        records = []
+
+        # Re-organize the data from file-keyed to package keyed for efficient filtering
+        packages = {}
+        for path, file_meta in file_records.items():
+            for r in json.loads(file_meta):
+                pkg = r.pop('package')
+                if not pkg:
+                    continue
+
+                if pkg not in packages:
+                    packages[pkg] = {}
+
+                # Add the entry for the file in the package
+                packages[pkg][path] = r
+
+        for pkg_name, paths in packages.items():
+            r = AnalysisArtifact()
+            r.image_user_id = image_obj.user_id
+            r.image_id = image_obj.id
+            r.analyzer_type = 'base'
+            r.analyzer_id = 'file_package_verify'
+            r.analyzer_artifact = 'distro.pkgfilemeta'
+            r.artifact_key = pkg_name
+            r.json_value = paths
+            records.append(r)
+
+        return records
+
 
     def load_retrieved_files(self, analysis_report, image_obj):
         """
@@ -313,8 +380,9 @@ class ImageLoader(object):
         file_entries = {}
         all_infos = analysis_report_json.get('file_list').get('files.allinfo', {}).get('base', [])
         file_perms = analysis_report_json.get('file_list').get('files.all', {}).get('base', [])
-        md5_checksums = analysis_report_json.get('file_checksums').get('files.md5sums', {}).get('base', [])
-        sha256_checksums = analysis_report_json.get('file_checksums').get('files.sha256sums', {}).get('base', [])
+        md5_checksums = analysis_report_json.get('file_checksums').get('files.md5sums', {}).get('base', {})
+        sha256_checksums = analysis_report_json.get('file_checksums').get('files.sha256sums', {}).get('base', {})
+        sha1_checksums = analysis_report_json.get('file_checksums').get('files.sha1sums', {}).get('base', {})
         non_pkged = analysis_report_json.get('file_list').get('files.nonpkged', {}).get('base', [])
         suids = analysis_report_json.get('file_suids', {}).get('files.suids', {}).get('base', {})
         pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', [])
@@ -347,6 +415,7 @@ class ImageLoader(object):
                     'is_packaged': path in pkgd,
                     'md5_checksum': md5_checksums.get(path, 'DIRECTORY_OR_OTHER'),
                     'sha256_checksum': sha256_checksums.get(path, 'DIRECTORY_OR_OTHER'),
+                    'sha1_checksum': sha1_checksums.get(path, 'DIRECTORY_OR_OTHER'),
                     'othernames': [],
                     'suid': suids.get(path)
                 }

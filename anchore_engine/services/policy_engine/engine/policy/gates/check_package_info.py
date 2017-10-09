@@ -1,10 +1,121 @@
+import enum
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, barsplit_comma_delim_parser, delim_parser
-from anchore_engine.db import ImagePackage
+from anchore_engine.db import ImagePackage, AnalysisArtifact
 from anchore_engine.services.policy_engine.engine.util.packages import compare_package_versions
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
 log = get_logger()
+
+
+class VerifyTrigger(BaseTrigger):
+    __trigger_name__ = 'VERIFY'
+    __description__ = 'Check package integrity against package db in in the image. Triggers for changes or removal or content in all or the selected DIRS param if provided, and can filter type of check with the CHECK_ONLY param'
+    __params__ = {
+        'PKGS': CommaDelimitedStringListValidator(),
+        'DIRS': CommaDelimitedStringListValidator(),
+        'CHECK_ONLY': CommaDelimitedStringListValidator()
+    }
+
+    analyzer_type = 'base'
+    analyzer_id = 'file_package_verify'
+    analyzer_artifact = 'distro.pkgfilemeta'
+
+    class VerificationStates(enum.Enum):
+        changed = 'changed'
+        missing = 'missing'
+
+
+    def evaluate(self, image_obj, context):
+        pkg_names = delim_parser(self.eval_params.get('PKGS', ''))
+        pkg_dirs = delim_parser(self.eval_params.get('DIRS', ''))
+        checks = map(lambda x: x.lower(), delim_parser(self.eval_params.get('CHECK_ONLY', '')))
+
+        outlist = list()
+        imageId = image_obj.id
+        modified = {}
+
+        if image_obj.fs:
+            extracted_files_json = image_obj.fs.files
+        else:
+            extracted_files_json = []
+
+        if pkg_names:
+            pkg_data = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == self.analyzer_id,
+                                                           AnalysisArtifact.analyzer_type == self.analyzer_type,
+                                                           AnalysisArtifact.analyzer_artifact == self.analyzer_artifact,
+                                                           AnalysisArtifact.artifact_key.in_(pkg_names)).all()
+        else:
+            pkg_data = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == self.analyzer_id,
+                                                           AnalysisArtifact.analyzer_type == self.analyzer_type,
+                                                           AnalysisArtifact.analyzer_artifact == self.analyzer_artifact
+                                                           ).all()
+
+        for pkg_db_record in pkg_data:
+            pkg_name = pkg_db_record.artifact_key
+            entries = pkg_db_record.json_value
+            if not pkg_dirs:
+                filtered_entries = entries.keys()
+            else:
+                filtered_entries = filter(lambda x: any(map(lambda y: x.startswith(y), pkg_dirs)), entries.keys())
+
+            for e in filtered_entries:
+                status = self._verify_path(entries[e], extracted_files_json.get(e))
+
+                if status and (not checks or status.value in checks):
+                    self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, e, status.value))
+
+    def _verify_path(self, db_entry, fs_entry):
+        """
+        Given the db record and the fs record, return one of [None, 'changed', 'removed'] for the diff depending on the diff detected
+        by comparing the pkg db record with the file status.
+
+        :param db_entry:
+        :param fs_entry:
+        :return: one of [None, <VerificationStates>]
+        """
+
+        # The fs record is None or empty
+        if db_entry and not fs_entry:
+            return VerifyTrigger.VerificationStates.missing
+
+        # This is unexpected
+        if fs_entry and not db_entry:
+            return None
+
+        if db_entry.get('conffile'):
+            return None # skip checks on config files if the flag is set
+
+        # Check checksums
+        db_digest = db_entry.get('digestalgo')
+        fs_digest = None
+        if db_digest == 'sha256':
+            fs_digest = fs_entry.get('sha256_checksum')
+        elif db_digest == 'md5':
+            fs_digest = fs_entry.get('md5_checksum')
+        elif db_digest == 'sha1':
+            fs_digest = fs_entry.get('sha1_checksum')
+
+        if db_digest and fs_digest and fs_digest != db_entry.get('digest'):
+            return VerifyTrigger.VerificationStates.changed
+
+        # Check mode
+        db_mode = db_entry.get('mode')
+        fs_mode = fs_entry.get('mode')
+        if db_mode and fs_mode:
+            if len(db_mode) == 4:
+                fs_mode = fs_mode[2:]
+            if db_mode != fs_mode:
+                return VerifyTrigger.VerificationStates.changed
+
+        # Check size (Checksum should handle this)
+        db_size = db_entry.get('size')
+        fs_size = fs_entry.get('size')
+        if fs_size and db_size and fs_size != db_size:
+            return VerifyTrigger.VerificationStates.changed
+
+        # No changes or not enough data to compare
+        return None
 
 
 class PkgNotPresentTrigger(BaseTrigger):
@@ -70,5 +181,6 @@ class PkgNotPresentTrigger(BaseTrigger):
 class PackageCheckGate(Gate):
     __gate_name__ = 'PKGCHECK'
     __triggers__ = [
-        PkgNotPresentTrigger
+        PkgNotPresentTrigger,
+        VerifyTrigger,
     ]
