@@ -20,8 +20,9 @@ class TypeValidator(InputValidator):
 
     def __call__(self, *args, **kwargs):
         value = args[0]
-        if type == str:
+        if self.expected_type == str:
             return type(value) == self.expected_type or type(value) == unicode
+        return type(value) == self.expected_type
 
     def validation_criteria(self):
         return str(self.expected_type.__name__)
