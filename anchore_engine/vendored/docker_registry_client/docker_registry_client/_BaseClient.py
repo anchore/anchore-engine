@@ -1,15 +1,15 @@
-import datetime
-import json
 import logging
+from requests import get, put, delete, Response, head
+from requests.exceptions import HTTPError
+import json
 import re
 import urlparse
+import datetime
+import base64
+
 # urllib3 throws some ssl warnings with older versions of python
 #   they're probably ok for the registry client to ignore
 import warnings
-
-from requests import get, put, delete, head
-from requests.exceptions import HTTPError
-
 warnings.filterwarnings("ignore")
 
 
@@ -72,35 +72,57 @@ class CommonBaseClient(object):
             raise
 
 
-class OAuth2TokenHandler:
+class GenericTokenHandler(object):
+
+    def __init__(self, username=None, passwd=None):
+        self.username = username
+        self.password = passwd
+
+    @staticmethod
+    def needs_token(err_response):
+        return 400 <= err_response.status_code < 500 and err_response.reason == 'Unauthorized'
+
+    @staticmethod
+    def get_token_handler_type(err_response):
+        if 'www-authenticate' in err_response.headers:
+            if re.match(OAuth2TokenHandler._www_authentication_regex, err_response.headers.get('www-authenticate')):
+                return OAuth2TokenHandler
+            elif re.match(BasicAuthTokenHandler._www_authentication_regex, err_response.headers.get('www-authenticate')):
+                return BasicAuthTokenHandler
+            else:
+                return TypeError('Token handler not defined for {}'.format(err_response.headers.get('www-authenticate')))
+        else:
+            return KeyError('Www-Authenticate header not found')
+
+
+class OAuth2TokenHandler(GenericTokenHandler):
     """
     Handles the token fetch and caching.
-    Caches by url and token scope.
+    Caches by path and token scope.
 
     """
     authorization_header_format = 'Bearer {0}'
     _www_authentication_regex = 'Bearer (realm="[^"]+")(,service="[^"]+")?(,scope="[^"]+")?'
+    _www_auth_matcher = re.compile(_www_authentication_regex)
 
     def __init__(self, username=None, passwd=None):
+        super(OAuth2TokenHandler, self).__init__(username, passwd)
         self._tokens = {}
-        self._www_auth_matcher = re.compile(self._www_authentication_regex)
-        self.username = username
-        self.password = passwd
 
     def _add_token(self, path, url, params, raw_token):
         now = datetime.datetime.utcnow()
         expiration = now + datetime.timedelta(seconds=int(raw_token.get('expires_in', 300)))
-        self._tokens[path] = {'urls': [url], 'params':params, 'raw_token': raw_token, 'timestamp': now, 'expiration': expiration}
+        self._tokens[path] = {'urls': [url], 'params': params, 'raw_token': raw_token, 'timestamp': now, 'expiration': expiration}
 
-    def lookup_by_url(self, url):
-        found = self._tokens[url]
+    def lookup_by_path(self, path):
+        found = self._tokens[path]
         if found:
             if found['expiration'] > datetime.datetime.utcnow():
                 return found['raw_token']
             else:
                 logger.debug('Found cached token, but it is expired. Flushing and failing cache lookup')
                 self.invalidate_token(found['raw_token']['token'])
-        raise KeyError(url)
+        raise KeyError(path)
 
     def lookup_by_params(self, params):
         """
@@ -151,22 +173,17 @@ class OAuth2TokenHandler:
         :return:
         """
         logger.debug('Flushing token: {}'.format(token))
-        for url, cached_token in self._tokens.items():
+        for path, cached_token in self._tokens.items():
             if cached_token['raw_token']['token'] == token:
-                self._tokens.pop(url)
+                self._tokens.pop(path)
 
-    @staticmethod
-    def needs_token(err_response):
-        return 400 <= err_response.status_code < 500 and err_response.reason == 'Unauthorized'
-
-    @staticmethod
-    def token_is_invalid(err_response):
+    def token_is_invalid(self, err_response):
         """
         Determine if the response is due to invalid token.
         :param err_response: the _http_response() output of the request to check. Should include the original request
         :return: token value from request if invalid, else False
         """
-        if OAuth2TokenHandler.needs_token(err_response) \
+        if GenericTokenHandler.needs_token(err_response) \
             and 'Authorization' in err_response.request.headers \
             and 'www-authenticate' in err_response.headers \
             and err_response.headers['www-authenticate'].find('error="invalid_token"') > 0:
@@ -184,7 +201,7 @@ class OAuth2TokenHandler:
         """
 
         # Was the token in the original request invalid?
-        invalid_token = OAuth2TokenHandler.token_is_invalid(err_response)
+        invalid_token = self.token_is_invalid(err_response)
         # Flush the old token and get a new one. Tokens timeout
         if invalid_token:
             self._flush_token(invalid_token)
@@ -220,18 +237,61 @@ class OAuth2TokenHandler:
             raise e
 
 
+class BasicAuthTokenHandler(GenericTokenHandler):
+    """
+    Handles the basic authentication
+    Base 64 endodes username:password string
+
+    """
+    authorization_header_format = 'Basic {0}'
+    _www_authentication_regex = 'Basic (realm="[^"]+")(,service="[^"]+")?'
+    _www_auth_matcher = re.compile(_www_authentication_regex)
+
+    def __init__(self, username=None, passwd=None):
+        super(BasicAuthTokenHandler, self).__init__(username, passwd)
+        self._token = None
+
+    def lookup_by_path(self, path):
+        if self._token:
+            return {'token': self._token}
+        raise KeyError(path)
+
+    def request_auth_token(self, err_response, path, use_cache=True):
+        """
+        Get a token from the passed error response that indicates a required token. Uses cache
+        :param err_response: the error response indicating a token needed
+        :param use_cache: use a token cache to avoid repeat requests. Default=True
+        :return:
+        """
+
+        # Do we already have the proper scoped token in the cache?
+        if use_cache and self._token:
+            logger.debug('Found valid cached token: {}'.format(self._token))
+            return {'token': self._token}
+        else:
+            try:
+                logger.debug('No valid cache entry found. Constructing a new token')
+                self._token = base64.standard_b64encode('{}:{}'.format(self.username if self.username else '', self.password if self.password else ''))
+                logger.debug('Added new token to cache and returning to caller')
+                return {'token': self._token}
+            except HTTPError, e:
+                raise e
+
+
 class AuthCommonBaseClient(CommonBaseClient):
 
     def __init__(self, host, verify_ssl=None, username=None, password=None):
         super(AuthCommonBaseClient, self).__init__(host, verify_ssl, username=None, password=None)
-        self.token_handler = OAuth2TokenHandler(username, password)
+        self.username = username
+        self.password = password
+        self.token_handler = None
 
-    @staticmethod
-    def _add_auth(token, headers=None):
+    # @staticmethod
+    def _add_auth(self, token, headers=None):
         if headers is None:
             headers = {}
 
-        headers['Authorization'] = OAuth2TokenHandler.authorization_header_format.format(token)
+        headers['Authorization'] = self.token_handler.authorization_header_format.format(token)
         return headers
 
     def _http_response(self, url, method, data=None, headers=None, **kwargs):
@@ -241,64 +301,32 @@ class AuthCommonBaseClient(CommonBaseClient):
 
         try:
             # If there is a token for this url, use it
-            try:
-                token = self.token_handler.lookup_by_url(path)
-                headers = AuthCommonBaseClient._add_auth(token['token'], headers)
-            except KeyError:
-                pass
+            if self.token_handler:
+                try:
+                    token = self.token_handler.lookup_by_path(path)
+                    headers = self._add_auth(token['token'], headers)
+                except KeyError:
+                    pass
 
             response = super(AuthCommonBaseClient, self)._http_response(url, method, data=data, headers=headers, **kwargs)
             return response
-        except HTTPError, e:
+        except HTTPError as e:
 
-            if OAuth2TokenHandler.needs_token(e.response):
-                token = self.token_handler.request_auth_token(e.response, path)
-                if token:
-                    headers = AuthCommonBaseClient._add_auth(token['token'], headers=headers)
+            if GenericTokenHandler.needs_token(e.response):
+                if not self.token_handler:
                     try:
-                        response = super(AuthCommonBaseClient, self)._http_response(url, method, data=data,
-                                                                                headers=headers,
-                                                                                **kwargs)
-                        return response
-                    except HTTPError, e:
+                        th_type = GenericTokenHandler.get_token_handler_type(e.response)
+                        self.token_handler = th_type(self.username, self.password)
+                    except KeyError or TypeError as token_error:
+                        # log the exception but raise the original error
+                        logger.exception('Failed to compute auth header')
                         raise e
 
-                else:
-                    raise Exception('No token found or fetched. Cannot proceed.')
-            else:
-                # Not a token problem. Just raise error
-                raise e
-
-    def _http_call(self, url, method, data=None, **kwargs):
-        path = url.format(**kwargs)
-        header = {}
-        try:
-            # If there is a token for this url, use it
-            try:
-                token = self.token_handler.lookup_by_url(path)
-                header['Authorization'] = OAuth2TokenHandler.authorization_header_format.format(token['token'])
-            except KeyError:
-                pass
-
-            response = super(AuthCommonBaseClient, self)._http_call(url, method, data=data, headers=header, **kwargs)
-            return response
-        except HTTPError, e:
-            if OAuth2TokenHandler.needs_token(e.response):
-                invalid_token = OAuth2TokenHandler.token_is_invalid(e.response)
-                if invalid_token:
-                    self.token_handler.invalidate_token(invalid_token)
-                #else:
-                try:
-                    cached_token = self.token_handler.lookup_by_url(path)
-                    token = cached_token
-                except KeyError:
-                    token = self.token_handler.request_auth_token(e.response, path)
-
+                token = self.token_handler.request_auth_token(e.response, path)
                 if token:
-                    header['Authorization'] = 'Bearer ' + self.token_handler.request_auth_token(e.response, path)['token']
+                    headers = self._add_auth(token['token'], headers=headers)
                     try:
-                        response = super(AuthCommonBaseClient, self)._http_call(url, method, data=data, headers=header,
-                                                                                **kwargs)
+                        response = super(AuthCommonBaseClient, self)._http_response(url, method, data=data, headers=headers, **kwargs)
                         return response
                     except HTTPError, e:
                         raise e
@@ -457,6 +485,8 @@ class BaseClientV2(AuthCommonBaseClient):
             raise NotImplementedError()
 
         untrusted_digest = response.headers.get('Docker-Content-Digest')
+        if not untrusted_digest:
+            untrusted_digest = self.get_manifest_digest(name, reference)
         self._manifest_digests[(name, reference)] = untrusted_digest
 
 

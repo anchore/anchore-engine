@@ -8,7 +8,7 @@ import requests
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
 from anchore_engine.subsys import logger
-from anchore_engine.vendored import docker_registry_client
+from anchore_engine.vendored.docker_registry_client import docker_registry_client
 from .skopeo_wrapper import get_image_manifest_skopeo
 
 docker_clis = {}
