@@ -1,7 +1,7 @@
 import unittest
 
 from test.services.policy_engine.engine.policy.gates import GateUnitTest
-from anchore_engine.db import Image
+from anchore_engine.db import Image, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.gates.check_package_info import PackageCheckGate, PkgNotPresentTrigger, VerifyTrigger
 from anchore_engine.db import get_thread_scoped_session
@@ -19,39 +19,35 @@ class PackageCheckGateTest(GateUnitTest):
 
         return trigger, gate, context
 
-    @unittest.skip('Test only verify')
     def test_pkgnotpresentdiff(self):
-        t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123')
         db = get_thread_scoped_session()
-        db.refresh(self.test_image)
-        test_context = gate.prepare_context(self.test_image, test_context)
-        t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
-        self.assertEqual(len(t.fired), 1)
+        try:
+            image = db.query(Image).get((self.test_env.get_images_named('node')[0][0], '0'))
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123')
+            test_context = gate.prepare_context(image, test_context)
+            t.evaluate(image, test_context)
+            print('Fired: {}'.format(t.fired))
+            self.assertEqual(len(t.fired), 1)
 
-        t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGNAMEMATCH='binutilityrepo,binutils')
-        db = get_thread_scoped_session()
-        db.refresh(self.test_image)
-        test_context = gate.prepare_context(self.test_image, test_context)
-        t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
-        self.assertEqual(len(t.fired), 1)
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGNAMEMATCH='binutilityrepo,binutils')
+            test_context = gate.prepare_context(image, test_context)
+            t.evaluate(image, test_context)
+            print('Fired: {}'.format(t.fired))
+            self.assertEqual(len(t.fired), 1)
 
-        t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGVERSMATCH='binutils|2.25-5+deb8u1,randopackage|123,binutils|3.25-5+deb8u1')
-        db = get_thread_scoped_session()
-        db.refresh(self.test_image)
-        test_context = gate.prepare_context(self.test_image, test_context)
-        t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
-        self.assertEqual(len(t.fired), 2)
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGVERSMATCH='binutils|2.25-5+deb8u1,randopackage|123,binutils|3.25-5+deb8u1')
+            test_context = gate.prepare_context(image, test_context)
+            t.evaluate(image, test_context)
+            print('Fired: {}'.format(t.fired))
+            self.assertEqual(len(t.fired), 2)
 
-        t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123', PKGNAMEMATCH='binutils,foobar', PKGVERSMATCH='binutils|2.25-5+deb8u1,libssl|10.2,blamo|123.123')
-        db = get_thread_scoped_session()
-        db.refresh(self.test_image)
-        test_context = gate.prepare_context(self.test_image, test_context)
-        t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
-        self.assertEqual(len(t.fired), 4)
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123', PKGNAMEMATCH='binutils,foobar', PKGVERSMATCH='binutils|2.25-5+deb8u1,libssl|10.2,blamo|123.123')
+            test_context = gate.prepare_context(image, test_context)
+            t.evaluate(image, test_context)
+            print('Fired: {}'.format(t.fired))
+            self.assertEqual(len(t.fired), 4)
+        finally:
+            db.rollback()
 
     def test_verifytrigger(self):
         """
@@ -145,5 +141,119 @@ class PackageCheckGateTest(GateUnitTest):
             print('Image name: {}, id: {}, Fired count: {}\nFired: {}'.format(meta.get('name'), img_id, len(t.fired), t.fired))
             #self.assertEqual(len(t.fired), 0, 'Found failed verfications on: {}'.format(img_obj.id))
 
+    def test_db_pkg_compare(self):
+        """
+        Test the pkg metadata diff function specifically.
 
+        :return:
+        """
+        int_m = int('010755', 8)
+        p1 = ImagePackageManifestEntry()
+        p1.file_path = '/test1'
+        p1.is_config_file = False
+        p1.size = 1000
+        p1.mode = int_m
+        p1.digest = 'abc'
+        p1.digest_algorithm = 'sha256'
+
+        fs_entry = {
+            'is_packaged': True,
+            'name': '/test1',
+            'suid': None,
+            'entry_type': 'file',
+            'linkdst_fullpath': None,
+            'mode': int_m,
+            'othernames': [],
+            'sha256_checksum': 'abc',
+            'md5_checksum': 'def',
+            'sha1_checksum': 'abcdef',
+            'size': 1000
+        }
+
+        # Result == False
+        # Basic equal eval
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        p1.digest = None
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.digest = 'abc'
+
+        # Is config file, skip comparison since expected to change
+        p1.is_config_file = True
+        p1.digest = 'blah123'
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.is_config_file = False
+        p1.digest = 'abc'
+
+        # sha1 diffs
+        p1.digest_algorithm = 'sha1'
+        p1.digest = 'abcdef'
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.digest_algorithm = 'sha256'
+        p1.digest = 'abc'
+
+        # Cannot compare due to missing digest types
+        p1.digest_algorithm = 'sha1'
+        f = fs_entry.pop('sha1_checksum')
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.digest_algorithm = 'sha256'
+        fs_entry['sha1_checksum'] = f
+
+        # Result == Changed
+
+        # Mode diffs
+        p1.mode = int_m + 1
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.mode = int_m
+
+        # Size diffs
+        p1.size = 1001
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+        p1.size = 1000
+
+        # Sha256 diffs
+        p1.digest = 'abd'
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # md5 diffs
+        p1.digest_algorithm = 'md5'
+        p1.digest = 'blah'
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # sha1 diffs
+        p1.digest_algorithm = 'sha1'
+        p1.digest = 'blah'
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        p1.digest = 'abc'
+        p1.digest_algorithm = 'sha256'
+
+        # Some weird mode checks to ensure different length mode numbers are ok
+        # FS longer than pkg_db, but eq in match
+        fs_entry['mode'] = int('060755', 8)
+        p1.mode = int('0755', 8)
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # FS longer than pkg_db but not eq
+        fs_entry['mode'] = int('060754', 8)
+        p1.mode = int('0755', 8)
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # FS shorter than pkg_db and match
+        fs_entry['mode'] = int('0755', 8)
+        p1.mode = int('060755', 8)
+        self.assertFalse(VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # FS shorter than pkg_db and no match
+        fs_entry['mode'] = int('0755', 8)
+        p1.mode = int('060754', 8)
+        self.assertEqual(VerifyTrigger.VerificationStates.changed, VerifyTrigger._diff_pkg_meta_and_file(p1, fs_entry))
+
+        # Result == missing
+
+        # Check against no entry
+        self.assertEqual(VerifyTrigger.VerificationStates.missing, VerifyTrigger._diff_pkg_meta_and_file(p1, None))
+
+        # Check against empty entry
+        self.assertEqual(VerifyTrigger.VerificationStates.missing, VerifyTrigger._diff_pkg_meta_and_file(p1, {}))
 

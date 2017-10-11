@@ -3,7 +3,7 @@ import json
 import re
 
 from anchore_engine.db import DistroNamespace
-from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact
+from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry
 from .logs import get_logger
 from .util.rpm import split_rpm_filename
 
@@ -85,6 +85,10 @@ class ImageLoader(object):
         log.info('Loading image packages')
         image.packages = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
 
+        # Package metadata
+        log.info('Loading image package db entries')
+        self.load_package_verification(analysis_report, image)
+
         # FileSystem
         log.info('Loading image files')
         image.fs = self.load_fsdump(analysis_report)
@@ -99,8 +103,8 @@ class ImageLoader(object):
         analysis_artifact_loaders = [
             self.load_retrieved_files,
             self.load_content_search,
-            self.load_secret_search,
-            self.load_package_verification
+            self.load_secret_search
+            #self.load_package_verification
         ]
 
         # Content searches
@@ -115,19 +119,11 @@ class ImageLoader(object):
     def load_package_verification(self, analysis_report, image_obj):
         """
         Loads package verification analysis data.
-
-        Example entry:
-        {
-          "distro.pkgfilemeta": {
-            "base": {
-              "/usr/share/locale/uk/LC_MESSAGES/grep.mo": "[{\"conffile\": false, \"digest\": \"a48e97c8c0637312144c5da800b96b7b\", \"digestalgo\": \"md5\", \"group\": null, \"mode\": null, \"package\": \"grep\", \"size\": null, \"user\": null}]"
-            }
-          }
-        }
+        Adds the package db metadata records to respective packages in the image_obj
 
         :param analysis_report:
         :param image_obj:
-        :return:
+        :return: True on success
         """
 
         log.info('Loading package verification data')
@@ -147,7 +143,6 @@ class ImageLoader(object):
         file_records = package_verify_json.get(pkgfile_meta, {}).get('base', {})
         verify_records = package_verify_json.get(verify_result, {}).get('base', {})
 
-        records = []
 
         # Re-organize the data from file-keyed to package keyed for efficient filtering
         packages = {}
@@ -163,19 +158,51 @@ class ImageLoader(object):
                 # Add the entry for the file in the package
                 packages[pkg][path] = r
 
-        for pkg_name, paths in packages.items():
-            r = AnalysisArtifact()
-            r.image_user_id = image_obj.user_id
-            r.image_id = image_obj.id
-            r.analyzer_type = 'base'
-            r.analyzer_id = 'file_package_verify'
-            r.analyzer_artifact = 'distro.pkgfilemeta'
-            r.artifact_key = pkg_name
-            r.json_value = paths
-            records.append(r)
+        for package in image_obj.packages:
+            pkg_entry = packages.get(package.name)
+            entries = []
+            if not pkg_entry:
+                continue
 
-        return records
+            for f_name, entry in pkg_entry.items():
+                meta = ImagePackageManifestEntry()
+                meta.pkg_name = package.name
+                meta.pkg_version = package.version
+                meta.pkg_type = package.pkg_type
+                meta.pkg_arch = package.arch
+                meta.image_id = package.image_id
+                meta.image_user_id = package.image_user_id
+                meta.file_path = f_name
+                meta.digest_algorithm = entry.get('digestalgo')
+                meta.digest = entry.get('digest')
+                meta.file_user_name = entry.get('user')
+                meta.file_group_name = entry.get('group')
+                meta.is_config_file = entry.get('conffile')
 
+                m = entry.get('mode')
+                s = entry.get('size')
+                meta.mode = int(m, 8) if m is not None else m # Convert from octal to decimal int
+                meta.size = int(s) if s is not None else None
+
+                entries.append(meta)
+
+            package.pkg_db_entries = entries
+
+        return True
+
+        # records = []
+        # for pkg_name, paths in packages.items():
+        #
+        #     r = AnalysisArtifact()
+        #     r.image_user_id = image_obj.user_id
+        #     r.image_id = image_obj.id
+        #     r.analyzer_type = 'base'
+        #     r.analyzer_id = 'file_package_verify'
+        #     r.analyzer_artifact = 'distro.pkgfilemeta'
+        #     r.artifact_key = pkg_name
+        #     r.json_value = paths
+        #     records.append(r)
+        #return records
 
     def load_retrieved_files(self, analysis_report, image_obj):
         """
@@ -415,7 +442,7 @@ class ImageLoader(object):
                     'is_packaged': path in pkgd,
                     'md5_checksum': md5_checksums.get(path, 'DIRECTORY_OR_OTHER'),
                     'sha256_checksum': sha256_checksums.get(path, 'DIRECTORY_OR_OTHER'),
-                    'sha1_checksum': sha1_checksums.get(path, 'DIRECTORY_OR_OTHER'),
+                    'sha1_checksum': sha1_checksums.get(path, 'DIRECTORY_OR_OTHER') if sha1_checksums else None,
                     'othernames': [],
                     'suid': suids.get(path)
                 }

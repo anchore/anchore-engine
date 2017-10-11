@@ -306,6 +306,7 @@ class ImagePackage(Base):
 
     vulnerabilities = relationship('ImagePackageVulnerability', back_populates='package', lazy='dynamic')
     image = relationship('Image', back_populates='packages')
+    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
 
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
@@ -328,6 +329,38 @@ class ImagePackage(Base):
             return self.distro_name + ':' + self.distro_version
         else:
             return None
+
+
+class ImagePackageManifestEntry(Base):
+    """
+    An entry from the package manifest (e.g. rpm, deb, apk) for verifying package contents in a generic way.
+
+    """
+    __tablename__ = 'image_package_db_entries'
+
+    # Package key
+    image_id = Column(String(image_id_length), primary_key=True)
+    image_user_id = Column(String(user_id_length), primary_key=True)
+    pkg_name = Column(String(pkg_name_length), primary_key=True)
+    pkg_version = Column(String(pkg_version_length), primary_key=True)
+    pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
+    pkg_arch = Column(String(16), default='N/A', primary_key=True)
+
+    # File path
+    file_path = Column(String(file_path_length), primary_key=True)
+    is_config_file = Column(Boolean, nullable=True)
+    digest = Column(String(digest_length)) # Will include a prefix: sha256, sha1, md5 etc.
+    digest_algorithm = Column(String(8), nullable=True)
+    file_group_name = Column(String, nullable=True)
+    file_user_name = Column(String, nullable=True)
+    mode = Column(Integer, nullable=True) # Mode as an integer in decimal, not octal
+    size = Column(Integer, nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(columns=[image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch],
+                             refcolumns=['image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch']),
+        {}
+    )
 
 
 class ImageNpm(Base):

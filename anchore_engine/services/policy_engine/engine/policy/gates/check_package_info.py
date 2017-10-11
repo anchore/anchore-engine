@@ -1,7 +1,7 @@
 import enum
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, barsplit_comma_delim_parser, delim_parser
-from anchore_engine.db import ImagePackage, AnalysisArtifact
+from anchore_engine.db import ImagePackage, AnalysisArtifact, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.util.packages import compare_package_versions
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
@@ -41,81 +41,107 @@ class VerifyTrigger(BaseTrigger):
             extracted_files_json = []
 
         if pkg_names:
-            pkg_data = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == self.analyzer_id,
-                                                           AnalysisArtifact.analyzer_type == self.analyzer_type,
-                                                           AnalysisArtifact.analyzer_artifact == self.analyzer_artifact,
-                                                           AnalysisArtifact.artifact_key.in_(pkg_names)).all()
+            pkgs = image_obj.packages.filter(ImagePackage.name.in_(pkg_names)).all()
         else:
-            pkg_data = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == self.analyzer_id,
-                                                           AnalysisArtifact.analyzer_type == self.analyzer_type,
-                                                           AnalysisArtifact.analyzer_artifact == self.analyzer_artifact
-                                                           ).all()
+            pkgs = image_obj.packages.all()
 
-        for pkg_db_record in pkg_data:
-            pkg_name = pkg_db_record.artifact_key
-            entries = pkg_db_record.json_value
-            if not pkg_dirs:
-                filtered_entries = entries.keys()
+        for pkg in pkgs:
+            pkg_name = pkg.name
+            records = []
+            if pkg_dirs:
+                # Filter the specified dirs
+                for d in pkg_dirs:
+                    records += pkg.pkg_db_entries.filter(ImagePackageManifestEntry.file_path.startswith(d))
             else:
-                filtered_entries = filter(lambda x: any(map(lambda y: x.startswith(y), pkg_dirs)), entries.keys())
+                records = [x for x in pkg.pkg_db_entries.all()]
 
-            for e in filtered_entries:
-                status = self._verify_path(entries[e], extracted_files_json.get(e))
+            for pkg_db_record in records:
+                status = self._diff_pkg_meta_and_file(pkg_db_record, extracted_files_json.get(pkg_db_record.file_path))
 
                 if status and (not checks or status.value in checks):
-                    self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, e, status.value))
+                    self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, pkg_db_record.file_path, status.value))
 
-    def _verify_path(self, db_entry, fs_entry):
+            # for pkg_db_record in entries:
+            #     #pkg_name = pkg_db_record.artifact_key
+            #     #entries = pkg_db_record.json_value
+            #     if not pkg_dirs:
+            #         filtered_entries = entries.keys()
+            #     else:
+            #         filtered_entries = filter(lambda x: any(map(lambda y: x.startswith(y), pkg_dirs)), entries.keys())
+            #
+            #     for e in filtered_entries:
+            #         status = self._verify_path(entries[e], extracted_files_json.get(e))
+            #
+            #         if status and (not checks or status.value in checks):
+            #             self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, e, status.value))
+
+    @classmethod
+    def _diff_pkg_meta_and_file(cls, meta_db_entry, fs_entry):
         """
-        Given the db record and the fs record, return one of [None, 'changed', 'removed'] for the diff depending on the diff detected
-        by comparing the pkg db record with the file status.
+        Given the db record and the fs record, return one of [False, 'changed', 'removed'] for the diff depending on the diff detected.
 
-        :param db_entry:
-        :param fs_entry:
-        :return: one of [None, <VerificationStates>]
+        If entries are identical, return False since there is no diff.
+        If there isa difference return a VerificationState.
+
+        fs_entry is a dict expected to have the following keys:
+        sha256_checksum
+        md5_checksum
+        sha1_checksum (expected but not required)
+        mode - integer converted from the octal mode string
+        size - integer size of the file
+
+        :param meta_db_entry: An ImagePackageManifestEntry object built from the pkg db in the image indicating the expected state of the file
+        :param fs_entry: A dict with metadata detected from image analysis
+        :return: one of [False, <VerificationStates>]
         """
 
         # The fs record is None or empty
-        if db_entry and not fs_entry:
+        if meta_db_entry and not fs_entry:
             return VerifyTrigger.VerificationStates.missing
 
         # This is unexpected
-        if fs_entry and not db_entry:
-            return None
+        if (fs_entry and not meta_db_entry) or fs_entry.get('name') != meta_db_entry.file_path:
+            return False
 
-        if db_entry.get('conffile'):
-            return None # skip checks on config files if the flag is set
+        if meta_db_entry.is_config_file:
+            return False # skip checks on config files if the flag is set
 
         # Check checksums
-        db_digest = db_entry.get('digestalgo')
         fs_digest = None
-        if db_digest == 'sha256':
+        if meta_db_entry.digest_algorithm == 'sha256':
             fs_digest = fs_entry.get('sha256_checksum')
-        elif db_digest == 'md5':
+        elif meta_db_entry.digest_algorithm == 'md5':
             fs_digest = fs_entry.get('md5_checksum')
-        elif db_digest == 'sha1':
+        elif meta_db_entry.digest_algorithm == 'sha1':
             fs_digest = fs_entry.get('sha1_checksum')
 
-        if db_digest and fs_digest and fs_digest != db_entry.get('digest'):
+        if meta_db_entry.digest and fs_digest and fs_digest != meta_db_entry.digest:
             return VerifyTrigger.VerificationStates.changed
 
         # Check mode
-        db_mode = db_entry.get('mode')
         fs_mode = fs_entry.get('mode')
-        if db_mode and fs_mode:
-            if len(db_mode) == 4:
-                fs_mode = fs_mode[2:]
-            if db_mode != fs_mode:
+        if meta_db_entry.mode and fs_mode:
+            # Convert to octal for consistent checks
+            oct_fs_mode = oct(fs_mode)
+            oct_db_mode = oct(meta_db_entry.mode)
+
+            # Trim mismatched lengths in octal mode
+            if len(oct_db_mode) < len(oct_fs_mode):
+                oct_fs_mode = oct_fs_mode[-len(oct_db_mode):]
+            elif len(oct_db_mode) > len(oct_fs_mode):
+                oct_db_mode = oct_db_mode[-len(oct_fs_mode):]
+
+            if oct_db_mode != oct_fs_mode:
                 return VerifyTrigger.VerificationStates.changed
 
         # Check size (Checksum should handle this)
-        db_size = db_entry.get('size')
-        fs_size = fs_entry.get('size')
+        db_size = meta_db_entry.size
+        fs_size = int(fs_entry.get('size'))
         if fs_size and db_size and fs_size != db_size:
             return VerifyTrigger.VerificationStates.changed
 
         # No changes or not enough data to compare
-        return None
+        return False
 
 
 class PkgNotPresentTrigger(BaseTrigger):
