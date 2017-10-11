@@ -106,39 +106,45 @@ class VerifyTrigger(BaseTrigger):
         if meta_db_entry.is_config_file:
             return False # skip checks on config files if the flag is set
 
+        # Store type of file
+        fs_type = fs_entry.get('entry_type')
+
         # Check checksums
-        fs_digest = None
-        if meta_db_entry.digest_algorithm == 'sha256':
-            fs_digest = fs_entry.get('sha256_checksum')
-        elif meta_db_entry.digest_algorithm == 'md5':
-            fs_digest = fs_entry.get('md5_checksum')
-        elif meta_db_entry.digest_algorithm == 'sha1':
-            fs_digest = fs_entry.get('sha1_checksum')
+        if fs_type in ['file']:
+            fs_digest = None
+            if meta_db_entry.digest_algorithm == 'sha256':
+                fs_digest = fs_entry.get('sha256_checksum')
+            elif meta_db_entry.digest_algorithm == 'md5':
+                fs_digest = fs_entry.get('md5_checksum')
+            elif meta_db_entry.digest_algorithm == 'sha1':
+                fs_digest = fs_entry.get('sha1_checksum')
 
-        if meta_db_entry.digest and fs_digest and fs_digest != meta_db_entry.digest:
-            return VerifyTrigger.VerificationStates.changed
-
-        # Check mode
-        fs_mode = fs_entry.get('mode')
-        if meta_db_entry.mode and fs_mode:
-            # Convert to octal for consistent checks
-            oct_fs_mode = oct(fs_mode)
-            oct_db_mode = oct(meta_db_entry.mode)
-
-            # Trim mismatched lengths in octal mode
-            if len(oct_db_mode) < len(oct_fs_mode):
-                oct_fs_mode = oct_fs_mode[-len(oct_db_mode):]
-            elif len(oct_db_mode) > len(oct_fs_mode):
-                oct_db_mode = oct_db_mode[-len(oct_fs_mode):]
-
-            if oct_db_mode != oct_fs_mode:
+            if meta_db_entry.digest and fs_digest and fs_digest != meta_db_entry.digest:
                 return VerifyTrigger.VerificationStates.changed
 
-        # Check size (Checksum should handle this)
-        db_size = meta_db_entry.size
-        fs_size = int(fs_entry.get('size'))
-        if fs_size and db_size and fs_size != db_size:
-            return VerifyTrigger.VerificationStates.changed
+        # Check mode
+        if fs_type in ['file', 'dir']:
+            fs_mode = fs_entry.get('mode')
+            if meta_db_entry.mode and fs_mode:
+                # Convert to octal for consistent checks
+                oct_fs_mode = oct(fs_mode)
+                oct_db_mode = oct(meta_db_entry.mode)
+
+                # Trim mismatched lengths in octal mode
+                if len(oct_db_mode) < len(oct_fs_mode):
+                    oct_fs_mode = oct_fs_mode[-len(oct_db_mode):]
+                elif len(oct_db_mode) > len(oct_fs_mode):
+                    oct_db_mode = oct_db_mode[-len(oct_fs_mode):]
+
+                if oct_db_mode != oct_fs_mode:
+                    return VerifyTrigger.VerificationStates.changed
+
+        if fs_type in ['file']:
+            # Check size (Checksum should handle this)
+            db_size = meta_db_entry.size
+            fs_size = int(fs_entry.get('size'))
+            if fs_size and db_size and fs_size != db_size:
+                return VerifyTrigger.VerificationStates.changed
 
         # No changes or not enough data to compare
         return False
