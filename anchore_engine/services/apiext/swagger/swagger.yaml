@@ -1216,6 +1216,9 @@ definitions:
     description: List of PolicyBundleRecord objects
     items:
       $ref: "#/definitions/PolicyBundleRecord"
+  ImageContent:
+    type: object
+    description: A metadata content record for a specific image, containing different content type entries
   ImageDetail:
     type: object
     description: A metadata detail record for a specific image. Multiple detail records may map a single catalog image.
@@ -1249,6 +1252,8 @@ definitions:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
     type: object
     properties:
+      image_content:
+        $ref: "#/definitions/ImageContent"
       image_detail:
         type: array
         description: Details specific to an image reference and type such as tag and image source
