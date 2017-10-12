@@ -284,10 +284,6 @@ class HTTPAuthRealm(object):
 
         return succeed((IResource, self.resource, lambda: None))
 
-#def hellothere(user,clientpw,serverpw):
-#    logger.debug("HELLOTHERE: " + str(user) + " : " + str(clientpw) + " : " + str(serverpw))
-#    return(serverpw)
-
 def getAuthResource(in_resource, sname, config):
     if sname in config['services']:
         localconfig = config['services'][sname]
