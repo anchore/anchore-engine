@@ -96,12 +96,9 @@ class SecretCheckGate(Gate):
                 context.data['filenames'] = extracted_files_json.keys()
 
         content_matches = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'secret_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base').all()
-        log.info("HELLOHELLO: " + str(content_matches))
         matches = {}
         for m in content_matches:
             matches[m.artifact_key] = m.json_value
         context.data['secret_content_regexp'] = matches
-
-        log.info("HELLO: " + str(context.data))
 
         return context

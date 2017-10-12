@@ -77,16 +77,6 @@ def dequeue(queueName, userId, session=None):
 
     metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
 
-    #result = session.query(Queue).update({Queue.popped: True}).filter_by(queueName=queueName, userId=userId).order_by(desc(Queue.queueId)).first()
-    #result.update({Queue.popped: True})
-    #blah = session.query(Queue).filter(Queue.queueId==func.min(Queue.queueId).select())
-    #blah = session.query(Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(desc(Queue.queueId)).limit(1)
-    #blah.update({Queue.popped: True})
-
-    #for b in blah:
-    #    logger.debug("HELLO: " + str(dir(b)))
-
-    #logger.debug("HELLO: " + str(dir(session.query(Queue))))
     result = session.query(Queue).with_for_update(of=Queue).filter_by(queueName=queueName, userId=userId, popped=False, priority=True).order_by(asc(Queue.queueId)).first()
     if not result:
         result = session.query(Queue).with_for_update(of=Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(asc(Queue.queueId)).first()

@@ -6,7 +6,17 @@ from test.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import Image
 
-from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, NoHealthCheck, NoDockerfile, NoFromTrigger, NoTag, FromScratch, ExposeTrigger, Sudo, VolumePresent
+from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, \
+    NoHealthCheck, \
+    NoDockerfile, \
+    NoFromTrigger, \
+    NoTag, \
+    FromScratch, \
+    ExposeTrigger, \
+    Sudo, \
+    VolumePresent, \
+    DirectiveCheckTrigger, \
+    EffectiveUserTrigger
 
 test_image = Image()
 test_image.distro_name = 'debian'
@@ -105,5 +115,151 @@ class DockerfileGateTest(GateUnitTest):
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_directivechecktrigger_exists(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='COPY', CHECK='exists')
+        test_image.dockerfile_contents = 'COPY /root /rootcmd\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='COPY', CHECK='exists')
+        test_image.dockerfile_contents = 'RUN echo hello\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+
+    def test_directivechecktrigger_notexists(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='COPY', CHECK='not_exists')
+        test_image.dockerfile_contents = 'COPY /root /rootcmd\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='COPY', CHECK='not_exists')
+        test_image.dockerfile_contents = 'RUN echo "root hello copy 123"\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+
+    def test_directivechecktrigger_equals(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='RUN', CHECK='=', CHECK_VALUE='yum update -y')
+        test_image.dockerfile_contents = 'RUN yum update -y\nENV abs\nCMD echo hi\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_directivechecktrigger_notequals(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='RUN', CHECK='!=', CHECK_VALUE='testvalue')
+        test_image.dockerfile_contents = 'RUN yum update -y\nENV abs\nCMD echo hi\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_directivechecktrigger_like(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='USER', CHECK='like', CHECK_VALUE='testuser.*')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nUSER testuser123\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='USER', CHECK='like', CHECK_VALUE='testuser.*')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nUSER test_user\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_directivechecktrigger_notlike(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='USER', CHECK='not_like', CHECK_VALUE='testuser.*')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, DIRECTIVES='USER', CHECK='not_like', CHECK_VALUE='testuser.*')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_effectiveuser_trigger(self):
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, ALLOWED='root')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, ALLOWED='testuser')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, ALLOWED='testuser')
+        test_image.dockerfile_contents = 'USER testuser\nRUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='root')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='testuser')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='testuser')
+        test_image.dockerfile_contents = 'USER testuser\nRUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='testuser', ALLOWED='nginx')
+        test_image.dockerfile_contents = 'USER testuser\nRUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='testuser', ALLOWED='nginx')
+        test_image.dockerfile_contents = 'USER testuser\nRUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER nginx\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, DENIED='root', ALLOWED='root')
+        test_image.dockerfile_contents = 'USER testuser\nRUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER root\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+
+
+
+
+
 
 

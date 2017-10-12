@@ -1197,7 +1197,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         except Exception as err:
             logger.warn("failed to add/check image")
 
-        logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag) + " : " + json.dumps(policy_bundle, indent=4))
+        logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag))
 
         try:
             resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)

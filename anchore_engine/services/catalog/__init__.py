@@ -137,7 +137,7 @@ def handle_feed_sync(*args, **kwargs):
         client = anchore_engine.clients.policy_engine.get_client(user=userId, password=password, verify_ssl=verify)
         resp = client.create_feed_update(FeedUpdateNotification(feed_name='vulnerabilities'))
         if resp:
-            logger.debug("feed sync response: " + json.dumps(resp, indent=4))
+            logger.debug("feed sync response is not empty")
         else:
             logger.debug("feed sync response is empty")
         feed_sync_updated = True
@@ -971,13 +971,13 @@ running = False
 last_run = 0
 
 threads = {
-    'image_watcher': {'handler':handle_image_watcher, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 30, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
-    'policy_eval': {'handler':handle_policyeval, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
-    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'args':[], 'thread': None, 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
+    'image_watcher': {'handler':handle_image_watcher, 'args':[], 'thread': None, 'cycle_timer': 300, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
+    'policy_eval': {'handler':handle_policyeval, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 30, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
+    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'args':[], 'thread': None, 'cycle_timer': 3600, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'analyzer_queue': {'handler':handle_analyzer_queue, 'args':[], 'thread': None, 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_run': 0, 'last_return': False},
     'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
-    'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 14400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
+    'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
     #'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
     #'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
 }

@@ -1,4 +1,5 @@
 import re
+import stat
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.utils import PipeDelimitedStringListValidator
@@ -72,11 +73,30 @@ class FilenameMatchTrigger(BaseTrigger):
                     self._fire(msg='Application of regexp matched file found in container: file={} regexp={}'.format(thefile, regexp))
 
 
+class SuidCheckTrigger(BaseTrigger):
+    __trigger_name__ = 'SUIDGUIDCHECK'
+    __description__ = 'Fires for each file found to have suid or sgid set'
+
+    def evaluate(self, image_obj, context):
+        if not image_obj.fs:
+            return
+
+        files = image_obj.fs.files
+        if not files:
+            return
+
+        found = filter(lambda x: (int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID)), files.items())
+        for path, entry in found:
+            self._fire(msg='SUID or GUID found set on file {}. Mode: {}'.format(path, oct(entry.get('mode'))))
+
+
+
 class FileCheckGate(Gate):
     __gate_name__ = 'FILECHECK'
     __triggers__ = [
         ContentMatchTrigger,
-        FilenameMatchTrigger
+        FilenameMatchTrigger,
+        SuidCheckTrigger
     ]
 
     def prepare_context(self, image_obj, context):

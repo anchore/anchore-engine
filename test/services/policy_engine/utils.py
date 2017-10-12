@@ -142,7 +142,7 @@ class LocalTestDataEnvironment(object):
         self.bundles = {}
         for f in os.listdir(self.bundle_dir):
             with open(os.path.join(self.bundle_dir, f)) as fd:
-                b = json.load(fd)
+                b = json.load(fd ,parse_int=str, parse_float=str)
             self.bundles[b['id']] = b
 
 

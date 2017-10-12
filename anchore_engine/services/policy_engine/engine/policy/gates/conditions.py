@@ -1,3 +1,50 @@
+from collections import namedtuple
+from anchore_engine.services.policy_engine.engine.policy.utils import InputValidator, CommaDelimitedStringListValidator, TypeValidator, delim_parser
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, GateMeta, BaseTrigger
+
+
+class AttributeListValidator(InputValidator):
+    def __init__(self, attrs):
+        self.attrs = attrs
+
+    def validation_criteria(self):
+        return 'In: {}'.format(self.attrs)
+
+    def __call__(self, *args, **kwargs):
+        if args and args[0]:
+            parts = map(lambda x: x.strip(), args[0].split(','))
+            return not bool(filter(lambda x: x not in self.attrs, parts))
+        else:
+            return False
+
+
+CheckOperation = namedtuple('CheckOperation', ['requires_rvalue','eval_function'])
+
+
+class CheckOperations(InputValidator):
+    """
+    A very generic condition validator. Child classes can override the __conditions__ list for different values.
+    """
+
+    # Map of tuples from an operator name to a tuple of (bool, function) where arg 0 is whether an rvalue is required and arg 1 is function taking 2 args to return evaluation
+    def __init__(self, ops):
+        """
+        :param ops: a dict of string keys mapped to CheckOperation tuples
+        """
+        self.ops = ops
+
+    def get_op(self, name):
+        return self.ops[name]
+
+    def validation_criteria(self):
+        return 'In: {}'.format(self.ops.keys())
+
+    def __call__(self, *args, **kwargs):
+        if args and args[0]:
+            return args[0].strip() in self.ops.keys()
+        return False
+
+
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 #
 #

@@ -2,12 +2,24 @@
 
 if [ "${1}" == "dev" ]; then
     BUILDMODE="dev"
-    ANCHORESRCHOME="/root/"
+    if [ -z "${ANCHORE_SRC_HOME}" ]; then
+	ANCHORESRCHOME="/root/"
+    else
+	ANCHORESRCHOME="${ANCHORE_SRC_HOME}"
+    fi
     if [ -d "${ANCHORESRCHOME}/wheelhouse" ]; then
 	ANCHOREWHEELHOUSE="${ANCHORESRCHOME}/wheelhouse"
     fi
-    DOCKERFILE="scripts/dockerfiles/Dockerfile.dev"
-    TAG="anchore-engine:dev"
+    if [ -z "${ANCHORE_ENGINE_DOCKERFILE}" ]; then
+	DOCKERFILE="scripts/dockerfiles/Dockerfile.dev"
+    else
+	DOCKERFILE="${ANCHORE_ENGINE_DOCKERFILE}"
+    fi
+    if [ -z "${ANCHORE_ENGINE_TAG}" ]; then
+	TAG="anchore-engine:dev"
+    else
+	TAG="${ANCHORE_ENGINE_TAG}"
+    fi
 else
     BUILDMODE="latest"
     DOCKERFILE="Dockerfile"
