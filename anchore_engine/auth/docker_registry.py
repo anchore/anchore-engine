@@ -145,6 +145,23 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
 
     return(manifest, digest)
 
+def ping_docker_registry(registry_record):
+
+    ret = False
+    try:
+        user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
+        registry = registry_record['registry']
+        verify = registry_record['registry_verify']
+        url = "https://"+registry
+
+        drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify)
+        logger.debug("registry access check success ("+str(url)+","+str(user)+")")
+        ret = True
+    except Exception as err:
+        logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
+        ret = False
+    return(ret)
+
 def get_image_manifest(userId, image_info, registry_creds):
     logger.debug("get_image_manifest input: " + userId + " : " + str(image_info) + " : " + str(time.time()))
 
@@ -156,13 +173,21 @@ def get_image_manifest(userId, image_info, registry_creds):
     try:
         for registry_record in registry_creds:
             if registry_record['registry'] == registry:
+                if registry_record['record_state_key'] not in ['active']:
+                    try:
+                        last_try = int(registry_record['record_state_val'])
+                    except:
+                        last_try = 0
+
+                    if (int(time.time()) - last_try) < 60:
+                        logger.debug("SKIPPING REGISTRY ATTEMPT: " + str(registry_record['record_state_key']))
+                        raise Exception("registry not available - " + str(registry_record['record_state_key']))
+
                 user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
-                #user = registry_record['registry_user']
-                #pw = registry_record['registry_pass']
                 registry_verify = registry_record['registry_verify']
                 break
-    except:
-        pass
+    except Exception as err:
+        raise err
 
     if registry == 'docker.io':
         url = "https://index.docker.io"
