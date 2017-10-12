@@ -189,6 +189,15 @@
 
    Copyright 2015 Yodle, Inc.
 
+   Modifications Copyright 2016 Anchore, Inc.
+   Modified Files:
+    docker-registry-show.py
+    requirements.txt
+    docker_registry_client/DockerRegistryClient.py
+    docker_registry_client/__init__.py
+    docker_registry_client/_BaseClient.py
+    docker_registry_client/Repository.py
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at

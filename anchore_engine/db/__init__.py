@@ -33,3 +33,4 @@ from .entities.policy_engine import FilesystemAnalysis
 from .entities.policy_engine import NpmMetadata
 from .entities.policy_engine import GemMetadata
 from .entities.policy_engine import AnalysisArtifact
+from .entities.policy_engine import ImagePackageManifestEntry

@@ -286,7 +286,7 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
 
     __loader_class__ = ImageLoader
 
-    def __init__(self, user_id, image_id, url=None):
+    def __init__(self, user_id, image_id, url=None, force_reload=False):
         self.image_id = image_id
         self.user_id = user_id
         self.start_time = None
@@ -295,6 +295,7 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
         self.session = None,
         self.received_at = None,
         self.created_at = datetime.datetime.utcnow()
+        self.force_reload = force_reload
 
     def json(self):
         return {
@@ -302,6 +303,7 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
             'user_id': self.user_id,
             'image_id': self.image_id,
             'url': self.fetch_url,
+            'force_reload': self.force_reload,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'received_at': self.received_at.isoformat() if self.received_at else None
         }
@@ -311,7 +313,7 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
         if json_obj.get('type') != cls.__task_name__:
             raise ValueError('Specified json is not for this message type')
 
-        img = ImageLoadTask(json_obj['user_id'], json_obj['image_id'], url=json_obj.get('url'))
+        img = ImageLoadTask(json_obj['user_id'], json_obj['image_id'], url=json_obj.get('url'), force_reload=json_obj.get('force_reload'))
         img.created_at = dateutil.parser.parse(json_obj['created_at'])
         img.received_at = datetime.datetime.utcnow()
         return img
@@ -328,12 +330,20 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
             db = get_session()
             img = db.query(Image).get((self.image_id, self.user_id))
             if img is not None:
-                log.info('Image {}/{} already found in the system. Will not re-load.'.format(self.user_id, self.image_id))
-                db.close()
-                return None
+                if not self.force_reload:
+                    log.info('Image {}/{} already found in the system. Will not re-load.'.format(self.user_id, self.image_id))
+                    db.close()
+                    return None
+                else:
+                    log.info('Deleting image {}/{} and all associated resources for reload'.format(self.user_id, self.image_id))
+                    for pkg_vuln in img.vulnerabilities():
+                        db.delete(pkg_vuln)
+                    db.delete(img)
+
+
 
             # Close the session during the data fetch.
-            db.close()
+            #db.close()
 
             image_obj = self._load_image_analysis()
             if not image_obj:

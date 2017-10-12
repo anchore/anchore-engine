@@ -32,8 +32,6 @@ class AnchoreServiceMaker(object):
         # this works, consider better logging in non-twistd way: https://docs.python.org/2/howto/logging.html#logging-advanced-tutorial
         #logging.basicConfig(format='%(asctime)-15s %(levelname)s %(filename)s:%(funcName)s %(message)s', filename="/tmp/"+self.tapname+".log", level='DEBUG')
         #_logger = logging.getLogger(__name__)
-        #_logger.info("MEHINFO")
-        #_logger.debug("MEHDEBUG")
 
         slist = []
 
