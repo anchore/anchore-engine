@@ -17,13 +17,11 @@ def get_image_summary(user_auth, image_record):
     ret = {}
     if image_record['analysis_status'] != taskstate.complete_state('analyze'):
         return(ret)
-    # return({})
+
     # augment with image summary data, if available
     try:
         try:
-            timer = time.time()
             image_summary_data = catalog.get_document(user_auth, 'image_summary_data', image_record['imageDigest'])
-            logger.debug("TIMER3: " +str(time.time() - timer))
         except:
             image_summary_data = {}
 
@@ -58,21 +56,19 @@ def get_image_summary(user_auth, image_record):
             summary_record = {}
 
             adm = image_summary_metadata['anchore_distro_meta']
-            air = image_summary_metadata['anchore_image_report']
-            airm = air.pop('meta', {})
 
             summary_record['distro'] = adm.pop('DISTRO', 'N/A')
             summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
 
+            air = image_summary_metadata['anchore_image_report']
+            airm = air.pop('meta', {})
             al = air.pop('layers', [])
             ddata = air.pop('docker_data', {})
 
             summary_record['layer_count'] = str(len(al))
-            
-            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
-
             summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
-            summary_record['arch'] = ddata.pop('Architecture', 'N/A')
+            summary_record['arch'] = ddata.pop('Architecture', 'N/A')            
+            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
 
             ret = summary_record
 
@@ -94,14 +90,6 @@ def make_response_content(content_type, content_data):
 
     # type-specific formatting of content data
     if content_type == 'os':
-#        {
-#            "license": "Unknown", 
-#            "origin": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)", 
-#            "package": "libgcc1", 
-#            "size": 105000, 
-#            "type": "dpkg", 
-#            "version": "1:6.0.1-0ubuntu1"
-#        }, 
         elkeys = ['license', 'origin', 'size', 'type', 'version']
         for package in content_data.keys():
             el = {}
@@ -118,30 +106,6 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'npm':
-#        {
-#            "license": "MIT", 
-#            "location": "/usr/local/lib/node_modules/npm/node_modules/npmlog/node_modules/gauge/node_modules/string-width/node_modules/is-fullwidth-code-point/", 
-#            "origin": "Sindre Sorhus (sindresorhus.com)", 
-#            "package": "is-fullwidth-code-point", 
-#            "size": null, 
-#            "type": "NPM", 
-#            "version": "1.0.0"
-#        }
-
-#       "/usr/local/lib/node_modules/npm/package.json": {
-#            "latest": null, 
-#            "lics": [
-#                "Artistic-2.0"
-#            ], 
-#            "name": "npm", 
-#            "origins": [
-#                "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)"
-#            ], 
-#            "sourcepkg": "https://github.com/npm/npm", 
-#            "versions": [
-#                "5.3.0"
-#            ]
-#        }
         for package in content_data.keys():        
             el = {}
             try:
@@ -172,28 +136,6 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'files':
-#        "/var/tmp": {
-#            "fullpath": "/var/tmp", 
-#            "linkdst": null, 
-#            "linkdst_fullpath": null, 
-#            "mode": 17407, 
-#            "name": "/var/tmp", 
-#            "othernames": {
-#                "/var/tmp": true
-#            }, 
-#            "size": 6, 
-#            "type": "dir"
-#        }
-#        {
-#            "filename": "/usr/lib/x86_64-linux-gnu/perl-base/unicore/To/Ea.pl", 
-#            "linkdest": null, 
-#            "mode": "0644", 
-#            "sha256": "c47329b25bb5d6ddf99e6c85d05b8162d6e3b2f885aa7da741d34e6563783716", 
-#            "size": 2980, 
-#            "type": "file"
-#        }
-
-        timer = time.time()
         for filename in content_data.keys():
             el = {}
             try:
@@ -210,10 +152,6 @@ def make_response_content(content_type, content_data):
                 el = {}
             if el:
                 ret.append(el)        
-        logger.debug("TIMER: " + str(time.time() - timer))
-#        ret = content_data        
-    elif content_type == 'metadata':
-        pass
     else:
         ret = content_data
 
@@ -406,7 +344,6 @@ def make_response_image(user_auth, image_record, params={}):
     if params and 'detail' in params and not params['detail']:
         image_record['image_detail'] = []
 
-
     for datekey in ['last_updated', 'created_at']:
         try:
             image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat()
@@ -420,11 +357,8 @@ def make_response_image(user_auth, image_record, params={}):
     except:
         image_content_metadata = {}
 
-    ret['image_content_metadata'] = image_content_metadata
-    #if extra_data:
-    #    for k in extra_data.keys():
-    #        if k not in ret:
-    #            ret[k] = extra_data[k]
+    ret['image_content'] = {}
+    ret['image_content']['metadata'] = image_content_metadata
 
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
@@ -546,11 +480,8 @@ def get_content(request_inputs, content_type, doformat=False):
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
 
             imageDigest = image_report['imageDigest']
-            timer = time.time()
             image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
-            logger.debug("TIMER0: " +str(time.time() - timer))
             return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
-            logger.debug("TIMER1: " +str(time.time() - timer))
 
         httpcode = 200
     except Exception as err:

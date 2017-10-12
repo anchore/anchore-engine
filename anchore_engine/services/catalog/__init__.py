@@ -407,7 +407,6 @@ def handle_image_watcher(*args, **kwargs):
 
         for registry_record in registry_creds:
             registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
-            #logger.debug("REGHELLO: " + str(registry_record['registry']) + " : " + str(registry_status))
             if not registry_status:
                 registry_record['record_state_key'] = 'auth_failure'
                 registry_record['record_state_val'] = str(int(time.time()))
