@@ -136,17 +136,38 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'files':
+        elmap = {
+            'linkdst': 'linkdest',
+            'size': 'size',
+            'mode': 'mode',
+            'sha256': 'sha256',
+            'type': 'type',
+            'uid': 'uid',
+            'gid': 'gid'
+        }
         for filename in content_data.keys():
             el = {}
             try:
                 el['filename'] = filename
-                el['linkdest'] = content_data[filename]['linkdst']
-                el['mode'] = oct(stat.S_IMODE(content_data[filename]['mode']))
-                el['sha256'] = content_data[filename]['sha256']
+                for elkey in elmap.keys():
+                    try:
+                        el[elmap[elkey]] = content_data[filename][elkey]
+                    except:
+                        #el.pop(elmap[elkey], None)
+                        el[elmap[elkey]] = None
+
+                # special formatting
+                el['mode'] = oct(stat.S_IMODE(el['mode']))
                 if el['sha256'] == 'DIRECTORY_OR_OTHER':
                     el['sha256'] = None
-                el['size'] = content_data[filename]['size']
-                el['type'] = content_data[filename]['type']
+
+                #el['mode'] = oct(stat.S_IMODE(content_data[filename]['mode']))
+                #el['linkdest'] = content_data[filename]['linkdst']
+                #el['sha256'] = content_data[filename]['sha256']
+                #el['size'] = content_data[filename]['size']
+                #el['type'] = content_data[filename]['type']
+                #el['uid'] = content_data[filesname]['uid']
+                #el['gid'] = content_data[filesname]['gid']
 
             except Exception as err:
                 el = {}
