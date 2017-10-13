@@ -1340,7 +1340,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                                     image_content_data[content_type] = {}
                             if image_content_data:
                                 logger.debug("adding image content data to archive")
-                                rc = anchore_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
+                                rc = archive_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
 
                             image_summary_data = {}
                             try:
