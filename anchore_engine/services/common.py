@@ -25,6 +25,7 @@ from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
 from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 apiext_status = {}
 latest_service_records = {"service_records": []}
@@ -441,6 +442,24 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
         raise Exception ("image type ("+str(image_type)+") not supported")
 
     return(ret)
+
+def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
+
+    resp = None
+
+    try:
+        request = ImageIngressRequest()
+        request.user_id = imageUserId
+        request.image_id = imageId
+        request.fetch_url='catalog://'+str(imageUserId)+'/analysis_data/'+str(imageDigest)
+        logger.debug("policy engine request (image add): " + str(request))
+        resp = client.ingress_image(request)
+        logger.spew("policy engine response (image add): " + str(resp))
+    except Exception as err:
+        logger.error("failed to add/check image: " + str(err))
+        raise err
+
+    return(resp)
 
 def clean_docker_image_details_for_update(image_details):
     ret = []

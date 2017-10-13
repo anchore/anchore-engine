@@ -297,6 +297,20 @@ def image_import(dbsession, request_inputs, bodycontent={}):
             logger.debug("ADDING/UPDATING IMAGE IN IMAGE IMPORT: " + str(imageId))
             ret_list = add_or_update_image(dbsession, userId, imageId, tags=tags, digests=digests, anchore_data=anchore_data)
 
+            system_user_auth = get_system_auth(dbsession)
+            system_userId = system_user_auth[0]
+            system_password = system_user_auth[1]
+            
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            verify = localconfig['internal_ssl_verify']
+
+            client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+            for image_report in ret_list:
+                imageDigest = image_report['imageDigest']
+                try:
+                    resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
+                except Exception as err:
+                    logger.warn("failed to load image data into policy engine: " + str(err))
             # return the new image:
             return_object = ret_list
             httpcode = 200
@@ -1122,15 +1136,20 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
     for imageId in imageIds:
         # do the image load, just in case it was missed in analyze...
         try:
-            request = ImageIngressRequest()
-            request.user_id = userId
-            request.image_id = imageId
-            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-            logger.debug("policy engine request (image add): " + str(request))
-            resp = client.ingress_image(request)
-            logger.debug("policy engine response (image add): " + str(resp))
+            resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
         except Exception as err:
-            logger.warn("failed to add/check image")
+            logger.warn("failed to load image data into policy engine: " + str(err))
+            
+#        try:
+#            request = ImageIngressRequest()
+#            request.user_id = userId
+#            request.image_id = imageId
+#            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+#            logger.debug("policy engine request (image add): " + str(request))
+#            resp = client.ingress_image(request)
+#            logger.debug("policy engine response (image add): " + str(resp))
+#        except Exception as err:
+#            logger.warn("failed to add/check image")
 
         resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
         curr_vuln_result = resp.to_dict()
@@ -1203,19 +1222,25 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         except:
             pass
 
+
+    # do the image load, just in case it was missed in analyze...
+    try:
+        resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
+    except Exception as err:
+        logger.warn("failed to load image data into policy engine: " + str(err))
+
     tagset = [evaltag]
     for fulltag in tagset:
-        # do the image load, just in case it was missed in analyze...
-        try:
-            request = ImageIngressRequest()
-            request.user_id = userId
-            request.image_id = imageId
-            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-            logger.debug("policy engine request (image add): " + str(request))
-            resp = client.ingress_image(request)
-            logger.debug("policy engine response (image add): " + str(resp))
-        except Exception as err:
-            logger.warn("failed to add/check image")
+#        try:
+#            request = ImageIngressRequest()
+#            request.user_id = userId
+#            request.image_id = imageId
+#            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+#            logger.debug("policy engine request (image add): " + str(request))
+#            resp = client.ingress_image(request)
+#            logger.debug("policy engine response (image add): " + str(resp))
+#        except Exception as err:
+#            logger.warn("failed to add/check image")
 
         logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag))
 
