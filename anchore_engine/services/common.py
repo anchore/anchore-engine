@@ -34,6 +34,7 @@ resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 's
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data"]
 super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem']
+image_vulnerability_types = ['os']
 
 def registerService(sname, config, enforce_unique=True):
     ret = False

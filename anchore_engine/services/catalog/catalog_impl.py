@@ -557,20 +557,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 if httpcode not in range(200,299):
                     raise Exception(str(rc))
 
-            #rc = db_policybundle.delete(policyId, userId, session=dbsession)
-            #if not rc:
-            #    raise Exception("DB delete failed")
-            #else:
-
-            #    if 'cleanup_evals' in params and params['cleanup_evals']:
-            #        dbfilter = {"policyId": policyId}
-            #        eval_records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-            #        for eval_record in eval_records:
-            #            db_policyeval.delete_record(eval_record, session=dbsession)
-
-            #    httpcode = 200
-            #    return_object = True
-
         elif method == 'POST' or method == 'PUT':
             if not policyId:
                 raise Exception ("must include 'policyId' in the json payload for this operation")
@@ -935,18 +921,6 @@ def refresh_registry_creds(registry_records, dbsession):
                     ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
                     registry_record['registry_meta'] = json.dumps(ecr_data)
                     db_registries.update_record(registry_record, session=dbsession)
-
-        #registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
-        #if not registry_status:
-        #    if registry_record['record_state_key'] not in ['disabled']:
-        #        registry_record['record_state_key'] = 'auth_failure'
-        #        registry_record['record_state_val'] = str(int(time.time()))
-        #        logger.debug("UPDATING: " + str(registry_record))
-        #        db_registries.update_record(registry_record, session=dbsession)
-        #elif registry_record['record_state_key'] not in ['active']:
-        #    registry_record['record_state_key'] = 'active'
-        #    registry_record['record_state_val'] = str(time.time())
-        #    db_registries.update_record(registry_record, session=dbsession)
 
         logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
     return(True)

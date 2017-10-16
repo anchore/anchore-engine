@@ -178,6 +178,47 @@ def make_response_content(content_type, content_data):
 
     return(ret)
 
+def make_response_vulnerability(vulnerability_type, vulnerability_data):
+    ret = []
+
+    if not vulnerability_data:
+        logger.warn("empty query data given to format - returning empty result")
+        return (ret)
+
+    if vulnerability_type == 'os':
+        keymap = {
+            'vuln': 'CVE_ID',
+            'severity': 'Severity',
+            'package': 'Vulnerable_Package',
+            'fix': 'Fix_Available',
+            'url': 'URL'
+        }
+        scan_result = vulnerability_data['legacy_report']
+        try:
+            for imageId in scan_result.keys():
+                header = scan_result[imageId]['result']['header']
+                rows = scan_result[imageId]['result']['rows']
+                for row in rows:
+                    el = {}
+                    for k in keymap.keys():
+                        try:
+                            el[k] = row[header.index(keymap[k])]
+                        except:
+                            el[k] = None
+
+                        # conversions
+                        if el[k] == 'N/A':
+                            el[k] = None
+
+                    ret.append(el)
+        except Exception as err:
+            logger.warn("could not prepare query response - exception: " + str(err))
+            ret = []
+    else:
+        ret = vulnerability_data
+
+    return (ret)
+
 def make_response_query(queryType, query_data):
     ret = []
 
@@ -428,7 +469,7 @@ def lookup_imageDigest_from_imageId(request_inputs, imageId):
 
     return (ret)
 
-def vulnerability_query(request_inputs, queryType, doformat=False):
+def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -443,6 +484,10 @@ def vulnerability_query(request_inputs, queryType, doformat=False):
     verify = localconfig['internal_ssl_verify']
 
     try:
+        if vulnerability_type not in anchore_engine.services.common.image_vulnerability_types:
+            httpcode = 404
+            raise Exception("content type ("+str(vulnerability_type)+") not available")
+
         tag = params.pop('tag', None)
         imageDigest = params.pop('imageDigest', None)
         digest = params.pop('digest', None)
@@ -454,15 +499,13 @@ def vulnerability_query(request_inputs, queryType, doformat=False):
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
             imageDigest = image_report['imageDigest']
             try:
-                if not queryType:
-                    raise Exception("queryType must be set")
-                elif queryType == 'cve-scan':
+                if vulnerability_type == 'os':
                     image_detail = image_report['image_detail'][0]
                     imageId = image_detail['imageId']
                     client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
                     resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=False)
                     if doformat:
-                        return_object[imageDigest] = make_response_query(queryType, resp.to_dict())
+                        return_object[imageDigest] = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     else:
                         return_object[imageDigest] = resp.to_dict()
                 else:
@@ -490,6 +533,10 @@ def get_content(request_inputs, content_type, doformat=False):
     httpcode = 500
     userId, pw = user_auth
     try:
+        if content_type not in anchore_engine.services.common.image_content_types:
+            httpcode = 404
+            raise Exception("content type ("+str(content_type)+") not available")
+
         tag = params.pop('tag', None)
         imageDigest = params.pop('imageDigest', None)
         digest = params.pop('digest', None)
@@ -658,7 +705,7 @@ def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=N
 
 def list_image_content(imageDigest):
     try:
-        return_object = ['os', 'npm', 'gem', 'files']
+        return_object = anchore_engine.services.common.image_content_types
         httpcode = 200
     except Exception as err:
         httpcode = 500
@@ -669,7 +716,7 @@ def list_image_content(imageDigest):
 
 def list_image_content_by_imageid(imageId):
     try:
-        return_object = ['os', 'npm', 'gem', 'files']
+        return_object = anchore_engine.services.common.image_content_types
         httpcode = 200
     except Exception as err:
         httpcode = 500
@@ -677,47 +724,17 @@ def list_image_content_by_imageid(imageId):
 
     return return_object, httpcode
 
-# TODO - switch to using content archive document instead of query outputs
 def get_image_content_by_type(imageDigest, ctype):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
 
         return_object, httpcode = get_content(request_inputs, ctype, doformat=True)
-
-        return_object = {
-            'imageDigest': imageDigest,
-            'content_type': ctype,
-            'content': return_object.values()[0]
-        }
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return return_object, httpcode
-
-def get_image_content_by_type_orig(imageDigest, ctype):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
-
-        if ctype == 'os':
-            queryType = "list-package-detail"
-        elif ctype == 'npm':
-            queryType = "list-npm-detail"
-        elif ctype == 'gem':
-            queryType = "list-gem-detail"
-        elif ctype == 'files':
-            queryType = "list-files-detail"
-        else:
-            queryType = ctype
-
-        return_object, httpcode = query(request_inputs, queryType, doformat=True)
-
-        return_object = {
-            'imageDigest': imageDigest,
-            'content_type': ctype,
-            'content': return_object.values()[0]
-        }
+        if httpcode == 200:
+            return_object = {
+                'imageDigest': imageDigest,
+                'content_type': ctype,
+                'content': return_object.values()[0]
+            }
 
     except Exception as err:
         httpcode = 500
@@ -733,25 +750,7 @@ def get_image_content_by_type_imageId(imageId, ctype):
         except:
             imageDigest = imageId
 
-        if ctype == 'os':
-            queryType = "list-package-detail"
-        elif ctype == 'npm':
-            queryType = "list-npm-detail"
-        elif ctype == 'gem':
-            queryType = "list-gem-detail"
-        elif ctype == 'files':
-            queryType = "list-files-detail"
-        else:
-            queryType = ctype
-
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
-        return_object, httpcode = query(request_inputs, queryType, doformat=True)
-
-        return_object = {
-            'imageDigest': imageDigest,
-            'content_type': ctype,
-            'content': return_object.values()[0]
-        }
+        return_object, httpcode = get_image_content_by_type(imageDigest, ctype)
 
     except Exception as err:
         httpcode = 500
@@ -762,7 +761,7 @@ def get_image_content_by_type_imageId(imageId, ctype):
 
 def get_image_vulnerability_types(imageDigest):
     try:
-        return_object = ['os']
+        return_object = anchore_engine.services.common.image_vulnerability_types
         httpcode = 200
 
     except Exception as err:
@@ -774,8 +773,13 @@ def get_image_vulnerability_types(imageDigest):
 
 def get_image_vulnerability_types_by_imageId(imageId):
     try:
-        return_object = ['os']
-        httpcode = 200
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+        try:
+            imageDigest = lookup_imageDigest_from_imageId(request_inputs, imageId)
+        except:
+            imageDigest = imageId
+            
+        return_object, httpcode = get_image_vulnerability_types(imageDigest)
 
     except Exception as err:
         httpcode = 500
@@ -786,22 +790,20 @@ def get_image_vulnerability_types_by_imageId(imageId):
 
 def get_image_vulnerabilities_by_type(imageDigest, vtype):
     try:
-        if vtype == 'os':
-            queryType = "cve-scan"
-        else:
-            queryType = vtype
+        vulnerability_type = vtype
+        #if vtype == 'os':
+        #    vulnerability_type = "cve-scan"
+        #else:
+        #    vulnerability_type = vtype
 
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
-
-        #return_object, httpcode = query(request_inputs, queryType, doformat=True)
-        return_object, httpcode = vulnerability_query(request_inputs, queryType, doformat=True)
-
-        return_object = {
-            'imageDigest': imageDigest,
-            'vulnerability_type': vtype,
-            'vulnerabilities': return_object.values()[0]
-        }
-
+        return_object, httpcode = vulnerability_query(request_inputs, vulnerability_type, doformat=True)
+        if httpcode == 200:
+            return_object = {
+                'imageDigest': imageDigest,
+                'vulnerability_type': vulnerability_type,
+                'vulnerabilities': return_object.values()[0]
+            }
 
     except Exception as err:
         httpcode = 500
@@ -812,26 +814,14 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype):
 
 def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     try:
+        vulnerability_type = vtype
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
         try:
             imageDigest = lookup_imageDigest_from_imageId(request_inputs, imageId)
         except:
             imageDigest = imageId
 
-        if vtype == 'os':
-            queryType = "cve-scan"
-        else:
-            queryType = vtype
-
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
-        #return_object, httpcode = query(request_inputs, queryType, doformat=True)
-        return_object, httpcode = vulnerability_query(request_inputs, queryType, doformat=True)
-
-        return_object = {
-             'imageDigest': imageDigest,
-             'vulnerability_type': vtype,
-             'vulnerabilities': return_object.values()[0]
-        }
+        return_object, httpcode = get_image_vulnerabilities_by_type(imageDigest, vulnerability_type)
 
     except Exception as err:
         httpcode = 500
