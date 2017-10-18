@@ -12,7 +12,7 @@ from anchore_engine.subsys import logger
 DEFAULT_CONFIG = {
     'service_dir': '/root/.anchore_engine',
     'tmp_dir': '/tmp',
-    'log_level': 'DEBUG',
+    'log_level': 'INFO',
     'image_analyze_timeout_seconds': '36000',
     'cleanup_images': False,
     'internal_ssl_verify': True,
