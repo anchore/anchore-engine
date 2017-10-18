@@ -1,8 +1,69 @@
 #!/usr/bin/python
 
-import sys
-import subprocess
 import os
+import re
+import sys
+import time
+import threading
+import subprocess
+import watchdog
+from watchdog.observers import Observer  
+from watchdog.events import RegexMatchingEventHandler
+
+class AnchoreLogWatcher(RegexMatchingEventHandler):
+    regexes = [re.compile(".*/anchore-.*\.log$")]
+    files = {}
+
+    def do_close(self, event):
+        if event.src_path in self.files and self.files[event.src_path]['filehandle']:
+            self.files[event.src_path]['filehandle'].close()
+        self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+
+    def on_deleted(self, event):
+        if event.src_path not in self.files:
+            self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+
+        self.do_close(event)
+
+    def on_modified(self, event):
+        if event.src_path not in self.files:
+            self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+
+        if not self.files[event.src_path]['filehandle']:
+            if os.path.exists(event.src_path):
+                self.files[event.src_path]['filehandle'] = open(event.src_path)
+
+        if self.files[event.src_path]['filehandle']:
+            patt = re.match(".*anchore-(.*)\.log$", event.src_path)
+            if patt:
+                logname = patt.group(1)
+            else:
+                logname = event.src_path
+
+            for line in self.files[event.src_path]['filehandle'].readlines():
+                sys.stdout.write("[service:"+str(logname)+"] "+line)
+
+            self.files[event.src_path]['filetell'] = self.files[event.src_path]['filehandle'].tell()
+
+    def on_created(self, event):
+        if event.src_path not in self.files:
+            self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+
+        if self.files[event.src_path]['filehandle']:
+            self.do_close(event)
+
+        if os.path.exists(event.src_path):
+            self.files[event.src_path]['filehandle'] = open(event.src_path)
+            self.files[event.src_path]['filetell'] = 0
+
+    def on_moved(self, event):
+        if event.src_path not in self.files:
+            self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+        self.on_created(event)
+
+    def on_any_event(self, event):
+        if event.src_path not in self.files:
+            self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
 
 def terminate_service(service, flush_pidfile=False):
     pidfile = "/var/run/" + service + ".pid"
@@ -25,6 +86,27 @@ def terminate_service(service, flush_pidfile=False):
                 os.remove(pidfile)
     except Exception as err:
         print "could not shut down running twistd - exception: " + str(err)
+
+def startup_service(service, configdir):
+    pidfile = "/var/run/"+service+".pid"
+    logfile = "/var/log/anchore/"+service+".log"
+    os.environ['ANCHORE_LOGFILE'] = logfile
+    
+    print "cleaning up service: " + str(service)
+    terminate_service(service)
+
+    twistd_cmd = '/bin/twistd'
+    for f in ['/bin/twistd', '/usr/local/bin/twistd']:
+        if os.path.exists(f):
+            twistd_cmd = f
+
+    cmd = [twistd_cmd, '--logger=anchore_engine.subsys.twistd_logger.logger', '--pidfile', pidfile, "-n", service, '--config', configdir]
+    print "starting service: " + str(service)
+    print "\t " + ' '.join(cmd)
+
+    status = subprocess.call(cmd)
+
+    return(False)
 
 service_map = {
     'analyzer': 'anchore-worker'
@@ -55,44 +137,38 @@ if not configfile or not os.path.exists(configfile):
     print "cannot locate configfile (config.yaml) in ("+str(configdirs)+"): valid config.yaml must exist"
     sys.exit(1)
 
-#anchore_service_dir = resource_filename("anchore_engine", None)
-#os.environ['PYTHONPATH'] = anchore_service_dir
-
 startFailed = False
 if 'ANCHORE_ENGINE_SERVICES' in os.environ:
     services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
 else:
     services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
 
+try:
+    if not os.path.exists("/var/log/anchore"):
+        os.makedirs("/var/log/anchore/", 0755)
+except Exception as err:
+    print "cannot create log directory /var/log/anchore - exception: " + str(err)
+    raise err
+
 pids = []
 for service in services:
     pidfile = "/var/run/"+service+".pid"
-    logfile = "/var/log/"+service+".log"
-    os.environ['ANCHORE_LOGFILE'] = logfile
-    
-    twistd_cmd = '/bin/twistd'
-    for f in ['/bin/twistd', '/usr/local/bin/twistd']:
-        if os.path.exists(f):
-            twistd_cmd = f
-
-    cmd = [twistd_cmd, '--logger=anchore_engine.subsys.twistd_logger.logger', '--pidfile', pidfile, service, '--config', configdir]
-    print "starting service: " + str(service)
-    print "\t " + ' '.join(cmd)
-    
-    terminate_service(service)
-
     try:
-        status = subprocess.call(cmd)
-        if status != 0:
-            raise Exception('Service {} returned exit code: {}'.format(service, status))
+        athread = threading.Thread(target=startup_service, args=(service,configdir))
+        athread.start()
+
+        max_tries = 5
+        tries = 0
+        while not os.path.exists(pidfile) and tries < max_tries:
+            time.sleep(1)
+            tries = tries + 1
+
+        if tries >= max_tries:
+            raise Exception("service failed to start after ("+str(max_tries)+") seconds - failing startup")
 
     except Exception as err:
         startFailed = True
         print "service start failed - exception: " + str(err)
-        #try:
-            #print err.output
-        #except:
-            #pass
 
 if startFailed:
     print "one or more services failed to start. cleanly terminating the others"
@@ -102,8 +178,19 @@ if startFailed:
     sys.exit(1)
 else:
     try:
-        #os.system("tail -F /var/log/anchore*.log* | grep -e '\[FATAL\]' -e '\[ERROR\]' -e '\[WARN\]' -e '\[INFO\]'")
-        os.system("tail -F /var/log/anchore*.log*")
-    except:
-        pass
+        observer = Observer()
+        observer.schedule(AnchoreLogWatcher(), path="/var/log/anchore/")
+        observer.start()
+
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+    except Exception as err:
+        print "failed to startup log watchers - exception: " + str(err)
+        raise err
+
 sys.exit(0)

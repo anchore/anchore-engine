@@ -30,6 +30,7 @@ SQLAlchemy==1.1.10
 swagger-spec-validator==2.1.0
 typing==3.6.1
 urllib3==1.21.1
+watchdog==0.8.3
 Werkzeug==0.12.2
 passlib==1.7.1
 anchore
