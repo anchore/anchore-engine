@@ -53,7 +53,7 @@ services:
      options:
       max-size: 100m
   anchore-db:
-    image: "postgres:latest"
+    image: "postgres:9"
     volumes:
      - /root/aevolume/db/:/var/lib/postgresql/data/pgdata/:Z
     environment:
