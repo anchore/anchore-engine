@@ -157,14 +157,13 @@ for service in services:
         athread = threading.Thread(target=startup_service, args=(service,configdir))
         athread.start()
 
-        max_tries = 5
+        max_tries = 30
         tries = 0
         while not os.path.exists(pidfile) and tries < max_tries:
             time.sleep(1)
             tries = tries + 1
-
-        if tries >= max_tries:
-            raise Exception("service failed to start after ("+str(max_tries)+") seconds - failing startup")
+        #if tries >= max_tries:
+        #    raise Exception("service failed to start after ("+str(max_tries)+") seconds - failing startup")
 
     except Exception as err:
         startFailed = True
