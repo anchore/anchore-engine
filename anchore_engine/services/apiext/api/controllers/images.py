@@ -971,7 +971,7 @@ def images(request_inputs):
                 currstate = image_record['analysis_status']
                 if not currstate:
                     newstate = taskstate.init_state('analyze', None)
-                elif force:
+                elif force or currstate == taskstate.fault_state('analyze'):
                     newstate = taskstate.reset_state('analyze')
                 elif image_record['image_status'] == 'deleted':
                     newstate = taskstate.reset_state('analyze')

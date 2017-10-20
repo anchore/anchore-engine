@@ -39,12 +39,6 @@ class AnchoreServiceMaker(object):
         log_level = config.get('log_level', 'INFO')
         log_to_db = config.get('log_to_db', False)
 
-        try:
-            logger.set_log_level(log_level, log_to_db=log_to_db)
-        except Exception as err:
-            log.err("exception while initializing logger - exception: " + str(err))
-            logger.set_log_level('INFO')
-
         slist = self.servicenames
 
         try:
@@ -52,6 +46,9 @@ class AnchoreServiceMaker(object):
 
             isEnabled = False
             for sname in slist:
+                if 'log_level' in config_services[sname]:
+                    log_level = config_services[sname]['log_level']
+
                 if config_services[sname]['enabled']:
                     isEnabled = True
                     break
@@ -65,6 +62,11 @@ class AnchoreServiceMaker(object):
             log.err("error checking for enabled services, check config file - exception: " + str(err))
             raise Exception("error checking for enabled services, check config file - exception: " + str(err))
 
+        try:
+            logger.set_log_level(log_level, log_to_db=log_to_db)
+        except Exception as err:
+            log.err("exception while initializing logger - exception: " + str(err))
+            logger.set_log_level('INFO')
 
         logger.enable_bootstrap_logging(name_prefix='policy_engine')
         r = anchore_engine.services.common.makeService(slist, options, bootstrap_db=True)
