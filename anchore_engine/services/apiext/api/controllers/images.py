@@ -135,6 +135,21 @@ def make_response_content(content_type, content_data):
             if el:
                 ret.append(el)
 
+    elif content_type == 'python':
+        for package in content_data.keys():
+            el = {}
+            try:
+                el['package'] = content_data[package]['name']
+                el['type'] = 'PYTHON'
+                el['location'] = content_data[package]['location']
+                el['version'] = content_data[package]['version']
+                el['origin'] = content_data[package]['origin'] or 'Unknown'
+                el['license'] = content_data[package]['license'] or 'Unknown'
+            except:
+                el = {}
+            if el:
+                ret.append(el)
+
     elif content_type == 'files':
         elmap = {
             'linkdst': 'linkdest',
@@ -549,6 +564,10 @@ def get_content(request_inputs, content_type, doformat=False):
 
             imageDigest = image_report['imageDigest']
             image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
+            if content_type not in image_content_data:
+                httpcode = 404
+                raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
+
             return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
 
         httpcode = 200
@@ -791,10 +810,6 @@ def get_image_vulnerability_types_by_imageId(imageId):
 def get_image_vulnerabilities_by_type(imageDigest, vtype):
     try:
         vulnerability_type = vtype
-        #if vtype == 'os':
-        #    vulnerability_type = "cve-scan"
-        #else:
-        #    vulnerability_type = vtype
 
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
         return_object, httpcode = vulnerability_query(request_inputs, vulnerability_type, doformat=True)

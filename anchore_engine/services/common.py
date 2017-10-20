@@ -33,7 +33,7 @@ subscription_types = ['policy_eval', 'tag_update', 'vuln_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data"]
 super_users = ['admin', 'anchore-system']
-image_content_types = ['os', 'files', 'npm', 'gem']
+image_content_types = ['os', 'files', 'npm', 'gem', 'python']
 image_vulnerability_types = ['os']
 
 def registerService(sname, config, enforce_unique=True):
@@ -665,6 +665,15 @@ def extract_analyzer_content(image_data, content_type):
             try:
                 if 'pkgs.gems' in idata['imagedata']['analysis_report']['package_list']:
                     adata = idata['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
+                    for k in adata.keys():
+                        avalue = json.loads(adata[k])
+                        ret[k] = avalue
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif content_type == 'python':
+            try:
+                if 'pkgs.python' in idata['imagedata']['analysis_report']['package_list']:
+                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
                     for k in adata.keys():
                         avalue = json.loads(adata[k])
                         ret[k] = avalue
