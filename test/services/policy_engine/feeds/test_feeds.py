@@ -3,7 +3,7 @@ import unittest, logging
 import time
 from test.services.policy_engine import NewDBPerTestUnitTest
 
-init_test_logging(level=logging.INFO)
+init_test_logging(level=logging.DEBUG)
 
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
@@ -38,7 +38,7 @@ class FeedTest(NewDBPerTestUnitTest):
             log.info('Has {} vuln records'.format(db.query(Vulnerability).count()))
 
 
-    #@unittest.skip(reason)
+    @unittest.skip(reason)
     def test_bulk_vuln_sync(self):
         with session_scope() as db:
             vcount = db.query(Vulnerability).count()
@@ -52,7 +52,7 @@ class FeedTest(NewDBPerTestUnitTest):
         log.info('Done with vulnerabilities. Took: {} sec'.format(t))
         log.info('Has {} vuln records'.format(db.query(Vulnerability).count()))
 
-    #@unittest.skip(reason)
+    @unittest.skip(reason)
     def test_package_sync(self):
         with session_scope() as db:
             ncount = db.query(NpmMetadata).count()
@@ -73,7 +73,7 @@ class FeedTest(NewDBPerTestUnitTest):
         log.info('Has {} npm records'.format(ncount))
         log.info('Has {} gem records'.format(gcount))
 
-    #@unittest.skip(reason)
+    @unittest.skip(reason)
     def test_bulk_package_sync(self):
         with session_scope() as db:
             ncount = db.query(NpmMetadata).count()
@@ -93,7 +93,7 @@ class FeedTest(NewDBPerTestUnitTest):
         log.info('Has {} npm records'.format(ncount))
         log.info('Has {} gem records'.format(gcount))
 
-    #@unittest.skip(reason)
+    @unittest.skip(reason)
     def test_group_lookups(self):
         df = DataFeeds.instance()
         df.vulnerabilities.refresh_groups()

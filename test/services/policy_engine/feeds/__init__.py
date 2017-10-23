@@ -42,7 +42,7 @@ class LocalFilesystemFeedClient(IFeedSource):
 
     def get_feed_group_data(self, feed, group, since=None):
         if type(since) == datetime.datetime:
-            since = since.strftime(SINCE_DATE_FORMAT)
+            since = since.isoformat()
 
         files = []
         group_path = os.path.join(self.src_path, feed, group)
@@ -75,7 +75,7 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
 
     def get_paged_feed_group_data(self, feed, group, since=None, next_token=None):
         if type(since) == datetime.datetime:
-            since = since.strftime(SINCE_DATE_FORMAT)
+            since = since.isoformat()
 
         files = []
         group_path = os.path.join(self.src_path, feed, group)
@@ -86,7 +86,7 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
         token = None
 
         back_boundary = since
-        forward_boundary = self.newest_allowed.strftime(SINCE_DATE_FORMAT) if self.newest_allowed else None
+        forward_boundary = self.newest_allowed.isoformat() if self.newest_allowed else None
         log.debug(
             'Getting data for {}/{} with back boundary {} and forward boundary {}'.format(feed, group, back_boundary,
                                                                                           forward_boundary))
@@ -122,14 +122,14 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
         :return:
         """
         if type(since) == datetime.datetime:
-            since = since.strftime(SINCE_DATE_FORMAT)
+            since = since.isoformat()
 
         files = []
         group_path = os.path.join(self.src_path, feed, group)
         data = []
 
         back_boundary = since
-        forward_boundary = self.newest_allowed.strftime(SINCE_DATE_FORMAT) if self.newest_allowed else None
+        forward_boundary = self.newest_allowed.isoformat() if self.newest_allowed else None
         log.debug('Getting data for {}/{} with back boundary {} and forward boundary {}'.format(feed, group, back_boundary, forward_boundary))
         for datafile_name in sorted(os.listdir(group_path)):
             if (not back_boundary or (datafile_name >= back_boundary)) and (not forward_boundary or (forward_boundary and datafile_name <= forward_boundary)):

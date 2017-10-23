@@ -611,6 +611,22 @@ class ImagePackageVulnerability(Base):
          {}
     )
 
+    def fixed_in(self):
+        """
+        Return the fixed_in value given a package matched (in case there are multiple packages specified in the vuln.
+        :param package: package to find a fix version for, if available
+        :return: the fixed in version string if any or None if not found
+        """
+        if self.vulnerability.fixed_in:
+            name_matches = [self.pkg_name, self.package.normalized_src_pkg]
+            fix_candidates = self.vulnerability.fixed_in
+            fixes_in = filter(lambda x: x.name in name_matches, fix_candidates)
+            fix_available_in = fixes_in[0].version if fixes_in else None
+        else:
+            fix_available_in = None
+
+        return fix_available_in
+
     @classmethod
     def from_pair(cls, package_obj, vuln_obj):
         rec = ImagePackageVulnerability()

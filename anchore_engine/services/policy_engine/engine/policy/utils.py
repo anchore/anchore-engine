@@ -1,4 +1,5 @@
 import re
+import json
 
 
 class InputValidator(object):
@@ -26,6 +27,17 @@ class TypeValidator(InputValidator):
 
     def validation_criteria(self):
         return str(self.expected_type.__name__)
+
+
+class BooleanValidator(InputValidator):
+    __validator_description__ = 'Value must be boolean or a string representation of a boolean. One of: ["true","false", true, false]'
+
+    def validation_criteria(self):
+        return json.dumps(['true', 'false'])
+
+    def __call__(self, *args, **kwargs):
+        value = args[0]
+        return str(value).lower() in ['true', 'false']
 
 
 class RegexParamValidator(InputValidator):
