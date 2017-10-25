@@ -1,0 +1,52 @@
+---
+swagger: "2.0"
+
+info:
+  description: "Record Grafeas interface service for anchore-engine"
+  version: "0.9.0"
+  title: "Grafeas Interface"
+  contact:
+    email: "dev@anchore.com"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+
+#host: "localhost:83"
+
+basePath: "/v1"
+
+tags:
+- name: "grafeas"
+  description: "Grafeas Interface"
+  externalDocs:
+    description: "Find out more"
+    url: "http://anchore.com"
+
+schemes:
+- "https"
+- "http"
+
+securityDefinitions:
+  basicAuth:
+    type: basic
+
+security:
+  - basicAuth: []
+
+paths:
+  /status:
+    get:
+      tags:
+      - "grafeas"
+      summary: "Get the status of the service"
+      description: ""
+      operationId: "status"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          description: "service status"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.grafeas.api.controllers.default_controller"
