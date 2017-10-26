@@ -36,7 +36,9 @@ except Exception as err:
     raise err
 
 grafeas_hostport = "localhost:8080"
-cve_id_set = pkg_name_set = None
+cve_id_set = pkg_name_set = img_id_set = None
+occurrence_name_map = {}
+myconfig = {}
 
 # service funcs (must be here)
 def createService(sname, config):
@@ -80,7 +82,7 @@ def createService(sname, config):
     return (ret_svc)
 
 def initializeService(sname, config):
-    global grafeas_hostport, cve_id_set, pkg_name_set
+    global grafeas_hostport, cve_id_set, pkg_name_set, img_id_set, myconfig
     
     myconfig = config['services'][sname]
     if 'grafeas_hostport' in myconfig:
@@ -100,11 +102,17 @@ def initializeService(sname, config):
             logger.error("problem with format of pkg_name_set in config (should by comma sep string) - exception: " + str(err))
             pkg_name_set = None
 
+    if 'img_id_set' in myconfig:
+        try:
+            img_id_set = myconfig['img_id_set'].split(",")
+        except Exception as err:
+            logger.error("problem with format of img_id_set in config (should by comma sep string) - exception: " + str(err))
+            img_id_set = None
+
     return (anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
     return (anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
-
 
 ############################################
 
@@ -152,7 +160,7 @@ def make_vulnerability_note(cveId, anch_vulns):
 
                 # TODO - for vulns that are present that have no fix version, unclear what to set ("MAXIMUM"?)
                 if fixedIn.version and fixedIn.version != "None":
-                    fix_version = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="NORMAL", name=fixedIn.version)
+                    fix_version = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="NORMAL", name=fixedIn.epochless_version)
                 else:
                     fix_version = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="MAXIMUM")
 
@@ -174,7 +182,7 @@ def make_vulnerability_note(cveId, anch_vulns):
         external_urls.append(anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.RelatedUrl(url=link, label="More Info"))
 
     newnote = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Note(
-        name="projects/security-scanner/notes/"+cveId, 
+        name="projects/anchore-vulnerabilities/notes/"+cveId, 
         short_description=cveId,
         long_description=long_description,
         related_url=external_urls,
@@ -186,7 +194,7 @@ def make_vulnerability_note(cveId, anch_vulns):
 
     return(newnote)
     
-def update_vulnerability_notes(cve_id_set=[]):
+def update_vulnerability_notes(gapi, cve_id_set=[]):
     global grafeas_hostport
 
     anchore_vulns = {}
@@ -207,9 +215,6 @@ def update_vulnerability_notes(cve_id_set=[]):
             db_vulns = dbsession.query(Vulnerability).all()
 
         for v in db_vulns:
-            #logger.debug("HELLO: " + str(v.__dict__))
-            #logger.debug("FIXEDIN: " + str(v.fixed_in))
-            #logger.debug("VULNIN: " + str(v.vulnerable_in))
             cveId = v.id
             if v.id not in anchore_vulns:
                 anchore_vulns[v.id] = []
@@ -221,24 +226,22 @@ def update_vulnerability_notes(cve_id_set=[]):
                 #logger.debug(json.dumps(gnote.to_dict(), indent=4))
 
                 if True:
-                    logger.debug("setting up grafeas api client for hostport: " + str(grafeas_hostport))
-                    api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
-                    api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
-                    projects_id = "security-scanner"
+                    #logger.debug("setting up grafeas api client for hostport: " + str(grafeas_hostport))
+                    #api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
+                    #api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
+
+                    projects_id = "anchore-vulnerabilities"
                     note_id = cveId
                     note = gnote
 
+                    always_update = False
+                    if 'always_update' in myconfig and myconfig['always_update']:
+                        always_update = True
+
                     try:
-                        api_response = api_instance.get_note(projects_id, note_id)
-                        logger.debug("note already exists in service, skipping add: " + note_id)
-                        # TODO - need to actually diff the note for update case
+                        upsert_grafeas_note(gapi, projects_id, note_id, note, always_update=always_update)
                     except Exception as err:
-                        #logger.debug("get err: " + str(err))
-                        try:
-                            api_response = api_instance.create_note(projects_id, note_id=note_id, note=note)
-                            logger.debug("note added to grafeas service: " + note_id)
-                        except Exception as err:
-                            logger.warn("could not add note to grafeas service - exception: " + str(err))
+                        logger.warn("note upsert failed - exception: " + str(err))
 
             except Exception as err:
                 logger.warn("unable to marshal cve id "+str(cveId)+" into vulnerability note - exception: " + str(err))
@@ -269,18 +272,17 @@ def make_package_note(pkgName, anch_pkgs):
             retel['architecture'] = 'UNKNOWN'
 
         retel['maintainer'] = anch_pkg.origin
-        retel['latest_version'] = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="NORMAL", name=anch_pkg.version)
-        retel['description'] = "distro="+anch_pkg.distro_name+" distro_version="+anch_pkg.distro_version+" pkg_type="+anch_pkg.pkg_type+" license="+anch_pkg.license+" src_package="+anch_pkg.src_pkg
+        retel['latest_version'] = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="NORMAL", name=anch_pkg.fullversion)
+        retel['description'] = "distro="+anch_pkg.distro_name+" distro_version="+anch_pkg.distro_version+" pkg_type="+anch_pkg.pkg_type.upper()+" license="+anch_pkg.license+" src_package="+anch_pkg.src_pkg
         retel['url'] = "N/A"
 
-        #logger.debug("MEH: " + str(anch_pkg))
         dist = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Distribution(**retel)
         distributions.append(dist)
     
     package = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Package(name=pkgName, distribution=distributions)
 
     newnote = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Note(
-        name="projects/distro-packages/notes/"+pkgName, 
+        name="projects/anchore-distro-packages/notes/"+pkgName, 
         short_description=pkgName,
         long_description=long_description,
         related_url=external_urls,
@@ -291,7 +293,7 @@ def make_package_note(pkgName, anch_pkgs):
     )    
     return(newnote)
 
-def update_package_notes(pkg_name_set=[]):
+def update_package_notes(gapi, pkg_name_set=[]):
     global grafeas_hostport
 
     anch_pkgs = {}
@@ -320,29 +322,262 @@ def update_package_notes(pkg_name_set=[]):
                 gnote = make_package_note(pkgName, anch_pkgs[pkgName])
                 #logger.debug(json.dumps(gnote.to_dict(), indent=4))
                 if True:
-                    logger.debug("setting up grafeas api client for hostport: " + str(grafeas_hostport))
-                    api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
-                    api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
-                    projects_id = "distro-packages"
+                    #logger.debug("setting up grafeas api client for hostport: " + str(grafeas_hostport))
+                    #api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
+                    #api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
+
+                    projects_id = "anchore-distro-packages"
                     note_id = pkgName
                     note = gnote
 
-                    try:
-                        api_response = api_instance.get_note(projects_id, note_id)
-                        logger.debug("note already exists in service, skipping add: " + note_id)
-                        # TODO - need to actually diff the note for update case
-                    except Exception as err:
-                        logger.debug("get err: " + str(err))
-                        try:
-                            api_response = api_instance.create_note(projects_id, note_id=note_id, note=note)
-                            logger.debug("note added to grafeas service: " + note_id)
-                        except Exception as err:
-                            logger.warn("could not add note to grafeas service - exception: " + str(err))
+                    always_update = False
+                    if 'always_update' in myconfig and myconfig['always_update']:
+                        always_update = True
 
+                    try:
+                        upsert_grafeas_note(gapi, projects_id, note_id, note, always_update=always_update)
+                    except Exception as err:
+                        logger.warn("note upsert failed - exception: " + str(err))
 
             except Exception as err:
                 logger.warn("unable to marshal package "+str(pkgName)+" into package note - exception: " + str(err))
 
+
+    return(True)
+
+def upsert_grafeas_occurrence(gapi, projects_id, occ_id, occ, always_update=False):
+    global occurrence_name_map
+
+    existing_occ = None
+    try:
+        if occ_id in occurrence_name_map:
+            existing_occ = gapi.get_occurrence(projects_id, occurrence_name_map[occ_id])
+            logger.debug("got existing occurrence from grafeas: " + occ_id)
+    except Exception as err:
+        pass
+
+    do_update = False
+    if always_update:
+        do_update = True
+    #TODO actually diff existing and new to decide on update/create(skip)
+
+    if not existing_occ:
+        try:
+            api_response = gapi.create_occurrence(projects_id, occurrence=occ)
+            logger.debug("occurrence added to grafeas service: " + occ_id)
+            g_occ_id = api_response.name.split("/")[-1]
+            occurrence_name_map[occ_id] = g_occ_id
+        except Exception as err:
+            logger.warn("could not add occurrence to grafeas service - exception: " + str(err))
+    elif existing_occ and do_update:
+        try:
+            occ.name = existing_occ.name
+            api_response = gapi.update_occurrence(projects_id, occurrence_name_map[occ_id], occurrence=occ)
+            logger.debug("occurrence updated in grafeas service: " + occ_id)
+        except Exception as err:
+            logger.warn("could not update occurrence in grafeas service - exception: " + str(err))
+    else:
+        logger.debug("skipping occurrence create/update - nothing to do: " + str(occ_id))
+
+    if False:
+        try:
+            if 'always_update' in myconfig and myconfig['always_update']:
+                raise Exception("always_update is set in config")
+
+            if note_id in occurrence_name_map:
+                api_response = gapi.get_occurrence(projects_id, occurrence_name_map[note_id])
+                logger.debug("occurrence already exists in service, skipping add: " + note_id)
+            else:
+                raise Exception("new occurrence")
+            # TODO - need to actually diff the note for update case
+
+        except Exception as err:
+            logger.debug("get err: " + str(err))
+            try:
+                api_response = gapi.create_occurrence(projects_id, occurrence=note)
+                logger.debug("occurrence added to grafeas service: " + note_id)
+                occ_id = api_response.name.split("/")[-1]
+                occurrence_name_map[note_id] = occ_id
+            except Exception as err:
+                logger.warn("could not add occurrence to grafeas service - exception: " + str(err))
+
+
+    return(True)
+
+def upsert_grafeas_note(gapi, projects_id, note_id, note, always_update=False):
+    try:
+        existing_note = gapi.get_note(projects_id, note_id)
+        logger.debug("got existing note from grafeas: " + note_id)
+    except Exception as err:
+        existing_note = None
+
+    do_update = False
+    if always_update:
+        do_update = True
+    #TODO actually diff existing and new to decide on update/create(skip)
+
+    if not existing_note:
+        try:
+            api_response = gapi.create_note(projects_id, note_id=note_id, note=note)
+            logger.debug("note added to grafeas service: " + note_id)
+        except Exception as err:
+            logger.warn("could not add note to grafeas service - exception: " + str(err))                        
+    elif existing_note and do_update:
+        try:
+            api_response = gapi.update_note(projects_id, note_id, note=note)
+            logger.debug("note updated in grafeas service: " + note_id)
+        except Exception as err:
+            logger.warn("could not update note in grafeas service - exception: " + str(err))
+    else:
+        logger.debug("skipping note create/update - nothing to do: " + str(note_id))
+
+    return(True)
+
+def make_image_vulnerability_occurrence(imageId, anch_img_pkgs, dbsession=None, gapi=None):
+    import uuid
+
+    newoccs = {}
+
+    resource_url = None
+    note_name = None
+
+    vulnerability_details = {}
+
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    system_user_auth = localconfig['system_user_auth']
+    verify = localconfig['internal_ssl_verify']
+
+    userId = 'admin'
+    user_record = catalog.get_user(system_user_auth, userId)
+    user_auth = (user_record['userId'], user_record['password'])
+
+    fulldigest = "unknown_registry/unknown_repo@"+imageId
+    image_records = catalog.get_image(user_auth, imageId=imageId)
+    if image_records:
+        image_record = image_records[0]
+        for image_detail in image_record['image_detail']:
+            fulldigest = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_record['imageDigest']
+    resource_url = "https://"+fulldigest
+
+    #api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
+    #api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
+    projects_id = "anchore-vulnerabilities"
+
+    for anch_img_pkg in anch_img_pkgs:
+        try:
+            p = dbsession.query(ImagePackage).filter_by(image_id=imageId, name=anch_img_pkg.pkg_name, version=anch_img_pkg.pkg_version).all()[0]
+            pkgName = p.name
+            pkgVersion = p.version
+            pkgFullVersion = p.fullversion
+            pkgRelease = p.release
+        except:
+            pkgName = anch_img_pkg.pkg_name
+            pkgVersion = anch_img_pkg.pkg_version
+            pkgFullVersion = anch_img.pkg.pkg_version
+            pkgRelease = None
+
+        distro,distro_version = anch_img_pkg.vulnerability_namespace_name.split(":",1)
+        distro_cpe = "cpe:/o:"+distro+":"+distro+"_linux:"+distro_version
+
+        note_name = "projects/anchore-vulnerabilities/notes/"+anch_img_pkg.vulnerability_id
+        severity = "UNKNOWN"
+        cvss_score = 0.0
+
+        fixed_location = None
+        try:
+            api_response = gapi.get_note(projects_id, anch_img_pkg.vulnerability_id)
+            vulnerability_note = api_response
+            #logger.debug("WTF: " + str(json.dumps(vulnerability_note.to_dict(), indent=4)))
+            severity = vulnerability_note.vulnerability_type.severity
+            cvss_score = vulnerability_note.vulnerability_type.cvss_score
+            fix_package = fix_version = "N/A"
+            for detail in vulnerability_note.vulnerability_type.details:
+                if detail.cpe_uri == distro_cpe:
+                    fixed_location = detail.fixed_location
+                    fixed_location.package = pkgName
+                    break
+
+        except Exception as err:
+            logger.warn("could not get vulnability note from grafeas associated with found vulnerability ("+str(anch_img_pkg.vulnerability_id)+") - exception: " + str(err))
+
+        affected_location = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.VulnerabilityLocation(
+            package=pkgName,
+            version=anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Version(kind="NORMAL", name=pkgFullVersion),
+            cpe_uri="cpe:/a:"+anch_img_pkg.pkg_name+":"+anch_img_pkg.pkg_name+":"+anch_img_pkg.pkg_version
+        )
+
+        vulnerability_details = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.VulnerabilityDetails(
+            type=anch_img_pkg.pkg_type.upper(),
+            severity=severity,
+            cvss_score=cvss_score,
+            fixed_location=fixed_location,
+            affected_location=affected_location
+        )
+            
+
+        occ_id = str(uuid.uuid4())
+
+        occ_id = str(imageId + anch_img_pkg.pkg_name + anch_img_pkg.vulnerability_id)
+        newocc = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.Occurrence(
+            name='projects/anchore-vulnerability-scan/occurrences/'+str(occ_id),
+            resource_url=resource_url,
+            note_name=note_name,
+            kind="PACKAGE_VULNERABILITY",
+            vulnerability_details=vulnerability_details,
+            create_time=str(datetime.datetime.utcnow()),
+            update_time=str(datetime.datetime.utcnow())
+        )
+
+        newoccs[occ_id] = newocc
+
+    return(newoccs)
+
+
+def update_image_vulnerability_occurrences(gapi, img_id_set=[]):
+    global grafeas_hostport, myconfig
+
+    anch_img_pkgs = {}
+    db_imgs = []
+    with session_scope() as dbsession:
+        if img_id_set:
+            logger.debug("fetching limited package set from anchore DB: " + str(img_id_set))
+            for imageId in img_id_set:
+                try:
+                    p = dbsession.query(ImagePackageVulnerability).filter_by(pkg_image_id=imageId).all()
+                    if p[0].pkg_image_id:
+                        db_imgs = db_imgs + p
+                except Exception as err:
+                    logger.warn("configured image name set ("+str(imageId)+") not found in DB, skipping: " + str(err))
+        else:
+            logger.debug("fetching full package set from anchore DB")
+            db_imgs = dbsession.query(ImagePackageVulnerability).all()
+    
+        for i in db_imgs:
+            if i.pkg_image_id not in anch_img_pkgs:
+                anch_img_pkgs[i.pkg_image_id] = []
+            anch_img_pkgs[i.pkg_image_id].append(i)
+
+        for imageId in anch_img_pkgs.keys():
+            try:
+                gnotes = make_image_vulnerability_occurrence(imageId, anch_img_pkgs[imageId], dbsession=dbsession, gapi=gapi)
+                for note_id in gnotes.keys():
+                    gnote = gnotes[note_id]
+
+                    projects_id = "anchore-vulnerability-scan"
+                    note = gnote
+
+                    always_update = False
+                    if 'always_update' in myconfig and myconfig['always_update']:
+                        always_update = True
+
+                    try:
+                        upsert_grafeas_occurrence(gapi, projects_id, note_id, gnote, always_update=always_update)
+                    except Exception as err:
+                        logger.warn("occurrence upsert failed - exception: " + str(err))
+
+            except Exception as err:
+                logger.warn("unable to marshal occurrence "+str(imageId)+" into vulnerability occurrence - exception: " + str(err))            
+        
 
     return(True)
 
@@ -354,7 +589,7 @@ current_avg = 0.0
 current_avg_count = 0.0
 
 def monitor_func(**kwargs):
-    global click, running, last_run, system_user_auth, grafeas_hostport, cve_id_set, pkg_name_set
+    global click, running, last_run, system_user_auth, grafeas_hostport, cve_id_set, pkg_name_set, img_id_set
 
     timer = int(time.time())
     if click < 5:
@@ -376,17 +611,30 @@ def monitor_func(**kwargs):
         system_user_auth = localconfig['system_user_auth']
         verify = localconfig['internal_ssl_verify']
 
+        logger.debug("setting up grafeas api client for hostport: " + str(grafeas_hostport))
+        api_client = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.api_client.ApiClient(host=grafeas_hostport)
+        api_instance = anchore_engine.vendored.grafeas_client.client_python.v1alpha1.swagger_client.GrafeasApi(api_client=api_client)
+
+        logger.info("updating grafeas with latest vulnerability notes")
         try:
-            update_vulnerability_notes(cve_id_set=cve_id_set)
+            update_vulnerability_notes(api_instance, cve_id_set=cve_id_set)
             pass
         except Exception as err:
             logger.error("unable to populate vulnerability notes - exception: " + str(err))
 
+        logger.info("updating grafeas with latest package notes")
         try:
-            update_package_notes(pkg_name_set=pkg_name_set)
+            update_package_notes(api_instance, pkg_name_set=pkg_name_set)
             pass
         except Exception as err:
             logger.error("unable to populate package notes - exception: " + str(err))
+
+        logger.info("searching for vulnerability occurrences")
+        try:
+            update_image_vulnerability_occurrences(api_instance, img_id_set=img_id_set)
+            pass
+        except Exception as err:
+            logger.error("unable to search/store for vulnerability occurrences - exception: " + str(err))
 
     except Exception as err:
         logger.error(str(err))
