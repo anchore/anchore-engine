@@ -487,7 +487,6 @@ def make_image_vulnerability_occurrence(imageId, anch_img_pkgs, dbsession=None, 
         try:
             api_response = gapi.get_note(projects_id, anch_img_pkg.vulnerability_id)
             vulnerability_note = api_response
-            #logger.debug("WTF: " + str(json.dumps(vulnerability_note.to_dict(), indent=4)))
             severity = vulnerability_note.vulnerability_type.severity
             cvss_score = vulnerability_note.vulnerability_type.cvss_score
             fix_package = fix_version = "N/A"
