@@ -141,7 +141,7 @@ startFailed = False
 if 'ANCHORE_ENGINE_SERVICES' in os.environ:
     services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
 else:
-    services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
+    services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine', 'anchore-grafeas']
 
 try:
     if not os.path.exists("/var/log/anchore"):
