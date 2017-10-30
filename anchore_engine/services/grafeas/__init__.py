@@ -52,7 +52,7 @@ def createService(sname, config):
     try:
         kick_timer = int(myconfig['cycle_timer_seconds'])
     except:
-        kick_timer = 1
+        kick_timer = 600
 
     doapi = False
     try:
