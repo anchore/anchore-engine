@@ -20,6 +20,7 @@ def add(userId, password, inobj, session=None):
 
         session.add(our_result)
     else:
+        inobj['password'] = password
         our_result.update(inobj)
 
     return(True)
