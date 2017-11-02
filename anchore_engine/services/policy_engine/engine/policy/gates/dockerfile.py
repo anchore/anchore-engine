@@ -374,16 +374,4 @@ class DockerfileGate(Gate):
                     continue
                     # Skip comment lines in the dockerfile
 
-            #for line in image_obj.dockerfile_contents.splitlines():
-            #    line = line.strip()
-            #    if line and not line.startswith('#'):
-            #        directive, remainder = line.split(' ', 1)
-            #        directive = directive.upper() # Normalize to all upper
-            #        if directive not in context.data['prepared_dockerfile']:
-            #            context.data['prepared_dockerfile'][directive] = []
-            #        context.data['prepared_dockerfile'][directive].append(line)
-            #    else:
-            #        continue
-            #        # Skip comment lines in the dockerfile
-
         return context
