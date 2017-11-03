@@ -54,6 +54,7 @@ else
     git clone git@github.com:anchore/anchore-engine.git
 fi
 
+#cd anchore-engine; export CURRHASH=`git log --pretty=format:'%H' -n 1`; cd ..
 
 WHEELVOLUME=""
 if [ ! -z "$ANCHOREWHEELHOUSE" ]; then
@@ -62,4 +63,5 @@ if [ ! -z "$ANCHOREWHEELHOUSE" ]; then
     fi
 fi
 
-cd /tmp/anchore-engine-build && docker build -t ${TAG} ${CACHE_DIRECTIVE} ${WHEELVOLUME} . && docker tag ${TAG} anchore/${TAG}
+cd /tmp/anchore-engine-build && docker build -t ${TAG} ${CACHE_DIRECTIVE} ${WHEELVOLUME} . && docker tag ${TAG} anchore/${TAG} 
+
