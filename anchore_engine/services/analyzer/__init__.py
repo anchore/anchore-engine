@@ -130,16 +130,15 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
 
         logger.spew("TIMING MARK3: " + str(int(time.time()) - timer))
 
-        # query!
-        try:
-            query_data = localanchore.run_queries(pullstring, image_detail)
-            if not query_data:
-                raise Exception("anchore queries failed:")
-        except Exception as err:
-            logger.error("error on run_queries: " + str(err))
-            raise err
-
-        logger.spew("TIMING MARK4: " + str(int(time.time()) - timer))
+        ## query!
+        #try:
+        #    query_data = localanchore.run_queries(pullstring, image_detail)
+        #    if not query_data:
+        #        raise Exception("anchore queries failed:")
+        #except Exception as err:
+        #    logger.error("error on run_queries: " + str(err))
+        #    raise err
+        #logger.spew("TIMING MARK4: " + str(int(time.time()) - timer))
 
         # get the result from anchore
         logger.debug("retrieving image data from anchore")
@@ -164,7 +163,7 @@ def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
         logger.spew("TIMING MARK6: " + str(int(time.time()) - timer))
 
     ret_analyze = image_data
-    ret_query = query_data
+    #ret_query = query_data
 
     logger.info("performing analysis on image complete: " + str(pullstring))
     return (ret_analyze, ret_query)
@@ -221,12 +220,12 @@ def process_analyzer_job(system_user_auth, qobj):
                 image_data, query_data = perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds)
                 logger.spew("TIMING MARKY: " + str(int(time.time()) - timer))
 
-                logger.debug("archiving query data")
-                rc = catalog.put_document(user_auth, 'query_data', imageDigest, query_data)
-                if rc:
-                    logger.debug("storing image query data to catalog")
-                else:
-                    raise Exception("query archive failed to store")
+                #logger.debug("archiving query data")
+                #rc = catalog.put_document(user_auth, 'query_data', imageDigest, query_data)
+                #if rc:
+                #    logger.debug("storing image query data to catalog")
+                #else:
+                #    raise Exception("query archive failed to store")
 
                 if not imageId:
                     try:

@@ -4,7 +4,7 @@ import time
 from anchore_engine import db
 import anchore_engine.db.db_catalog_image_docker
 from anchore_engine.db import CatalogImage, CatalogImageDocker
-
+from anchore_engine.subsys import logger
 
 def add_record(input_image_record, session=None):
     if not session:
@@ -44,10 +44,25 @@ def update_record(input_image_record, session=None):
     if our_result:
         image_detail = image_record.pop('image_detail')
         if image_record['image_type'] == 'docker':
+
             # add the detail records
+            imageId = None
             for tag_record in image_detail:
                 rc = db.db_catalog_image_docker.add_record(tag_record, session=session)
                 rc = db.db_catalog_image_docker.update_record(tag_record, session=session)
+                if 'imageId' in tag_record and tag_record['imageId']:
+                    imageId = tag_record['imageId']
+
+            # handle case where there may have been new image_detail records added before imageId element was ready, sync all image_details with latest imageId
+            try:
+                if imageId:
+                    all_tag_records = db.db_catalog_image_docker.get_alltags(image_record['imageDigest'], image_record['userId'], session=session)
+                    for tag_record in all_tag_records:
+                        if 'imageId' not in tag_record or ('imageId'  in tag_record and not tag_record['imageId']):
+                            tag_record['imageId'] = imageId
+                            rc = db.db_catalog_image_docker.update_record(tag_record, session=session)
+            except Exception as err:
+                logger.warn("unable to update all image_details with found imageId: " + str(err))
 
         our_result.update(image_record)
     
@@ -71,31 +86,32 @@ def update_record_image_detail(input_image_record, updated_image_detail, session
 
     return(image_record)
 
-def add(imageDigest, userId, image_type, dbobj={}, image_data={}, session=None):
-    if not session:
-        session = db.Session
+if False:
+    def add(imageDigest, userId, image_type, dbobj={}, image_data={}, session=None):
+        if not session:
+            session = db.Session
 
-    dbobj.pop('created_at', None)
-    dbobj.pop('last_updated', None)
+        dbobj.pop('created_at', None)
+        dbobj.pop('last_updated', None)
 
-    our_result = session.query(CatalogImage).filter_by(imageDigest=imageDigest, userId=userId, image_type=image_type).first()
-    if not our_result:
-        if image_type == 'docker' and image_data:
-            rc = db.db_catalog_image_docker.add(imageDigest, userId, image_data['tag'], registry=image_data['registry'], user=image_data['user'], repo=image_data['repo'], digest=image_data['digest'], imageId=image_data['imageId'], dockerfile=image_data['dockerfile'], session=session)
-        
-        our_result = CatalogImage(imageDigest=imageDigest, userId=userId, image_type=image_type)
+        our_result = session.query(CatalogImage).filter_by(imageDigest=imageDigest, userId=userId, image_type=image_type).first()
+        if not our_result:
+            if image_type == 'docker' and image_data:
+                rc = db.db_catalog_image_docker.add(imageDigest, userId, image_data['tag'], registry=image_data['registry'], user=image_data['user'], repo=image_data['repo'], digest=image_data['digest'], imageId=image_data['imageId'], dockerfile=image_data['dockerfile'], session=session)
 
-        our_result.update(dbobj)
-        session.add(our_result)
-    else:
-        our_result.update(dbobj)
-        if image_type == 'docker' and image_data:
-            rc = db.db_catalog_image_docker.update(imageDigest, userId, image_data['tag'], registry=image_data['registry'], user=image_data['user'], repo=image_data['repo'], digest=image_data['digest'], imageId=image_data['imageId'], dockerfile=image_data['dockerfile'], session=session)
-    
-    return(True)
+            our_result = CatalogImage(imageDigest=imageDigest, userId=userId, image_type=image_type)
 
-def update(imageDigest, userId, image_type, dbobj={}, image_data={}, session=None):
-    return(add(imageDigest, userId, image_type, dbobj=dbobj, image_data=image_data, session=session))
+            our_result.update(dbobj)
+            session.add(our_result)
+        else:
+            our_result.update(dbobj)
+            if image_type == 'docker' and image_data:
+                rc = db.db_catalog_image_docker.update(imageDigest, userId, image_data['tag'], registry=image_data['registry'], user=image_data['user'], repo=image_data['repo'], digest=image_data['digest'], imageId=image_data['imageId'], dockerfile=image_data['dockerfile'], session=session)
+
+        return(True)
+
+    def update(imageDigest, userId, image_type, dbobj={}, image_data={}, session=None):
+        return(add(imageDigest, userId, image_type, dbobj=dbobj, image_data=image_data, session=session))
 
 def get(imageDigest, userId, session=None):
     if not session:

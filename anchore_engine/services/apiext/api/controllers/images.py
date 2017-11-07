@@ -150,6 +150,22 @@ def make_response_content(content_type, content_data):
             if el:
                 ret.append(el)
 
+    elif content_type == 'java':
+        for package in content_data.keys():
+            el = {}
+            try:
+                el['package'] = content_data[package]['name']
+                el['type'] = content_data[package]['type'].upper()
+                el['location'] = content_data[package]['location']
+                el['specification-version'] = content_data[package]['specification-version']
+                el['implementation-version'] = content_data[package]['implementation-version']
+                el['origin'] = content_data[package]['origin'] or 'Unknown'
+                #el['license'] = content_data[package]['license'] or 'Unknown'
+            except:
+                el = {}
+            if el:
+                ret.append(el)
+
     elif content_type == 'files':
         elmap = {
             'linkdst': 'linkdest',
@@ -234,7 +250,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
 
     return (ret)
 
-def make_response_query(queryType, query_data):
+def make_response_query_orig(queryType, query_data):
     ret = []
 
     if not query_data:
@@ -577,7 +593,7 @@ def get_content(request_inputs, content_type, doformat=False):
 
     return (return_object, httpcode)
 
-def query(request_inputs, queryType, doformat=False):
+def query_orig(request_inputs, queryType, doformat=False):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
