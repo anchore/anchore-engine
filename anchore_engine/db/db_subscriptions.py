@@ -124,14 +124,6 @@ def delete(userId, subscriptionId, remove=False, session=None):
 
             ret = True
 
-#        try:
-#            session.commit()
-#            ret = True
-#        except Exception as err:
-#            raise err
-#        finally:
-#            session.rollback()
-    
     return(ret)
 
 
@@ -151,14 +143,6 @@ def delete_bysubscription_key(userId, subscription_key, remove=False, session=No
 
             ret = True
 
-#        try:
-#            session.commit()
-#            ret = True
-#        except Exception as err:
-#            raise err
-#        finally:
-#            session.rollback()
-    
     return(ret)
 
 def delete_byfilter(userId, remove=False, session=None, **dbfilter):
