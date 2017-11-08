@@ -346,19 +346,19 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
 
         rows = []
         for vuln in vulns:
-            if vuln.vulnerability.fixed_in:
-                fixes_in = filter(lambda x: x.name == vuln.pkg_name or x.name == vuln.package.normalized_src_pkg,
-                       vuln.vulnerability.fixed_in)
-                fix_available_in = fixes_in[0].version if fixes_in else 'None'
-            else:
-                fix_available_in = 'None'
+            # if vuln.vulnerability.fixed_in:
+            #     fixes_in = filter(lambda x: x.name == vuln.pkg_name or x.name == vuln.package.normalized_src_pkg,
+            #            vuln.vulnerability.fixed_in)
+            #     fix_available_in = fixes_in[0].version if fixes_in else 'None'
+            # else:
+            #     fix_available_in = 'None'
 
             rows.append([
                 vuln.vulnerability_id,
                 vuln.vulnerability.severity,
                 1,
                 vuln.pkg_name + '-' + vuln.package.fullversion,
-                fix_available_in,
+                str(vuln.fixed_in()),
                 vuln.pkg_image_id,
                 'None', # Always empty this for now
                 vuln.vulnerability.link

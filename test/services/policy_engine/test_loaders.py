@@ -20,10 +20,12 @@ class TestImageLoader(unittest.TestCase):
         init_db(test_env.mk_db())
         test_env.init_feeds()
 
+    def testFeedLoader(self):
+        t = FeedsUpdateTask()
+        t.execute()
+
     def testImageImport(self):
         log.setLevel(logging.ERROR)
-        #t = FeedsUpdateTask()
-        #t.execute()
         log.setLevel(logging.INFO)
 
         for f in test_env.image_exports():

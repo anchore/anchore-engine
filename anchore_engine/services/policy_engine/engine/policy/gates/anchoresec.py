@@ -7,21 +7,43 @@ from anchore_engine.services.policy_engine.engine.policy.utils import IntegerVal
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace
 from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.services.policy_engine.engine.policy.utils import BooleanValidator
 log = get_logger()
 
 class CveSeverityTrigger(BaseTrigger):
     __vuln_levels__ = None
+    __params__ = {
+        'FIX_AVAILABLE': BooleanValidator()
+    }
 
     def evaluate(self, image_obj, context):
         vulns = context.data.get('loaded_vulnerabilities')
         if not vulns:
             return
 
+        is_fix_available = self.eval_params.get('FIX_AVAILABLE')
+        if is_fix_available is not None:
+            is_fix_available = str(is_fix_available).lower() == 'true'
+
         for pkg_vuln in vulns:
+            # Filter by level first
             if pkg_vuln.vulnerability.severity in self.__vuln_levels__:
-                message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
-                          pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
-                self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
+
+                # Check fix_available status if specified by user in policy
+                if is_fix_available is not None:
+                    # Must to a fix_available check
+                    fix_available_in = pkg_vuln.fixed_in()
+
+                    if is_fix_available == (fix_available_in is not None):
+                        # explicit fix state check matches fix availability
+                        message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
+                                  pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                        self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
+                else:
+                    # No fix status check since not specified by user
+                    message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
+                              pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                    self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
 
 
 class LowSeverityTrigger(CveSeverityTrigger):
@@ -51,19 +73,7 @@ class CriticalSeverityTrigger(CveSeverityTrigger):
 class UnknownSeverityTrigger(CveSeverityTrigger):
     __trigger_name__ = 'VULNUNKNOWN'
     __description__ = 'triggers if a vulnerability of UNKNOWN severity is found, along with a named package'
-    __vuln_levels__ = ['Unknown', 'Negligible']
-
-    def evaluate(self, image_obj, context):
-        vulns = context.data.get('loaded_vulnerabilities')
-        if not vulns:
-            return
-
-        for pkg_vuln in vulns:
-            # Slightly relaxed condition to handle empty and unknown severity levels.
-            if pkg_vuln.vulnerability.severity in self.__vuln_levels__ or not pkg_vuln.vulnerability.severity:
-                message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
-                          pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
-                self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
+    __vuln_levels__ = ['Unknown', 'Negligible', None]
 
 
 class FeedOutOfDateTrigger(BaseTrigger):
