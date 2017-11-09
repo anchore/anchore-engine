@@ -69,6 +69,8 @@ class EffectiveUserTrigger(BaseTrigger):
         'DENIED': CommaDelimitedStringListValidator(),
     }
 
+    _sanitize_regex = '\s*USER\s+\[?([^\]]+)\]?\s*'
+
     def evaluate(self, image_obj, context):
         if not context.data.get('prepared_dockerfile'):
             return # Prep step blocked this eval due to condition on the dockerfile, so skip
@@ -82,7 +84,13 @@ class EffectiveUserTrigger(BaseTrigger):
             user_lines = ['USER root']
 
         user = user_lines[-1].strip()  # The last USER line is the determining entry
-        user = user[len('USER'):].strip()
+        match = re.search(self._sanitize_regex, user)
+        if match and match.groups():
+            user = match.groups()[0]
+        else:
+            log.warn('Found USER line in dockerfile that does not match expected regex: {}, Line: {}'.format(self._sanitize_regex, user))
+            return
+
         if allowed_users and user not in allowed_users:
             self._fire(msg='User {} found as effective user, which is not on the allowed list'.format(user))
         if denied_users and user in denied_users:
