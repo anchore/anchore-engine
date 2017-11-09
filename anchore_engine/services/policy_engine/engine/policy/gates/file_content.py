@@ -74,7 +74,7 @@ class FilenameMatchTrigger(BaseTrigger):
 
 
 class SuidCheckTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDGUIDCHECK'
+    __trigger_name__ = 'SUIDSGIDCHECK'
     __description__ = 'Fires for each file found to have suid or sgid set'
 
     def evaluate(self, image_obj, context):
@@ -87,7 +87,7 @@ class SuidCheckTrigger(BaseTrigger):
 
         found = filter(lambda x: (int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID)), files.items())
         for path, entry in found:
-            self._fire(msg='SUID or GUID found set on file {}. Mode: {}'.format(path, oct(entry.get('mode'))))
+            self._fire(msg='SUID or SGID found set on file {}. Mode: {}'.format(path, oct(entry.get('mode'))))
 
 
 
