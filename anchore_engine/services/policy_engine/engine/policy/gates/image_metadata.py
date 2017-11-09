@@ -11,7 +11,7 @@ log = get_logger()
 
 class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __trigger_name__ = 'ATTRIBUTECHECK'
-    __description__ = 'triggers if a named image attribute does not match the given condition'
+    __description__ = 'triggers if a named image attribute matches the given condition'
 
     __ops__ = {
         '=': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: x == y),
