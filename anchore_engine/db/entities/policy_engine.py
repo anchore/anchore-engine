@@ -10,7 +10,12 @@ from sqlalchemy import Column, Integer, LargeBinary, Float, Boolean, String, For
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON
 from sqlalchemy.orm import relationship
 
-from anchore_engine.subsys import logger as log
+try:
+    from anchore_engine.subsys import logger as log
+except:
+    import logging
+    logger = logging.getLogger(__name__)
+    log = logger
 
 from .common import Base
 from .common import get_thread_scoped_session

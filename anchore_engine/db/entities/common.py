@@ -14,17 +14,20 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-import anchore_engine.configuration.localconfig
-from anchore_engine.subsys import logger
-
-# Separate logger for use during bootstrap when logging may not be fully configured
-from twisted.python import log
+#import anchore_engine.configuration.localconfig
+try:
+    from anchore_engine.subsys import logger
+    # Separate logger for use during bootstrap when logging may not be fully configured
+    from twisted.python import log
+except:
+    import logging
+    logger = logging.getLogger(__name__)
+    log = logger
 
 Session = None  # Standard session maker
 ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
-
 
 def anchore_now():
     """
@@ -36,7 +39,7 @@ def anchore_now():
 
 
 # some DB management funcs
-def initialize(versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
+def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
     """
     Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
 
@@ -50,7 +53,7 @@ def initialize(versions=None, bootstrap_db=False, specific_tables=None, bootstra
     if versions is None:
         versions = {}
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
+    #localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = True
     try:
@@ -133,12 +136,8 @@ def initialize(versions=None, bootstrap_db=False, specific_tables=None, bootstra
                     system_user_record = db_users.get('anchore-system', session=dbsession)
                     if not system_user_record:
                         rc = db_users.add('anchore-system', str(uuid.uuid4()), {'active': True}, session=dbsession)
-                        #system_user_record = db_users.get('anchore-system', session=dbsession)
                     else:
                         db_users.update(system_user_record['userId'], system_user_record['password'], {'active': True}, session=dbsession)
-                        #system_user_record = db_users.get('anchore-system', session=dbsession)
-
-                    #localconfig['anchore-system-password'] = system_user_record['password']
 
                 except Exception as err:
                     raise Exception(

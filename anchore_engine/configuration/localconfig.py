@@ -230,7 +230,7 @@ def validate_config(config):
                             check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
 
         if 'credentials' not in config or not config['credentials']:
-            raise Exception("no 'services' definition in configuration file")
+            raise Exception("no 'credentials' definition in configuration file")
         else:
             credentials = config['credentials']
             for check_key in ['database', 'users']:

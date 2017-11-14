@@ -179,7 +179,7 @@ def initializeService(sname, config):
     return(True)
 
 # the anchore twistd plugins call this to initialize and make individual services
-def makeService(snames, options, bootstrap_db=False, bootstrap_users=False):
+def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services"):
 
     try:
         # config and init
@@ -202,20 +202,21 @@ def makeService(snames, options, bootstrap_db=False, bootstrap_users=False):
     except Exception as err:
         log.err("cannot detect versions of service: exception - " + str(err))
         raise err
+        
+    if db_connect:
+        logger.info("initializing database")
 
-    logger.info("initializing database")
+        # connect to DB
+        try:
+            db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users)
+        except Exception as err:
+            log.err("cannot connect to configured DB: exception - " + str(err))
+            raise err
 
-    # connect to DB
-    try:
-        db.initialize(versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users)
-    except Exception as err:
-        log.err("cannot connect to configured DB: exception - " + str(err))
-        raise err
-
-    #credential bootstrap
-    with session_scope() as dbsession:
-        system_user = db_users.get('anchore-system', session=dbsession)
-        localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
+        #credential bootstrap
+        with session_scope() as dbsession:
+            system_user = db_users.get('anchore-system', session=dbsession)
+            localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
 
     # application object
     application = service.Application("multi-service-"+'-'.join(snames))
@@ -234,7 +235,7 @@ def makeService(snames, options, bootstrap_db=False, bootstrap_users=False):
         for sname in snames:
             if sname in localconfig['services'] and localconfig['services'][sname]['enabled']:
 
-                smodule = importlib.import_module("anchore_engine.services."+sname)
+                smodule = importlib.import_module(module_name + "." + sname)
 
                 s = smodule.createService(sname, localconfig)
                 s.setServiceParent(retservice)
@@ -285,7 +286,12 @@ class HTTPAuthRealm(object):
 
         return succeed((IResource, self.resource, lambda: None))
 
-def getAuthResource(in_resource, sname, config):
+def getAuthResource(in_resource, sname, config, password_checker=AnchorePasswordChecker()):
+
+    if not password_checker:
+        # explicitly passed in null password checker obj
+        return(in_resource)
+
     if sname in config['services']:
         localconfig = config['services'][sname]
     else:
@@ -297,7 +303,7 @@ def getAuthResource(in_resource, sname, config):
         #    raise Exception("require_auth is set for service, but require_auth_file is not set/invalid")
             
         realm = HTTPAuthRealm(resource=in_resource)
-        portal = Portal(realm, [AnchorePasswordChecker()])
+        portal = Portal(realm, [password_checker])
 
         #portal = Portal(realm, [FilePasswordDB(localconfig['require_auth_file'])])
         #portal = Portal(realm, [FilePasswordDB(localconfig['require_auth_file'], hash=hellothere)])
