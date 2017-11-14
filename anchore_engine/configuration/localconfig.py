@@ -85,7 +85,7 @@ def load_defaults(configdir=None):
     return (localconfig)
 
 
-def load_config(configdir=None, configfile=None):
+def load_config(configdir=None, configfile=None, validate_params={}):
     global localconfig
 
     load_defaults(configdir=configdir)
@@ -97,7 +97,7 @@ def load_config(configdir=None, configfile=None):
         raise Exception("config file (" + str(configfile) + ") not found")
     else:
         try:
-            confdata = read_config(configfile=configfile)
+            confdata = read_config(configfile=configfile, validate_params=validate_params)
             localconfig.update(confdata)
         except Exception as err:
             raise err
@@ -134,7 +134,7 @@ def load_config(configdir=None, configfile=None):
     return (localconfig)
 
 
-def read_config(configfile=None):
+def read_config(configfile=None, validate_params={}):
     ret = {}
 
     if not configfile or not os.path.exists(configfile):
@@ -185,15 +185,23 @@ def read_config(configfile=None):
             raise err
 
     try:
-        validate_config(ret)
+        validate_config(ret, validate_params=validate_params)
     except Exception as err:
         raise Exception("invalid configuration: details - " + str(err))
 
     return (ret)
 
 
-def validate_config(config):
+def validate_config(config, validate_params={}):
     ret = True
+
+    if not validate_params:
+        validate_params = {
+            'services': True,
+            'credentials': True,
+            'webhooks': True
+        }
+
     try:
         # ensure there aren't any left over unset variables
         confbuf = json.dumps(config)
@@ -202,9 +210,9 @@ def validate_config(config):
             raise Exception("variable overrides found in configuration file that are unset ("+str(patt.group(1))+")")
 
         # top level checks
-        if 'services' not in config or not config['services']:
+        if validate_params['services'] and ('services' not in config or not config['services']):
             raise Exception("no 'services' definition in configuration file")
-        else:
+        elif validate_params['services']:
             for k in config['services'].keys():
                 if not config['services'][k] or 'enabled' not in config['services'][k]:
                     raise Exception("service (" + str(
@@ -229,9 +237,9 @@ def validate_config(config):
                         raise Exception("if any one of (" + ','.join(
                             check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
 
-        if 'credentials' not in config or not config['credentials']:
+        if validate_params['credentials'] and ('credentials' not in config or not config['credentials']):
             raise Exception("no 'credentials' definition in configuration file")
-        else:
+        elif validate_params['credentials']:
             credentials = config['credentials']
             for check_key in ['database', 'users']:
                 if check_key not in credentials:
@@ -272,8 +280,10 @@ def validate_config(config):
                             #                raise Exception("no 'auth' defined in 'credentials'/'users'/'"+str(username)+"'/'registry_service_auths'/'"+str(reg_type)+"'/'"+registry_name+"'")
 
             # webhook checks
-            if 'webhooks' not in config or not config['webhooks']:
+            if validate_params['webhooks'] and ('webhooks' not in config or not config['webhooks']):
                 logger.warn("no webhooks defined in configuration file - notifications will be disabled")
+            elif validate_params['webhooks']:
+                pass
 
     except Exception as err:
         logger.error(str(err))

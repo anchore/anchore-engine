@@ -179,7 +179,7 @@ def initializeService(sname, config):
     return(True)
 
 # the anchore twistd plugins call this to initialize and make individual services
-def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services"):
+def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services", validate_params={}):
 
     try:
         # config and init
@@ -188,7 +188,7 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
             configdir = options['config']
             configfile = os.path.join(options['config'], 'config.yaml')
 
-        anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile)
+        anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile, validate_params=validate_params)
         localconfig = anchore_engine.configuration.localconfig.get_config()
         localconfig['myservices'] = []
         logger.spew("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
