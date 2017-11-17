@@ -148,6 +148,11 @@ paths:
         type: string
         description: "imageDigest of image to delete"
         required: true
+      - name: 'force'
+        in: query
+        type: boolean
+        description: "force delete"
+        required: false
       produces:
       - "application/json"
       responses:

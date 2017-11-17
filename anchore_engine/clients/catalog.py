@@ -184,7 +184,7 @@ def update_image(userId, imageDigest, image_record={}):
 
     return(ret)
 
-def delete_image(userId, imageDigest):
+def delete_image(userId, imageDigest, force=False):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -199,6 +199,9 @@ def delete_image(userId, imageDigest):
 
     base_url = get_catalog_endpoint()
     url = base_url + "/image/" + imageDigest
+
+    if force:
+        url = url+"?force=True"
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

@@ -657,7 +657,7 @@ def add_image(image, force=None):
 
 def delete_image(imageDigest):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': False})
         return_object, httpcode = images_imageDigest(request_inputs, imageDigest)
     except Exception as err:
         httpcode = 500
@@ -1079,7 +1079,7 @@ def images_imageDigest(request_inputs, imageDigest):
 
             rc = False
             try:
-                rc = catalog.delete_image(user_auth, imageDigest)
+                rc = catalog.delete_image(user_auth, imageDigest, force=params['force'])
             except Exception as err:
                 raise err
 

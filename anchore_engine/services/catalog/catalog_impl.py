@@ -214,7 +214,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
                 image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                 if image_record:
                     
-                    return_object, httpcode = do_image_delete(userId, image_record, dbsession)
+                    return_object, httpcode = do_image_delete(userId, image_record, dbsession, force=params['force'])
                     if httpcode not in range(200,299):
                         raise Exception(return_object)
 
@@ -1854,14 +1854,13 @@ def do_image_delete(userId, image_record, dbsession, force=False):
         msgdelete = "could not make it though delete checks"
         image_ids = []
 
-        if force:
-            dodelete = True
-        else:
+        if True:
             # do some checking before delete
             try:
                 # check one - don't delete anything that is being analyzed
                 if image_record['analysis_status'] == taskstate.working_state('analyze'):
-                    raise Exception("cannot delete image that is being analyzed")
+                    if not force:
+                        raise Exception("cannot delete image that is being analyzed")
 
                 # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
                 for image_detail in image_record['image_detail']:
@@ -1883,7 +1882,11 @@ def do_image_delete(userId, image_record, dbsession, force=False):
                             subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
                             for subscription_record in subscription_records:
                                 if subscription_record['active']:
-                                    raise Exception("cannot delete image that is the latest of its tags, and has active subscription")
+                                    if not force:
+                                        raise Exception("cannot delete image that is the latest of its tags, and has active subscription")
+                                    else:
+                                        subscription_record['active'] = False
+                                        db_subscriptions.update(userId, subscription_record['subscription_key'], subscription_record['subscription_type'], subscription_record, session=dbsession)
 
                 # checked out - do the delete
                 dodelete = True
@@ -1899,11 +1902,6 @@ def do_image_delete(userId, image_record, dbsession, force=False):
             for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data']:
                 logger.debug("DELETEing image from archive " + str(bucket) + "/" + str(imageDigest))
                 rc = archive_sys.delete(userId, bucket, imageDigest)
-
-            #logger.debug("DELETEing image from archive query_data")
-            #rc = archive_sys.delete(userId, 'query_data', imageDigest)
-            #logger.debug("DELETEing image from archive image_content_metadata")
-            #rc = archive_sys.delete(userId, 'image_content_metadata', imageDigest)
 
             logger.debug("DELETEing image from policy_engine")
             # prepare inputs

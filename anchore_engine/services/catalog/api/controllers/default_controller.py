@@ -76,9 +76,9 @@ def image_imageDigest_put(imageDigest, bodycontent):
     return (return_object, httpcode)
 
 
-def image_imageDigest_delete(imageDigest):
+def image_imageDigest_delete(imageDigest, force=False):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'force':False})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest)
 
