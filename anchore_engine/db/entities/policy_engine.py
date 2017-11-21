@@ -6,7 +6,7 @@ import zlib
 import uuid
 from collections import namedtuple
 
-from sqlalchemy import Column, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
+from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON
 from sqlalchemy.orm import relationship
 
@@ -138,7 +138,7 @@ class GemMetadata(Base):
     __tablename__ = 'feed_data_gem_packages'
 
     name = Column(String(pkg_name_length), primary_key=True)
-    id = Column(Integer)
+    id = Column(BigInteger)
     latest = Column(String(pkg_version_length))
     licenses_json = Column(StringJSON)
     authors_json = Column(StringJSON)
@@ -532,7 +532,7 @@ class Image(Base):
     anchore_type = Column(Enum('undefined', 'base', 'application', 'user', 'intermediate', name='anchore_image_types'),
                           default='undefined')  # TODO: verify if base or undefined should be default
 
-    size = Column(Integer)
+    size = Column(BigInteger)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
