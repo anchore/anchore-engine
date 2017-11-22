@@ -11,7 +11,7 @@ from twisted.internet.task import LoopingCall
 from twisted.web.wsgi import WSGIResource
 
 # anchore modules
-from anchore_engine.clients import catalog, localanchore, simplequeue
+from anchore_engine.clients import catalog, localanchore, simplequeue, localanchore_standalone
 import anchore_engine.configuration.localconfig
 import anchore_engine.services.common
 import anchore_engine.subsys.taskstate
@@ -88,8 +88,41 @@ system_user_auth = ('anchore-system', '')
 current_avg = 0.0
 current_avg_count = 0.0
 
-
 def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
+    return(perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry_creds))
+    #return(perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, registry_creds))
+
+def perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry_creds):
+    ret_analyze = {}
+    ret_query = {}
+
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    timer = int(time.time())
+    logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
+    logger.info("performing analysis on image: " + str(pullstring))
+
+    logger.debug("INPUT: " + str(pullstring) + " : " + str(fulltag))
+
+    logger.debug("obtaining anchorelock..." + str(pullstring))
+    with localanchore.get_anchorelock(lockId=pullstring):
+        logger.debug("obtaining anchorelock successful: " + str(pullstring))
+
+        logger.debug("IDETAIL: " + str(image_detail))
+        ddata = None
+        if 'dockerfile' in image_detail and image_detail['dockerfile']:
+            ddata = image_detail['dockerfile'].decode('base64')
+        logger.debug("DDATA: " + str(ddata))
+
+        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, fulltag, "/tmp/", registry_creds=registry_creds, dockerfile_contents=ddata)
+        image_detail['imageId'] = imageId
+        ret_analyze = image_report
+
+    logger.info("performing analysis on image complete: " + str(pullstring))
+
+    return (ret_analyze, ret_query)    
+
+def perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, registry_creds):
     ret_analyze = {}
     ret_query = {}
 
@@ -216,7 +249,6 @@ def process_analyzer_job(system_user_auth, qobj):
                 logger.spew("TIMING MARKX: " + str(int(time.time()) - timer))
 
                 registry_creds = catalog.get_registry(user_auth)
-
                 image_data, query_data = perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds)
                 logger.spew("TIMING MARKY: " + str(int(time.time()) - timer))
 

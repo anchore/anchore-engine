@@ -21,6 +21,7 @@ import anchore_engine.auth.anchore_resources
 import anchore_engine.auth.anchore_service
 import anchore_engine.clients.localanchore
 import anchore_engine.configuration.localconfig
+
 from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
@@ -412,6 +413,8 @@ def lookup_registry_image(userId, image_info, registry_creds):
     else:
         try:
             manifest,digest = anchore_engine.auth.docker_registry.get_image_manifest(userId, image_info, registry_creds)
+            if 'schemaVersion' not in manifest or manifest['schemaVersion'] != 2:
+                raise Exception("manifest schemaVersion != 2 not supported")
         except Exception as err:
             raise Exception("cannot fetch image digest/manifest from registry - exception: " + str(err))
 
@@ -702,7 +705,7 @@ def extract_analyzer_content(image_data, content_type):
                 raise Exception("could not extract/parse content info - exception: " + str(err))
             
     except Exception as err:
-        logger.error("exception: " + str(err))
+        logger.warn("exception: " + str(err))
         raise err
 
     return(ret)

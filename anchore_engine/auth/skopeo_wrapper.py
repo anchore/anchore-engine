@@ -4,6 +4,39 @@ import subprocess
 
 from anchore_engine.subsys import logger
 
+def download_image(fulltag, copydir, user=None, pw=None, verify=True):
+    try:
+        if user and pw:
+            os.environ['SKOPUSER'] = user
+            os.environ['SKOPPASS'] = pw
+            credstr = "--src-creds ${SKOPUSER}:${SKOPPASS}"
+            credstr = "--src-creds " + user + ":" + pw
+        else:
+            credstr = ""
+
+        if verify:
+            tlsverifystr = "--src-tls-verify=true"
+        else:
+            tlsverifystr = "--src-tls-verify=false"
+            
+        #dlcmd = "skopeo copy docker://"+fulltag+" dir:"+copydir
+        cmdstr = "skopeo copy "+tlsverifystr+" "+credstr+" docker://"+fulltag+" dir:"+copydir
+        logger.debug("\tDLCMD: " + str(cmdstr))
+        sout = subprocess.check_output(cmdstr.split())
+    except Exception as err:
+        raise err
+    finally:
+        try:
+            del os.environ['SKOPUSER']
+        except:
+            pass
+        try:
+            del os.environ['SKOPPASS']
+        except:
+            pass
+
+    return(True)
+
 def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, verify=True):
     manifest = {}
     digest = None

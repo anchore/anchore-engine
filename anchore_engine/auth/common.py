@@ -17,3 +17,26 @@ def get_docker_registry_userpw(registry_record):
         raise err
 
     return(user, pw)
+
+def get_creds_by_registry(registry, registry_creds=[]):
+    user = pw = registry_verify = None
+    try:
+        for registry_record in registry_creds:
+            if registry_record['registry'] == registry:
+                if registry_record['record_state_key'] not in ['active']:
+                    try:
+                        last_try = int(registry_record['record_state_val'])
+                    except:
+                        last_try = 0
+
+                    if (int(time.time()) - last_try) < 60:
+                        logger.debug("SKIPPING REGISTRY ATTEMPT: " + str(registry_record['record_state_key']))
+                        raise Exception("registry not available - " + str(registry_record['record_state_key']))
+
+                user, pw = get_docker_registry_userpw(registry_record)
+                registry_verify = registry_record['registry_verify']
+                break
+    except Exception as err:
+        raise err
+
+    return(user, pw, registry_verify)
