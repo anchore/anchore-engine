@@ -206,7 +206,7 @@ def do_upgrade(inplace, incode):
             db_current = inplace['db_version']
             db_target = incode['db_version']
 
-            for version_tuple, functions_to_run in upgrade_functions.items():
+            for version_tuple, functions_to_run in upgrade_functions:
                 db_from = version_tuple[0]
                 db_to = version_tuple[1]
 
@@ -310,14 +310,10 @@ def db_upgrade_002_003():
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
-upgrade_functions = {
-    ('0.0.1', '0.0.2'): [
-        db_upgrade_001_002
-        ],
-    ('0.0.2', '0.0.3'): [
-        db_upgrade_002_003
-        ]
-}
+upgrade_functions = (
+    (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
+    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ] )
+)
 
 @contextmanager
 def session_scope():
