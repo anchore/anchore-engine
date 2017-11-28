@@ -97,6 +97,11 @@ def perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry
     ret_query = {}
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
+    try:
+        tmpdir = localconfig['tmp_dir']
+    except Exception as err:
+        logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
+        tmpdir = "/tmp"
 
     timer = int(time.time())
     logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
@@ -114,7 +119,7 @@ def perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry
             ddata = image_detail['dockerfile'].decode('base64')
         logger.debug("DDATA: " + str(ddata))
 
-        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, fulltag, "/tmp/", registry_creds=registry_creds, dockerfile_contents=ddata)
+        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, fulltag, tmpdir, registry_creds=registry_creds, dockerfile_contents=ddata)
         image_detail['imageId'] = imageId
         ret_analyze = image_report
 
