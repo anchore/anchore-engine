@@ -14,7 +14,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-#import anchore_engine.configuration.localconfig
+
 try:
     from anchore_engine.subsys import logger
     # Separate logger for use during bootstrap when logging may not be fully configured
@@ -28,6 +28,7 @@ Session = None  # Standard session maker
 ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
+upgrade_enabled = True
 
 def anchore_now():
     """
@@ -193,7 +194,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
 
 
 def do_upgrade(inplace, incode):
-    global engine
+    global engine, upgrade_enabled, upgrade_functions
 
     if StrictVersion(inplace['db_version']) > StrictVersion(incode['db_version']):
         raise Exception("DB downgrade not supported")
@@ -201,30 +202,32 @@ def do_upgrade(inplace, incode):
     if inplace['db_version'] != incode['db_version']:
         print ("upgrading DB: from=" + str(inplace['db_version']) + " to=" + str(incode['db_version']))
 
-        if True:
-            # set up possible upgrade chain
-            db_upgrade_map = [
-                ('0.0.1', '0.0.2')
-            ]
-
+        if upgrade_enabled:
             db_current = inplace['db_version']
             db_target = incode['db_version']
-            for db_from, db_to in db_upgrade_map:
+
+            for version_tuple, functions_to_run in upgrade_functions:
+                db_from = version_tuple[0]
+                db_to = version_tuple[1]
 
                 # finish if we've reached the target version
                 if StrictVersion(db_current) >= StrictVersion(db_target):
                     # done
                     break
+                elif StrictVersion(db_to) <= StrictVersion(db_current):
+                    # Upgrade code is for older version, skip it.
+                    continue
+                else:
+                    print("Executing upgrade functions for version {} to {}".format(db_from, db_to))
+                    for fn in functions_to_run:
+                        try:
+                            print("Executing upgrade function: {}".format(fn.__name__))
+                            fn()
+                        except Exception as e:
+                            log.exception('Upgrade function {} raised an error. Failing upgrade.'.format(fn.__name__))
+                            raise e
 
-                # this is just example code for now - have a clause for each possible from->to in the upgrade chain
-                if db_current == '0.0.1' and db_to == '0.0.2':
-                    print ("upgrading from 0.0.1 to 0.0.2")
-                    try:
-                        rc = db_upgrade_001_002()
-                    except Exception as err:
-                        raise err
-
-                db_current = db_to
+                    db_current = db_to
 
     if inplace['service_version'] != incode['service_version']:
         print ("upgrading service: from=" + str(inplace['service_version']) + " to=" + str(incode['service_version']))
@@ -238,7 +241,6 @@ def db_upgrade_001_002():
     from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image
 
     try:
-
         table_name = 'registries'
         column = Column('registry_type', String, primary_key=False)
         cn = column.compile(dialect=engine.dialect)
@@ -279,6 +281,39 @@ def db_upgrade_001_002():
 
     return (True)
 
+
+def db_upgrade_002_003():
+    global engine
+    from sqlalchemy import Column, BigInteger
+
+    try:
+        table_name = 'images'
+        column = Column('size', BigInteger)
+        cn = column.compile(dialect=engine.dialect)
+        ct = column.type.compile(engine.dialect)
+        engine.execute('ALTER TABLE %s ALTER COLUMN %s TYPE %s' % (table_name, cn, ct))
+    except Exception as e:
+        raise Exception('failed to perform DB upgrade on images.size field change from int to bigint - exception: {}'.format(str(e)))
+
+    try:
+        table_name = 'feed_data_gem_packages'
+        column = Column('id', BigInteger)
+        cn = column.compile(dialect=engine.dialect)
+        ct = column.type.compile(engine.dialect)
+        engine.execute('ALTER TABLE %s ALTER COLUMN %s TYPE %s' % (table_name, cn, ct))
+    except Exception as e:
+        raise Exception('failed to perform DB upgrade on feed_data_gem_packages.id field change from int to bigint - exception: {}'.format(str(e)))
+
+    return True
+
+
+# Global upgrade definitions. For a given version these will be executed in order of definition here
+# If multiple functions are defined for a version pair, they will be executed in order.
+# If any function raises and exception, the upgrade is failed and halted.
+upgrade_functions = (
+    (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
+    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ] )
+)
 
 @contextmanager
 def session_scope():
