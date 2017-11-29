@@ -38,6 +38,15 @@ def anchore_now():
     """
     return (int(time.time()))
 
+def get_entity_tables(entity):
+    global Base
+
+    import inspect
+            
+    entity_names = [x[1].__tablename__ for x in filter(lambda x: inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base, inspect.getmembers(entity))]
+    ftables = filter(lambda x: x.name in entity_names, Base.metadata.sorted_tables)
+
+    return(ftables)
 
 # some DB management funcs
 def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):

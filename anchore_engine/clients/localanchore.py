@@ -35,7 +35,7 @@ def get_anchorelock(lockId=None):
                 default_file = src
                 installed_file = dst
                 if not filecmp.cmp(default_file, installed_file):
-                    logger.debug("checking default yaml")
+                    logger.debug("checking source yaml ("+str(default_file)+")")
                     # check that it is at least valid yaml before copying in place
                     with open(default_file, 'r') as FH:
                         yaml.safe_load(FH)
@@ -44,7 +44,7 @@ def get_anchorelock(lockId=None):
                     shutil.copy(default_file, installed_file)
 
     except Exception as err:
-        logger.warn("could not check/install analyzer anchore_engine.configuration - exception: " + str(err))
+        logger.warn("could not check/install analyzer anchore configurations (please check yaml format of your configuration files), continuing with default - exception: " + str(err))
 
     if lockId:
         lockId = lockId.encode('base64')
