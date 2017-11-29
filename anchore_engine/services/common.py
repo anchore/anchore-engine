@@ -179,7 +179,7 @@ def initializeService(sname, config):
     return(True)
 
 # the anchore twistd plugins call this to initialize and make individual services
-def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services", validate_params={}):
+def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
 
     try:
         # config and init
@@ -208,16 +208,19 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
 
         # connect to DB
         try:
-            db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users)
+            db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users, specific_tables=specific_tables)
         except Exception as err:
             log.err("cannot connect to configured DB: exception - " + str(err))
             raise err
 
         #credential bootstrap
-        with session_scope() as dbsession:
-            system_user = db_users.get('anchore-system', session=dbsession)
-            localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
-
+        try:
+            with session_scope() as dbsession:
+                system_user = db_users.get('anchore-system', session=dbsession)
+                localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
+        except Exception as err:
+            log.err("cannot get system-user auth credentials - service will not have system access")
+            
     # application object
     application = service.Application("multi-service-"+'-'.join(snames))
 
