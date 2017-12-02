@@ -219,8 +219,8 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
             with session_scope() as dbsession:
                 system_user = db_users.get('anchore-system', session=dbsession)
                 localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
-        except:
-            pass
+        except Exception as err:
+            log.err("cannot get system-user auth credentials - service will not have system access")
 
     # application object
     application = service.Application("multi-service-"+'-'.join(snames))

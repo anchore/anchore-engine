@@ -41,7 +41,7 @@ def enable_bootstrap_logging(name_prefix=None):
     else:
         level = 'INFO'
 
-    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
+    logging.basicConfig(level=level, stream=sys.stdout, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
     logname = name_prefix + '_bootstrap' if name_prefix else 'bootstrap'
     bootstrap_logger = logging.getLogger(logname)
     bootstrap_logger_enabled = True
