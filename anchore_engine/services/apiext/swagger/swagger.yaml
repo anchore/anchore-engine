@@ -30,7 +30,7 @@ tags:
   description: System Management
 - name: Services
   description: Service Management
-basePath: "/v1"
+basePath: "/"
 schemes:
 - "http"
 - "https"

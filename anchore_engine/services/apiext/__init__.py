@@ -6,6 +6,7 @@ import connexion
 from connexion import request
 from twisted.internet import reactor
 from twisted.web.wsgi import WSGIResource
+from twisted.web.resource import Resource
 
 # anchore modules
 import anchore_engine.services.common
@@ -67,8 +68,17 @@ if False:
 # service funcs (must be here)
 def createService(sname, config):
     global application
+
     flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=application)
-    root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
+
+    # original (with base_path="/v1" in swagger.yaml)
+    #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
+
+    # new (with base_path="/" in swagger.yaml)
+    root = Resource()
+    root.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
+    root.putChild(b"health", anchore_engine.services.common.HealthResource())
+
     return (anchore_engine.services.common.createServiceAPI(root, sname, config))
 
 
