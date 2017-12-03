@@ -13,7 +13,7 @@ from twisted.internet.defer import succeed
 from twisted.python import log
 from twisted.web import server
 from twisted.web.guard import HTTPAuthSessionWrapper, BasicCredentialFactory
-from twisted.web.resource import IResource
+from twisted.web.resource import IResource, Resource
 from zope.interface import implementer
 
 # anchore modules
@@ -271,6 +271,12 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
         raise Exception("cannot start service (see above for information)")
 
     return(retservice)
+
+# simple twisted resource for health check route
+class HealthResource(Resource):
+    isLeaf = True
+    def render_GET(self, request):
+        return("")
 
 @implementer(IRealm)
 @attr.s
