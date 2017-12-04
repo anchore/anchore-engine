@@ -163,9 +163,14 @@ def squash(unpackdir, layers):
         squashtar = os.path.join(unpackdir, "squashed_tmp.tar")
 
     logger.debug("\tPass 3: " + str(squashtar))
+    #tarcmd = "bsdtar -C " + rootfsdir + " -x -p -f " + squashtar
     tarcmd = "tar -C " + rootfsdir + " -x -f " + squashtar
     logger.debug("untarring squashed tarball: " + str(tarcmd))
-    subprocess.check_output(tarcmd.split())
+    try:
+        subprocess.check_output(tarcmd.split())
+    except Exception as err:
+        logger.error("untar failed with exception - " + str(err))
+        raise err
 
     imageSize = os.path.getsize(squashtar)
     
