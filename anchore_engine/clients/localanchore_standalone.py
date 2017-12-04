@@ -7,7 +7,7 @@ import shutil
 import struct
 import tarfile
 import logging
-import subprocess
+#import subprocess
 from pkg_resources import resource_filename
 
 import anchore_engine.services.common
@@ -166,11 +166,21 @@ def squash(unpackdir, layers):
     #tarcmd = "bsdtar -C " + rootfsdir + " -x -p -f " + squashtar
     tarcmd = "tar -C " + rootfsdir + " -x -f " + squashtar
     logger.debug("untarring squashed tarball: " + str(tarcmd))
+
     try:
-        subprocess.check_output(tarcmd.split())
+        rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
+        if rc != 0:
+            raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+        else:
+            logger.debug("command succeeded: stdout="+str(sout).strip()+" stderr="+str(serr).strip())
     except Exception as err:
-        logger.error("untar failed with exception - " + str(err))
+        logger.error("command failed with exception - " + str(err))
         raise err
+    #try:
+    #    subprocess.check_output(tarcmd.split())
+    #except Exception as err:
+    #    logger.error("untar failed with exception - " + str(err))
+    #    raise err
 
     imageSize = os.path.getsize(squashtar)
     
@@ -354,10 +364,19 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId):
             cmdstr = " ".join([thecmd, imageId, unpackdir, outputdir, unpackdir])
             if True:
                 try:
-                    logger.debug("\t"+cmdstr)
-                    sout = subprocess.check_output(cmdstr.split())
+                    rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
+                    if rc != 0:
+                        raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    else:
+                        logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 except Exception as err:
-                    logger.debug("ERROR - exception: " + str(err))
+                    logger.error("command failed with exception - " + str(err))
+                    #raise err
+                #try:
+                #    logger.debug("\t"+cmdstr)
+                #    sout = subprocess.check_output(cmdstr.split())
+                #except Exception as err:
+                #    logger.debug("ERROR - exception: " + str(err))
 
     analyzer_manifest = {}
     #TODO populate analyzer_manifest?

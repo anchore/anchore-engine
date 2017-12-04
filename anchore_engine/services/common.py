@@ -6,6 +6,7 @@ import urllib
 import attr
 import traceback
 import importlib
+import subprocess
 
 from twisted.application import service, internet
 from twisted.cred.portal import IRealm, Portal
@@ -714,3 +715,16 @@ def extract_analyzer_content(image_data, content_type):
         raise err
 
     return(ret)
+
+def run_command(cmdstr):
+    rc = -1
+    sout = serr = None
+
+    try:
+        pipes = subprocess.Popen(cmdstr.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = pipes.communicate()
+        rc = pipes.returncode
+    except Exception as err:
+        raise err
+
+    return(rc, sout, serr)
