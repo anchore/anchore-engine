@@ -73,7 +73,6 @@ def squash(unpackdir, layers):
         logger.debug("\tPass 1: " + str(layertar))
         layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
         for member in layertarfile.getmembers():
-            #logger.debug("MEMBER: " + str(member))
             layerfiles[l][member.name] = True
 
             if re.match(".*\.wh\..*", member.name):
@@ -119,18 +118,15 @@ def squash(unpackdir, layers):
             squashtar = unpackdir + "/squashed.tar"
             squashtarfile = tarfile.open(unpackdir + '/squashed_tmp.tar', mode='r', format=tarfile.PAX_FORMAT)
             finalsquashtarfile = tarfile.open(squashtar, mode='w', format=tarfile.PAX_FORMAT)
-            logger.debug("TEST HLINKS: " + str(hlinks))
             logger.debug("\tPass 2: " + str(squashtar))
             for member in squashtarfile.getmembers():
                 if member.islnk():
                     try:
                         testfile = squashtarfile.getmember(member.linkname)
-                        logger.debug("TEST CASE1")
                         finalsquashtarfile.addfile(member)
                     except:
                         if member.linkname in newhlinkmap:
                             member.linkname = newhlinkmap[member.linkname]
-                            logger.debug("TEST CASE2")
                             finalsquashtarfile.addfile(member)
                         else:
                             for l in revlayer:
@@ -142,7 +138,6 @@ def squash(unpackdir, layers):
                                         testfile.name = hlinks[member.linkname][0]
                                         newhlinkmap[member.linkname] = testfile.name
                                         thefile = layertarfile.extractfile(testfile)
-                                        logger.debug("TEST CASE3")
                                         finalsquashtarfile.addfile(testfile, thefile)
                                         break
                                     except:
@@ -150,10 +145,8 @@ def squash(unpackdir, layers):
                                     layertarfile.close()
                 else:
                     try:
-                        logger.debug("TEST CASE4")
                         finalsquashtarfile.addfile(member, squashtarfile.extractfile(member.name))
                     except:
-                        logger.debug("TEST CASE5")
                         finalsquashtarfile.addfile(member)
 
             finalsquashtarfile.close()
@@ -247,7 +240,6 @@ def pull_image(staging_dirs, image_info, registry_creds=[]):
     #rawmanifest, imageDigest = anchore_engine.auth.docker_registry.get_image_manifest(None, image_info, registry_creds)
     try:
         d = rawmanifest
-        logger.debug("MANIFEST: " + str(d))
         if d['schemaVersion'] != 2:
             raise Exception("manifest is not schema version 2 - unpack unsupported")
 

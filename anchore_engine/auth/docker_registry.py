@@ -105,6 +105,7 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
             authy = (user, pw)
 
         get_manifest_template = "https://"+registry+"/v2/{repository}/manifests/{tag}"
+        #get_manifest_template = url+"/v2/{repository}/manifests/{tag}"
         url = get_manifest_template.format(repository=repo, tag=tag)
 
         try:
@@ -163,6 +164,58 @@ def ping_docker_registry(registry_record):
     return(ret)
 
 def get_image_manifest(userId, image_info, registry_creds):
+    logger.debug("get_image_manifest input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
+
+    user = pw = None
+    registry_verify=True
+
+    registry = image_info['registry']
+    try:
+        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, registry_creds=registry_creds)
+    except Exception as err:
+        raise err    
+
+    if registry == 'docker.io':
+        url = "https://index.docker.io"
+        if not re.match(".*/.*", image_info['repo']):
+            repo = "library/"+image_info['repo']
+        else:
+            repo = image_info['repo']
+    else:
+        url = "https://"+registry
+        repo = image_info['repo']
+
+    if image_info['digest']:
+        pullstring = image_info['digest']
+    else:
+        pullstring = image_info['tag']
+
+    manifest = digest = None
+    
+    #try:
+    #    imagestr = url + "/" + repo + ":" + pullstring
+    #except:
+    #    imagestr = pullstring
+
+    logger.debug("trying to get manifest/digest for image ("+str(pullstring)+")")
+    try:
+        manifest, digest = get_image_manifest_skopeo(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
+        #manifest, digest = get_image_manifest_oauth2(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
+        #manifest, digest = get_image_manifest_docker_registry(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
+    except Exception as err:
+        logger.error("could not fetch manifest/digest: " + str(err))
+        manifest = digest = None
+
+    if manifest and digest:
+        return(manifest, digest)
+    
+    #logger.error("could not get manifest/digest for image using any auth method: ("+str(pullstring)+"): " + str(auth_errors))
+    logger.error("could not get manifest/digest for image using any auth method: ("+str(pullstring)+"): ")
+    raise Exception("could not get manifest/digest for image using any auth method: ("+str(pullstring)+"): ")
+
+    return({}, "")
+
+def get_image_manifest_orig(userId, image_info, registry_creds):
     logger.debug("get_image_manifest input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
 
     user = pw = None

@@ -4,9 +4,12 @@ import re
 import time
 import urllib
 import attr
+import hashlib
 import traceback
 import importlib
 import subprocess
+#import simplejson as json
+from collections import OrderedDict
 
 from twisted.application import service, internet
 from twisted.cred.portal import IRealm, Portal
@@ -409,6 +412,21 @@ def make_response_routes(apiversion, inroutes):
         return_object = routes
 
     return(return_object, httpcode)
+
+def manifest_to_digest(rawmanifest):
+
+    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
+    d.pop('signatures', None)
+
+    # this is using regular json
+    dmanifest = re.sub(" +\n", "\n", json.dumps(d, indent=3))
+
+    # this if using simplejson
+    #dmanifest = json.dumps(d, indent=3)
+
+    ret = "sha256:" + str(hashlib.sha256(dmanifest).hexdigest())
+
+    return(ret)
 
 def lookup_registry_image(userId, image_info, registry_creds):
     digest = None

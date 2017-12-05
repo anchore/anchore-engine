@@ -50,6 +50,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
 def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, verify=True):
     manifest = {}
     digest = None
+    testDigest = None
 
     try:
         if user and pw:
@@ -65,7 +66,6 @@ def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, veri
         else:
             tlsverifystr = "--tls-verify=false"
             
-
         try:
             cmdstr = "skopeo inspect --raw "+tlsverifystr+" "+credstr+" docker://"+registry+"/"+repo+":"+tag
             #cmd = cmdstr.split()
@@ -76,6 +76,7 @@ def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, veri
                     raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    testDigest = anchore_engine.services.common.manifest_to_digest(sout)
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
                 raise err
@@ -121,6 +122,7 @@ def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, veri
     if not manifest or not digest:
         raise Exception("no digest/manifest from skopeo")
 
+    logger.debug("digest test comparison: " + str(digest == testDigest) + " : " + str(digest) + " : " + str(testDigest))
     return(manifest, digest)
 
 
