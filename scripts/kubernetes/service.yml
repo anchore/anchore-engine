@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: anchore
+  namespace: anchore
+  annotations: 
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
+spec:
+  selector:
+    app: anchore-engine
+  type: LoadBalancer
+  ports:
+    - port: 8228
+      targetPort: 8228
+      name: apiext 
+    - port: 8338
+      targetPort: 8338
+      name: kubewebhook
