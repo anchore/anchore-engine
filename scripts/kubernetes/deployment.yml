@@ -27,7 +27,7 @@ spec:
               cpu: "0.25"
               memory: "256Mi"
             limits:
-              memory: "1Gi"
+              memory: "2Gi"
               cpu: "1"
           securityContext:
             privileged: true
@@ -41,7 +41,6 @@ spec:
               memory: "256Mi"
               cpu: "0.25"
             limits:
-              memory: "1Gi"
               cpu: "1"
           ports:
             - containerPort: 8228
