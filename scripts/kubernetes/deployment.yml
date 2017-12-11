@@ -22,6 +22,8 @@ spec:
       containers:
         - name: dind-daemon
           image: docker:1.12.6-dind
+          args:
+            - "--storage-driver=overlay2"
           resources:
             requests:
               cpu: "0.25"
@@ -42,6 +44,7 @@ spec:
               cpu: "0.25"
             limits:
               cpu: "1"
+              memory: "4Gi"
           ports:
             - containerPort: 8228
             - containerPort: 8338
