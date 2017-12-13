@@ -13,70 +13,6 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
-def get_image_summary(user_auth, image_record):
-    ret = {}
-    if image_record['analysis_status'] != taskstate.complete_state('analyze'):
-        return(ret)
-
-    # augment with image summary data, if available
-    try:
-        try:
-            image_summary_data = catalog.get_document(user_auth, 'image_summary_data', image_record['imageDigest'])
-        except:
-            image_summary_data = {}
-
-        if not image_summary_data:
-            # (re)generate image_content_data document
-            logger.debug("generating image summary data from analysis data")
-            image_data = catalog.get_document(user_auth, 'analysis_data', image_record['imageDigest'])
-
-            image_content_data = {}
-            for content_type in anchore_engine.services.common.image_content_types:
-                try:
-                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
-                except:
-                    image_content_data[content_type] = {}
-            if image_content_data:
-                logger.debug("adding image content data to archive")
-                rc = catalog.put_document(user_auth, 'image_content_data', image_record['imageDigest'], image_content_data)
-
-            image_summary_data = {}
-            try:
-                image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
-            except:
-                image_summary_data = {}
-            if image_summary_data:
-                logger.debug("adding image summary data to archive")
-                rc = catalog.put_document(user_auth, 'image_summary_data', image_record['imageDigest'], image_summary_data)
-
-        image_summary_metadata = copy.deepcopy(image_summary_data)
-        if image_summary_metadata:
-            logger.debug("getting image summary data")
-
-            summary_record = {}
-
-            adm = image_summary_metadata['anchore_distro_meta']
-
-            summary_record['distro'] = adm.pop('DISTRO', 'N/A')
-            summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
-
-            air = image_summary_metadata['anchore_image_report']
-            airm = air.pop('meta', {})
-            al = air.pop('layers', [])
-            ddata = air.pop('docker_data', {})
-
-            summary_record['layer_count'] = str(len(al))
-            summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
-            summary_record['arch'] = ddata.pop('Architecture', 'N/A')            
-            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
-
-            ret = summary_record
-
-    except Exception as err:
-        logger.warn("cannot get image summary data for image: " + str(image_record['imageDigest']) + " : " + str(err))
-
-    return(ret)
-
 def make_response_content(content_type, content_data):
     ret = []
 
@@ -413,6 +349,12 @@ def make_response_policyeval(user_auth, eval_record, params):
 def make_response_image(user_auth, image_record, params={}):
     ret = image_record
 
+    image_content = {'metadata': {}}
+    for key in ['arch', 'distro', 'distro_version', 'dockerfile_mode', 'image_size', 'layer_count']:
+        val = image_record.pop(key, None)
+        image_content['metadata'][key] = val
+    image_record['image_content'] = image_content
+
     # try to assemble full strings
     if image_record and 'image_detail' in image_record:
         for image_detail in image_record['image_detail']:
@@ -443,15 +385,13 @@ def make_response_image(user_auth, image_record, params={}):
         except:
             pass
 
-
-    image_content_metadata = {}
-    try:
-        image_content_metadata = get_image_summary(user_auth, image_record)
-    except:
-        image_content_metadata = {}
-
-    ret['image_content'] = {}
-    ret['image_content']['metadata'] = image_content_metadata
+    #image_content_metadata = {}
+    #try:
+    #    image_content_metadata = get_image_summary(user_auth, image_record)
+    #except:
+    #    image_content_metadata = {}
+    #ret['image_content'] = {}
+    #ret['image_content']['metadata'] = image_content_metadata
 
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
@@ -888,10 +828,6 @@ def do_import_image(request_inputs, importRequest):
         return_object = []
         image_records = catalog.import_image(user_auth, json.loads(bodycontent))
         for image_record in image_records:
-            #try:
-            #    image_content_metadata = get_image_summary(user_auth, image_record)
-            #except:
-            #    image_content_metadata = {}
             return_object.append(make_response_image(user_auth, image_record, params))
         httpcode = 200
 
@@ -945,10 +881,6 @@ def images(request_inputs):
                 image_records = catalog.get_image(user_auth, digest=digest, tag=tag, imageId=imageId,
                                                           imageDigest=imageDigest, history=history)
                 for image_record in image_records:
-                    #try:
-                    #    image_content_metadata = get_image_summary(user_auth, image_record)
-                    #except:
-                    #    image_content_metadata = {}
                     return_object.append(make_response_image(user_auth, image_record, params))
                 httpcode = 200
             except Exception as err:
@@ -1021,10 +953,6 @@ def images(request_inputs):
 
                 return_object = []
                 for image_record in image_records:
-                    #try:
-                    #    image_content_metadata = get_image_summary(user_auth, image_record)
-                    #except:
-                    #    image_content_metadata = {}
                     return_object.append(make_response_image(user_auth, image_record, params))
 
             else:
@@ -1058,16 +986,6 @@ def images_imageDigest(request_inputs, imageDigest):
             if image_records:
                 return_object = []
                 for image_record in image_records:
-                    #try:
-                    #    query_data = catalog.get_document(user_auth, 'query_data', imageDigest)
-                    #    if 'anchore_image_summary' in query_data and query_data['anchore_image_summary']:
-                    #        logger.debug("getting image summary data")
-                    #except Exception as err:
-                    #    logger.warn("cannot get image summary data for image: " + str(imageDigest))
-                    #try:
-                    #    image_content_metadata = get_image_summary(user_auth, image_record)
-                    #except:
-                    #    image_content_metadata = {}
                     return_object.append(make_response_image(user_auth, image_record, params))
                 httpcode = 200
             else:

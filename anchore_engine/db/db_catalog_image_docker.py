@@ -4,7 +4,7 @@ from sqlalchemy import desc
 
 from anchore_engine import db
 from anchore_engine.db import CatalogImageDocker
-
+from anchore_engine.subsys import logger
 
 def update_record(record, session=None):
     if not session:
@@ -80,6 +80,8 @@ def get_alltags(imageDigest, userId, session=None):
     if results:
         for result in results:
             dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            #dbobj = result.__dict__
+            #dbobj.pop('_sa_instance_state', None)
             ret.append(dbobj)
 
     return(ret)

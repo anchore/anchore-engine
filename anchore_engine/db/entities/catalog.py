@@ -242,7 +242,15 @@ class CatalogImage(Base):
     record_state_val = Column(String)
 
     image_type = Column(String)
-    #image_content_metadata = Column(String)
+    
+    # image metadata
+    arch = Column(String)
+    distro = Column(String)
+    distro_version = Column(String)
+    dockerfile_mode = Column(String)
+    image_size = Column(BigInteger)
+    layer_count = Column(Integer)
+
     analysis_status = Column(String)
     image_status = Column(String)
 

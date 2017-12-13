@@ -168,14 +168,29 @@ def get_all_byuserId(userId, session=None):
 
     results = session.query(CatalogImage).filter_by(userId=userId).order_by(desc(CatalogImage.created_at))
     if results:
+        # get all the tags in single DB query, hash by imageDigest
+        alltags = db.db_catalog_image_docker.get_all(userId, session=session)
+        tagdata = {}
+        for tag in alltags:
+            if tag['imageDigest'] not in tagdata:
+                tagdata[tag['imageDigest']] = []
+            tagdata[tag['imageDigest']].append(tag)
+
         for result in results:
             dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            #dbobj = result.__dict__
+            #dbobj.pop('_sa_instance_state', None)
+
             imageDigest = dbobj['imageDigest']
             if dbobj['image_type'] == 'docker':
-                imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
-                dbobj['image_detail'] = imgobj
-            ret.append(dbobj)
+                if imageDigest in tagdata:
+                    dbobj['image_detail'] = tagdata[imageDigest]
+                else:
+                    dbobj['image_detail'] = []                
 
+                #imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
+                #dbobj['image_detail'] = imgobj
+            ret.append(dbobj)
     return(ret)
 
 def get_all(session=None):

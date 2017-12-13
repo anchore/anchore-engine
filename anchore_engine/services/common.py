@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import copy
 import time
 import urllib
 import attr
@@ -40,6 +41,115 @@ bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_
 super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_vulnerability_types = ['os']
+
+def update_image_record_with_analysis_data(image_record, image_data):
+
+    image_summary_data = extract_analyzer_content(image_data, 'metadata')
+
+    try:
+        image_summary_metadata = copy.deepcopy(image_summary_data)
+        if image_summary_metadata:
+            logger.debug("getting image summary data")
+
+            summary_record = {}
+
+            adm = image_summary_metadata['anchore_distro_meta']
+
+            summary_record['distro'] = adm.pop('DISTRO', 'N/A')
+            summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
+
+            air = image_summary_metadata['anchore_image_report']
+            airm = air.pop('meta', {})
+            al = air.pop('layers', [])
+            ddata = air.pop('docker_data', {})
+
+            summary_record['layer_count'] = str(len(al))
+            summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
+            summary_record['arch'] = ddata.pop('Architecture', 'N/A')            
+            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
+
+            formatted_image_summary_data = summary_record            
+    except Exception as err:
+        formatted_image_summary_data = {}
+
+    if formatted_image_summary_data:
+        image_record.update(formatted_image_summary_data)
+        
+    dockerfile_content, dockerfile_mode = extract_dockerfile_content(image_data)
+    if dockerfile_content and dockerfile_mode:
+        image_record['dockerfile_mode'] = dockerfile_mode
+        for image_detail in image_record['image_detail']:
+            image_detail['dockerfile'] = dockerfile_content.encode('base64')
+            logger.debug("setting image_detail: ")
+
+    return(True)
+
+if False:
+    def format_image_summary(image_summary_data):
+        ret = {}
+
+        # augment with image summary data, if available
+        try:
+            #if not input_image_summary_data:
+            #    try:
+            #        image_summary_data = catalog.get_document(user_auth, 'image_summary_data', image_record['imageDigest'])
+            #    except:
+            #        image_summary_data = {}
+            #else:
+            #    image_summary_data = input_image_summary_data
+
+            #if not image_summary_data:
+            #    # (re)generate image_content_data document
+            #    logger.debug("generating image summary data from analysis data")
+            #    image_data = catalog.get_document(user_auth, 'analysis_data', image_record['imageDigest'])
+
+            #    image_content_data = {}
+            #    for content_type in anchore_engine.services.common.image_content_types:
+            #        try:
+            #            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
+            #        except:
+            #            image_content_data[content_type] = {}
+            #    if image_content_data:
+            #        logger.debug("adding image content data to archive")
+            #        rc = catalog.put_document(user_auth, 'image_content_data', image_record['imageDigest'], image_content_data)
+
+            #    image_summary_data = {}
+            #    try:
+            #        image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
+            #    except:
+            #        image_summary_data = {}
+
+            #    #if image_summary_data:
+            #    #    logger.debug("adding image summary data to archive")
+            #    #    rc = catalog.put_document(user_auth, 'image_summary_data', image_record['imageDigest'], image_summary_data)
+
+            image_summary_metadata = copy.deepcopy(image_summary_data)
+            if image_summary_metadata:
+                logger.debug("getting image summary data")
+
+                summary_record = {}
+
+                adm = image_summary_metadata['anchore_distro_meta']
+
+                summary_record['distro'] = adm.pop('DISTRO', 'N/A')
+                summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
+
+                air = image_summary_metadata['anchore_image_report']
+                airm = air.pop('meta', {})
+                al = air.pop('layers', [])
+                ddata = air.pop('docker_data', {})
+
+                summary_record['layer_count'] = str(len(al))
+                summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
+                summary_record['arch'] = ddata.pop('Architecture', 'N/A')            
+                summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
+
+                ret = summary_record
+
+        except Exception as err:
+            logger.warn("cannot format image summary data for image - exception: " + str(err))
+
+        return(ret)
 
 def registerService(sname, config, enforce_unique=True):
     ret = False
@@ -437,8 +547,8 @@ def lookup_registry_image(userId, image_info, registry_creds):
     else:
         try:
             manifest,digest = anchore_engine.auth.docker_registry.get_image_manifest(userId, image_info, registry_creds)
-            if 'schemaVersion' not in manifest or manifest['schemaVersion'] != 2:
-                raise Exception("manifest schemaVersion != 2 not supported")
+            #if 'schemaVersion' not in manifest or manifest['schemaVersion'] != 2:
+            #    raise Exception("manifest schemaVersion != 2 not supported")
         except Exception as err:
             raise Exception("cannot fetch image digest/manifest from registry - exception: " + str(err))
 
@@ -463,10 +573,8 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
                     image_info['imageId'] = imageId
                 except Exception as err:
                     logger.debug("could not extract imageId from fetched manifest - exception: " + str(err))
-                    #try:
-                    #    logger.debug("manifest content: " + json.dumps(image_info['manifest'], indent=4))
-                    #except:
-                    #    pass
+                    logger.warn("using digest hash as imageId due to incomplete manifest")
+                    htype, image_info['imageId'] = image_info['digest'].split(":", 1)
 
             ret.update(image_info)
         else:
@@ -527,6 +635,11 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
             digest = image_metadata['digest']
         except:
             digest = None
+
+        #try:
+        #    manifest = image_metadata['manifest']
+        #except:
+        #    manifest = None
 
         return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, dockerfile=dockerfile, registry_lookup=registry_lookup, registry_creds=registry_creds))
 
@@ -651,6 +764,21 @@ def do_request_prep(request, default_params={}):
         raise err
 
     return(ret)
+
+def extract_dockerfile_content(image_data):
+    dockerfile_content = ""
+    dockerfile_mode = "Guessed"
+
+    #>>> ex[0]['image']['imagedata']['image_report']['dockerfile_mode']
+    try:
+        dockerfile_content = image_data[0]['image']['imagedata']['image_report']['dockerfile_contents']
+        dockerfile_mode = image_data[0]['image']['imagedata']['image_report']['dockerfile_mode']
+    except Exception as err:
+        dockerfile_content = ""
+        dockerfile_mode = "Guessed"
+        logger.debug("WTF ERR: " + str(err))
+
+    return(dockerfile_content, dockerfile_mode)
 
 def extract_analyzer_content(image_data, content_type):
     ret = {}

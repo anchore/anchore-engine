@@ -166,8 +166,12 @@ def image(dbsession, request_inputs, bodycontent={}):
                     logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
                 image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                manifest = None
+                if 'manifest' in image_info:
+                    manifest = json.dumps(image_info['manifest'])
+
                 logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
-                image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile)
+                image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, manifest=manifest)
                 if image_records:
                     image_record = image_records[0]
 
@@ -237,6 +241,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 
             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
             if image_record:
+                logger.debug("WTF: " + str(updated_image_record))
                 rc = db_catalog_image.update_record(updated_image_record, session=dbsession)
                 image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
 
@@ -1268,7 +1273,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
             
     return(True)
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, manifest=None):
     ret = []
 
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
@@ -1329,8 +1334,6 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                         if anchore_data:
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
-                            #image_content_metadata = {'anchore_image_report': anchore_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': anchore_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
-                            #rc = archive_sys.put_document(userId, 'image_content_metadata', imageDigest, image_content_metadata)
                             image_content_data = {}
                             for content_type in anchore_engine.services.common.image_content_types:
                                 try:
@@ -1341,14 +1344,22 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                                 logger.debug("adding image content data to archive")
                                 rc = archive_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
 
-                            image_summary_data = {}
+                            #image_summary_data = {}
+                            #try:
+                            #    image_summary_data = anchore_engine.services.common.extract_analyzer_content(anchore_data, 'metadata')
+                            #except:
+                            #    image_summary_data = {}
+                            #if image_summary_data:
+                            #    logger.debug("adding image summary data to archive")
+                            #    #formatted_image_summary_data = anchore_engine.services.common.format_image_summary(image_summary_data)
+                            #    #new_image_record.update(formatted_image_summary_data)
+                            #    #rc = archive_sys.put_document(userId, 'image_summary_data', imageDigest, image_summary_data)
+
                             try:
-                                image_summary_data = anchore_engine.services.common.extract_analyzer_content(anchore_data, 'metadata')
-                            except:
-                                image_summary_data = {}
-                            if image_summary_data:
-                                logger.debug("adding image summary data to archive")
-                                rc = archive_sys.put_document(userId, 'image_summary_data', imageDigest, image_summary_data)
+                                logger.debug("adding image analysis data to image_record")
+                                anchore_engine.services.common.update_image_record_with_analysis_data(new_image_record, anchore_data)
+                            except Exception as err:
+                                logger.warn("unable to update image record with analysis data - exception: " + str(err))
 
                             new_image_record['analysis_status'] = taskstate.complete_state('analyze')
                         else:
@@ -1356,6 +1367,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                         rc = db_catalog_image.add_record(new_image_record, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                        if manifest:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+
                     else:
                         new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
                         if 'imageId' not in new_image_detail or not new_image_detail['imageId']:
@@ -1367,6 +1381,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                         rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                        if manifest:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                     addlist[imageDigest] = image_record
 

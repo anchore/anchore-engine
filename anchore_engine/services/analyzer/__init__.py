@@ -88,11 +88,50 @@ system_user_auth = ('anchore-system', '')
 current_avg = 0.0
 current_avg_count = 0.0
 
-def perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds):
+def perform_analyze(userId, manifest, image_record, registry_creds):
+    return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds))
+
+def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
+    ret_analyze = {}
+    ret_query = {}
+
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    try:
+        tmpdir = localconfig['tmp_dir']
+    except Exception as err:
+        logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
+        tmpdir = "/tmp"
+
+    # choose the first TODO possible more complex selection here
+    try:
+        image_detail = image_record['image_detail'][0]
+        registry_manifest = manifest
+        pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']
+        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+        logger.debug("using pullstring ("+str(pullstring)+") and fulltag ("+str(fulltag)+") to pull image data")
+    except Exception as err:
+        image_detail = pullstring = fulltag = None
+        raise Exception("failed to extract requisite information from image_record - exception: " + str(err))
+        
+    timer = int(time.time())
+    logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
+    logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
+
+    logger.debug("obtaining anchorelock..." + str(pullstring))
+    with localanchore.get_anchorelock(lockId=pullstring):
+        logger.debug("obtaining anchorelock successful: " + str(pullstring))
+        analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, registry_creds=registry_creds)
+        ret_analyze = analyzed_image_report
+
+    logger.info("performing analysis on image complete: " + str(pullstring))
+
+    return (ret_analyze)
+
+def perform_analyze_orig(userId, pullstring, fulltag, image_detail, registry_creds):
     return(perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry_creds))
     #return(perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, registry_creds))
 
-def perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry_creds):
+def perform_analyze_nodocker_orig(userId, pullstring, fulltag, image_detail, registry_creds):
     ret_analyze = {}
     ret_query = {}
 
@@ -105,21 +144,17 @@ def perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry
 
     timer = int(time.time())
     logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
-    logger.info("performing analysis on image: " + str(pullstring))
-
-    logger.debug("INPUT: " + str(pullstring) + " : " + str(fulltag))
+    logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
 
     logger.debug("obtaining anchorelock..." + str(pullstring))
     with localanchore.get_anchorelock(lockId=pullstring):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
 
-        logger.debug("IDETAIL: " + str(image_detail))
         ddata = None
         if 'dockerfile' in image_detail and image_detail['dockerfile']:
             ddata = image_detail['dockerfile'].decode('base64')
-        logger.debug("DDATA: " + str(ddata))
 
-        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, fulltag, tmpdir, registry_creds=registry_creds, dockerfile_contents=ddata)
+        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, pullstring, fulltag, tmpdir, registry_creds=registry_creds, dockerfile_contents=ddata)
         image_detail['imageId'] = imageId
         ret_analyze = image_report
 
@@ -215,6 +250,8 @@ def process_analyzer_job(system_user_auth, qobj):
         record = qobj['data']
         userId = record['userId']
         image_record = record['image_record']
+        manifest = record['manifest']
+
         imageDigest = image_record['imageDigest']
         user_record = catalog.get_user(system_user_auth, userId)
         user_auth = (user_record['userId'], user_record['password'])
@@ -239,104 +276,83 @@ def process_analyzer_job(system_user_auth, qobj):
             rc = catalog.update_image(user_auth, imageDigest, image_record)
 
             # actually do analysis
+            
+            registry_creds = catalog.get_registry(user_auth)
+            image_data = perform_analyze(userId, manifest, image_record, registry_creds)
 
-            # for pullstring in pullstrings.keys():
-            for image_detail in image_record['image_detail']:
-                pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['digest']
-                fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+            imageId = None
+            try:
+                imageId = image_data[0]['image']['imageId']
+            except Exception as err:
+                logger.warn("could not get imageId after analysis or from image record - exception: " + str(err))
 
-                imageId = None
-                if 'imageId' in image_detail and image_detail['imageId']:
-                    imageId = image_detail['imageId']
-
-                logger.info("analysis starting: " + str(userId) + " : " + str(imageDigest) + " : " + str(fulltag) + " : " + str(imageId))
-
-                logger.spew("TIMING MARKX: " + str(int(time.time()) - timer))
-
-                registry_creds = catalog.get_registry(user_auth)
-                image_data, query_data = perform_analyze(userId, pullstring, fulltag, image_detail, registry_creds)
-                logger.spew("TIMING MARKY: " + str(int(time.time()) - timer))
-
-                #logger.debug("archiving query data")
-                #rc = catalog.put_document(user_auth, 'query_data', imageDigest, query_data)
-                #if rc:
-                #    logger.debug("storing image query data to catalog")
-                #else:
-                #    raise Exception("query archive failed to store")
-
-                if not imageId:
-                    try:
-                        imageId = image_data[0]['image']['imageId']
-                    except Exception as err:
-                        logger.warn("could not get imageId after analysis or from image record - exception: " + str(err))
-
-                logger.debug("archiving analysis data")
-                rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
-                if rc:
-                    try:
-                        logger.debug("extracting image content data")
-                        image_content_data = {}
-                        for content_type in anchore_engine.services.common.image_content_types:
-                            try:
-                                image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
-                            except:
-                                image_content_data[content_type] = {}
-
-                        if image_content_data:
-                            logger.debug("adding image content data to archive")
-                            rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
-
-                        image_summary_data = {}
+            logger.debug("archiving analysis data")
+            rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+            if rc:
+                try:
+                    logger.debug("extracting image content data")
+                    image_content_data = {}
+                    for content_type in anchore_engine.services.common.image_content_types:
                         try:
-                            image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
+                            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
                         except:
-                            image_summary_data = {}
-                        if image_summary_data:
-                            logger.debug("adding image summary data to archive")
-                            rc = catalog.put_document(user_auth, 'image_summary_data', imageDigest, image_summary_data)
+                            image_content_data[content_type] = {}
 
-                    except Exception as err:
-                        logger.warn("could not store image content metadata to archive - exception: " + str(err))
+                    if image_content_data:
+                        logger.debug("adding image content data to archive")
+                        rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
 
-                    logger.debug("adding image record to policy-engine service (" + str(userId) + " : " + str(imageId) + ")")
                     try:
-                        if not imageId:
-                            raise Exception("cannot add image to policy engine without an imageId")
-
-                        localconfig = anchore_engine.configuration.localconfig.get_config()
-                        verify = localconfig['internal_ssl_verify']
-
-                        client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
-
-                        try:
-                            logger.debug("clearing any existing record in policy engine for image: " + str(imageId))
-                            rc = client.delete_image(user_id=userId, image_id=imageId)
-                        except Exception as err:
-                            logger.warn("exception on pre-delete - exception: " + str(err))
-
-                        request = ImageIngressRequest()
-                        request.user_id = userId
-                        request.image_id = imageId
-                        request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-                        logger.debug("policy engine request: " + str(request))
-                        resp = client.ingress_image(request)
-                        logger.debug("policy engine image add response: " + str(resp))
-                        try:
-                            # force a fresh CVE scan
-                            resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
-                        except Exception as err:
-                            logger.warn("post analysis CVE scan failed for image: " + str(imageId))
-
+                        logger.debug("adding image analysis data to image_record")
+                        anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
+                        logger.debug("WTF: " + str(image_record))
                     except Exception as err:
-                        raise Exception("adding image to policy-engine failed - exception: " + str(err))
+                        raise err
 
-                    logger.debug("updating image catalog record analysis_status")
-                    image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
-                    rc = catalog.update_image(user_auth, imageDigest, image_record)
-                else:
-                    raise Exception("analysis archive failed to store")
+                except Exception as err:
+                    logger.warn("could not store image content metadata to archive - exception: " + str(err))
 
-                logger.info("analysis complete: " + str(userId) + " : " + str(imageDigest) + " : " + str(fulltag))
+                logger.debug("adding image record to policy-engine service (" + str(userId) + " : " + str(imageId) + ")")
+                try:
+                    if not imageId:
+                        raise Exception("cannot add image to policy engine without an imageId")
+
+                    localconfig = anchore_engine.configuration.localconfig.get_config()
+                    verify = localconfig['internal_ssl_verify']
+
+                    client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
+
+                    try:
+                        logger.debug("clearing any existing record in policy engine for image: " + str(imageId))
+                        rc = client.delete_image(user_id=userId, image_id=imageId)
+                    except Exception as err:
+                        logger.warn("exception on pre-delete - exception: " + str(err))
+
+                    request = ImageIngressRequest()
+                    request.user_id = userId
+                    request.image_id = imageId
+                    request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+                    logger.debug("policy engine request: " + str(request))
+                    resp = client.ingress_image(request)
+                    logger.debug("policy engine image add response: " + str(resp))
+                    try:
+                        # force a fresh CVE scan
+                        resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
+                    except Exception as err:
+                        logger.warn("post analysis CVE scan failed for image: " + str(imageId))
+
+                except Exception as err:
+                    raise Exception("adding image to policy-engine failed - exception: " + str(err))
+
+                logger.debug("updating image catalog record analysis_status")
+                image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
+
+                rc = catalog.update_image(user_auth, imageDigest, image_record)
+            else:
+                raise Exception("analysis archive failed to store")
+
+            logger.info("analysis complete: " + str(userId) + " : " + str(imageDigest))
+
             logger.spew("TIMING MARK1: " + str(int(time.time()) - timer))
 
             try:

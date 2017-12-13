@@ -1,6 +1,5 @@
 import json
 import os
-#import subprocess
 
 from anchore_engine.subsys import logger
 import anchore_engine.services.common
@@ -20,10 +19,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
         else:
             tlsverifystr = "--src-tls-verify=false"
             
-        #dlcmd = "skopeo copy docker://"+fulltag+" dir:"+copydir
         cmdstr = "skopeo copy "+tlsverifystr+" "+credstr+" docker://"+fulltag+" dir:"+copydir
-        #logger.debug("\tDLCMD: " + str(cmdstr))
-        #sout = subprocess.check_output(cmdstr.split())
         try:
             rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
             if rc != 0:
@@ -47,10 +43,17 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
 
     return(True)
 
-def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, verify=True):
+def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, user=None, pw=None, verify=True):
     manifest = {}
     digest = None
     testDigest = None
+
+    if indigest:
+        pullstring = registry + "/" + repo + "@" + indigest
+    elif intag:
+        pullstring = registry + "/" + repo + ":" + intag
+    else:
+        raise Exception("invalid input - must supply either an intag or indigest")
 
     try:
         if user and pw:
@@ -67,9 +70,7 @@ def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, veri
             tlsverifystr = "--tls-verify=false"
             
         try:
-            cmdstr = "skopeo inspect --raw "+tlsverifystr+" "+credstr+" docker://"+registry+"/"+repo+":"+tag
-            #cmd = cmdstr.split()
-            #sout = subprocess.check_output(cmd)
+            cmdstr = "skopeo inspect --raw "+tlsverifystr+" "+credstr+" docker://"+pullstring
             try:
                 rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
                 if rc != 0:
@@ -87,9 +88,7 @@ def get_image_manifest_skopeo(url, registry, repo, tag, user=None, pw=None, veri
             manifest = {}
 
         try:
-            cmdstr = "skopeo inspect "+tlsverifystr+" "+credstr+" docker://"+registry+"/"+repo+":"+tag
-            #cmd = cmdstr.split()
-            #sout = subprocess.check_output(cmd)
+            cmdstr = "skopeo inspect "+tlsverifystr+" "+credstr+" docker://"+pullstring
             try:
                 rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
                 if rc != 0:

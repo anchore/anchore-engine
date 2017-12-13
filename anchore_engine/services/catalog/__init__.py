@@ -723,41 +723,47 @@ def handle_analyzer_queue(*args, **kwargs):
 
     with db.session_scope() as dbsession:
         users = db.db_users.get_all(session=dbsession)
-        for user in users:
-            userId = user['userId']
-            if userId == 'anchore-system':
-                continue
 
+    for user in users:
+        userId = user['userId']
+        if userId == 'anchore-system':
+            continue
+
+        with db.session_scope() as dbsession:
             image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
-            for image_record in image_records:
-                imageDigest = image_record['imageDigest']
-                if image_record['image_status'] == taskstate.complete_state('image_status'):
-                    currstate = image_record['analysis_status']
 
-                    state_time = int(time.time()) - image_record['last_updated']
-                    #max_working_time = 7200
-                    if currstate == taskstate.working_state('analyze') and (state_time > max_working_time):
-                        logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
-                        image_record['analysis_status'] = taskstate.reset_state('analyze')
+        for image_record in image_records:
+            imageDigest = image_record['imageDigest']
+            if image_record['image_status'] == taskstate.complete_state('image_status'):
+                currstate = image_record['analysis_status']
+
+                state_time = int(time.time()) - image_record['last_updated']
+                #max_working_time = 7200
+                if currstate == taskstate.working_state('analyze') and (state_time > max_working_time):
+                    logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
+                    image_record['analysis_status'] = taskstate.reset_state('analyze')
+                    with db.session_scope() as dbsession:
                         db.db_catalog_image.update_record(image_record, session=dbsession)
                         image_record = db.db_catalog_image.get(imageDigest, userId, session=dbsession)
 
-                    currstate = image_record['analysis_status']
-                    logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
-                    if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
-                        qobj = {}
-                        qobj['userId'] = userId
-                        qobj['image_record'] = image_record
+                currstate = image_record['analysis_status']
+                logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
+                if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
+                    manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
 
-                        try:
-                            if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
-                                # queue image for analysis
-                                logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
-                                qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
-                            else:
-                                logger.debug("image already queued")
-                        except Exception as err:
-                            logger.error("failed to check/queue image for analysis - exception: " + str(err))
+                    qobj = {}
+                    qobj['userId'] = userId
+                    qobj['image_record'] = image_record
+                    qobj['manifest'] = manifest
+                    try:
+                        if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
+                            # queue image for analysis
+                            logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
+                            qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
+                        else:
+                            logger.debug("image already queued")
+                    except Exception as err:
+                        logger.error("failed to check/queue image for analysis - exception: " + str(err))
 
     logger.debug("FIRING: analyzer queuer")
     try:

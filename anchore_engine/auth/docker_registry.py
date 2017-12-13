@@ -192,14 +192,9 @@ def get_image_manifest(userId, image_info, registry_creds):
 
     manifest = digest = None
     
-    #try:
-    #    imagestr = url + "/" + repo + ":" + pullstring
-    #except:
-    #    imagestr = pullstring
-
     logger.debug("trying to get manifest/digest for image ("+str(pullstring)+")")
     try:
-        manifest, digest = get_image_manifest_skopeo(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
+        manifest, digest = get_image_manifest_skopeo(url, registry, repo, intag=pullstring, user=user, pw=pw, verify=registry_verify)
         #manifest, digest = get_image_manifest_oauth2(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
         #manifest, digest = get_image_manifest_docker_registry(url, registry, repo, pullstring, user=user, pw=pw, verify=registry_verify)
     except Exception as err:

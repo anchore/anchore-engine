@@ -315,13 +315,69 @@ def db_upgrade_002_003():
 
     return True
 
+def db_upgrade_003_004():
+    global engine
+    from sqlalchemy import Column, String, BigInteger
+    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image, db_archivedocument
+    import anchore_engine.services.common
+    import anchore_engine.subsys.archive
+
+    newcolumns = [
+        Column('arch', String, primary_key=False),
+        Column('distro', String, primary_key=False),
+        Column('distro_version', String, primary_key=False),
+        Column('dockerfile_mode', String, primary_key=False),
+        Column('image_size', BigInteger, primary_key=False),
+        Column('layer_count', Integer, primary_key=False)
+    ]
+    for column in newcolumns:
+        try:
+            table_name = 'catalog_image'
+            cn = column.compile(dialect=engine.dialect)
+            ct = column.type.compile(engine.dialect)
+            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+        except Exception as e:
+            raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+
+    # TODO go through all images and update the new column entries
+    with session_scope() as dbsession:
+        image_records = db_catalog_image.get_all(session=dbsession)
+
+    for image_record in image_records:
+        userId = image_record['userId']
+        imageDigest = image_record['imageDigest']
+
+        log.err("processing image " + str(imageDigest) + " : " + str(userId))
+
+        try:
+
+            # get the image analysis data from archive
+            image_data = None
+            with session_scope() as dbsession:
+                result = db_archivedocument.get(userId, 'analysis_data', imageDigest, session=dbsession)
+            if result and 'jsondata' in result:
+                image_data = json.loads(result['jsondata'])['document']
+                
+                
+            if image_data:
+                # update the record and store
+                anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
+                with session_scope() as dbsession:
+                    db_catalog_image.update_record(image_record, session=dbsession)
+            else:
+                raise Exception("no analysis data found in archive for image: " + str(imageDigest))
+        except Exception as err:
+            log.err("failed to populate new columns with existing data, record may be incomplete: " + str(err))
+
+    return True
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
 upgrade_functions = (
     (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
-    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ] )
+    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
+    (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
 )
 
 @contextmanager
