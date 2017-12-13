@@ -294,7 +294,7 @@ def initializeService(sname, config):
     return(True)
 
 # the anchore twistd plugins call this to initialize and make individual services
-def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
+def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
 
     try:
         # config and init
@@ -329,12 +329,27 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
             raise err
 
         #credential bootstrap
-        try:
-            with session_scope() as dbsession:
-                system_user = db_users.get('anchore-system', session=dbsession)
-                localconfig['system_user_auth'] = (system_user['userId'], system_user['password'])
-        except Exception as err:
-            log.err("cannot get system-user auth credentials - service will not have system access")
+        localconfig['system_user_auth'] = (None, None)
+        if require_system_user_auth:
+            gotauth = False
+            max_retries = 10
+            for count in range(1,max_retries):
+                if gotauth:
+                    continue
+                try:
+                    with session_scope() as dbsession:
+                        localconfig['system_user_auth'] = get_system_user_auth(session=dbsession)
+                    if localconfig['system_user_auth'] != (None, None):
+                        gotauth = True
+                    else:
+                        log.err("cannot get system user auth credentials yet, retrying (" + str(count) + " / " + str(max_retries)+")")
+                        time.sleep(2)
+                except Exception as err:
+                    log.err("cannot get system-user auth credentials - service may not have system level access")
+                    localconfig['system_user_auth'] = (None, None)
+
+            if not gotauth:
+                raise Exception("service requires system user auth to start")
 
     # application object
     application = service.Application("multi-service-"+'-'.join(snames))
@@ -776,7 +791,6 @@ def extract_dockerfile_content(image_data):
     except Exception as err:
         dockerfile_content = ""
         dockerfile_mode = "Guessed"
-        logger.debug("WTF ERR: " + str(err))
 
     return(dockerfile_content, dockerfile_mode)
 
@@ -874,3 +888,18 @@ def run_command(cmdstr):
         raise err
 
     return(rc, sout, serr)
+
+def get_system_user_auth(session=None):
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    if 'system_user_auth' in localconfig and localconfig['system_user_auth'] != (None, None):
+        return(localconfig['system_user_auth'])
+
+    if session:
+        system_user = db_users.get('anchore-system', session=session)
+        if system_user:
+            return( (system_user['userId'], system_user['password']) )
+
+    return ( (None, None) )
+
+    
+        

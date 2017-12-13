@@ -241,7 +241,6 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 
             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
             if image_record:
-                logger.debug("WTF: " + str(updated_image_record))
                 rc = db_catalog_image.update_record(updated_image_record, session=dbsession)
                 image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
 

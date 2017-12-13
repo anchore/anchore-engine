@@ -305,7 +305,6 @@ def process_analyzer_job(system_user_auth, qobj):
                     try:
                         logger.debug("adding image analysis data to image_record")
                         anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
-                        logger.debug("WTF: " + str(image_record))
                     except Exception as err:
                         raise err
 
