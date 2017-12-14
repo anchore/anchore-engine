@@ -89,7 +89,20 @@ current_avg = 0.0
 current_avg_count = 0.0
 
 def perform_analyze(userId, manifest, image_record, registry_creds):
-    return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds))
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    try:
+        myconfig = localconfig['services']['analyzer']
+    except:
+        myconfig = {}
+
+    driver = 'localanchore'
+    if 'analyzer_driver' in myconfig:
+        driver = myconfig['analyzer_driver']
+
+    if driver == 'nodocker':
+        return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds))
+    else:
+        return(perform_analyze_localanchore(userId, manifest, image_record, registry_creds))
 
 def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
     ret_analyze = {}
@@ -127,47 +140,22 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
 
     return (ret_analyze)
 
-def perform_analyze_orig(userId, pullstring, fulltag, image_detail, registry_creds):
-    return(perform_analyze_nodocker(userId, pullstring, fulltag, image_detail, registry_creds))
-    #return(perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, registry_creds))
-
-def perform_analyze_nodocker_orig(userId, pullstring, fulltag, image_detail, registry_creds):
+def perform_analyze_localanchore(userId, manifest, image_record, registry_creds):
     ret_analyze = {}
-    ret_query = {}
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    try:
-        tmpdir = localconfig['tmp_dir']
-    except Exception as err:
-        logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
-        tmpdir = "/tmp"
-
-    timer = int(time.time())
-    logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
-    logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
-
-    logger.debug("obtaining anchorelock..." + str(pullstring))
-    with localanchore.get_anchorelock(lockId=pullstring):
-        logger.debug("obtaining anchorelock successful: " + str(pullstring))
-
-        ddata = None
-        if 'dockerfile' in image_detail and image_detail['dockerfile']:
-            ddata = image_detail['dockerfile'].decode('base64')
-
-        imageDigest, imageId, manifest, image_report = localanchore_standalone.analyze_image(userId, pullstring, fulltag, tmpdir, registry_creds=registry_creds, dockerfile_contents=ddata)
-        image_detail['imageId'] = imageId
-        ret_analyze = image_report
-
-    logger.info("performing analysis on image complete: " + str(pullstring))
-
-    return (ret_analyze, ret_query)    
-
-def perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, registry_creds):
-    ret_analyze = {}
-    ret_query = {}
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     do_docker_cleanup = localconfig['cleanup_images']
+
+    try:
+        image_detail = image_record['image_detail'][0]
+        registry_manifest = manifest
+        pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']
+        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+        logger.debug("using pullstring ("+str(pullstring)+") and fulltag ("+str(fulltag)+") to pull image data")
+    except Exception as err:
+        image_detail = pullstring = fulltag = None
+        raise Exception("failed to extract requisite information from image_record - exception: " + str(err))
+
 
     timer = int(time.time())
     logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
@@ -203,16 +191,6 @@ def perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, regi
 
         logger.spew("TIMING MARK3: " + str(int(time.time()) - timer))
 
-        ## query!
-        #try:
-        #    query_data = localanchore.run_queries(pullstring, image_detail)
-        #    if not query_data:
-        #        raise Exception("anchore queries failed:")
-        #except Exception as err:
-        #    logger.error("error on run_queries: " + str(err))
-        #    raise err
-        #logger.spew("TIMING MARK4: " + str(int(time.time()) - timer))
-
         # get the result from anchore
         logger.debug("retrieving image data from anchore")
         try:
@@ -236,10 +214,9 @@ def perform_analyze_localanchore(userId, pullstring, fulltag, image_detail, regi
         logger.spew("TIMING MARK6: " + str(int(time.time()) - timer))
 
     ret_analyze = image_data
-    #ret_query = query_data
 
     logger.info("performing analysis on image complete: " + str(pullstring))
-    return (ret_analyze, ret_query)
+    return (ret_analyze)
 
 
 def process_analyzer_job(system_user_auth, qobj):

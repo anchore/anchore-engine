@@ -749,7 +749,10 @@ def handle_analyzer_queue(*args, **kwargs):
                 currstate = image_record['analysis_status']
                 logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
                 if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
-                    manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
+                    try:
+                        manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
+                    except Exception as err:
+                        manifest = {}
 
                     qobj = {}
                     qobj['userId'] = userId

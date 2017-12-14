@@ -143,6 +143,7 @@ def squash(unpackdir, layers):
         squashtar = os.path.join(unpackdir, "squashed_tmp.tar")
 
     logger.debug("\tPass 3: " + str(squashtar))
+
     #tarcmd = "bsdtar -C " + rootfsdir + " -x -p -f " + squashtar
     tarcmd = "tar -C " + rootfsdir + " -x -f " + squashtar
     logger.debug("untarring squashed tarball: " + str(tarcmd))
@@ -478,7 +479,10 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[])
 
     try:
         imageDigest = image_record['imageDigest']
-        manifest_data = json.loads(manifest)
+        try:
+            manifest_data = json.loads(manifest)
+        except Exception as err:
+            raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
 
         image_detail = image_record['image_detail'][0]
         pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']

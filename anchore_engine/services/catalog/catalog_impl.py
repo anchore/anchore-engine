@@ -167,8 +167,13 @@ def image(dbsession, request_inputs, bodycontent={}):
 
                 image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
                 manifest = None
-                if 'manifest' in image_info:
-                    manifest = json.dumps(image_info['manifest'])
+                try:
+                    if 'manifest' in image_info:
+                        manifest = json.dumps(image_info['manifest'])
+                    else:
+                        raise Exception("no manifest from get_image_info")
+                except Exception as err:
+                    raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                 logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
                 image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, manifest=manifest)
@@ -1366,8 +1371,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                         rc = db_catalog_image.add_record(new_image_record, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if manifest:
-                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        if not manifest:
+                            manifest = json.dumps({})
+                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                     else:
                         new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
@@ -1380,8 +1386,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                         rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if manifest:
-                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        if not manifest:
+                            manifest = json.dumps({})
+                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                     addlist[imageDigest] = image_record
 

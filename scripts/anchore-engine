@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+import traceback
 import threading
 import subprocess
 import watchdog
@@ -104,8 +105,14 @@ def startup_service(service, configdir):
     print "starting service: " + str(service)
     print "\t " + ' '.join(cmd)
 
-    status = subprocess.call(cmd)
+    try:
+        status = subprocess.call(cmd)
+        raise Exception("process exited: " + str(status))
+    except Exception as err:
+        traceback.print_exc()
+        print "service process exited at ("+str(time.ctime())+"): " + str(err)
 
+    print "exiting service thread"
     return(False)
 
 service_map = {
