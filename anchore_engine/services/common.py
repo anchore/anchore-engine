@@ -432,8 +432,13 @@ def getAuthResource(in_resource, sname, config, password_checker=AnchorePassword
     else:
         # no auth required
         return(in_resource)
+        
+    do_auth = True
+    if localconfig and 'require_auth' in localconfig and not localconfig['require_auth']:
+        do_auth = False
 
-    if localconfig and 'require_auth' in localconfig and localconfig['require_auth']:
+    if do_auth:
+    #if localconfig and 'require_auth' in localconfig and localconfig['require_auth']:
         #if 'require_auth_file' not in localconfig or not os.path.exists(localconfig['require_auth_file']):
         #    raise Exception("require_auth is set for service, but require_auth_file is not set/invalid")
             
