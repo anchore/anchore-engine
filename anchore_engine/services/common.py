@@ -593,7 +593,7 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
                     image_info['imageId'] = imageId
                 except Exception as err:
                     logger.debug("could not extract imageId from fetched manifest - exception: " + str(err))
-                    logger.warn("using digest hash as imageId due to incomplete manifest")
+                    logger.debug("using digest hash as imageId due to incomplete manifest ("+str(image_info['fulldigest'])+")")
                     htype, image_info['imageId'] = image_info['digest'].split(":", 1)
 
             ret.update(image_info)

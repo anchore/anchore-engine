@@ -419,6 +419,16 @@ def handle_image_watcher(*args, **kwargs):
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=True, registry_creds=registry_creds)
                 logger.spew("checking image: got registry info: " + str(image_info))
 
+                manifest = None
+                try:
+                    if 'manifest' in image_info:
+                        manifest = json.dumps(image_info['manifest'])
+                    else:
+                        raise Exception("no manifest from get_image_info")
+                except Exception as err:
+                    manifest=None
+                    raise Exception("could not fetch/parse manifest - exception: " + str(err))
+
                 try:
                     dbfilter = {
                         'registry': image_info['registry'],
@@ -428,6 +438,14 @@ def handle_image_watcher(*args, **kwargs):
                     }
                 except Exception as err:
                     raise Exception("could not prepare db filter for complete lookup check - exception: " + str(err))
+
+                try:
+                    stored_manifest = json.loads(archive.get_document(userId, 'manifest_data', image_info['digest']))
+                    if not stored_manifest:
+                        raise Exception("stored manifest is empty")
+                except Exception as err:
+                    logger.warn("found empty/invalid stored manifest, storing new: " + str(err))
+                    rc = archive.put_document(userId, 'manifest_data', image_info['digest'], manifest)
 
                 logger.debug("checking image: looking up image in db using dbfilter: " + str(dbfilter))
                 with db.session_scope() as dbsession:
@@ -455,7 +473,7 @@ def handle_image_watcher(*args, **kwargs):
                     # add and store the new image
                     with db.session_scope() as dbsession:
                         logger.debug("ADDING/UPDATING IMAGE IN IMAGE WATCHER " + str(image_info))
-                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']])
+                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], manifest=manifest)
                     if image_records:
                         image_record = image_records[0]
                     else:

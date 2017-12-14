@@ -395,12 +395,13 @@ def monitor_func(**kwargs):
                         qobj = simplequeue.dequeue(system_user_auth, queuename)
                         if qobj:
                             myqobj = copy.deepcopy(qobj)
-                            logger.debug("incoming queue object: " + str(myqobj))
-                            logger.debug("THR: starting thread")
+                            logger.spew("incoming queue object: " + str(myqobj))
+                            logger.debug("incoming queue task: " + str(myqobj.keys()))
+                            logger.debug("starting thread")
                             athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
                             athread.start()
                             threads.append(athread)
-                            logger.debug("THR: thread started")
+                            logger.debug("thread started")
 
                             # rc = process_analyzer_job(system_user_auth, myqobj)
 
@@ -408,9 +409,9 @@ def monitor_func(**kwargs):
                         logger.debug("analyzer queue is empty - no work this cycle")
 
                 for athread in threads:
-                    logger.debug("THR: joining thread")
+                    logger.debug("joining thread")
                     athread.join()
-                    logger.debug("THR: thread joined")
+                    logger.debug("thread joined")
 
             except Exception as err:
                 logger.error(str(err))

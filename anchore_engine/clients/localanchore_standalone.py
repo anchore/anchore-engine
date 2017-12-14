@@ -246,7 +246,11 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
         count=0
         for rawhel in manifest_data['history']:
             hel = json.loads(rawhel['v1Compatibility'])
-            lsize = hel['Size']
+            
+            try:
+                lsize = hel['Size']
+            except:
+                lsize = 0
             
             if hel['container_config']['Cmd']:
                 lcreatedby = ' '.join(hel['container_config']['Cmd'])
@@ -332,10 +336,17 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                     layers.append(lid)
                     lsize = lel['size']
 
+                try:
+                    lcreatedby = hel['created_by']
+                except:
+                    lcreatedby = ""
+
+                lcreated = hel['created']
+
                 hfinal.append(
                     {
-                        'Created': hel['created'],
-                        'CreatedBy': hel['created_by'],
+                        'Created': lcreated,
+                        'CreatedBy': lcreatedby,
                         'Comment': '',
                         'Id': lid,
                         'Size': lsize,
