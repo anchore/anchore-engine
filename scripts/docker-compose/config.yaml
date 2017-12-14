@@ -82,6 +82,7 @@ credentials:
 services:
   apiext:
     enabled: True
+    require_auth: True
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
     port: 8228
@@ -99,6 +100,7 @@ services:
     #ssl_key: '/config/selfsigned-example.key'
   catalog:
     enabled: True
+    require_auth: True
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
     port: 8082
@@ -114,6 +116,7 @@ services:
       policy_bundle_sync: 300
   simplequeue:
     enabled: True
+    require_auth: True
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
     port: 8083
@@ -125,6 +128,7 @@ services:
     #analyzer_driver: 'nodocker'
   policy_engine:
     enabled: True
+    require_auth: True
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
     port: 8087
