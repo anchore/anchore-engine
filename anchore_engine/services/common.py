@@ -642,6 +642,11 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
             dockerfile = None
 
         try:
+            dockerfile_mode = image_metadata['dockerfile_mode']
+        except:
+            dockerfile_mode = None
+
+        try:
             tag = image_metadata['tag']
         except:
             tag = None
@@ -661,14 +666,14 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
         #except:
         #    manifest = None
 
-        return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, dockerfile=dockerfile, registry_lookup=registry_lookup, registry_creds=registry_creds))
+        return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds))
 
     else:
         raise Exception("image type ("+str(image_type)+") not supported")
 
     return(None)
 
-def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, dockerfile=None, registry_lookup=True, registry_creds=[]):
+def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[]):
     ret = {}
 
     if input_string:
@@ -696,6 +701,7 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
     new_input['imageDigest'] = imageDigest
     new_input['userId'] = userId
     new_input['image_type'] = 'docker'
+    new_input['dockerfile_mode'] = dockerfile_mode
 
     new_image_obj = db.CatalogImage(**new_input)
     new_image = dict((key,value) for key, value in vars(new_image_obj).iteritems() if not key.startswith('_'))

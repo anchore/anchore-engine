@@ -218,7 +218,7 @@ def pull_image(staging_dirs, pullstring, registry_creds=[]):
 
     return(True)
 
-def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=""):
+def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
     copydir = staging_dirs['copydir']
@@ -227,6 +227,12 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
     layers = []
     dockerfile_mode = "Guessed"
     dockerfile_contents = dockerfile_contents
+    imageArch = ""
+
+    try:
+        imageArch = manifest_data['architecture']
+    except:
+        imageArch = ""
 
     try:
         for fslayer in manifest_data['fsLayers']:
@@ -240,7 +246,6 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
         count=0
         for rawhel in manifest_data['history']:
             hel = json.loads(rawhel['v1Compatibility'])
-            logger.debug("HEL: " + str(hel['container_config']['Cmd']) + " : " + str(hel['Size']))
             lsize = hel['Size']
             
             if hel['container_config']['Cmd']:
@@ -266,8 +271,6 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
         if hfinal:
             with open(os.path.join(unpackdir, "docker_history.json"), 'w') as OFH:
                 OFH.write(json.dumps(hfinal))
-            with open("/tmp/jj.json", 'w') as OFH:
-                OFH.write(json.dumps(hfinal))
     except Exception as err:
         logger.error("cannot construct history - exception: " + str(err))
         raise err
@@ -284,14 +287,14 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
                 cmd = "RUN " + hel['CreatedBy']
             dockerfile_contents = dockerfile_contents + cmd + "\n"        
         dockerfile_mode = "Guessed"
-    else:
+    elif not dockerfile_mode:
         dockerfile_mode = "Actual"
 
     layers.reverse()
 
-    return(docker_history, layers, dockerfile_contents, dockerfile_mode)
+    return(docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch)
 
-def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=""):
+def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
     copydir = staging_dirs['copydir']
@@ -301,6 +304,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
     hfinal = []
     layers = []
     docker_history = []
+    imageArch = ""
 
     # get "history"    
     try:
@@ -358,10 +362,10 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                 cmd = "RUN " + hel['CreatedBy']
             dockerfile_contents = dockerfile_contents + cmd + "\n"        
         dockerfile_mode = "Guessed"
-    else:
+    elif not dockerfile_mode:
         dockerfile_mode = "Actual"
 
-    return(docker_history, layers, dockerfile_contents, dockerfile_mode)
+    return(docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch)
 
 def unpack(staging_dirs, layers):
     outputdir = staging_dirs['outputdir']
@@ -484,6 +488,9 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[])
         except Exception as err:
             raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
 
+        if image_record['dockerfile_mode']:
+            dockerfile_mode = image_record['dockerfile_mode']
+
         image_detail = image_record['image_detail'][0]
         pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']
         fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
@@ -505,9 +512,9 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[])
 
         try:
             if manifest_data['schemaVersion'] == 1:
-                docker_history, layers, dockerfile_contents, dockerfile_mode = get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents)
+                docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch = get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents, dockerfile_mode=dockerfile_mode)
             elif manifest_data['schemaVersion'] == 2:
-                docker_history, layers, dockerfile_contents, dockerfile_mode = get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents)
+                docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch = get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents, dockerfile_mode=dockerfile_mode)
             else:
                 raise Exception("unknown manifest schemaVersion")
             
@@ -533,64 +540,3 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[])
         raise Exception("failed to analyze")
 
     return(image_report)
-
-def analyze_image_orig(userId, pullstring, fulltag, tmprootdir, registry_creds=[], dockerfile_contents="", registry_manifest=None):
-    # need all this
-
-    imageId = None
-    imageDigest = None
-    layers = []
-    rawlayers = []
-    familytree = []
-    imageSize = 0
-    analyzer_manifest = {}
-    analyzer_report = {}
-    imageArch = ""
-    dockerfile_mode = ""
-    docker_history = {}
-    rdigest = ""
-    manifest = ""
-    staging_dirs = None
-
-    try:
-        try:
-            image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False)
-            image_info['pullstring'] = pullstring
-        except Exception as err:
-            raise err
-
-        try:
-            staging_dirs = make_staging_dirs(tmprootdir)
-        except Exception as err:
-            raise err
-
-        logger.debug("IMG INFO: " + str(image_info))
-
-        imageDigest, imageId, manifest, rawlayers = pull_image(staging_dirs, image_info, registry_creds=registry_creds)
-
-        try:
-            regrepo, tag = fulltag.split(":", 1)
-        except:
-            regrepo = fulltag
-        rdigest = regrepo + "@" + imageDigest
-
-        docker_history, layers, dockerfile_contents, dockerfile_mode = get_image_metadata(staging_dirs, imageDigest, imageId, rawlayers, dockerfile_contents=dockerfile_contents)
-        familytree = layers
-
-        imageSize = unpack(staging_dirs, layers)
-        familytree = layers
-        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId)
-
-        image_report = generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, rdigest, analyzer_manifest)
-
-    except Exception as err:
-        raise Exception("failed to download, unpack, analyze, and generate image export - exception: " + str(err))
-    finally:
-        if staging_dirs:
-            rc = delete_staging_dirs(staging_dirs)
-
-    if not imageDigest or not imageId or not manifest or not image_report:
-        raise Exception("failed to analyze")
-
-    return(imageDigest, imageId, manifest, image_report)
-

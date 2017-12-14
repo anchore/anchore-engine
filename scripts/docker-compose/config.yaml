@@ -121,6 +121,8 @@ services:
     enabled: True
     cycle_timer_seconds: '1'
     max_threads: '1'
+    analyzer_driver: 'localanchore'
+    #analyzer_driver: 'nodocker'
   policy_engine:
     enabled: True
     endpoint_hostname: 'localhost'

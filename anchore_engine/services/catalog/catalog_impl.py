@@ -150,10 +150,12 @@ def image(dbsession, request_inputs, bodycontent={}):
                 jsondata = bodycontent
     
             dockerfile = None
+            dockerfile_mode = None
             if 'dockerfile' in jsondata:
                 dockerfile = jsondata['dockerfile']
                 try:
                     dockerfile.decode('base64')
+                    dockerfile_mode = "Actual"
                 except Exception as err:
                     raise Exception("input dockerfile data must be base64 encoded - exception on decode: " + str(err))
 
@@ -176,7 +178,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                     raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                 logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
-                image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, manifest=manifest)
+                image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest)
                 if image_records:
                     image_record = image_records[0]
 
@@ -1277,7 +1279,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
             
     return(True)
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, manifest=None):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None):
     ret = []
 
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
@@ -1314,9 +1316,11 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
         a = anchore_data[0]
         try:
             dockerfile = a['image']['imagedata']['image_report']['dockerfile_contents'].encode('base64')
+            dockerfile_mode = a['image']['imagedata']['image_report']['dockerfile_mode']
         except Exception as err:
             logger.warn("could not extract dockerfile_contents from input anchore_data - exception: " + str(err))
             dockerfile = None
+            dockerfile_mode = None
 
     logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
 
@@ -1330,7 +1334,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                 fulldigest = registry + "/" + repo + "@" + d
                 for t in tags:
                     fulltag = registry + "/" + repo + ":" + t
-                    new_image_record = anchore_engine.services.common.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile}, registry_lookup=False, registry_creds=(None, None))
+                    new_image_record = anchore_engine.services.common.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode}, registry_lookup=False, registry_creds=(None, None))
                     imageDigest = new_image_record['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
@@ -1377,12 +1381,19 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                     else:
                         new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
+
                         if 'imageId' not in new_image_detail or not new_image_detail['imageId']:
                             for image_detail in image_record['image_detail']:
                                 if 'imageId' in image_detail and image_detail['imageId']:
                                     for new_id in new_image_detail:
                                         new_id['imageId'] = image_detail['imageId']
                                     break
+
+                        for new_id in new_image_detail:
+                            new_id['dockerfile'] = dockerfile
+                        
+                        if dockerfile_mode:
+                            image_record['dockerfile_mode'] = dockerfile_mode
 
                         rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
