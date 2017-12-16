@@ -17,6 +17,7 @@ cleanup_images: True
 log_level: 'DEBUG'
 host_id: 'dockerhostid-xyz'
 internal_ssl_verify: False
+auto_restart_services: True
 #catalog_endpoint: 'http://localhost:8082/v1'
 #
 

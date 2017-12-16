@@ -8,6 +8,7 @@ import traceback
 import threading
 import subprocess
 import watchdog
+import anchore_engine.configuration.localconfig
 from watchdog.observers import Observer  
 from watchdog.events import RegexMatchingEventHandler
 
@@ -65,6 +66,18 @@ class AnchoreLogWatcher(RegexMatchingEventHandler):
     def on_any_event(self, event):
         if event.src_path not in self.files:
             self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
+
+class ServiceThread():
+
+    def __init__(self, thread_target, thread_args):
+        self.thread_target = thread_target
+        self.thread_args = thread_args
+        self.start()
+    
+    def start(self):
+        self.thread = threading.Thread(target = self.thread_target, args = self.thread_args)
+        self.thread.name = self.thread_args[0]
+        self.thread.start()
 
 def terminate_service(service, flush_pidfile=False):
     pidfile = "/var/run/" + service + ".pid"
@@ -134,6 +147,11 @@ for thedir in configdirs:
     if os.path.exists(thefile):
         configdir = thedir
         configfile = thefile
+        try: 
+            localconfig = anchore_engine.configuration.localconfig.read_config(configfile=configfile)
+        except Exception as err:
+            print "cannot load local configuration: " + str(err)
+            sys.exit(1)
         break
 
 if not configdir or not os.path.exists(configdir):
@@ -158,12 +176,12 @@ except Exception as err:
     raise err
 
 pids = []
+keepalive_threads = []
 for service in services:
     pidfile = "/var/run/"+service+".pid"
     try:
-        athread = threading.Thread(target=startup_service, args=(service,configdir))
-        athread.start()
-
+        service_thread = ServiceThread(startup_service, (service, configdir))
+        keepalive_threads.append(service_thread)
         max_tries = 30
         tries = 0
         while not os.path.exists(pidfile) and tries < max_tries:
@@ -191,6 +209,13 @@ else:
         try:
             while True:
                 time.sleep(1)
+                if 'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
+                    for service_thread in keepalive_threads:
+                        print "checking " + service_thread.thread.name
+                        if not service_thread.thread.is_alive():
+                            print "restarting service " + service_thread.thread.name
+                            service_thread.start()
+
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
