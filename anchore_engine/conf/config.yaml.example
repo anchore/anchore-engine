@@ -13,6 +13,7 @@
 # internal_ssl_verify: True
 # image_analyze_timeout_seconds: '36000'
 cleanup_images: True
+auto_restart_services: True
 #
 # docker_conn: 'unix://var/run/docker.sock'
 # docker_conn_timeout: 600

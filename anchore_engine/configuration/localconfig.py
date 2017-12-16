@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     'image_analyze_timeout_seconds': '36000',
     'cleanup_images': False,
     'internal_ssl_verify': True,
+    'auto_restart_services': True,
     'services': {},
     'credentials': {},
     'webhooks': {},
