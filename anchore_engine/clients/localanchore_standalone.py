@@ -151,7 +151,7 @@ def squash(unpackdir, layers):
     try:
         rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
         if rc != 0:
-            raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+            raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
         else:
             logger.debug("command succeeded: stdout="+str(sout).strip()+" stderr="+str(serr).strip())
     except Exception as err:

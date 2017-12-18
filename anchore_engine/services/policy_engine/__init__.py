@@ -32,7 +32,7 @@ def registerService(sname, config):
 
 
 def _check_feed_client_credentials():
-    from anchore_engine.clients.feeds.anchore_io.feeds import get_client
+    from anchore_engine.clients.feeds.feed_service.feeds import get_client
     logger.info('Checking feeds client credentials')
     client = get_client()
     client = None

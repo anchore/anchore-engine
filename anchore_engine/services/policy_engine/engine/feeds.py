@@ -18,7 +18,8 @@ from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
 from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.clients.feeds.anchore_io.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
+#from anchore_engine.clients.feeds.anchore_io.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
+from anchore_engine.clients.feeds.feed_service.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 
 log = get_logger()
 
@@ -213,7 +214,11 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
         db_rec.namespace_name = self.group
         db_rec.severity = vuln.get('Severity', 'Unknown')
         db_rec.link = vuln.get('Link')
-        db_rec.description = vuln.get('Description','') if len(vuln.get('Description','')) < self.MAX_STR_LEN else (vuln.get('Description')[:self.MAX_STR_LEN - 8] + '...')
+        description = vuln.get("Description", "")
+        if description:
+            db_rec.description = vuln.get('Description','') if len(vuln.get('Description','')) < self.MAX_STR_LEN else (vuln.get('Description')[:self.MAX_STR_LEN - 8] + '...')
+        else:
+            db_rec.description = ""
         db_rec.fixed_in = []
         db_rec.vulnerable_in = []
 
