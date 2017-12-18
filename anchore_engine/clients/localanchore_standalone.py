@@ -205,6 +205,7 @@ def pull_image(staging_dirs, pullstring, registry_creds=[]):
     # extract user/pw/verify from registry_creds
     try:
         if registry_creds:
+            image_info = anchore_engine.services.common.get_image_info(None, 'docker', pullstring, registry_lookup=False)
             user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(image_info['registry'], registry_creds=registry_creds)
     except Exception as err:
         raise err
