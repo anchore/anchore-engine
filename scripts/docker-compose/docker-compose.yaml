@@ -47,7 +47,7 @@ services:
      - "8338:8338"
     volumes:
      - /root/aevolume/config:/config/:Z
-     - /var/run/docker.sock:/var/run/docker.sock
+     #- /var/run/docker.sock:/var/run/docker.sock
     logging:
      driver: "json-file"
      options:
