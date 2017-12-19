@@ -22,7 +22,7 @@ log_level = None
 _log_to_db = None
 _log_to_stdout = False
 
-def enable_bootstrap_logging(name_prefix=None):
+def enable_bootstrap_logging(service_name=None):
     """
     Turn on the bootstrap logger, which provides basic stdout logs until the main twisted logger is online and ready.
 
@@ -41,9 +41,10 @@ def enable_bootstrap_logging(name_prefix=None):
     else:
         level = 'INFO'
 
-    logging.basicConfig(level=level, stream=sys.stdout, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
-    logname = name_prefix + '_bootstrap' if name_prefix else 'bootstrap'
-    bootstrap_logger = logging.getLogger(logname)
+    prefix = 'service:{}'.format(service_name if service_name else ' ')
+    logging.basicConfig(level=level, stream=sys.stdout, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+
+    bootstrap_logger = logging.getLogger('bootstrap')
     bootstrap_logger_enabled = True
 
 
