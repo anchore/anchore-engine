@@ -332,7 +332,7 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
         localconfig['system_user_auth'] = (None, None)
         if require_system_user_auth:
             gotauth = False
-            max_retries = 10
+            max_retries = 60
             for count in range(1,max_retries):
                 if gotauth:
                     continue
@@ -343,7 +343,7 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
                         gotauth = True
                     else:
                         log.err("cannot get system user auth credentials yet, retrying (" + str(count) + " / " + str(max_retries)+")")
-                        time.sleep(2)
+                        time.sleep(5)
                 except Exception as err:
                     log.err("cannot get system-user auth credentials - service may not have system level access")
                     localconfig['system_user_auth'] = (None, None)

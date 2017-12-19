@@ -86,7 +86,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
 
-    db_connect_retry_max = 3
+    db_connect_retry_max = 60
     for count in range(0, db_connect_retry_max):
         try:
             if db_connect:
@@ -128,7 +128,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
                 raise Exception("could not establish connection to DB after retry - last exception: " + str(err))
             else:
                 log.err("could not connect to db, retrying in 10 seconds - exception: " + str(err))
-                time.sleep(10)
+                time.sleep(5)
 
     if bootstrap_db:
         from anchore_engine.db import db_anchore, db_users
@@ -339,7 +339,6 @@ def db_upgrade_003_004():
         except Exception as e:
             raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
 
-    # TODO go through all images and update the new column entries
     with session_scope() as dbsession:
         image_records = db_catalog_image.get_all(session=dbsession)
 
@@ -347,8 +346,7 @@ def db_upgrade_003_004():
         userId = image_record['userId']
         imageDigest = image_record['imageDigest']
 
-        log.err("processing image " + str(imageDigest) + " : " + str(userId))
-
+        log.err("upgrade: processing image " + str(imageDigest) + " : " + str(userId))
         try:
 
             # get the image analysis data from archive
@@ -358,16 +356,15 @@ def db_upgrade_003_004():
             if result and 'jsondata' in result:
                 image_data = json.loads(result['jsondata'])['document']
                 
-                
             if image_data:
                 # update the record and store
                 anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
                 with session_scope() as dbsession:
                     db_catalog_image.update_record(image_record, session=dbsession)
             else:
-                raise Exception("no analysis data found in archive for image: " + str(imageDigest))
+                raise Exception("upgrade: no analysis data found in archive for image: " + str(imageDigest))
         except Exception as err:
-            log.err("failed to populate new columns with existing data, record may be incomplete: " + str(err))
+            log.err("upgrade: failed to populate new columns with existing data for image (" + str(imageDigest) + "), record may be incomplete: " + str(err))
 
     return True
 
