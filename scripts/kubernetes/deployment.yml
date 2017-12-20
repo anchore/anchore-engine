@@ -1,0 +1,55 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: anchore-engine
+  namespace: anchore
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: anchore-engine
+    spec:
+      volumes:
+        - name: anchore-engine-config-volume
+          configMap:
+            name: anchore-engine-config
+        - name: localanalyzer-volume
+          configMap:
+            name: localanalyzer-config
+        - name: docker-graph-storage
+          emptyDir: {}
+      containers:
+        - name: dind-daemon
+          image: docker:1.12.6-dind
+          args:
+            - "--storage-driver=overlay2"
+          resources:
+            requests:
+              cpu: "0.25"
+              memory: "256Mi"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: docker-graph-storage
+              mountPath: /var/lib/docker
+        - name: anchore-engine
+          image: anchore-engine:latest
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "0.25"
+            limits:
+              cpu: "1"
+              memory: "4Gi"
+          ports:
+            - containerPort: 8228
+            - containerPort: 8338
+          volumeMounts:
+            - name: anchore-engine-config-volume
+              mountPath: /config/
+            - name: localanalyzer-volume
+              mountPath: /root/.anchore/conf/

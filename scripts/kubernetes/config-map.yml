@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: localanalyzer-config
+  namespace: anchore
+data:
+  config.yaml: |
+    # Anchore configuration file
+
+    #
+    # anchore_data_dir: <default is $HOME/.anchore/>
+    #
+    # anchore_db_driver: 'anchore_image_db_fs'
+    # anchore_db_driver_config:
+    #   # only applicable to the 'anchore_image_db_fs' driver (default driver), path is relative to anchore_data_dir unless it is set to an abs path
+    #   db_dir: 'data/'
+    #
+    # tmpdir: '/tmp'
+    # log_file: '/var/log/anchore.log'
+    # debug_log_file: '/var/log/anchore_debug.log'
+    #
+    # image_data_store: 'data/'  # deprecated but still works - should use the anchore_db_driver_config + db_dir settings above to control location of anchore data
+    #
+    docker_conn: 'tcp://localhost:2375'
+    # docker_conn_timeout: '120'
+    #
+    # anchore_auth_conn_timeout: '5'
+    # anchore_auth_max_retries: '3'
+    # anchore_client_url: 'https://ancho.re/v1/account/users'
+    # anchore_token_url: 'https://ancho.re/oauth/token'
+    #
+    # feeds_url: 'https://ancho.re/v1/service/feeds'
+    # feeds_conn_timeout: '10'
+    # feeds_max_retries: '3'
+    #
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: anchore-engine-config
+  namespace: anchore
+data:
+  config.yaml: |
+    # Anchore Service Configuration File
+    #
+
+    # General system-wide configuration options, these should not need to
+    # be altered for basic operation
+    #
+    # service_dir: '/config'
+    # tmp_dir: '/tmp'
+    # log_level: 'DEBUG'
+    #
+    allow_awsecr_iam_auto: True
+    cleanup_images: True
+    docker_conn: 'tcp://localhost:2375'
+    # docker_conn_timeout: 600
+    #
+    #
+    log_level: 'DEBUG'
+    host_id: 'dockerhostid-xyz'
+    internal_ssl_verify: False
+    #catalog_endpoint: 'http://localhost:8082/v1'
+    #
+
+    # Uncomment if you have a local endpoint that can accept
+    # notifications from the anchore-engine, as configured below
+    #
+    #webhooks:
+    #  webhook_user: 'user'
+    #  webhook_pass: 'pass'
+    #  ssl_verify: False
+    #  general:
+    #    url: 'http://localhost:9090/general/<notification_type>/<userId>'
+    #  policy_eval:
+    #    url: 'http://localhost:9090/policy_eval/<userId>'
+    #    webhook_user: 'mehuser'
+    #    webhook_pass: 'mehpass'
+    ## special webhook for FATAL service events - system will store in DB if not enabled here
+    #  # error_event:
+    #  #   url: 'http://localhost:9090/error_event/'
+    #  #
+
+    #
+    # A feeds section is available for override, but shouldn't be
+    # needed. By default, the 'admin' credentials are used if present,
+    # otherwise anonymous access for feed sync is used
+
+    #feeds:
+    #  selective_sync:
+    #    # If enabled only sync specific feeds instead of all.
+    #    enabled: True
+    #    feeds:
+    #      vulnerabilities: True
+    #      # Warning: enabling the package sync causes the service to require much
+    #      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
+    #      packages: False
+    #  anonymous_user_username: anon@ancho.re
+    #  anonymous_user_password: pbiU2RYZ2XrmYQ
+    #  url: 'https://ancho.re/v1/service/feeds'
+    #  client_url: 'https://ancho.re/v1/account/users'
+    #  token_url: 'https://ancho.re/oauth/token'
+    #  connection_timeout_seconds: 3
+    #  read_timeout_seconds: 60
+
+    credentials:
+      default_user: 'admin'
+      users:
+         admin:
+           password: '__anchore_password__'
+           email: '__anchore_email__'
+           external_service_auths:
+           #  anchoreio:
+           #    anchorecli:
+           #      auth: 'myanchoreiouser:myanchoreiopass'
+           #auto_policy_sync: True
+
+      database:
+        db_connect: '__pg_conn_string__'
+        db_connect_args:
+          timeout: 120
+          ssl: False
+        db_pool_size: 30
+        db_pool_max_overflow: 100
+
+    services:
+      apiext:
+        enabled: True
+        require_auth: True
+        endpoint_hostname: 'localhost'
+        listen: '0.0.0.0'
+        port: 8228
+        #ssl_enable: True
+        #ssl_cert: '/config/selfsigned-example.cert'
+        #ssl_key: '/config/selfsigned-example.key'
+      kubernetes_webhook:
+        enabled: True
+        require_auth: False
+        endpoint_hostname: 'localhost'
+        listen: '0.0.0.0'
+        port: 8338
+        #ssl_enable: True
+        #ssl_cert: '/config/selfsigned-example.cert'
+        #ssl_key: '/config/selfsigned-example.key'
+      catalog:
+        enabled: True
+        require_auth: True
+        endpoint_hostname: 'localhost'
+        listen: '0.0.0.0'
+        port: 8082
+        use_db: True
+        cycle_timer_seconds: '1'
+        cycle_timers:
+          image_watcher: 3600
+          policy_eval: 3600
+          feed_sync: 14400
+          analyzer_queue: 1
+          notifications: 30
+          service_watcher: 15
+          policy_bundle_sync: 300
+      simplequeue:
+        enabled: True
+        require_auth: True
+        endpoint_hostname: 'localhost'
+        listen: '0.0.0.0'
+        port: 8083
+      analyzer:
+        enabled: True
+        cycle_timer_seconds: '1'
+        max_threads: '1'
+      policy_engine:
+        enabled: True
+        require_auth: True
+        endpoint_hostname: 'localhost'
+        listen: '0.0.0.0'
+        port: 8087
+        #ssl_enable: True
+        #ssl_cert: '/config/selfsigned-example.cert'
+        #ssl_key: '/config/selfsigned-example.key'
