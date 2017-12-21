@@ -724,13 +724,13 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
     ret = new_image
     return(ret)
 
-def make_policy_record(userId, bundle, policy_source="local"):
+def make_policy_record(userId, bundle, policy_source="local", active=False):
     payload = {}
 
     policyId = bundle['id']
 
     payload["policyId"] = policyId
-    payload["active"] = True
+    payload["active"] = active
     payload["userId"] = userId
     payload['policybundle'] = bundle
     payload['policy_source'] = policy_source

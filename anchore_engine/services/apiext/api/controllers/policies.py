@@ -16,6 +16,12 @@ def make_response_policy(user_auth, policy_record, params):
     userId, pw = user_auth
 
     try:
+        policy_name = policy_description = None
+        if 'name' in policy_record['policybundle']:
+            policy_name = policy_record['policybundle']['name']
+        if 'description' in policy_record['policybundle']:
+            policy_description = policy_record['policybundle']['description']
+
         if 'detail' in params and not params['detail']:
             # strip out the detail
             policy_record['policybundle'] = {}
@@ -27,6 +33,10 @@ def make_response_policy(user_auth, policy_record, params):
                 pass
 
         ret = policy_record
+        if policy_name:
+            ret['name'] = policy_name
+        if policy_description:
+            ret['description'] = policy_description
 
     except Exception as err:
         raise Exception("failed to format policy eval response: " + str(err))
@@ -156,8 +166,8 @@ def get_policy(policyId, detail=None):
     return (return_object, httpcode)
 
 
-def update_policy(bundle, policyId):
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+def update_policy(bundle, policyId, active=False):
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'active': active})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -170,7 +180,18 @@ def update_policy(bundle, policyId):
     try:
         logger.debug("Updating policy")
 
-        jsondata = json.loads(bodycontent)
+        if not bodycontent:
+            bodycontent = '{}'
+        else:
+            jsondata = json.loads(bodycontent)
+
+        if not jsondata:
+            jsondata['policyId'] = policyId
+
+        if active:
+            jsondata['active'] = True
+        elif 'active' not in jsondata:
+            jsondata['active'] = False
 
         try:
             policy_records = catalog.get_policy(user_auth, policyId=policyId)

@@ -72,7 +72,7 @@ def initializeService(sname, config):
                                 default_bundle = json.loads(FH.read())
                             if default_bundle:
                                 bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'], default_bundle)
-                                policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle)
+                                policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle, active=True)
                                 rc = db.db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
                                 if not rc:
                                     raise Exception("policy bundle DB add failed")
@@ -861,7 +861,7 @@ def handle_policy_bundle_sync(*args, **kwargs):
                 if do_update:
 
                     logger.spew("synced bundle object: " + json.dumps(anchore_user_bundle, indent=4))
-                    new_policybundle_record = anchore_engine.services.common.make_policy_record(userId, anchore_user_bundle, policy_source="anchore.io")
+                    new_policybundle_record = anchore_engine.services.common.make_policy_record(userId, anchore_user_bundle, policy_source="anchore.io", active=True)
                     logger.spew("created new bundle record: " + json.dumps(new_policybundle_record, indent=4))
 
                     policyId = new_policybundle_record['policyId']
@@ -1035,7 +1035,9 @@ def monitor_func(**kwargs):
                     max_cycle_timer = threads[threadname]['max_cycle_timer']
 
                     config_cycle_timer = int(kwargs['cycle_timers'][threadname])
-                    if config_cycle_timer < min_cycle_timer:
+                    if config_cycle_timer < 0:
+                        the_cycle_timer = abs(int(config_cycle_timer))
+                    elif config_cycle_timer < min_cycle_timer:
                         logger.warn("configured cycle timer for handler ("+str(threadname)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
                         the_cycle_timer = min_cycle_timer
                     elif config_cycle_timer > max_cycle_timer:
