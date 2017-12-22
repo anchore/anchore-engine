@@ -7,11 +7,14 @@ from connexion import request
 from twisted.internet import reactor
 from twisted.web.wsgi import WSGIResource
 from twisted.web.resource import Resource
+from twisted.web import rewrite
 
 # anchore modules
 import anchore_engine.services.common
 from anchore_engine.services.common import apiext_status
 from anchore_engine.subsys import logger
+
+_default_api_version = "v1"
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
@@ -65,6 +68,19 @@ if False:
     def teardown_session(exception=None):
         logger.debug("AFTER")
 
+def default_version_rewrite(request):
+    global _default_api_version
+    try:
+        if request.postpath:
+            if request.postpath[0] != 'health' and request.postpath[0] != _default_api_version:
+                #logger.debug("rewriting URL: " + str([request.path, request.postpath]))
+                request.postpath.insert(0, _default_api_version)
+                request.path = '/'+_default_api_version+request.path
+                #logger.debug("rewrote URL: " + str([request.path, request.postpath]))
+    except Exception as err:
+        logger.error("rewrite exception: " +str(err))
+        raise err
+
 # service funcs (must be here)
 def createService(sname, config):
     global application
@@ -75,9 +91,12 @@ def createService(sname, config):
     #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
 
     # new (with base_path="/" in swagger.yaml)
-    root = Resource()
-    root.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
-    root.putChild(b"health", anchore_engine.services.common.HealthResource())
+    realroot = Resource()
+    realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
+    realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
+    
+    # this will rewrite any calls that do not have an explicit version to the base path before being processed by flask
+    root = rewrite.RewriterResource(realroot, default_version_rewrite)
 
     return (anchore_engine.services.common.createServiceAPI(root, sname, config))
 

@@ -1366,7 +1366,7 @@ definitions:
     description: A list of prune candidate resources
     type: array
     items:
-      $ref: "#definitions/PruneCandidate"
+      $ref: "#/definitions/PruneCandidate"
   ContentResponse:
     type: object
     description: "Generic wrapper for content listings from images"
