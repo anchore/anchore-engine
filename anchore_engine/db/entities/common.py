@@ -337,6 +337,7 @@ def db_upgrade_003_004():
             ct = column.type.compile(engine.dialect)
             engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
         except Exception as e:
+            log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
             raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
 
     with session_scope() as dbsession:
