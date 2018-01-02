@@ -39,9 +39,9 @@ def squash(unpackdir, layers):
 
     squashtarfile = tarfile.open(unpackdir + '/squashed_tmp.tar', mode='w', format=tarfile.PAX_FORMAT)
 
-    allfiles = list()
+    allfiles = {}
     lastexcludes = list()
-    excludes = list()
+    excludes = {}
     hlinks = {}
     hfiles = {}
     layerfiles = {}
@@ -53,39 +53,49 @@ def squash(unpackdir, layers):
         layertar = unpackdir + "/raw/"+lfile+".tar"
         layerfiles[l] = {}
 
+        count = 0
         logger.debug("\tPass 1: " + str(layertar))
         layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
+        whpatt = re.compile(".*\.wh\..*")
         for member in layertarfile.getmembers():
             layerfiles[l][member.name] = True
 
-            if re.match(".*\.wh\..*", member.name):
+            count = count + 1
+            #if count % 100 == 0:
+            #    logger.debug("layer file processed count: " + str([count, member.name, len(excludes.keys())]))
+
+            # check if file member is a whiteout
+            if whpatt.match(member.name):    
                 fsub = re.sub(r"\.wh\.", "", member.name)
 
                 # never include a whiteout file
                 if member.name not in excludes:
-                    excludes.append(member.name)
+                    excludes[member.name] = True
 
                 if fsub not in allfiles:
                     # if whiteouted file is not in allfiles from a higher layer, it means the file should be removed in lower layer
                     if fsub not in excludes:
-                        excludes.append(fsub)
+                        excludes[fsub] = True
 
-            if member.islnk():
-                if member.linkname not in hlinks:
-                    hlinks[member.linkname] = list()
-                hlinks[member.linkname].append(member.name)
-
+            # check for exclusion cases
             skip = False
             if member.name in allfiles:
                 skip = True
             else:
-                for p in excludes:
-                    if re.match("^"+re.escape(p), member.name):
-                        skip = True
-                        break
-
+                if member.name in excludes.keys():
+                    skip = True
+                elif excludes:
+                    # discover if file is in an excluded directory
+                    dtoks = member.name.split("/")
+                    for i in range(0, len(dtoks)):
+                        dtok = '/'.join(dtoks[0:i])
+                        if dtok in excludes:
+                            skip = True
+                            break
+                            
             if not skip:
-                allfiles.append(member.name)
+                allfiles[member.name] = True
+
                 if member.isfile():
                     squashtarfile.addfile(member, layertarfile.extractfile(member))
                 else:
@@ -93,54 +103,14 @@ def squash(unpackdir, layers):
                         squashtarfile.addfile(member, layertarfile.extractfile(member))
                     except:
                         squashtarfile.addfile(member)
+            else:
+                pass
 
         layertarfile.close()
 
     squashtarfile.close()
 
-    # should no longer need this pass
-    if False:
-        newhlinkmap = {}
-        if True:
-            squashtar = unpackdir + "/squashed.tar"
-            squashtarfile = tarfile.open(unpackdir + '/squashed_tmp.tar', mode='r', format=tarfile.PAX_FORMAT)
-            finalsquashtarfile = tarfile.open(squashtar, mode='w', format=tarfile.PAX_FORMAT)
-            logger.debug("\tPass 2: " + str(squashtar))
-            for member in squashtarfile.getmembers():
-                if member.islnk():
-                    try:
-                        testfile = squashtarfile.getmember(member.linkname)
-                        finalsquashtarfile.addfile(member)
-                    except:
-                        if member.linkname in newhlinkmap:
-                            member.linkname = newhlinkmap[member.linkname]
-                            finalsquashtarfile.addfile(member)
-                        else:
-                            for l in revlayer:
-                                if member.linkname in layerfiles[l]:
-                                    layertar = unpackdir + "/" + l + "/layer.tar"
-                                    layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
-                                    try:
-                                        testfile = layertarfile.getmember(member.linkname)
-                                        testfile.name = hlinks[member.linkname][0]
-                                        newhlinkmap[member.linkname] = testfile.name
-                                        thefile = layertarfile.extractfile(testfile)
-                                        finalsquashtarfile.addfile(testfile, thefile)
-                                        break
-                                    except:
-                                        pass
-                                    layertarfile.close()
-                else:
-                    try:
-                        finalsquashtarfile.addfile(member, squashtarfile.extractfile(member.name))
-                    except:
-                        finalsquashtarfile.addfile(member)
-
-            finalsquashtarfile.close()
-            squashtarfile.close()
-        squashtar = unpackdir + "/squashed.tar"
-    else:
-        squashtar = os.path.join(unpackdir, "squashed_tmp.tar")
+    squashtar = os.path.join(unpackdir, "squashed_tmp.tar")
 
     logger.debug("\tPass 3: " + str(squashtar))
 
