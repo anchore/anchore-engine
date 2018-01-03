@@ -1932,7 +1932,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
             logger.debug("DELETEing image from catalog")
             rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
 
-            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data']:
+            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data']:
                 logger.debug("DELETEing image from archive " + str(bucket) + "/" + str(imageDigest))
                 rc = archive_sys.delete(userId, bucket, imageDigest)
 
