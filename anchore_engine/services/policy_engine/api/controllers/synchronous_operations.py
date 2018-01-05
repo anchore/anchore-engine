@@ -158,10 +158,16 @@ def delete_image(user_id, image_id):
             for pkg_vuln in img.vulnerabilities():
                 db.delete(pkg_vuln)
             db.delete(img)
+            db.commit()
         else:
-            abort(404)
-        db.commit()
-    except:
+            db.rollback()
+
+        # Idempotently return 204. This isn't properly RESTY, but idempotency on delete makes clients much cleaner.
+        return (None, 204)
+    except HTTPException:
+        raise
+    except Exception:
+        log.exception('Error processing DELETE request for image {}/{}'.format(user_id, image_id))
         db.rollback()
         abort(500)
 
