@@ -253,7 +253,6 @@ def process_analyzer_job(system_user_auth, qobj):
             rc = catalog.update_image(user_auth, imageDigest, image_record)
 
             # actually do analysis
-            
             registry_creds = catalog.get_registry(user_auth)
             image_data = perform_analyze(userId, manifest, image_record, registry_creds)
 
@@ -265,6 +264,7 @@ def process_analyzer_job(system_user_auth, qobj):
 
             logger.debug("archiving analysis data")
             rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+
             if rc:
                 try:
                     logger.debug("extracting image content data")
@@ -275,13 +275,16 @@ def process_analyzer_job(system_user_auth, qobj):
                         except:
                             image_content_data[content_type] = {}
 
+
                     if image_content_data:
                         logger.debug("adding image content data to archive")
                         rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
 
+
                     try:
                         logger.debug("adding image analysis data to image_record")
                         anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
+
                     except Exception as err:
                         raise err
 
@@ -311,6 +314,7 @@ def process_analyzer_job(system_user_auth, qobj):
                     logger.debug("policy engine request: " + str(request))
                     resp = client.ingress_image(request)
                     logger.debug("policy engine image add response: " + str(resp))
+
                     try:
                         # force a fresh CVE scan
                         resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
@@ -350,7 +354,6 @@ def process_analyzer_job(system_user_auth, qobj):
         raise err
 
     return (True)
-
 
 def monitor_func(**kwargs):
     global click, running, last_run, queuename, system_user_auth

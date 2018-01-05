@@ -3,6 +3,7 @@ import re
 import sys
 import json
 import uuid
+import time
 import shutil
 import struct
 import tarfile
@@ -129,7 +130,7 @@ def squash(unpackdir, layers):
         raise err
 
     imageSize = os.path.getsize(squashtar)
-    
+
     return (squashtar, imageSize)
 
 def make_staging_dirs(rootdir):
@@ -506,6 +507,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[])
         familytree = layers
 
         imageSize = unpack(staging_dirs, layers)
+
         familytree = layers
         analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId)
 
