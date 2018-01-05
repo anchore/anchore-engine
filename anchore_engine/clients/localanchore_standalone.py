@@ -38,6 +38,121 @@ def squash(unpackdir, layers):
     revlayer = list(layers)
     revlayer.reverse()
 
+    #allfiles = {} # stores list of all files to include
+    #excludes = {} # stores list of all files to exclude
+
+    l_excludes = {}
+    l_opqexcludes = {} # stores list of special files to exclude only for next layer (.wh..wh..opq handling)
+
+    last_opqexcludes = {} # opq exlcudes for the last layer
+
+    for l in revlayer:
+        htype, layer = l.split(":",1)
+
+        layertar = unpackdir + "/raw/"+layer+".tar"
+        
+        count = 0
+
+        logger.debug("\tPass 1: " + str(layertar))
+        layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
+
+        whpatt = re.compile(".*/\.wh\..*")
+        whopqpatt = re.compile(".*/\.wh\.\.wh\.\.opq")
+
+        l_opqexcludes[layer] = {}
+
+        myexcludes = {}
+        opqexcludes = {}
+
+        for member in layertarfile.getmembers():
+            # checks for whiteout conditions
+            if whopqpatt.match(member.name):
+                # found an opq entry, which means that this files in the next layer down (only) should not be included
+
+                fsub = re.sub(r"\.wh\.\.wh\.\.opq", "", member.name, 1)
+
+                # never include the whiteout file itself
+                myexcludes[member.name] = True
+                opqexcludes[fsub] = True
+
+            elif whpatt.match(member.name):
+                # found a normal whiteout, which means that this file in any lower layer should be excluded
+                fsub = re.sub(r"\.wh\.", "", member.name, 1)
+
+                # never include a whiteout file
+                myexcludes[member.name] = True
+
+                myexcludes[fsub] = True
+
+            else:
+                # if the last processed layer had an opq whiteout, check file to see if it lives in the opq directory
+                if last_opqexcludes:
+                    dtoks = member.name.split("/")
+                    for i in range(0, len(dtoks)):
+                        dtok = '/'.join(dtoks[0:i])
+                        dtokwtrail = '/'.join(dtoks[0:i]) + "/"
+                        if dtok in last_opqexcludes or dtokwtrail in last_opqexcludes:
+                            l_opqexcludes[layer][member.name] = True
+                            break
+
+        # build up the list of excludes as we move down the layers
+        for l in l_excludes.keys():
+            myexcludes.update(l_excludes[l])
+
+        l_excludes[layer] = myexcludes
+
+        last_opqexcludes = opqexcludes
+        layertarfile.close()
+        
+    logger.debug("Pass 3: untarring layers with exclusions")
+
+    imageSize = 0
+    for l in layers:
+        htype, layer = l.split(":",1)
+        layertar = unpackdir + "/raw/"+layer+".tar"
+        imageSize = imageSize + os.path.getsize(layertar) 
+        
+        # write out the exluded files, adding the per-layer excludes if present
+        with open(unpackdir+"/efile", 'w') as OFH:
+            for efile in l_excludes[layer]:
+                OFH.write("%s\n" % efile)
+            if layer in l_opqexcludes and l_opqexcludes[layer]:
+                for efile in l_opqexcludes[layer]:
+                    logger.debug("adding special for layer exclude: " + str(efile))
+                    OFH.write("%s\n" % efile)
+
+        tarcmd = "tar -C " + rootfsdir + " -x -X " + unpackdir+"/efile -f " + layertar
+        logger.debug("untarring squashed tarball: " + str(tarcmd))
+
+        try:
+            rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
+            if rc != 0:
+                raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+            else:
+                logger.debug("command succeeded: stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+        except Exception as err:
+            logger.error("command failed with exception - " + str(err))
+            raise err
+            logger.debug(tarcmd)
+            try:
+                sout = subprocess.check_output(tarcmd.split())
+            except Exception as err:
+                raise err
+
+    return ("done", imageSize)
+
+def squash_orig(unpackdir, layers):
+    rootfsdir = unpackdir + "/rootfs"
+
+    if os.path.exists(unpackdir + "/squashed.tar"):
+        return (True)
+
+    if not os.path.exists(rootfsdir):
+        os.makedirs(rootfsdir)
+
+    revlayer = list(layers)
+    revlayer.reverse()
+
     squashtarfile = tarfile.open(unpackdir + '/squashed_tmp.tar', mode='w', format=tarfile.PAX_FORMAT)
 
     allfiles = {}
