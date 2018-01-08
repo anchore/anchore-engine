@@ -101,7 +101,8 @@ def squash(unpackdir, layers):
 
         l_excludes[layer] = myexcludes
 
-        last_opqexcludes = opqexcludes
+        #last_opqexcludes = opqexcludes
+        last_opqexcludes.update(opqexcludes)
         layertarfile.close()
         
     logger.debug("Pass 3: untarring layers with exclusions")
