@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 if [ -d "/wheelhouse" ]; then
     echo "doing source build with wheels"
     PRE_PCMD=""
