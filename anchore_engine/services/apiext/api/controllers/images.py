@@ -949,11 +949,12 @@ def images(request_inputs):
                     logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 
                 httpcode = 200
-                image_records = catalog.get_image(user_auth, digest=digest, tag=tag, registry_lookup=False)
+                return_object = [image_record]
+                #image_records = catalog.get_image(user_auth, digest=digest, tag=tag, registry_lookup=False)
 
-                return_object = []
-                for image_record in image_records:
-                    return_object.append(make_response_image(user_auth, image_record, params))
+                #return_object = []
+                #for image_record in image_records:
+                #    return_object.append(make_response_image(user_auth, image_record, params))
 
             else:
                 httpcode = 500
