@@ -467,7 +467,7 @@ def add_eval(userId, evalId, policyId, imageDigest, tag, final_action, eval_url)
 
     return(ret)    
 
-def get_subscription(userId, subscription_id=None):
+def get_subscription(userId, subscription_id=None, subscription_key=None, subscription_type=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -484,6 +484,12 @@ def get_subscription(userId, subscription_id=None):
     url = base_url + "/subscriptions"
     if subscription_id:
         url = url + "/" + subscription_id
+    elif subscription_key or subscription_type:
+        url = url + "?"
+        if subscription_key:
+            url = url + "subscription_key="+subscription_key+"&"
+        if subscription_type:
+            url = url + "subscription_type="+subscription_type
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

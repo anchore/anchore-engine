@@ -227,9 +227,9 @@ def evals_delete(bodycontent):
 
 # subscription calls
 # @api.route('/subscriptions', methods=['GET', 'POST'])
-def subscriptions_get():
+def subscriptions_get(subscription_key=None, subscription_type=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'subscription_key':subscription_key, 'subscription_type':subscription_type})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs)
 

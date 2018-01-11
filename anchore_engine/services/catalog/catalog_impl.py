@@ -356,6 +356,9 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
     return_object = {}
     httpcode = 500
 
+    subscription_key_filter = params.get('subscription_key', None)
+    subscription_type_filter = params.get('subscription_type', None)
+
     try:
         logger.debug("looking up subscription record: " + userId + " : " + str(subscriptionId))
 
@@ -365,6 +368,11 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
             dbfilter = {}
             if subscriptionId:
                 dbfilter['subscription_id'] = subscriptionId
+            else:
+                if subscription_key_filter:
+                    dbfilter['subscription_key'] = subscription_key_filter
+                if subscription_type_filter:
+                    dbfilter['subscription_type'] = subscription_type_filter
 
             records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             if not records:

@@ -909,13 +909,14 @@ def images(request_inputs):
 
                     foundtypes = []
                     try:
-                        subscription_records = catalog.get_subscription(user_auth)
+                        subscription_records = catalog.get_subscription(user_auth, subscription_key=fulltag)
+                        #subscription_records = catalog.get_subscription(user_auth)
                         for subscription_record in subscription_records:
                             if subscription_record['subscription_key'] == fulltag:
                                 foundtypes.append(subscription_record['subscription_type'])
                     except Exception as err:
                         logger.warn("cannot load subscription records - exception: " + str(err))
-                    
+
                     sub_types = anchore_engine.services.common.subscription_types
                     for sub_type in sub_types:
                         if sub_type not in foundtypes:
