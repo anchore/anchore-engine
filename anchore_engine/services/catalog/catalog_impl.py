@@ -141,6 +141,9 @@ def image(dbsession, request_inputs, bodycontent={}):
                     raise Exception("image not found in DB")
 
         elif method == 'POST':
+            timer = time.time()
+
+            logger.debug("MARK0: " + str(time.time() - timer))
             if input_type == 'digest':
                 raise Exception("catalog add only supports adding by tag")
 
@@ -159,6 +162,8 @@ def image(dbsession, request_inputs, bodycontent={}):
                 except Exception as err:
                     raise Exception("input dockerfile data must be base64 encoded - exception on decode: " + str(err))
 
+            logger.debug("MARK1: " + str(time.time() - timer))
+
             image_record = {}
             try:
                 registry_creds = db_registries.get_byuserId(userId, session=dbsession)
@@ -167,7 +172,11 @@ def image(dbsession, request_inputs, bodycontent={}):
                 except Exception as err:
                     logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
+                logger.debug("MARK2: " + str(time.time() - timer))
+
                 image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                logger.debug("MARK3: " + str(time.time() - timer))
+
                 manifest = None
                 try:
                     if 'manifest' in image_info:
@@ -177,8 +186,11 @@ def image(dbsession, request_inputs, bodycontent={}):
                 except Exception as err:
                     raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
+                logger.debug("MARK4: " + str(time.time() - timer))
+
                 logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
                 image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest)
+                logger.debug("MARK5: " + str(time.time() - timer))
                 if image_records:
                     image_record = image_records[0]
 
