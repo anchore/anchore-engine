@@ -489,7 +489,7 @@ def get_subscription(userId, subscription_id=None, subscription_key=None, subscr
         if subscription_key:
             url = url + "subscription_key="+subscription_key+"&"
         if subscription_type:
-            url = url + "subscription_type="+subscription_type
+            url = url + "subscription_type="+subscription_type+"&"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

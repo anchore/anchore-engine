@@ -950,7 +950,7 @@ def images(request_inputs):
                     logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 
                 httpcode = 200
-                return_object = [image_record]
+                return_object = [make_response_image(user_auth, image_record, params)]
                 #image_records = catalog.get_image(user_auth, digest=digest, tag=tag, registry_lookup=False)
 
                 #return_object = []
