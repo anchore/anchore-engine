@@ -1,6 +1,7 @@
 import json
 import re
 import hashlib
+import time
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
@@ -12,8 +13,15 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
+cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 10.0}
+
 def get_catalog_endpoint():
-    global localconfig, headers
+    global localconfig, headers, cached_endpoint
+
+    if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
+        logger.debug("using cached endpoint - " + str(cached_endpoint))
+        return(cached_endpoint['base_url'])
+
     if localconfig == None:
         logger.debug('initializing catalog endpoint')
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -44,6 +52,9 @@ def get_catalog_endpoint():
 
     except Exception as err:
         raise Exception("could not find valid endpoint - exception: " + str(err))
+
+    cached_endpoint['base_url'] = base_url
+    cached_endpoint['cached_update'] = time.time()
 
     return(base_url)
 

@@ -747,26 +747,37 @@ def handle_analyzer_queue(*args, **kwargs):
         if userId == 'anchore-system':
             continue
 
-        with db.session_scope() as dbsession:
-            image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
+            
+        # do this in passes, for each analysis_status state
 
-        for image_record in image_records:
+        with db.session_scope() as dbsession:
+            dbfilter = {'analysis_status': taskstate.working_state('analyze')}
+            workingstate_image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
+
+        # first, evaluate images looking for those that have been in working state for too long and reset
+        for image_record in workingstate_image_records:
             imageDigest = image_record['imageDigest']
             if image_record['image_status'] == taskstate.complete_state('image_status'):
-                currstate = image_record['analysis_status']
-
                 state_time = int(time.time()) - image_record['last_updated']
-                #max_working_time = 7200
-                if currstate == taskstate.working_state('analyze') and (state_time > max_working_time):
+                logger.debug("image in working state for ("+str(state_time)+")s - "+str(imageDigest))
+                if state_time > max_working_time:
                     logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
                     image_record['analysis_status'] = taskstate.reset_state('analyze')
                     with db.session_scope() as dbsession:
                         db.db_catalog_image.update_record(image_record, session=dbsession)
-                        image_record = db.db_catalog_image.get(imageDigest, userId, session=dbsession)
 
-                currstate = image_record['analysis_status']
-                logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
-                if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
+        # next, look for any image in base state (not_analyzed) for queuing
+        with db.session_scope() as dbsession:
+            dbfilter = {'analysis_status': taskstate.base_state('analyze')}
+            #dbfilter = {}
+            basestate_image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
+
+        for image_record in basestate_image_records:
+            imageDigest = image_record['imageDigest']
+            if image_record['image_status'] == taskstate.complete_state('image_status'):
+                logger.debug("image check")
+                if image_record['analysis_status'] == taskstate.base_state('analyze'):
+                    logger.debug("image in base state - "+str(imageDigest))
                     try:
                         manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
                     except Exception as err:
@@ -785,6 +796,43 @@ def handle_analyzer_queue(*args, **kwargs):
                             logger.debug("image already queued")
                     except Exception as err:
                         logger.error("failed to check/queue image for analysis - exception: " + str(err))
+                
+        if False:
+            for image_record in image_records:
+                imageDigest = image_record['imageDigest']
+                if image_record['image_status'] == taskstate.complete_state('image_status'):
+                    currstate = image_record['analysis_status']
+
+                    state_time = int(time.time()) - image_record['last_updated']
+                    #max_working_time = 7200
+                    if currstate == taskstate.working_state('analyze') and (state_time > max_working_time):
+                        logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
+                        image_record['analysis_status'] = taskstate.reset_state('analyze')
+                        with db.session_scope() as dbsession:
+                            db.db_catalog_image.update_record(image_record, session=dbsession)
+                            image_record = db.db_catalog_image.get(imageDigest, userId, session=dbsession)
+
+                    currstate = image_record['analysis_status']
+                    logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
+                    if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
+                        try:
+                            manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
+                        except Exception as err:
+                            manifest = {}
+
+                        qobj = {}
+                        qobj['userId'] = userId
+                        qobj['image_record'] = image_record
+                        qobj['manifest'] = manifest
+                        try:
+                            if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
+                                # queue image for analysis
+                                logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
+                                qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
+                            else:
+                                logger.debug("image already queued")
+                        except Exception as err:
+                            logger.error("failed to check/queue image for analysis - exception: " + str(err))
 
     logger.debug("FIRING: analyzer queuer")
     try:

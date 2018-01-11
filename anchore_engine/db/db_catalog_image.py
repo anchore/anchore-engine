@@ -212,6 +212,27 @@ def get_all(session=None):
 
     return(ret)
 
+def get_byfilter(userId, session=None, **kwargs):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    kwargs['userId'] = userId
+
+    results = session.query(CatalogImage).filter_by(**kwargs).order_by(desc(CatalogImage.created_at))
+    if results:
+        for result in results:
+            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            imageDigest = dbobj['imageDigest']
+            userId = dbobj['userId']
+            if dbobj['image_type'] == 'docker':
+                imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
+                dbobj['image_detail'] = imgobj
+            ret.append(dbobj)
+
+    return(ret)
+
 def delete(imageDigest, userId, session=None):
     if not session:
         session = db.Session
