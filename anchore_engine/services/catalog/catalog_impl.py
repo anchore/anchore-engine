@@ -544,8 +544,14 @@ def policies(dbsession, request_inputs, bodycontent={}):
                         policybundle =  archive_sys.get_document(userId, 'policy_bundles', record['policyId'])
                         if policybundle:
                             record['policybundle'] = policybundle
-                    except:
-                        pass
+
+                            record['policybundlemeta'] = {}
+                            meta = archive_sys.get_document_meta(userId, 'policy_bundles', record['policyId'])
+                            if meta:
+                                record['policybundlemeta'] = meta
+
+                    except Exception as err:
+                        logger.warn("failed to fetch policy bundle from archive - exception: " + str(err))
 
                 return_object = records
                 httpcode = 200

@@ -27,7 +27,6 @@ def get_all_iter(session=None):
     if not session:
         session = db.Session
 
-    #our_results = 
     for top_result in session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId):
         result = session.query(ArchiveDocument).filter_by(userId=top_result.userId, bucket=top_result.bucket, archiveId=top_result.archiveId).first()
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
@@ -47,14 +46,23 @@ def get_all(session=None):
     return(ret)
 
 def get(userId, bucket, archiveId, session=None):
-    #session = db.Session()
-
     ret = {}
 
     result = session.query(ArchiveDocument).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
         ret.update(obj)
+
+    return(ret)
+
+def get_onlymeta(userId, bucket, archiveId, session=None):
+    ret = {}
+
+    result = session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val, ArchiveDocument.created_at, ArchiveDocument.last_updated).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    if result:
+        for i in range(0, len(result.keys())):
+            k = result.keys()[i]
+            ret[k] = result[i]
 
     return(ret)
 
@@ -80,13 +88,10 @@ def exists(userId, bucket, archiveId, session=None):
 
     result = session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
 
-    from anchore_engine.subsys import logger
     if result:
         for i in range(0, len(result.keys())):
             k = result.keys()[i]
             ret[k] = result[i]
-        #obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-        #ret = obj
 
     return(ret)
     

@@ -1,6 +1,7 @@
 import json
 import os
 import hashlib
+import time
 
 import anchore_engine.configuration.localconfig
 from anchore_engine import db
@@ -97,7 +98,7 @@ def put(userId, bucket, archiveid, data):
             if use_db:
                 dbdata = {'jsondata':json.dumps(data)}
             else:
-                dbdata = {'jsondata': '{}'}
+                dbdata = {'jsondata': '{}', 'last_updated': int(time.time())}
                 dataref = write_archive_file(userId, bucket, archiveid, data)
     
             db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", dbdata, session=dbsession)
@@ -134,6 +135,11 @@ def put_orig(userId, bucket, archiveid, data):
             raise err
     
     return(True)
+
+def get_document_meta(userId, bucket, archiveId):
+    with db.session_scope() as dbsession:
+        ret = db_archivedocument.get_onlymeta(userId, bucket, archiveId, session=dbsession)
+    return(ret)
 
 def get_document(userId, bucket, archiveId):
     archive_document = get(userId, bucket, archiveId)
