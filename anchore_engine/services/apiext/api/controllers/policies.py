@@ -22,15 +22,23 @@ def make_response_policy(user_auth, policy_record, params):
         if 'description' in policy_record['policybundle']:
             policy_description = policy_record['policybundle']['description']
 
-        if 'detail' in params and not params['detail']:
-            # strip out the detail
-            policy_record['policybundle'] = {}
-
+        #for datekey in ['last_updated', 'created_at']:
         for datekey in ['last_updated', 'created_at']:
             try:
                 policy_record[datekey] = datetime.datetime.utcfromtimestamp(policy_record[datekey]).isoformat()
             except:
                 pass
+
+        for datekey in ['last_updated']:
+            try:
+                policy_record[datekey] = datetime.datetime.utcfromtimestamp(policy_record['policybundlemeta'][datekey]).isoformat()
+            except:
+                pass
+
+        if 'detail' in params and not params['detail']:
+            # strip out the detail
+            policy_record['policybundle'] = {}
+            policy_record['policybundlemeta'] = {}
 
         ret = policy_record
         if policy_name:
