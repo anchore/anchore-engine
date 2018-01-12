@@ -9,13 +9,13 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 10.0}
+cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 30.0}
 
 def get_simplequeue_endpoint(userId):
     global localconfig, headers, cached_endpoint
 
     if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
-        logger.debug("using cached endpoint - " + str(cached_endpoint))
+        #logger.debug("using cached endpoint - " + str(cached_endpoint))
         return(cached_endpoint['base_url'])
 
     if localconfig == None:

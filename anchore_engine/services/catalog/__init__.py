@@ -611,114 +611,6 @@ def handle_policyeval(*args, **kwargs):
         pass
     return(True)    
 
-def handle_policyeval_queue(*args, **kwargs):
-    global system_user_auth, bundle_user_is_updated
-
-    logger.debug("FIRING: policy eval queuer")
-    with db.session_scope() as dbsession:
-
-        feed_updated = check_feedmeta_update(dbsession)
-
-        users = db.db_users.get_all(session=dbsession)
-        for user in users:
-            userId = user['userId']
-            if userId == 'anchore-system':
-                continue
-
-            #bundle_user_is_updated[userId] = True
-            bundle_user_is_updated[userId] = check_policybundle_update(userId, dbsession)
-
-            image_records = db.db_catalog_image.get_all_byuserId(userId, session=dbsession)
-            for image_record in image_records:
-                imageDigest = image_record['imageDigest']
-                logger.debug("processing image: " + str(imageDigest))
-
-                # if image has completed analyze task, then queue for eval
-                currstate = image_record['analysis_status']
-                if currstate == taskstate.complete_state('analyze'):
-                    qobj = {}
-                    qobj['userId'] = userId
-                    qobj['image_record'] = image_record
-
-                    if True:
-                        doprio = False
-                        doqueue = False
-
-                        # gather image specific information to be used to determine whether or not to queue
-                        dbfilter = {'imageDigest':imageDigest}
-                        eval_records = db.db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-                        eval_tags = []
-                        try:
-                            for eval_record in eval_records:
-                                eval_tags.append(eval_record['tag'])
-                        except Exception as err:
-                            logger.warn("could not make eval tags list - exception: " + str(err))
-
-                        subscribed = False
-                        image_tags = []
-                        try:
-                            for image_detail in image_record['image_detail']:
-                                image_fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-                                image_tags.append(image_fulltag)
-
-                                # check to see if user is subscribed
-                                for subscription_type in ['policy_eval', 'vuln_update']:
-                                    dbfilter = {'subscription_type': subscription_type, 'subscription_key': image_fulltag}
-                                    subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
-                                    for subscription_record in subscription_records:
-                                        if subscription_record['active']:
-                                            subscribed = True
-                                            break
-
-                        except Exception as err:
-                            logger.warn("could not make image tags list - exception: " + str(err))
-
-                        diff_tags = list(set(image_tags).difference(set(eval_tags)))
-
-                        # now, check all conditions that would lead to queueing up for a policy eval (or skipping)
-                        if not eval_records:
-                            # do priority queuing if no eval is present, and queue
-                            logger.debug("image has no existing eval records, queueing image, priority queueing: " + str(imageDigest))
-                            doprio = True
-                            doqueue = True
-                        elif not subscribed:
-                            # if user is not subscribed, do not queue for eval (unless the above condition hits - first time eval)
-                            logger.debug("user is not subscribed to any of this image's tags that needs new policy eval - will not queue for eval: " + str(imageDigest))
-                            doqueue = False
-                        elif feed_updated:
-                            # if feeds have updated, queue for policy eval
-                            logger.debug("feed detected as having changed, queueing image: " + str(imageDigest))
-                            doqueue = True
-                        elif bundle_user_is_updated[userId]:
-                            # if the user bundle is updated, queue for policy eval
-                            logger.debug("bundle detected as having changed, queueing image: " + str(imageDigest))
-                            doqueue = True
-                        elif diff_tags:
-                            logger.debug("detected new tag(s) in image ("+str(diff_tags)+") - queueing for eval")
-                            doqueue= True
-
-                        if doqueue:
-                            # queue for policy eval
-                            logger.debug("queued image ("+str(imageDigest)+") for policy evaluation (priority="+str(doprio)+")")
-                            logger.spew("queued image object: " + json.dumps(qobj, indent=4))
-                            if not simplequeue.is_inqueue(system_user_auth, 'images_to_evaluate', qobj):
-                                qobj = simplequeue.enqueue(system_user_auth, 'images_to_evaluate', qobj, forcefirst=doprio)
-                            else:
-                                logger.debug("skipping image - already queued")
-                        else:
-                            logger.debug("skipping image ("+str(imageDigest)+")")
-                    else:
-                        logger.debug("image already queued for eval: " + str(imageDigest))
-                else:
-                    logger.debug("image not analyzed, skipping eval: " + str(imageDigest))
-
-    logger.debug("FIRING DONE: policy eval queuer")
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
-    return(True)
-
 def handle_analyzer_queue(*args, **kwargs):
     global system_user_auth
 
@@ -746,7 +638,6 @@ def handle_analyzer_queue(*args, **kwargs):
         userId = user['userId']
         if userId == 'anchore-system':
             continue
-
             
         # do this in passes, for each analysis_status state
 
@@ -797,44 +688,7 @@ def handle_analyzer_queue(*args, **kwargs):
                     except Exception as err:
                         logger.error("failed to check/queue image for analysis - exception: " + str(err))
                 
-        if False:
-            for image_record in image_records:
-                imageDigest = image_record['imageDigest']
-                if image_record['image_status'] == taskstate.complete_state('image_status'):
-                    currstate = image_record['analysis_status']
-
-                    state_time = int(time.time()) - image_record['last_updated']
-                    #max_working_time = 7200
-                    if currstate == taskstate.working_state('analyze') and (state_time > max_working_time):
-                        logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
-                        image_record['analysis_status'] = taskstate.reset_state('analyze')
-                        with db.session_scope() as dbsession:
-                            db.db_catalog_image.update_record(image_record, session=dbsession)
-                            image_record = db.db_catalog_image.get(imageDigest, userId, session=dbsession)
-
-                    currstate = image_record['analysis_status']
-                    logger.debug("image current analysis state ("+str(state_time)+" sec): " + str(imageDigest) + " : " + str(currstate))
-                    if currstate != taskstate.complete_state('analyze') and currstate != taskstate.working_state('analyze'):
-                        try:
-                            manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
-                        except Exception as err:
-                            manifest = {}
-
-                        qobj = {}
-                        qobj['userId'] = userId
-                        qobj['image_record'] = image_record
-                        qobj['manifest'] = manifest
-                        try:
-                            if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
-                                # queue image for analysis
-                                logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
-                                qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
-                            else:
-                                logger.debug("image already queued")
-                        except Exception as err:
-                            logger.error("failed to check/queue image for analysis - exception: " + str(err))
-
-    logger.debug("FIRING: analyzer queuer")
+    logger.debug("FIRING DONE: analyzer queuer")
     try:
         kwargs['mythread']['last_return'] = True
     except:

@@ -377,12 +377,13 @@ def monitor_func(**kwargs):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
 
-        queues = simplequeue.get_queues(system_user_auth)
-        if not queues:
-            logger.warn("could not get any queues from simplequeue client, cannot do any work")
-        elif queuename not in queues:
-            logger.error("connected to simplequeue, but could not find queue (" + queuename + "), cannot do any work")
-        else:
+        #queues = simplequeue.get_queues(system_user_auth)
+        #if not queues:
+        #    logger.warn("could not get any queues from simplequeue client, cannot do any work")
+        #elif queuename not in queues:
+        #    logger.error("connected to simplequeue, but could not find queue (" + queuename + "), cannot do any work")
+        #else:
+        if True:
             try:
 
                 try:
@@ -394,20 +395,17 @@ def monitor_func(**kwargs):
                 logger.debug("max threads: " + str(max_analyze_threads))
                 threads = []
                 for i in range(0, max_analyze_threads):
-                    if simplequeue.qlen(system_user_auth, queuename) > 0:
-                        qobj = simplequeue.dequeue(system_user_auth, queuename)
-                        if qobj:
-                            myqobj = copy.deepcopy(qobj)
-                            logger.spew("incoming queue object: " + str(myqobj))
-                            logger.debug("incoming queue task: " + str(myqobj.keys()))
-                            logger.debug("starting thread")
-                            athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
-                            athread.start()
-                            threads.append(athread)
-                            logger.debug("thread started")
-
-                            # rc = process_analyzer_job(system_user_auth, myqobj)
-
+                    qobj = simplequeue.dequeue(system_user_auth, queuename)
+                    #if simplequeue.qlen(system_user_auth, queuename) > 0:                    
+                    if qobj:
+                        myqobj = copy.deepcopy(qobj)
+                        logger.spew("incoming queue object: " + str(myqobj))
+                        logger.debug("incoming queue task: " + str(myqobj.keys()))
+                        logger.debug("starting thread")
+                        athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
+                        athread.start()
+                        threads.append(athread)
+                        logger.debug("thread started")
                     else:
                         logger.debug("analyzer queue is empty - no work this cycle")
 
