@@ -1342,7 +1342,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
             dockerfile = None
             dockerfile_mode = None
 
-    logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
+    #logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
 
     addlist = {}
     for registry in image_ids.keys():
@@ -1423,11 +1423,11 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                     addlist[imageDigest] = image_record
 
-    logger.debug("final dict of image(s) to add: " + json.dumps(addlist, indent=4))
+    #logger.debug("final dict of image(s) to add: " + json.dumps(addlist, indent=4))
     for imageDigest in addlist.keys():
         ret.append(addlist[imageDigest])
 
-    logger.debug("returning: " + json.dumps(ret, indent=4))
+    #logger.debug("returning: " + json.dumps(ret, indent=4))
     return(ret)
 
 def delete_prune_candidates(resourcetype, bodycontent, dbsession, resource_user=None):

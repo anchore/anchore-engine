@@ -495,7 +495,7 @@ def handle_image_watcher(*args, **kwargs):
                         if not simplequeue.is_inqueue(system_user_auth, 'tag_update', inobj):
                             qobj = simplequeue.enqueue(system_user_auth, 'tag_update', inobj)
                             logger.debug("queued image tag update notification: " + fulltag)
-                            logger.spew("queued image object: " + json.dumps(qobj, indent=4))
+                            #logger.spew("queued image object: " + json.dumps(qobj, indent=4))
                     except Exception as err:
                         logger.error("failed to queue tag update notification - exception: " +str(err))
                         raise err
@@ -681,7 +681,8 @@ def handle_analyzer_queue(*args, **kwargs):
                     try:
                         if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
                             # queue image for analysis
-                            logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
+                            #logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
+                            logger.debug("queued image for analysis: " + str(imageDigest))
                             qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
                         else:
                             logger.debug("image already queued")
