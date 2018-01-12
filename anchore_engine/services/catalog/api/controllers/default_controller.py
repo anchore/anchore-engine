@@ -13,7 +13,7 @@ def status():
             'busy': False,
             'up': True,
             'message': 'all good'
-        }
+        }        
         httpcode = 200
     except Exception as err:
         return_object = str(err)

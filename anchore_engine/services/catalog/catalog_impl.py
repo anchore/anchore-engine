@@ -1558,16 +1558,14 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
             user_records[record['userId']] = record
         user_ids = user_records.keys()
 
-        image_records = {}
         fulltags = []
-        records = db_catalog_image.get_all(session=dbsession)
-        for record in records:
-            image_records[record['imageDigest']] = record
+        image_digests = []
+        for record in db_catalog_image.get_all_iter(session=dbsession):
+            image_digests.append(record['imageDigest'])
             for image_detail in record['image_detail']:
                 fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
                 if fulltag not in fulltags:
                     fulltags.append(fulltag)
-        image_digests = image_records.keys()
 
         policy_records = {}
         records = db_policybundle.get_all(session=dbsession)
@@ -1671,8 +1669,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
                 httpcode = 200
 
             elif resourcetype == 'images':
-                records = image_records.values()
-                for record in records:
+                for record in db_catalog_image.get_all_iter(session=dbsession):
                     dangling_candidate = False
                     dangling_reason = "not_set"
                     record_age = int(time.time() - record['created_at'])

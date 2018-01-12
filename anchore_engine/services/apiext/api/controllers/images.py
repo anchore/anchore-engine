@@ -894,14 +894,15 @@ def images(request_inputs):
                 # dont support digest add, yet
                 httpcode = 500
                 raise Exception("digest add unsupported")
-            else:
-                # add the image to the catalog
-                image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
-                imageDigest = image_record['imageDigest']
+
+            # add the image to the catalog
+            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
+            imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return
             if image_record:
-                logger.debug("fetched image_info: " + json.dumps(image_record, indent=4))
+                #logger.debug("fetched image_info: " + json.dumps(image_record, indent=4))
+                logger.debug("added image: " + str(imageDigest))
 
                 # auto-subscribe for NOW
                 for image_detail in image_record['image_detail']:
@@ -910,7 +911,6 @@ def images(request_inputs):
                     foundtypes = []
                     try:
                         subscription_records = catalog.get_subscription(user_auth, subscription_key=fulltag)
-                        #subscription_records = catalog.get_subscription(user_auth)
                         for subscription_record in subscription_records:
                             if subscription_record['subscription_key'] == fulltag:
                                 foundtypes.append(subscription_record['subscription_type'])
@@ -945,7 +945,9 @@ def images(request_inputs):
                 if (currstate != newstate) or (force):
                     logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
                     image_record.update({'image_status': 'active', 'analysis_status': newstate})
-                    rc = catalog.update_image(user_auth, imageDigest, image_record)
+                    updated_image_record = catalog.update_image(user_auth, imageDigest, image_record)
+                    if updated_image_record:
+                        image_record = updated_image_record[0]
                 else:
                     logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 

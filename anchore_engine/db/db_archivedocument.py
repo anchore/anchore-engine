@@ -27,7 +27,6 @@ def get_all_iter(session=None):
     if not session:
         session = db.Session
 
-    #our_results = 
     for top_result in session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId):
         result = session.query(ArchiveDocument).filter_by(userId=top_result.userId, bucket=top_result.bucket, archiveId=top_result.archiveId).first()
         obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
