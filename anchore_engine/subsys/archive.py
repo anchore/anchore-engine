@@ -2,6 +2,7 @@ import json
 import os
 import hashlib
 import time
+import re
 
 import anchore_engine.configuration.localconfig
 from anchore_engine import db
@@ -248,6 +249,24 @@ def delete_orig(userId, bucket, archiveid):
 
 ####### driver storage implementations #######
 
+def convert_v1_v2(archivepath):
+    for userhash in os.listdir(archivepath):
+        userdir = os.path.join(archivepath, userhash)
+        buckets = os.listdir(userdir)
+        for bucket in buckets:
+            bucketdir = os.path.join(userdir, bucket)
+            for document in os.listdir(bucketdir):
+                documentfile = os.path.join(bucketdir, document)
+                if os.path.isfile(documentfile):
+                    fkey = document[0:2]
+                    keydir = os.path.join(bucketdir, fkey)
+                    if not os.path.exists(keydir):
+                        os.makedirs(keydir)
+
+                    newdocumentfile = os.path.join(keydir, document)
+                    os.rename(documentfile, newdocumentfile)
+    return(True)
+
 def initialize_archive_file(myconfig):
     global data_volume, archive_driver
 
@@ -261,8 +280,24 @@ def initialize_archive_file(myconfig):
 
             if not os.path.exists(data_volume):
                 os.makedirs(data_volume)
+
+            # quick check to make sure the volume looks like a legitimate archive layout
+            unknowns = []
+            for fname in os.listdir(data_volume):
+                fpath = os.path.join(data_volume, fname)
+                if not os.path.isdir(fpath) or not re.match("[0-9A-Fa-f]{32}", fname):
+                    unknowns.append(fname)
+            if unknowns:
+                raise Exception("found unknown files in archive data volume ("+str(data_volume)+") - data_volume must be set to a directory used only for anchore-engine archive documents: unknown files found: " + str(unknowns))
+                
         except Exception as err:
             raise Exception("catalog service use_db set to false but no archive_data_dir is set, or is unavailable - exception: " + str(err))
+
+        try:
+            convert_v1_v2(data_volume)
+        except Exception as err:
+            raise err
+
     elif archive_driver == 'db':
         pass
     else:
@@ -274,8 +309,10 @@ def get_archive_filepath(userId, bucket, archiveId):
     global data_volume, use_db
     ret = None
     if data_volume:
-        archive_path = os.path.join(data_volume, hashlib.md5(userId).hexdigest(), bucket)
-        archive_file = os.path.join(archive_path, hashlib.md5(archiveId).hexdigest() + ".json")
+        filehash = hashlib.md5(archiveId).hexdigest()
+        fkey = filehash[0:2]
+        archive_path = os.path.join(data_volume, hashlib.md5(userId).hexdigest(), bucket, fkey)
+        archive_file = os.path.join(archive_path, filehash + ".json")
         try:
             if not use_db and not os.path.exists(archive_path):
                 os.makedirs(archive_path)
