@@ -107,7 +107,7 @@ def startup_service(service, configdir):
     os.environ['ANCHORE_LOGFILE'] = logfile
     
     print "cleaning up service: " + str(service)
-    terminate_service(service)
+    terminate_service(service, flush_pidfile=True)
 
     twistd_cmd = '/bin/twistd'
     for f in ['/bin/twistd', '/usr/local/bin/twistd']:
@@ -187,8 +187,6 @@ for service in services:
         while not os.path.exists(pidfile) and tries < max_tries:
             time.sleep(1)
             tries = tries + 1
-        #if tries >= max_tries:
-        #    raise Exception("service failed to start after ("+str(max_tries)+") seconds - failing startup")
 
     except Exception as err:
         startFailed = True
