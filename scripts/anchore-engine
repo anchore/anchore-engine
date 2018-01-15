@@ -104,7 +104,7 @@ def terminate_service(service, flush_pidfile=False):
 def startup_service(service, configdir):
     pidfile = "/var/run/"+service+".pid"
     logfile = "/var/log/anchore/"+service+".log"
-    os.environ['ANCHORE_LOGFILE'] = logfile
+    #os.environ['ANCHORE_LOGFILE'] = logfile
     
     print "cleaning up service: " + str(service)
     terminate_service(service, flush_pidfile=True)
@@ -119,8 +119,13 @@ def startup_service(service, configdir):
     print "\t " + ' '.join(cmd)
 
     try:
-        status = subprocess.call(cmd)
-        raise Exception("process exited: " + str(status))
+        #status = subprocess.call(cmd)
+        newenv = os.environ.copy()
+        newenv['ANCHORE_LOGFILE'] = logfile
+        pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=newenv)
+        sout, serr = pipes.communicate()
+        rc = pipes.returncode
+        raise Exception("process exited: " + str(rc) + " stdout="+str(sout) + " stderr="+str(serr))
     except Exception as err:
         traceback.print_exc()
         print "service process exited at ("+str(time.ctime())+"): " + str(err)

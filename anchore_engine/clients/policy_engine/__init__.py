@@ -1,5 +1,8 @@
+import random
+
 from anchore_engine.subsys.discovery import get_endpoints
 from .generated import DefaultApi, configuration
+from anchore_engine.subsys import logger
 
 SERVICE_NAME = 'policy_engine'
 
@@ -20,7 +23,9 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
     else:
         hosts = get_endpoints(SERVICE_NAME)  # Can change this to be random, etc if needed
         if hosts:
-            configuration.host = hosts[0]
+            endpoint_id = random.randint(0,len(hosts)-1)
+            configuration.host = hosts[endpoint_id]
+            logger.debug("policy engine client chose endpoint: " + str(configuration.host))
         else:
             raise Exception("cannot find endpoint for service: {}".format(SERVICE_NAME))
 
