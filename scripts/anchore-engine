@@ -122,10 +122,10 @@ def startup_service(service, configdir):
         #status = subprocess.call(cmd)
         newenv = os.environ.copy()
         newenv['ANCHORE_LOGFILE'] = logfile
-        pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=newenv)
+        pipes = subprocess.Popen(cmd, env=newenv)
         sout, serr = pipes.communicate()
         rc = pipes.returncode
-        raise Exception("process exited: " + str(rc) + " stdout="+str(sout) + " stderr="+str(serr))
+        raise Exception("process exited: " + str(rc))
     except Exception as err:
         traceback.print_exc()
         print "service process exited at ("+str(time.ctime())+"): " + str(err)
