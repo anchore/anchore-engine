@@ -108,15 +108,6 @@ def get_service_detail():
                     for service in service_records:
                         el = make_response_service(user_auth, service, params)
 
-                        #el = {}
-                        #for k in ['hostid', 'servicename', 'base_url', 'status', 'status_message']:
-                        #    el[k] = service[k]
-
-                        #if 'short_description' in service:
-                        #    try:
-                        #        el['service_detail'] = json.loads(service['short_description'])
-                        #    except:
-                        #        el['service_detail'] = str(service['short_description'])
                         service_detail['service_states'].append(el)
 
                         if el['servicename'] not in up_services:
@@ -152,17 +143,12 @@ def get_service_detail():
                     pass
                 httpcode = 200
 
-                #for s in up_services.keys():
-                #    if not up_services[s]:
-                #        httpcode = 503
-
             except Exception as err:
                 return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
                 httpcode = return_object['httpcode']
         except:
             service_detail = {}
 
-        #return_object['detail'] = service_detail
         return_object = service_detail
     except Exception as err:
         return_object = str(err)
@@ -318,7 +304,6 @@ def post_system_prune_candidates(resourcetype, bodycontent):
     return_object = []
     httpcode = 500
     try:
-        logger.debug("WTD: "+ str(bodycontent))
         return_object = catalog.perform_prune(user_auth, resourcetype, bodycontent)
         if return_object:
             httpcode = 200

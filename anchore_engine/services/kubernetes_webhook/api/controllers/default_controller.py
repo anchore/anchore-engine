@@ -128,4 +128,3 @@ def imagepolicywebhook(bodycontent):
         httpcode = 500
 
     return(return_object, httpcode)
-    #return(json.dumps(return_object, indent=4)+"\n", httpcode)

@@ -9,7 +9,6 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.db import db_services, session_scope
 from anchore_engine.subsys import logger
 
-
 def get_endpoints(service_name):
     """
     Return a list of endpoint urls for the given service name.

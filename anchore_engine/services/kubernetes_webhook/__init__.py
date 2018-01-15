@@ -30,4 +30,4 @@ def initializeService(sname, config):
     return(anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
-    return(anchore_engine.services.common.registerService(sname, config))
+    return(anchore_engine.services.common.registerService(sname, config, enforce_unique=False))

@@ -2,6 +2,7 @@ import json
 import re
 import hashlib
 import time
+import random
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
@@ -13,8 +14,9 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 30.0}
+services_cache = {'service_records': [], 'cached_ttl': 30.0, 'cached_update': 0.0}
 
+cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 30.0}
 def get_catalog_endpoint():
     global localconfig, headers, cached_endpoint
 
@@ -680,6 +682,41 @@ def put_document(userId, bucket, name, inobj):
     payload['document'] = inobj
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def choose_service(userId, servicename, skipcache=False):
+    global services_cache
+
+    # select the cache or update the cache service_records
+    fromCache = False
+    if not skipcache and services_cache['service_records'] and (time.time() - services_cache['cached_update']) < services_cache['cached_ttl']:
+        candidates = services_cache['service_records']
+        fromCache = True
+    else:
+        candidates = []
+        service_records = get_service(userId)
+        for service_record in service_records:
+            if service_record['status']:
+                candidates.append(service_record)
+
+        services_cache['service_records'] = candidates
+        services_cache['cached_update'] = time.time()
+
+    # choose for a service matching requested servicename
+    service_candidates = []
+    if candidates:
+        for service_record in candidates:
+            if servicename == service_record['servicename']:
+                service_candidates.append(service_record)
+
+    # finally select randomly from active service candidates
+    if service_candidates:
+        ret = service_candidates[random.randint(0, len(service_candidates)-1)]
+        logger.debug("chose service (servicename="+str(servicename)+" fromCache="+str(fromCache)+"): " + str(ret['base_url']))
+    else:
+        ret = {}
+        logger.warn("no active services found matching servicename ("+str(servicename)+")")
 
     return(ret)
 

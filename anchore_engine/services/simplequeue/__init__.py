@@ -9,10 +9,6 @@ from twisted.web.wsgi import WSGIResource
 import anchore_engine.services.common
 import anchore_engine.subsys.simplequeue
 
-# import requests
-
-#from services.simplequeue.application import application as app
-
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     application.app.url_map.strict_slashes = False
@@ -45,8 +41,7 @@ def initializeService(sname, config):
         anchore_engine.subsys.simplequeue.create_queue(st)
 
     return(True)
-    #return(services.common.initializeService(sname, config))
 
 def registerService(sname, config):
-    return(anchore_engine.services.common.registerService(sname, config))
+    return(anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
     

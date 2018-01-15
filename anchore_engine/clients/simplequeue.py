@@ -1,5 +1,6 @@
 import json
 import time
+import random
 
 from anchore_engine.clients import catalog
 from anchore_engine.clients import http
@@ -9,26 +10,15 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 30.0}
-
 def get_simplequeue_endpoint(userId):
-    global localconfig, headers, cached_endpoint
-
-    if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
-        #logger.debug("using cached endpoint - " + str(cached_endpoint))
-        return(cached_endpoint['base_url'])
+    global localconfig, headers
 
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     base_url = ""
     try:
-        service = None
-
-        service_reports = catalog.get_service(userId, servicename='simplequeue')
-        if service_reports:
-            service = service_reports[0]
-
+        service = catalog.choose_service(userId, servicename='simplequeue')
         if not service:
             raise Exception("cannot locate registered simplequeue service")
 
@@ -41,9 +31,6 @@ def get_simplequeue_endpoint(userId):
 
     except Exception as err:
         raise Exception("could not find valid simplequeue endpoint - exception: " + str(err))
-
-    cached_endpoint['base_url'] = base_url
-    cached_endpoint['cached_update'] = time.time()
 
     return(base_url)
 
