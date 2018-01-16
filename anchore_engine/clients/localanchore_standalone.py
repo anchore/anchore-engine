@@ -334,7 +334,6 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
         count=0
         for rawhel in manifest_data['history']:
             hel = json.loads(rawhel['v1Compatibility'])
-            
             try:
                 lsize = hel['Size']
             except:
@@ -375,9 +374,12 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
             patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
             if patt:
                 cmd = patt.group(1)
-            else:
+            elif hel['CreatedBy']:
                 cmd = "RUN " + hel['CreatedBy']
-            dockerfile_contents = dockerfile_contents + cmd + "\n"        
+            else:
+                cmd = None
+            if cmd:
+                dockerfile_contents = dockerfile_contents + cmd + "\n"        
         dockerfile_mode = "Guessed"
     elif not dockerfile_mode:
         dockerfile_mode = "Actual"
@@ -457,9 +459,12 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
             patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
             if patt:
                 cmd = patt.group(1)
-            else:
+            elif hel['CreatedBy']:
                 cmd = "RUN " + hel['CreatedBy']
-            dockerfile_contents = dockerfile_contents + cmd + "\n"        
+            else:
+                cmd = None
+            if cmd:
+                dockerfile_contents = dockerfile_contents + cmd + "\n"        
         dockerfile_mode = "Guessed"
     elif not dockerfile_mode:
         dockerfile_mode = "Actual"
