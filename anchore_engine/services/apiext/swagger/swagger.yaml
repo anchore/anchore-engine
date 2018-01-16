@@ -1047,6 +1047,8 @@ definitions:
     required:
     - id
     - version
+    - policies
+    - mappings
     properties:
       id:
         type: string
