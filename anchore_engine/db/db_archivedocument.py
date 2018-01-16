@@ -94,7 +94,20 @@ def exists(userId, bucket, archiveId, session=None):
             ret[k] = result[i]
 
     return(ret)
+
+def list_all_notempty(session=None):
+    ret = []
+
+    results = session.query(ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.userId).filter(ArchiveDocument.jsondata != '{}')
+    for result in results:
+        obj = {}
+        for i in range(0,len(result.keys())):
+            k = result.keys()[i]
+            obj[k] = result[i]
+        if obj:
+            ret.append(obj)
     
+    return(ret)
 
 def list_all(session=None, **dbfilter):
     if not session:
