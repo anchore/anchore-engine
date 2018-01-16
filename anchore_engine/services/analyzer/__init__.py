@@ -275,11 +275,9 @@ def process_analyzer_job(system_user_auth, qobj):
                         except:
                             image_content_data[content_type] = {}
 
-
                     if image_content_data:
                         logger.debug("adding image content data to archive")
                         rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
-
 
                     try:
                         logger.debug("adding image analysis data to image_record")

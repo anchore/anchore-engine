@@ -1378,17 +1378,6 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                                 logger.debug("adding image content data to archive")
                                 rc = archive_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
 
-                            #image_summary_data = {}
-                            #try:
-                            #    image_summary_data = anchore_engine.services.common.extract_analyzer_content(anchore_data, 'metadata')
-                            #except:
-                            #    image_summary_data = {}
-                            #if image_summary_data:
-                            #    logger.debug("adding image summary data to archive")
-                            #    #formatted_image_summary_data = anchore_engine.services.common.format_image_summary(image_summary_data)
-                            #    #new_image_record.update(formatted_image_summary_data)
-                            #    #rc = archive_sys.put_document(userId, 'image_summary_data', imageDigest, image_summary_data)
-
                             try:
                                 logger.debug("adding image analysis data to image_record")
                                 anchore_engine.services.common.update_image_record_with_analysis_data(new_image_record, anchore_data)
@@ -1415,8 +1404,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                                         new_id['imageId'] = image_detail['imageId']
                                     break
 
-                        for new_id in new_image_detail:
-                            new_id['dockerfile'] = dockerfile
+                        if dockerfile:
+                            for new_id in new_image_detail:
+                                new_id['dockerfile'] = dockerfile
                         
                         if dockerfile_mode:
                             image_record['dockerfile_mode'] = dockerfile_mode
