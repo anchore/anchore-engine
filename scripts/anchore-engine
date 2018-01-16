@@ -214,7 +214,6 @@ else:
                 time.sleep(1)
                 if 'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
                     for service_thread in keepalive_threads:
-                        print "checking " + service_thread.thread.name
                         if not service_thread.thread.is_alive():
                             print "restarting service " + service_thread.thread.name
                             service_thread.start()
