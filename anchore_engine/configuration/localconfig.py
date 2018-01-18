@@ -2,6 +2,7 @@ import os
 import re
 import json
 import uuid
+import time
 import yaml
 import shutil
 
@@ -61,9 +62,15 @@ def get_host_id():
         if not os.path.exists(idfile):
             ret = str(uuid.uuid4())
         else:
-            with open(idfile, 'r') as FH:
-                data = json.loads(FH.read())
-                ret = data['host_id']
+            for i in range(0,5):
+                try:
+                    with open(idfile, 'r') as FH:
+                        data = json.loads(FH.read())
+                        ret = data['host_id']
+                    break
+                except Exception as err:
+                    time.sleep(1)
+                    pass
 
     with open(idfile, 'w') as OFH:
         OFH.write(json.dumps({'host_id': ret}))

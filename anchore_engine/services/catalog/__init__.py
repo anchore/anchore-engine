@@ -15,6 +15,7 @@ from twisted.web.wsgi import WSGIResource
 # anchore modules
 from anchore_engine.clients import http, localanchore, simplequeue
 import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 import anchore_engine.services.common
 from anchore_engine.services.common import latest_service_records
 from anchore_engine import db
@@ -43,6 +44,15 @@ def createService(sname, config):
     return(anchore_engine.services.common.createServiceAPI(root, sname, config))
 
 def initializeService(sname, config):
+    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    try:
+        if not anchore_engine.subsys.servicestatus.has_status(service_record):
+            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
+    except Exception as err:
+        import traceback
+        traceback.print_exc()
+        raise Exception("could not initialize service status - exception: " + str(err))
+
     try:
         rc = archive.initialize()
         if not rc:
@@ -104,6 +114,8 @@ def initializeService(sname, config):
     return(anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
+    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
     return(anchore_engine.services.common.registerService(sname, config))
 
 ##########################################################
@@ -298,11 +310,12 @@ def handle_service_watcher(*args, **kwargs):
             service_update_record = {}
                 
             if service['servicename'] == 'catalog':
-                status = {
-                    'up': True,
-                    'busy': False,
-                    'message': "all good"
-                }
+                status = anchore_engine.subsys.servicestatus.get_status(service)
+                #status = {
+                #    'up': True,
+                #    'busy': False,
+                #    'message': "all good"
+                #}
                 service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
             elif 'base_url' in service and service['base_url'] and service['base_url'] != 'N/A':
                 #service_update_record = copy.deepcopy(service_update_record_template)
@@ -340,6 +353,7 @@ def handle_service_watcher(*args, **kwargs):
                 status = {
                     'up': True,
                     'busy': False,
+                    'available': True,
                     'message': "no status API to query - assuming available"
                 }
                 service_update_record['heartbeat'] = int(0)

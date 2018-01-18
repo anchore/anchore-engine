@@ -160,7 +160,8 @@ def registerService(sname, config, enforce_unique=True):
     service_template = {
         'type': 'anchore',
         'base_url': 'N/A',
-        'version': 'v1'
+        'version': 'v1',
+        'short_description': ''
     }
 
     if 'ssl_enable' in myconfig and myconfig['ssl_enable']:
@@ -295,7 +296,6 @@ def initializeService(sname, config):
 
 # the anchore twistd plugins call this to initialize and make individual services
 def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
-
     try:
         # config and init
         configfile = configdir = None
@@ -308,6 +308,8 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
         localconfig['myservices'] = []
         logger.spew("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
     except Exception as err:
+        import traceback
+        traceback.print_exc()
         log.err("cannot load configuration: exception - " + str(err))
         raise err
 

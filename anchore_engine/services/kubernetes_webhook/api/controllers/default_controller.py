@@ -4,17 +4,19 @@ import connexion
 
 from anchore_engine.clients import catalog
 import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
 
-
 def status():
     try:
-        return_object = {
-            'busy':False,
-            'up':True,
-            'message': 'all good'
-        }
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'kubernetes_webhook'})
+        #return_object = {
+        #    'busy':False,
+        #    'up':True,
+        #    'message': 'all good'
+        #}
         httpcode = 200
     except Exception as err:
         return_object = str(err)

@@ -13,6 +13,7 @@ from flask import abort, jsonify, Response
 from werkzeug.exceptions import HTTPException
 
 from anchore_engine.configuration import localconfig
+import anchore_engine.subsys.servicestatus
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, \
     ImageVulnerabilityListing, \
@@ -40,11 +41,13 @@ def get_status():
     """
     httpcode = 500
     try:
-        return_object = {
-            'busy': False,
-            'up': True,
-            'message': 'all good'
-        }
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'policy_engine'})
+        #return_object = {
+        #    'busy': False,
+        #    'up': True,
+        #    'message': 'all good'
+        #}
         httpcode = 200
     except Exception as err:
         return_object = str(err)

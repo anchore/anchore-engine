@@ -2,15 +2,19 @@ import connexion
 
 from anchore_engine.services import common
 from anchore_engine.subsys import simplequeue
+import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 
 def status():
     request_inputs = common.do_request_prep(connexion.request, default_params={})
 
-    return_object = {
-        'busy':False,
-        'up':True,
-        'message': 'all good'
-    }
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'simplequeue'})
+    #return_object = {
+    #    'busy':False,
+    #    'up':True,
+    #    'message': 'all good'
+    #}
     try:
         queue_detail = {}
         try:

@@ -43,6 +43,17 @@ state_graphs = {
             'registered':'available',
             'available':'available'
         }
+    },
+    'policy_engine_state': {
+        'base_state': 'registered',
+        'fault_state': 'unavailable',
+        'working_state': 'syncing',
+        'complete_state': 'available',
+        'transitions': {
+            'init': 'registered',
+            'registered':'syncing',
+            'syncing':'available'
+        }
     }
 }
 

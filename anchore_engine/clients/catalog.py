@@ -685,7 +685,7 @@ def put_document(userId, bucket, name, inobj):
 
     return(ret)
 
-def choose_service(userId, servicename, skipcache=False):
+def choose_service(userId, servicename, skipcache=True):
     global services_cache
 
     # select the cache or update the cache service_records

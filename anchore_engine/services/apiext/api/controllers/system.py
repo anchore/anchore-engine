@@ -6,6 +6,8 @@ import datetime
 # anchore modules
 from anchore_engine.clients import catalog, simplequeue
 import anchore_engine.services.common
+import anchore_engine.subsys.servicestatus
+import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.services.common import apiext_status
 
@@ -70,11 +72,13 @@ def get_status():
     httpcode = 500
 
     try:
-        return_object = {
-            'busy':False,
-            'up':True,
-            'message': 'all good'
-        }
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'apiext'})
+        #return_object = {
+        #    'busy':False,
+        #    'up':True,
+        #    'message': 'all good'
+        #}
         httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)

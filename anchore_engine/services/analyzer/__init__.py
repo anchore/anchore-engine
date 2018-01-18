@@ -13,6 +13,7 @@ from twisted.web.wsgi import WSGIResource
 # anchore modules
 from anchore_engine.clients import catalog, localanchore, simplequeue, localanchore_standalone
 import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 import anchore_engine.services.common
 import anchore_engine.subsys.taskstate
 from anchore_engine.subsys import logger
@@ -72,9 +73,21 @@ def createService(sname, config):
     return (ret_svc)
 
 def initializeService(sname, config):
+    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    try:
+        if not anchore_engine.subsys.servicestatus.has_status(service_record):
+            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
+    except Exception as err:
+        import traceback
+        traceback.print_exc()
+        raise Exception("could not initialize service status - exception: " + str(err))
+
     return (anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
+    #service_record = {'hostid': config['host_id'], 'servicename': sname}
+    #anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
+
     return (anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
 
 
@@ -338,6 +351,11 @@ def process_analyzer_job(system_user_auth, qobj):
                 current_avg_count = current_avg_count + 1.0
                 new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
                 current_avg = new_avg
+
+                localconfig = anchore_engine.configuration.localconfig.get_config()
+                service_record = {'hostid': localconfig['host_id'], 'servicename': 'analyzer'}
+                anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count})
+
             except:
                 pass
 
@@ -374,6 +392,9 @@ def monitor_func(**kwargs):
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
+
+        service_record = {'hostid': localconfig['host_id'], 'servicename': 'analyzer'}
+        anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
 
         #queues = simplequeue.get_queues(system_user_auth)
         #if not queues:
@@ -422,9 +443,7 @@ def monitor_func(**kwargs):
 
     return (True)
 
-
 monitor_thread = None
-
 
 def monitor(**kwargs):
     global monitor_thread

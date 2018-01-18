@@ -4,16 +4,19 @@ from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
-
+import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 
 def status():
     httpcode = 500
     try:
-        return_object = {
-            'busy': False,
-            'up': True,
-            'message': 'all good'
-        }        
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'catalog'})
+        #return_object = {
+        #    'busy': False,
+        #    'up': True,
+        #    'message': 'all good'
+        #}        
         httpcode = 200
     except Exception as err:
         return_object = str(err)
