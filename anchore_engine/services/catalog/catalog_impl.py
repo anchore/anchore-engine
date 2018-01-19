@@ -661,7 +661,13 @@ def evals(dbsession, request_inputs, bodycontent={}):
                     evaltag = dbfilter['tag']
                 else:
                     evaltag = None
-                rc = perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag)
+
+                if 'policyId' in dbfilter:
+                    policyId = dbfilter['policyId']
+                else:
+                    policyId = None
+                rc = perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId)
+
             except Exception as err:
                 logger.error("interactive eval failed, will return any in place evaluation records - exception: " + str(err))
                 
@@ -1203,7 +1209,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
     
     return(True)
 
-def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
+def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None):
     # prepare inputs
     try:
         system_user_auth = get_system_auth(dbsession)
@@ -1213,10 +1219,12 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-        policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
-        policyId = policy_record['policyId']
-        policy_bundle = archive_sys.get_document(userId, 'policy_bundles', policyId)
+        if not policyId:
+            policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
+            policyId = policy_record['policyId']
 
+        policy_bundle = archive_sys.get_document(userId, 'policy_bundles', policyId)
+            
         if not evaltag:
             raise Exception("must supply an evaltag")
 
