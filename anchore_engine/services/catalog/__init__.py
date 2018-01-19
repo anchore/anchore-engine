@@ -116,7 +116,8 @@ def initializeService(sname, config):
 def registerService(sname, config):
     service_record = {'hostid': config['host_id'], 'servicename': sname}
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
-    return(anchore_engine.services.common.registerService(sname, config))
+
+    return(anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
 
 ##########################################################
 
@@ -281,105 +282,111 @@ def handle_history_trimmer(*args, **kwargs):
 
     return(True)
 
+
 def handle_service_watcher(*args, **kwargs):
     global latest_service_records
 
-    logger.debug("FIRING: service watcher")
+    logger.debug("ENTERING: " + str(kwargs))
+    cycle_timer = kwargs['mythread']['cycle_timer']
+    while(True):
+        logger.debug("FIRING: service watcher: " + str(kwargs))
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    verify = localconfig['internal_ssl_verify']
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify = localconfig['internal_ssl_verify']
 
-    with db.session_scope() as dbsession:
-        system_user = db.db_users.get('anchore-system', session=dbsession)
-        userId = system_user['userId']
-        password = system_user['password']
+        with db.session_scope() as dbsession:
+            system_user = db.db_users.get('anchore-system', session=dbsession)
+            userId = system_user['userId']
+            password = system_user['password']
 
-        anchore_services = db.db_services.get_all(session=dbsession)
-        # update the global latest service record dict in services.common
-        latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+            anchore_services = db.db_services.get_all(session=dbsession)
+            # update the global latest service record dict in services.common
+            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
 
-        # fields to update each tick:
-        #
-        # heartbeat (current time)
-        # status (true/false)
-        # status_message (state of service)
-        # short_description(api return)
-        #
+            # fields to update each tick:
+            #
+            # heartbeat (current time)
+            # status (true/false)
+            # status_message (state of service)
+            # short_description(api return)
+            #
 
-        for service in anchore_services:
-            service_update_record = {}
-                
-            if service['servicename'] == 'catalog':
-                status = anchore_engine.subsys.servicestatus.get_status(service)
-                #status = {
-                #    'up': True,
-                #    'busy': False,
-                #    'message': "all good"
-                #}
-                service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
-            elif 'base_url' in service and service['base_url'] and service['base_url'] != 'N/A':
-                #service_update_record = copy.deepcopy(service_update_record_template)
+            for service in anchore_services:
+                service_update_record = {}
 
-                url = '/'.join([service['base_url'], service['version'], 'status'])
-                try:
-                    status = http.anchy_get(url, auth=(userId, password), verify=verify)
-                    service_update_record['heartbeat'] = int(time.time())
+                if service['servicename'] == 'catalog' and service['hostid'] == localconfig['host_id']:
+                    status = anchore_engine.subsys.servicestatus.get_status(service)
+                    #status = {
+                    #    'up': True,
+                    #    'busy': False,
+                    #    'message': "all good"
+                    #}
+                    service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
+                elif 'base_url' in service and service['base_url'] and service['base_url'] != 'N/A':
+                    #service_update_record = copy.deepcopy(service_update_record_template)
 
-                    # set to down until the response can be parsed
-                    service_update_record['status'] = False                    
-                    service_update_record['status_message'] = taskstate.fault_state('service_status')
-                    service_update_record['short_description'] = "could not parse service status response"
-
+                    url = '/'.join([service['base_url'], service['version'], 'status'])
                     try:
-                        # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
-                        if status['up']:
-                            service_update_record['status'] = True
-                            service_update_record['status_message'] = taskstate.complete_state('service_status')
+                        status = http.anchy_get(url, auth=(userId, password), verify=verify)
+                        service_update_record['heartbeat'] = int(time.time())
+
+                        # set to down until the response can be parsed
+                        service_update_record['status'] = False                    
+                        service_update_record['status_message'] = taskstate.fault_state('service_status')
+                        service_update_record['short_description'] = "could not parse service status response"
+
                         try:
-                            service_update_record['short_description'] = json.dumps(status)
-                        except:
-                            service_update_record['short_description'] = str(status)
+                            # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
+                            if status['up']:
+                                service_update_record['status'] = True
+                                service_update_record['status_message'] = taskstate.complete_state('service_status')
+                            try:
+                                service_update_record['short_description'] = json.dumps(status)
+                            except:
+                                service_update_record['short_description'] = str(status)
+                        except Exception as err:
+                            logger.warn("could not get/parse service status record from service: " + str(url) + " - exception: " + str(err))
+
                     except Exception as err:
-                        logger.warn("could not get/parse service status record from service: " + str(url) + " - exception: " + str(err))
+                        logger.warn("could not get service status: " + str(url) + " : exception: " + str(err) + " : " + str(err.__dict__))
+                        service_update_record['status'] = False
+                        service_update_record['status_message'] = taskstate.fault_state('service_status')
+                        service_update_record['short_description'] = "could not get service status"
 
-                except Exception as err:
-                    logger.warn("could not get service status: " + str(url) + " : exception: " + str(err) + " : " + str(err.__dict__))
-                    service_update_record['status'] = False
-                    service_update_record['status_message'] = taskstate.fault_state('service_status')
-                    service_update_record['short_description'] = "could not get service status"
-                    
-            else:
-                # NOTE: should consider requiring any AE service to have an API with at least the v1/status route, otherwise this
-                status = {
-                    'up': True,
-                    'busy': False,
-                    'available': True,
-                    'message': "no status API to query - assuming available"
-                }
-                service_update_record['heartbeat'] = int(0)
-                service_update_record['status'] = True
-                service_update_record['status_message'] = taskstate.complete_state('service_status')
-                service_update_record['short_description'] = json.dumps(status)
-                
-            if service_update_record:
-                service.update(service_update_record)
-                try:
-                    db.db_services.update_record(service, session=dbsession)
-                except Exception as err:
-                    logger.warn("could not update DB: " + str(err))
-            else:
-                logger.warn("no service_update_record populated - nothing to update")
+                else:
+                    # NOTE: should consider requiring any AE service to have an API with at least the v1/status route, otherwise this
+                    status = {
+                        'up': True,
+                        'busy': False,
+                        'available': True,
+                        'message': "no status API to query - assuming available"
+                    }
+                    service_update_record['heartbeat'] = int(0)
+                    service_update_record['status'] = True
+                    service_update_record['status_message'] = taskstate.complete_state('service_status')
+                    service_update_record['short_description'] = json.dumps(status)
 
-    with db.session_scope() as dbsession:
-        anchore_services = db.db_services.get_all(session=dbsession)
-        # update the global latest service record dict in services.common
-        latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+                if service_update_record:
+                    service.update(service_update_record)
+                    try:
+                        db.db_services.update_record(service, session=dbsession)
+                    except Exception as err:
+                        logger.warn("could not update DB: " + str(err))
+                else:
+                    logger.warn("no service_update_record populated - nothing to update")
 
-    logger.debug("FIRING DONE: service watcher")
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
+        with db.session_scope() as dbsession:
+            anchore_services = db.db_services.get_all(session=dbsession)
+            # update the global latest service record dict in services.common
+            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+
+        logger.debug("FIRING DONE: service watcher")
+        try:
+            kwargs['mythread']['last_return'] = True
+        except:
+            pass
+
+        time.sleep(cycle_timer)
     return(True)
 
 def handle_image_watcher(*args, **kwargs):
@@ -919,19 +926,6 @@ def handle_catalog_duty (*args, **kwargs):
 click = 0
 running = False
 last_run = 0
-
-threads = {
-    'image_watcher': {'handler':handle_image_watcher, 'args':[], 'thread': None, 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
-    'policy_eval': {'handler':handle_policyeval, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
-    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'args':[], 'thread': None, 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
-    'analyzer_queue': {'handler':handle_analyzer_queue, 'args':[], 'thread': None, 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_run': 0, 'last_return': False},
-    'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
-    'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
-    'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
-    #'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
-    #'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
-}
-
 system_user_auth = ('anchore-system', '')
 
 # policy update check data
@@ -939,36 +933,39 @@ feed_sync_updated = False
 bundle_user_last_updated = {}
 bundle_user_is_updated = {}
 
+watchers = {
+    'image_watcher': {'handler': handle_image_watcher, 'taskType': 'handle_image_watcher', 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_eval': {'handler':handle_policyeval, 'taskType': 'handle_policyeval', 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'taskType': 'handle_policy_bundle_sync', 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'analyzer_queue': {'handler':handle_analyzer_queue, 'taskType': 'handle_analyzer_queue', 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'notifications': {'handler':handle_notifications, 'taskType': 'handle_notifications', 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'feed_sync': {'handler':handle_feed_sync, 'taskType': 'handle_feed_sync', 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_watcher': {'handler':handle_service_watcher, 'taskType': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
+}
+
+watcher_task_template = {
+    'taskType': None,
+    'watcher': None,
+}
+watcher_threads = {}
+
+def watcher_func(*args, **kwargs):
+    global system_user_auth
+
+    while(True):
+        qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks')
+        if qobj:
+            logger.debug("got task from queue: " + str(qobj))
+            watcher = qobj['data']['watcher']
+            handler = watchers[watcher]['handler']
+            args = []
+            kwargs = {'mythread': watchers[watcher]}
+            rc = handler(*args, **kwargs)
+        time.sleep(5)
+
 def monitor_func(**kwargs):
-    global click, running, last_run, threads, system_user_auth
-
-    for threadname in threads.keys():
-        if not threads[threadname]['thread'] and not threads[threadname]['last_run']:
-            # thread has never run, set up the timers from configuration if necessary
-            if 'cycle_timers' in kwargs and threadname in kwargs['cycle_timers']:
-                try:
-                    the_cycle_timer = threads[threadname]['cycle_timer']
-                    min_cycle_timer = threads[threadname]['min_cycle_timer']
-                    max_cycle_timer = threads[threadname]['max_cycle_timer']
-
-                    config_cycle_timer = int(kwargs['cycle_timers'][threadname])
-                    if config_cycle_timer < 0:
-                        the_cycle_timer = abs(int(config_cycle_timer))
-                    elif config_cycle_timer < min_cycle_timer:
-                        logger.warn("configured cycle timer for handler ("+str(threadname)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
-                        the_cycle_timer = min_cycle_timer
-                    elif config_cycle_timer > max_cycle_timer:
-                        logger.warn("configured cycle timer for handler ("+str(threadname)+") is greater than the allowed max ("+str(max_cycle_timer)+") - using allowed max")
-                        the_cycle_timer = max_cycle_timer
-                    else:
-                        the_cycle_timer = config_cycle_timer
-
-                    threads[threadname]['cycle_timer'] = the_cycle_timer
-                except Exception as err:
-                    logger.warn("exception setting custom cycle timer for handler ("+str(threadname)+") - using default")
-
-    logger.spew("INIT THREADS: " + str(threads))
-
+    global click, running, last_queued, system_user_auth, watchers, last_run
+    
     if click < 5:
         click = click + 1
         logger.debug("Catalog monitor starting in: " + str(5 - click))
@@ -978,45 +975,62 @@ def monitor_func(**kwargs):
         return(True)
 
     try:
-        running = True
-        logger.debug("FIRING: catalog_monitor")
-
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
 
-        logger.spew("MEM: mon_func start: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
+        for watcher in watchers.keys():
+            if not watchers[watcher]['initialized']:
+                # first time
+                if 'cycle_timers' in kwargs and watcher in kwargs['cycle_timers']:
+                    try:
+                        the_cycle_timer = watchers[watcher]['cycle_timer']
+                        min_cycle_timer = watchers[watcher]['min_cycle_timer']
+                        max_cycle_timer = watchers[watcher]['max_cycle_timer']
 
-        for threadname in threads.keys():
-            if not threads[threadname]['thread']:
-                if ( int(time.time()) - threads[threadname]['last_run'] ) > threads[threadname]['cycle_timer']:
-                    logger.debug("thread starting: " + str(threadname))
-                    threads[threadname]['thread'] = threading.Thread(target=threads[threadname]['handler'], args=threads[threadname]['args'], kwargs={'mythread': threads[threadname]})
-                    threads[threadname]['thread'].start()
+                        config_cycle_timer = int(kwargs['cycle_timers'][watcher])
+                        if config_cycle_timer < 0:
+                            the_cycle_timer = abs(int(config_cycle_timer))
+                        elif config_cycle_timer < min_cycle_timer:
+                            logger.warn("configured cycle timer for handler ("+str(watcher)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
+                            the_cycle_timer = min_cycle_timer
+                        elif config_cycle_timer > max_cycle_timer:
+                            logger.warn("configured cycle timer for handler ("+str(watcher)+") is greater than the allowed max ("+str(max_cycle_timer)+") - using allowed max")
+                            the_cycle_timer = max_cycle_timer
+                        else:
+                            the_cycle_timer = config_cycle_timer
+
+                        watchers[watcher]['cycle_timer'] = the_cycle_timer
+                    except Exception as err:
+                        logger.warn("exception setting custom cycle timer for handler ("+str(watcher)+") - using default")
+
+                watchers[watcher]['initialized'] = True
+
+            if watcher not in watcher_threads:
+                if watchers[watcher]['taskType']:
+                    # spin up a generic task watcher
+                    watcher_threads[watcher] = threading.Thread(target=watcher_func, args=[watcher], kwargs={})
+                    watcher_threads[watcher].start()
                 else:
-                    logger.debug("thread cycle: not time to run thread: " + str(threadname) + " : " + str(int(time.time()) - threads[threadname]['last_run']) + " : " + str(threads[threadname]['cycle_timer']))
+                    # spin up a specific looping watcher thread
+                    watcher_threads[watcher] = threading.Thread(target=watchers[watcher]['handler'], args=[watcher], kwargs={'mythread': watchers[watcher]})
+                    watcher_threads[watcher].start()
 
-        logger.debug("joining threads")
-        for threadname in threads.keys():
-            thread = threads[threadname]['thread']
-            if thread:
-                if thread.isAlive():
-                    logger.debug("thread "+threadname+" still alive....")
-                else:
-                    thread.join()
-                    del thread
-                    logger.debug("thread "+threadname+" joined: " + str(threads[threadname]['last_return']))
-                    threads[threadname]['thread'] = None
+            if time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
+                if watchers[watcher]['taskType']:
+                    logger.debug("should queue job: " + watcher)
+                    watcher_task = copy.deepcopy(watcher_task_template)
+                    watcher_task['watcher'] = watcher
+                    watcher_task['taskType'] = watchers[watcher]['taskType']
+                    try:
+                        if not simplequeue.is_inqueue(system_user_auth, 'watcher_tasks', watcher_task):
+                            qobj = simplequeue.enqueue(system_user_auth, 'watcher_tasks', watcher_task)
+                            logger.debug(str(watcher_task)+": init task queued: " + str(qobj))
+                        else:
+                            logger.debug(str(watcher_task)+": init task already queued")
 
-                    # if a thread sets its own return to False, then try to run again immediately
-                    if threads[threadname]['last_return']:
-                        threads[threadname]['last_run'] = int(time.time())
-                    else:
-                        threads[threadname]['last_run'] = 0
-                        
-            else:
-                logger.debug("thread "+threadname+" not run (nothing to join)")
-
-        logger.debug("joining of threads complete")
+                        watchers[watcher]['last_queued'] = time.time()
+                    except Exception as err:
+                        logger.warn("failed to enqueue watcher task: " + str(err))
 
     except Exception as err:
         logger.error(str(err))
@@ -1026,9 +1040,6 @@ def monitor_func(**kwargs):
         last_run = time.time()
 
     logger.debug("exiting monitor thread")
-    logger.spew("MEM: mon_func end: " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
-
-    return(True)
 
 monitor_thread = None
 def monitor(**kwargs):

@@ -45,11 +45,20 @@ def initializeService(sname, config):
     except Exception as err:
         raise err
 
-    for q in ['images_to_analyze', 'error_events']:
+    #for q in ['images_to_analyze', 'error_events']:
+    for q in anchore_engine.services.common.queue_names:        
         anchore_engine.subsys.simplequeue.create_queue(q)
 
     for st in anchore_engine.services.common.subscription_types:
         anchore_engine.subsys.simplequeue.create_queue(st)
+
+    #from anchore_engine.services.catalog import catalog_threads
+    #for cs in catalog_threads.keys():
+    #    try:
+    #        queueName = catalog_threads[cs]['args'][1]
+    #        anchore_engine.subsys.simplequeue.create_queue(queueName)
+    #    except:
+    #        pass
 
     return(True)
 

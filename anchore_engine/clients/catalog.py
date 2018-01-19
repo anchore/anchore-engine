@@ -16,12 +16,13 @@ headers = {'Content-Type': 'application/json'}
 
 services_cache = {'service_records': [], 'cached_ttl': 30.0, 'cached_update': 0.0}
 
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 30.0}
+cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 0.1}
 def get_catalog_endpoint():
     global localconfig, headers, cached_endpoint
 
     if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
         #logger.debug("using cached endpoint - " + str(cached_endpoint))
+        logger.debug("chose service (servicename=catalog fromCache=True): " + str(cached_endpoint['base_url']))
         return(cached_endpoint['base_url'])
 
     if localconfig == None:
@@ -40,7 +41,13 @@ def get_catalog_endpoint():
             with db.session_scope() as dbsession:
                 service_reports = db.db_services.get_byname(servicename, session=dbsession)
                 if service_reports:
-                    service = service_reports[0]
+                    candidates = []
+                    for candidate in service_reports:
+                        if candidate['status']:
+                            candidates.append(candidate)
+
+                        if candidates:
+                            service = candidates[random.randint(0, len(candidates)-1)]
 
             if not service:
                 raise Exception("cannot locate registered service in DB: " + servicename)
@@ -58,6 +65,7 @@ def get_catalog_endpoint():
     cached_endpoint['base_url'] = base_url
     cached_endpoint['cached_update'] = time.time()
 
+    logger.debug("chose service (servicename=catalog fromCache=False): " + str(base_url))
     return(base_url)
 
 def lookup_registry_image(userId, tag=None, digest=None):

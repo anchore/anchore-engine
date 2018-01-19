@@ -106,7 +106,7 @@ def initializeService(sname, config):
 
 
 def registerService(sname, config):
-    reg_return = anchore_engine.services.common.registerService(sname, config, enforce_unique=True)
+    reg_return = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
     logger.info('Registration complete.')
 
     if reg_return:

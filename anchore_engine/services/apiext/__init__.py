@@ -131,5 +131,5 @@ def initializeService(sname, config):
 def registerService(sname, config):
     service_record = {'hostid': config['host_id'], 'servicename': sname}
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
-    return (anchore_engine.services.common.registerService(sname, config))
+    return (anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
 

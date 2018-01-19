@@ -35,6 +35,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 
 apiext_status = {}
 latest_service_records = {"service_records": []}
+queue_names = ['images_to_analyze', 'error_events', 'watcher_tasks']
 subscription_types = ['policy_eval', 'tag_update', 'vuln_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data", "manifest_data"]
