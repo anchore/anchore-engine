@@ -650,7 +650,7 @@ def delete_image_by_imageId(imageId):
     return return_object, httpcode
 
 
-def get_image_policy_check(imageDigest, policyId=None, tag=None, detail=None, history=None):
+def get_image_policy_check(imageDigest, policyId=None, tag=None, detail=True, history=False):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'tag':None, 'detail':True, 'history':False, 'policyId':None})
         return_object, httpcode = images_imageDigest_check(request_inputs, imageDigest)

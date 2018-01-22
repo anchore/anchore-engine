@@ -7,6 +7,7 @@
 # service_dir: '/config'
 # tmp_dir: '/tmp'
 # log_level: 'DEBUG'
+log_level: 'INFO'
 #
 # allow_awsecr_iam_auto: False
 cleanup_images: True
@@ -14,7 +15,6 @@ cleanup_images: True
 # docker_conn_timeout: 600
 #
 #
-log_level: 'DEBUG'
 host_id: 'dockerhostid-xyz'
 internal_ssl_verify: False
 auto_restart_services: True
