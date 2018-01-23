@@ -3,27 +3,23 @@ import time
 
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.utils import IntegerValidator
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.policy.utils import BooleanValidator
+from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter
 log = get_logger()
+
 
 class CveSeverityTrigger(BaseTrigger):
     __vuln_levels__ = None
-    __params__ = {
-        'FIX_AVAILABLE': BooleanValidator()
-    }
+    fix_available = BooleanStringParameter(name='fix_available', description='If present, the fix availability for the CVE record must match the value of this parameter.', is_required=False)
 
     def evaluate(self, image_obj, context):
         vulns = context.data.get('loaded_vulnerabilities')
         if not vulns:
             return
 
-        is_fix_available = self.eval_params.get('FIX_AVAILABLE')
-        if is_fix_available is not None:
-            is_fix_available = str(is_fix_available).lower() == 'true'
+        is_fix_available = self.fix_available.value()
 
         for pkg_vuln in vulns:
             # Filter by level first
@@ -79,13 +75,9 @@ class UnknownSeverityTrigger(CveSeverityTrigger):
 class FeedOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'FEEDOUTOFDATE'
     __description__ = 'triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days)'
-    __params__ = {
-        'MAXAGE': IntegerValidator(),
-    }
+    max_age = IntegerStringParameter(name='maxage', description='Fire the trigger if the last sync was more than this number of days ago', is_required=True)
 
     def evaluate(self, image_obj, context):
-        feeds = DataFeeds.instance()
-
         # Map to a namespace
         ns = DistroNamespace.for_obj(image_obj)
 
@@ -100,18 +92,17 @@ class FeedOutOfDateTrigger(BaseTrigger):
                     oldest_update = groups[0].last_sync
                     break
 
-        maxage = self.eval_params.get('MAXAGE')
-        if maxage:
+        if self.max_age.value() is not None:
             try:
                 if oldest_update is not None:
                     oldest_update = calendar.timegm(oldest_update.timetuple())
-                    mintime = time.time() - int(int(maxage) * 86400)
+                    mintime = time.time() - int(int(self.max_age.value()) * 86400)
                     if oldest_update < mintime:
-                        self._fire(msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE ("+str(maxage)+") days")
+                        self._fire(msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE ("+str(self.max_age)+") days")
                 else:
                     self._fire(
                         msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE (" + str(
-                            maxage) + ") days")
+                            self.max_age) + ") days")
             except Exception as err:
                 self._fire(msg="FEEDOUTOFDATE Cannot perform data feed up-to-date check - message from server: " + str(err))
 

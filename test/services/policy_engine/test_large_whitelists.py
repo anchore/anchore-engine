@@ -7,11 +7,10 @@ import os
 
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, ExecutableWhitelist
-from anchore_engine.db import get_thread_scoped_session as get_session, end_session, Image, initialize
+from anchore_engine.db import get_thread_scoped_session as get_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from test.services.policy_engine import LocalTestDataEnvironment, init_db
-from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, GateEvaluationError, PolicyEvaluationError, \
-    PolicyNotFoundError, UnsupportedVersionError, InvalidGateAction, InvalidParameterError, InputParameterValidationError, BundleTargetTagMismatchError
+
 
 class TestLargeBundlesEval(unittest.TestCase):
     invalid_empty_bundle = {}

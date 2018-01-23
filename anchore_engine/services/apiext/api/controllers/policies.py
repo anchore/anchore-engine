@@ -6,7 +6,8 @@ import json
 from connexion import request
 
 # anchore modules
-from anchore_engine.clients import catalog
+from anchore_engine.clients import catalog, policy_engine
+from anchore_engine.clients.policy_engine.generated.api_client import ApiException
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
 
@@ -107,12 +108,14 @@ def add_policy(bundle):
 
         # schema check
         try:
-            import anchore.anchore_policy
-            rc = anchore.anchore_policy.verify_policy_bundle(bundle=jsondata)
-            if not rc:
-                raise Exception("input bundle does not conform to anchore bundle schema")
-        except Exception as err:
-            raise Exception("cannot run bundle schema verification - exception: " + str(err))
+            p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+            response = p_client.validate_bundle(policy_bundle=jsondata)
+
+            if not response.valid:
+                raise Exception('Bundle failed validation. Validation errors: {}'.format([x.to_dict() for x in response.validation_details]))
+
+        except ApiException as err:
+            raise Exception('Error response from policy service during bundle validation. Validation could not be performed: {}'.format(err))
 
         if 'id' in jsondata and jsondata['id']:
             policyId = jsondata['id']

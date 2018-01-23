@@ -1,23 +1,26 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, delim_parser, barsplit_comma_delim_parser
+from anchore_engine.services.policy_engine.engine.policy.params import NameVersionStringListParameter, CommaDelimitedStringListParameter
 
 
 class FullMatchTrigger(BaseTrigger):
     __trigger_name__ = 'LICFULLMATCH'
     __description__ = 'triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)'
-    __params__ = {
-        'LICBLACKLIST_FULLMATCH': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'LICBLACKLIST_FULLMATCH': CommaDelimitedStringListValidator()
+    #}
+    license_blacklist = CommaDelimitedStringListParameter(name='licblacklist_fullmatch', description='List of license names to blacklist exactly')
 
     def evaluate(self, image_obj, context):
         match_vals = []
         fullmatchpkgs = []
-        for match_val in delim_parser(self.eval_params.get('LICBLACKLIST_FULLMATCH', '')):
-            match_vals.append(match_val)
+        blacklist = [ x.strip() for x in self.license_blacklist.value()] if self.license_blacklist.value() else []
+
+        #for match_val in blacklist:
+        #    match_vals.append(match_val)
 
         for pkg, license in context.data.get('licenses', []):
-            if license in match_vals:
+            if license in blacklist:
                 fullmatchpkgs.append(pkg + "(" + license + ")")
 
         if fullmatchpkgs:
@@ -27,16 +30,18 @@ class FullMatchTrigger(BaseTrigger):
 class SubstringMatchTrigger(BaseTrigger):
     __trigger_name__ = 'LICSUBMATCH'
     __description__ = 'triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)'
-    __params__ = {
-        'LICBLACKLIST_SUBMATCH': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'LICBLACKLIST_SUBMATCH': CommaDelimitedStringListValidator()
+    #}
+    licenseblacklise_submatches = CommaDelimitedStringListParameter(name='licblacklist_submatch', description='List of strings to do substring match for blacklist')
 
     def evaluate(self, image_obj, context):
         match_vals = []
         matchpkgs = []
 
-        for match_val in delim_parser(self.eval_params.get('LICBLACKLIST_SUBMATCH', '')):
-            match_vals.append(match_val)
+        match_vals = [x.strip() for x in self.licenseblacklise_submatches.value()] if self.licenseblacklise_submatches.value() else []
+        #for match_val in delim_parser(self.eval_params.get('LICBLACKLIST_SUBMATCH', '')):
+        #    match_vals.append(match_val)
 
         for pkg, license in context.data.get('licenses', []):
             for l in match_vals:

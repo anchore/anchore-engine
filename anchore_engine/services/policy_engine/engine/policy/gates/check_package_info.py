@@ -1,7 +1,8 @@
 import enum
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, barsplit_comma_delim_parser, delim_parser
-from anchore_engine.db import ImagePackage, AnalysisArtifact, ImagePackageManifestEntry
+from anchore_engine.services.policy_engine.engine.policy.params import NameVersionStringListParameter, \
+    CommaDelimitedStringListParameter
+from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.util.packages import compare_package_versions
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
@@ -11,11 +12,10 @@ log = get_logger()
 class VerifyTrigger(BaseTrigger):
     __trigger_name__ = 'VERIFY'
     __description__ = 'Check package integrity against package db in in the image. Triggers for changes or removal or content in all or the selected DIRS param if provided, and can filter type of check with the CHECK_ONLY param'
-    __params__ = {
-        'PKGS': CommaDelimitedStringListValidator(),
-        'DIRS': CommaDelimitedStringListValidator(),
-        'CHECK_ONLY': CommaDelimitedStringListValidator()
-    }
+
+    pkgs = CommaDelimitedStringListParameter(name='pkgs', description='List of package names to verify', is_required=False)
+    directories = CommaDelimitedStringListParameter(name='dirs', description='List of directories to limit checks to so as to avoid checks on all dir', is_required=False)
+    check_only = CommaDelimitedStringListParameter(name='check_only', description='List of types of checks to perform instead of all', is_required=False)
 
     analyzer_type = 'base'
     analyzer_id = 'file_package_verify'
@@ -27,13 +27,9 @@ class VerifyTrigger(BaseTrigger):
 
 
     def evaluate(self, image_obj, context):
-        pkg_names = delim_parser(self.eval_params.get('PKGS', ''))
-        pkg_dirs = delim_parser(self.eval_params.get('DIRS', ''))
-        checks = map(lambda x: x.lower(), delim_parser(self.eval_params.get('CHECK_ONLY', '')))
-
-        outlist = list()
-        imageId = image_obj.id
-        modified = {}
+        pkg_names = self.pkgs.value(default_if_none=[])
+        pkg_dirs = self.directories.value(default_if_none=[])
+        checks = self.check_only.value(default_if_none=[])
 
         if image_obj.fs:
             extracted_files_json = image_obj.fs.files
@@ -60,20 +56,6 @@ class VerifyTrigger(BaseTrigger):
 
                 if status and (not checks or status.value in checks):
                     self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, pkg_db_record.file_path, status.value))
-
-            # for pkg_db_record in entries:
-            #     #pkg_name = pkg_db_record.artifact_key
-            #     #entries = pkg_db_record.json_value
-            #     if not pkg_dirs:
-            #         filtered_entries = entries.keys()
-            #     else:
-            #         filtered_entries = filter(lambda x: any(map(lambda y: x.startswith(y), pkg_dirs)), entries.keys())
-            #
-            #     for e in filtered_entries:
-            #         status = self._verify_path(entries[e], extracted_files_json.get(e))
-            #
-            #         if status and (not checks or status.value in checks):
-            #             self._fire(msg="VERIFY check against package db for package '{}' failed on entry '{}' with status: '{}'".format(pkg_name, e, status.value))
 
     @classmethod
     def _diff_pkg_meta_and_file(cls, meta_db_entry, fs_entry):
@@ -153,19 +135,15 @@ class VerifyTrigger(BaseTrigger):
 class PkgNotPresentTrigger(BaseTrigger):
     __trigger_name__ = 'PKGNOTPRESENT'
     __description__ = 'triggers if the package(s) specified in the params are not installed in the container image.  PKGFULLMATCH param can specify an exact match (ex: "curl|7.29.0-35.el7.centos").  PKGNAMEMATCH param can specify just the package name (ex: "curl").  PKGVERSMATCH can specify a minimum version and will trigger if installed version is less than the specified minimum version (ex: zlib|0.2.8-r2)',
-    __params__ = {
-        'PKGFULLMATCH': NameVersionListValidator(),
-        'PKGNAMEMATCH': CommaDelimitedStringListValidator(),
-        'PKGVERSMATCH': NameVersionListValidator()
-    }
+
+    pkg_full_match = NameVersionStringListParameter(name='pkgfullmatch', description='Match these values on both name and exact version. Entries are comma-delimited with a pipe between pkg name and version. E.g. "pkg1|version1,pkg2|version2"', is_required=False)
+    pkg_name_match = CommaDelimitedStringListParameter(name='pkgnamematch', description='List of names to match', is_required=False)
+    pkg_version_match = NameVersionStringListParameter(name='pkgversmatch', description='Names and versions to do a minimum-version check on. Any package in the list with a version less than the specified version will cause the trigger to fire', is_required=False)
 
     def evaluate(self, image_obj, context):
-        fullmatch = barsplit_comma_delim_parser(self.eval_params.get('PKGFULLMATCH'))
-        namematch = delim_parser(self.eval_params.get('PKGNAMEMATCH'))
-        vermatch = barsplit_comma_delim_parser(self.eval_params.get('PKGVERSMATCH'))
-
-        outlist = list()
-        imageId = image_obj.id
+        fullmatch = self.pkg_full_match.value(default_if_none={})
+        namematch = self.pkg_name_match.value(default_if_none=[])
+        vermatch = self.pkg_version_match.value(default_if_none={})
 
         names = set(fullmatch.keys()).union(set(namematch)).union(set(vermatch.keys()))
         if not names:

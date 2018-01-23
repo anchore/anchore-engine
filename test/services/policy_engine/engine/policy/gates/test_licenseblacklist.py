@@ -19,7 +19,7 @@ class LicenseBlacklistGateTest(GateUnitTest):
 
     def test_fullmatch(self):
         t, gate, test_context = self.get_initialized_trigger(FullMatchTrigger.__trigger_name__,
-                                                             LICBLACKLIST_FULLMATCH='Apache-2.0')
+                                                             licblacklist_fullmatch='Apache-2.0')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -29,7 +29,7 @@ class LicenseBlacklistGateTest(GateUnitTest):
 
     def test_namematch(self):
         t, gate, test_context = self.get_initialized_trigger(SubstringMatchTrigger.__trigger_name__,
-                                                             LICBLACKLIST_SUBMATCH='GPL')
+                                                             licblacklist_submatch='GPL')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)

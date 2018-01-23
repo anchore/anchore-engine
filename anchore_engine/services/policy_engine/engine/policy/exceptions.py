@@ -16,6 +16,14 @@ class PolicyError(StandardError):
     def __str__(self):
         return '{}: severity:{} message:{}'.format(self.__class__.__name__, self.severity, self.message)
 
+    def details(self):
+        """
+        Returns nicely formatted detail string for user consumption about the exception. Optional
+        :return:
+        """
+
+        return self.message
+
 
 class PolicyWarning(PolicyError):
     severity = 'warn'
@@ -33,13 +41,36 @@ class EvaluationError(PolicyError):
     pass
 
 
+class PolicyEvaluationError(EvaluationError):
+    """
+    Collection of errors encountered during a single policy evaluation and aggregated
+
+    """
+    errors = None
+
+    def __init__(self, errors, message=None):
+        super(PolicyEvaluationError, self).__init__(message)
+        self.errors = errors
+
+
+class BundleTargetTagMismatchError(EvaluationError):
+    """
+    A tag was used to construct the bundle but execution was attempted against a different tag value.
+
+    """
+
+    def __init__(self, expected_tag, attempted_tag):
+        super(BundleTargetTagMismatchError, self).__init__('Bundle was initialized for tag {} but execution attempted against tag {}'.format(expected_tag, attempted_tag))
+
+
 class InitializationError(PolicyError):
     """
     An error during initialization and construction of the policy bundle execution. Contains a collection of related
-    errors potentially, each encountered during intialization of the bundle. This is an aggregation exception type to
+    errors potentially, each encountered during initialization of the bundle. This is an aggregation exception type to
     allow reporting of multiple init errors in a single raised exception.
 
     """
+
     def __init__(self, init_errors, message=None):
         super(InitializationError, self).__init__(message)
         self.causes = init_errors
@@ -48,68 +79,11 @@ class InitializationError(PolicyError):
         return '{}: message:"{}" causes:{}'.format(self.__class__.__name__, self.message, [str(x) for x in self.causes] if self.causes else [])
 
 
-class ValidationError(PolicyError):
-    """
-    An error validating the content of the policy itself against the code executing on the host. Includes everything from basic
-    json schema validation to parameter validation and version checks of elements. Also includes things like runtime parameter
-    validation.
-
-    """
-    pass
-
-
-class PolicyNotFoundError(ValidationError):
-    def __init__(self, policy_id):
-        super(ValidationError, self).__init__('Policy {} not found in bundle for execution'.format(policy_id))
-        self.policy = policy_id
-
-
-class DuplicatePolicyIdFoundError(ValidationError):
-    def __init__(self, policy_id):
-        super(ValidationError, self).__init__('Policy id {} found multiple times in bundle for execution'.format(policy_id))
-        self.policy = policy_id
-
-class DuplicateWhitelistIdFoundError(ValidationError):
-    def __init__(self, whitelist_id):
-        super(ValidationError, self).__init__('Whitelist id {} found multiple times in bundle for execution'.format(whitelist_id))
-        self.whitelist = whitelist_id
-
-
-class WhitelistNotFoundError(ValidationError):
-    def __init__(self, whitelist_id):
-        super(ValidationError, self).__init__('Whitelist {} not found in bundle for execution'.format(whitelist_id))
-        self.policy = whitelist_id
-
-
-class GateNotFoundError(ValidationError):
-    def __init__(self, gate_name):
-        super(GateNotFoundError, self).__init__('Gate {} not found'.format(gate_name))
-        self.gate = gate_name
-
-
-class TriggerNotFoundError(ValidationError):
-    def __init__(self, trigger_name, gate_name):
-        self.trigger = trigger_name
-        self.gate = gate_name
-
-        super(TriggerNotFoundError, self).__init__('Trigger {} not found for gate {}'.format(self.trigger, self.gate))
-
-
-class GateEvaluationError(EvaluationError):
-    """
-    Error occurred during gate initializeation or context preparation
-    """
-    gate = None
-
-    def __init__(self, gate, message):
-        super(GateEvaluationError, self).__init__('Gate evaluation failed for gate {} due to: {}. Detail: {}'.format(self.gate.__gate_name__, self.message, message))
-        self.gate = gate
-
-
 class TriggerEvaluationError(EvaluationError):
     """
     An error occured during trigger evaluation
     """
+
     gate = None
     trigger = None
 
@@ -135,39 +109,30 @@ class TriggerNotAvailableError(PolicyError):
     severity = 'warn'
 
 
-class InputParameterValidationError(ValidationError):
-    parameter = None
-    expected = None
-    got = None
+class ValidationError(PolicyError):
+    """
+    An error validating the content of the policy itself against the code executing on the host. Includes everything from basic
+    json schema validation to parameter validation and version checks of elements. Also includes things like runtime parameter
+    validation.
 
-    def __init__(self, parameter, expected, got, message=None):
-        msg = 'Parameter {} is not formatted correctly or contains an invalid value: {}. Expected: {}. Detail:"{}"'.format(parameter,
-                                                                                                        got, expected, message)
-        super(InputParameterValidationError, self).__init__(msg)
-        self.parameter = parameter
-        self.expected = expected
-        self.got = got
+    """
+
+    def details(self):
+        return "{} ({})".format(self.message, ','.join(['{}={}'.format(y[0], y[1]) for y in filter(lambda x: x[0] != 'message' and not x[0].startswith('_'), vars(self).items())]))
 
 
-class InvalidParameterError(ValidationError):
-    parameter = None
-    valid_parameters = None
-
-    def __init__(self, parameter, valid_parameters, message=None):
-        msg = 'Parameter {} is not in the valid parameters list: {}. Detail:"{}"'.format(parameter, valid_parameters, message)
-        super(InvalidParameterError, self).__init__(msg)
-        self.parameter = parameter
-        self.valid_parameters = valid_parameters
+class ReferencedObjectNotFoundError(ValidationError):
+    def __init__(self, reference_type, reference_id):
+        super(ReferencedObjectNotFoundError, self).__init__('Referenced bundle object not found')
+        self.reference_type = reference_type
+        self.reference_id = reference_id
 
 
-class InvalidGateAction(ValidationError):
-    action = None
-    valid_actions = None
-
-    def __init__(self, gate_name, trigger_name, action, valid_actions):
-        super(InvalidGateAction, self).__init__('Invalid gate action: {} specified with gate {} and trigger {}. Not in list of valid actions: {}'.format(action, gate_name, trigger_name, valid_actions))
-        self.action = action
-        self.valid_actions = valid_actions
+class DuplicateIdentifierFoundError(ValidationError):
+    def __init__(self, identifier_type, identifier):
+        super(DuplicateIdentifierFoundError, self).__init__('Object identifier found multiple times, not unique')
+        self.identifier = identifier
+        self.identifier_type = identifier_type
 
 
 class UnsupportedVersionError(ValidationError):
@@ -184,24 +149,121 @@ class UnsupportedVersionError(ValidationError):
         self.found_version = got_version
 
 
-class PolicyEvaluationError(EvaluationError):
+class PolicyRuleValidationError(ValidationError):
     """
-    Collection of errors encountered during a single policy evaluation and aggregated
-
-    """
-    errors = None
-
-    def __init__(self, errors, message=None):
-        super(PolicyEvaluationError, self).__init__(message)
-        self.errors = errors
-
-
-class BundleTargetTagMismatchError(EvaluationError):
-    """
-    A tag was used to construct the bundle but execution was attempted against a different tag value.
+    A ValidationError for a specific policy rule, including gate, trigger, and optionally an id if present.
 
     """
 
-    def __init__(self, expected_tag, attempted_tag):
-        super(BundleTargetTagMismatchError, self).__init__('Bundle was initialized for tag {} but execution attempted against tag {}'.format(expected_tag, attempted_tag))
+    def __init__(self, message=None, gate=None, trigger=None, rule_id=None):
+        super(PolicyRuleValidationError, self).__init__('Rule validation error' if not message else message) # {} on rule (id={},gate={},trigger={}). Error: {}".format(self.__class__.__name__, rule_id, gate, trigger, message))
+        self.gate = gate
+        self.trigger = trigger
+        self.rule_id = rule_id
 
+    #def details(self):
+    #    return "{} on rule (id={},gate={},trigger={}). Error: {}".format(self.__class__.__name__, self.rule_id, self.gate, self.trigger, self.message)
+
+
+class GateNotFoundError(PolicyRuleValidationError):
+    def __init__(self, valid_gates=None, **kwargs):
+        """
+        :param valid_gates:
+        :param kwargs:
+        """
+        super(GateNotFoundError, self).__init__('The specified gate is not found in the policy engine as an option. Valid gates = {}'.format(valid_gates), **kwargs)
+        self.valid_gates = valid_gates
+
+
+class TriggerNotFoundError(PolicyRuleValidationError):
+    def __init__(self, valid_triggers, **kwargs):
+        super(TriggerNotFoundError, self).__init__('Trigger not found for specified gate. Valid triggers are: {}'.format(valid_triggers), **kwargs)
+
+
+class GateEvaluationError(EvaluationError):
+    """
+    Error occurred during gate initializeation or context preparation
+    """
+    gate = None
+
+    def __init__(self, gate, message):
+        super(GateEvaluationError, self).__init__('Gate evaluation failed for gate {} due to: {}. Detail: {}'.format(self.gate.__gate_name__, self.message, message))
+        self.gate = gate
+
+
+class ParameterValueInvalidError(PolicyRuleValidationError):
+    def __init__(self, validation_error, **kwargs):
+        super(ParameterValueInvalidError, self).__init__(validation_error.message, **kwargs)
+        self._validation_exception = validation_error
+
+
+    @classmethod
+    def from_validation_error(cls, validation_error, **kwargs):
+        return ParameterValueInvalidError(message=validation_error.message, validation_error=validation_error, **kwargs)
+
+
+class ParameterValidationError(ValidationError):
+    def __init__(self, parameter, expected, value, message=None, **kwargs):
+        super(ParameterValidationError, self).__init__('Parameter validation failed: {}'.format(message), **kwargs)
+        self.parameter = parameter
+        self.expected = expected
+        self.value = value
+
+
+class InvalidParameterError(PolicyRuleValidationError):
+    parameter = None
+    valid_parameters = None
+
+    def __init__(self, parameter, valid_parameters, **kwargs):
+        msg = 'Parameter {} is not in the valid parameters list: {}'.format(parameter, valid_parameters)
+        super(InvalidParameterError, self).__init__(**kwargs)
+        self.parameter = parameter
+        self.valid_parameters = valid_parameters
+
+
+class InvalidGateAction(PolicyRuleValidationError):
+    action = None
+    valid_actions = None
+
+    def __init__(self, action, valid_actions, **kwargs):
+        super(InvalidGateAction, self).__init__(message='Invalid gate action specified', **kwargs) #: {} specified. Not in list of valid actions: {}'.format(action, valid_actions), **kwargs)
+        self.action = action
+        self.valid_actions = valid_actions
+
+
+class RequiredParameterNotSetError(PolicyRuleValidationError):
+    def __init__(self, parameter_name, **kwargs):
+        super(RequiredParameterNotSetError, self).__init__(message='Required parameter', **kwargs)#{} cannot be null'.format(parameter_name), **kwargs)
+        self.required_parameter = parameter_name
+
+
+class PolicyRuleValidationErrorCollection(PolicyRuleValidationError):
+    """
+    A collection of validation errors during an initialization. Allows aggregation of issues for a single rule validation.
+
+    """
+
+    def __init__(self, validation_errors, gate=None, trigger=None, rule_id=None):
+        message = 'Trigger parameter validation errors encountered during rule validation'
+        super(PolicyRuleValidationErrorCollection, self).__init__(message, gate=gate, trigger=trigger)
+        self.validation_errors = validation_errors
+        self.gate = gate
+        self.trigger = trigger
+        self.rule_id = rule_id
+
+        for err in self.validation_errors:
+            if err.rule_id is None:
+                err.rule_id = self.rule_id
+
+    def __str__(self):
+        return '{}: Message={} Validation errors={}'.format(self.__class__.__name__, self.message, ', '.join(['<{}>'.format(str(e)) for e in self.validation_errors]))
+
+    def json(self):
+        return {
+            'error_type': self.__class__.__name__,
+            'gate': self.gate,
+            'trigger': self.trigger,
+            'rule_id': self.rule_id,
+            'message': self.message,
+            'validation_errors': [str(e) for e in self.validation_errors]
+        }

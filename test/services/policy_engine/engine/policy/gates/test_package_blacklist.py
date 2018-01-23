@@ -18,7 +18,7 @@ class PackageBlacklistGateTest(GateUnitTest):
 
     def test_fullmatch(self):
         t, gate, test_context = self.get_initialized_trigger(FullMatchTrigger.__trigger_name__,
-                                                             BLACKLIST_FULLMATCH='binutils|2.25-5+deb8u1,libssl|123')
+                                                             blacklist_fullmatch='binutils|2.25-5+deb8u1,libssl|123')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -28,7 +28,7 @@ class PackageBlacklistGateTest(GateUnitTest):
 
     def test_namematch(self):
         t, gate, test_context = self.get_initialized_trigger(NameMatchTrigger.__trigger_name__,
-                                                             BLACKLIST_NAMEMATCH='binutils,libssl')
+                                                             blacklist_namematch='binutils,libssl')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)

@@ -1,5 +1,5 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.utils import CommaDelimitedNumberListValidator, CommaDelimitedStringListValidator, PipeDelimitedStringListValidator
+from anchore_engine.services.policy_engine.engine.policy.params import CommaDelimitedNumberListParameter, CommaDelimitedStringListParameter, PipeDelimitedStringListParameter
 from anchore_engine.db import AnalysisArtifact
 
 
@@ -40,16 +40,18 @@ class PentryBlacklistMixin(object):
 class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'USERNAMEMATCH'
     __description__ = 'triggers if specified username is found in the /etc/passwd file'
-    __params__ = {
-        'USERNAMEBLACKLIST': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'USERNAMEBLACKLIST': CommaDelimitedStringListValidator()
+    #}
+    user_blacklist = CommaDelimitedStringListParameter(name='usernameblacklist', description='Comma-delimited list of usernames that will cause the trigger to fire if found in /etc/passwd')
 
     def evaluate(self, image_obj, context):
         if not context.data.get('passwd_entries'):
             return
 
         user_entries = context.data.get('passwd_entries')
-        find_users = set([x.strip() for x in self.eval_params['USERNAMEBLACKLIST'].split(',')])
+        #find_users = set([x.strip() for x in self.eval_params['USERNAMEBLACKLIST'].split(',')])
+        find_users = set([x.strip() for x in self.user_blacklist.value()] if self.user_blacklist.value() else [])
 
         for username, pentry in self.exec_blacklist(find_users, -1, user_entries):
             self._fire(msg="Blacklisted user '{}' found in image's /etc/passwd: pentry={}".format(username, pentry))
@@ -58,16 +60,19 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'USERIDMATCH'
     __description__ = 'triggers if specified user id is found in the /etc/passwd file',
-    __params__ = {
-        'USERIDBLACKLIST': CommaDelimitedNumberListValidator()
-    }
+    #__params__ = {
+    #    'USERIDBLACKLIST': CommaDelimitedNumberListValidator()
+    #}
+
+    user_id_blacklist = CommaDelimitedNumberListParameter(name='useridblacklist', description='Comma-delimited list of userids (numeric) that will cause the trigger to fire if found in /etc/passwd')
 
     def evaluate(self, image_obj, context):
         if not context.data.get('passwd_entries'):
             return
 
         user_entries = context.data.get('passwd_entries')
-        find_users = set([x.strip() for x in self.eval_params['USERIDBLACKLIST'].split(',')])
+        #find_users = set([x.strip() for x in self.eval_params['USERIDBLACKLIST'].split(',')])
+        find_users = set([str(x) for x in self.user_id_blacklist.value()] if self.user_id_blacklist.value() else [])
 
         for uid, pentry in self.exec_blacklist(find_users, 1, user_entries):
             self._fire(msg="Blacklisted uid '{}' found in image's /etc/passwd: pentry={}".format(uid, str(pentry)))
@@ -76,16 +81,18 @@ class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'GROUPIDMATCH'
     __description__ = 'triggers if specified group id is found in the /etc/passwd file'
-    __params__ = {
-        'GROUPIDBLACKLIST': CommaDelimitedNumberListValidator()
-    }
+    #__params__ = {
+    #    'GROUPIDBLACKLIST': CommaDelimitedNumberListValidator()
+    #}
+    group_id_blacklist = CommaDelimitedNumberListParameter(name='groupidblacklist', description='Comma-delimited list of groupids (numeric) that will cause the trigger ot fire if found in /etc/passwd')
 
     def evaluate(self, image_obj, context):
         if not context.data.get('passwd_entries'):
             return
 
         user_entries = context.data.get('passwd_entries')
-        find_gid = set([x.strip() for x in self.eval_params['GROUPIDBLACKLIST'].split(',')])
+        #find_gid = set([x.strip() for x in self.eval_params['GROUPIDBLACKLIST'].split(',')])
+        find_gid = set([str(x) for x in self.group_id_blacklist.value()] if self.group_id_blacklist.value() else [])
 
         for gid, pentry in self.exec_blacklist(find_gid, 2, user_entries):
             self._fire(msg="Blacklisted gid '{}' found in image's /etc/passwd: pentry={}".format(gid, str(pentry)))
@@ -94,16 +101,18 @@ class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'SHELLMATCH'
     __description__ = 'triggers if specified login shell for any user is found in the /etc/passwd file'
-    __params__ = {
-        'SHELLBLACKLIST': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'SHELLBLACKLIST': CommaDelimitedStringListValidator()
+    #}
+    shell_blacklist = CommaDelimitedStringListParameter(name='shellblacklist', description='Comma-delimiter list of group')
 
     def evaluate(self, image_obj, context):
         if not context.data.get('passwd_entries'):
             return
 
         user_entries = context.data.get('passwd_entries')
-        find_shell = set([x.strip() for x in self.eval_params['SHELLBLACKLIST'].split(',')])
+        find_shell = set(self.shell_blacklist.value()) if self.shell_blacklist.value() else set()
+        #find_shell = set([x.strip() for x in self.eval_params['SHELLBLACKLIST'].split(',')])
 
         for shell, pentry in self.exec_blacklist(find_shell, 5, user_entries):
             self._fire(msg="Blacklisted shell '{}' found in image's /etc/passwd: pentry={}".format(shell, str(pentry)))
@@ -114,16 +123,18 @@ class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'PENTRYMATCH'
     __description__ = 'triggers if specified entire passwd entry is found in the /etc/passwd file'
-    __params__ = {
-        'PENTRYBLACKLIST': PipeDelimitedStringListValidator()
-    }
+    # __params__ = {
+    #     'PENTRYBLACKLIST': PipeDelimitedStringListValidator()
+    # }
+    pentry_blacklist = PipeDelimitedStringListParameter(name='pentryblacklist', description='List of strings to do full match on in /etc/passwd that will result in trigger firing if found')
 
     def evaluate(self, image_obj, context):
         if not context.data.get('passwd_entries'):
             return
 
         user_entries = context.data.get('passwd_entries')
-        blacklisted = [x.strip() for x in self.eval_params['PENTRYBLACKLIST'].split('|')]
+        #blacklisted = [x.strip() for x in self.eval_params['PENTRYBLACKLIST'].split('|')]
+        blacklisted = [x.strip() for x in self.pentry_blacklist.value()] if self.pentry_blacklist.value() else []
 
         for pentry, pentry in self.exec_blacklist(blacklisted, None, user_entries):
             self._fire(msg="Blacklisted pentry '{}' found in image's /etc/passwd: pentry={}".format(pentry, str(pentry)))
