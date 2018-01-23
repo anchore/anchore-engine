@@ -652,7 +652,7 @@ def handle_analyzer_queue(*args, **kwargs):
                 state_time = int(time.time()) - image_record['last_updated']
                 logger.debug("image in working state for ("+str(state_time)+")s - "+str(imageDigest))
                 if state_time > max_working_time:
-                    logger.warn("image has been in working state ("+str(currstate)+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
+                    logger.warn("image has been in working state ("+str(taskstate.working_state('analyze'))+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
                     image_record['analysis_status'] = taskstate.reset_state('analyze')
                     with db.session_scope() as dbsession:
                         db.db_catalog_image.update_record(image_record, session=dbsession)
