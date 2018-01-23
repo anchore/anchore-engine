@@ -1,4 +1,5 @@
 import connexion
+import time
 
 from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
@@ -18,6 +19,22 @@ def status():
     except Exception as err:
         return_object = str(err)
 
+    try:
+        timer = time.time()
+        with db.session_scope() as session:
+            rc = db.db_catalog_image.get_all_digtags0('admin', session=session)
+            logger.debug("TIME0: " + str(time.time() - timer))
+            logger.debug("TIME0LEN: " + str(len(rc)))
+            logger.debug("TIME0ITEM: " + str(rc[0]))
+
+        timer = time.time()
+        with db.session_scope() as session:
+            rc = db.db_catalog_image.get_all_digtags1('admin', session=session)
+            logger.debug("TIME1: " + str(time.time() - timer))
+            logger.debug("TIME1LEN: " + str(len(rc)))
+            logger.debug("TIME1ITEM: " + str(rc[0]))
+    except Exception as err:
+        logger.debug("ERR: " + str(err))
     return (return_object, httpcode)
 
 

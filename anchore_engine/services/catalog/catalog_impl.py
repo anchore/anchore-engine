@@ -609,6 +609,11 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 record = db_policybundle.get(userId, policyId, session=dbsession)
                 record['policybundle'] = jsondata['policybundle']
 
+                #record['policybundlemeta'] = {}
+                #meta = archive_sys.get_document_meta(userId, 'policy_bundles', record['policyId'])
+                #if meta:
+                #    record['policybundlemeta'] = meta
+
                 if not rc:
                     raise Exception("DB update failed")
                 else:

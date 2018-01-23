@@ -160,6 +160,26 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
 
     return(ret)
 
+def get_all_digtags0(userId, session=None):
+    
+    ret = []
+    results = session.query(CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
+    for result in results:
+        ret.append(result)
+
+    return(ret)
+
+def get_all_digtags1(userId, session=None):
+    
+    ret = []
+    results = session.query(CatalogImageDocker.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter_by(userId=userId)
+    #ret = list(results.values())
+    ret = list(results)
+    #for result in results:
+    #    ret.append(result)
+
+    return(ret)
+
 def get_all_byuserId(userId, session=None):
     if not session:
         session = db.Session
