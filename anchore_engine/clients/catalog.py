@@ -146,10 +146,10 @@ def get_imagetags(userId):
     auth = (userId, pw)
 
     base_url = get_catalog_endpoint()
-    url = base_url + "/imagetags"
+    url = base_url + "/summary/imagetags"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    logger.debug("HERE")
+
     return(ret)        
 
 def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, registry_lookup=False, history=False):

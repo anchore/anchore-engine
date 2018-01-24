@@ -292,7 +292,7 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /imagetags:
+  /summary/imagetags:
     get:
       tags:
       - ImageTags
@@ -305,9 +305,9 @@ paths:
           description: "successful operation"
           schema:
             type: array
-            description: "List of AnchoreImageTag objects"
+            description: "List of AnchoreImageTagSummary objects"
             items:
-              $ref: "#/definitions/AnchoreImageTag"
+              $ref: "#/definitions/AnchoreImageTagSummary"
         500:
           description: Internal Error
           schema:
@@ -1279,16 +1279,20 @@ definitions:
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
-  AnchoreImageTag:
+  AnchoreImageTagSummary:
     description: A unique image in the engine. 
     type: object
     properties:
       imageDigest:
         type: string
+      imageId:
+        type: string
+      analysis_status:
+        type: string
       fulltag:
         type: string
-      userId:
-        type: string
+      created_at:
+        type: integer
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
     type: object

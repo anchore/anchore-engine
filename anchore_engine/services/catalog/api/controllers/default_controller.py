@@ -19,55 +19,6 @@ def status():
     except Exception as err:
         return_object = str(err)
 
-    if False:
-        try:
-
-            times = []
-            for i in range(0, 5):
-                timer = time.time()
-                with db.session_scope() as session:
-                    rc = db.db_catalog_image.get_all_digtags0('admin', session=session)
-                    times.append(time.time() - timer)
-                    logger.debug("TIME0: " + str(time.time() - timer))
-                    logger.debug("TIME0LEN: " + str(len(rc)))
-                    logger.debug("TIME0ITEM: " + str(rc[0]))
-            logger.debug("TIME0MEAN: " + str(sum(times) / 5.0))
-
-            times = []
-            for i in range(0, 5):
-                timer = time.time()
-                with db.session_scope() as session:
-                    rc = db.db_catalog_image.get_all_digtags1('admin', session=session)
-                    times.append(time.time() - timer)
-                    logger.debug("TIME1: " + str(time.time() - timer))
-                    logger.debug("TIME1LEN: " + str(len(rc)))
-                    logger.debug("TIME1ITEM: " + str(rc[0]))
-            logger.debug("TIME1MEAN: " + str(sum(times) / 5.0))
-
-            timer = time.time()
-            with db.session_scope() as session:
-                dbfilter={}
-                rc = db.db_catalog_image.get_all_digtags2('admin', ['imageDigest', 'registry', 'repo', 'tag'], session=session)
-                logger.debug("TIME2: " + str(time.time() - timer))
-                logger.debug("TIME2LEN: " + str(len(rc)))
-                logger.debug("TIME2ITEM: " + str(rc[0]))
-
-            timer = time.time()
-            with db.session_scope() as session:
-                dbfilter={}
-                rc = db.db_catalog_image.get_all_digtags3('admin', ['imageDigest', 'registry', 'repo', 'tag'], session=session)
-                logger.debug("TIME3: " + str(time.time() - timer))
-                logger.debug("TIME3LEN: " + str(len(rc)))
-                logger.debug("TIME3ITEM: " + str(rc[0]))
-
-            timer = time.time()
-            with db.session_scope() as session:
-                rc = db.db_catalog_image.get_all_byuserId('admin', session=session)
-                logger.debug("TIMEBASE: " + str(time.time() - timer))
-                logger.debug("TIMEBASELEN: " + str(len(rc)))
-                logger.debug("TIMEBASEITEM: " + str(rc[0]))
-        except Exception as err:
-            logger.debug("ERR: " + str(err))
     return (return_object, httpcode)
 
 def image_tags_get():

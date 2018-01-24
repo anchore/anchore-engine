@@ -71,7 +71,7 @@ def image_tags(dbsession, request_inputs):
     try:
         if method == 'GET':
             httpcode = 200
-            return_object = db_catalog_image.get_all_digtags(userId, session=dbsession)
+            return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 

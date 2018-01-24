@@ -45,11 +45,11 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
-  /imagetags:
+  /summary/imagetags:
     get:
       tags:
       - "catalog"
-      summary: "Get image digest and tags list from DB"
+      summary: "Get image digest and tags summary list from DB"
       description: ""
       operationId: "image_tags_get"
       produces:
