@@ -4,7 +4,7 @@ import json
 import datetime
 
 # anchore modules
-from anchore_engine.clients import catalog, simplequeue
+from anchore_engine.clients import catalog, simplequeue, policy_engine
 import anchore_engine.services.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.configuration.localconfig
@@ -316,3 +316,29 @@ def post_system_prune_candidates(resourcetype, bodycontent):
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
+
+def describe_policy():
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    user_auth = request_inputs['auth']
+
+    return_object = []
+    httpcode = 500
+    try:
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        return_object = p_client.describe_policy()
+        if return_object:
+            httpcode = 200
+        return_object = [x.to_dict() for x in return_object]
+
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
+
+
+
+
+

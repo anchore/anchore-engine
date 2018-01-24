@@ -14,7 +14,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
     TriggerNotFoundError, \
     GateEvaluationError, \
     GateNotFoundError, \
-    InputParameterValidationError, \
+    ParameterValueInvalidError, \
     InvalidParameterError, \
     InvalidGateAction, \
     PolicyEvaluationError, \
@@ -22,10 +22,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
     PolicyError, \
     InitializationError, \
     ValidationError, \
-    WhitelistNotFoundError, \
-    PolicyNotFoundError, \
-    DuplicatePolicyIdFoundError, \
-    DuplicateWhitelistIdFoundError, BundleTargetTagMismatchError
+    BundleTargetTagMismatchError, PolicyRuleValidationErrorCollection, DuplicateIdentifierFoundError, ReferencedObjectNotFoundError
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
@@ -318,14 +315,16 @@ class ExecutablePolicyRule(object):
     def __init__(self, policy_json=None):
         self.gate_name = policy_json.get('gate')
         self.trigger_name = policy_json.get('trigger')
-        self.trigger_params = { p.get('name'): p.get('value') for p in policy_json.get('params')}
+        self.rule_id = policy_json.get('id')
+
+        # Convert to lower-case for case-insensitive matches
+        self.trigger_params = { p.get('name').lower(): p.get('value') for p in policy_json.get('params')}
 
         action = policy_json.get('action', '').lower()
         try:
             self.action = GateAction.__members__[action]
         except KeyError:
-            raise InvalidGateAction(action=action, gate_name=self.gate_name, trigger_name=self.trigger_name,
-                                    valid_actions=filter(lambda x: not x.startswith('_'), GateAction.__dict__.keys()))
+            raise InvalidGateAction(gate=self.gate_name, trigger=self.trigger_name, rule_id=self.rule_id, action=action, valid_actions=filter(lambda x: not x.startswith('_'), GateAction.__dict__.keys()))
 
         self.error_exc = None
         self.errors = []
@@ -333,23 +332,40 @@ class ExecutablePolicyRule(object):
         # Configure the trigger instance
         try:
             self.gate_cls = Gate.registry[self.gate_name.lower()]
-            try:
-                selected_trigger_cls = self.gate_cls.get_trigger_named(self.trigger_name)
-                self.configured_trigger = selected_trigger_cls(parent_gate_cls=self.gate_cls, **self.trigger_params)
-            except [TriggerNotFoundError, InvalidParameterError, InputParameterValidationError] as e:
-                # Error finding or initializing the trigger
-                log.exception('Policy rule execution exception: {}'.format(e))
-                self.error_exc = TriggerNotFoundError(self.gate_name, self.trigger_name)
-                self.configured_trigger = None
-                raise
-
-        except PolicyError:
-            raise
         except KeyError:
             # Gate not found
-            raise GateNotFoundError(self.gate_name)
+            self.error_exc = GateNotFoundError(gate=self.gate_name, valid_gates=Gate.registry.keys(), rule_id=self.rule_id)
+            self.configured_trigger = None
+            raise self.error_exc
+
+        try:
+            selected_trigger_cls = self.gate_cls.get_trigger_named(self.trigger_name.lower())
+        except KeyError:
+            self.error_exc = TriggerNotFoundError(valid_triggers=self.gate_cls.trigger_names(), trigger=self.trigger_name, gate=self.gate_name, rule_id=self.rule_id)
+            self.configured_trigger = None
+            raise self.error_exc
+
+        try:
+
+            try:
+                self.configured_trigger = selected_trigger_cls(parent_gate_cls=self.gate_cls, rule_id=self.rule_id, **self.trigger_params)
+            except [TriggerNotFoundError, InvalidParameterError, ParameterValueInvalidError] as e:
+                # Error finding or initializing the trigger
+                log.exception('Policy rule execution exception: {}'.format(e))
+                self.error_exc = e
+                self.configured_trigger = None
+
+                if hasattr(e, 'gate') and e.gate is None:
+                    e.gate = self.gate_name
+                if hasattr(e, 'trigger') and e.trigger is None:
+                    e.trigger = self.trigger_name
+                if hasattr(e, 'rule_id') and e.rule_id is None:
+                    e.rule_id = self.rule_id
+                raise e
+        except PolicyError:
+            raise # To filter out already-handled errors
         except Exception as e:
-            raise ValidationError(e)
+            raise ValidationError.caused_by(e)
 
     def execute(self, image_obj, exec_context):
         """
@@ -476,6 +492,9 @@ class ExecutablePolicy(VersionedEntityMixin):
         for x in raw_json.get('rules'):
             try:
                 self.rules.append(ExecutablePolicyRule(x))
+            except PolicyRuleValidationErrorCollection as e:
+                for err in e.validation_errors:
+                    errors.append(err)
             except PolicyError as e:
                 errors.append(e)
             except Exception as e:
@@ -973,9 +992,9 @@ class ExecutableBundle(VersionedEntityMixin):
                     # Build the specified policy for the rule
                     policy = filter(lambda x: x['id'] == rule.policy_id, self.raw.get('policies', []))
                     if not policy:
-                        raise PolicyNotFoundError(policy_id=rule.policy_id)
+                        raise ReferencedObjectNotFoundError(reference_id=rule.policy_id, reference_type='policy')
                     elif len(policy) > 1:
-                        raise DuplicatePolicyIdFoundError(rule.policy_id)
+                        raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
 
                     self.policies[rule.policy_id] = ExecutablePolicy(policy[0])
                 except Exception as e:
@@ -989,9 +1008,9 @@ class ExecutableBundle(VersionedEntityMixin):
                     try:
                         whitelist = filter(lambda x: x['id'] == wl, self.raw.get('whitelists', []))
                         if not whitelist:
-                            raise WhitelistNotFoundError(whitelist_id=wl)
+                            raise ReferencedObjectNotFoundError(reference_id=wl, reference_type='whitelist')
                         elif len(whitelist) > 1:
-                            raise DuplicateWhitelistIdFoundError(wl)
+                            raise DuplicateIdentifierFoundError(identifier=wl, identifier_type='whitelist')
 
                         self.whitelists[wl] = ExecutableWhitelist(whitelist[0])
                     except Exception as e:
@@ -999,7 +1018,6 @@ class ExecutableBundle(VersionedEntityMixin):
                             self.init_errors += e.causes
                         else:
                             self.init_errors.append(e)
-
 
         except Exception as e:
             if isinstance(e, InitializationError):
@@ -1014,10 +1032,18 @@ class ExecutableBundle(VersionedEntityMixin):
         # Validate mapping references
         for m in self.mapping.mapping_rules:
             if m.policy_id not in self.policies:
-                raise PolicyNotFoundError(policy_id=m.policy_id)
+                raise ReferencedObjectNotFoundError(reference_id=m.policy_id, reference_type='policy')
             for w in m.whitelist_ids:
                 if w not in self.whitelists:
-                    raise WhitelistNotFoundError(whitelist_id=w)
+                    raise ReferencedObjectNotFoundError(reference_id=w, reference_type='whitelist')
+
+    def validate(self):
+        """
+        Executes a validation pass on the policy bundle as constructed. Does not alter any state.
+        :return: list of errors, if empty, the validation has passed
+        """
+
+        return self.init_errors
 
     def execute(self, image_object, tag, context):
         """
@@ -1065,7 +1091,9 @@ class ExecutableBundle(VersionedEntityMixin):
                 evaluated_policy = None
         except KeyError:
             # Referenced policy is not found, mark error
-            bundle_exec.errors.append(PolicyNotFoundError(bundle_exec.executed_mapping.policy_id))
+            bundle_exec.errors.append(ReferencedObjectNotFoundError(reference_id=bundle_exec.executed_mapping.policy_id, reference_type='policy'))
+            #PolicyNotFoundError(bundle_exec.executed_mapping.policy_id))
+
             bundle_exec.policy_decision = FailurePolicyDecision()
             return bundle_exec
 
@@ -1140,7 +1168,6 @@ def get_bundle(bundle_id):
     #     return bundle.to_dict()
 
 
-
 def build_bundle(bundle_json, for_tag=None):
     """
     Parse and build an executable bundle from the input. Handles versions to construct the
@@ -1151,7 +1178,7 @@ def build_bundle(bundle_json, for_tag=None):
     
     :param bundle_json:
     :param for_tag: the tag to build the bundle for exclusively
-    :return: ExecutableBundle object 
+    :return: ExecutableBundle object
     """
     if bundle_json:
 
@@ -1165,4 +1192,3 @@ def build_bundle(bundle_json, for_tag=None):
     else:
         raise ValueError('No bundle json found')
     return bundle
-

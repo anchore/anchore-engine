@@ -2,7 +2,7 @@ import re
 import stat
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.policy.utils import PipeDelimitedStringListValidator
+from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListParameter
 from anchore_engine.db import AnalysisArtifact
 log = get_logger()
 
@@ -10,16 +10,18 @@ log = get_logger()
 class ContentMatchTrigger(BaseTrigger):
     __trigger_name__ = 'CONTENTMATCH'
     __description__ = 'Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the FILECHECK_CONTENTMATCH parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches.'
-    __params__ = {
-        'FILECHECK_CONTENTREGEXP': PipeDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'FILECHECK_CONTENTREGEXP': PipeDelimitedStringListValidator()
+    #}
+    contentregex_names = PipeDelimitedStringListParameter(name='filecheck_contentregexp', description='Pipe delimited list of named regexes from the FILECHECK_CONTENTMATCH parameter list for the analyzers')
 
     def evaluate(self, image_obj, context):
-        match_filter = self.eval_params.get(self.__params__.keys()[0])
+        #match_filter = self.eval_params.get(self.__params__.keys()[0])
+        match_filter = self.contentregex_names.value()
 
         if match_filter:
-            matches = [x.encode('base64') for x in match_filter.split('|')]
-            matches_decoded = match_filter.split('|')
+            matches = [x.encode('base64') for x in match_filter]
+            matches_decoded = match_filter
         else:
             matches = []
             matches_decoded = []
@@ -46,16 +48,20 @@ class ContentMatchTrigger(BaseTrigger):
 class FilenameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'FILENAMEMATCH'
     __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as FILECHECK_NAMEREGEXP parameters.'
-    __params__ = {
-        'FILECHECK_NAMEREGEXP': PipeDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'FILECHECK_NAMEREGEXP': PipeDelimitedStringListValidator()
+    #}
+
+    regex_names = PipeDelimitedStringListParameter(name='filecheck_nameregexp', description='Pipe-delimited list of names of regexes from the FILECHECK_NAMEREGEXP paramter in the analyzer configuration')
 
     def evaluate(self, image_obj, context):
         # decode the param regexes from b64
         fname_regexps = []
-        regex_param = self.eval_params.get(self.__params__.keys()[0])
+        #regex_param = self.eval_params.get(self.__params__.keys()[0])
+        regex_param = self.regex_names.value()
+
         if regex_param:
-            fname_regexps = regex_param.split('|')
+            fname_regexps = regex_param
 
         if not fname_regexps:
             # Short circuit

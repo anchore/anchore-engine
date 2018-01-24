@@ -5,7 +5,7 @@ from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, BundleExecution
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, ExposeTrigger
-from anchore_engine.services.policy_engine.engine.policy.exceptions import TriggerEvaluationError, TriggerNotAvailableError, TriggerNotFoundError, EvaluationError, GateEvaluationError, GateNotFoundError, InputParameterValidationError, InvalidParameterError
+from anchore_engine.services.policy_engine.engine.policy.exceptions import TriggerEvaluationError, TriggerNotAvailableError, TriggerNotFoundError, ValidationError, PolicyRuleValidationErrorCollection
 
 test_bundle = {
     'id': 'test_id',
@@ -42,7 +42,7 @@ class GateFailureTest(unittest.TestCase):
     gate_clazz = DockerfileGate
 
     def test_trigger_init_failure(self):
-        with self.assertRaises(TriggerNotFoundError) as f:
+        with self.assertRaises(KeyError) as f:
             t = self.gate_clazz.get_trigger_named('NOT_A_REAL_TRIGGER')
 
         t = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
@@ -56,20 +56,20 @@ class GateFailureTest(unittest.TestCase):
     def test_trigger_parameter_invalid(self):
         clazz = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
 
-        with self.assertRaises(InvalidParameterError) as f:
-            trigger = clazz(self.gate_clazz, NOTAPARAM='testing123')
+        with self.assertRaises(PolicyRuleValidationErrorCollection) as f:
+            trigger = clazz(self.gate_clazz, notaparam='testing123')
 
-        with self.assertRaises(InvalidParameterError) as f:
-            trigger = clazz(self.gate_clazz, ALLOWED_PORTS='80')
+        with self.assertRaises(PolicyRuleValidationErrorCollection) as f:
+            trigger = clazz(self.gate_clazz, allowed_ports='80')
 
     def test_trigger_parameter_validation_failure(self):
         clazz = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
 
-        with self.assertRaises(InputParameterValidationError) as f:
-            trigger = clazz(self.gate_clazz, ALLOWEDPORTS=80)
+        with self.assertRaises(PolicyRuleValidationErrorCollection) as f:
+            trigger = clazz(self.gate_clazz, allowedports=80)
 
-        with self.assertRaises(InputParameterValidationError) as f:
-            trigger = clazz(self.gate_clazz, ALLOWEDPORTS='80-100')
+        with self.assertRaises(ValidationError) as f:
+            trigger = clazz(self.gate_clazz, allowedports='80-100')
 
 class PolicyFailureTest(unittest.TestCase):
 
@@ -79,3 +79,7 @@ class PolicyFailureTest(unittest.TestCase):
 
         r = b.execute(image_object=image_obj, tag='dockerhub/library/alpine:latest', context=object())
         print(json.dumps((r.json()), indent=2))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -18,6 +18,7 @@ from .models.distro_mapping import DistroMapping
 from .models.error_response import ErrorResponse
 from .models.event_status import EventStatus
 from .models.feed_update_notification import FeedUpdateNotification
+from .models.gate_spec import GateSpec
 from .models.image import Image
 from .models.image_ingress_request import ImageIngressRequest
 from .models.image_ingress_response import ImageIngressResponse
@@ -38,8 +39,11 @@ from .models.policy_evaluation_light import PolicyEvaluationLight
 from .models.policy_evaluation_problem import PolicyEvaluationProblem
 from .models.policy_rule import PolicyRule
 from .models.policy_rule_params import PolicyRuleParams
+from .models.policy_validation_response import PolicyValidationResponse
 from .models.table_style_result import TableStyleResult
 from .models.tag import Tag
+from .models.trigger_param_spec import TriggerParamSpec
+from .models.trigger_spec import TriggerSpec
 from .models.update_event import UpdateEvent
 from .models.vulnerability_listing import VulnerabilityListing
 from .models.whitelist import Whitelist

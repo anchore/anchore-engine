@@ -53,7 +53,7 @@ class NpmCheckGateTest(GateUnitTest):
         self.assertGreaterEqual(len(t.fired), 0)
 
     def test_pkgfullmatch(self):
-        t, gate, test_context = self.get_initialized_trigger(PkgFullMatchTrigger.__trigger_name__, BLACKLIST_NPMFULLMATCH='abbrev|1.1.0,ajv|4.11.8,blarg|1.0')
+        t, gate, test_context = self.get_initialized_trigger(PkgFullMatchTrigger.__trigger_name__, blacklist_npmfullmatch='abbrev|1.1.0,ajv|4.11.8,blarg|1.0')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)

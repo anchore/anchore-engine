@@ -14,16 +14,17 @@ from werkzeug.exceptions import HTTPException
 
 from anchore_engine.configuration import localconfig
 import anchore_engine.subsys.servicestatus
-from anchore_engine.services.policy_engine.api.models import Image as ImageMsg
+from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
+
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, \
-    ImageVulnerabilityListing, \
-    ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
+    ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
+    GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
 from anchore_engine.db import Image, get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import get_bundle, build_bundle, \
     build_empty_error_execution
-from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, PolicyRuleValidationErrorCollection
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
@@ -31,6 +32,8 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnera
 from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
+from anchore_engine.services.policy_engine.engine.policy import gates
+
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL']
 
 
@@ -53,7 +56,6 @@ def get_status():
         return_object = str(err)
 
     return (return_object, httpcode)
-
 
 def create_feed_update(notification):
     """
@@ -186,7 +188,13 @@ def problem_from_exception(eval_exception, severity=None):
         return None
 
     prob = PolicyEvaluationProblem()
-    prob.details = eval_exception.message
+
+    # If there is a details() function, call that
+    if hasattr(eval_exception, 'details') and callable(eval_exception.details):
+        prob.details = eval_exception.details()
+    else:
+        prob.details = eval_exception.message
+
     prob.problem_type = eval_exception.__class__.__name__
     if hasattr(eval_exception, 'severity') and eval_exception.severity:
         prob.severity = eval_exception.severity
@@ -423,3 +431,82 @@ def ingress_image(ingress_request):
         return resp.to_dict(), 200
     except Exception as e:
         abort(500, 'Internal error processing image analysis import')
+
+
+def validate_bundle(policy_bundle):
+    """
+    Performs a validation of the given policy bundle and either returns 200 OK with a status message in the response indicating pass/fail and any validation errors.
+
+    :param policy_bundle:
+    :return: 200 OK with policy validation response
+    """
+
+    try:
+        resp = PolicyValidationResponse()
+        problems = []
+        try:
+            executable_bundle = build_bundle(policy_bundle)
+            if executable_bundle.init_errors:
+                problems = executable_bundle.init_errors
+        # except TriggerParameterValidationError as e:
+        #     problems = e.validation_errors
+        #     log.warn('Trigger parameter validation failed: {}'.format(e))
+        except InitializationError as e:
+            # Expand any validation issues
+            problems = e.causes
+
+        resp.valid = (len(problems) == 0)
+        resp.validation_details = [problem_from_exception(i, severity='error') for i in problems]
+        return resp.to_dict()
+
+    except HTTPException as e:
+        log.exception('Caught exception in execution: {}'.format(e))
+        raise
+    except Exception as e:
+        log.exception('Failed processing bundle evaluation: {}'.format(e))
+        abort(Response('Unexpected internal error', 500))
+
+
+def describe_policy():
+    """
+    Return a dictionary/json description of the set of gates available and triggers.
+
+    :param gate_filter: a list of gate names to filter by, if None, then all are returned
+    :return: dict/json description of the gates and triggers
+    """
+
+    try:
+
+        doc = []
+        for k, v in Gate.registry.items():
+            g = GateSpec()
+            g.name = k
+            g.description = v.description if hasattr(v, 'description') else ''
+            g.triggers = []
+
+            for t in v.__triggers__:
+                tr = TriggerSpec()
+                tr.name = t.__trigger_name__
+                tr.description = t.__description__ if t.__description__ else ''
+                tr.parameters = []
+
+                params = t._parameters()
+                if params:
+                    for param in params.values():
+                        tps = TriggerParamSpec()
+                        tps.name = param.name
+                        tps.description = param.description
+                        tps.validator = param.validator.json()
+                        tps.required = param.required
+
+                        tr.parameters.append(tps)
+
+                g.triggers.append(tr)
+
+            doc.append(g.to_dict())
+
+        return doc, 200
+
+    except Exception as e:
+        log.exception('Error describing gate system')
+        abort(500, 'Internal error describing gate configuration')

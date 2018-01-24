@@ -58,7 +58,7 @@ class GemCheckGateTest(GateUnitTest):
         self.assertGreaterEqual(len(t.fired), 0)
 
     def test_pkgfullmatch(self):
-        t, gate, test_context = self.get_initialized_trigger(PkgFullMatchTrigger.__trigger_name__, BLACKLIST_GEMFULLMATCH='json|2.0.2,bundler|1.14.6,foo|1.0.0')
+        t, gate, test_context = self.get_initialized_trigger(PkgFullMatchTrigger.__trigger_name__, blacklist_gemfullmatch='json|2.0.2,bundler|1.14.6,foo|1.0.0')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -67,7 +67,7 @@ class GemCheckGateTest(GateUnitTest):
         self.assertGreaterEqual(len(t.fired), 2)
 
     def test_pkgnamematch(self):
-        t, gate, test_context = self.get_initialized_trigger(PkgNameMatchTrigger.__trigger_name__, BLACKLIST_GEMNAMEMATCH='json,foo,bar,notrealgem')
+        t, gate, test_context = self.get_initialized_trigger(PkgNameMatchTrigger.__trigger_name__, blacklist_gemnamematch='json,foo,bar,notrealgem')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)

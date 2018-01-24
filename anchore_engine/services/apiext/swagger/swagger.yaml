@@ -1024,6 +1024,25 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /system/policy_spec:
+    get:
+      summary: Describe the policy language spec implemented by this service.
+      description: Get the policy language spec for this service
+      operationId: describe_policy
+      tags:
+      - System
+      - Policy
+      produces:
+      - application/json
+      responses:
+        200:
+          description: Policy Language Description
+          schema:
+            type: array
+            description: List of Gate specifications
+            items:
+              $ref: "#/definitions/GateSpec"
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
 definitions:
   ImageAnalysisRequest:
     type: object
@@ -1500,3 +1519,48 @@ definitions:
         type: string
       digest:
         type: string
+  GateSpec:
+    type: object
+    description: A description of the set of gates available in this engine and the triggers and parameters supported
+    properties:
+      name:
+        type: string
+        description: Gate name, as it would appear in a policy document
+      description:
+        type: string
+        description: Description of the gate
+      triggers:
+        type: array
+        description: List of the triggers that can fire for this Gate
+        items:
+          $ref: "#/definitions/TriggerSpec"
+  TriggerSpec:
+    type: object
+    description: Definition of a trigger and its parameters
+    properties:
+      name:
+        type: string
+        description: Name of the trigger as it would appear in a policy document
+      description:
+        type: string
+        description: Trigger description for what it tests and when it will fire during evaluation
+      parameters:
+        type: array
+        description: The list of parameters that are valid for this trigger
+        items:
+          $ref: "#/definitions/TriggerParamSpec"
+  TriggerParamSpec:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Parameter name as it appears in policy document
+      description:
+        type: string
+      required:
+        description: Is this a required parameter or optional
+        type: boolean
+      validator:
+        type: object
+        description: If present, a definition for validation of input. Typically a jsonschema object that can be used to validate an input against.
+

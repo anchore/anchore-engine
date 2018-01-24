@@ -3,7 +3,7 @@ import logging
 import json
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.gates.conditions import CheckOperation, CheckOperations, AttributeListValidator
-from anchore_engine.services.policy_engine.engine.policy.utils import CommaDelimitedStringListValidator, delim_parser, InputValidator, TypeValidator
+from anchore_engine.services.policy_engine.engine.policy.params import EnumCommaDelimStringListParameter, EnumStringParameter, TypeValidator, TriggerParameter
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
 log = get_logger()
@@ -39,16 +39,22 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __checks__ = CheckOperations(__ops__)
     __value_validator__ = lambda x: True
 
-    __params__ = {
-        'ATTRIBUTES': AttributeListValidator(__valid_attributes__.keys()),
-        'CHECK': __checks__,
-        'CHECK_VALUE': __value_validator__
-    }
+    #__params__ = {
+    #    'ATTRIBUTES': AttributeListValidator(__valid_attributes__.keys()),
+    #    'CHECK': __checks__,
+    #    'CHECK_VALUE': __value_validator__
+    #}
+    attributes = EnumCommaDelimStringListParameter(name='attributes', description='List of attribute names to apply as rvalues to the check operation', enum_values=__valid_attributes__)
+    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys())
+    check_value = TriggerParameter(name='check_value', description='The lvalue in the check operation.', validator=TypeValidator('string'))
 
     def evaluate(self, image_obj, context):
-        attrs = delim_parser(self.eval_params.get('ATTRIBUTES', ''))
-        check = self.eval_params.get('CHECK')
-        rval = self.eval_params.get('CHECK_VALUE')
+        #attrs = delim_parser(self.eval_params.get('ATTRIBUTES', ''))
+        #check = self.eval_params.get('CHECK')
+        #rval = self.eval_params.get('CHECK_VALUE')
+        attrs = self.attributes.value()
+        check = self.check.value()
+        rval = self.check_value.value()
 
         if not attrs or not check:
             return

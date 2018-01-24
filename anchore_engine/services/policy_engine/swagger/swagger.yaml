@@ -1,6 +1,4 @@
----
 swagger: "2.0"
-
 info:
   description: "This is a policy evaluation service. It receives push-events from external systems for data updates and provides an api for requesting image policy checks"
   version: "1.0.0"
@@ -10,20 +8,31 @@ info:
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-
 basePath: "/v1"
-
 schemes:
 - https
 - http
-
 securityDefinitions:
   anchore_basic:
     type: basic
 security:
   - anchore_basic: []
-
 paths:
+  /policy_spec:
+    get:
+      summary: Describe the policy language spec implemented by this service.
+      description: Get the policy language spec for this service
+      operationId: describe_policy
+      produces:
+      - application/json
+      responses:
+        200:
+          description: Policy Language Description
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/GateSpec"
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
   /status:
     get:
       summary: Get the status of the service
@@ -270,6 +279,30 @@ paths:
           description: "Internal server error processing the request. Retry expected"
         400:
           description: "Bad request, fix and resend"
+  /validate_bundle:
+    post:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
+      operationId: validate_bundle
+      description: "Perform a policy bundle validation against the included bundle"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "policy_bundle"
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/PolicyBundle"
+      responses:
+        200:
+          description: "Validation completed, returning result"
+          schema:
+            $ref: "#/definitions/PolicyValidationResponse"
+        400:
+          description: "Bad request, likely problem in json structure of policy_bundle"
+        500:
+          description: "Internal server error processing the request."
 definitions:
   Image:
     type: object
@@ -751,4 +784,59 @@ definitions:
         type: string
         description: Timestamp of mapping creation
         format: "date-time"
-
+  GateSpec:
+    type: object
+    description: A description of the set of gates available in this engine and the triggers and parameters supported
+    properties:
+      name:
+        type: string
+        description: Gate name, as it would appear in a policy document
+      description:
+        type: string
+        description: Description of the gate
+      triggers:
+        type: array
+        description: List of the triggers that can fire for this Gate
+        items:
+          $ref: "#/definitions/TriggerSpec"
+  TriggerSpec:
+    type: object
+    description: Definition of a trigger and its parameters
+    properties:
+      name:
+        type: string
+        description: Name of the trigger as it would appear in a policy document
+      description:
+        type: string
+        description: Trigger description for what it tests and when it will fire during evaluation
+      parameters:
+        type: array
+        description: The list of parameters that are valid for this trigger
+        items:
+          $ref: "#/definitions/TriggerParamSpec"
+  TriggerParamSpec:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Parameter name as it appears in policy document
+      description:
+        type: string
+      required:
+        description: Is this a required parameter or optional
+        type: boolean
+      validator:
+        type: object
+        description: If present, a definition for validation of input. Typically a jsonschema object that can be used to validate an input against.
+  PolicyValidationResponse:
+    type: object
+    description: A response containing details for a policy validation including pass/fail and and validation errors found.
+    properties:
+      valid:
+        type: boolean
+        description: The validation result. If True, the policy bundle is valid. If False, it is invalid and there should be content in the validation_details property.
+      validation_details:
+        type: array
+        description: An array of validation details including error messages as appropriate. Will be empty on a successful validation.
+        items:
+          $ref: "#/definitions/PolicyEvaluationProblem"

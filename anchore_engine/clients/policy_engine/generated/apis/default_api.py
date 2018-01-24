@@ -108,10 +108,9 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/distro_mappings'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -128,7 +127,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'POST',
+        return self.api_client.call_api('/distro_mappings', 'POST',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -223,16 +222,15 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/users/{user_id}/images/{image_id}/check_inline'.replace('{format}', 'json')
         path_params = {}
         if 'user_id' in params:
             path_params['user_id'] = params['user_id']
         if 'image_id' in params:
             path_params['image_id'] = params['image_id']
 
-        query_params = {}
+        query_params = []
         if 'tag' in params:
-            query_params['tag'] = params['tag']
+            query_params.append(('tag', params['tag']))
 
         header_params = {}
 
@@ -249,7 +247,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'POST',
+        return self.api_client.call_api('/users/{user_id}/images/{image_id}/check_inline', 'POST',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -330,10 +328,9 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/notifications/feeds'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -354,7 +351,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'POST',
+        return self.api_client.call_api('/notifications/feeds', 'POST',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -434,12 +431,11 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/distro_mappings'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
         if 'from_distro' in params:
-            query_params['from_distro'] = params['from_distro']
+            query_params.append(('from_distro', params['from_distro']))
 
         header_params = {}
 
@@ -454,7 +450,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'DELETE',
+        return self.api_client.call_api('/distro_mappings', 'DELETE',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -542,14 +538,13 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/users/{user_id}/images/{image_id}'.replace('{format}', 'json')
         path_params = {}
         if 'user_id' in params:
             path_params['user_id'] = params['user_id']
         if 'image_id' in params:
             path_params['image_id'] = params['image_id']
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -564,7 +559,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'DELETE',
+        return self.api_client.call_api('/users/{user_id}/images/{image_id}', 'DELETE',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -572,6 +567,100 @@ class DefaultApi(object):
                                         post_params=form_params,
                                         files=local_var_files,
                                         response_type=None,
+                                        auth_settings=auth_settings,
+                                        callback=params.get('callback'),
+                                        _return_http_data_only=params.get('_return_http_data_only'),
+                                        _preload_content=params.get('_preload_content', True),
+                                        _request_timeout=params.get('_request_timeout'),
+                                        collection_formats=collection_formats)
+
+    def describe_policy(self, **kwargs):
+        """
+        Describe the policy language spec implemented by this service.
+        Get the policy language spec for this service
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please define a `callback` function
+        to be invoked when receiving the response.
+        >>> def callback_function(response):
+        >>>     pprint(response)
+        >>>
+        >>> thread = api.describe_policy(callback=callback_function)
+
+        :param callback function: The callback function
+            for asynchronous request. (optional)
+        :return: list[GateSpec]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('callback'):
+            return self.describe_policy_with_http_info(**kwargs)
+        else:
+            (data) = self.describe_policy_with_http_info(**kwargs)
+            return data
+
+    def describe_policy_with_http_info(self, **kwargs):
+        """
+        Describe the policy language spec implemented by this service.
+        Get the policy language spec for this service
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please define a `callback` function
+        to be invoked when receiving the response.
+        >>> def callback_function(response):
+        >>>     pprint(response)
+        >>>
+        >>> thread = api.describe_policy_with_http_info(callback=callback_function)
+
+        :param callback function: The callback function
+            for asynchronous request. (optional)
+        :return: list[GateSpec]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = []
+        all_params.append('callback')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method describe_policy" % key
+                )
+            params[key] = val
+        del params['kwargs']
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.\
+            select_header_accept(['application/json'])
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']
+
+        return self.api_client.call_api('/policy_spec', 'GET',
+                                        path_params,
+                                        query_params,
+                                        header_params,
+                                        body=body_params,
+                                        post_params=form_params,
+                                        files=local_var_files,
+                                        response_type='list[GateSpec]',
                                         auth_settings=auth_settings,
                                         callback=params.get('callback'),
                                         _return_http_data_only=params.get('_return_http_data_only'),
@@ -654,16 +743,15 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/users/{user_id}/images/{image_id}/vulnerabilities'.replace('{format}', 'json')
         path_params = {}
         if 'user_id' in params:
             path_params['user_id'] = params['user_id']
         if 'image_id' in params:
             path_params['image_id'] = params['image_id']
 
-        query_params = {}
+        query_params = []
         if 'force_refresh' in params:
-            query_params['force_refresh'] = params['force_refresh']
+            query_params.append(('force_refresh', params['force_refresh']))
 
         header_params = {}
 
@@ -678,7 +766,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'GET',
+        return self.api_client.call_api('/users/{user_id}/images/{image_id}/vulnerabilities', 'GET',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -755,10 +843,9 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/status'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -773,7 +860,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'GET',
+        return self.api_client.call_api('/status', 'GET',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -854,10 +941,9 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/images'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -878,7 +964,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'POST',
+        return self.api_client.call_api('/images', 'POST',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -955,10 +1041,9 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/distro_mappings'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -973,7 +1058,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'GET',
+        return self.api_client.call_api('/distro_mappings', 'GET',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -1053,12 +1138,11 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/users'.replace('{format}', 'json')
         path_params = {}
 
-        query_params = {}
+        query_params = []
         if 'page' in params:
-            query_params['page'] = params['page']
+            query_params.append(('page', params['page']))
 
         header_params = {}
 
@@ -1073,7 +1157,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'GET',
+        return self.api_client.call_api('/users', 'GET',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -1156,12 +1240,11 @@ class DefaultApi(object):
 
         collection_formats = {}
 
-        resource_path = '/users/{user_id}/images'.replace('{format}', 'json')
         path_params = {}
         if 'user_id' in params:
             path_params['user_id'] = params['user_id']
 
-        query_params = {}
+        query_params = []
 
         header_params = {}
 
@@ -1176,7 +1259,7 @@ class DefaultApi(object):
         # Authentication setting
         auth_settings = ['anchore_basic']
 
-        return self.api_client.call_api(resource_path, 'GET',
+        return self.api_client.call_api('/users/{user_id}/images', 'GET',
                                         path_params,
                                         query_params,
                                         header_params,
@@ -1184,6 +1267,110 @@ class DefaultApi(object):
                                         post_params=form_params,
                                         files=local_var_files,
                                         response_type='list[Image]',
+                                        auth_settings=auth_settings,
+                                        callback=params.get('callback'),
+                                        _return_http_data_only=params.get('_return_http_data_only'),
+                                        _preload_content=params.get('_preload_content', True),
+                                        _request_timeout=params.get('_request_timeout'),
+                                        collection_formats=collection_formats)
+
+    def validate_bundle(self, policy_bundle, **kwargs):
+        """
+        Perform a policy bundle validation against the included bundle
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please define a `callback` function
+        to be invoked when receiving the response.
+        >>> def callback_function(response):
+        >>>     pprint(response)
+        >>>
+        >>> thread = api.validate_bundle(policy_bundle, callback=callback_function)
+
+        :param callback function: The callback function
+            for asynchronous request. (optional)
+        :param PolicyBundle policy_bundle: (required)
+        :return: PolicyValidationResponse
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('callback'):
+            return self.validate_bundle_with_http_info(policy_bundle, **kwargs)
+        else:
+            (data) = self.validate_bundle_with_http_info(policy_bundle, **kwargs)
+            return data
+
+    def validate_bundle_with_http_info(self, policy_bundle, **kwargs):
+        """
+        Perform a policy bundle validation against the included bundle
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please define a `callback` function
+        to be invoked when receiving the response.
+        >>> def callback_function(response):
+        >>>     pprint(response)
+        >>>
+        >>> thread = api.validate_bundle_with_http_info(policy_bundle, callback=callback_function)
+
+        :param callback function: The callback function
+            for asynchronous request. (optional)
+        :param PolicyBundle policy_bundle: (required)
+        :return: PolicyValidationResponse
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['policy_bundle']
+        all_params.append('callback')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method validate_bundle" % key
+                )
+            params[key] = val
+        del params['kwargs']
+        # verify the required parameter 'policy_bundle' is set
+        if ('policy_bundle' not in params) or (params['policy_bundle'] is None):
+            raise ValueError("Missing the required parameter `policy_bundle` when calling `validate_bundle`")
+
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        if 'policy_bundle' in params:
+            body_params = params['policy_bundle']
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.\
+            select_header_accept(['application/json'])
+
+        # HTTP header `Content-Type`
+        header_params['Content-Type'] = self.api_client.\
+            select_header_content_type(['application/json'])
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']
+
+        return self.api_client.call_api('/validate_bundle', 'POST',
+                                        path_params,
+                                        query_params,
+                                        header_params,
+                                        body=body_params,
+                                        post_params=form_params,
+                                        files=local_var_files,
+                                        response_type='PolicyValidationResponse',
                                         auth_settings=auth_settings,
                                         callback=params.get('callback'),
                                         _return_http_data_only=params.get('_return_http_data_only'),

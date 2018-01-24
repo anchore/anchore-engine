@@ -2,7 +2,8 @@
 
 from __future__ import absolute_import
 from .base_model_ import Model
-from datetime import datetime
+from datetime import date, datetime
+from typing import List, Dict
 from ..util import deserialize_model
 
 
@@ -15,11 +16,13 @@ class DistroMapping(Model):
         """
         DistroMapping - a model defined in Swagger
 
-        :param from_distro: The name of the distro to map as would be reported in the image itself from a file like /etc/os_release
+        :param from_distro: The from_distro of this DistroMapping.
         :type from_distro: str
-        :param to_distro: The distro name to use instead for cve matching purposes.
+        :param to_distro: The to_distro of this DistroMapping.
         :type to_distro: str
-        :param created_at: Timestamp of mapping creation
+        :param flavor: The flavor of this DistroMapping.
+        :type flavor: str
+        :param created_at: The created_at of this DistroMapping.
         :type created_at: datetime
         """
         self.swagger_types = {
@@ -57,7 +60,7 @@ class DistroMapping(Model):
     def from_distro(self):
         """
         Gets the from_distro of this DistroMapping.
-        A generated event id for later use to query status of the event
+        The name of the distro to map as would be reported in the image itself from a file like /etc/os_release
 
         :return: The from_distro of this DistroMapping.
         :rtype: str
@@ -68,7 +71,7 @@ class DistroMapping(Model):
     def from_distro(self, from_distro):
         """
         Sets the from_distro of this DistroMapping.
-        A generated event id for later use to query status of the event
+        The name of the distro to map as would be reported in the image itself from a file like /etc/os_release
 
         :param from_distro: The from_distro of this DistroMapping.
         :type from_distro: str
@@ -96,6 +99,7 @@ class DistroMapping(Model):
         :param to_distro: The to_distro of this DistroMapping.
         :type to_distro: str
         """
+
         self._to_distro = to_distro
 
     @property
@@ -115,16 +119,17 @@ class DistroMapping(Model):
         Sets the flavor of this DistroMapping.
         The flavor of the distro
 
-        :param to_distro: The flavor of this DistroMapping.
-        :type to_distro: str
+        :param flavor: The flavor of this DistroMapping.
+        :type flavor: str
         """
-        self._flavor = flavor
 
+        self._flavor = flavor
 
     @property
     def created_at(self):
         """
         Gets the created_at of this DistroMapping.
+        Timestamp of mapping creation
 
         :return: The created_at of this DistroMapping.
         :rtype: datetime
@@ -135,6 +140,7 @@ class DistroMapping(Model):
     def created_at(self, created_at):
         """
         Sets the created_at of this DistroMapping.
+        Timestamp of mapping creation
 
         :param created_at: The created_at of this DistroMapping.
         :type created_at: datetime

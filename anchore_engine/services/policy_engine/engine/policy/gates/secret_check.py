@@ -1,7 +1,7 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.policy.utils import PipeDelimitedStringListValidator
+from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListValidator
 from anchore_engine.db import AnalysisArtifact
 log = get_logger()
 

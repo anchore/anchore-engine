@@ -1,5 +1,5 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, barsplit_comma_delim_parser, delim_parser
+from anchore_engine.services.policy_engine.engine.policy.params import CommaDelimitedStringListParameter, NameVersionStringListParameter
 from anchore_engine.db import GemMetadata
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
@@ -101,9 +101,10 @@ class BadVersionTrigger(BaseTrigger):
 class PkgFullMatchTrigger(BaseTrigger):
     __trigger_name__ = 'GEMPKGFULLMATCH'
     __description__ = 'triggers if the evaluated image has an GEM package installed that matches one in the list given as a param (package_name|vers)'
-    __params__ = {
-        'BLACKLIST_GEMFULLMATCH': NameVersionListValidator()
-    }
+    # __params__ = {
+    #     'BLACKLIST_GEMFULLMATCH': NameVersionListValidator()
+    # }
+    fullmatch_blacklist = NameVersionStringListParameter(name='blacklist_gemfullmatch', description='List of name|version entries that are matched exactly for blacklist', is_required=False)
 
     def evaluate(self, image_obj, context):
         """
@@ -120,7 +121,11 @@ class PkgFullMatchTrigger(BaseTrigger):
         if not pkgs:
             return
 
-        for pkg, vers in barsplit_comma_delim_parser(self.eval_params.get('BLACKLIST_GEMFULLMATCH', '')).items():
+        blacklist_pkgs = self.fullmatch_blacklist.value()
+        if blacklist_pkgs is None:
+            blacklist_pkgs = {}
+
+        for pkg, vers in blacklist_pkgs.items():
             if pkg in pkgs and vers in pkgs.get(pkg, []):
                 self._fire(msg='GEMPKGFULLMATCH Package is blacklisted: '+pkg+"-"+vers)
 
@@ -128,9 +133,10 @@ class PkgFullMatchTrigger(BaseTrigger):
 class PkgNameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'GEMPKGNAMEMATCH'
     __description__ = 'triggers if the evaluated image has an GEM package installed that matches one in the list given as a param (package_name)'
-    __params__ = {
-        'BLACKLIST_GEMNAMEMATCH': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'BLACKLIST_GEMNAMEMATCH': CommaDelimitedStringListValidator()
+    #}
+    namematch_blacklist = CommaDelimitedStringListParameter(name='blacklist_gemnamematch', description='List of gem package names that are blacklisted and will cause trigger to fire if detected in image')
 
     def evaluate(self, image_obj, context):
         gems = image_obj.gems
@@ -140,8 +146,11 @@ class PkgNameMatchTrigger(BaseTrigger):
         pkgs = context.data.get(GEM_LIST_KEY)
         if not pkgs:
             return
+        blacklist = self.namematch_blacklist.value()
+        if blacklist is None:
+            blacklist = []
 
-        for match_val in delim_parser(self.eval_params.get('BLACKLIST_GEMNAMEMATCH', '')):
+        for match_val in blacklist:
             if match_val and match_val in pkgs:
                 self._fire(msg='GEMPKGNAMEMATCH Package is blacklisted: ' + match_val)
 
