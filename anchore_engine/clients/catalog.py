@@ -132,6 +132,26 @@ def add_image(userId, tag=None, dockerfile=None):
 
     return(ret)
 
+def get_imagetags(userId):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+    url = base_url + "/imagetags"
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    logger.debug("HERE")
+    return(ret)        
+
 def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, registry_lookup=False, history=False):
     global localconfig, headers
     if localconfig == None:

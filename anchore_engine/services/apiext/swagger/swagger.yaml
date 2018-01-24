@@ -292,6 +292,26 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /imagetags:
+    get:
+      tags:
+      - ImageTags
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_imagetags
+      summary: List all visible image digests and tags
+      description: List all image tags visible to the user
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: array
+            description: "List of AnchoreImageTag objects"
+            items:
+              $ref: "#/definitions/AnchoreImageTag"
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
   /images:
     post:
       tags:
@@ -1259,6 +1279,16 @@ definitions:
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
+  AnchoreImageTag:
+    description: A unique image in the engine. 
+    type: object
+    properties:
+      imageDigest:
+        type: string
+      fulltag:
+        type: string
+      userId:
+        type: string
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
     type: object

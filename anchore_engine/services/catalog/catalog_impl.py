@@ -59,6 +59,24 @@ def registry_lookup(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
+def image_tags(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = {}
+    httpcode = 500
+
+    try:
+        if method == 'GET':
+            httpcode = 200
+            return_object = db_catalog_image.get_all_digtags(userId, session=dbsession)
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
 def image(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
