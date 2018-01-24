@@ -166,9 +166,9 @@ def get_all_digtags(userId, session=None):
 
 def get_all_digtags0(userId, session=None):
     
-    results = session.query(CatalogImage.userId, CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
+    results = session.query(CatalogImage.userId, CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImage.created_at, CatalogImage.last_updated).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
     def mymap(x):
-        return({'userId': x[0], 'imageDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5]})
+        return({'userId': x[0], 'imageDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5], 'created_at': x[6], 'last_updated': x[7]})
     ret = map(mymap, list(results))
 
     return(ret)
