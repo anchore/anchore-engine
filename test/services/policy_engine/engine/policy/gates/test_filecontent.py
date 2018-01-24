@@ -16,7 +16,7 @@ class FileCheckGateTest(GateUnitTest):
         return trigger, gate, context
 
     def test_filenamematch(self):
-        t, gate, test_context = self.get_initialized_trigger(FilenameMatchTrigger.__trigger_name__, FILECHECK_NAMEREGEXP='/etc/.*')
+        t, gate, test_context = self.get_initialized_trigger(FilenameMatchTrigger.__trigger_name__, filecheck_nameregexp='/etc/.*')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -25,7 +25,7 @@ class FileCheckGateTest(GateUnitTest):
         self.assertGreater(len(t.fired), 0)
 
     def test_contentmatch(self):
-        t, gate, test_context = self.get_initialized_trigger(ContentMatchTrigger.__trigger_name__, FILECHECK_CONTENTREGEXP='.*password.*')
+        t, gate, test_context = self.get_initialized_trigger(ContentMatchTrigger.__trigger_name__, filecheck_contentregexp='.*password.*')
         db = get_thread_scoped_session()
         content_test_image = db.query(Image).get((self.test_env.get_images_named('alpine_3.5')[0][0], '0'))
         test_context = gate.prepare_context(content_test_image, test_context)

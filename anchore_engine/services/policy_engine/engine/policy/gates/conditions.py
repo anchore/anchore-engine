@@ -1,5 +1,5 @@
 from collections import namedtuple
-from anchore_engine.services.policy_engine.engine.policy.utils import InputValidator, CommaDelimitedStringListValidator, TypeValidator, delim_parser
+from anchore_engine.services.policy_engine.engine.policy.params import InputValidator
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, GateMeta, BaseTrigger
 
 
@@ -8,7 +8,7 @@ class AttributeListValidator(InputValidator):
         self.attrs = attrs
 
     def validation_criteria(self):
-        return 'In: {}'.format(self.attrs)
+        return 'In: {}'.format(','.join(self.attrs))
 
     def __call__(self, *args, **kwargs):
         if args and args[0]:
@@ -37,7 +37,7 @@ class CheckOperations(InputValidator):
         return self.ops[name]
 
     def validation_criteria(self):
-        return 'In: {}'.format(self.ops.keys())
+        return 'In: {}'.format(','.join(self.ops.keys()))
 
     def __call__(self, *args, **kwargs):
         if args and args[0]:

@@ -1,5 +1,5 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.utils import NameVersionListValidator, CommaDelimitedStringListValidator, barsplit_comma_delim_parser, delim_parser
+from anchore_engine.services.policy_engine.engine.policy.params import NameVersionStringListParameter, CommaDelimitedStringListParameter
 from anchore_engine.db import NpmMetadata
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
@@ -101,9 +101,10 @@ class BadVersionTrigger(BaseTrigger):
 class PkgFullMatchTrigger(BaseTrigger):
     __trigger_name__ = 'NPMPKGFULLMATCH'
     __description__ = 'triggers if the evaluated image has an NPM package installed that matches one in the list given as a param (package_name|vers)'
-    __params__ = {
-        'BLACKLIST_NPMFULLMATCH': NameVersionListValidator()
-    }
+    #__params__ = {
+    #    'BLACKLIST_NPMFULLMATCH': NameVersionListValidator()
+    #}
+    blacklist_names = NameVersionStringListParameter(name='blacklist_npmfullmatch', description='List of name|version matches for full package match on blacklist')
 
     def evaluate(self, image_obj, context):
         """
@@ -120,7 +121,8 @@ class PkgFullMatchTrigger(BaseTrigger):
         if not pkgs:
             return
 
-        for pkg, vers in barsplit_comma_delim_parser(self.eval_params.get('BLACKLIST_NPMFULLMATCH', '')).items():
+        match_versions = self.blacklist_names.value() if self.blacklist_names.value() else {}
+        for pkg, vers in match_versions.items():
             try:
                 if pkg in pkgs and vers in pkgs.get(pkg, []):
                     self._fire(msg='NPMPKGFULLMATCH Package is blacklisted: '+pkg+"-"+vers)
@@ -131,9 +133,10 @@ class PkgFullMatchTrigger(BaseTrigger):
 class PkgNameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'NPMPKGNAMEMATCH'
     __description__ = 'triggers if the evaluated image has an NPM package installed that matches one in the list given as a param (package_name)'
-    __params__ = {
-        'BLACKLIST_NPMNAMEMATCH': CommaDelimitedStringListValidator()
-    }
+    #__params__ = {
+    #    'BLACKLIST_NPMNAMEMATCH': CommaDelimitedStringListValidator()
+    #}
+    npmname_blacklist = CommaDelimitedStringListParameter(name='blacklist_npmnamematch', description='List of name strings to blacklist npm package names against')
 
     def evaluate(self, image_obj, context):
         npms = image_obj.npms
@@ -144,7 +147,9 @@ class PkgNameMatchTrigger(BaseTrigger):
         if not pkgs:
             return
 
-        for match_val in delim_parser(self.eval_params.get('BLACKLIST_NPMNAMEMATCH', '')):
+        match_names = self.npmname_blacklist.value() if self.npmname_blacklist.value() else []
+
+        for match_val in match_names:
             if match_val and match_val in pkgs:
                 self._fire(msg='NPMPKGNAMEMATCH Package is blacklisted: ' + match_val)
 

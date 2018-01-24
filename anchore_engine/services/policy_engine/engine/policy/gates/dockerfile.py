@@ -1,17 +1,16 @@
 import re
 import logging
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.utils import RegexParamValidator, CommaDelimitedNumberListValidator, NameVersionListValidator, \
-    CommaDelimitedStringListValidator, delim_parser, TypeValidator, InputValidator
+from anchore_engine.services.policy_engine.engine.policy.params import delim_parser, TypeValidator, \
+    InputValidator, EnumStringParameter, TriggerParameter, CommaDelimitedStringListParameter, \
+    CommaDelimitedNumberListParameter, EnumCommaDelimStringListParameter
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
 log = get_logger()
 
-class DockerfileDirectiveListValidator(InputValidator):
-    __directives__ = [
+DIRECTIVES = [
         'ADD',
         'ARG',
-        'LABEL',
         'COPY',
         'CMD',
         'ENTRYPOINT',
@@ -28,46 +27,24 @@ class DockerfileDirectiveListValidator(InputValidator):
         'STOPSIGNAL',
         'VOLUME',
         'WORKDIR'
-    ]
+]
 
-    def validation_criteria(self):
-        return 'In: {}'.format(self.__directives__)
-
-    def __call__(self, *args, **kwargs):
-        if args and args[0]:
-            parts = map(lambda x: x.strip(), args[0].split(','))
-            return not bool(filter(lambda x: x not in self.__directives__, parts))
-        else:
-            return False
-
-
-class ConditionValidator(InputValidator):
-    __conditions__ = [
-        '=',
-        '!=',
-        'exists',
-        'not_exists',
-        'like',
-        'not_like'
-    ]
-
-    def validation_criteria(self):
-        return 'In: {}'.format(self.__conditions__)
-
-    def __call__(self, *args, **kwargs):
-        if args and args[0]:
-            return args[0].strip() in self.__conditions__
-        return False
+CONDITIONS = [
+    '=',
+    '!=',
+    'exists',
+    'not_exists',
+    'like',
+    'not_like'
+]
 
 
 class EffectiveUserTrigger(BaseTrigger):
     __trigger_name__ = 'EFFECTIVEUSER'
     __description__ = 'Triggers if the effective user for the container is either root when not allowed or is not in a whitelist'
 
-    __params__ = {
-        'ALLOWED': CommaDelimitedStringListValidator(),
-        'DENIED': CommaDelimitedStringListValidator(),
-    }
+    allowed_users = CommaDelimitedStringListParameter(name='allowed', description='List of user names allowed to be the effective user (last user entry) in the images history', is_required=False)
+    denied_users = CommaDelimitedStringListParameter(name='denied', description='List of user names forbidden from being the effective user for the image in the image history', is_required=False)
 
     _sanitize_regex = '\s*USER\s+\[?([^\]]+)\]?\s*'
 
@@ -75,8 +52,9 @@ class EffectiveUserTrigger(BaseTrigger):
         if not context.data.get('prepared_dockerfile'):
             return # Prep step blocked this eval due to condition on the dockerfile, so skip
 
-        allowed_users = delim_parser(self.eval_params.get('ALLOWED', ''))
-        denied_users = delim_parser(self.eval_params.get('DENIED', ''))
+        allowed_users = self.allowed_users.value(default_if_none=[])
+        denied_users = self.denied_users.value(default_if_none=[])
+
         user_lines = context.data.get('prepared_dockerfile').get('USER', [])
 
         # If not overt, make it so
@@ -101,11 +79,9 @@ class DirectiveCheckTrigger(BaseTrigger):
     __trigger_name__ = 'DIRECTIVECHECK'
     __description__ = 'Triggers if any directives in the list are found to match the described condition in the dockerfile'
 
-    __params__ = {
-        'DIRECTIVES': DockerfileDirectiveListValidator(),
-        'CHECK': ConditionValidator(),
-        'CHECK_VALUE': TypeValidator(str)
-    }
+    directives = EnumCommaDelimStringListParameter(name='directives', description='The Dockerfile instruction to check', enum_values=DIRECTIVES, is_required=True, related_to='check')
+    check = EnumStringParameter(name='check', description='The type of check to perform', enum_values=CONDITIONS, is_required=True, related_to='directive, check_value')
+    check_value = TriggerParameter(name='check_value', description='The value to check the dockerfile instruction against', is_required=False, related_to='directive, check', validator=TypeValidator("string"))
 
     _conditions_requiring_check_val = [
         '=', '!=', 'like', 'not_like'
@@ -124,10 +100,10 @@ class DirectiveCheckTrigger(BaseTrigger):
         if not context.data.get('prepared_dockerfile'):
             return # Prep step blocked this eval due to condition on the dockerfile, so skip
 
-        directives = set(map(lambda x: x.upper(), delim_parser(self.eval_params.get('DIRECTIVES', ''))))
-        condition = self.eval_params.get('CHECK')
-        check_value = self.eval_params.get('CHECK_VALUE')
-        operation = self.ops[condition]
+        directives = set(self.directives.value(default_if_none=[])) # Note: change from multiple values to a single value
+        condition = self.check.value(default_if_none='')
+        check_value = self.check_value.value(default_if_none=[])
+        operation = self.ops.get(condition)
 
         if not condition or not directives:
             return
@@ -148,18 +124,17 @@ class DirectiveCheckTrigger(BaseTrigger):
 class ExposeTrigger(BaseTrigger):
     __trigger_name__ = 'EXPOSE'
 
-    __params__ = {
-        'ALLOWEDPORTS': CommaDelimitedNumberListValidator(),
-        'DENIEDPORTS': CommaDelimitedNumberListValidator()
-    }
+    allowed_ports = CommaDelimitedNumberListParameter(name='allowedports', description='Comma delimited list of port numbers to allow (as a string)', is_required=False)
+    denied_ports = CommaDelimitedNumberListParameter(name='deniedports', description='Comma delimited list of port numbers to deny (as a string)', is_required=False)
+
     __description__ = 'triggers if Dockerfile is EXPOSEing ports that are not in ALLOWEDPORTS, or are in DENIEDPORTS'
 
     def evaluate(self, image_obj, context):
         if not context.data.get('prepared_dockerfile'):
             return  # Prep step blocked this due to condition on the dockerfile, so skip
 
-        allowed_ports = delim_parser(self.eval_params.get('ALLOWEDPORTS', ''))
-        denied_ports = delim_parser(self.eval_params.get('DENIEDPORTS', ''))
+        allowed_ports = [str(x) for x in self.allowed_ports.value(default_if_none=[])]
+        denied_ports = [str(x) for x in self.denied_ports.value(default_if_none=[])]
 
         expose_lines = context.data.get('prepared_dockerfile', {}).get('EXPOSE', [])
         for line in expose_lines:
@@ -190,19 +165,19 @@ class ExposeTrigger(BaseTrigger):
                             done = False
                             while not done:
                                 try:
-                                    iexpose.remove(p)
+                                    iexpose.remove(str(p))
                                     done = False
                                 except:
                                     done = True
 
                                 try:
-                                    iexpose.remove(p + '/tcp')
+                                    iexpose.remove(str(p) + '/tcp')
                                     done = False
                                 except:
                                     done = True
 
                                 try:
-                                    iexpose.remove(p + '/udp')
+                                    iexpose.remove(str(p) + '/udp')
                                     done = False
                                 except:
                                     done = True

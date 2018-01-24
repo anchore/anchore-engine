@@ -15,7 +15,7 @@ test_image.like_distro = 'debian'
 test_image.user_id = '0'
 test_image.layers_json = ['sha256:a', 'sha256:b', 'sha256:c']
 test_image.layer_info_json = ['layer1', 'layer2']
-test_image.dockerfile_contents = 'FROM SCRATCH\nHEALTHCHECK blah\n'
+test_image.dockerfile_contents = 'FROM SCRATCH\nHEALTHcheck blah\n'
 test_image.dockerfile_mode = 'Guessed'
 test_image.size = 100 * 1024 * 1024
 test_image.docker_data_json = {
@@ -146,7 +146,7 @@ class ImageMetadataGateTest(GateUnitTest):
         }
         for val, result in test.items():
             try:
-                t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES=val, CHECK='=', CHECK_VALUE='test1')
+                t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes=val, check='=', check_value='test1')
                 if not result and t:
                     self.assertEqual(result, bool(t))
             except:
@@ -167,7 +167,7 @@ class ImageMetadataGateTest(GateUnitTest):
         }
         for val, check in test.items():
             print('Testing attr {} against {}'.format(val, check))
-            t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES=val, CHECK='=', CHECK_VALUE=check)
+            t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes=val, check='=', check_value=check)
             test_context = gate.prepare_context(test_image, test_context)
             t.evaluate(test_image, test_context)
             self.assertEqual(len(t.fired), 1)
@@ -175,46 +175,46 @@ class ImageMetadataGateTest(GateUnitTest):
 
     def test_imagemetadatatrigger_distro_name(self):
         print('Testing =')
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='=', CHECK_VALUE='debian')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='=', check_value='debian')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='=', CHECK_VALUE='mandriva')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='=', check_value='mandriva')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
         print('Testing !=')
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='!=', CHECK_VALUE='mandriva')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='!=', check_value='mandriva')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='!=', CHECK_VALUE='debian')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='!=', check_value='debian')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
         print('Testing like')
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='like', CHECK_VALUE='.*ebia.*')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='like', check_value='.*ebia.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='like', CHECK_VALUE='.*entos.*')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='like', check_value='.*entos.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
         print('Testing not_like')
-        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, ATTRIBUTES='distro', CHECK='not_like', CHECK_VALUE='.*entos.*')
+        t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attributes='distro', check='not_like', check_value='.*entos.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)

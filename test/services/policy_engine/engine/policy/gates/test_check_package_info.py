@@ -23,25 +23,25 @@ class PackageCheckGateTest(GateUnitTest):
         db = get_thread_scoped_session()
         try:
             image = db.query(Image).get((self.test_env.get_images_named('node')[0][0], '0'))
-            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123')
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgfullmatch='binutils|2.25-5+deb8u1,libssl|123')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
             print('Fired: {}'.format(t.fired))
             self.assertEqual(len(t.fired), 1)
 
-            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGNAMEMATCH='binutilityrepo,binutils')
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgnamematch='binutilityrepo,binutils')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
             print('Fired: {}'.format(t.fired))
             self.assertEqual(len(t.fired), 1)
 
-            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGVERSMATCH='binutils|2.25-5+deb8u1,randopackage|123,binutils|3.25-5+deb8u1')
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgversmatch='binutils|2.25-5+deb8u1,randopackage|123,binutils|3.25-5+deb8u1')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
             print('Fired: {}'.format(t.fired))
             self.assertEqual(len(t.fired), 2)
 
-            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, PKGFULLMATCH='binutils|2.25-5+deb8u1,libssl|123', PKGNAMEMATCH='binutils,foobar', PKGVERSMATCH='binutils|2.25-5+deb8u1,libssl|10.2,blamo|123.123')
+            t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgfullmatch='binutils|2.25-5+deb8u1,libssl|123', pkgnamematch='binutils,foobar', pkgversmatch='binutils|2.25-5+deb8u1,libssl|10.2,blamo|123.123')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
             print('Fired: {}'.format(t.fired))
@@ -68,7 +68,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue(('missing' in t.fired[0].msg and 'changed' in t.fired[1].msg) or ('missing' in t.fired[1].msg and 'changed' in t.fired[0].msg))
 
         print('Specific dirs and check only changed')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, DIRS='/bin,/usr/bin,/usr/local/bin,/usr/share/locale', CHECK_ONLY='changed')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, dirs='/bin,/usr/bin,/usr/local/bin,/usr/share/locale', check_only='changed')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -78,7 +78,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue('changed' in t.fired[0].msg)
 
         print('Check only missing')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, CHECK_ONLY='missing')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, check_only='missing')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -88,7 +88,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue('missing' in t.fired[0].msg)
 
         print('Specific pkg, with issues')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, PKGS='perl-base,libapt-pkg5.0,tzdata')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, pkgs='perl-base,libapt-pkg5.0,tzdata')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -98,7 +98,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue(('missing' in t.fired[0].msg and 'changed' in t.fired[1].msg) or ('missing' in t.fired[1].msg and 'changed' in t.fired[0].msg))
 
         print('Specific pkg, with issues')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, PKGS='perl-base,tzdata')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, pkgs='perl-base,tzdata')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -108,7 +108,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue('missing' in t.fired[0].msg)
 
         print('Specific pkg, with issues')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, PKGS='libapt-pkg5.0,tzdata')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, pkgs='libapt-pkg5.0,tzdata')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
@@ -118,7 +118,7 @@ class PackageCheckGateTest(GateUnitTest):
         self.assertTrue('changed' in t.fired[0].msg)
 
         print('Specific pkg, no issues')
-        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, PKGS='tzdata,openssl-client')
+        t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__, pkgs='tzdata,openssl-client')
         db = get_thread_scoped_session()
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)

@@ -33,13 +33,13 @@ class AnchoreSecGateTest(GateUnitTest):
         self.assertEqual(len(t.fired), 1)
 
     def test_feedoutofdate(self):
-        t, gate, test_context = self.get_initialized_trigger(FeedOutOfDateTrigger.__trigger_name__, MAXAGE='0')
+        t, gate, test_context = self.get_initialized_trigger(FeedOutOfDateTrigger.__trigger_name__, maxage="0")
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
         print('Fired: {}'.format(t.fired))
         self.assertEqual(len(t.fired), 1)
 
-        t, gate, test_context = self.get_initialized_trigger(FeedOutOfDateTrigger.__trigger_name__, MAXAGE='1000000')
+        t, gate, test_context = self.get_initialized_trigger(FeedOutOfDateTrigger.__trigger_name__, maxage="1000000")
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
         print('Fired: {}'.format(t.fired))
@@ -81,14 +81,13 @@ class AnchoreSecGateTest(GateUnitTest):
         self.assertGreaterEqual(len(t.fired), 1)
 
     def test_fixavailableparam(self):
-        t, gate, test_context = self.get_initialized_trigger(UnknownSeverityTrigger.__trigger_name__, FIX_AVAILABLE='True')
+        t, gate, test_context = self.get_initialized_trigger(UnknownSeverityTrigger.__trigger_name__, fix_available='True')
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
         print('Fired: {}'.format(t.fired))
         self.assertGreaterEqual(len(t.fired), 1)
 
-
-        t, gate, test_context = self.get_initialized_trigger(UnknownSeverityTrigger.__trigger_name__, FIX_AVAILABLE='False')
+        t, gate, test_context = self.get_initialized_trigger(UnknownSeverityTrigger.__trigger_name__, fix_available='False')
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
         print('Fired: {}'.format(t.fired))

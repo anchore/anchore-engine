@@ -31,6 +31,7 @@ def setup_engine_config(db_connect_str):
             'db_connect': db_connect_str
         }
     }
+    return localconfig.localconfig
 
 
 def get_policy_tables():
@@ -86,9 +87,9 @@ def init_db(connect_str='sqlite:///:memory:', do_bootstrap=False):
     :param connect_str: connection string, defaults to sqllite in-memory if none provided
     :return:
     """
-    setup_engine_config(connect_str)
+    conf = setup_engine_config(connect_str)
     from anchore_engine.db import initialize
-    initialize(specific_tables=get_policy_tables(), bootstrap_db=do_bootstrap)
+    initialize(localconfig=conf, specific_tables=get_policy_tables(), bootstrap_db=do_bootstrap)
     init_distro_mappings()
 
 

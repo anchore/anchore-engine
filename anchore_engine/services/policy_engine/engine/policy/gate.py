@@ -2,11 +2,15 @@
 Base types for gate implementations and triggers.
 
 """
+import copy
 import hashlib
-from anchore_engine.subsys import logger
+import inspect
 
-from anchore_engine.services.policy_engine.engine.policy.exceptions import InputParameterValidationError, InvalidParameterError, TriggerNotFoundError, \
-    TriggerEvaluationError
+import anchore_engine
+from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.engine.policy.params import TriggerParameter
+from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, PolicyRuleValidationError, InvalidParameterError,  \
+    TriggerEvaluationError, PolicyRuleValidationErrorCollection, ValidationError
 
 
 class GateMeta(type):
@@ -73,15 +77,29 @@ class BaseTrigger(object):
     An evaluation trigger, representing something found image analysis specifically requested. Contained
     by a single gate, with execution context defined by the parent gate object.
 
+    To define parameters for the trigger, simply define attribtes of the class that are of type (or subclass) TriggerParameter.
+    Upon instantiation the trigger object will have instance-attributes of the same name as the class attributes but with the provided
+    parameter values as the object value.
+
+    e.g. in class definition:
+
+    testparam = TriggerParamter(display_name='should_fire', is_required=False, validator=BooleanValidator())
+
+    in usage of the instance object:
+
+    self.testparam  is the realized value of the parameter
+    self.__class__.testparam is the TriggerParameter object that defines
+
+
+
     """
 
     __trigger_name__ = None  # The base name of the trigger
     __description__ = None  # The test description of the trigger for users.
-    __params__ = {}  # Set of parameter names and types (int, str, float, etc) for parameterizing the trigger check
     __msg__ = None  # Default message if not defined for specific trigger instance
     __trigger_id__ = None  # If trigger has a specific id, set here, else it is calculated at evaluation time
 
-    def __init__(self, parent_gate_cls, **kwargs):
+    def __init__(self, parent_gate_cls, rule_id=None, **kwargs):
         """
         Instantiate the trigger with a specific set of parameters. Does not evaluate the trigger, just configures
         it for execution.
@@ -90,31 +108,51 @@ class BaseTrigger(object):
         self.msg = None
         self.eval_params = {}
         self._fired_instances = []
+        self.rule_id = rule_id
 
-        # There is a more terse way to copy, but want to raise exc on mismatches... so a bit longer
+        # Setup the parameters, try setting each. If not provided, set to None to handle validation path for required params
+        invalid_params = []
+
+        # The list of class vars that are parameters
+        params = self.__class__._parameters()
+
+        if kwargs is None:
+            kwargs = {}
+
+        # Find all class objects that are params
+        for attr_name, param_obj in params.items():
+            try:
+                setattr(self, attr_name, copy.deepcopy(param_obj))
+                getattr(self, attr_name).set_value(kwargs.get(param_obj.name, None))
+            except ValidationError as e:
+                invalid_params.append(ParameterValueInvalidError(validation_error=e, gate=self.gate_cls.__gate_name__, trigger=self.__trigger_name__, rule_id=self.rule_id))
+
+        # Then, check for any parameters provided that are not defined in the trigger.
         if kwargs:
-            for k, v in kwargs.items():
-                if k not in self.__class__.__params__:
-                    raise InvalidParameterError(parameter=k, valid_parameters=self.__class__.__params__.keys(), message='Invalid parameter received. Cannot evaluate trigger with parameter')
+            given_param_names = set(kwargs.keys())
+            for i in given_param_names.difference(set([x.name for x in params.values()])):
+                # Need to aggregate and return all invalid if there is more than one
+                invalid_params.append(InvalidParameterError(i, params.keys(), trigger=self.__trigger_name__, gate=self.gate_cls.__gate_name__))
 
-                if callable(self.__class__.__params__[k]):
-                    expected = self.__class__.__params__[k].validation_criteria() if hasattr(
-                        self.__class__.__params__[k], 'validation_criteria') else 'unspecified custom validator'
-                    try:
-                        if not self.__class__.__params__[k](v):
-                            raise InputParameterValidationError(parameter=k, expected=expected, got=v,
-                                                                message='Parameter validation failed')
-                    except InputParameterValidationError:
-                        raise
-                    except Exception  as e:
-                        raise InputParameterValidationError(parameter=k, expected=expected, got=v,
-                                                            message='Parameter validation failed: {}'.format(e.message))
+        if invalid_params:
+            raise PolicyRuleValidationErrorCollection(invalid_params, trigger=self.__trigger_name__, gate=self.gate_cls.__gate_name__)
 
-                if (type(self.__class__.__params__[k]) == type and not isinstance(v, self.__class__.__params__[k]) and not (type(v) == unicode and self.__class__.__params__[k] == str)):
-                    raise InputParameterValidationError(parameter=k, expected=self.__class__.__params__[k], got=v,
-                                                        message='Parameter validation failed')
-                else:
-                    self.eval_params[k] = v
+    @classmethod
+    def _parameters(cls):
+        """
+        Returns a dict containing the class attribute name-to-object mapping in this class definition.
+
+        :return: dict of (name -> obj) tuples enumerating all TriggerParameter objects defined for this class
+        """
+
+        return {x.name: x.object for x in filter(lambda attr: attr.kind == 'data' and isinstance(attr.object, anchore_engine.services.policy_engine.engine.policy.params.TriggerParameter), inspect.classify_class_attrs(cls))}
+
+    def parameters(self):
+        """
+        Returns a map of display names of the TriggerParameters defined for this Trigger to values
+        :return:
+        """
+        return {attr_name: getattr(self, attr_name) for attr_name in self._parameters().keys()}
 
     def legacy_str(self):
         """
@@ -183,7 +221,7 @@ class BaseTrigger(object):
         return {
             'name': self.__trigger_name__,
             'trigger_id': self.__trigger_id__,
-            'params': self.__params__.keys() if self.__params__ else [],
+            'params': self.parameters(),
             'fired': [f.json() for f in self.fired]
         }
 
@@ -191,12 +229,13 @@ class BaseTrigger(object):
     def config_json(cls):
         return {
             'name': cls.__trigger_name__,
-            'params': cls.__params__.keys() if cls.__params__ else [],
+            'params': cls.parameters(),
             'id': cls.__trigger_id__
         }
 
     def __repr__(self):
-        return '<{}.{} object Name:{}, TriggerId:{}, Params:{}>'.format(self.__class__.__module__, self.__class__.__name__, self.__trigger_name__, self.__trigger_id__, self.__params__ if self.__params__ else [])
+        return '<{}.{} object Name:{}, TriggerId:{}, Params:{}>'.format(self.__class__.__module__, self.__class__.__name__, self.__trigger_name__, self.__trigger_id__, self.parameters() if self.parameters() else [])
+
 
 class Gate(object):
     """
@@ -233,7 +272,11 @@ class Gate(object):
         :param name: 
         :return: 
         """
-        return any(map(lambda x: x.__trigger_name__ == name, cls.__triggers__))
+        return any(map(lambda x: x.__trigger_name__.lower() == name.lower(), cls.__triggers__))
+
+    @classmethod
+    def trigger_names(cls):
+        return [x.__trigger_name__.lower() for x in cls.__triggers__]
 
     @classmethod
     def get_trigger_named(cls, name):
@@ -242,11 +285,14 @@ class Gate(object):
         :param name: name to match against the trigger classes' __trigger_name__ value 
         :return: a trigger class object 
         """
-        found = filter(lambda x: x.__trigger_name__ == name, cls.__triggers__)
+
+        name = name.lower()
+
+        found = filter(lambda x: x.__trigger_name__.lower() == name, cls.__triggers__)
         if found:
             return found[0]
         else:
-            raise TriggerNotFoundError(trigger_name=name, gate_name=cls.__gate_name__)
+            raise KeyError(name)
 
     def __init__(self):
         """
