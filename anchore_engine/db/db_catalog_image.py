@@ -1,4 +1,4 @@
-from sqlalchemy import desc
+from sqlalchemy import desc, and_, or_
 from sqlalchemy.orm import load_only, Load
 import time
 
@@ -166,9 +166,9 @@ def get_all_digtags(userId, session=None):
 
 def get_all_digtags0(userId, session=None):
     
-    results = session.query(CatalogImage.userId, CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImage.created_at, CatalogImage.last_updated).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
+    results = session.query(CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImage.created_at, CatalogImage.last_updated).filter(and_(CatalogImage.userId == userId, CatalogImage.imageDigest == CatalogImageDocker.imageDigest))
     def mymap(x):
-        return({'userId': x[0], 'imageDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5], 'created_at': x[6], 'last_updated': x[7]})
+        return({'imageDigest': x[0], 'fulltag': x[1]+"/"+x[2]+":"+x[3], 'analysis_status': x[4], 'created_at': x[5], 'last_updated': x[6]})
     ret = map(mymap, list(results))
 
     return(ret)
