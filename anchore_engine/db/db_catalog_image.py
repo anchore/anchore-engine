@@ -1,4 +1,5 @@
 from sqlalchemy import desc
+from sqlalchemy.orm import load_only, Load
 import time
 
 from anchore_engine import db
@@ -163,7 +164,7 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
 def get_all_digtags0(userId, session=None):
     
     ret = []
-    results = session.query(CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
+    results = session.query(CatalogImage.userId, CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).filter_by(userId=userId)
     for result in results:
         ret.append(result)
 
@@ -172,11 +173,64 @@ def get_all_digtags0(userId, session=None):
 def get_all_digtags1(userId, session=None):
     
     ret = []
-    results = session.query(CatalogImageDocker.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter_by(userId=userId)
-    #ret = list(results.values())
+    results = session.query(CatalogImageDocker.userId, CatalogImageDocker.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag).filter_by(userId=userId)
     ret = list(results)
-    #for result in results:
-    #    ret.append(result)
+
+    return(ret)
+
+def get_all_digtags2(userId, colfilter, session=None, ):
+    
+    if 'userId' not in colfilter:
+        colfilter.append('userId')
+
+    value_colfilter = []
+    for c in colfilter:
+        value_colfilter.append('"'+str(c)+'"')
+
+    acols = ['imageDigest']
+    avcols = ['"imageDigest"']
+    cols = CatalogImage.__table__.columns.keys()
+    for col in cols:
+        if col != 'imageDigest' and col in colfilter:
+            acols.append(col)
+            avcols.append('"'+col+'"')
+
+    bcols = ['imageDigest']
+    bvcols = ['"imageDigest"']
+    cols = CatalogImageDocker.__table__.columns.keys()
+    for col in cols:
+        if col != 'imageDigest' and col in colfilter:
+            bcols.append(col)
+            bvcols.append('"'+col+'"')
+
+    hmap = {}
+    ret = []
+    if acols:
+        results = session.query(CatalogImage).options(load_only(*acols)).filter_by(userId=userId).values(*avcols)
+        for result in list(results):
+            hmap[result[0]] = dict(zip(acols, result))
+
+
+    if bcols:
+        results = session.query(CatalogImageDocker).options(load_only(*bcols)).filter_by(userId=userId).values(*bvcols)
+        for result in list(results):
+            if hmap[result[0]]:
+                hmap[result[0]].update(dict(zip(bcols, result)))
+            else:
+                hmap[result[0]] = dict(zip(bcols, result))
+
+    ret = hmap.values()
+
+    return(ret)
+
+def get_all_digtags3(userId, colfilter, session=None):
+    
+    ret = []
+    acols = ['imageDigest']
+    bcols = ['imageDigest']
+    vcols = ['"imageDigest"']
+    results = session.query(CatalogImage, CatalogImageDocker).filter(CatalogImage.imageDigest == CatalogImageDocker.imageDigest).options(Load(CatalogImage).load_only(*acols), Load(CatalogImageDocker).load_only(*bcols))
+    ret = list(results)
 
     return(ret)
 
