@@ -45,6 +45,38 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /repo:
+    post:
+      tags:
+      - "catalog"
+      summary: "Add repo to watch to the DB"
+      description: ""
+      operationId: "repo_post"
+      parameters:
+      - name: 'regrepo'
+        in: query
+        type: string
+        description: "full regrepo to add e.g. docker.io/library/alpine"
+        required: true
+      - name: 'autosubscribe'
+        in: query
+        type: boolean
+        description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
+        required: false
+#      - name: 'bodycontent'
+#        in: body
+#        schema:
+#          type: object
+#        description: "object describing repo to add"
+#        required: false
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /image:
     get:
       tags:

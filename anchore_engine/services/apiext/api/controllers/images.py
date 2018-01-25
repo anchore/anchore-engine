@@ -848,7 +848,7 @@ def images(request_inputs):
     httpcode = 500
 
     userId, pw = user_auth
-    digest = tag = imageId = imageDigest = dockerfile = None
+    digest = tag = imageId = imageDigest = dockerfile = repo = None
 
     history = False
     if params and 'history' in params:
@@ -869,6 +869,8 @@ def images(request_inputs):
             imageDigest = jsondata['imageDigest']
         elif 'imageId' in jsondata:
             imageId = jsondata['imageId']
+        elif 'repo' in jsondata:
+            repo = jsondata['repo']
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
@@ -890,13 +892,13 @@ def images(request_inputs):
             logger.debug("handling POST: ")
 
             # if not, add it and set it up to be analyzed
-            if not tag:
+            if not tag and not repo:
                 # dont support digest add, yet
                 httpcode = 500
                 raise Exception("digest add unsupported")
 
             # add the image to the catalog
-            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
+            image_record = catalog.add_image(user_auth, tag=tag, repo=repo, dockerfile=dockerfile)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return
@@ -953,12 +955,6 @@ def images(request_inputs):
 
                 httpcode = 200
                 return_object = [make_response_image(user_auth, image_record, params)]
-                #image_records = catalog.get_image(user_auth, digest=digest, tag=tag, registry_lookup=False)
-
-                #return_object = []
-                #for image_record in image_records:
-                #    return_object.append(make_response_image(user_auth, image_record, params))
-
             else:
                 httpcode = 500
                 raise Exception("failed to add image")

@@ -95,7 +95,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
-def add_image(userId, tag=None, dockerfile=None):
+def add_image(userId, tag=None, repo=None, dockerfile=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -112,23 +112,15 @@ def add_image(userId, tag=None, dockerfile=None):
 
     url = base_url + "/image"
 
+    payload = {}
     if tag:
         url = url + "?tag="+tag
-
-    payload = {}
-    if dockerfile:
-        payload['dockerfile'] = dockerfile
+        if dockerfile:
+            payload['dockerfile'] = dockerfile
+    elif repo:
+        url = url + "?repo="+repo
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fpost(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed post: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed post url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
