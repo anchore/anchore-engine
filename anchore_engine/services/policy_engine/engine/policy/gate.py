@@ -200,6 +200,9 @@ class BaseTrigger(object):
         if not msg:
             msg = self.__msg__
 
+        if not instance_id and self.__trigger_id__:
+            instance_id = self.__trigger_id__
+
         self._fired_instances.append(TriggerMatch(self, match_instance_id=instance_id, msg=msg))
 
     @property

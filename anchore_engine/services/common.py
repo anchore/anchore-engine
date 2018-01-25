@@ -15,7 +15,7 @@ from collections import OrderedDict
 from twisted.application import service, internet
 from twisted.cred.portal import IRealm, Portal
 from twisted.internet.defer import succeed
-from twisted.python import log
+#from twisted.python import log
 from twisted.web import server
 from twisted.web.guard import HTTPAuthSessionWrapper, BasicCredentialFactory
 from twisted.web.resource import IResource, Resource
@@ -297,108 +297,111 @@ def initializeService(sname, config):
 # the anchore twistd plugins call this to initialize and make individual services
 def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
     try:
-        # config and init
-        configfile = configdir = None
-        if options['config']:
-            configdir = options['config']
-            configfile = os.path.join(options['config'], 'config.yaml')
+        logger.enable_bootstrap_logging(service_name=','.join(snames))
 
-        anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile, validate_params=validate_params)
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        localconfig['myservices'] = []
-        logger.spew("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        log.err("cannot load configuration: exception - " + str(err))
-        raise err
-
-    # get versions of things
-    try:
-        versions = anchore_engine.configuration.localconfig.get_versions()
-    except Exception as err:
-        log.err("cannot detect versions of service: exception - " + str(err))
-        raise err
-        
-    if db_connect:
-        logger.info("initializing database")
-
-        # connect to DB
         try:
-            db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users, specific_tables=specific_tables)
+            # config and init
+            configfile = configdir = None
+            if options['config']:
+                configdir = options['config']
+                configfile = os.path.join(options['config'], 'config.yaml')
+
+            anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile, validate_params=validate_params)
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            localconfig['myservices'] = []
+            logger.spew("localconfig="+json.dumps(localconfig, indent=4, sort_keys=True))
         except Exception as err:
-            log.err("cannot connect to configured DB: exception - " + str(err))
+            logger.error("cannot load configuration: exception - " + str(err))
             raise err
 
-        #credential bootstrap
-        localconfig['system_user_auth'] = (None, None)
-        if require_system_user_auth:
-            gotauth = False
-            max_retries = 60
-            for count in range(1,max_retries):
-                if gotauth:
-                    continue
-                try:
-                    with session_scope() as dbsession:
-                        localconfig['system_user_auth'] = get_system_user_auth(session=dbsession)
-                    if localconfig['system_user_auth'] != (None, None):
-                        gotauth = True
-                    else:
-                        log.err("cannot get system user auth credentials yet, retrying (" + str(count) + " / " + str(max_retries)+")")
-                        time.sleep(5)
-                except Exception as err:
-                    log.err("cannot get system-user auth credentials - service may not have system level access")
-                    localconfig['system_user_auth'] = (None, None)
+        # get versions of things
+        try:
+            versions = anchore_engine.configuration.localconfig.get_versions()
+        except Exception as err:
+            logger.error("cannot detect versions of service: exception - " + str(err))
+            raise err
 
-            if not gotauth:
-                raise Exception("service requires system user auth to start")
+        if db_connect:
+            logger.info("initializing database")
 
-    # application object
-    application = service.Application("multi-service-"+'-'.join(snames))
+            # connect to DB
+            try:
+                db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users, specific_tables=specific_tables)
+            except Exception as err:
+                logger.error("cannot connect to configured DB: exception - " + str(err))
+                raise err
 
-    #multi-service
-    retservice = service.MultiService()
-    retservice.setServiceParent(application)
-    
-    success = False
-    try:
-        scount = 0
-        for sname in snames:
-            if sname in localconfig['services'] and localconfig['services'][sname]['enabled']:
+            #credential bootstrap
+            localconfig['system_user_auth'] = (None, None)
+            if require_system_user_auth:
+                gotauth = False
+                max_retries = 60
+                for count in range(1,max_retries):
+                    if gotauth:
+                        continue
+                    try:
+                        with session_scope() as dbsession:
+                            localconfig['system_user_auth'] = get_system_user_auth(session=dbsession)
+                        if localconfig['system_user_auth'] != (None, None):
+                            gotauth = True
+                        else:
+                            logger.error("cannot get system user auth credentials yet, retrying (" + str(count) + " / " + str(max_retries)+")")
+                            time.sleep(5)
+                    except Exception as err:
+                        logger.error("cannot get system-user auth credentials - service may not have system level access")
+                        localconfig['system_user_auth'] = (None, None)
 
-                smodule = importlib.import_module(module_name + "." + sname)
+                if not gotauth:
+                    raise Exception("service requires system user auth to start")
 
-                s = smodule.createService(sname, localconfig)
-                s.setServiceParent(retservice)
+        # application object
+        application = service.Application("multi-service-"+'-'.join(snames))
 
-                rc = smodule.initializeService(sname, localconfig)
-                if not rc:
-                    raise Exception("failed to initialize service")
+        #multi-service
+        retservice = service.MultiService()
+        retservice.setServiceParent(application)
 
-                rc = smodule.registerService(sname, localconfig)
-                if not rc:
-                    raise Exception("failed to register service")
-
-                logger.debug("starting service: " + sname)
-                success = True
-                scount += 1
-                localconfig['myservices'].append(sname)
-            else:
-                log.err("service not enabled in config, not starting service: " + sname)
-
-        if scount == 0:
-            log.err("no services/subservices were enabled/started on this host")
-            success = False
-    except Exception as err:
-        log.err("cannot create/init/register service: " + sname + " - exception: " + str(err))
         success = False
+        try:
+            scount = 0
+            for sname in snames:
+                if sname in localconfig['services'] and localconfig['services'][sname]['enabled']:
 
-    if not success:
-        log.err("cannot start service (see above for information)")
-        traceback.print_exc('Service init failure')
-        raise Exception("cannot start service (see above for information)")
+                    smodule = importlib.import_module(module_name + "." + sname)
 
-    return(retservice)
+                    s = smodule.createService(sname, localconfig)
+                    s.setServiceParent(retservice)
+
+                    rc = smodule.initializeService(sname, localconfig)
+                    if not rc:
+                        raise Exception("failed to initialize service")
+
+                    rc = smodule.registerService(sname, localconfig)
+                    if not rc:
+                        raise Exception("failed to register service")
+
+                    logger.debug("starting service: " + sname)
+                    success = True
+                    scount += 1
+                    localconfig['myservices'].append(sname)
+                else:
+                    logger.error("service not enabled in config, not starting service: " + sname)
+
+            if scount == 0:
+                logger.error("no services/subservices were enabled/started on this host")
+                success = False
+        except Exception as err:
+            logger.error("cannot create/init/register service: " + sname + " - exception: " + str(err))
+            success = False
+
+        if not success:
+            logger.error("cannot start service (see above for information)")
+            traceback.print_exc('Service init failure')
+            raise Exception("cannot start service (see above for information)")
+
+        return(retservice)
+    finally:
+        logger.disable_bootstrap_logging()
 
 # simple twisted resource for health check route
 class HealthResource(Resource):
