@@ -15,7 +15,7 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
-services_cache = {'service_records': [], 'cached_ttl': 30.0, 'cached_update': 0.0}
+#services_cache = {'service_records': [], 'cached_ttl': 30.0, 'cached_update': 0.0}
 
 cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 0.1}
 def get_catalog_endpoint():
@@ -695,9 +695,9 @@ def put_document(userId, bucket, name, inobj):
     return(ret)
 
 scache = {}
-scache_template = {'records': [], 'ttl': 5, 'last_updated': 0}
+scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
 
-def choose_service(userId, servicename, skipcache=True):
+def choose_service(userId, servicename, skipcache=False):
     global scache, scache_template
 
     fromCache = True
@@ -718,55 +718,43 @@ def choose_service(userId, servicename, skipcache=True):
         except Exception as err:
             service_records = []
 
+        scache[servicename]['records'] = []
         if service_records:
             for service_record in service_records:
                 if service_record['status']:
                     scache[servicename]['records'].append(service_record)
                     scache[servicename]['last_updated'] = time.time()
 
-    # select a random enabled service
+    # select a random enabled, available service
     if scache[servicename]['records']:
-        ret = scache[servicename]['records'][random.randint(0, len(scache[servicename]['records'])-1)]
-        logger.debug("chose service ("+str(ret['base_url'])+") ("+str(fromCache)+")")
+        idx = random.randint(0, len(scache[servicename]['records'])-1)
+        ret = scache[servicename]['records'][idx]
+        logger.debug("chose service: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
+
+        if False:
+            # this is too noisy
+            done = False
+            while not done:
+                if not scache[servicename]['records']:
+                    done=True
+                    ret = {}
+                else:
+                    idx = random.randint(0, len(scache[servicename]['records'])-1)
+                    ret = scache[servicename]['records'][idx]
+                    url = '/'.join([ret['base_url'], ret['version'], 'status'])
+                    try:
+                        status = http.anchy_get(url, auth=userId, verify=False, timeout=30)
+                        done=True
+                        logger.debug("chose service: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
+                    except:
+                        logger.debug("chosen service failed status check: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
+                        del scache[servicename]['records'][idx]
     else:
         ret = {}
-        logger.debug("no enabled service available in the system: " + str(servicename))
+
+    if not ret:
+        logger.debug("no service of type ("+str(servicename)+") is yet available in the system")
         
-    return(ret)
-
-def choose_service_orig(userId, servicename, skipcache=True):
-    global services_cache
-
-    # select the cache or update the cache service_records
-    fromCache = False
-    if not skipcache and services_cache['service_records'] and (time.time() - services_cache['cached_update']) < services_cache['cached_ttl']:
-        candidates = services_cache['service_records']
-        fromCache = True
-    else:
-        candidates = []
-        service_records = get_service(userId)
-        for service_record in service_records:
-            if service_record['status']:
-                candidates.append(service_record)
-
-        services_cache['service_records'] = candidates
-        services_cache['cached_update'] = time.time()
-
-    # choose for a service matching requested servicename
-    service_candidates = []
-    if candidates:
-        for service_record in candidates:
-            if servicename == service_record['servicename']:
-                service_candidates.append(service_record)
-
-    # finally select randomly from active service candidates
-    if service_candidates:
-        ret = service_candidates[random.randint(0, len(service_candidates)-1)]
-        logger.debug("chose service (servicename="+str(servicename)+" fromCache="+str(fromCache)+"): " + str(ret['base_url']))
-    else:
-        ret = {}
-        logger.warn("no active services found matching servicename ("+str(servicename)+")")
-
     return(ret)
 
 def get_service(userId, servicename=None, hostid=None):
