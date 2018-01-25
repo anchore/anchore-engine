@@ -20,7 +20,7 @@ def get_simplequeue_endpoint(userId):
     try:
         service = catalog.choose_service(userId, servicename='simplequeue')
         if not service:
-            raise Exception("cannot locate registered simplequeue service")
+            raise Exception("cannot locate available simplequeue service")
 
         endpoint = service['base_url']
         if endpoint:

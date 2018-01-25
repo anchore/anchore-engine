@@ -27,29 +27,12 @@ def add(hostid, servicename, inobj, session=None):
     else:
         our_service.update(inobj)
 
-#    try:
-#        session.commit()
-#    except Exception as err:
-#        raise err
-#    finally:
-#        session.rollback()
-    
     return(True)
 
 def delete(hostid, servicename, session=None):
-    if not session:
-        session = db.Session
-
     our_service = session.query(Service).filter_by(hostid=hostid).filter_by(servicename=servicename).first()
     if our_service:
         session.delete(our_service)
-
-#        try:
-#            session.commit()
-#        except Exception as err:
-#            raise err
-#        finally:
-#            session.rollback()
 
     return(True)
 

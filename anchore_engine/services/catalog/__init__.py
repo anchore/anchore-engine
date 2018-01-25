@@ -327,7 +327,7 @@ def handle_service_watcher(*args, **kwargs):
 
                     url = '/'.join([service['base_url'], service['version'], 'status'])
                     try:
-                        status = http.anchy_get(url, auth=(userId, password), verify=verify)
+                        status = http.anchy_get(url, auth=(userId, password), verify=verify, timeout=30)
                         service_update_record['heartbeat'] = int(time.time())
 
                         # set to down until the response can be parsed
@@ -337,7 +337,7 @@ def handle_service_watcher(*args, **kwargs):
 
                         try:
                             # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
-                            if status['up']:
+                            if status['up'] and status['available']:
                                 service_update_record['status'] = True
                                 service_update_record['status_message'] = taskstate.complete_state('service_status')
                             try:
@@ -379,6 +379,19 @@ def handle_service_watcher(*args, **kwargs):
             anchore_services = db.db_services.get_all(session=dbsession)
             # update the global latest service record dict in services.common
             latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+
+
+        if False:
+            with db.session_scope() as dbsession:
+                anchore_services = db.db_services.get_all(session=dbsession)
+                logger.debug("checking for expired service entries")
+                expire_time = (kwargs['mythread']['cycle_timer'] * 2) + 10
+                for service in anchore_services:
+                    logger.debug("service update delta: " + str(time.time() - service['last_updated']) + " : " + str(expire_time))
+                    if service['base_url'] and service['base_url'] != 'N/A':
+                        if (time.time() - service['last_updated']) > expire_time:
+                            logger.debug("clearing expired service entry: " + str(service))
+                            db.db_services.delete(service['hostid'], service['servicename'], session=dbsession)
 
         logger.debug("FIRING DONE: service watcher")
         try:
@@ -953,14 +966,24 @@ def watcher_func(*args, **kwargs):
     global system_user_auth
 
     while(True):
-        qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks')
-        if qobj:
-            logger.debug("got task from queue: " + str(qobj))
-            watcher = qobj['data']['watcher']
-            handler = watchers[watcher]['handler']
-            args = []
-            kwargs = {'mythread': watchers[watcher]}
-            rc = handler(*args, **kwargs)
+
+        all_ready = anchore_engine.services.common.check_services_ready(['simplequeue'])
+        if not all_ready:
+            logger.info("simplequeue service not yet ready, will retry")
+        else:
+            try:
+                qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks')
+                if qobj:
+                    logger.debug("got task from queue: " + str(qobj))
+                    watcher = qobj['data']['watcher']
+                    handler = watchers[watcher]['handler']
+                    args = []
+                    kwargs = {'mythread': watchers[watcher]}
+                    rc = handler(*args, **kwargs)
+
+            except Exception as err:
+                logger.warn("failed to process task this cycle: " + str(err))
+
         time.sleep(5)
 
 def monitor_func(**kwargs):
@@ -1008,6 +1031,7 @@ def monitor_func(**kwargs):
             if watcher not in watcher_threads:
                 if watchers[watcher]['taskType']:
                     # spin up a generic task watcher
+                    logger.debug("starting generic task thread")
                     watcher_threads[watcher] = threading.Thread(target=watcher_func, args=[watcher], kwargs={})
                     watcher_threads[watcher].start()
                 else:
@@ -1015,7 +1039,10 @@ def monitor_func(**kwargs):
                     watcher_threads[watcher] = threading.Thread(target=watchers[watcher]['handler'], args=[watcher], kwargs={'mythread': watchers[watcher]})
                     watcher_threads[watcher].start()
 
-            if time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
+            all_ready = anchore_engine.services.common.check_services_ready(['simplequeue'])
+            if not all_ready:
+                logger.info("simplequeue service not yet ready, will retry")
+            elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
                 if watchers[watcher]['taskType']:
                     logger.debug("should queue job: " + watcher)
                     watcher_task = copy.deepcopy(watcher_task_template)

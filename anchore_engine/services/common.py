@@ -30,7 +30,7 @@ import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
-from anchore_engine.subsys import logger
+from anchore_engine.subsys import logger, taskstate
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 apiext_status = {}
@@ -184,8 +184,8 @@ def registerService(sname, config, enforce_unique=True):
             endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
 
     try:
-        service_template['status'] = True
-        service_template['status_message'] = "registered"
+        service_template['status'] = False
+        service_template['status_message'] = taskstate.base_state('service_status')
 
         with session_scope() as dbsession:
             service_records = db_services.get_byname(sname, session=dbsession)
@@ -206,7 +206,7 @@ def registerService(sname, config, enforce_unique=True):
                     # if a different host_id has the same endpoint, fail
                     if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
                         raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
-                7
+
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)
 
@@ -234,7 +234,7 @@ def check_services_ready(servicelist):
         logger.debug("checking service readiness: " + str(required_services_up.keys()))
         for servicename in required_services_up.keys():
             if not required_services_up[servicename]:
-                logger.warn("required service ("+str(servicename)+") is not (yet) available - will not queue analysis tasks this cycle")
+                logger.warn("required service ("+str(servicename)+") is not (yet) available")
                 all_ready = False
                 break
 
@@ -243,7 +243,6 @@ def check_services_ready(servicelist):
         all_ready = False
 
     return(all_ready)
-
 
 def createServiceAPI(resource, sname, config):
     myconfig = config['services'][sname]

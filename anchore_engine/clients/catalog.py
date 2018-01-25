@@ -2,6 +2,7 @@ import json
 import re
 import hashlib
 import time
+import copy
 import random
 
 from anchore_engine.clients import http
@@ -693,7 +694,47 @@ def put_document(userId, bucket, name, inobj):
 
     return(ret)
 
+scache = {}
+scache_template = {'records': [], 'ttl': 5, 'last_updated': 0}
+
 def choose_service(userId, servicename, skipcache=True):
+    global scache, scache_template
+
+    fromCache = True
+    if skipcache or servicename not in scache:
+        scache[servicename] = copy.deepcopy(scache_template)        
+        fromCache = False
+
+    if not scache[servicename]['records']:
+        fromCache = False
+
+    if (time.time() - scache[servicename]['last_updated']) > scache[servicename]['ttl']:
+        fromCache =  False
+
+    if not fromCache:
+        # refresh the cache for this service from catalog call
+        try:
+            service_records = get_service(userId, servicename=servicename)
+        except Exception as err:
+            service_records = []
+
+        if service_records:
+            for service_record in service_records:
+                if service_record['status']:
+                    scache[servicename]['records'].append(service_record)
+                    scache[servicename]['last_updated'] = time.time()
+
+    # select a random enabled service
+    if scache[servicename]['records']:
+        ret = scache[servicename]['records'][random.randint(0, len(scache[servicename]['records'])-1)]
+        logger.debug("chose service ("+str(ret['base_url'])+") ("+str(fromCache)+")")
+    else:
+        ret = {}
+        logger.debug("no enabled service available in the system: " + str(servicename))
+        
+    return(ret)
+
+def choose_service_orig(userId, servicename, skipcache=True):
     global services_cache
 
     # select the cache or update the cache service_records
