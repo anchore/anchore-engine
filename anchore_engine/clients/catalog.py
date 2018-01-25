@@ -95,7 +95,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
-def add_image(userId, tag=None, repo=None, dockerfile=None):
+def add_image(userId, tag=None, dockerfile=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -117,8 +117,6 @@ def add_image(userId, tag=None, repo=None, dockerfile=None):
         url = url + "?tag="+tag
         if dockerfile:
             payload['dockerfile'] = dockerfile
-    elif repo:
-        url = url + "?repo="+repo
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

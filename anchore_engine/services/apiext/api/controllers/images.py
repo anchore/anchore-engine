@@ -848,7 +848,7 @@ def images(request_inputs):
     httpcode = 500
 
     userId, pw = user_auth
-    digest = tag = imageId = imageDigest = dockerfile = repo = None
+    digest = tag = imageId = imageDigest = dockerfile = None
 
     history = False
     if params and 'history' in params:
@@ -869,8 +869,6 @@ def images(request_inputs):
             imageDigest = jsondata['imageDigest']
         elif 'imageId' in jsondata:
             imageId = jsondata['imageId']
-        elif 'repo' in jsondata:
-            repo = jsondata['repo']
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
@@ -892,13 +890,13 @@ def images(request_inputs):
             logger.debug("handling POST: ")
 
             # if not, add it and set it up to be analyzed
-            if not tag and not repo:
+            if not tag:
                 # dont support digest add, yet
                 httpcode = 500
                 raise Exception("digest add unsupported")
 
             # add the image to the catalog
-            image_record = catalog.add_image(user_auth, tag=tag, repo=repo, dockerfile=dockerfile)
+            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return

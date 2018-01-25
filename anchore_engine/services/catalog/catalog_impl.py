@@ -125,13 +125,12 @@ def image(dbsession, request_inputs, bodycontent={}):
     if params and 'history' in params:
         history = params['history']
 
-    for t in ['tag', 'digest', 'imageId', 'repo']:
+    for t in ['tag', 'digest', 'imageId']:
         if t in params:
             input_string = params[t]
             if input_string:
                 input_type = t
-                if input_type != 'repo':
-                    image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
+                image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                 break
 
     httpcode = 500

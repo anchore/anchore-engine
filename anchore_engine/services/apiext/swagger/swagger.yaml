@@ -1060,9 +1060,6 @@ definitions:
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
-      repo:
-        type: string
-        description: "A full repo string which will add all extant tags in the repo. e.g. docker.io/library/nginx"
   PolicyBundle:
     description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
     type: object
