@@ -292,7 +292,7 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /summary/imagetags:
+  /summaries/imagetags:
     get:
       tags:
       - ImageTags

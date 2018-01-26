@@ -45,7 +45,7 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
-  /summary/imagetags:
+  /summaries/imagetags:
     get:
       tags:
       - "catalog"

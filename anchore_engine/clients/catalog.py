@@ -146,7 +146,7 @@ def get_imagetags(userId):
     auth = (userId, pw)
 
     base_url = get_catalog_endpoint()
-    url = base_url + "/summary/imagetags"
+    url = base_url + "/summaries/imagetags"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
