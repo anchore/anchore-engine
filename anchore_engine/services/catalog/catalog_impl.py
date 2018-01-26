@@ -92,12 +92,33 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 httpcode = 404
                 raise Exception("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
 
-            rc = db_subscriptions.add(userId, image_info['registry']+"/"+image_info['repo'], 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
+            try:
+                rc = db_subscriptions.add(userId, image_info['registry']+"/"+image_info['repo'], 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
+                if not rc:
+                    raise Exception ("adding required subscription failed")
+            except Exception as err:
+                httpcode = 500
+                raise Exception("could not add the required subscription to anchore-engine")
+                
 
-            return_object = []
-            for repotag in repotags:
-                return_object.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
+            dbfilter = {
+                'subscription_type': 'repo_update',
+                'subscription_key': image_info['registry']+"/"+image_info['repo']
+            }
+            return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags})
 
+            #fulltags = []
+            #for repotag in repotags:
+            #    fulltags.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
+
+            #return_object = [
+            #    {
+            #        'repository': image_info['registry'] + "/" + image_info['repo'],
+            #        'autosubscribed': autosubscribe,
+            #        'repotags': repotags
+            #    }
+            #]
             httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)

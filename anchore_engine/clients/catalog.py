@@ -95,6 +95,32 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
+def add_repo(userId, regrepo=None, autosubscribe=False):
+    global localconfig, headers
+
+    if not regrepo:
+        raise Exception("no regrepo supplied as input")
+
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+
+    url = base_url + "/repo"
+    url = url + "?regrepo="+regrepo+"&autosubscribe="+str(autosubscribe)
+
+    ret = http.anchy_post(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)    
+
 def add_image(userId, tag=None, dockerfile=None):
     global localconfig, headers
     if localconfig == None:

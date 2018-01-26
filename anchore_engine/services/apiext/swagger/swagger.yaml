@@ -735,6 +735,30 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /repositories:
+    post:
+      tags:
+      - "catalog"
+      summary: "Add repository to watch"
+      description: ""
+      operationId: add_repository
+      parameters:
+      - name: 'repository'
+        in: query
+        type: string
+        description: "full repository to add e.g. docker.io/library/alpine"
+        required: true
+      - name: 'autosubscribe'
+        in: query
+        type: boolean
+        description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
+        required: false
+      responses:
+        200:
+          description: Repository and discovered tags added
+          schema:
+            $ref: "#/definitions/RepositoryTagList"
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
   /registries:
     get:
       tags:
@@ -1461,6 +1485,7 @@ definitions:
         - policy_eval
         - tag_update
         - vuln_update
+        - repo_update
   Subscription:
     description: Subscription entry
     type: object
@@ -1475,6 +1500,7 @@ definitions:
         - policy_eval
         - tag_update
         - vuln_update
+        - repo_update
       subscription_value:
         type: string
         description: The value of the subscription target
@@ -1492,6 +1518,11 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/Subscription"
+  RepositoryTagList:
+    description: List of discovered tags in a repository
+    type: array
+    items:
+      type: string
   RegistryConfigurationList:
     description: List of registry configurations
     type: array
