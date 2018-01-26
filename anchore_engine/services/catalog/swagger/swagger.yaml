@@ -63,12 +63,19 @@ paths:
         type: boolean
         description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
         required: false
-#      - name: 'bodycontent'
-#        in: body
-#        schema:
-#          type: object
-#        description: "object describing repo to add"
-#        required: false
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /summaries/imagetags:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get image digest and tags summary list from DB"
+      description: ""
+      operationId: "image_tags_get"
       produces:
       - "application/json"
       responses:

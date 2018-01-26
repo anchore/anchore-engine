@@ -1,4 +1,5 @@
-from sqlalchemy import desc
+from sqlalchemy import desc, and_, or_
+from sqlalchemy.orm import load_only, Load
 import time
 
 from anchore_engine import db
@@ -159,6 +160,61 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
             ret = []
 
     return(ret)
+
+def get_all_tagsummary(userId, session=None):
+    
+    results = session.query(CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImageDocker.created_at, CatalogImageDocker.imageId).filter(and_(CatalogImage.userId == userId, CatalogImage.imageDigest == CatalogImageDocker.imageDigest))
+    def mymap(x):
+        return({'imageDigest': x[0], 'fulltag': x[1]+"/"+x[2]+":"+x[3], 'analysis_status': x[4], 'created_at': x[5], 'imageId': x[6]})
+    ret = map(mymap, list(results))
+
+    return(ret)
+
+if False:
+    def get_all_filtertest(userId, colfilter, session=None, ):
+
+        if 'userId' not in colfilter:
+            colfilter.append('userId')
+
+        value_colfilter = []
+        for c in colfilter:
+            value_colfilter.append('"'+str(c)+'"')
+
+        acols = ['imageDigest']
+        avcols = ['"imageDigest"']
+        cols = CatalogImage.__table__.columns.keys()
+        for col in cols:
+            if col != 'imageDigest' and col in colfilter:
+                acols.append(col)
+                avcols.append('"'+col+'"')
+
+        bcols = ['imageDigest']
+        bvcols = ['"imageDigest"']
+        cols = CatalogImageDocker.__table__.columns.keys()
+        for col in cols:
+            if col != 'imageDigest' and col in colfilter:
+                bcols.append(col)
+                bvcols.append('"'+col+'"')
+
+        hmap = {}
+        ret = []
+        if acols:
+            results = session.query(CatalogImage).options(load_only(*acols)).filter_by(userId=userId).values(*avcols)
+            for result in list(results):
+                hmap[result[0]] = dict(zip(acols, result))
+
+
+        if bcols:
+            results = session.query(CatalogImageDocker).options(load_only(*bcols)).filter_by(userId=userId).values(*bvcols)
+            for result in list(results):
+                if hmap[result[0]]:
+                    hmap[result[0]].update(dict(zip(bcols, result)))
+                else:
+                    hmap[result[0]] = dict(zip(bcols, result))
+
+        ret = hmap.values()
+
+        return(ret)
 
 def get_all_byuserId(userId, session=None):
     if not session:

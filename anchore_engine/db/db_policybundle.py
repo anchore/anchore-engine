@@ -12,11 +12,11 @@ def add(policyId, userId, active, inobj, session=None):
     inobj['active'] = active
 
     inobj.pop('last_updated', None)
-    #inobj['last_updated'] = int(time.time())
     inobj.pop('created_at', None)
 
     our_result = session.query(PolicyBundle).filter_by(policyId=policyId).filter_by(userId=userId).first()
     if not our_result:
+
         new_service = PolicyBundle(policyId=policyId, userId=userId)
         new_service.update(inobj)
 

@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.2"
+  version: "0.1.3"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -290,6 +290,26 @@ paths:
               $ref: "#/definitions/AnchoreImage"
         500:
           description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /summaries/imagetags:
+    get:
+      tags:
+      - ImageTags
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_imagetags
+      summary: List all visible image digests and tags
+      description: List all image tags visible to the user
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: array
+            description: "List of AnchoreImageTagSummary objects"
+            items:
+              $ref: "#/definitions/AnchoreImageTagSummary"
+        500:
+          description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
   /images:
@@ -1278,6 +1298,20 @@ definitions:
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
+  AnchoreImageTagSummary:
+    description: A unique image in the engine. 
+    type: object
+    properties:
+      imageDigest:
+        type: string
+      imageId:
+        type: string
+      analysis_status:
+        type: string
+      fulltag:
+        type: string
+      created_at:
+        type: integer
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
     type: object

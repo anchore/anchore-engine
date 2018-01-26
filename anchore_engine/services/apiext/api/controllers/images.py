@@ -573,6 +573,29 @@ def query_orig(request_inputs, queryType, doformat=False):
     return (return_object, httpcode)
 
 # images CRUD
+def list_imagetags():
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+
+        user_auth = request_inputs['auth']
+        method = request_inputs['method']
+        bodycontent = request_inputs['bodycontent']
+        params = request_inputs['params']
+
+        return_object = {}
+        httpcode = 500
+
+        userId, pw = user_auth
+
+        return_object = catalog.get_imagetags(user_auth)
+        httpcode = 200
+        
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return return_object, httpcode    
+
 def list_images(history=None, image_to_get=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'history': False})
