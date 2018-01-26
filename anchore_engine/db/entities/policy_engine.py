@@ -730,7 +730,7 @@ class VersionPreservingDistroMapper(IDistroMapper):
             return found_mapping.flavor
         else:
             db = get_thread_scoped_session()
-            candidates = like_distro.split(',')
+            candidates = like_distro.split(',') if like_distro else []
             for c in candidates:
                 mapping = db.query(DistroMapping).get(c)
                 if mapping:
