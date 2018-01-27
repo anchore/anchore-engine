@@ -32,15 +32,6 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
             raise err
     except Exception as err:
         raise err
-    #finally:
-        # try:
-        #     del os.environ['SKOPUSER']
-        # except:
-        #     pass
-        # try:
-        #     del os.environ['SKOPPASS']
-        # except:
-        #     pass
 
     return(True)
 
@@ -113,15 +104,6 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
     except Exception as err:
         #logger.error("error in skopeo wrapper - exception: " + str(err))
         raise err
-    # finally:
-    #     try:
-    #         del os.environ['SKOPUSER']
-    #     except:
-    #         pass
-    #     try:
-    #         del os.environ['SKOPPASS']
-    #     except:
-    #         pass
 
     if not manifest or not digest:
         raise Exception("no digest/manifest from skopeo")
