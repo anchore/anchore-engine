@@ -229,6 +229,7 @@ def anchy_get(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fget(url, **kwargs)
+
     if httpcode == 200:
         if raw:
             ret = rawdata
