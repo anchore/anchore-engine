@@ -892,18 +892,34 @@ def extract_analyzer_content(image_data, content_type):
 
     return(ret)
 
-def run_command(cmdstr):
+
+def run_command_list(cmd_list, env=None):
+    """
+    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
+    :param cmd_list: list of command e.g. ['ls', '/tmp']
+    :param env: dict of env vars for the environment if desired. will replace normal env, not augment
+    :return: tuple (rc_int, stdout_str, stderr_str)
+    """
+
     rc = -1
     sout = serr = None
 
     try:
-        pipes = subprocess.Popen(cmdstr.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if env:
+            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        else:
+            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         sout, serr = pipes.communicate()
         rc = pipes.returncode
     except Exception as err:
         raise err
 
     return(rc, sout, serr)
+
+
+def run_command(cmdstr, env=None):
+    return run_command_list(cmdstr.split(), env=env)
+
 
 def get_system_user_auth(session=None):
     localconfig = anchore_engine.configuration.localconfig.get_config()
