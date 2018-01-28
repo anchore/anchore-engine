@@ -311,3 +311,23 @@ def anchy_delete(url, raw=False, **kwargs):
         raise e
 
     return(ret)
+
+def anchy_aa(method, base_urls, url_postfix, **kwargs):
+    success = False
+    last_exc = None
+    for base_url in base_urls:
+        try:
+            url = '/'.join([base_url] + url_postfix)
+            ret = method(url, **kwargs)
+            success = True
+            break
+        except Exception as err:
+            last_exc = err
+    
+    if not success:
+        if last_exc:
+            raise last_exc
+        else:
+            raise Exception("could not run client")
+
+    return(ret)

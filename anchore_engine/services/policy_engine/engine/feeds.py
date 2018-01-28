@@ -1133,6 +1133,8 @@ class DataFeeds(object):
         :return:
         """
 
+        all_success = True
+
         updated_records = {}
         log.info('Performing feed sync of feeds: {}'.format('all' if to_sync is None else to_sync))
         if to_sync is None or 'vulnerabilities' in to_sync:
@@ -1141,6 +1143,7 @@ class DataFeeds(object):
                 updated_records['vulnerabilities'] = self.vulnerabilities.sync()
             except:
                 log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+                all_success = False
 
         if to_sync is None or 'packages' in to_sync:
             try:
@@ -1148,6 +1151,10 @@ class DataFeeds(object):
                 updated_records['packages'] = self.packages.sync()
             except:
                 log.exception('Failure updating the packages feed.')
+                all_success = False
+
+        if not all_success:
+            raise Exception("one or more feeds failed to sync")
 
         return updated_records
 
@@ -1157,6 +1164,9 @@ class DataFeeds(object):
         :param to_sync: list of feed names to sync, if None all feeds are synced
         :return:
         """
+
+        all_success = True
+
         updated_records = {}
 
         if to_sync is None or 'vulnerabilities' in to_sync:
@@ -1164,8 +1174,10 @@ class DataFeeds(object):
                 log.info('Bulk syncing vulnerability feed')
                 try:
                     updated_records['vulnerabilities'] = self.vulnerabilities.bulk_sync()
-                except:
+                except Exception as err:
                     log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+                    all_success = False
+
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
@@ -1174,10 +1186,15 @@ class DataFeeds(object):
                 try:
                     log.info('Syncing packages feed')
                     updated_records['packages'] = self.packages.bulk_sync()
-                except:
+                except Exception as err:
                     log.exception('Failure updating the packages feed. Continuing with next feed')
+                    all_success = False
+
             else:
                 log.info('Skipping bulk sync since feed already initialized')
+
+        if not all_success:
+            raise Exception("one or more feeds failed to sync")
 
         return updated_records
 

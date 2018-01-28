@@ -717,7 +717,7 @@ def put_document(userId, bucket, name, inobj):
 scache = {}
 scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
 
-def choose_service(userId, servicename, skipcache=False):
+def update_service_cache(userId, servicename, skipcache=False):
     global scache, scache_template
 
     fromCache = True
@@ -745,30 +745,36 @@ def choose_service(userId, servicename, skipcache=False):
                     scache[servicename]['records'].append(service_record)
                     scache[servicename]['last_updated'] = time.time()
 
+    return(fromCache)
+
+def get_enabled_services(userId, servicename, skipcache=False):
+    global scache, scache_template
+
+
+    fromCache = update_service_cache(userId, servicename, skipcache=skipcache)
+
+    # select a random enabled, available service
+    if scache[servicename]['records']:
+        ret = list(scache[servicename]['records'])
+        random.shuffle(ret)
+    else:
+        ret = []
+
+    if not ret:
+        logger.debug("no services of type ("+str(servicename)+") are yet available in the system")
+       
+    return(ret)
+
+def choose_service(userId, servicename, skipcache=False):
+    global scache, scache_template
+
+    fromCache = update_service_cache(userId, servicename, skipcache=skipcache)
+
     # select a random enabled, available service
     if scache[servicename]['records']:
         idx = random.randint(0, len(scache[servicename]['records'])-1)
         ret = scache[servicename]['records'][idx]
         logger.debug("chose service: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
-
-        if False:
-            # this is too noisy
-            done = False
-            while not done:
-                if not scache[servicename]['records']:
-                    done=True
-                    ret = {}
-                else:
-                    idx = random.randint(0, len(scache[servicename]['records'])-1)
-                    ret = scache[servicename]['records'][idx]
-                    url = '/'.join([ret['base_url'], ret['version'], 'status'])
-                    try:
-                        status = http.anchy_get(url, auth=userId, verify=False, timeout=30)
-                        done=True
-                        logger.debug("chose service: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
-                    except:
-                        logger.debug("chosen service failed status check: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
-                        del scache[servicename]['records'][idx]
     else:
         ret = {}
 

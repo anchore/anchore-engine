@@ -41,7 +41,9 @@ def monitor_func(**kwargs):
 
         logger.debug("running bootstrap preflight")
         process_preflight()
+
     try:
+        logger.debug("setting available statue to true")
         anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
     except Exception as err:
         logger.error("error setting service status - exception: " + str(err))
@@ -85,9 +87,9 @@ def createService(sname, config):
     ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
 
     # start up the monitor as a looping call
-    #kwargs = {'kick_timer': 1}
-    #lc = LoopingCall(anchore_engine.services.policy_engine.monitor, **kwargs)
-    #lc.start(1)
+    kwargs = {'kick_timer': 1}
+    lc = LoopingCall(anchore_engine.services.policy_engine.monitor, **kwargs)
+    lc.start(1)
 
     return (ret_svc)
 
@@ -109,11 +111,11 @@ def registerService(sname, config):
     reg_return = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
     logger.info('Registration complete.')
 
-    if reg_return:
-        process_preflight()
+    #if reg_return:
+    #    process_preflight()
 
     service_record = {'hostid': config['host_id'], 'servicename': sname}
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=False, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
 
     return reg_return
 
@@ -192,6 +194,7 @@ def _init_feeds():
 
 
     feeds = feeds.get_selected_feeds_to_sync(localconfig.get_config())
+    #task = FeedsUpdateTask(feeds_to_sync=feeds)
     task = InitialFeedSyncTask(feeds_to_sync=feeds)
     task.execute()
 

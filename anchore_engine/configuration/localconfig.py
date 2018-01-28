@@ -112,12 +112,28 @@ def load_config(configdir=None, configfile=None, validate_params={}):
 
     # setup service dir
     if not os.path.exists(os.path.join(localconfig['service_dir'])):
-        os.makedirs(os.path.join(localconfig['service_dir']))
+        success = False
+        for i in range(0,5):
+            try:
+                os.makedirs(os.path.join(localconfig['service_dir']))
+                success = True
+            except:
+                time.sleep(1)
+        if not success:
+            raise Exception("could not create service directory: " + str(localconfig['service_dir']))
 
     # setup tmp dir
     if not os.path.exists(os.path.join(localconfig['tmp_dir'])):
-        os.makedirs(os.path.join(localconfig['tmp_dir']))
-
+        success = False
+        for i in range(0,5):
+            try:
+                os.makedirs(os.path.join(localconfig['tmp_dir']))
+                success = True
+            except:
+                time.sleep(1)
+        if not success:
+            raise Exception("could not create temporary directory: " + str(localconfig['tmp_dir']))
+        
     # copy the src installed files unless they already exist in the service dir conf
     for key, fname in [('default_bundle_file', 'anchore_default_bundle.json'),
                        ('config_example_file', 'config.yaml.example'),
