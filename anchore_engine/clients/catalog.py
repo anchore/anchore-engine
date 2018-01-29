@@ -730,6 +730,10 @@ def update_service_cache(userId, servicename, skipcache=False):
 
     if not scache[servicename]['records']:
         fromCache = False
+    else:
+        for record in scache[servicename]['records']:
+            if not record['status']:
+                fromCache = False
 
     if (time.time() - scache[servicename]['last_updated']) > scache[servicename]['ttl']:
         fromCache =  False
