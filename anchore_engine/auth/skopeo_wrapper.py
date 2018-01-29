@@ -37,11 +37,11 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
 
 def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
     try:
+        proc_env = os.environ.copy()
         if user and pw:
-            os.environ['SKOPUSER'] = user
-            os.environ['SKOPPASS'] = pw
-            credstr = "--creds ${SKOPUSER}:${SKOPPASS}"
-            credstr = "--creds " + user + ":" + pw
+            proc_env['SKOPUSER'] = user
+            proc_env['SKOPPASS'] = pw
+            credstr = '--src-creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
         else:
             credstr = ""
 
@@ -53,34 +53,22 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
         pullstring = registry + "/" + repo
         repotags = []
 
+        cmd = ["/bin/sh", "-c", "skopeo inspect {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]
+        cmdstr = ' '.join(cmd)
         try:
-            cmdstr = "skopeo inspect "+tlsverifystr+" "+credstr+" docker://"+pullstring
-            try:
-                rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
-                if rc != 0:
-                    raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                else:
-                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-            except Exception as err:
-                logger.error("command failed with exception - " + str(err))
-                raise err
-
-            data = json.loads(sout)
-            repotags = data.get('RepoTags', [])
+            rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
+            if rc != 0:
+                raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+            else:
+                logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
         except Exception as err:
-            logger.warn("CMD failed - exception: " + str(err))
-            repotags = []
+            logger.error("command failed with exception - " + str(err))
+            raise err
+
+        data = json.loads(sout)
+        repotags = data.get('RepoTags', [])
     except Exception as err:
         raise err
-    finally:
-        try:
-            del os.environ['SKOPUSER']
-        except:
-            pass
-        try:
-            del os.environ['SKOPPASS']
-        except:
-            pass
 
     if not repotags:
         raise Exception("no tags found for input repo from skopeo")
@@ -122,7 +110,6 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                     raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    #testDigest = anchore_engine.services.common.manifest_to_digest(sout)
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
                 raise err
@@ -135,32 +122,12 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             digest = None
             manifest = {}
 
-        #try:
-        #    cmdstr = "skopeo inspect "+tlsverifystr+" "+credstr+" docker://"+pullstring
-        #    try:
-        #        rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
-        #        if rc != 0:
-        #            raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-        #        else:
-        #            logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-        #    except Exception as err:
-        #        logger.error("command failed with exception - " + str(err))
-        #        raise err
-        #    skopeo_output = sout
-        #    data = json.loads(skopeo_output)
-        #    digest = data['Digest']
-        #except Exception as err:
-        #    logger.warn("CMD failed - exception: " + str(err))
-        #    digest = None
-
     except Exception as err:
-        #logger.error("error in skopeo wrapper - exception: " + str(err))
         raise err
 
     if not manifest or not digest:
         raise Exception("no digest/manifest from skopeo")
 
-    #logger.debug("digest test comparison: " + str(digest == testDigest) + " : " + str(digest) + " : " + str(testDigest))
     return(manifest, digest)
 
 
