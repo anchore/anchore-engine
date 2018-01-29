@@ -41,7 +41,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
         if user and pw:
             proc_env['SKOPUSER'] = user
             proc_env['SKOPPASS'] = pw
-            credstr = '--src-creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
+            credstr = '--creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
         else:
             credstr = ""
 
