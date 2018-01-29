@@ -93,32 +93,44 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 raise Exception("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
 
             try:
-                rc = db_subscriptions.add(userId, image_info['registry']+"/"+image_info['repo'], 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
-                if not rc:
-                    raise Exception ("adding required subscription failed")
+                regrepo = image_info['registry']+"/"+image_info['repo']
+
+                dbfilter = {
+                    'subscription_type': 'repo_update',
+                    'subscription_key': regrepo
+                }
+                
+                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                if not subscription_records:
+                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
+                    if not rc:
+                        raise Exception ("adding required subscription failed")
+
+                else:
+                    # update with a new autosubscribe setting
+                    subscription_record = subscription_records[0]
+                    subscription_value = json.loads(subscription_record['subscription_value'])
+                    subscription_value['autosubscribe'] = autosubscribe
+                    rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+
+                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             except Exception as err:
                 httpcode = 500
                 raise Exception("could not add the required subscription to anchore-engine")
                 
 
-            dbfilter = {
-                'subscription_type': 'repo_update',
-                'subscription_key': image_info['registry']+"/"+image_info['repo']
-            }
-            return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            #dbfilter = {
+            #    'subscription_type': 'repo_update',
+            #    'subscription_key': image_info['registry']+"/"+image_info['repo']
+            #}
+            #return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            if not subscription_records:
+                httpcode = 500
+                raise Exception("unable to add/update subscripotion records in anchore-engine")
+
+            return_object = subscription_records
             return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags})
 
-            #fulltags = []
-            #for repotag in repotags:
-            #    fulltags.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
-
-            #return_object = [
-            #    {
-            #        'repository': image_info['registry'] + "/" + image_info['repo'],
-            #        'autosubscribed': autosubscribe,
-            #        'repotags': repotags
-            #    }
-            #]
             httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)

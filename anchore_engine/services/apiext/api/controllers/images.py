@@ -609,7 +609,6 @@ def repositories(request_inputs):
                 return_object = []
                 repo_records = catalog.add_repo(user_auth, regrepo=input_repo, autosubscribe=autosubscribe)
                 for repo_record in repo_records:
-                    #return_object.append(make_response_repo(user_auth, image_record, params))
                     return_object.append(repo_record)
                 httpcode = 200
             except Exception as err:
