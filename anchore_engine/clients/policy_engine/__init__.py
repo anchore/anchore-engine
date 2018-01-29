@@ -24,7 +24,7 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
         try:
             service = catalog.choose_service((user, password), SERVICE_NAME)
             if service:
-                configuration.host = '/'.join([service['base_url'], service['version']])
+                configuration.host = '/'.join([service['service_url'], service['version']])
             else:
                 raise Exception("cannot find endpoint for service: {}".format(SERVICE_NAME))
         except Exception as err:

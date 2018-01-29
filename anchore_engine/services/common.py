@@ -161,6 +161,7 @@ def registerService(sname, config, enforce_unique=True):
     service_template = {
         'type': 'anchore',
         'base_url': 'N/A',
+        'status_base_url': 'N/A',
         'version': 'v1',
         'short_description': ''
     }
@@ -170,7 +171,10 @@ def registerService(sname, config, enforce_unique=True):
     else:
         hstring = "http"
 
-    endpoint_hostname = endpoint_port = endpoint_hostport = None
+    endpoint_hostname = endpoint_port = endpoint_hostport = service_url = None
+
+    service_url = myconfig.get('service_url', None)
+
     if 'endpoint_hostname' in myconfig:
         endpoint_hostname = myconfig['endpoint_hostname']
         service_template['base_url'] = hstring + "://"+myconfig['endpoint_hostname']
@@ -206,6 +210,12 @@ def registerService(sname, config, enforce_unique=True):
                     # if a different host_id has the same endpoint, fail
                     if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
                         raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
+
+            # for now, set these as equal 
+            if service_url:
+                service_template['service_url'] = myconfig['service_url']
+            else:
+                service_template['service_url'] = service_template['base_url']
 
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)

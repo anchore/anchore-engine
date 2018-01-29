@@ -15,14 +15,55 @@ from anchore_engine.subsys import logger
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
-#services_cache = {'service_records': [], 'cached_ttl': 30.0, 'cached_update': 0.0}
+scache = {}
+scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
+init_catalog_services = []
 
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 0.1}
 def get_catalog_endpoint():
+    global localconfig, scache, init_catalog_services
+
+    init = False
+    if 'catalog' not in scache:
+        init = True
+    elif not scache['catalog']['records']:
+        init = True
+    else:
+        init_catalog_services = copy.deepcopy(scache['catalog'])
+        init = False
+
+    if not init_catalog_services:
+        init = True
+
+    if init:
+        init_catalog_services = []
+        logger.debug('initializing catalog endpoint')
+        if localconfig == None:
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            
+        # look for override, else go to the DB
+        if 'catalog_endpoint' in localconfig:
+            base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
+        else:
+            with db.session_scope() as dbsession:
+                service_reports = db.db_services.get_byname('catalog', session=dbsession)
+                if service_reports:
+                    for service in service_reports:
+                        if service['status']:
+                            init_catalog_services.append(service)
+            
+    if init_catalog_services:
+        service = init_catalog_services[random.randint(0, len(init_catalog_services)-1)]
+    else:
+        raise Exception("cannot locate registered and available service in config/DB: catalog")
+
+    base_url = '/'.join([service['service_url'], service['version']])
+    return(base_url)
+        
+cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 0.1}
+def get_catalog_endpoint_orig():
     global localconfig, headers, cached_endpoint
 
     if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
-        #logger.debug("using cached endpoint - " + str(cached_endpoint))
         logger.debug("chose service (servicename=catalog fromCache=True): " + str(cached_endpoint['base_url']))
         return(cached_endpoint['base_url'])
 
@@ -93,15 +134,6 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
-    #(httpcode, jsondata, rawdata) = http.fget(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed get: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed get url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
-
     return(ret)
 
 def add_image(userId, tag=None, dockerfile=None):
@@ -129,15 +161,6 @@ def add_image(userId, tag=None, dockerfile=None):
         payload['dockerfile'] = dockerfile
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fpost(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed post: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed post url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
@@ -215,15 +238,6 @@ def update_image(userId, imageDigest, image_record={}):
 
     ret = http.anchy_put(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
-    #(httpcode, jsondata, rawdata) = http.fput(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed post: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed post url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
-
     return(ret)
 
 def delete_image(userId, imageDigest, force=False):
@@ -247,15 +261,6 @@ def delete_image(userId, imageDigest, force=False):
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
-    #(httpcode, jsondata, rawdata) = http.fdelete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200:
-    #    ret = True
-    #else:
-    #    #raise Exception("failed delete: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed delete url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
-
     return(ret)    
 
 def import_image(userId, anchore_data):
@@ -277,15 +282,6 @@ def import_image(userId, anchore_data):
     payload = anchore_data
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fpost(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed post: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed post url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
@@ -312,15 +308,6 @@ def add_policy(userId, bundle):
         raise err
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fpost(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed post: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed post url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)    
 
@@ -357,14 +344,6 @@ def get_policy(userId, policyId=None):
         payload["policyId"] = policyId
 
     ret = http.anchy_get(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #(httpcode, jsondata, rawdata) = http.fget(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed get: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed get url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
@@ -387,15 +366,6 @@ def update_policy(userId, policyId, policy_record={}):
     payload = policy_record
 
     ret = http.anchy_put(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fput(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed put: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed put url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)    
 
@@ -420,15 +390,6 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
         payload["policyId"] = policyId
 
     ret = http.anchy_delete(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-
-    #(httpcode, jsondata, rawdata) = http.fdelete(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed delete: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed delete url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
@@ -628,14 +589,6 @@ def get_users(auth):
     url = base_url + "/users"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #(httpcode, jsondata, rawdata) = http.fget(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed get: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed get url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
 
     return(ret)
 
@@ -658,15 +611,6 @@ def get_user(auth, userId):
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
-    #(httpcode, jsondata, rawdata) = http.fget(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
-    #if httpcode == 200 and jsondata != None:
-    #    ret = jsondata
-    #else:
-    #    #raise Exception("failed get: httpcode="+str(httpcode)+" rawdata="+str(rawdata))
-    #    e = Exception("failed get url="+str(url))
-    #    e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
-    #    raise e
-
     return(ret)
 
 def get_document(userId, bucket, name):
@@ -685,7 +629,6 @@ def get_document(userId, bucket, name):
     base_url = get_catalog_endpoint()
     url = base_url + "/archive/" + bucket + "/" + name
 
-    #ret = http.anchy_get(url, raw=True, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
     archive_document = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
     ret = archive_document['document']
 
@@ -713,9 +656,6 @@ def put_document(userId, bucket, name, inobj):
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
-
-scache = {}
-scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
 
 def update_service_cache(userId, servicename, skipcache=False):
     global scache, scache_template
@@ -774,7 +714,6 @@ def choose_service(userId, servicename, skipcache=False):
     if scache[servicename]['records']:
         idx = random.randint(0, len(scache[servicename]['records'])-1)
         ret = scache[servicename]['records'][idx]
-        logger.debug("chose service: servicename="+str(servicename)+" base_url="+str(ret['base_url'])+" fromCache="+str(fromCache))
     else:
         ret = {}
 

@@ -401,6 +401,7 @@ class Service(Base):
     type = Column(String)
     version = Column(String)
     base_url = Column(String)
+    service_url = Column(String)
     short_description = Column(String)
     status = Column(Boolean)
     status_message = Column(String)
