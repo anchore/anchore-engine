@@ -25,18 +25,20 @@ try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     application.app.url_map.strict_slashes = False
     application.add_api('swagger.yaml')
-    app = application
+    flask_app = application
 except Exception as err:
     traceback.print_exc()
     raise err
 
+servicename = 'analyzer'
 
 # service funcs (must be here)
 def createService(sname, config):
-    global app
+    global flask_app, monitor_threads, monitors, servicename
 
     try:
         myconfig = config['services'][sname]
+        servicename = sname
     except Exception as err:
         raise err
 
@@ -52,21 +54,25 @@ def createService(sname, config):
     except:
         doapi = False
 
+    kwargs = {}
+    kwargs['kick_timer'] = kick_timer
+    kwargs['monitors'] = monitors
+    kwargs['monitor_threads'] = monitor_threads
+    kwargs['servicename'] = servicename
+
     if doapi:
         # start up flask service
 
-        flask_site = WSGIResource(reactor, reactor.getThreadPool(), app)
+        flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
         root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
         ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
 
         # start up the monitor as a looping call
-        kwargs = {'kick_timer': kick_timer}
-        lc = LoopingCall(anchore_engine.services.analyzer.monitor, **kwargs)
+        lc = LoopingCall(anchore_engine.services.common.monitor, **kwargs)
         lc.start(1)
     else:
         # start up the monitor as a timer service
-        kwargs = {'kick_timer': kick_timer}
-        svc = internet.TimerService(1, anchore_engine.services.analyzer.monitor, **kwargs)
+        svc = internet.TimerService(1, anchore_engine.services.common.monitor, **kwargs)
         svc.setName(sname)
         ret_svc = svc
 
@@ -94,17 +100,16 @@ def registerService(sname, config):
 ############################################
 
 queuename = "images_to_analyze"
-click = 0
-running = False
-last_run = 0
 system_user_auth = ('anchore-system', '')
 current_avg = 0.0
 current_avg_count = 0.0
 
 def perform_analyze(userId, manifest, image_record, registry_creds):
+    global servicename
+
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
-        myconfig = localconfig['services']['analyzer']
+        myconfig = localconfig['services'][servicename]
     except:
         myconfig = {}
 
@@ -233,7 +238,7 @@ def perform_analyze_localanchore(userId, manifest, image_record, registry_creds)
 
 
 def process_analyzer_job(system_user_auth, qobj):
-    global current_avg, current_avg_count
+    global current_avg, current_avg_count, servicename
 
     timer = int(time.time())
     try:
@@ -353,7 +358,7 @@ def process_analyzer_job(system_user_auth, qobj):
                 current_avg = new_avg
 
                 localconfig = anchore_engine.configuration.localconfig.get_config()
-                service_record = {'hostid': localconfig['host_id'], 'servicename': 'analyzer'}
+                service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
                 anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count})
 
             except:
@@ -371,102 +376,56 @@ def process_analyzer_job(system_user_auth, qobj):
 
     return (True)
 
-def monitor_func(**kwargs):
-    global click, running, last_run, queuename, system_user_auth
+def handle_image_analyzer(*args, **kwargs):
+    global system_user_auth, queuename, servicename
 
-    timer = int(time.time())
-    if click < 5:
-        click = click + 1
-        logger.debug("Analyzer starting in: " + str(5 - click))
-        return (True)
+    cycle_timer = kwargs['mythread']['cycle_timer']
 
-    if round(time.time() - last_run) < kwargs['kick_timer']:
-        logger.spew(
-            "timer hasn't kicked yet: " + str(round(time.time() - last_run)) + " : " + str(kwargs['kick_timer']))
-        return (True)
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    system_user_auth = localconfig['system_user_auth']
 
-    try:
-        running = True
-        last_run = time.time()
-        logger.debug("FIRING: analyzer")
-
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        system_user_auth = localconfig['system_user_auth']
-
-        service_record = {'hostid': localconfig['host_id'], 'servicename': 'analyzer'}
-        anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
-
-        #queues = simplequeue.get_queues(system_user_auth)
-        #if not queues:
-        #    logger.warn("could not get any queues from simplequeue client, cannot do any work")
-        #elif queuename not in queues:
-        #    logger.error("connected to simplequeue, but could not find queue (" + queuename + "), cannot do any work")
-        #else:
-        if True:
+    while(True):
+        logger.debug("analyzer thread cycle start")
+        try:
             try:
+                myconfig = localconfig['services'][servicename]
+                max_analyze_threads = int(myconfig['max_threads'])
+            except:
+                max_analyze_threads = 1
 
-                try:
-                    myconfig = localconfig['services']['analyzer']
-                    max_analyze_threads = int(myconfig['max_threads'])
-                except:
-                    max_analyze_threads = 1
+            logger.debug("max threads: " + str(max_analyze_threads))
+            threads = []
+            for i in range(0, max_analyze_threads):
+                qobj = simplequeue.dequeue(system_user_auth, queuename)
+                #if simplequeue.qlen(system_user_auth, queuename) > 0:                    
+                if qobj:
+                    myqobj = copy.deepcopy(qobj)
+                    logger.spew("incoming queue object: " + str(myqobj))
+                    logger.debug("incoming queue task: " + str(myqobj.keys()))
+                    logger.debug("starting thread")
+                    athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
+                    athread.start()
+                    threads.append(athread)
+                    logger.debug("thread started")
+                else:
+                    logger.debug("analyzer queue is empty - no work this cycle")
 
-                logger.debug("max threads: " + str(max_analyze_threads))
-                threads = []
-                for i in range(0, max_analyze_threads):
-                    qobj = simplequeue.dequeue(system_user_auth, queuename)
-                    #if simplequeue.qlen(system_user_auth, queuename) > 0:                    
-                    if qobj:
-                        myqobj = copy.deepcopy(qobj)
-                        logger.spew("incoming queue object: " + str(myqobj))
-                        logger.debug("incoming queue task: " + str(myqobj.keys()))
-                        logger.debug("starting thread")
-                        athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
-                        athread.start()
-                        threads.append(athread)
-                        logger.debug("thread started")
-                    else:
-                        logger.debug("analyzer queue is empty - no work this cycle")
+            for athread in threads:
+                logger.debug("joining thread")
+                athread.join()
+                logger.debug("thread joined")
 
-                for athread in threads:
-                    logger.debug("joining thread")
-                    athread.join()
-                    logger.debug("thread joined")
+        except Exception as err:
+            logger.error(str(err))
 
-            except Exception as err:
-                logger.error(str(err))
-    except Exception as err:
-        logger.error(str(err))
-    finally:
-        running = False
-        logger.debug("FIRING DONE: analyzer: " + str(int(time.time()) - timer))
+        logger.debug("analyzer thread cycle complete: next in "+str(cycle_timer))
+        time.sleep(cycle_timer)
+    return(True)
 
-    return (True)
+# monitor infrastructure
 
-monitor_thread = None
-
-def monitor(**kwargs):
-    global monitor_thread
-    try:
-        donew = False
-        if monitor_thread:
-            if monitor_thread.isAlive():
-                logger.spew("MON: thread still running")
-            else:
-                logger.spew("MON: thread stopped running")
-                donew = True
-                monitor_thread.join()
-                logger.spew("MON: thread joined: " + str(monitor_thread.isAlive()))
-        else:
-            logger.spew("MON: no thread")
-            donew = True
-
-        if donew:
-            logger.spew("MON: starting")
-            monitor_thread = threading.Thread(target=monitor_func, kwargs=kwargs)
-            monitor_thread.start()
-        else:
-            logger.spew("MON: skipping")
-
-    except Exception as err:
-        logger.warn("MON thread start exception: " + str(err))
+monitors = {
+    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+}
+monitor_threads = {}

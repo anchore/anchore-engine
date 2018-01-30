@@ -5,6 +5,7 @@ from .entities.catalog import Anchore
 from .entities.catalog import ArchiveDocument
 from .entities.catalog import CatalogImage
 from .entities.catalog import CatalogImageDocker
+#from .entities.catalog import CatalogRepoTag
 from .entities.catalog import EventLog
 from .entities.catalog import PolicyBundle
 from .entities.catalog import PolicyEval

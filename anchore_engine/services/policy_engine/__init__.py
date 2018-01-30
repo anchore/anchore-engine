@@ -15,83 +15,66 @@ import anchore_engine.clients.catalog
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 
-
+servicename = 'policy_engine'
 temp_logger = None
-click = 0
-initial_sync = False
-
-def monitor_func(**kwargs):
-    global initial_sync, click
-
-    if click < 5:
-        click = click + 1
-        logger.debug("policy_engine_monitor starting in: " + str(5 - click))
-        return (True)
-
-    logger.debug("FIRING: policy_engine_monitor")
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    system_user_auth = localconfig['system_user_auth']
-    service_record = {'hostid': localconfig['host_id'], 'servicename': 'policy_engine'}
-
-    if not initial_sync:
-        try:
-            anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=False, message="running initial feed sync", detail={'service_state': anchore_engine.subsys.taskstate.working_state('policy_engine_state')}, update_db=True)
-        except Exception as err:
-            logger.error("error setting service status - exception: " + str(err))
-
-        logger.debug("running bootstrap preflight")
-        process_preflight()
-
-    try:
-        logger.debug("setting available statue to true")
-        anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
-    except Exception as err:
-        logger.error("error setting service status - exception: " + str(err))
-
-    initial_sync = True
-    logger.debug("FIRING DONE: policy_engine_monitor")
-
-monitor_thread = None
-def monitor(**kwargs):
-    global monitor_thread
-    try:
-        donew = False
-        if monitor_thread:
-            if monitor_thread.isAlive():
-                logger.spew("MON: thread still running")
-            else:
-                logger.spew("MON: thread stopped running")
-                donew = True
-                monitor_thread.join()
-                logger.spew("MON: thread joined: " + str(monitor_thread.isAlive()))
-        else:
-            logger.spew("MON: no thread")
-            donew = True
-
-        if donew:
-            logger.spew("MON: starting")
-            monitor_thread = threading.Thread(target=monitor_func, kwargs=kwargs)
-            monitor_thread.start()
-        else:
-            logger.spew("MON: skipping")
-
-    except Exception as err:
-        logger.warn("MON thread start exception: " + str(err))
-
 
 # service funcs (must be here)
 def createService(sname, config):
-    from anchore_engine.services.policy_engine.application import application
-    flask_site = WSGIResource(reactor, reactor.getThreadPool(), application)
-    root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-    ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
+    from anchore_engine.services.policy_engine.application import application as flask_app
+    global monitor_threads, monitors, servicename
 
-    # start up the monitor as a looping call
-    kwargs = {'kick_timer': 1}
-    lc = LoopingCall(anchore_engine.services.policy_engine.monitor, **kwargs)
-    lc.start(1)
+    try:
+        myconfig = config['services'][sname]
+        servicename = sname
+    except Exception as err:
+        raise err
+
+    try:
+        kick_timer = int(myconfig['cycle_timer_seconds'])
+    except:
+        kick_timer = 1
+
+    doapi = False
+    try:
+        if myconfig['listen'] and myconfig['port'] and myconfig['endpoint_hostname']:
+            doapi = True
+    except:
+        doapi = False
+
+    kwargs = {}
+    kwargs['kick_timer'] = kick_timer
+    kwargs['monitors'] = monitors
+    kwargs['monitor_threads'] = monitor_threads
+    kwargs['servicename'] = servicename
+
+    if doapi:
+        # start up flask service
+
+        flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
+        root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
+        ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
+
+        # start up the monitor as a looping call
+        lc = LoopingCall(anchore_engine.services.common.monitor, **kwargs)
+        lc.start(1)
+    else:
+        # start up the monitor as a timer service
+        svc = internet.TimerService(1, anchore_engine.services.common.monitor, **kwargs)
+        svc.setName(sname)
+        ret_svc = svc
 
     return (ret_svc)
+
+#    flask_site = WSGIResource(reactor, reactor.getThreadPool(), application)
+#    root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
+#    ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
+
+#    # start up the monitor as a looping call
+#    kwargs = {'kick_timer': 1}
+#    lc = LoopingCall(anchore_engine.services.policy_engine.monitor, **kwargs)
+#    lc.start(1)
+
+#    return (ret_svc)
 
 
 def initializeService(sname, config):
@@ -208,4 +191,48 @@ def _init_db_content():
     :return:
     """
     return _init_distro_mappings() and _init_feeds()
+
+
+#click = 0
+initial_sync = False
+
+def handle_bootstrapper(*args, **kwargs):
+    global initial_sync, servicename
+
+    cycle_timer = kwargs['mythread']['cycle_timer']
+
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
+
+    while(True):
+        try:
+            if not initial_sync:
+                try:
+                    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=False, message="running initial feed sync", detail={'service_state': anchore_engine.subsys.taskstate.working_state('policy_engine_state')}, update_db=True)
+                except Exception as err:
+                    logger.error("error setting service status - exception: " + str(err))
+
+                logger.debug("running bootstrap preflight")
+                process_preflight()
+
+                try:
+                    logger.debug("setting available statue to true")
+                    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
+                except Exception as err:
+                    logger.error("error setting service status - exception: " + str(err))
+
+                initial_sync = True
+        except:
+            logger.warn("failed to bootstrap, will retry")
+
+        time.sleep(cycle_timer)
+    return(True)
+
+# monitor infrastructure
+
+monitors = {
+    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'feed_sync_bootstrapper': {'handler': handle_bootstrapper, 'taskType': 'handle_bootstrapper', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+}
+monitor_threads = {}
 

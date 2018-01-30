@@ -369,22 +369,6 @@ def db_upgrade_003_004():
 
     return True
 
-def db_upgrade_004_005():
-    global engine
-    from anchore_engine.db import db_anchore, db_services
-
-    try:
-        table_name = 'services'
-        column = Column('service_url', String, primary_key=False)
-        cn = column.compile(dialect=engine.dialect)
-        ct = column.type.compile(engine.dialect)
-        engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
-
-    except Exception as err:
-        raise Exception("failed to perform DB service table upgrade - exception: " + str(err))
-
-    return(True)
-
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -392,7 +376,6 @@ upgrade_functions = (
     (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
     (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
-    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
 )
 
 @contextmanager

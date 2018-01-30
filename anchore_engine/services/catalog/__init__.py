@@ -30,16 +30,20 @@ try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     application.app.url_map.strict_slashes = False
     application.add_api('swagger.yaml')
-    app = application
+    flask_app = application
 except Exception as err:
     traceback.print_exc()
     raise err
 
+servicename = 'catalog'
+
 # service funcs (must be here)
 def createService(sname, config):
-    global app
+    global flask_app, servicename
 
-    flask_site = WSGIResource(reactor, reactor.getThreadPool(), app)
+    servicename = sname
+
+    flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
     root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
     return(anchore_engine.services.common.createServiceAPI(root, sname, config))
 
@@ -400,6 +404,103 @@ def handle_service_watcher(*args, **kwargs):
             pass
 
         time.sleep(cycle_timer)
+    return(True)
+
+def handle_repo_watcher(*args, **kwargs):
+    global system_user_auth
+
+    logger.debug("FIRING: repo watcher")
+    with db.session_scope() as dbsession:
+        users = db.db_users.get_all(session=dbsession)
+
+    for user in users:
+        userId = user['userId']
+        if userId == 'anchore-system':
+            continue
+
+        dbfilter = {}
+        with db.session_scope() as dbsession:
+            dbfilter['subscription_type'] = 'repo_update'
+            subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+
+            registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
+            try:
+                catalog_impl.refresh_registry_creds(registry_creds, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
+        for subscription_record in subscription_records:
+            if not subscription_record['active']:
+                continue
+
+            try:
+                regrepo = subscription_record['subscription_key']
+                if subscription_record['subscription_value']:
+                    subscription_value = json.loads(subscription_record['subscription_value'])
+                    if 'autosubscribe' not in subscription_value:
+                        subscription_value['autosubscribe'] = False
+                else:
+                    subscription_value = {'autosubscribe': False}
+
+                stored_repotags = subscription_value.get('repotags', [])
+
+                image_info = anchore_engine.services.common.get_image_info(userId, "docker", regrepo, registry_lookup=False, registry_creds=(None, None))
+                curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+
+                repotags = set(curr_repotags).difference(set(stored_repotags))
+                if repotags:
+                    logger.debug("new tags to watch in repo ("+str(regrepo)+"): " + str(repotags))
+                    added_repotags = stored_repotags
+                    
+                    for repotag in repotags:
+                        try:
+                            fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + repotag
+                            logger.debug("found new tag in repo: " + str(fulltag))
+                            new_image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=True, registry_creds=registry_creds)
+                            logger.debug("checking image: got registry info: " + str(new_image_info))
+
+                            manifest = None
+                            try:
+                                if 'manifest' in new_image_info:
+                                    manifest = json.dumps(new_image_info['manifest'])
+                                else:
+                                    raise Exception("no manifest from get_image_info")
+                            except Exception as err:
+                                raise Exception("could not fetch/parse manifest - exception: " + str(err))
+
+                            with db.session_scope() as dbsession:
+                                logger.debug("ADDING/UPDATING IMAGE IN REPO WATCHER " + str(new_image_info))
+                                # add the image
+                                image_records = catalog_impl.add_or_update_image(dbsession, userId, new_image_info['imageId'], tags=[new_image_info['fulltag']], digests=[new_image_info['fulldigest']], manifest=manifest)
+                                # add the subscription records with the configured default activations
+
+                                for stype in anchore_engine.services.common.subscription_types:
+                                    activate = False
+                                    if stype == 'repo_update':
+                                        continue
+                                    elif stype == 'tag_update' and subscription_value['autosubscribe']:
+                                        activate = True
+                                    db_subscriptions.add(userId, new_image_info['fulltag'], stype, {'active': activate}, session=dbsession)
+
+                            added_repotags.append(repotag)
+                        except Exception as err:
+                            logger.warn("could not add discovered tag from repo ("+str(fulltag)+") - exception: " + str(err))
+
+                    # update the subscription record with the latest successfully added image tags
+                    with db.session_scope() as dbsession:
+                        subscription_value['repotags'] = added_repotags
+                        db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+
+                else:
+                    logger.debug("no new images in watched repo ("+str(regrepo)+"): skipping")
+            except Exception as err:
+                logger.warn("failed to process repo_update subscription - exception: " + str(err))
+
+    logger.debug("FIRING DONE: repo watcher")
+    try:
+        kwargs['mythread']['last_return'] = True
+    except:
+        pass
     return(True)
 
 def handle_image_watcher(*args, **kwargs):
@@ -940,7 +1041,6 @@ click = 0
 running = False
 last_run = 0
 system_user_auth = ('anchore-system', '')
-
 # policy update check data
 feed_sync_updated = False
 bundle_user_last_updated = {}
@@ -954,6 +1054,7 @@ watchers = {
     'notifications': {'handler':handle_notifications, 'taskType': 'handle_notifications', 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'feed_sync': {'handler':handle_feed_sync, 'taskType': 'handle_feed_sync', 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_watcher': {'handler':handle_service_watcher, 'taskType': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 
 watcher_task_template = {

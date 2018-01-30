@@ -8,7 +8,9 @@ import attr
 import hashlib
 import traceback
 import importlib
+import threading
 import subprocess
+
 #import simplejson as json
 from collections import OrderedDict
 
@@ -36,7 +38,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 apiext_status = {}
 latest_service_records = {"service_records": []}
 queue_names = ['images_to_analyze', 'error_events', 'watcher_tasks']
-subscription_types = ['policy_eval', 'tag_update', 'vuln_update']
+subscription_types = ['policy_eval', 'tag_update', 'vuln_update', 'repo_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data", "manifest_data"]
 super_users = ['admin', 'anchore-system']
@@ -171,9 +173,7 @@ def registerService(sname, config, enforce_unique=True):
     else:
         hstring = "http"
 
-    endpoint_hostname = endpoint_port = endpoint_hostport = service_url = None
-
-    service_url = myconfig.get('service_url', None)
+    endpoint_hostname = endpoint_port = endpoint_hostport = None
 
     if 'endpoint_hostname' in myconfig:
         endpoint_hostname = myconfig['endpoint_hostname']
@@ -210,12 +210,6 @@ def registerService(sname, config, enforce_unique=True):
                     # if a different host_id has the same endpoint, fail
                     if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
                         raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
-
-            # for now, set these as equal 
-            if service_url:
-                service_template['service_url'] = myconfig['service_url']
-            else:
-                service_template['service_url'] = service_template['base_url']
 
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)
@@ -810,7 +804,6 @@ def extract_dockerfile_content(image_data):
     dockerfile_content = ""
     dockerfile_mode = "Guessed"
 
-    #>>> ex[0]['image']['imagedata']['image_report']['dockerfile_mode']
     try:
         dockerfile_content = image_data[0]['image']['imagedata']['image_report']['dockerfile_contents']
         dockerfile_mode = image_data[0]['image']['imagedata']['image_report']['dockerfile_mode']
@@ -943,5 +936,108 @@ def get_system_user_auth(session=None):
 
     return ( (None, None) )
 
-    
+# generic monitor_func implementation
+
+click = 0
+running = False
+last_run = 0
+def monitor_func(**kwargs):
+    global click, running, last_run
+
+    monitors = kwargs['monitors']
+    monitor_threads = kwargs['monitor_threads']
+    servicename = kwargs['servicename']
+
+    timer = int(time.time())
+    if click < 5:
+        click = click + 1
+        logger.debug("service ("+str(servicename)+") starting in: " + str(5 - click))
+        return (True)
+
+    if round(time.time() - last_run) < kwargs['kick_timer']:
+        logger.spew(
+            "timer hasn't kicked yet: " + str(round(time.time() - last_run)) + " : " + str(kwargs['kick_timer']))
+        return (True)
+
+    try:
+        running = True
+        last_run = time.time()
+        
+        # handle setting the cycle timers based on configuration
+        for monitor_name in monitors.keys():
+            if not monitors[monitor_name]['initialized']:
+                # first time
+                if 'cycle_timers' in kwargs and monitor_name in kwargs['cycle_timers']:
+                    try:
+                        the_cycle_timer = monitors[monitor_name]['cycle_timer']
+                        min_cycle_timer = monitors[monitor_name]['min_cycle_timer']
+                        max_cycle_timer = monitors[monitor_name]['max_cycle_timer']
+
+                        config_cycle_timer = int(kwargs['cycle_timers'][monitor_name])
+                        if config_cycle_timer < 0:
+                            the_cycle_timer = abs(int(config_cycle_timer))
+                        elif config_cycle_timer < min_cycle_timer:
+                            logger.warn("configured cycle timer for handler ("+str(monitor_name)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
+                            the_cycle_timer = min_cycle_timer
+                        elif config_cycle_timer > max_cycle_timer:
+                            logger.warn("configured cycle timer for handler ("+str(monitor_name)+") is greater than the allowed max ("+str(max_cycle_timer)+") - using allowed max")
+                            the_cycle_timer = max_cycle_timer
+                        else:
+                            the_cycle_timer = config_cycle_timer
+
+                        monitors[monitor_name]['cycle_timer'] = the_cycle_timer
+                    except Exception as err:
+                        logger.warn("exception setting custom cycle timer for handler ("+str(monitor_name)+") - using default")
+
+                monitors[monitor_name]['initialized'] = True
+ 
+        # handle the thread (re)starters here
+        for monitor_name in monitors.keys():
+            start_thread = False
+            if monitor_name not in monitor_threads:
+                start_thread = True
+            else:
+                if not monitor_threads[monitor_name].isAlive():
+                    logger.debug("thread stopped - restarting: " + str(monitor_name))
+                    monitor_threads[monitor_name].join()
+                    start_thread = True
+            
+            if start_thread:
+                monitor_threads[monitor_name] = threading.Thread(target=monitors[monitor_name]['handler'], args=monitors[monitor_name]['args'], kwargs={'mythread': monitors[monitor_name]})
+                logger.debug("starting up monitor_thread: " + str(monitor_name))
+                monitor_threads[monitor_name].start()
+
+    except Exception as err:
+        logger.error(str(err))
+    finally:
+        running = False
+
+    return (True)
+
+monitor_thread = None
+def monitor(**kwargs):
+    global monitor_thread
+    try:
+        donew = False
+        if monitor_thread:
+            if monitor_thread.isAlive():
+                logger.spew("MON: thread still running")
+            else:
+                logger.spew("MON: thread stopped running")
+                donew = True
+                monitor_thread.join()
+                logger.spew("MON: thread joined: " + str(monitor_thread.isAlive()))
+        else:
+            logger.spew("MON: no thread")
+            donew = True
+
+        if donew:
+            logger.spew("MON: starting")
+            monitor_thread = threading.Thread(target=anchore_engine.services.common.monitor_func, kwargs=kwargs)
+            monitor_thread.start()
+        else:
+            logger.spew("MON: skipping")
+
+    except Exception as err:
+        logger.warn("MON thread start exception: " + str(err))
         

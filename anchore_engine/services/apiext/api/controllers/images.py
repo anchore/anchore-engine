@@ -572,6 +572,56 @@ def query_orig(request_inputs, queryType, doformat=False):
 
     return (return_object, httpcode)
 
+# repositories C
+def add_repository(repository=None, autosubscribe=False):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'autosubscribe':autosubscribe, 'repository':repository})
+        return_object, httpcode = repositories(request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return return_object, httpcode
+
+def repositories(request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    bodycontent = request_inputs['bodycontent']
+    params = request_inputs['params']
+
+    return_object = {}
+    httpcode = 500
+
+    userId, pw = user_auth
+
+    input_repo = None
+    if params and 'repository' in params:
+        input_repo = params['repository']
+
+    autosubscribe = False
+    if params and 'autosubscribe' in params:
+        autosubscribe = params['autosubscribe']
+
+    try:
+        if method == 'POST':
+            logger.debug("handling POST: ")
+            try:
+                return_object = []
+                repo_records = catalog.add_repo(user_auth, regrepo=input_repo, autosubscribe=autosubscribe)
+                for repo_record in repo_records:
+                    return_object.append(repo_record)
+                httpcode = 200
+            except Exception as err:
+                raise err
+
+    except Exception as err:
+        logger.debug("operation exception: " + str(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+
+    return(return_object, httpcode)
+
 # images CRUD
 def list_imagetags():
     try:
@@ -976,12 +1026,6 @@ def images(request_inputs):
 
                 httpcode = 200
                 return_object = [make_response_image(user_auth, image_record, params)]
-                #image_records = catalog.get_image(user_auth, digest=digest, tag=tag, registry_lookup=False)
-
-                #return_object = []
-                #for image_record in image_records:
-                #    return_object.append(make_response_image(user_auth, image_record, params))
-
             else:
                 httpcode = 500
                 raise Exception("failed to add image")
@@ -1146,3 +1190,4 @@ def images_imageDigest_check(request_inputs, imageDigest):
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
+

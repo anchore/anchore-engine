@@ -24,17 +24,27 @@ def status():
 
     return (return_object, httpcode)
 
+def repo_post(regrepo=None, autosubscribe=False, bodycontent={}):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.repo(session, request_inputs, bodycontent=bodycontent)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
 def image_tags_get():
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(session, request_inputs)
-
     except Exception as err:
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)        
+    return (return_object, httpcode)    
 
 def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
     try:

@@ -22,7 +22,7 @@ def get_simplequeue_endpoint(userId):
         if not service:
             raise Exception("cannot locate available simplequeue service")
 
-        endpoint = service['service_url']
+        endpoint = service['base_url']
         if endpoint:
             apiversion = service['version']
             base_url = '/'.join([endpoint, apiversion, 'queues'])
@@ -47,7 +47,7 @@ def get_simplequeue_endpoints(userId):
             raise Exception("cannot locate available simplequeue services")
 
         for service in services:
-            endpoint = service['service_url']
+            endpoint = service['base_url']
             if endpoint:
                 apiversion = service['version']
                 base_url = '/'.join([endpoint, apiversion, 'queues'])

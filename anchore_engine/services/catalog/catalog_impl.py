@@ -59,6 +59,84 @@ def registry_lookup(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
+def repo(dbsession, request_inputs, bodycontent={}):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = {}
+    httpcode = 500
+
+    regrepo = False
+    if params and 'regrepo' in params:
+        regrepo = params['regrepo']
+
+    autosubscribe = False
+    if params and 'autosubscribe' in params:
+        autosubscribe = params['autosubscribe']
+
+    try:
+        if method == 'POST':
+            image_info = anchore_engine.services.common.get_image_info(userId, "docker", regrepo, registry_lookup=False, registry_creds=(None, None))
+
+            registry_creds = db_registries.get_byuserId(userId, session=dbsession)
+            try:
+                refresh_registry_creds(registry_creds, dbsession)
+            except Exception as err:
+                logger.warn("failed to refresh registry credentials - exception: " + str(err))
+
+            try:
+                repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+            except Exception as err:
+                httpcode = 404
+                raise Exception("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
+
+            try:
+                regrepo = image_info['registry']+"/"+image_info['repo']
+
+                dbfilter = {
+                    'subscription_type': 'repo_update',
+                    'subscription_key': regrepo
+                }
+                
+                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                if not subscription_records:
+                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
+                    if not rc:
+                        raise Exception ("adding required subscription failed")
+
+                else:
+                    # update with a new autosubscribe setting
+                    subscription_record = subscription_records[0]
+                    subscription_value = json.loads(subscription_record['subscription_value'])
+                    subscription_value['autosubscribe'] = autosubscribe
+                    rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+
+                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            except Exception as err:
+                httpcode = 500
+                raise Exception("could not add the required subscription to anchore-engine")
+                
+
+            #dbfilter = {
+            #    'subscription_type': 'repo_update',
+            #    'subscription_key': image_info['registry']+"/"+image_info['repo']
+            #}
+            #return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            if not subscription_records:
+                httpcode = 500
+                raise Exception("unable to add/update subscripotion records in anchore-engine")
+
+            return_object = subscription_records
+            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags})
+
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
 def image_tags(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -192,25 +270,36 @@ def image(dbsession, request_inputs, bodycontent={}):
 
                 logger.debug("MARK2: " + str(time.time() - timer))
 
-                image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
-                logger.debug("MARK3: " + str(time.time() - timer))
+                input_strings = []
+                if input_type == 'repo':
+                    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=False, registry_creds=(None, None))
+                    repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                    for repotag in repotags:
+                        input_strings.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
+                else:
+                    input_strings = [input_string]
 
-                manifest = None
-                try:
-                    if 'manifest' in image_info:
-                        manifest = json.dumps(image_info['manifest'])
-                    else:
-                        raise Exception("no manifest from get_image_info")
-                except Exception as err:
-                    raise Exception("could not fetch/parse manifest - exception: " + str(err))
+                for input_string in input_strings:
+                    logger.debug("INPUT_STRING: " + input_string)
+                    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                    logger.debug("MARK3: " + str(time.time() - timer))
 
-                logger.debug("MARK4: " + str(time.time() - timer))
+                    manifest = None
+                    try:
+                        if 'manifest' in image_info:
+                            manifest = json.dumps(image_info['manifest'])
+                        else:
+                            raise Exception("no manifest from get_image_info")
+                    except Exception as err:
+                        raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
-                logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
-                image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest)
-                logger.debug("MARK5: " + str(time.time() - timer))
-                if image_records:
-                    image_record = image_records[0]
+                    logger.debug("MARK4: " + str(time.time() - timer))
+
+                    logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
+                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest)
+                    logger.debug("MARK5: " + str(time.time() - timer))
+                    if image_records:
+                        image_record = image_records[0]
 
             except Exception as err:
                 httpcode = 404

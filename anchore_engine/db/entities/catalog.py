@@ -230,6 +230,40 @@ class Subscription(Base):
         return "userId='%s' subscription_type='%s' subscription_key='%s'" % (
         self.userId, self.subscription_type, self.subscription_key)
 
+if False:
+    class CatalogRepoTag(Base):
+        __tablename__ = "catalog_repotag"
+
+        regrepo = Column(String, primary_key=True)
+        tag = Column(String, primary_key=True)
+        userId = Column(String, primary_key=True)
+        created_at = Column(Integer, default=anchore_now)
+        last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+        record_state_key = Column(String, default="active")
+        record_state_val = Column(String)
+
+        image_type = Column(String)
+
+        def make(self):
+            ret = {}
+
+            m = inspect(self)
+            for c in m.attrs:
+                ret[c.key] = None
+
+            return (ret)
+
+        def json(self):
+            thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
+            return (json.dumps(thedata))
+
+        def update(self, inobj):
+            for a in inobj.keys():
+                if hasattr(self, a):
+                    setattr(self, a, inobj[a])
+
+        def __repr__(self):
+            return "registry='%s'" % (self.registry)
 
 class CatalogImage(Base):
     __tablename__ = "catalog_image"
@@ -401,7 +435,6 @@ class Service(Base):
     type = Column(String)
     version = Column(String)
     base_url = Column(String)
-    service_url = Column(String)
     short_description = Column(String)
     status = Column(Boolean)
     status_message = Column(String)

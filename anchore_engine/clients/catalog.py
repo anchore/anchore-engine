@@ -56,58 +56,7 @@ def get_catalog_endpoint():
     else:
         raise Exception("cannot locate registered and available service in config/DB: catalog")
 
-    base_url = '/'.join([service['service_url'], service['version']])
-    return(base_url)
-        
-cached_endpoint = {'base_url': None, 'cached_update': 0.0, 'cached_ttl': 0.1}
-def get_catalog_endpoint_orig():
-    global localconfig, headers, cached_endpoint
-
-    if cached_endpoint['base_url'] and (time.time() - cached_endpoint['cached_update']) < cached_endpoint['cached_ttl']:
-        logger.debug("chose service (servicename=catalog fromCache=True): " + str(cached_endpoint['base_url']))
-        return(cached_endpoint['base_url'])
-
-    if localconfig == None:
-        logger.debug('initializing catalog endpoint')
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        logger.debug('loaded config: {}'.format(localconfig))
-
-    servicename = "catalog"
-    base_url = ""
-    try:
-        service = None
-
-        if 'catalog_endpoint' in localconfig:
-            base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
-        else:
-            with db.session_scope() as dbsession:
-                service_reports = db.db_services.get_byname(servicename, session=dbsession)
-                if service_reports:
-                    candidates = []
-                    for candidate in service_reports:
-                        if candidate['status']:
-                            candidates.append(candidate)
-
-                        if candidates:
-                            service = candidates[random.randint(0, len(candidates)-1)]
-
-            if not service:
-                raise Exception("cannot locate registered service in DB: " + servicename)
-
-            endpoint = service['base_url']
-            if endpoint:
-                apiversion = service['version']
-                base_url = '/'.join([endpoint, apiversion])
-            else:
-                raise Exception("cannot load valid endpoint from DB")
-
-    except Exception as err:
-        raise Exception("could not find valid endpoint - exception: " + str(err))
-
-    cached_endpoint['base_url'] = base_url
-    cached_endpoint['cached_update'] = time.time()
-
-    logger.debug("chose service (servicename=catalog fromCache=False): " + str(base_url))
+    base_url = '/'.join([service['base_url'], service['version']])
     return(base_url)
 
 def lookup_registry_image(userId, tag=None, digest=None):
@@ -136,6 +85,32 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
+def add_repo(userId, regrepo=None, autosubscribe=False):
+    global localconfig, headers
+
+    if not regrepo:
+        raise Exception("no regrepo supplied as input")
+
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = get_catalog_endpoint()
+
+    url = base_url + "/repo"
+    url = url + "?regrepo="+regrepo+"&autosubscribe="+str(autosubscribe)
+
+    ret = http.anchy_post(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)    
+
 def add_image(userId, tag=None, dockerfile=None):
     global localconfig, headers
     if localconfig == None:
@@ -153,12 +128,11 @@ def add_image(userId, tag=None, dockerfile=None):
 
     url = base_url + "/image"
 
+    payload = {}
     if tag:
         url = url + "?tag="+tag
-
-    payload = {}
-    if dockerfile:
-        payload['dockerfile'] = dockerfile
+        if dockerfile:
+            payload['dockerfile'] = dockerfile
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -667,6 +641,10 @@ def update_service_cache(userId, servicename, skipcache=False):
 
     if not scache[servicename]['records']:
         fromCache = False
+    else:
+        for record in scache[servicename]['records']:
+            if not record['status']:
+                fromCache = False
 
     if (time.time() - scache[servicename]['last_updated']) > scache[servicename]['ttl']:
         fromCache =  False

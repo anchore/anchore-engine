@@ -75,12 +75,6 @@ def get_status():
         localconfig = anchore_engine.configuration.localconfig.get_config()
         return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'apiext'})
         httpcode = 200
-
-        try:
-            ret = catalog.choose_service_test(('admin', 'foobar'), 'policy_engine', skipcache=False)
-            ret = catalog.choose_service_test(('admin', 'foobar'), 'analyzer', skipcache=False)
-        except Exception as err:
-            logger.debug("ERR: " + str(err))
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
