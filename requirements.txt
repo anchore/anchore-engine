@@ -37,3 +37,4 @@ prometheus_client==0.1.1
 prometheus-flask-exporter==0.1.2
 anchore
 certifi
+python-swiftclient

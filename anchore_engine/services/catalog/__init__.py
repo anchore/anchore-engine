@@ -22,11 +22,8 @@ import anchore_engine.services.common
 import anchore_engine.clients.common
 from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users
-from anchore_engine.subsys import archive, notifications, taskstate, logger
+from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
-
-import anchore_engine.clients.policy_engine
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 servicename = 'catalog'
 _default_api_version = "v1"
@@ -77,7 +74,7 @@ def initializeService(sname, config):
         raise Exception("could not initialize service status - exception: " + str(err))
 
     try:
-        rc = archive.initialize()
+        rc = archive.initialize(config['services'][sname].get(archive.MAIN_CONFIG_KEY))
         if not rc:
             raise Exception("unable to initialize archive: check catalog configuration")
 

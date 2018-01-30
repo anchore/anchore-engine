@@ -1,438 +1,297 @@
-import json
-import os
-import hashlib
-import time
-import re
+"""
+Archive Subsystem is for storing and retrieving documents (json text specifically).
+Semantics are simple CRUD using namespaced defined by userId and bucket name.
 
-import anchore_engine.configuration.localconfig
-from anchore_engine import db
-from anchore_engine.db import db_archivedocument
+Archive documents are stored in a driver-based backend with refreneces kept in the archive_document table to determine where and how to access documents and
+any state necessary (e.g. for garbage collection or time-out)
+"""
+import copy
+import json
+import zlib
+import urlparse
+import hashlib
+from anchore_engine.db import db_archivemetadata, session_scope
 
 from anchore_engine.subsys import logger
+from anchore_engine.subsys import object_store
+import anchore_engine.subsys.object_store.drivers
 
-use_db = False
-data_volume = None
-archive_initialized = False
-archive_driver = 'db'
+archive_clients = {}
+DEFAULT_DRIVER = 'db'
 
-archive_drivers = ['db', 'localfs']
+# The configured read-write driver. There can (currently) only be one configured writeable driver
+primary_client = None
 
-def initialize(use_driver=None, localconfig=None):
-    global archive_initialized, data_volume, use_db, archive_driver
+COMPRESSION_LEVEL = 3
 
-    if not localconfig:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
+# Config Keys
+DEFAULT_MIN_COMPRESSION_LIMIT_KB = 100
+MAIN_CONFIG_KEY = 'archive'
+COMPRESSION_SECTION_KEY = 'compression'
+COMPRESSION_ENABLED_KEY = 'enabled'
+COMPRESSION_MIN_SIZE_KEY = 'min_size_kbytes'
+DRIVER_SECTION_KEY = 'storage_driver'
+DRIVER_NAME_KEY = 'name'
+DRIVER_CONFIG_KEY = 'config'
+MIGRATION_DRIVER_SECTION_KEY = 'migrate_from_storage_driver'
+DEFAULT_COMPRESSION_ENABLED = False
 
-    myconfig = localconfig['services']['catalog']
+
+default_config = {
+    COMPRESSION_SECTION_KEY: {
+        COMPRESSION_ENABLED_KEY: DEFAULT_COMPRESSION_ENABLED,
+        COMPRESSION_MIN_SIZE_KEY: DEFAULT_MIN_COMPRESSION_LIMIT_KB,
+    },
+    DRIVER_SECTION_KEY: {
+        DRIVER_NAME_KEY: DEFAULT_DRIVER,
+        DRIVER_CONFIG_KEY: {}
+    }
+}
+
+archive_configuration = None
+
+
+def client_for(content_uri):
+    """
+    Return the configured client for the given uri, if one exists. If not found, raises a KeyError exception
+    :param content_uri: str uri of content to fetch
+    :return: configured ObjectStorage driver if available, else raise exception
+    """
+
+    parsed = urlparse.urlparse(content_uri)
+    return archive_clients[parsed.scheme]
+
+
+def initialize(archive_config):
+    """
+    Initialize the archve system. If driver_config is not provide, looks for it in the broader system configuration under services->catalog->archive_driver.
+
+    Must be called before the other methods in this module for crud operations.
+
+    :param archive_config:
+    :return: True on successful initialization
+    """
+
+    global archive_clients, primary_client, archive_configuration
 
     try:
-        data_volume = None
-        if 'archive_data_dir' in myconfig:
-            data_volume = myconfig['archive_data_dir']
+        archive_configuration = copy.copy(default_config)
+        if DRIVER_SECTION_KEY in archive_config:
+            archive_configuration[DRIVER_SECTION_KEY].update(archive_config[DRIVER_SECTION_KEY])
+        if COMPRESSION_SECTION_KEY in archive_config:
+            archive_configuration[COMPRESSION_SECTION_KEY].update(archive_config[COMPRESSION_SECTION_KEY])
 
-        configured_archive_driver = 'db'
-        if 'archive_driver' in myconfig:
-            configured_archive_driver = myconfig['archive_driver']
-        if 'use_db' in myconfig and myconfig['use_db']:
-            configured_archive_driver = 'db'
+        validate_config(archive_configuration)
 
-        if configured_archive_driver not in archive_drivers:
-            raise Exception("driver set in config.yaml ("+str(configured_archive_driver)+") is not a valid driver: " + str(archive_drivers))
+        driver = object_store.init_driver(archive_configuration[DRIVER_SECTION_KEY])
+        archive_clients[driver.__uri_scheme__] = driver
+        primary_client = driver
 
-        if use_driver:
-            if use_driver not in archive_drivers:
-                raise Exception("specified driver to initialize ("+str(use_driver)+") is not a valid driver: " + str(archive_drivers))
-            elif use_driver != configured_archive_driver:
-                raise Exception("specified driver to use ("+str(use_driver)+") does not match what is set in config.yaml ("+str(configured_archive_driver)+") - please update config.yaml to desired driver and try again")
-            archive_driver=use_driver
-        else:
-            archive_driver = configured_archive_driver
-
-        # driver specific initializations here
-        if archive_driver == 'db':
-            use_db = True
-        else:
-            use_db = False
-
-        initialize_archive_file(myconfig)
+        if not archive_clients:
+            raise Exception("Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(str(archive_configuration[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]), str(object_store.ObjectStorageDriver.registry.keys())))
 
     except Exception as err:
         raise err
 
-    logger.debug("archive initialization config: " + str([archive_driver, use_db, data_volume]))
-    
-    archive_initialized = True
-    return(True)
+    logger.debug("archive initialization config: {}".format(archive_configuration))
+    return (True)
+
+
+def validate_config(config):
+    """
+    Validates either the config exists or is empty and thus defaults. Does not validate specific driver configs as those are up to the drivers themselves.
+
+    :param config:
+    :return:
+    """
+    try:
+        if DRIVER_SECTION_KEY in config:
+            name = config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]
+            drv_cfg = config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]
+        return True
+    except Exception as e:
+        raise Exception('Invalid archive driver configuration: {}'.format(e))
+
+
+def _parse_legacy_config(config):
+    """
+    Checks a config for older versions of config values. e.g. 'use-db'.
+
+    If no legacy config is found, returns the exact config given.
+
+    :param config: config dict
+    :return: parsed archive config values as a dict
+    """
+    mapped_config = {
+        DRIVER_SECTION_KEY: {
+            DRIVER_NAME_KEY: None,
+            DRIVER_CONFIG_KEY: {}
+        }
+    }
+
+    if 'archive_driver' in config and type(config['archive_driver']) in [str, unicode]:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY] = config['archive_driver']
+    else:
+        return config
+
+    if 'use_db' in config and config['use_db']:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = 'db'
+
+    if mapped_config[DRIVER_SECTION_KEY] == 'fs' and 'archive_data_dir' in config:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]['data_dir'] = config['archive_data_dir']
+
+    if mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] is not None:
+        return mapped_config
+    else:
+        return config
+
 
 def get_driver_list():
-    global archive_drivers
-    return(archive_drivers)
+    """
+    Return the names of the registered object storage drivers
 
-def do_archive_convert(localconfig, from_driver, to_driver):
-    myconfig = localconfig['services']['catalog']
-    if from_driver == 'db' and to_driver == 'localfs':
-        return(_converter_db_to_localfs(myconfig))
+    :return: list of strings from driver names
+    """
+    return object_store.ObjectStorageDriver.registry.keys()
 
-    elif from_driver == 'localfs' and to_driver == 'db':
-        return(_converter_localfs_to_db(myconfig))
+# Document functions -- json encoded
 
-    else:
-        raise Exception("no converter available for archive driver from="+str(from_driver)+" to="+str(to_driver))
+def get_document(userId, bucket, archiveId):
+    """
+    Retrieve the content of the document json-decoded.
 
-    return(False)
+    :param userId:
+    :param bucket:
+    :param archiveId:
+    :return: json parsed content (e.g. object)
+    """
+    if not archive_clients:
+        raise Exception("archive not initialized")
 
-def _converter_db_to_localfs(myconfig):
-    if 'archive_data_dir' not in myconfig:
-        raise Exception("conversion to localfs from db requires archive_data_dir to be specified in config.yaml, cannot proceed")
+    archive_document = get(userId, bucket, archiveId)
+    return json.loads(archive_document).get('document')
 
-    with db.session_scope() as dbsession:
-        logger.debug("running archive driver converter (db->localfs")
-        # need to check if any archive records DO have the document field populated, and if so try to export to localfs
-        archive_matches = db_archivedocument.list_all_notempty(session=dbsession)
-        for archive_match in archive_matches:
-            userId = archive_match['userId']
-            bucket = archive_match['bucket']
-            archiveid = archive_match['archiveId']
-            archive_record = db_archivedocument.get(userId, bucket, archiveid, session=dbsession)
-            db_data = json.loads(archive_record['jsondata'])
-
-            logger.debug("document data - converting DB->driver: " + str([userId, bucket, archiveid]))
-            dataref = write_archive_file(userId, bucket, archiveid, db_data, driver_override='localfs')
-            with db.session_scope() as subdbsession:
-                db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': "{}"}, session=subdbsession)                
-
-        logger.debug("archive driver converter complete")
-    return(True)
-
-def _converter_localfs_to_db(myconfig):
-    if 'archive_data_dir' not in myconfig:
-        raise Exception("conversion to db from localfs requires archive_data_dir (location of previous localfs archive data) to be specified in config.yaml, cannot proceed")
-
-    with db.session_scope() as dbsession:
-        logger.debug("running archive driver converter (localfs->db)")
-        # need to check if any archive records do not have the document field populated, and if so try to import from localfs
-        dbfilter = {'jsondata': '{}'}
-        archive_matches = db_archivedocument.list_all(session=dbsession, **dbfilter)
-        for archive_match in archive_matches:
-            userId = archive_match['userId']
-            bucket = archive_match['bucket']
-            archiveid = archive_match['archiveId']
-            try:
-                fs_data = read_archive_file(userId, bucket, archiveid, driver_override='localfs')
-            except Exception as err:
-                logger.debug("no data: " + str(err))
-                fs_data = None
-
-            if fs_data:
-                logger.debug("document data - converting driver->DB: " + str([userId, bucket, archiveid]))
-                with db.session_scope() as subdbsession:
-                    db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': json.dumps(fs_data)}, session=subdbsession)
-                delete_archive_file(userId, bucket, archiveid, driver_override='localfs')
-
-        logger.debug("archive driver converter complete")
-    return(True)
 
 def put_document(userId, bucket, archiveId, data):
-    payload = {'document': data}
-    return(put(userId, bucket, archiveId, payload))
+    payload = json.dumps({'document': data})
+
+    return put(userId, bucket, archiveId, payload)
+
+
+def get_document_meta(userId, bucket, archiveId):
+    if not archive_clients:
+        raise Exception("archive not initialized")
+
+    with session_scope() as dbsession:
+        ret = db_archivemetadata.get(userId, bucket, archiveId, session=dbsession)
+
+    return (ret)
+
+
+# String functions -- no encoding
 
 def put(userId, bucket, archiveid, data):
-    global archive_initialized, data_volume, use_db
+    """
+    Expects a json parsed payload to write
 
-    if not archive_initialized:
+    :param userId:
+    :param bucket:
+    :param archiveid:
+    :param data: string data to write
+    :return:
+    """
+    if not primary_client:
         raise Exception("archive not initialized")
 
     try:
-        with db.session_scope() as dbsession:
-            if use_db:
-                dbdata = {'jsondata':json.dumps(data)}
-            else:
-                dbdata = {'jsondata': '{}', 'last_updated': int(time.time())}
-                dataref = write_archive_file(userId, bucket, archiveid, data)
-    
-            db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", dbdata, session=dbsession)
+        is_compressed = False
+        final_payload = data
+        digest = None
+
+        if archive_configuration[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True and primary_client.__supports_compressed_data__ and len(data) > archive_configuration[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024:
+            is_compressed = True
+            final_payload = zlib.compress(data, COMPRESSION_LEVEL)
+
+        size = len(final_payload)
+        digest = hashlib.md5(final_payload).hexdigest()
+
+        url = primary_client.put(userId, bucket, archiveid, final_payload)
+        with session_scope() as dbsession:
+            db_archivemetadata.add(userId, bucket, archiveid, archiveid + ".json", url, is_compressed=is_compressed, content_digest=digest, size=size, session=dbsession)
+
     except Exception as err:
         logger.debug("cannot put data: exception - " + str(err))
         raise err
-    
-    return(True)
 
-def put_orig(userId, bucket, archiveid, data):
-    global archive_initialized, data_volume, use_db
+    return (True)
 
-    if not archive_initialized:
-        raise Exception("archive not initialized")
-
-    if use_db:
-        try:
-            with db.session_scope() as dbsession:
-                blarg = {'jsondata':json.dumps(data)}
-                db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", blarg, session=dbsession)
-        except Exception as err:
-            logger.debug("cannot put data: exception - " + str(err))
-            raise err
-    else:
-        try:
-            if not os.path.exists(os.path.join(data_volume, bucket)):
-                os.makedirs(os.path.join(data_volume, bucket))
-
-            with open(os.path.join(data_volume, bucket, archiveid+".json"), 'w') as OFH:
-                OFH.write(json.dumps(data))
-
-        except Exception as err:
-            logger.debug("cannot put data: exception - " + str(err))
-            raise err
-    
-    return(True)
-
-def get_document_meta(userId, bucket, archiveId):
-    with db.session_scope() as dbsession:
-        ret = db_archivedocument.get_onlymeta(userId, bucket, archiveId, session=dbsession)
-    return(ret)
-
-def get_document(userId, bucket, archiveId):
-    archive_document = get(userId, bucket, archiveId)
-    ret = archive_document['document']
-    return(ret)
 
 def get(userId, bucket, archiveid):
-    global archive_initialized, data_volume, use_db
-
-    if not archive_initialized:
+    if not archive_clients:
         raise Exception("archive not initialized")
 
-    ret = {}
-
     try:
-        with db.session_scope() as dbsession:
-            result = db_archivedocument.get(userId, bucket, archiveid, session=dbsession)
-        if result:
-            if use_db:
-                if 'jsondata' in result:
-                    ret = json.loads(result['jsondata'])
-                    del result
-                else:
-                    raise Exception("no archive record JSON data found in DB")
-            else:
-                ret = read_archive_file(userId, bucket, archiveid)
+        with session_scope() as dbsession:
+            result = db_archivemetadata.get(userId, bucket, archiveid, session=dbsession)
+
+        url = result.get('content_url')
+        is_compressed = result.get('is_compressed', False)
+        expected = result.get('digest')
+
+        content = client_for(url).get_by_uri(url)
+        found_size = len(content)
+
+        if expected:
+            found = hashlib.md5(content).hexdigest()
+        else:
+            found = None
+
+        if expected and found != expected:
+            logger.error('Digest mismatch:\nDB Record: {}\nContent digest: {}\n, Content size: {}'.format(result, found, found_size, content))
+            raise Exception('Detected digest mismatch on content fetch from backend. Expected: {}, Got: {}'.format(expected, found))
+
+        if is_compressed:
+            content = zlib.decompress(content)
+
+        return content
 
     except Exception as err:
+
         logger.debug("cannot get data: exception - " + str(err))
         raise err
 
-    return(ret)
 
-def get_orig(userId, bucket, archiveid):
-    global archive_initialized, data_volume, use_db
+def delete_document(userId, bucket, archiveid):
+    """
+    synonym for delete()
 
-    if not archive_initialized:
-        raise Exception("archive not initialized")
+    :param userId:
+    :param bucket:2c53a13c-1765-11e8-82ef-23527761d060
+    :param archiveid:
+    :return:
+    """
+    return delete(userId, bucket, archiveid)
 
-    ret = {}
-
-    if use_db:
-        try:
-            with db.session_scope() as dbsession:
-                result = db_archivedocument.get(userId, bucket, archiveid, session=dbsession)
-            if result and 'jsondata' in result:
-                ret = json.loads(result['jsondata'])
-                del result
-            else:
-                raise Exception("no archive record JSON data found in DB")
-        except Exception as err:
-            logger.debug("cannot get data: exception - " + str(err))
-            raise err
-    else:
-        try:
-            with open(os.path.join(data_volume, bucket, archiveid+".json"), 'r') as FH:
-                ret = json.loads(FH.read())
-        except Exception as err:
-            logger.debug("cannot get data: exception - " + str(err))
-            raise err
-
-    return(ret)
 
 def delete(userId, bucket, archiveid):
-    global archive_initialized, data_volume, use_db
-
-    if not archive_initialized:
+    if not archive_clients:
         raise Exception("archive not initialized")
 
     try:
-        with db.session_scope() as dbsession:
-            rc = db_archivedocument.delete(userId, bucket, archiveid, session=dbsession)
-            if not rc:
-                raise Exception("failed to delete DB record")
+        url = None
+        with session_scope() as dbsession:
+            meta = db_archivemetadata.get(userId, bucket, archiveid, session=dbsession)
+            if meta:
+                url = meta.get('content_url')
+                db_archivemetadata.delete(userId, bucket, archiveid, session=dbsession)
 
-            if not use_db:
-                delete_archive_file(userId, bucket, archiveid)
+        # Remove the data itself. Can result in orphaned data if system fails here but better than deleting the content but not the meta, leaving a confused state.
+        if url:
+            scheme = urlparse.urlparse(url).scheme
+            if scheme in archive_clients:
+                return archive_clients[scheme].delete(userId, bucket, archiveid)
+            else:
+                logger.warn('Deleting archive document {}/{}/{}, but found no content url for backend delete so skipping backend operation'.format(userId, bucket, archiveid))
 
     except Exception as err:
         raise err
-
-    return(True)
-
-def delete_orig(userId, bucket, archiveid):
-    global archive_initialized, data_volume, use_db
-
-    if not archive_initialized:
-        raise Exception("archive not initialized")
-
-    if use_db:
-        try:
-            with db.session_scope() as dbsession:
-                rc = db_archivedocument.delete(userId, bucket, archiveid, session=dbsession)
-                if not rc:
-                    raise Exception("failed to delete")
-        except Exception as err:
-            raise err
-    else:
-        try:
-            if os.path.exists(os.path.join(data_volume, bucket, archiveid+".json")):
-                os.remove(os.path.join(data_volume, bucket, archiveid+".json"))
-        except Exception as err:            
-            raise err
-
-    return(True)
-
-####### driver storage implementations #######
-
-def convert_v1_v2(archivepath):
-    for userhash in os.listdir(archivepath):
-        userdir = os.path.join(archivepath, userhash)
-        buckets = os.listdir(userdir)
-        for bucket in buckets:
-            bucketdir = os.path.join(userdir, bucket)
-            for document in os.listdir(bucketdir):
-                documentfile = os.path.join(bucketdir, document)
-                if os.path.isfile(documentfile):
-                    fkey = document[0:2]
-                    keydir = os.path.join(bucketdir, fkey)
-                    if not os.path.exists(keydir):
-                        os.makedirs(keydir)
-
-                    newdocumentfile = os.path.join(keydir, document)
-                    os.rename(documentfile, newdocumentfile)
-    return(True)
-
-def initialize_archive_file(myconfig):
-    global data_volume, archive_driver
-
-    if archive_driver == 'localfs':
-        try:
-            if 'archive_data_dir' in myconfig:
-                data_volume = myconfig['archive_data_dir']
-
-            if not data_volume:
-                raise Exception("the localfs archive_driver requires archive_data_dir to be set in config.yaml")
-
-            if not os.path.exists(data_volume):
-                os.makedirs(data_volume)
-
-            # quick check to make sure the volume looks like a legitimate archive layout
-            unknowns = []
-            for fname in os.listdir(data_volume):
-                fpath = os.path.join(data_volume, fname)
-                if not os.path.isdir(fpath) or not re.match("[0-9A-Fa-f]{32}", fname):
-                    unknowns.append(fname)
-            if unknowns:
-                raise Exception("found unknown files in archive data volume ("+str(data_volume)+") - data_volume must be set to a directory used only for anchore-engine archive documents: unknown files found: " + str(unknowns))
-                
-        except Exception as err:
-            raise Exception("catalog service use_db set to false but no archive_data_dir is set, or is unavailable - exception: " + str(err))
-
-        try:
-            convert_v1_v2(data_volume)
-        except Exception as err:
-            raise err
-
-    elif archive_driver == 'db':
-        pass
-    else:
-        pass
-
-    return(True)
-
-def get_archive_filepath(userId, bucket, archiveId):
-    global data_volume, use_db
-
-    ret = None
-    if data_volume:
-        filehash = hashlib.md5(archiveId).hexdigest()
-        fkey = filehash[0:2]
-        archive_path = os.path.join(data_volume, hashlib.md5(userId).hexdigest(), bucket, fkey)
-        archive_file = os.path.join(archive_path, filehash + ".json")
-        try:
-            if not use_db and not os.path.exists(archive_path):
-                os.makedirs(archive_path)
-        except Exception as err:
-            logger.error("cannot create archive data directory - exception: " + str(err))
-            raise err
-        ret = archive_file
-    return(ret)
-
-def write_archive_file(userId, bucket, archiveid, data, driver_override=None):
-    global archive_driver
-
-    ret = "none"
-
-    use_driver = archive_driver
-    if driver_override:
-        use_driver = driver_override
-
-    if use_driver == 'localfs':
-        archive_file = get_archive_filepath(userId, bucket, archiveid)
-        with open(archive_file, 'w') as OFH:
-            OFH.write(json.dumps(data))
-        ret = "file://"+archive_file
-    elif use_driver == 'db':
-        ret = "db"
-    else:
-        raise Exception("unknown storage driver ("+str(archive_driver)+" defined in config.yaml")
-
-    return(ret)
-
-def read_archive_file(userId, bucket, archiveid, driver_override=None):
-    global archive_driver
-
-    data = None
-
-    use_driver = archive_driver
-    if driver_override:
-        use_driver = driver_override
-
-    if use_driver == 'localfs':
-        archive_file = get_archive_filepath(userId, bucket, archiveid)
-        if os.path.exists(archive_file):
-            with open(archive_file, 'r') as FH:
-                data = json.loads(FH.read())
-        else:
-            raise Exception("cannot locate archive file ("+str(archive_file)+")")
-    elif use_driver == 'db':
-        data = None
-    else:
-        raise Exception("unknown storage driver ("+str(archive_driver)+" defined in config.yaml")
-
-    return(data)
-
-def delete_archive_file(userId, bucket, archiveid, driver_override=None):
-    global archive_driver
-
-    use_driver = archive_driver
-    if driver_override:
-        use_driver = driver_override
-
-    if use_driver == 'localfs':
-        archive_file = get_archive_filepath(userId, bucket, archiveid)
-        if os.path.exists(archive_file):
-            try:
-                os.remove(archive_file)
-            except Exception as err:
-                logger.error("could not delete archive file ("+str(archive_file)+") - exception: " + str(err))
-    elif use_driver == 'db':
-        pass
-    else:
-        raise Exception("unknown storage driver ("+str(archive_driver)+" defined in config.yaml")
-
-    return(True)
-

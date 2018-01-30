@@ -1,5 +1,6 @@
 import json
-
+import hashlib
+import zlib
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
 import anchore_engine.db.entities.common
@@ -156,7 +157,7 @@ def do_upgrade(inplace, incode):
 def db_upgrade_001_002():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_registries, db_policybundle
+    from anchore_engine.db import db_registries, db_policybundle, session_scope
 
     try:
         table_name = 'registries'
@@ -226,9 +227,8 @@ def db_upgrade_002_003():
 def db_upgrade_003_004():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_catalog_image, db_archivedocument
+    from anchore_engine.db import db_catalog_image, db_archivedocument, session_scope
     import anchore_engine.services.common
-    import anchore_engine.subsys.archive
 
     newcolumns = [
         Column('arch', String, primary_key=False),
@@ -294,7 +294,7 @@ def db_upgrade_004_005():
             log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
             raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
 
-def db_upgrade_005_006():
+def queue_data_upgrades_005_006():
     engine = anchore_engine.db.entities.common.get_engine()
 
     new_columns = [
@@ -322,6 +322,51 @@ def db_upgrade_005_006():
             except Exception as e:
                 log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
                 raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+
+
+def archive_data_upgrade_005_006():
+    """
+    Upgrade the document archive data schema and move the data appropriately.
+    Assumes both tables are in place (archive_document, archive_document_reference, object_storage)
+
+    :return:
+    """
+
+    from anchore_engine.db import ArchiveDocument, session_scope, ArchiveMetadata
+    import anchore_engine.subsys.object_store
+
+    # TODO: which client? Look at local config or as provided by the upgrade operation explicitly
+    client = anchore_engine.subsys.object_store.init_driver(configuration={'name': 'db', 'config': {}})
+
+    with session_scope() as db_session:
+        for doc in db_session.query(ArchiveDocument):
+            meta = ArchiveMetadata(userId=doc.userId,
+                                   bucket=doc.bucket,
+                                   archiveId=doc.archiveId,
+                                   documentName=doc.documentName,
+                                   is_compressed=False,
+                                   document_metadata=None,
+                                   content_url=client.uri_for(userid=doc.userId, bucket=doc.bucket, key=doc.archiveId),
+                                   created_at=doc.created_at,
+                                   last_updated=doc.last_updated,
+                                   record_state_key=doc.record_state_key,
+                                   record_state_val=doc.record_state_val
+                                   )
+
+            if doc.jsondata is not None:
+                meta.size = len(doc.jsondata)
+                meta.digest = hashlib.md5(doc.jsondata).hexdigest()
+            else:
+                pass
+                # TODO: get info on digest/size from fs driver (the only other option from db prior to this version)
+
+            db_session.add(meta)
+            db_session.flush()
+
+def db_upgrade_005_006():
+    queue_data_upgrades_005_006()
+    archive_data_upgrade_005_006()
+
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.

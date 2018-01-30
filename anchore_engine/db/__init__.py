@@ -17,6 +17,8 @@ from .entities.catalog import Service
 from .entities.catalog import Subscription
 from .entities.catalog import User
 from .entities.catalog import Lease
+from .entities.catalog import ArchiveMetadata
+from .entities.catalog import ObjectStorageRecord
 
 from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage
