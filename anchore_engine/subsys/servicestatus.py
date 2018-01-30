@@ -20,15 +20,24 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     service_statuses[service]['available'] = available
     service_statuses[service]['busy'] = busy 
     service_statuses[service]['message'] = message
-    if detail:
-        service_statuses[service]['detail'] = detail
+    service_statuses[service]['detail'] = detail
 
     if update_db:
-        with session_scope() as dbsession:
-            my_service_record = db_services.get(hostid, servicename, session=dbsession)
-            if my_service_record:
-                my_service_record['short_description'] = json.dumps(service_statuses[service])
-                db_services.update_record(my_service_record, session=dbsession)
+        update_status(service_record)
+
+def update_status(service_record):
+    global service_statuses
+    hostid = service_record['hostid']
+    servicename = service_record['servicename']
+    service = '__'.join([service_record['hostid'], service_record['servicename']])
+
+    with session_scope() as dbsession:
+        my_service_record = db_services.get(hostid, servicename, session=dbsession)
+        if my_service_record:
+            my_service_record['short_description'] = json.dumps(service_statuses[service])
+            db_services.update_record(my_service_record, session=dbsession)
+
+    return(True)
 
 def get_status(service_record):
     global service_statuses
@@ -65,11 +74,11 @@ def handle_service_heartbeat(*args, **kwargs):
         raise Exception("BUG: need to provide service name as first argument to function: " + str(args))
 
     while(True):
-        logger.debug("setting service status: " + str(servicename))
+        logger.debug("storing service status: " + str(servicename))
         try:
             service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
-            set_status(service_record, up=True, available=True, update_db=True)
-            logger.debug("service status set: next in "+str(cycle_timer))
+            update_status(service_record)
+            logger.debug("service status stored: next in "+str(cycle_timer))
         except Exception as err:
             logger.error(str(err))
 

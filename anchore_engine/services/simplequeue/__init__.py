@@ -100,9 +100,15 @@ def initializeService(sname, config):
     return(True)
 
 def registerService(sname, config):
+    rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
+
     service_record = {'hostid': config['host_id'], 'servicename': sname}
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
-    return(anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
+
+    return (rc)
+#    service_record = {'hostid': config['host_id'], 'servicename': sname}
+#    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
+#    return(anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
     
 # monitor infrastructure
 

@@ -79,22 +79,23 @@ def createService(sname, config):
     return (ret_svc)
 
 def initializeService(sname, config):
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
-    try:
-        if not anchore_engine.subsys.servicestatus.has_status(service_record):
-            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        raise Exception("could not initialize service status - exception: " + str(err))
-
+    #service_record = {'hostid': config['host_id'], 'servicename': sname}
+    #try:
+    #    if not anchore_engine.subsys.servicestatus.has_status(service_record):
+    #        anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
+    #except Exception as err:
+    #    import traceback
+    #    traceback.print_exc()
+    #    raise Exception("could not initialize service status - exception: " + str(err))
     return (anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
-    #service_record = {'hostid': config['host_id'], 'servicename': sname}
-    #anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
+    rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
 
-    return (anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
+    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
+
+    return (rc)
 
 
 ############################################
@@ -359,7 +360,7 @@ def process_analyzer_job(system_user_auth, qobj):
 
                 localconfig = anchore_engine.configuration.localconfig.get_config()
                 service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
-                anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count})
+                anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count}, update_db=True)
 
             except:
                 pass
