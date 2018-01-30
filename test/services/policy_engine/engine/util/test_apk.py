@@ -37,7 +37,8 @@ class TestApkVersionHandling(unittest.TestCase):
         ('1.1b', '1.1a', {'lt': False, 'gt': True, 'eq': False}),
         ('1.1baa', '1.1b', {'lt': False, 'gt': True, 'eq': False}),
         ('1.1ba', '1.2', {'lt': True, 'gt': False, 'eq': False}),
-        ('1.1ba', '1.1c', {'lt': True, 'gt': False, 'eq': False})
+        ('1.1ba', '1.1c', {'lt': True, 'gt': False, 'eq': False}),
+        ('1.0.2k-r0', '1.0.2i-r0', {'lt': True, 'gt': False, 'eq': False})
     ]
 
     ops = {

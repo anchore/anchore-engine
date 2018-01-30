@@ -101,7 +101,7 @@ def get_token(expected_type, data):
         while i < d_len and data[i].isdigit():
             dig_val += data[i]
             i += 1
-        token_value = int(dig_val)
+        token_value = int(dig_val) if dig_val else 0
     elif expected_type == TokenType.LETTER:
         # Handle letter values
         token_value = ord(data[i])
