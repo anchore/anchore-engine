@@ -4,64 +4,12 @@ import random
 
 from anchore_engine.clients import catalog
 from anchore_engine.clients import http
+import anchore_engine.clients.common
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 
 localconfig = None
 headers = {'Content-Type': 'application/json'}
-
-def get_simplequeue_endpoint(userId):
-    global localconfig, headers
-
-    if localconfig == None:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    base_url = ""
-    try:
-        service = catalog.choose_service(userId, 'simplequeue')
-        if not service:
-            raise Exception("cannot locate available simplequeue service")
-
-        endpoint = service['base_url']
-        if endpoint:
-            apiversion = service['version']
-            base_url = '/'.join([endpoint, apiversion, 'queues'])
-        else:
-            raise Exception("cannot load valid endpoint from service record")
-
-    except Exception as err:
-        raise Exception("could not find valid simplequeue endpoint - exception: " + str(err))
-
-    return(base_url)
-
-def get_simplequeue_endpoints(userId):
-    global localconfig, headers
-
-    if localconfig == None:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    base_urls = []
-    try:
-        services = catalog.get_enabled_services(userId, 'simplequeue')
-        if not services:
-            raise Exception("cannot locate available simplequeue services")
-
-        for service in services:
-            endpoint = service['base_url']
-            if endpoint:
-                apiversion = service['version']
-                base_url = '/'.join([endpoint, apiversion, 'queues'])
-                base_urls.append(base_url)
-            else:
-                pass
-
-        if not base_urls:
-            raise Exception("cannot load valid endpoint from service record")
-
-    except Exception as err:
-        raise Exception("could not find valid simplequeue endpoint - exception: " + str(err))
-
-    return(base_urls)
 
 def get_queues(userId):
     global localconfig, headers
@@ -78,11 +26,10 @@ def get_queues(userId):
 
     #base_url = get_simplequeue_endpoint(auth)
     #url = '/'.join([base_url])
-
     #ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     url_postfix = []
-    base_urls = get_simplequeue_endpoints(auth)
+    base_urls = anchore_engine.clients.common.get_service_endpoints(auth, 'simplequeue', api_post='queues')
     verify = localconfig['internal_ssl_verify']
 
     ret = http.anchy_aa(http.anchy_get, base_urls, url_postfix, auth=auth, headers=headers, verify=verify)
@@ -108,7 +55,7 @@ def qlen(userId, name):
     #ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     url_postfix = [name, "qlen"]
-    base_urls = get_simplequeue_endpoints(auth)
+    base_urls = anchore_engine.clients.common.get_service_endpoints(auth, 'simplequeue', api_post='queues')
     verify = localconfig['internal_ssl_verify']
 
     ret = http.anchy_aa(http.anchy_get, base_urls, url_postfix, auth=auth, headers=headers, verify=verify)
@@ -138,7 +85,7 @@ def enqueue(userId, name, inobj, qcount=0, forcefirst=False):
     #ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     url_postfix = [name, "?qcount="+str(qcount) + "&forcefirst=" + str(forcefirst)]
-    base_urls = get_simplequeue_endpoints(auth)
+    base_urls = anchore_engine.clients.common.get_service_endpoints(auth, 'simplequeue', api_post='queues')
     verify = localconfig['internal_ssl_verify']
 
     ret = http.anchy_aa(http.anchy_post, base_urls, url_postfix, data=json.dumps(payload), auth=auth, headers=headers, verify=verify)
@@ -166,7 +113,7 @@ def is_inqueue(userId, name, inobj):
     #ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     url_postfix = [name, 'is_inqueue']
-    base_urls = get_simplequeue_endpoints(auth)
+    base_urls = anchore_engine.clients.common.get_service_endpoints(auth, 'simplequeue', api_post='queues')
     verify = localconfig['internal_ssl_verify']
 
     ret = http.anchy_aa(http.anchy_post, base_urls, url_postfix, data=json.dumps(payload), auth=auth, headers=headers, verify=verify)
@@ -192,7 +139,7 @@ def dequeue(userId, name):
 
     url_postfix = [name]
     method = http.anchy_get
-    base_urls = get_simplequeue_endpoints(auth)
+    base_urls = anchore_engine.clients.common.get_service_endpoints(auth, 'simplequeue', api_post='queues')
     verify = localconfig['internal_ssl_verify']
 
     ret = http.anchy_aa(http.anchy_get, base_urls, url_postfix, auth=auth, headers=headers, verify=verify)

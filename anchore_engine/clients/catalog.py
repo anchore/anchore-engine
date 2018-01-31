@@ -10,62 +10,11 @@ import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.db import db_services
 import anchore_engine.services.common
+import anchore_engine.clients.common
 from anchore_engine.subsys import logger
 
 localconfig = None
 headers = {'Content-Type': 'application/json'}
-
-scache = {}
-scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
-
-def get_catalog_endpoint():
-    global localconfig, scache, scache_template
-
-    init_catalog_services = []
-
-    if localconfig == None:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-            
-    # look for override, else go to the DB
-    if 'catalog_endpoint' in localconfig:
-        base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
-        return(base_url)
-
-    init = False
-    if 'catalog' not in scache:
-        init = True
-    elif not scache['catalog']['records']:
-        init = True
-    else:
-        init_catalog_services = copy.deepcopy(scache['catalog'])
-        init = False
-
-    if not init_catalog_services:
-        init = True
-
-    if init:
-        init_catalog_services = []
-        logger.debug('initializing catalog endpoint')
-
-        with db.session_scope() as dbsession:
-            service_reports = db.db_services.get_byname('catalog', session=dbsession)
-            if service_reports:
-                for service in service_reports:
-                    logger.debug("catalog service record: " + str(service))
-                    if service['status']:
-                        logger.debug("adding record: " + str(service))
-                        init_catalog_services.append(service)
-            else:
-                logger.warn("no service reports returned for servicename catalog")
-
-    if init_catalog_services:
-        service = init_catalog_services[random.randint(0, len(init_catalog_services)-1)]
-    else:
-        raise Exception("cannot locate registered and available service in config/DB: catalog")
-
-    base_url = '/'.join([service['base_url'], service['version']])
-    logger.debug("chose catalog endpoint: " + str(base_url) + " : " + str(init))
-    return(base_url)
 
 def lookup_registry_image(userId, tag=None, digest=None):
     global localconfig, headers
@@ -80,7 +29,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     if digest:
         url = base_url + "/registry_lookup?digest=" + digest
     elif tag:
@@ -110,7 +59,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     url = base_url + "/repo"
     url = url + "?regrepo="+regrepo+"&autosubscribe="+str(autosubscribe)
@@ -132,7 +81,7 @@ def add_image(userId, tag=None, dockerfile=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     url = base_url + "/image"
 
@@ -159,7 +108,7 @@ def get_imagetags(userId):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/summaries/imagetags"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -179,7 +128,7 @@ def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, reg
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/image"
 
     if imageDigest:
@@ -211,7 +160,7 @@ def update_image(userId, imageDigest, image_record={}):
         pw = ""
     auth = (userId, pw)
  
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     url = base_url + "/image/" + imageDigest
 
@@ -235,7 +184,7 @@ def delete_image(userId, imageDigest, force=False):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/image/" + imageDigest
 
     if force:
@@ -258,7 +207,7 @@ def import_image(userId, anchore_data):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/import"
 
     payload = anchore_data
@@ -280,7 +229,7 @@ def add_policy(userId, bundle):
         pw = ""
     auth = (userId, pw)
  
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/policies"
 
     try:
@@ -318,7 +267,7 @@ def get_policy(userId, policyId=None):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/policies"
 
     payload = {}
@@ -342,7 +291,7 @@ def update_policy(userId, policyId, policy_record={}):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/policies"
 
     payload = policy_record
@@ -364,7 +313,7 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/policies?cleanup_evals="+str(cleanup_evals)
 
     payload = {}
@@ -388,7 +337,7 @@ def get_eval(userId, policyId=None, imageDigest=None, tag=None, evalId=None):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/evals"
 
     payload = {}
@@ -428,7 +377,7 @@ def add_eval(userId, evalId, policyId, imageDigest, tag, final_action, eval_url)
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/evals"
 
     try:
@@ -454,7 +403,7 @@ def get_subscription(userId, subscription_id=None, subscription_key=None, subscr
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions"
     if subscription_id:
         url = url + "/" + subscription_id
@@ -485,7 +434,7 @@ def delete_subscription(userId, subscription_key=None, subscription_type=None, s
     if subscription_key and subscription_type:
         subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type])).hexdigest()
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions/" + subscription_id
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -508,7 +457,7 @@ def update_subscription(userId, subscriptiondata, subscription_type=None, subscr
     if subscription_key and subscription_type:
         subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type])).hexdigest()
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions/" + subscription_id
 
     ret = http.anchy_put(url, data=json.dumps(subscriptiondata), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -528,7 +477,7 @@ def add_subscription(userId, payload):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions"
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -548,7 +497,7 @@ def get_subscription_types(userId):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/subscriptions"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -567,7 +516,7 @@ def get_users(auth):
         rpw = ""
     auth = (ruserId, rpw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/users"
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -588,7 +537,7 @@ def get_user(auth, userId):
         rpw = ""
     auth = (ruserId, rpw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/users/"+userId
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -608,7 +557,7 @@ def get_document(userId, bucket, name):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/archive/" + bucket + "/" + name
 
     archive_document = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -629,7 +578,7 @@ def put_document(userId, bucket, name, inobj):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/archive/" + bucket + "/" + name
     
     payload = {}
@@ -637,77 +586,6 @@ def put_document(userId, bucket, name, inobj):
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
-    return(ret)
-
-def update_service_cache(userId, servicename, skipcache=False):
-    global scache, scache_template
-
-    fromCache = True
-    if skipcache or servicename not in scache:
-        scache[servicename] = copy.deepcopy(scache_template)        
-        fromCache = False
-
-    if not scache[servicename]['records']:
-        fromCache = False
-    else:
-        for record in scache[servicename]['records']:
-            if not record['status']:
-                fromCache = False
-
-    if (time.time() - scache[servicename]['last_updated']) > scache[servicename]['ttl']:
-        fromCache =  False
-
-    if not fromCache:
-        # refresh the cache for this service from catalog call
-        try:
-            logger.debug("fetching services ("+str(servicename)+")")
-            service_records = get_service(userId, servicename=servicename)
-            logger.debug("services fetched: " + str(service_records))
-        except Exception as err:
-            logger.warn("cannot get service: " + str(err))
-            service_records = []
-
-        scache[servicename]['records'] = []
-        if service_records:
-            for service_record in service_records:
-                if service_record['status']:
-                    scache[servicename]['records'].append(service_record)
-                    scache[servicename]['last_updated'] = time.time()
-
-    return(fromCache)
-
-def get_enabled_services(userId, servicename, skipcache=False):
-    global scache, scache_template
-
-    fromCache = update_service_cache(userId, servicename, skipcache=skipcache)
-
-    # select a random enabled, available service
-    if scache[servicename]['records']:
-        ret = list(scache[servicename]['records'])
-        random.shuffle(ret)
-    else:
-        ret = []
-
-    if not ret:
-        logger.debug("no services of type ("+str(servicename)+") are yet available in the system")
-       
-    return(ret)
-
-def choose_service(userId, servicename, skipcache=False):
-    global scache, scache_template
-
-    fromCache = update_service_cache(userId, servicename, skipcache=skipcache)
-
-    # select a random enabled, available service
-    if scache[servicename]['records']:
-        idx = random.randint(0, len(scache[servicename]['records'])-1)
-        ret = scache[servicename]['records'][idx]
-    else:
-        ret = {}
-
-    if not ret:
-        logger.debug("no service of type ("+str(servicename)+") is yet available in the system")
-        
     return(ret)
 
 def get_service(userId, servicename=None, hostid=None):
@@ -723,7 +601,7 @@ def get_service(userId, servicename=None, hostid=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/services"
     if servicename:
         url = url + "/" + servicename
@@ -750,7 +628,7 @@ def delete_service(userId, servicename=None, hostid=None):
     if not servicename or not hostid:
         raise Exception("invalid input - must specify a servicename and hostid to delete")
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/services/" + servicename + "/" + hostid
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -770,7 +648,7 @@ def get_registry(userId, registry=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/registries"
     if registry:
         url = url + "/" + registry
@@ -792,7 +670,7 @@ def add_registry(userId, registrydata):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/registries"
 
     payload = registrydata
@@ -814,7 +692,7 @@ def update_registry(userId, registry, registrydata):
         pw = ""
     auth = (userId, pw)
     
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/registries/" + registry
 
     payload = registrydata
@@ -839,7 +717,7 @@ def delete_registry(userId, registry=None):
     if not registry:
         raise Exception("invalid input - must specify a registry to delete")
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/registries/" + registry
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -859,7 +737,7 @@ def add_event(userId, hostId, service_name, level, message, detail=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/events"
     
     payload = {
@@ -887,7 +765,7 @@ def get_event(userId, hostId=None, level=None, message=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/events"
     
     payload = {
@@ -913,7 +791,7 @@ def get_prune_resourcetypes(userId):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/prune"
     
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
@@ -933,7 +811,7 @@ def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/prune/"+resourcetype+"?dangling="+str(dangling)
     if olderthan:
         url = url + "&olderthan="+str(int(olderthan))
@@ -955,7 +833,7 @@ def perform_prune(userId, resourcetype, prune_candidates):
         pw = ""
     auth = (userId, pw)
 
-    base_url = get_catalog_endpoint()
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/system/prune/"+resourcetype
 
     payload = json.dumps(prune_candidates)

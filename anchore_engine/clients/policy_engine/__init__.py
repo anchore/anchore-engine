@@ -1,6 +1,6 @@
 import random
 
-from anchore_engine.clients import catalog
+import anchore_engine.clients.common
 from anchore_engine.subsys.discovery import get_endpoints
 from .generated import DefaultApi, configuration
 from anchore_engine.subsys import logger
@@ -22,11 +22,16 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
         configuration.host = host
     else:
         try:
-            service = catalog.choose_service((user, password), SERVICE_NAME)
-            if service:
-                configuration.host = '/'.join([service['base_url'], service['version']])
+            endpoint = anchore_engine.clients.common.get_service_endpoint((user, password), SERVICE_NAME)
+            if endpoint:
+                configuration.host = endpoint
             else:
                 raise Exception("cannot find endpoint for service: {}".format(SERVICE_NAME))
+            #service = anchore_engine.clients.common.get_service_endpoint((user, password), SERVICE_NAME)
+            #if service:
+            #    configuration.host = '/'.join([service['base_url'], service['version']])
+            #else:
+            #    raise Exception("cannot find endpoint for service: {}".format(SERVICE_NAME))
         except Exception as err:
             raise err
 
