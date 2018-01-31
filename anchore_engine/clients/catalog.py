@@ -17,10 +17,19 @@ headers = {'Content-Type': 'application/json'}
 
 scache = {}
 scache_template = {'records': [], 'ttl': 15, 'last_updated': 0}
-init_catalog_services = []
 
 def get_catalog_endpoint():
-    global localconfig, scache, init_catalog_services
+    global localconfig, scache, scache_template
+
+    init_catalog_services = []
+
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+            
+    # look for override, else go to the DB
+    if 'catalog_endpoint' in localconfig:
+        base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
+        return(base_url)
 
     init = False
     if 'catalog' not in scache:
@@ -37,26 +46,25 @@ def get_catalog_endpoint():
     if init:
         init_catalog_services = []
         logger.debug('initializing catalog endpoint')
-        if localconfig == None:
-            localconfig = anchore_engine.configuration.localconfig.get_config()
-            
-        # look for override, else go to the DB
-        if 'catalog_endpoint' in localconfig:
-            base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
-        else:
-            with db.session_scope() as dbsession:
-                service_reports = db.db_services.get_byname('catalog', session=dbsession)
-                if service_reports:
-                    for service in service_reports:
-                        if service['status']:
-                            init_catalog_services.append(service)
-            
+
+        with db.session_scope() as dbsession:
+            service_reports = db.db_services.get_byname('catalog', session=dbsession)
+            if service_reports:
+                for service in service_reports:
+                    logger.debug("catalog service record: " + str(service))
+                    if service['status']:
+                        logger.debug("adding record: " + str(service))
+                        init_catalog_services.append(service)
+            else:
+                logger.warn("no service reports returned for servicename catalog")
+
     if init_catalog_services:
         service = init_catalog_services[random.randint(0, len(init_catalog_services)-1)]
     else:
         raise Exception("cannot locate registered and available service in config/DB: catalog")
 
     base_url = '/'.join([service['base_url'], service['version']])
+    logger.debug("chose catalog endpoint: " + str(base_url) + " : " + str(init))
     return(base_url)
 
 def lookup_registry_image(userId, tag=None, digest=None):
@@ -652,8 +660,11 @@ def update_service_cache(userId, servicename, skipcache=False):
     if not fromCache:
         # refresh the cache for this service from catalog call
         try:
+            logger.debug("fetching services ("+str(servicename)+")")
             service_records = get_service(userId, servicename=servicename)
+            logger.debug("services fetched: " + str(service_records))
         except Exception as err:
+            logger.warn("cannot get service: " + str(err))
             service_records = []
 
         scache[servicename]['records'] = []
@@ -667,7 +678,6 @@ def update_service_cache(userId, servicename, skipcache=False):
 
 def get_enabled_services(userId, servicename, skipcache=False):
     global scache, scache_template
-
 
     fromCache = update_service_cache(userId, servicename, skipcache=skipcache)
 

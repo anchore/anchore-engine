@@ -34,6 +34,11 @@ def update_status(service_record):
     with session_scope() as dbsession:
         my_service_record = db_services.get(hostid, servicename, session=dbsession)
         if my_service_record:
+            if service_statuses[service]['up'] and service_statuses[service]['available']:
+                my_service_record['status'] = True
+            else:
+                my_service_record['status'] = False
+
             my_service_record['short_description'] = json.dumps(service_statuses[service])
             db_services.update_record(my_service_record, session=dbsession)
 
