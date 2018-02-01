@@ -8,15 +8,38 @@ from twisted.web.wsgi import WSGIResource
 from twisted.web.resource import Resource
 from twisted.web import rewrite
 from twisted.internet.task import LoopingCall
+from twisted import internet
 
 # anchore modules
 import anchore_engine.services.common
 import anchore_engine.subsys.simplequeue
 import anchore_engine.subsys.servicestatus
+from anchore_engine.subsys import logger
 import anchore_engine.subsys.metrics
 
 servicename = 'simplequeue'
 _default_api_version = "v1"
+
+
+# A regular queue configuration with no extra features enabled
+default_queue_config = {
+    'max_outstanding_messages': 0,
+    'visibility_timeout': 0
+}
+
+# From services.common, is only used for service init
+#queue_names = ['images_to_analyze', 'error_events', 'watcher_tasks', 'feed_sync_tasks']
+# Replaces the above with configuration options for each queue
+queues_to_bootstrap = {
+    'images_to_analyze': default_queue_config,
+    'error_events': default_queue_config,
+    'watcher_tasks': default_queue_config,
+    'feed_sync_tasks': {
+        'max_outstanding_messages': 1,
+        'visibility_timeout': 3600  # Default 1 hour timeout for messages outstanding
+        }
+    }
+
 queues = {}
 
 try:
@@ -92,10 +115,6 @@ def createService(sname, config):
 
     return (ret_svc)
 
-#    global app
-#    flask_site = WSGIResource(reactor, reactor.getThreadPool(), app)
-#    root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-#    return(anchore_engine.services.common.createServiceAPI(root, sname, config))
 
 def initializeService(sname, config):
     
@@ -113,8 +132,8 @@ def initializeService(sname, config):
     except Exception as err:
         raise err
 
-    for q in anchore_engine.services.common.queue_names:
-        anchore_engine.subsys.simplequeue.create_queue(q)
+    for qname, config in queues_to_bootstrap.iteritems():
+        anchore_engine.subsys.simplequeue.create_queue(name=qname, max_outstanding_msgs=config.get('max_outstanding_messages', 0), visibility_timeout=config.get('visibility_timeout', 0))
 
     for st in anchore_engine.services.common.subscription_types:
         anchore_engine.subsys.simplequeue.create_queue(st)

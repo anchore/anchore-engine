@@ -32,6 +32,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 
 servicename = 'analyzer'
 _default_api_version = "v1"
+default_q_wait = 60 # Wait up to 60 seconds for message to appear in the queue
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
@@ -42,6 +43,7 @@ try:
 except Exception as err:
     traceback.print_exc()
     raise err
+
 
 # service funcs (must be here)
 def default_version_rewrite(request):
@@ -504,7 +506,7 @@ def handle_image_analyzer(*args, **kwargs):
             logger.debug("max threads: " + str(max_analyze_threads))
             threads = []
             for i in range(0, max_analyze_threads):
-                qobj = simplequeue.dequeue(system_user_auth, queuename)
+                qobj = simplequeue.dequeue(system_user_auth, queuename, max_wait_seconds=default_q_wait)
                 if qobj:
                     myqobj = copy.deepcopy(qobj)
                     logger.spew("incoming queue object: " + str(myqobj))

@@ -10,7 +10,6 @@ an update to the feed handling code is ok to be required as well.
 import json
 import datetime
 import re
-from collections import OrderedDict
 import threading
 import time
 
@@ -18,7 +17,6 @@ from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
 from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-#from anchore_engine.clients.feeds.anchore_io.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 from anchore_engine.clients.feeds.feed_service.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 
 log = get_logger()
@@ -33,6 +31,7 @@ def get_feeds_config(full_config):
     :return: dict that is the feeds configuration
     """
     return full_config.get('feeds',{})
+
 
 def get_selected_feeds_to_sync(config):
     """

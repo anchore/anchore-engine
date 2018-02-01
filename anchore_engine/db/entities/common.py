@@ -13,7 +13,7 @@ import sqlalchemy
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-
+import datetime
 
 try:
     from anchore_engine.subsys import logger
@@ -29,6 +29,53 @@ ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
 upgrade_enabled = True
+
+
+class UtilMixin(object):
+    """
+    Common mixin class for functions that all db entities (or most) should have
+    """
+
+    def update(self, inobj):
+        for a in inobj.keys():
+            if hasattr(self, a):
+                setattr(self, a, inobj[a])
+
+    def to_json(self):
+        """
+        Returns json-encoded string representation of the object's members. If datetime.datetime object is found, converts it to iso8601 format
+
+        NOTE: this is a very simple implementation that assumes members are simple types. If an object has complex types as member, that
+        class should override this function with an impl that serializes those types properly for json.
+
+        :return: string
+        """
+        return dict((key, value if type(value) != datetime.datetime else value.isoformat()) for key, value in vars(self).iteritems() if not key.startswith('_'))
+
+    def to_dict(self):
+        """
+        Returns a dictionary version of the object. Basically the same as json(), but leaves types unchanged whereas json() does encoding to strings for
+        things like datetime objects.
+
+        :return:
+        """
+
+        return dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
+
+    def to_detached(self):
+        """
+        To be called inside a transaction to create a new entity object with values that are the same as the current object but not part of a transaction and without any
+        transaction/session dependencies so can be used outside of session.
+        :return: instance(self.__class__)
+        """
+
+        obj = self.__class__()
+        for name, attr in vars(self).iteritems():
+            if not name.startswith('_'):
+                setattr(obj, name, attr)
+
+        return obj
+
 
 def anchore_now():
     """
@@ -58,7 +105,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
     :param specific_entities: a list of entity classes to initialize if a subset is desired. Expects a list of classes.
     :return:
     """
-    global engine, Session
+    global engine, Session, SerializableSession
 
     if versions is None:
         versions = {}
@@ -105,6 +152,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
 
             # set up the global session
             try:
+#                SerializableSession = sessionmaker(bind=engine.execution_options(isolation_level='SERIALIZABLE'))
                 Session = sessionmaker(bind=engine)
             except Exception as err:
                 raise Exception("could not create DB session - exception: " + str(err))
@@ -396,7 +444,7 @@ upgrade_functions = (
     (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
     (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
-    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
+    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ])
 )
 
 @contextmanager
@@ -420,7 +468,6 @@ def session_scope():
     finally:
         logger.spew("DB: closing session: " + str(session))
         session.close()
-
 
 def get_thread_scoped_session():
     """

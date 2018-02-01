@@ -16,6 +16,7 @@ from .entities.catalog import Registry
 from .entities.catalog import Service
 from .entities.catalog import Subscription
 from .entities.catalog import User
+from .entities.catalog import Lease
 
 from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage

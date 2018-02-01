@@ -4,18 +4,17 @@ Long running tasks
 
 import json
 import datetime
-import time
-import requests
-import urllib
 import dateutil.parser
+import requests
+import time
+import urllib
 
-from sqlalchemy.exc import IntegrityError
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, InsufficientAccessTierError, InvalidCredentialsError
+from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability
+from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image
 from anchore_engine.clients import catalog
 
 # A hack to get admin credentials for executing api ops
@@ -23,6 +22,7 @@ from anchore_engine.services.catalog import db_users
 from anchore_engine.db import session_scope
 
 log = get_logger()
+
 
 def construct_task_from_json(json_obj):
     """
@@ -67,34 +67,7 @@ class IAsyncTask(object):
         raise NotImplementedError()
 
 
-class DispatchableTaskMixin(object):
-    """
-    A mixin class for making a task class symmetric in that it can dispatch itself to the queue upon construction.
-    Allows for a flow where the synchronous portion of the system can construct the appropriate task class for an external
-    request and dispatch it to the backend workers using the same type that the backend workers will parse and construct.
-    The symmetry ensures clean encode/decode operations on updates.
-
-    """
-    #__task_queue__ = boto3.resource('sqs', region_name='us-west-2').get_queue_by_name(QueueName='kirk-tasks')
-
-    def dispatch(self):
-        return
-        # try:
-        #     self.__task_queue__.send_message(body=self.json())
-        #
-        # except:
-        #     log.exception('Failure to dispatch the request to the async task queue {}'.format(self.__task_queue__.name))
-        #     raise
-
-    def json(self):
-        """
-        The json representation of this task as it will be encoded in the message.
-        :return:
-        """
-        raise NotImplementedError()
-
-
-class EchoTask(IAsyncTask, DispatchableTaskMixin):
+class EchoTask(IAsyncTask):
     """
     A simple echo task for testing an runtime performance checks
     """
@@ -123,43 +96,14 @@ class EchoTask(IAsyncTask, DispatchableTaskMixin):
         return
 
 
-class InitialFeedSyncTask(IAsyncTask, DispatchableTaskMixin):
-    """
-    Special task for the initial feed sync to more efficient methods to get the data loaded the first time.
-
-    """
-    __task_name__ = 'initial_feed_sync'
-
-    def __init__(self, feeds_to_sync=None):
-        self.feed_list = feeds_to_sync
-
-    def execute(self):
-        log.info('Starting initial feed sync')
-        f = DataFeeds.instance()
-
-        try:
-            updated = []
-            updated_dict = f.bulk_sync(to_sync=self.feed_list)
-            for g in updated_dict:
-                updated += updated_dict[g]
-
-            log.info('Initial feed sync complete')
-            return updated
-        except:
-            log.exception('Failure refreshing and syncing feeds')
-            raise
-        finally:
-            end_session()
-
-
-class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
+class FeedsUpdateTask(IAsyncTask):
     """
     Scan and sync all configured and available feeds to ensure latest state.
 
     Task is expected to have full control of db session and will commit/rollback as needed.
     """
 
-    __task_name__ = 'feed_update'
+    __task_name__ = 'feed_sync'
 
     def __init__(self, feeds_to_sync=None):
         self.feeds = feeds_to_sync
@@ -171,17 +115,14 @@ class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
     def execute(self):
         log.info('Starting feed update')
 
+        # Feed syncs will update the images with any new cves that are pulled in for a the sync. As such, any images that are loaded while the sync itself is in progress need to be
+        # re-scanned for cves since the transaction ordering can result in the images being loaded with data prior to sync but not included in the sync process itself.
+
+        start_time = datetime.datetime.utcnow()
         try:
             f = DataFeeds.instance()
             updated = []
-            vuln_updates = {}
-            #         try:
-            #             # Update the vulnerabilities with updates to the affected images done within the same transaction scope
-            #             vuln_updates = df.vulnerabilities.sync(item_processing_fn=FeedsUpdateTask.process_updated_vulnerability)
-            #             group_counts = [len(grp_updates) for grp_updates in vuln_updates.values()]
-            #             total_count = reduce(lambda x, y: x + y, group_counts, 0)
-            #             log.info('Processed {} vulnerability updates in {} groups'.format(total_count, len(group_counts)))
-            #
+            start_time = datetime.datetime.utcnow()
             updated_dict = f.sync(to_sync=self.feeds)
             for g in updated_dict:
                 updated += updated_dict[g]
@@ -193,6 +134,55 @@ class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
             raise
         finally:
             end_session()
+            log.info('Pausing for test...60 sec')
+            time.sleep(60)
+            end_time = datetime.datetime.utcnow()
+
+            self.rescan_images_created_between(from_time=start_time, to_time=end_time)
+
+    def rescan_images_created_between(self, from_time, to_time):
+        """
+        If this was a vulnerability update (e.g. timestamps vuln feeds lies in that interval), then look for any images that were loaded in that interval and
+        re-scan the cves for those to ensure that no ordering of transactions caused cves to be missed for an image.
+
+        This is an alternative to a blocking approach by which image loading is blocked during feed syncs.
+
+        :param from_time:
+        :param to_time:
+        :return: count of updated images
+        """
+
+        if from_time is None or to_time is None:
+            raise ValueError('Cannot process None timestamp')
+
+        log.info('Rescanning images loaded between {} and {}'.format(from_time.isoformat(), to_time.isoformat()))
+        count = 0
+
+        with session_scope() as db:
+            # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
+            imgs = [(x.id, x.user_id) for x in db.query(Image).filter(Image.created_at >= from_time, Image.created_at <= to_time)]
+            log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs])))
+
+        retry_max = 3
+        for img in imgs:
+            for i in range(retry_max):
+                try:
+                    # New transaction for each image to get incremental progress
+                    with session_scope() as db:
+                        # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
+                        image_obj = db.query(Image).get(img)
+                        if image_obj:
+                            log.info('Rescanning image {} post-vuln sync'.format(img))
+                            vulns = rescan_image(image_obj, db_session=db)
+                            count += 1
+                        else:
+                            log.warn('Failed to lookup image with tuple: {}'.format(str(img)))
+                    break
+                except Exception as e:
+                    log.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying'.format(img))
+                    time.sleep(5)
+
+        return count
 
     @staticmethod
     def process_updated_vulnerability(db, vulnerability):
@@ -255,10 +245,13 @@ class FeedsUpdateTask(IAsyncTask, DispatchableTaskMixin):
 
     @classmethod
     def from_json(cls, json_obj):
-        if not json_obj['type'] == cls.__task_name__:
-            raise ValueError('Specified json is not for this message type: {} != {}'.format(json_obj.get('type'), cls.__task_name__))
+        if not json_obj.get('task_type') == cls.__task_name__:
+            raise ValueError('Specified json is not for this message type: {} != {}'.format(json_obj.get('task_type'), cls.__task_name__))
 
-        task = FeedsUpdateTask(feed=json_obj.get('feed'), group=json_obj.get('group'), created_at=json_obj.get('created_at'))
+        if not json_obj.get('enabled', False):
+            return None
+
+        task = FeedsUpdateTask()
         task.received_at = datetime.datetime.utcnow()
         return task
 
@@ -269,7 +262,7 @@ class ImageLoadResult(object):
         self.img_vulnerabilities = vulnerabilities
 
 
-class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
+class ImageLoadTask(IAsyncTask):
     """
     A stateful task for loading image analysis.
 
@@ -339,8 +332,6 @@ class ImageLoadTask(IAsyncTask, DispatchableTaskMixin):
                     for pkg_vuln in img.vulnerabilities():
                         db.delete(pkg_vuln)
                     db.delete(img)
-
-
 
             # Close the session during the data fetch.
             #db.close()

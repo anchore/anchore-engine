@@ -134,6 +134,11 @@ services:
     endpoint_hostname: 'localhost'
     listen: '0.0.0.0'
     port: 8087
+    cycle_timer_seconds: 1
+    cycle_timers:
+      feed_sync: 1
+      feed_sync_checker: 3
+
     #ssl_enable: True
     #ssl_cert: '/config/selfsigned-example.cert'
     #ssl_key: '/config/selfsigned-example.key'

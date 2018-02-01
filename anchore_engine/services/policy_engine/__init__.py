@@ -1,22 +1,29 @@
-import datetime
-import threading
-import json
 import time
 import sys
+from twisted import internet
 from twisted.internet import reactor
 from twisted.web.wsgi import WSGIResource
 from twisted.internet.task import LoopingCall
 
 # anchore modules
 import anchore_engine.services.common
+import anchore_engine.clients.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.taskstate
 import anchore_engine.clients.catalog
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
+from anchore_engine.clients import simplequeue
 
 servicename = 'policy_engine'
 temp_logger = None
+
+feed_sync_queuename = 'feed_sync_tasks'
+system_user_auth = None
+feed_sync_msg = {
+    'task_type': 'feed_sync',
+    'enabled': True
+}
 
 # service funcs (must be here)
 def createService(sname, config):
@@ -41,11 +48,19 @@ def createService(sname, config):
     except:
         doapi = False
 
+    try:
+        cycle_timers = {}
+        cycle_timers.update(config['services'][sname]['cycle_timers'])
+    except:
+        cycle_timers = {}
+
     kwargs = {}
     kwargs['kick_timer'] = kick_timer
     kwargs['monitors'] = monitors
     kwargs['monitor_threads'] = monitor_threads
     kwargs['servicename'] = servicename
+    kwargs['cycle_timers'] = cycle_timers
+
 
     if doapi:
         # start up flask service
@@ -64,17 +79,6 @@ def createService(sname, config):
         ret_svc = svc
 
     return (ret_svc)
-
-#    flask_site = WSGIResource(reactor, reactor.getThreadPool(), application)
-#    root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-#    ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
-
-#    # start up the monitor as a looping call
-#    kwargs = {'kick_timer': 1}
-#    lc = LoopingCall(anchore_engine.services.policy_engine.monitor, **kwargs)
-#    lc.start(1)
-
-#    return (ret_svc)
 
 
 def initializeService(sname, config):
@@ -98,7 +102,7 @@ def registerService(sname, config):
     #    process_preflight()
 
     service_record = {'hostid': config['host_id'], 'servicename': sname}
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=False, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
 
     return reg_return
 
@@ -109,6 +113,16 @@ def _check_feed_client_credentials():
     client = get_client()
     client = None
     logger.info('Feeds client credentials ok')
+
+
+def _system_creds():
+    global system_user_auth
+
+    if not system_user_auth:
+        config = localconfig.get_config()
+        system_user_auth = config['system_user_auth']
+
+    return system_user_auth
 
 
 def process_preflight():
@@ -162,77 +176,111 @@ def _init_distro_mappings():
     return True
 
 
-def _init_feeds():
-    """
-    Perform an initial feed sync using a bulk-sync if no sync has been done yet.
-
-    :return:
-    """
-
-    image_count_bulk_sync_threshold = 0 # More than this many images will result in the system doing a regular sync instead of a bulk sync.
-
-    logger.info('Initializing feeds if necessary')
-    from anchore_engine.services.policy_engine.engine import vulnerabilities, feeds
-    from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask, InitialFeedSyncTask
-
-
-    feeds = feeds.get_selected_feeds_to_sync(localconfig.get_config())
-    task = FeedsUpdateTask(feeds_to_sync=feeds)
-    #task = InitialFeedSyncTask(feeds_to_sync=feeds)
-    task.execute()
-
-    return True
-
-
 def _init_db_content():
     """
     Initialize the policy engine db with any data necessary at startup.
 
     :return:
     """
-    return _init_distro_mappings() and _init_feeds()
+    return _init_distro_mappings()
 
 
-#click = 0
-initial_sync = False
+def do_feed_sync(msg):
+    if 'FeedsUpdateTask' not in locals():
+        from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 
-def handle_bootstrapper(*args, **kwargs):
-    global initial_sync, servicename
+    if 'get_selected_feeds_to_sync' not in locals():
+        from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 
-    cycle_timer = kwargs['mythread']['cycle_timer']
+    logger.info("FIRING: feed syncer")
+    try:
+        task = FeedsUpdateTask.from_json(msg.get('data'))
+        feeds = get_selected_feeds_to_sync(localconfig.get_config())
+        task.feeds = feeds
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
+        logger.info('Syncing configured feeds: {}'.format(feeds))
 
-    while(True):
+        if task:
+            result = task.execute()
+        else:
+            logger.warn('Feed sync task marked as disabled, so skipping')
+    except ValueError as e:
+        logger.warn('Received msg of wrong type')
+    except Exception as err:
+        logger.warn("failure in feed sync handler - exception: " + str(err))
+
+
+def handle_feed_sync(*args, **kwargs):
+    """
+    Initiates a feed sync in the system in response to a message from the queue
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    system_user = _system_creds()
+
+    logger.info('init args: {}'.format(kwargs))
+    cycle_time = kwargs['mythread']['cycle_timer']
+
+    while True:
+
         try:
-            if not initial_sync:
+            all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+            if not all_ready:
+                logger.info("simplequeue service not yet ready, will retry")
+            else:
                 try:
-                    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=False, message="running initial feed sync", detail={'service_state': anchore_engine.subsys.taskstate.working_state('policy_engine_state')}, update_db=True)
+                    simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync, max_wait_seconds=30, visibility_timeout=180)
                 except Exception as err:
-                    logger.error("error setting service status - exception: " + str(err))
+                    logger.warn("failed to process task this cycle: " + str(err))
+        except Exception as e:
+            logger.error('Caught escaped error in feed sync handler: {}'.format(e))
 
-                logger.debug("running bootstrap preflight")
-                process_preflight()
+        time.sleep(cycle_time)
 
-                try:
-                    logger.debug("setting available statue to true")
-                    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
-                except Exception as err:
-                    logger.error("error setting service status - exception: " + str(err))
+    return True
 
-                initial_sync = True
-        except:
-            logger.warn("failed to bootstrap, will retry")
 
-        time.sleep(cycle_timer)
-    return(True)
+def handle_feed_sync_trigger(*args, **kwargs):
+    """
+    Checks to see if there is a task for a feed sync in the queue and if not, adds one.
+    Interval for firing this should be longer than the expected feed sync duration.
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    system_user = _system_creds()
+
+    logger.info('init args: {}'.format(kwargs))
+    cycle_time = kwargs['mythread']['cycle_timer']
+
+    while True:
+        try:
+            all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+            if not all_ready:
+                logger.info("simplequeue service not yet ready, will retry")
+            else:
+                logger.info('Feed Sync Trigger activated')
+                if not simplequeue.is_inqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg):
+                    try:
+                        simplequeue.enqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg)
+                    except:
+                        logger.exception('Could not enqueue message for a feed sync')
+                logger.info('Feed Sync Trigger done, waiting for next cycle.')
+        except Exception as e:
+            logger.exception('Error caught in feed sync trigger handler. Will continue. Exception: {}'.format(e))
+
+        time.sleep(cycle_time)
+
+    return True
+
 
 # monitor infrastructure
-
 monitors = {
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'feed_sync_bootstrapper': {'handler': handle_bootstrapper, 'taskType': 'handle_bootstrapper', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'feed_sync_checker': {'handler': handle_feed_sync_trigger, 'taskType': 'handle_feed_sync_trigger', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 100000, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'feed_sync': {'handler': handle_feed_sync, 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 100000, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 monitor_threads = {}
-

@@ -3,13 +3,14 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 
 """
 import json
+import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, Sequence
 from sqlalchemy import inspect
 
-from .common import Base, anchore_now
+from .common import Base, anchore_now, UtilMixin
 
-class Anchore(Base):
+class Anchore(Base, UtilMixin):
     __tablename__ = 'anchore'
 
     service_version = Column(String, primary_key=True)
@@ -21,21 +22,12 @@ class Anchore(Base):
 
     scanner_version = Column(String)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "service_version='%s' db_version='%s' scanner_version='%s'" % (
         self.service_version, self.db_version, self.scanner_version)
 
 
-class ArchiveDocument(Base):
+class ArchiveDocument(Base, UtilMixin):
     __tablename__ = 'archive_document'
 
     bucket = Column(String, primary_key=True)
@@ -48,20 +40,12 @@ class ArchiveDocument(Base):
     record_state_val = Column(String)
     jsondata = Column(String)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
 
     def __repr__(self):
         return "userId='%s'" % (self.userId)
 
 
-class User(Base):
+class User(Base, UtilMixin):
     __tablename__ = 'users'
 
     userId = Column(String, primary_key=True)
@@ -74,20 +58,11 @@ class User(Base):
     acls = Column(String)
     active = Column(Boolean)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "userId='%s'" % (self.userId)
 
 
-class EventLog(Base):
+class EventLog(Base, UtilMixin):
     __tablename__ = 'eventlog'
 
     hostId = Column(String, primary_key=True)
@@ -101,20 +76,11 @@ class EventLog(Base):
     record_state_val = Column(String)
     detail = Column(String)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "hostId='%s' message='%s' level='%s'" % (self.hostId, self.message, self.level)
 
 
-class QueueItem(Base):
+class QueueItem(Base, UtilMixin):
     __tablename__ = 'queues'
 
     queueId = Column(String, primary_key=True)
@@ -128,21 +94,12 @@ class QueueItem(Base):
     tries = Column(Integer)
     max_tries = Column(Integer)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "queueId='%s'" % (self.queueId)
 
 
 if True:
-    class QueueMeta(Base):
+    class QueueMeta(Base, UtilMixin):
         __tablename__ = 'queuemeta'
 
         queueName = Column(String, primary_key=True)
@@ -153,20 +110,20 @@ if True:
         record_state_val = Column(String)
         qlen = Column(BigInteger, default=0)
 
-        def json(self):
-            thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-            return (json.dumps(thedata))
+        # For support of limiting number of messages being processed
+        max_outstanding_messages = Column(Integer, default=0)
 
-        def update(self, inobj):
-            for a in inobj.keys():
-                if hasattr(self, a):
-                    setattr(self, a, inobj[a])
+        # Default visibility timeout in seconds to be applied to messages if set
+        visibility_timeout = Column(Integer, default=0)
+
+        # Auto incrementing lock id to use for any advisory locks for this queue
+        #lock_id = Column(Integer, Sequence('queuemeta_lock_id_seq'))
 
         def __repr__(self):
             return "queueName='%s'" % (self.queueName)
 
 
-    class Queue(Base):
+    class Queue(Base, UtilMixin):
         __tablename__ = 'queue'
 
         queueId = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -183,20 +140,15 @@ if True:
         tries = Column(Integer, default=0)
         max_tries = Column(Integer, default=0)
 
-        def json(self):
-            thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-            return (json.dumps(thedata))
-
-        def update(self, inobj):
-            for a in inobj.keys():
-                if hasattr(self, a):
-                    setattr(self, a, inobj[a])
+        # Receipt handle is generated on dequeue and stored with the message as well as returned to the caller to support later deletion of the message
+        receipt_handle = Column(String)
+        visible_at = Column(DateTime)
 
         def __repr__(self):
             return "queueId='%s'" % (self.queueId)
 
 
-class Subscription(Base):
+class Subscription(Base, UtilMixin):
     __tablename__ = 'subscriptions'
 
     subscription_id = Column(String, primary_key=True)
@@ -217,21 +169,12 @@ class Subscription(Base):
             ret[c.key] = None
         return (ret)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "userId='%s' subscription_type='%s' subscription_key='%s'" % (
         self.userId, self.subscription_type, self.subscription_key)
 
 if False:
-    class CatalogRepoTag(Base):
+    class CatalogRepoTag(Base, UtilMixin):
         __tablename__ = "catalog_repotag"
 
         regrepo = Column(String, primary_key=True)
@@ -253,19 +196,11 @@ if False:
 
             return (ret)
 
-        def json(self):
-            thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-            return (json.dumps(thedata))
-
-        def update(self, inobj):
-            for a in inobj.keys():
-                if hasattr(self, a):
-                    setattr(self, a, inobj[a])
-
         def __repr__(self):
             return "registry='%s'" % (self.registry)
 
-class CatalogImage(Base):
+
+class CatalogImage(Base, UtilMixin):
     __tablename__ = "catalog_image"
 
     imageDigest = Column(String, primary_key=True)
@@ -298,20 +233,11 @@ class CatalogImage(Base):
 
         return (ret)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "imageDigest='%s'" % (self.imageDigest)
 
 
-class CatalogImageDocker(Base):
+class CatalogImageDocker(Base, UtilMixin):
     __tablename__ = "catalog_image_docker"
 
     imageDigest = Column(String, primary_key=True)
@@ -335,20 +261,11 @@ class CatalogImageDocker(Base):
             ret[c.key] = None
         return (ret)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "digest='%s'" % (self.digest)
 
 
-class PolicyBundle(Base):
+class PolicyBundle(Base, UtilMixin):
     __tablename__ = 'policy_bundle'
 
     policyId = Column(String, primary_key=True)
@@ -362,20 +279,11 @@ class PolicyBundle(Base):
 
     # policybundle = Column(String)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "policyId='%s'" % (self.policyId)
 
 
-class PolicyEval(Base):
+class PolicyEval(Base, UtilMixin):
     __tablename__ = 'policy_eval'
 
     userId = Column(String, primary_key=True)
@@ -409,21 +317,12 @@ class PolicyEval(Base):
                 return (False)
         return (True)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "policyId='%s' userId='%s' imageDigest='%s' tag='%s'" % (
         self.policyId, self.userId, self.imageDigest, self.tag)
 
 
-class Service(Base):
+class Service(Base, UtilMixin):
     __tablename__ = 'services'
 
     hostid = Column(String, primary_key=True)
@@ -448,20 +347,11 @@ class Service(Base):
             ret[c.key] = None
         return (ret)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "hostid='%s'" % (self.hostid)
 
 
-class Registry(Base):
+class Registry(Base, UtilMixin):
     __tablename__ = 'registries'
 
     registry = Column(String, primary_key=True)
@@ -477,14 +367,45 @@ class Registry(Base):
     registry_verify = Column(Boolean)
     registry_meta = Column(String)
 
-    def json(self):
-        thedata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        return (json.dumps(thedata))
-
-    def update(self, inobj):
-        for a in inobj.keys():
-            if hasattr(self, a):
-                setattr(self, a, inobj[a])
-
     def __repr__(self):
         return "registry='%s' userId='%s' registry_user='%s'" % (self.registry, self.userId, self.registry_user)
+
+
+# Application-defined lease using a flag in a db row. These are leases, not locks, because they have expirations.
+class Lease(Base, UtilMixin):
+    __tablename__ = 'leases'
+
+    _default_expiration_duration = 10
+
+    id = Column(String, primary_key=True)
+    held_by = Column(String)
+    expires_at = Column(DateTime)
+    epoch = Column(BigInteger, default=0)
+
+    # Some convenience functions, these should be executed inside for_update locks
+    def do_acquire(self, holder_id, duration_sec=None):
+        return self.is_available() and self.set_holder(holder_id, duration_sec=duration_sec)
+
+    def is_available(self):
+        return self.held_by is None or self.is_expired()
+
+    def is_expired(self):
+        return self.expires_at is None or self.expires_at < datetime.datetime.utcnow()
+
+    def set_holder(self, id, duration_sec=None):
+        if not duration_sec:
+            duration_sec = self._default_expiration_duration
+
+        self.held_by = id
+        self.expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=duration_sec)
+        self.epoch += 1
+        return True
+
+    def release_holder(self):
+        self.expires_at = None
+        self.held_by = None
+        self.epoch += 1
+        return True
+
+    def __str__(self):
+        return '<{} id={},held_by={},expires_at={},epoch={}>'.format(self.__class__.__name__, self.id, self.held_by, self.expires_at.isoformat() if self.expires_at else self.expires_at, self.epoch)

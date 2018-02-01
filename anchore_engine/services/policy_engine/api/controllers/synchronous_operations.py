@@ -28,7 +28,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionCo
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image
+from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, rescan_image
 from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
@@ -56,6 +56,7 @@ def get_status():
         return_object = str(err)
 
     return (return_object, httpcode)
+
 
 def create_feed_update(notification):
     """
@@ -331,21 +332,30 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
             if force_refresh:
                 log.info('Forcing refresh of vulnerabiltiies for {}/{}'.format(user_id, image_id))
                 try:
-                    current_vulns = img.vulnerabilities()
-                    log.info('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), user_id, image_id))
-                    for v in current_vulns:
-                        db.delete(v)
-
-                    db.flush()
-                    vulns = vulnerabilities_for_image(img)
-                    log.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), user_id, image_id))
-                    for v in vulns:
-                        db.add(v)
+                    rescan_image(img, db_session=db)
                     db.commit()
                 except Exception as e:
                     log.exception('Error refreshing cve matches for image {}/{}'.format(user_id, image_id))
                     db.rollback()
                     abort(Response('Error refreshing vulnerability listing for image.', 500))
+
+                #
+                # try:
+                #     current_vulns = img.vulnerabilities()
+                #     log.info('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), user_id, image_id))
+                #     for v in current_vulns:
+                #         db.delete(v)
+                #
+                #     db.flush()
+                #     vulns = vulnerabilities_for_image(img)
+                #     log.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), user_id, image_id))
+                #     for v in vulns:
+                #         db.add(v)
+                #     db.commit()
+                # except Exception as e:
+                #     log.exception('Error refreshing cve matches for image {}/{}'.format(user_id, image_id))
+                #     db.rollback()
+                #     abort(Response('Error refreshing vulnerability listing for image.', 500))
 
                 db = get_session()
                 db.refresh(img)

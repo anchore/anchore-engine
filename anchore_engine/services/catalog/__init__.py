@@ -1,7 +1,6 @@
 import json
 import os
 import copy
-import resource
 import threading
 import time
 import traceback
@@ -164,24 +163,6 @@ def handle_feed_sync(*args, **kwargs):
             except:
                 pass
             return(True)
-
-        userId = None
-        password = None
-        with db.session_scope() as dbsession:
-            system_user = db.db_users.get('anchore-system', session=dbsession)
-            userId = system_user['userId']
-            password = system_user['password']
-
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        verify = localconfig['internal_ssl_verify']
-
-        client = anchore_engine.clients.policy_engine.get_client(user=userId, password=password, verify_ssl=verify)
-        resp = client.create_feed_update(FeedUpdateNotification(feed_name='vulnerabilities'))
-        if resp:
-            logger.debug("feed sync response is not empty")
-        else:
-            logger.debug("feed sync response is empty")
-        feed_sync_updated = True
 
         with db.session_scope() as dbsession:
             users = db.db_users.get_all(session=dbsession)
@@ -378,7 +359,7 @@ def handle_service_watcher(*args, **kwargs):
                             logger.warn("could not get/parse service status record for service: - exception: " + str(err))
 
                     except Exception as err:
-                        logger.warn("could not get service status: " + str(url) + " : exception: " + str(err) + " : " + str(err.__dict__))
+                        logger.warn("could not get service status: " + str(service) + " : exception: " + str(err) + " : " + str(err.__dict__))
                         service_update_record['status'] = False
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
                         service_update_record['short_description'] = "could not get service status"
@@ -1142,16 +1123,16 @@ bundle_user_last_updated = {}
 bundle_user_is_updated = {}
 
 watchers = {
-    'image_watcher': {'handler': handle_image_watcher, 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'repo_watcher': {'handler': handle_repo_watcher, 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_eval': {'handler':handle_policyeval, 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'analyzer_queue': {'handler':handle_analyzer_queue, 'taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'notifications': {'handler':handle_notifications, 'taskType': 'handle_notifications', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'feed_sync': {'handler':handle_feed_sync, 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'service_watcher': {'handler':handle_service_watcher, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'handle_metrics': {'handler': handle_metrics, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'image_watcher': {'handler': handle_image_watcher, 'task_lease_id': 'image_watcher', 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'repo_watcher': {'handler': handle_repo_watcher, 'task_lease_id': 'repo_watcher', 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_eval': {'handler':handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'task_lease_id': 'policy_bundle_sync','taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'analyzer_queue': {'handler':handle_analyzer_queue, 'task_lease_id': 'analyzer_queue','taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'notifications': {'handler':handle_notifications, 'task_lease_id': 'notifications','taskType': 'handle_notifications', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'feed_sync': {'handler':handle_feed_sync, 'task_lease_id': 'feed_sync', 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_watcher': {'handler':handle_service_watcher, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'task_lease_id': False, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 
 watcher_task_template = {
@@ -1159,6 +1140,9 @@ watcher_task_template = {
     'watcher': None,
 }
 watcher_threads = {}
+
+default_lease_ttl = 3600 # 1 hour ttl, should be more than enough in most cases
+
 
 def watcher_func(*args, **kwargs):
     global system_user_auth
@@ -1171,14 +1155,24 @@ def watcher_func(*args, **kwargs):
         else:
             try:
                 logger.debug("attempting dequeue")
-                qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks')
+                qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks', max_wait_seconds=30)
                 logger.debug("dequeue complete")
+
                 if qobj:
                     logger.debug("got task from queue: " + str(qobj))
                     watcher = qobj['data']['watcher']
                     handler = watchers[watcher]['handler']
                     args = []
                     kwargs = {'mythread': watchers[watcher]}
+
+                    lease_id = watchers[watcher]['task_lease_id']
+
+                    # Old way
+                    if not lease_id:
+                        logger.debug('No task lease defined for watcher {}, initiating without lock protection'.format(watcher))
+                        rc = handler(*args, **kwargs)
+                    else:
+                        rc = simplequeue.run_target_with_lease(system_user_auth, lease_id, handler, ttl=default_lease_ttl, *args, **kwargs)
 
                     mtimer = anchore_engine.subsys.metrics.get_summary_obj('anchore_monitor_runtime_seconds', function=watcher)
                     if mtimer:

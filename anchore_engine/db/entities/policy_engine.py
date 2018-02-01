@@ -3,7 +3,6 @@ import hashlib
 import json
 import re
 import zlib
-import uuid
 from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
@@ -105,19 +104,6 @@ class FeedGroupMetadata(Base):
     def __repr__(self):
         return '<{} name={}, feed={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.feed_name, self.access_tier,
                                                                               self.created_at)
-
-
-# class SyncHistory(Base):
-#     __tablename__ = 'feed_sync_history'
-#
-#     id = Column(String(80), primary_key=True)
-#     parent_id = Column(String(80)) # If populated, this is a group sync or feed sync record for a part of a parent execution
-#     feed_name = Column(String(feed_name_length))
-#     feed_group = Column(String(feed_group_length))
-#     state = Column(Enum('in_progress', 'succeeded', 'failed'), default='in_progress')
-#     started_at = Column(DateTime, default=datetime.datetime.utcnow)
-#     completed_at = Column(DateTime, nullable=True)
-#     last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 
 class GenericFeedDataRecord(Base):

@@ -331,3 +331,27 @@ def vulnerabilities_for_image(image_obj):
     except Exception as e:
         log.exception('Error computing full vulnerability set for image {}/{}'.format(image_obj.user_id, image_obj.id))
         raise
+
+
+def rescan_image(image_obj, db_session):
+    """
+    Rescan an image for vulnerabilities. Discards old results and rescans and persists new matches based on current data.
+
+    :param image_obj:
+    :param db_session:
+    :return:
+    """
+
+    current_vulns = image_obj.vulnerabilities()
+    log.debug('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), image_obj.user_id, image_obj.id))
+    for v in current_vulns:
+        db_session.delete(v)
+
+    db_session.flush()
+    vulns = vulnerabilities_for_image(image_obj)
+    log.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), image_obj.user_id, image_obj.id))
+    for v in vulns:
+        db_session.add(v)
+    db_session.flush()
+
+    return vulns
