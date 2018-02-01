@@ -483,6 +483,7 @@ def handle_repo_watcher(*args, **kwargs):
                     # update the subscription record with the latest successfully added image tags
                     with db.session_scope() as dbsession:
                         subscription_value['repotags'] = added_repotags
+                        subscription_value['tagcount'] = len(added_repotags)
                         db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
 
                 else:

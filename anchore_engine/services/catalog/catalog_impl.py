@@ -86,6 +86,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
             except Exception as err:
                 logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
+            repotags = []
             try:
                 repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
             except Exception as err:
@@ -102,7 +103,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 
                 subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
                 if not subscription_records:
-                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe})}, session=dbsession)
+                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe, 'tagcount': len(repotags)})}, session=dbsession)
                     if not rc:
                         raise Exception ("adding required subscription failed")
 
@@ -129,7 +130,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 raise Exception("unable to add/update subscripotion records in anchore-engine")
 
             return_object = subscription_records
-            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags})
+            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags, 'tagcount': len(repotags)})
 
             httpcode = 200
     except Exception as err:
