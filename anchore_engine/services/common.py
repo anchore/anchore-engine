@@ -204,12 +204,12 @@ def registerService(sname, config, enforce_unique=True):
                         raise Exception("service type ("+str(sname)+") already exists in system with different host_id - detail: my_host_id=" + str(config['host_id']) + " db_host_id=" + str(service_record['hostid']))
 
             # in any case, check if another host is registered that has the same endpoint
-            for service_record in service_records:
-                if service_record['base_url'] and service_record['base_url'] != 'N/A':
-                    service_hostport = re.sub("^http.//", "", service_record['base_url'])
-                    # if a different host_id has the same endpoint, fail
-                    if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
-                        raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
+            #for service_record in service_records:
+            #    if service_record['base_url'] and service_record['base_url'] != 'N/A':
+            #        service_hostport = re.sub("^http.//", "", service_record['base_url'])
+            #        # if a different host_id has the same endpoint, fail
+            #        if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
+            #            raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
 
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)

@@ -293,6 +293,8 @@ def handle_service_watcher(*args, **kwargs):
 
     logger.debug("ENTERING: " + str(kwargs))
     cycle_timer = kwargs['mythread']['cycle_timer']
+    max_service_heartbeat_timer = 300
+
     while(True):
         logger.debug("FIRING: service watcher: " + str(kwargs))
 
@@ -318,164 +320,46 @@ def handle_service_watcher(*args, **kwargs):
 
             for service in anchore_services:
                 service_update_record = {}
-
                 if service['servicename'] == 'catalog' and service['hostid'] == localconfig['host_id']:
                     status = anchore_engine.subsys.servicestatus.get_status(service)
                     service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
                 else:
-                    #service_update_record = copy.deepcopy(service_update_record_template)
-
-                    url = '/'.join([service['base_url'], service['version'], 'status'])
+                    #url = '/'.join([service['base_url'], service['version'], 'status'])
                     try:
                         #status = http.anchy_get(url, auth=(userId, password), verify=verify, timeout=30)
                         try:
                             status = json.loads(service['short_description'])
                         except:
-                            status = {}
+                            status = {'up': False, 'available': False}
                             
-                        service_update_record['heartbeat'] = int(time.time())
-
+                        #service_update_record['heartbeat'] = int(time.time())
                         # set to down until the response can be parsed
                         service_update_record['status'] = False                    
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
-                        service_update_record['short_description'] = "could not parse service status response"
+                        service_update_record['short_description'] = "could not get service status description"
 
                         try:
                             # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
+                            #if False:
                             if status['up'] and status['available']:
-                                service_update_record['status'] = True
-                                service_update_record['status_message'] = taskstate.complete_state('service_status')
-                            try:
-                                service_update_record['short_description'] = json.dumps(status)
-                            except:
-                                service_update_record['short_description'] = str(status)
+                                if time.time() - service['heartbeat'] > max_service_heartbeat_timer:
+                                    logger.warn("no service heartbeat within allowed time period ("+str([service['hostid'], service['base_url']]) + " - disabling service")
+                                    service_update_record['short_description'] = "no heartbeat from service"
+                                else:
+                                    service_update_record['status'] = True
+                                    service_update_record['status_message'] = taskstate.complete_state('service_status')
+                                    try:
+                                        service_update_record['short_description'] = json.dumps(status)
+                                    except:
+                                        service_update_record['short_description'] = str(status)
                         except Exception as err:
-                            logger.warn("could not get/parse service status record from service: " + str(url) + " - exception: " + str(err))
+                            logger.warn("could not get/parse service status record for service: - exception: " + str(err))
 
                     except Exception as err:
                         logger.warn("could not get service status: " + str(url) + " : exception: " + str(err) + " : " + str(err.__dict__))
                         service_update_record['status'] = False
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
                         service_update_record['short_description'] = "could not get service status"
-
-                if service_update_record:
-                    service.update(service_update_record)
-                    try:
-                        db.db_services.update_record(service, session=dbsession)
-                    except Exception as err:
-                        logger.warn("could not update DB: " + str(err))
-                else:
-                    logger.warn("no service_update_record populated - nothing to update")
-
-        with db.session_scope() as dbsession:
-            anchore_services = db.db_services.get_all(session=dbsession)
-            # update the global latest service record dict in services.common
-            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
-
-
-        if False:
-            with db.session_scope() as dbsession:
-                anchore_services = db.db_services.get_all(session=dbsession)
-                logger.debug("checking for expired service entries")
-                expire_time = (kwargs['mythread']['cycle_timer'] * 2) + 10
-                for service in anchore_services:
-                    logger.debug("service update delta: " + str(time.time() - service['last_updated']) + " : " + str(expire_time))
-                    if service['base_url'] and service['base_url'] != 'N/A':
-                        if (time.time() - service['last_updated']) > expire_time:
-                            logger.debug("clearing expired service entry: " + str(service))
-                            db.db_services.delete(service['hostid'], service['servicename'], session=dbsession)
-
-        logger.debug("FIRING DONE: service watcher")
-        try:
-            kwargs['mythread']['last_return'] = True
-        except:
-            pass
-
-        time.sleep(cycle_timer)
-    return(True)
-
-def handle_service_watcher_orig(*args, **kwargs):
-    global latest_service_records
-
-    logger.debug("ENTERING: " + str(kwargs))
-    cycle_timer = kwargs['mythread']['cycle_timer']
-    while(True):
-        logger.debug("FIRING: service watcher: " + str(kwargs))
-
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        verify = localconfig['internal_ssl_verify']
-
-        with db.session_scope() as dbsession:
-            system_user = db.db_users.get('anchore-system', session=dbsession)
-            userId = system_user['userId']
-            password = system_user['password']
-
-            anchore_services = db.db_services.get_all(session=dbsession)
-            # update the global latest service record dict in services.common
-            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
-
-            # fields to update each tick:
-            #
-            # heartbeat (current time)
-            # status (true/false)
-            # status_message (state of service)
-            # short_description(api return)
-            #
-
-            for service in anchore_services:
-                service_update_record = {}
-
-                if service['servicename'] == 'catalog' and service['hostid'] == localconfig['host_id']:
-                    status = anchore_engine.subsys.servicestatus.get_status(service)
-                    #status = {
-                    #    'up': True,
-                    #    'busy': False,
-                    #    'message': "all good"
-                    #}
-                    service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
-                elif 'base_url' in service and service['base_url'] and service['base_url'] != 'N/A':
-                    #service_update_record = copy.deepcopy(service_update_record_template)
-
-                    url = '/'.join([service['base_url'], service['version'], 'status'])
-                    try:
-                        status = http.anchy_get(url, auth=(userId, password), verify=verify, timeout=30)
-                        service_update_record['heartbeat'] = int(time.time())
-
-                        # set to down until the response can be parsed
-                        service_update_record['status'] = False                    
-                        service_update_record['status_message'] = taskstate.fault_state('service_status')
-                        service_update_record['short_description'] = "could not parse service status response"
-
-                        try:
-                            # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
-                            if status['up'] and status['available']:
-                                service_update_record['status'] = True
-                                service_update_record['status_message'] = taskstate.complete_state('service_status')
-                            try:
-                                service_update_record['short_description'] = json.dumps(status)
-                            except:
-                                service_update_record['short_description'] = str(status)
-                        except Exception as err:
-                            logger.warn("could not get/parse service status record from service: " + str(url) + " - exception: " + str(err))
-
-                    except Exception as err:
-                        logger.warn("could not get service status: " + str(url) + " : exception: " + str(err) + " : " + str(err.__dict__))
-                        service_update_record['status'] = False
-                        service_update_record['status_message'] = taskstate.fault_state('service_status')
-                        service_update_record['short_description'] = "could not get service status"
-
-                else:
-                    # NOTE: should consider requiring any AE service to have an API with at least the v1/status route, otherwise this
-                    status = {
-                        'up': True,
-                        'busy': False,
-                        'available': True,
-                        'message': "no status API to query - assuming available"
-                    }
-                    service_update_record['heartbeat'] = int(0)
-                    service_update_record['status'] = True
-                    service_update_record['status_message'] = taskstate.complete_state('service_status')
-                    service_update_record['short_description'] = json.dumps(status)
 
                 if service_update_record:
                     service.update(service_update_record)

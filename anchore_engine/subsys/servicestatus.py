@@ -33,6 +33,7 @@ def update_status(service_record):
 
     with session_scope() as dbsession:
         my_service_record = db_services.get(hostid, servicename, session=dbsession)
+        my_service_record['heartbeat'] = time.time()
         if my_service_record:
             if service_statuses[service]['up'] and service_statuses[service]['available']:
                 my_service_record['status'] = True
