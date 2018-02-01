@@ -992,6 +992,8 @@ def images(request_inputs):
 
                     sub_types = anchore_engine.services.common.subscription_types
                     for sub_type in sub_types:
+                        if sub_type in ['repo_update']:
+                            continue
                         if sub_type not in foundtypes:
                             try:
                                 default_active = False
