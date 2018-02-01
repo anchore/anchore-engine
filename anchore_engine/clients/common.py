@@ -162,3 +162,22 @@ def get_service_endpoints(user_auth, servicename, api_post=None):
     
     logger.debug("got endpoints ("+servicename+"): " + str([base_urls]))
     return(base_urls)
+
+def check_services_ready(servicelist):
+    global scache
+
+    all_ready = True
+    try:
+        for servicename in servicelist:
+            logger.debug("checking service readiness: " + str(servicename))
+            services = get_enabled_services(None, servicename)
+            if not services:
+                logger.warn("required service ("+str(servicename)+") is not (yet) available")
+                all_ready = False
+                break
+
+    except Exception as err:
+        logger.error("could not check service status - exception: " + str(err))
+        all_ready = False
+
+    return(all_ready)

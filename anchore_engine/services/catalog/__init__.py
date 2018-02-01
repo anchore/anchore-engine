@@ -17,7 +17,8 @@ from anchore_engine.clients import http, localanchore, simplequeue
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.services.common
-from anchore_engine.services.common import latest_service_records
+import anchore_engine.clients.common
+#from anchore_engine.services.common import latest_service_records
 from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users
 from anchore_engine.subsys import archive, notifications, taskstate, logger
@@ -134,7 +135,7 @@ def handle_feed_sync(*args, **kwargs):
 
     logger.debug("FIRING: feed syncer")
     try:
-        all_ready = anchore_engine.services.common.check_services_ready(['policy_engine'])
+        all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine'])
         if not all_ready:
             logger.debug("FIRING DONE: feed syncer (skipping due to required services not being available)")
             try:
@@ -289,7 +290,7 @@ def handle_history_trimmer(*args, **kwargs):
     return(True)
 
 def handle_service_watcher(*args, **kwargs):
-    global latest_service_records
+    #global latest_service_records
 
     logger.debug("ENTERING: " + str(kwargs))
     cycle_timer = kwargs['mythread']['cycle_timer']
@@ -308,7 +309,7 @@ def handle_service_watcher(*args, **kwargs):
 
             anchore_services = db.db_services.get_all(session=dbsession)
             # update the global latest service record dict in services.common
-            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+            #latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
 
             # fields to update each tick:
             #
@@ -370,10 +371,10 @@ def handle_service_watcher(*args, **kwargs):
                 else:
                     logger.warn("no service_update_record populated - nothing to update")
 
-        with db.session_scope() as dbsession:
-            anchore_services = db.db_services.get_all(session=dbsession)
-            # update the global latest service record dict in services.common
-            latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
+        #with db.session_scope() as dbsession:
+        #    anchore_services = db.db_services.get_all(session=dbsession)
+        #    # update the global latest service record dict in services.common
+        #    latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
 
 
         if False:
@@ -680,7 +681,7 @@ def handle_policyeval(*args, **kwargs):
     logger.debug("FIRING: policy eval / vuln scan")
 
     try:
-        all_ready = anchore_engine.services.common.check_services_ready(['policy_engine', 'simplequeue'])
+        all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine', 'simplequeue'])
         if not all_ready:
             logger.debug("FIRING DONE: policy eval (skipping due to required services not being available)")
             try:
@@ -752,7 +753,7 @@ def handle_analyzer_queue(*args, **kwargs):
 
     logger.debug("FIRING: analyzer queuer")
     
-    all_ready = anchore_engine.services.common.check_services_ready(['policy_engine', 'simplequeue'])
+    all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine', 'simplequeue'])
     if not all_ready:
         logger.debug("FIRING DONE: analyzer queuer (skipping due to required services not being available)")
         try:
@@ -1064,7 +1065,7 @@ def watcher_func(*args, **kwargs):
 
     while(True):
 
-        all_ready = anchore_engine.services.common.check_services_ready(['simplequeue'])
+        all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
         if not all_ready:
             logger.info("simplequeue service not yet ready, will retry")
         else:
@@ -1136,7 +1137,7 @@ def monitor_func(**kwargs):
                     watcher_threads[watcher] = threading.Thread(target=watchers[watcher]['handler'], args=watchers[watcher]['args'], kwargs={'mythread': watchers[watcher]})
                     watcher_threads[watcher].start()
 
-            all_ready = anchore_engine.services.common.check_services_ready(['simplequeue'])
+            all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
             if not all_ready:
                 logger.info("simplequeue service not yet ready, will retry")
             elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:

@@ -36,7 +36,7 @@ from anchore_engine.subsys import logger, taskstate
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 apiext_status = {}
-latest_service_records = {"service_records": []}
+#latest_service_records = {"service_records": []}
 queue_names = ['images_to_analyze', 'error_events', 'watcher_tasks']
 subscription_types = ['policy_eval', 'tag_update', 'vuln_update', 'repo_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
@@ -218,35 +218,6 @@ def registerService(sname, config, enforce_unique=True):
         raise err
 
     return(ret)
-
-def check_services_ready(servicelist):
-    global latest_service_records
-
-    all_ready = False
-    try:
-        required_services_up = {}
-        for s in servicelist:
-            required_services_up[s] = False
-
-        service_records = latest_service_records['service_records']
-        for service_record in service_records:
-            if service_record['servicename'] in required_services_up.keys():
-                if service_record['status']:
-                    required_services_up[service_record['servicename']] = True
-
-        all_ready = True
-        logger.debug("checking service readiness: " + str(required_services_up.keys()))
-        for servicename in required_services_up.keys():
-            if not required_services_up[servicename]:
-                logger.warn("required service ("+str(servicename)+") is not (yet) available")
-                all_ready = False
-                break
-
-    except Exception as err:
-        logger.error("could not check service status - exception: " + str(err))
-        all_ready = False
-
-    return(all_ready)
 
 def createServiceAPI(resource, sname, config):
     myconfig = config['services'][sname]
