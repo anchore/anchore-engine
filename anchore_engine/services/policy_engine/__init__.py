@@ -177,8 +177,8 @@ def _init_feeds():
 
 
     feeds = feeds.get_selected_feeds_to_sync(localconfig.get_config())
-    #task = FeedsUpdateTask(feeds_to_sync=feeds)
-    task = InitialFeedSyncTask(feeds_to_sync=feeds)
+    task = FeedsUpdateTask(feeds_to_sync=feeds)
+    #task = InitialFeedSyncTask(feeds_to_sync=feeds)
     task.execute()
 
     return True

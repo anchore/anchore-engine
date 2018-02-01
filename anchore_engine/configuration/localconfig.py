@@ -53,14 +53,16 @@ localconfig = {}
 def get_host_id():
     global localconfig
 
-    idfile = os.path.join(localconfig['service_dir'], 'host_id.json')
     ret = None
 
     if 'host_id' in localconfig:
         ret = localconfig['host_id']
     else:
+        idfile = os.path.join(localconfig['service_dir'], 'host_id.json')
         if not os.path.exists(idfile):
             ret = str(uuid.uuid4())
+            with open(idfile, 'w') as OFH:
+                OFH.write(json.dumps({'host_id': ret}))
         else:
             for i in range(0,5):
                 try:
@@ -71,9 +73,6 @@ def get_host_id():
                 except Exception as err:
                     time.sleep(1)
                     pass
-
-    with open(idfile, 'w') as OFH:
-        OFH.write(json.dumps({'host_id': ret}))
 
     return (ret)
 
