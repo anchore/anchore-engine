@@ -837,9 +837,9 @@ def handle_analyzer_queue(*args, **kwargs):
 
                             # set the appropriate analysis state for image 
                             #image_record['analysis_status'] = taskstate.queued_state('analyze')
-                            image_record['analysis_status'] = taskstate.working_state('analyze')
-                            with db.session_scope() as dbsession:
-                                rc = db.db_catalog_image.update_record(image_record, session=dbsession)
+                            #image_record['analysis_status'] = taskstate.working_state('analyze')
+                            #with db.session_scope() as dbsession:
+                            #    rc = db.db_catalog_image.update_record(image_record, session=dbsession)
 
                         else:
                             logger.debug("image already queued")
