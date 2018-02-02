@@ -89,10 +89,8 @@ def default_version_rewrite(request):
     try:
         if request.postpath:
             if request.postpath[0] != 'health' and request.postpath[0] != _default_api_version:
-                #logger.debug("rewriting URL: " + str([request.path, request.postpath]))
                 request.postpath.insert(0, _default_api_version)
                 request.path = '/'+_default_api_version+request.path
-                #logger.debug("rewrote URL: " + str([request.path, request.postpath]))
     except Exception as err:
         logger.error("rewrite exception: " +str(err))
         raise err
@@ -136,10 +134,6 @@ def createService(sname, config):
         root = rewrite.RewriterResource(realroot, default_version_rewrite)
         ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
 
-        #flask_site = WSGIResource(reactor, reactor.getThreadPool(), app)
-        #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-        #ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
-
         # start up the monitor as a looping call
         lc = LoopingCall(anchore_engine.services.common.monitor, **kwargs)
         lc.start(1)
@@ -150,19 +144,6 @@ def createService(sname, config):
         ret_svc = svc
 
     return (ret_svc)
-
-#    global application
-
-#    flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=application)
-#    realroot = Resource()
-#    realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
-#    realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
-    
-#    # this will rewrite any calls that do not have an explicit version to the base path before being processed by flask
-#    root = rewrite.RewriterResource(realroot, default_version_rewrite)
-
-#    return (anchore_engine.services.common.createServiceAPI(root, sname, config))
-
 
 def initializeService(sname, config):
 
@@ -185,9 +166,6 @@ def registerService(sname, config):
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
 
     return (rc)
-#    service_record = {'hostid': config['host_id'], 'servicename': sname}
-#    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True)
-#    return (anchore_engine.services.common.registerService(sname, config, enforce_unique=False))
 
 # monitor infrastructure
 

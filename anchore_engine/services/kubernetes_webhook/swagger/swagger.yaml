@@ -10,7 +10,7 @@ info:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
 #host: "localhost:83"
-basePath: "/v1"
+basePath: "/"
 tags:
 - name: "kubernetes_webhook"
   description: "Kubernetes Image Policy Webhook"

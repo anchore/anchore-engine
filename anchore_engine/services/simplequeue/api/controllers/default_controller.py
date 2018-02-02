@@ -10,11 +10,7 @@ def status():
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'simplequeue'})
-    #return_object = {
-    #    'busy':False,
-    #    'up':True,
-    #    'message': 'all good'
-    #}
+
     try:
         queue_detail = {}
         try:

@@ -12,18 +12,12 @@ def status():
     try:
         localconfig = anchore_engine.configuration.localconfig.get_config()
         return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'kubernetes_webhook'})
-        #return_object = {
-        #    'busy':False,
-        #    'up':True,
-        #    'message': 'all good'
-        #}
         httpcode = 200
     except Exception as err:
         return_object = str(err)
         httpcode = 500
 
     return(return_object, httpcode)
-    #return(json.dumps(return_object, indent=4)+"\n", 200)
 
 def imagepolicywebhook(bodycontent):
 
@@ -121,7 +115,7 @@ def imagepolicywebhook(bodycontent):
             return_object['status']['allowed'] = final_allowed
             return_object['status']['reason'] = reason
 
-            logger.debug("final return: " + json.dumps(return_object, indent=4))
+            #logger.debug("final return: " + json.dumps(return_object, indent=4))
             httpcode = 200
         except Exception as err:
             return_object['reason'] = str(err)

@@ -13,7 +13,7 @@ info:
 
 #host: "localhost:83"
 
-basePath: "/v1"
+basePath: "/"
 
 tags:
 - name: "analyzer"

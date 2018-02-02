@@ -9,6 +9,8 @@ from twisted.application import internet
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.web.wsgi import WSGIResource
+from twisted.web.resource import Resource
+from twisted.web import rewrite
 
 # anchore modules
 from anchore_engine.clients import catalog, localanchore, simplequeue, localanchore_standalone
@@ -31,8 +33,20 @@ except Exception as err:
     raise err
 
 servicename = 'analyzer'
+_default_api_version = "v1"
 
 # service funcs (must be here)
+def default_version_rewrite(request):
+    global _default_api_version
+    try:
+        if request.postpath:
+            if request.postpath[0] != 'health' and request.postpath[0] != _default_api_version:
+                request.postpath.insert(0, _default_api_version)
+                request.path = '/'+_default_api_version+request.path
+    except Exception as err:
+        logger.error("rewrite exception: " +str(err))
+        raise err
+
 def createService(sname, config):
     global flask_app, monitor_threads, monitors, servicename
 
@@ -64,7 +78,12 @@ def createService(sname, config):
         # start up flask service
 
         flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
-        root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
+        realroot = Resource()
+        realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
+        realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
+        # this will rewrite any calls that do not have an explicit version to the base path before being processed by flask
+        root = rewrite.RewriterResource(realroot, default_version_rewrite)
+        #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
         ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
 
         # start up the monitor as a looping call
@@ -79,14 +98,6 @@ def createService(sname, config):
     return (ret_svc)
 
 def initializeService(sname, config):
-    #service_record = {'hostid': config['host_id'], 'servicename': sname}
-    #try:
-    #    if not anchore_engine.subsys.servicestatus.has_status(service_record):
-    #        anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
-    #except Exception as err:
-    #    import traceback
-    #    traceback.print_exc()
-    #    raise Exception("could not initialize service status - exception: " + str(err))
     return (anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
