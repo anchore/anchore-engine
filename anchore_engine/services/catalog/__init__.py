@@ -832,9 +832,15 @@ def handle_analyzer_queue(*args, **kwargs):
                     try:
                         if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
                             # queue image for analysis
-                            #logger.debug("queued image for analysis: " + json.dumps(qobj, indent=4))
                             logger.debug("queued image for analysis: " + str(imageDigest))
                             qobj = simplequeue.enqueue(system_user_auth, 'images_to_analyze', qobj)
+
+                            # set the appropriate analysis state for image 
+                            #image_record['analysis_status'] = taskstate.queued_state('analyze')
+                            image_record['analysis_status'] = taskstate.working_state('analyze')
+                            with db.session_scope() as dbsession:
+                                rc = db.db_catalog_image.update_record(image_record, session=dbsession)
+
                         else:
                             logger.debug("image already queued")
                     except Exception as err:

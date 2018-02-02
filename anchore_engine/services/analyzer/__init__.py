@@ -279,8 +279,8 @@ def process_analyzer_job(system_user_auth, qobj):
 
         try:
             logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
-            image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
-            rc = catalog.update_image(user_auth, imageDigest, image_record)
+            #image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
+            #rc = catalog.update_image(user_auth, imageDigest, image_record)
 
             # actually do analysis
             registry_creds = catalog.get_registry(user_auth)

@@ -83,42 +83,6 @@ def initialize():
                 with db.session_scope() as subdbsession:
                     db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': "{}"}, session=subdbsession)                
 
-        if False:
-            for archive_record in db_archivedocument.get_all_iter(session=dbsession):
-                userId = archive_record['userId']
-                bucket = archive_record['bucket']
-                archiveid  = archive_record['archiveId']
-                dataref = archive_record['documentName']
-                if archive_record['jsondata']:
-                    if archive_record['jsondata'] == "{}":
-                        db_data = None
-                    else:
-                        try:
-                            db_data = json.loads(archive_record['jsondata'])
-                        except:
-                            logger.warn("could no load jsondata for archive record: " + str([userId, bucket, archiveid]))
-                            db_data = None
-                else:
-                    db_data = None
-
-                if use_db and not db_data:
-                    try:
-                        fs_data = read_archive_file(userId, bucket, archiveid, driver_override='localfs')
-                    except Exception as err:
-                        logger.debug("no data: " + str(err))
-                        fs_data = None
-                    if fs_data:
-                        logger.debug("document data not in DB but is on FS - converting: " + str([userId, bucket, archiveid]))
-                        with db.session_scope() as subdbsession:
-                            db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': json.dumps(fs_data)}, session=subdbsession)
-                        delete_archive_file(userId, bucket, archiveid, driver_override='localfs')
-
-                elif not use_db and db_data:
-                    logger.debug("document data not on FS but is in DB - converting: " + str([userId, bucket, archiveid]))
-                    dataref = write_archive_file(userId, bucket, archiveid, db_data, driver_override='localfs')
-                    with db.session_scope() as subdbsession:
-                        db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': "{}"}, session=subdbsession)
-
         logger.debug("archive driver converter complete")
     archive_initialized = True
     return(True)

@@ -1,10 +1,10 @@
 {
     "policies": [
         {
-            "comment": "Default policy from Anchore CLI",
+            "comment": "Anchore-engine default policy",
             "rules": [
 		{
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "FILECHECK",
                     "trigger": "CONTENTMATCH",
                     "params": [
@@ -15,7 +15,7 @@
                     ]
                 },
 		{
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "FILECHECK",
                     "trigger": "FILENAMEMATCH",
                     "params": [
@@ -26,7 +26,7 @@
                     ]
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "DOCKERFILECHECK",
                     "trigger": "NOFROM",
                     "params": [
@@ -35,7 +35,7 @@
                     "id": "9c6a1d1f-36da-446a-a828-116ed38069d3"
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "DOCKERFILECHECK",
                     "trigger": "NOTAG",
                     "params": [
@@ -62,7 +62,7 @@
                     "id": "38ad4a03-afd6-4add-a6ef-bf4ab2106c74"
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "DOCKERFILECHECK",
                     "trigger": "EXPOSE",
                     "params": [
@@ -92,7 +92,7 @@
                     "id": "0f93f5b9-540a-4cab-954e-f1a0b473a741"
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "PKGDIFF",
                     "trigger": "PKGVERSIONDIFF",
                     "params": [
@@ -101,7 +101,7 @@
                     "id": "31eb6634-a83e-4d3e-8039-2fadc4b4758d"
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "SUIDDIFF",
                     "trigger": "SUIDMODEDIFF",
                     "params": [
@@ -110,7 +110,7 @@
                     "id": "b6e6da61-b21c-499a-a70d-a00a97e82b59"
                 },
                 {
-                    "action": "STOP",
+                    "action": "GO",
                     "gate": "SUIDDIFF",
                     "trigger": "SUIDFILEADD",
                     "params": [

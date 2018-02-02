@@ -2,11 +2,13 @@ state_graphs = {
     'analyze': {
         'base_state': 'not_analyzed',
         'fault_state': 'analysis_failed',
+        'queued_state': 'analysis_queued',
         'working_state': 'analyzing',
         'complete_state': 'analyzed',
         'transitions': {
             'init': 'not_analyzed',
-            'not_analyzed':'analyzing',
+            'not_analyzed':'analysis_queued',
+            'analysis_queued':'analyzing',
             'analyzing':'analyzed',
             'analyzed':'analyzed'
         }
@@ -14,11 +16,13 @@ state_graphs = {
     'policy_evaluate': {
         'base_state': 'not_evaluated',
         'fault_state': 'not_evaluated',
+        'queued_state': 'evaluation_queued',
         'working_state': 'evaluating',
         'complete_state': 'evaluated',
         'transitions': {
             'init': 'not_evaluated',
-            'not_evaluated':'evaluating',
+            'not_evaluated':'evaluation_queued',
+            'evaluation_queued':'evaluating',
             'evaluating':'evaluated',
             'evaluated':'evaluated'
         }
@@ -26,6 +30,7 @@ state_graphs = {
     'image_status': {
         'base_state': 'active',
         'fault_state': 'inactive',
+        'queued_state': 'active',
         'working_state': 'active',
         'complete_state': 'active',
         'transitions': {
@@ -36,6 +41,7 @@ state_graphs = {
     'service_status': {
         'base_state': 'registered',
         'fault_state': 'unavailable',
+        'queued_state': 'available',
         'working_state': 'available',
         'complete_state': 'available',
         'transitions': {
@@ -47,6 +53,7 @@ state_graphs = {
     'policy_engine_state': {
         'base_state': 'registered',
         'fault_state': 'unavailable',
+        'queued_state': 'available',
         'working_state': 'syncing',
         'complete_state': 'available',
         'transitions': {
@@ -74,6 +81,9 @@ def base_state(state_type):
 
 def fault_state(state_type):
     return(state_graphs[state_type]['fault_state'])
+
+def queued_state(state_type):
+    return(state_graphs[state_type]['queued_state'])
 
 def working_state(state_type):
     return(state_graphs[state_type]['working_state'])
