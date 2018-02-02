@@ -593,7 +593,7 @@ def handle_image_watcher(*args, **kwargs):
                         if not simplequeue.is_inqueue(system_user_auth, 'tag_update', inobj):
                             qobj = simplequeue.enqueue(system_user_auth, 'tag_update', inobj)
                             logger.debug("queued image tag update notification: " + fulltag)
-                            #logger.spew("queued image object: " + json.dumps(qobj, indent=4))
+
                     except Exception as err:
                         logger.error("failed to queue tag update notification - exception: " +str(err))
                         raise err
