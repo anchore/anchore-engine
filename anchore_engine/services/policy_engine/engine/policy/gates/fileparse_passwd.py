@@ -5,7 +5,7 @@ from anchore_engine.db import AnalysisArtifact
 
 class FileNotStoredTrigger(BaseTrigger):
     __trigger_name__ = 'filenotstored'
-    __description__ = 'triggers if the /etc/passwd file is not present/stored in the evaluated image',
+    __description__ = 'triggers if the /etc/passwd file is not present/stored in the evaluated image'
     __params__ = None
     __msg__ = 'FILENOTSTORED Cannot locate /etc/passwd in image stored files archive: check analyzer settings'
 
@@ -56,7 +56,7 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 
 class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
     __trigger_name__ = 'useridmatch'
-    __description__ = 'triggers if specified user id is found in the /etc/passwd file',
+    __description__ = 'triggers if specified user id is found in the /etc/passwd file'
 
     user_id_blacklist = CommaDelimitedNumberListParameter(name='useridblacklist', description='Comma-delimited list of userids (numeric) that will cause the trigger to fire if found in /etc/passwd')
 

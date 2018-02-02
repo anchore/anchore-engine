@@ -331,10 +331,10 @@ class ExecutablePolicyRule(object):
 
         # Configure the trigger instance
         try:
-            self.gate_cls = Gate.registry[self.gate_name.lower()]
+            self.gate_cls = Gate.get_gate_by_name(self.gate_name)
         except KeyError:
             # Gate not found
-            self.error_exc = GateNotFoundError(gate=self.gate_name, valid_gates=Gate.registry.keys(), rule_id=self.rule_id)
+            self.error_exc = GateNotFoundError(gate=self.gate_name, valid_gates=Gate.registered_gate_names(), rule_id=self.rule_id)
             self.configured_trigger = None
             raise self.error_exc
 

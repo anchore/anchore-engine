@@ -89,7 +89,7 @@ class BaseOutOfDateTrigger(BaseTrigger):
 
 class ImageCheckGate(Gate):
     __gate_name__ =  'imagecheck'
-    __description__ = 'Checks on '
+    __description__ = 'Checks on image ancestry'
     __triggers__ = [BaseOutOfDateTrigger]
 
     def prepare_context(self, image_obj, context):

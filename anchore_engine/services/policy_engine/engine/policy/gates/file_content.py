@@ -14,7 +14,6 @@ class ContentMatchTrigger(BaseTrigger):
     contentregex_names = PipeDelimitedStringListParameter(name='filecheck_contentregexp', description='Pipe delimited list of named regexes from the FILECHECK_CONTENTMATCH parameter list for the analyzers')
 
     def evaluate(self, image_obj, context):
-        #match_filter = self.eval_params.get(self.__params__.keys()[0])
         match_filter = self.contentregex_names.value()
 
         if match_filter:
@@ -47,12 +46,11 @@ class FilenameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'filenamematch'
     __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as FILECHECK_NAMEREGEXP parameters.'
 
-    regex_names = PipeDelimitedStringListParameter(name='filecheck_nameregexp', description='Pipe-delimited list of names of regexes from the FILECHECK_NAMEREGEXP paramter in the analyzer configuration')
+    regex_names = PipeDelimitedStringListParameter(name='filecheck_nameregexp', description='Pipe-delimited list of names of regexes from the FILECHECK_NAMEREGEXP parameter in the analyzer configuration')
 
     def evaluate(self, image_obj, context):
         # decode the param regexes from b64
         fname_regexps = []
-        #regex_param = self.eval_params.get(self.__params__.keys()[0])
         regex_param = self.regex_names.value()
 
         if regex_param:
