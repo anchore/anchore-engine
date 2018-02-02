@@ -13,7 +13,7 @@ GEM_MATCH_KEY= 'matched_feed_gems'
 GEM_LIST_KEY = 'gems'
 
 class NotLatestTrigger(BaseTrigger):
-    __trigger_name__ = 'GEMNOTLATEST'
+    __trigger_name__ = 'gemnotlatest'
     __description__ = 'triggers if an installed GEM is not the latest version according to GEM data feed'
 
     def evaluate(self, image_obj, context):
@@ -40,7 +40,7 @@ class NotLatestTrigger(BaseTrigger):
 
 
 class NotOfficialTrigger(BaseTrigger):
-    __trigger_name__ = 'GEMNOTOFFICIAL'
+    __trigger_name__ = 'gemnotofficial'
     __description__ = 'triggers if an installed GEM is not in the official GEM database, according to GEM data feed'
 
     def evaluate(self, image_obj, context):
@@ -68,7 +68,7 @@ class NotOfficialTrigger(BaseTrigger):
 
 
 class BadVersionTrigger(BaseTrigger):
-    __trigger_name__ = 'GEMBADVERSION'
+    __trigger_name__ = 'gembadversion'
     __description__ = 'triggers if an installed GEM version is not listed in the official GEM feed as a valid version'
 
     def evaluate(self, image_obj, context):
@@ -99,7 +99,7 @@ class BadVersionTrigger(BaseTrigger):
 
 
 class PkgFullMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'GEMPKGFULLMATCH'
+    __trigger_name__ = 'gempkgfullmatch'
     __description__ = 'triggers if the evaluated image has an GEM package installed that matches one in the list given as a param (package_name|vers)'
     # __params__ = {
     #     'BLACKLIST_GEMFULLMATCH': NameVersionListValidator()
@@ -131,7 +131,7 @@ class PkgFullMatchTrigger(BaseTrigger):
 
 
 class PkgNameMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'GEMPKGNAMEMATCH'
+    __trigger_name__ = 'gempkgnamematch'
     __description__ = 'triggers if the evaluated image has an GEM package installed that matches one in the list given as a param (package_name)'
     #__params__ = {
     #    'BLACKLIST_GEMNAMEMATCH': CommaDelimitedStringListValidator()
@@ -156,7 +156,7 @@ class PkgNameMatchTrigger(BaseTrigger):
 
 
 class NoFeedTrigger(BaseTrigger):
-    __trigger_name__ =  'GEMNOFEED'
+    __trigger_name__ =  'gemnofeed'
     __description__ = 'triggers if anchore does not have access to the GEM data feed'
     __msg__ = "GEMNOFEED GEM packages are present but the anchore GEM feed is not available - will be unable to perform checks that require feed data"
 
@@ -173,7 +173,8 @@ class NoFeedTrigger(BaseTrigger):
 
 
 class GemCheckGate(Gate):
-        __gate_name__ = "GEMCHECK"
+        __gate_name__ = "gemcheck"
+        __description__ = 'Ruby Gem Checks'
         __triggers__ = [
             NotLatestTrigger,
             NotOfficialTrigger,

@@ -7,7 +7,7 @@ log = get_logger()
 
 
 class FullMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGFULLMATCH'
+    __trigger_name__ = 'pkgfullmatch'
     __description__ = 'triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name|vers)'
     #__params__ = {
     #    'BLACKLIST_FULLMATCH': NameVersionListValidator()
@@ -28,7 +28,7 @@ class FullMatchTrigger(BaseTrigger):
 
 
 class NameMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGNAMEMATCH'
+    __trigger_name__ = 'pkgnamematch'
     __description__ = 'triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name)'
     #__params__ = {
     #    'BLACKLIST_NAMEMATCH': CommaDelimitedStringListValidator()
@@ -49,7 +49,8 @@ class NameMatchTrigger(BaseTrigger):
 
 
 class PackageBlacklistGate(Gate):
-    __gate_name__ = 'PKGBLACKLIST'
+    __gate_name__ = 'pkgblacklist'
+    __description__ = 'Distro Package Blacklists'
     __triggers__ = [
         FullMatchTrigger,
         NameMatchTrigger

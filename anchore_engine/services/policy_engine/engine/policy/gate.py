@@ -267,6 +267,7 @@ class Gate(object):
 
     __gate_name__ = None
     __triggers__ = []
+    __description__ = None
 
     @classmethod
     def has_trigger(cls, name):

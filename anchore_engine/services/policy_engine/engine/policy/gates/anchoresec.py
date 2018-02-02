@@ -43,37 +43,37 @@ class CveSeverityTrigger(BaseTrigger):
 
 
 class LowSeverityTrigger(CveSeverityTrigger):
-    __trigger_name__ = 'VULNLOW'
+    __trigger_name__ = 'vulnlow'
     __description__ = 'triggers if a vulnerability of LOW severity is found, along with a named package'
     __vuln_levels__ = ['Low']
 
 
 class MediumSeverityTrigger(CveSeverityTrigger):
-    __trigger_name__ = 'VULNMEDIUM'
+    __trigger_name__ = 'vulnmedium'
     __description__ = 'triggers if a vulnerability of MEDIUM severity is found, along with a named package'
     __vuln_levels__ = ['Medium']
 
 
 class HighSeverityTrigger(CveSeverityTrigger):
-    __trigger_name__ = 'VULNHIGH'
+    __trigger_name__ = 'vulnhigh'
     __description__ = 'triggers if a vulnerability of HIGH severity is found, along with a named package'
     __vuln_levels__ = ['High']
 
 
 class CriticalSeverityTrigger(CveSeverityTrigger):
-    __trigger_name__ = 'VULNCRITICAL'
+    __trigger_name__ = 'vulncritical'
     __description__ = 'triggers if a vulnerability of CRITICAL severity is found, along with a named package'
     __vuln_levels__ = ['Critical']
 
 
 class UnknownSeverityTrigger(CveSeverityTrigger):
-    __trigger_name__ = 'VULNUNKNOWN'
+    __trigger_name__ = 'vulnunknown'
     __description__ = 'triggers if a vulnerability of UNKNOWN severity is found, along with a named package'
     __vuln_levels__ = ['Unknown', 'Negligible', None]
 
 
 class FeedOutOfDateTrigger(BaseTrigger):
-    __trigger_name__ = 'FEEDOUTOFDATE'
+    __trigger_name__ = 'feedoutofdate'
     __description__ = 'triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days)'
     max_age = IntegerStringParameter(name='maxage', description='Fire the trigger if the last sync was more than this number of days ago', is_required=True)
 
@@ -108,7 +108,7 @@ class FeedOutOfDateTrigger(BaseTrigger):
 
 
 class UnsupportedDistroTrigger(BaseTrigger):
-    __trigger_name__ = 'UNSUPPORTEDDISTRO'
+    __trigger_name__ = 'unsupporteddistro'
     __description__ = 'triggers if a vulnerability scan cannot be run against the image due to lack of vulnerability feed data for the images distro'
 
     def evaluate(self, image_obj, context):
@@ -117,7 +117,8 @@ class UnsupportedDistroTrigger(BaseTrigger):
 
 
 class AnchoreSecGate(Gate):
-    __gate_name__ = 'ANCHORESEC'
+    __gate_name__ = 'anchoresec'
+    __description__ = 'CVE/Vulnerability Checks'
     __triggers__ = [
         LowSeverityTrigger,
         MediumSeverityTrigger,

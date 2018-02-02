@@ -4,20 +4,14 @@ from anchore_engine.services.policy_engine.engine.policy.params import NameVersi
 
 
 class FullMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'LICFULLMATCH'
+    __trigger_name__ = 'licfullmatch'
     __description__ = 'triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)'
-    #__params__ = {
-    #    'LICBLACKLIST_FULLMATCH': CommaDelimitedStringListValidator()
-    #}
+
     license_blacklist = CommaDelimitedStringListParameter(name='licblacklist_fullmatch', description='List of license names to blacklist exactly')
 
     def evaluate(self, image_obj, context):
-        match_vals = []
         fullmatchpkgs = []
         blacklist = [ x.strip() for x in self.license_blacklist.value()] if self.license_blacklist.value() else []
-
-        #for match_val in blacklist:
-        #    match_vals.append(match_val)
 
         for pkg, license in context.data.get('licenses', []):
             if license in blacklist:
@@ -28,20 +22,15 @@ class FullMatchTrigger(BaseTrigger):
 
 
 class SubstringMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'LICSUBMATCH'
+    __trigger_name__ = 'licsubmatch'
     __description__ = 'triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)'
-    #__params__ = {
-    #    'LICBLACKLIST_SUBMATCH': CommaDelimitedStringListValidator()
-    #}
+
     licenseblacklise_submatches = CommaDelimitedStringListParameter(name='licblacklist_submatch', description='List of strings to do substring match for blacklist')
 
     def evaluate(self, image_obj, context):
-        match_vals = []
         matchpkgs = []
 
         match_vals = [x.strip() for x in self.licenseblacklise_submatches.value()] if self.licenseblacklise_submatches.value() else []
-        #for match_val in delim_parser(self.eval_params.get('LICBLACKLIST_SUBMATCH', '')):
-        #    match_vals.append(match_val)
 
         for pkg, license in context.data.get('licenses', []):
             for l in match_vals:
@@ -54,7 +43,8 @@ class SubstringMatchTrigger(BaseTrigger):
 
 
 class LicenseBlacklistGate(Gate):
-    __gate_name__ = 'LICBLACKLIST'
+    __gate_name__ = 'licblacklist'
+    __description__ = 'Package License Blacklists'
     __triggers__ = [
         FullMatchTrigger,
         SubstringMatchTrigger
