@@ -2,6 +2,7 @@ import copy
 import re
 import threading
 import time
+import uuid
 import traceback
 
 import connexion
@@ -15,6 +16,7 @@ from anchore_engine.clients import catalog, localanchore, simplequeue, localanch
 import anchore_engine.configuration.localconfig
 import anchore_engine.services.common
 import anchore_engine.subsys.taskstate
+import anchore_engine.subsys.notifications
 from anchore_engine.subsys import logger
 
 import anchore_engine.clients.policy_engine
@@ -249,8 +251,35 @@ def process_analyzer_job(system_user_auth, qobj):
 
         try:
             logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
+
+            last_analysis_status = image_record['analysis_status']
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
             rc = catalog.update_image(user_auth, imageDigest, image_record)
+
+            try:
+                for image_detail in image_record['image_detail']:
+                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                    npayload = {
+                        'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
+                        'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
+                    }
+                    rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
+            except Exception as err:
+                logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
+
+            #try:
+            #    for image_detail in image_record['image_detail']:
+            #        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+            #        nobj = {
+            #            'userId': user_auth[0],
+            #            'subscription_key': fulltag,
+            #            'notificationId': str(uuid.uuid4()),
+            #            'last_eval':{'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
+            #            'curr_eval':{'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
+            #        }
+            #        rc = simplequeue.enqueue(user_auth, 'image_analysis_update', nobj)
+            #except Exception as err:
+            #    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
             # actually do analysis
             registry_creds = catalog.get_registry(user_auth)
@@ -323,9 +352,22 @@ def process_analyzer_job(system_user_auth, qobj):
                     raise Exception("adding image to policy-engine failed - exception: " + str(err))
 
                 logger.debug("updating image catalog record analysis_status")
+                
+                last_analysis_status = image_record['analysis_status']
                 image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
-
                 rc = catalog.update_image(user_auth, imageDigest, image_record)
+
+                try:
+                    for image_detail in image_record['image_detail']:
+                        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                        npayload = {
+                            'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
+                            'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
+                        }
+                        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
+                except Exception as err:
+                    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
+
             else:
                 raise Exception("analysis archive failed to store")
 

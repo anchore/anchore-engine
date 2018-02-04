@@ -440,7 +440,7 @@ def handle_repo_watcher(*args, **kwargs):
                                     activate = False
                                     if stype == 'repo_update':
                                         continue
-                                    elif stype == 'tag_update' and subscription_value['autosubscribe']:
+                                    elif stype in ['tag_update', 'image_analysis_update'] and subscription_value['autosubscribe']:
                                         activate = True
                                     db_subscriptions.add(userId, new_image_info['fulltag'], stype, {'active': activate}, session=dbsession)
 
@@ -542,7 +542,7 @@ def handle_image_watcher(*args, **kwargs):
                     if not stored_manifest:
                         raise Exception("stored manifest is empty")
                 except Exception as err:
-                    logger.warn("found empty/invalid stored manifest, storing new: " + str(err))
+                    logger.debug("found empty/invalid stored manifest, storing new: " + str(err))
                     rc = archive.put_document(userId, 'manifest_data', image_info['digest'], manifest)
 
                 logger.debug("checking image: looking up image in db using dbfilter: " + str(dbfilter))
@@ -582,17 +582,23 @@ def handle_image_watcher(*args, **kwargs):
 
                     # construct the notification and queue
                     try:
-                        inobj = {
-                            'userId': userId,
-                            'subscription_key':fulltag,
-                            'notificationId': str(uuid.uuid4()),
-                            'last_eval':last_digests,
-                            'curr_eval':new_digests,
+                        npayload = {
+                            'last_eval': last_digests,
+                            'curr_eval': new_digests,
                         }
+                        rc = notifications.queue_notification(userId, fulltag, 'tag_update', npayload)
+                        logger.debug("queued image tag update notification: " + fulltag)
 
-                        if not simplequeue.is_inqueue(system_user_auth, 'tag_update', inobj):
-                            qobj = simplequeue.enqueue(system_user_auth, 'tag_update', inobj)
-                            logger.debug("queued image tag update notification: " + fulltag)
+                        #inobj = {
+                        #    'userId': userId,
+                        #    'subscription_key':fulltag,
+                        #    'notificationId': str(uuid.uuid4()),
+                        #    'last_eval':last_digests,
+                        #    'curr_eval':new_digests,
+                        #}
+                        #if not simplequeue.is_inqueue(system_user_auth, 'tag_update', inobj):
+                        #    qobj = simplequeue.enqueue(system_user_auth, 'tag_update', inobj)
+                        #    logger.debug("queued image tag update notification: " + fulltag)
 
                     except Exception as err:
                         logger.error("failed to queue tag update notification - exception: " +str(err))
@@ -890,8 +896,6 @@ def handle_notifications(*args, **kwargs):
 
     logger.debug("FIRING: notifier")
     with db.session_scope() as dbsession:
-        #notification_timeout = 30
-
         # special handling of the error event queue, if configured as a webhook
         try:
             localconfig = anchore_engine.configuration.localconfig.get_config()
