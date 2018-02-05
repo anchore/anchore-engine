@@ -256,28 +256,15 @@ def process_analyzer_job(system_user_auth, qobj):
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
             rc = catalog.update_image(user_auth, imageDigest, image_record)
 
-            try:
-                for image_detail in image_record['image_detail']:
-                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-                    npayload = {
-                        'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
-                        'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
-                    }
-                    rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
-            except Exception as err:
-                logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
-
+            # disable the webhook call for image state transistion to 'analyzing'
             #try:
             #    for image_detail in image_record['image_detail']:
             #        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-            #        nobj = {
-            #            'userId': user_auth[0],
-            #            'subscription_key': fulltag,
-            #            'notificationId': str(uuid.uuid4()),
-            #            'last_eval':{'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
-            #            'curr_eval':{'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
+            #        npayload = {
+            #            'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
+            #            'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
             #        }
-            #        rc = simplequeue.enqueue(user_auth, 'image_analysis_update', nobj)
+            #        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
             #except Exception as err:
             #    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
@@ -417,12 +404,6 @@ def monitor_func(**kwargs):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
 
-        #queues = simplequeue.get_queues(system_user_auth)
-        #if not queues:
-        #    logger.warn("could not get any queues from simplequeue client, cannot do any work")
-        #elif queuename not in queues:
-        #    logger.error("connected to simplequeue, but could not find queue (" + queuename + "), cannot do any work")
-        #else:
         if True:
             try:
 
