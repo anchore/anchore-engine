@@ -264,7 +264,7 @@ def process_analyzer_job(system_user_auth, qobj):
             #            'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
             #            'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
             #        }
-            #        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
+            #        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
             #except Exception as err:
             #    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
@@ -351,7 +351,7 @@ def process_analyzer_job(system_user_auth, qobj):
                             'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
                             'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
                         }
-                        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'image_analysis_update', npayload)
+                        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
                 except Exception as err:
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 

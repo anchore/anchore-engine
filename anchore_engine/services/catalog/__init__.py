@@ -440,7 +440,7 @@ def handle_repo_watcher(*args, **kwargs):
                                     activate = False
                                     if stype == 'repo_update':
                                         continue
-                                    elif stype in ['tag_update', 'image_analysis_update'] and subscription_value['autosubscribe']:
+                                    elif stype in ['tag_update', 'analysis_update'] and subscription_value['autosubscribe']:
                                         activate = True
                                     db_subscriptions.add(userId, new_image_info['fulltag'], stype, {'active': activate}, session=dbsession)
 
