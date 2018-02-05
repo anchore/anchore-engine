@@ -79,7 +79,7 @@ class DirectiveCheckTrigger(BaseTrigger):
     __trigger_name__ = 'directivecheck'
     __description__ = 'Triggers if any directives in the list are found to match the described condition in the dockerfile'
 
-    directives = EnumCommaDelimStringListParameter(name='directives', description='The Dockerfile instruction to check', enum_values=DIRECTIVES, is_required=True, related_to='check')
+    directive = EnumStringParameter(name='directives', description='The Dockerfile instruction to check', enum_values=DIRECTIVES, is_required=True, related_to='check')
     check = EnumStringParameter(name='check', description='The type of check to perform', enum_values=CONDITIONS, is_required=True, related_to='directive, check_value')
     check_value = TriggerParameter(name='check_value', description='The value to check the dockerfile instruction against', is_required=False, related_to='directive, check', validator=TypeValidator("string"))
 
@@ -100,25 +100,25 @@ class DirectiveCheckTrigger(BaseTrigger):
         if not context.data.get('prepared_dockerfile'):
             return # Prep step blocked this eval due to condition on the dockerfile, so skip
 
-        directives = set(self.directives.value(default_if_none=[])) # Note: change from multiple values to a single value
+        directive = self.directive.value() # Note: change from multiple values to a single value
         condition = self.check.value(default_if_none='')
         check_value = self.check_value.value(default_if_none=[])
         operation = self.ops.get(condition)
 
-        if not condition or not directives:
+        if not condition or not directive:
             return
 
         df = context.data.get('prepared_dockerfile')
 
-        for directive, lines in filter(lambda x: x[0] in directives, df.items()):
+        for directive_name, lines in filter(lambda x: x[0] == directive, df.items()):
             for l in lines:
-                l = l[len(directive):].strip()
+                l = l[len(directive_name):].strip()
                 if operation(l, check_value):
-                    self._fire(msg="Dockerfile directive '{}' check '{}' matched against '{}' for line '{}'".format(directive, condition, check_value if check_value else '', l))
+                    self._fire(msg="Dockerfile directive '{}' check '{}' matched against '{}' for line '{}'".format(directive_name, condition, check_value if check_value else '', l))
 
-        if condition == 'not_exists':
-            for match in directives.difference(directives.intersection(set(map(lambda x: x.upper(), df.keys())))):
-                self._fire(msg="Dockerfile directive '{}' not found, matching condition '{}' check".format(match, condition))
+        upper_keys = set(map(lambda x: x.upper(), df.keys()))
+        if condition == 'not_exists' and directive not in upper_keys:
+            self._fire(msg="Dockerfile directive '{}' not found, matching condition '{}' check".format(directive, condition))
 
 
 class ExposeTrigger(BaseTrigger):

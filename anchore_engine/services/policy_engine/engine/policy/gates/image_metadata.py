@@ -1,7 +1,7 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.gates.conditions import CheckOperation, CheckOperations, AttributeListValidator
-from anchore_engine.services.policy_engine.engine.policy.params import EnumCommaDelimStringListParameter, EnumStringParameter, TypeValidator, TriggerParameter
+from anchore_engine.services.policy_engine.engine.policy.gates.conditions import CheckOperation, CheckOperations
+from anchore_engine.services.policy_engine.engine.policy.params import EnumStringParameter, TypeValidator, TriggerParameter
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
 log = get_logger()
@@ -37,30 +37,29 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __checks__ = CheckOperations(__ops__)
     __value_validator__ = lambda x: True
 
-    attributes = EnumCommaDelimStringListParameter(name='attributes', description='List of attribute names to apply as rvalues to the check operation', enum_values=__valid_attributes__)
-    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys())
+    attribute = EnumStringParameter(name='attributes', description='Attribute name to apply as rvalue to the check operation', enum_values=__valid_attributes__.keys(), is_required=True)
+    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True)
     check_value = TriggerParameter(name='check_value', description='The lvalue in the check operation.', validator=TypeValidator('string'))
 
     def evaluate(self, image_obj, context):
-        attrs = self.attributes.value()
+        attr = self.attribute.value()
         check = self.check.value()
         rval = self.check_value.value()
 
-        if not attrs or not check:
+        if not attr or not check:
             return
 
         if self.__checks__.get_op(check).requires_rvalue and not rval:
             # Raise exception or fall thru
             return
 
-        for attr in attrs:
-            img_val = self.__valid_attributes__[attr](image_obj)
-            # Make consistent types (specifically for int/float/str)
-            if type(img_val) in [str, int, float, unicode]:
-                rval = type(img_val)(rval)
+        img_val = self.__valid_attributes__[attr](image_obj)
+        # Make consistent types (specifically for int/float/str)
+        if type(img_val) in [str, int, float, unicode]:
+            rval = type(img_val)(rval)
 
-            if self.__checks__.get_op(check).eval_function(img_val, rval):
-                self._fire(msg="Attribute check for attribute: '{}' check: '{}' check_value: '{}' matched image value: '{}'".format(attr, check, (str(rval) if rval is not None else ''), img_val))
+        if self.__checks__.get_op(check).eval_function(img_val, rval):
+            self._fire(msg="Attribute check for attribute: '{}' check: '{}' check_value: '{}' matched image value: '{}'".format(attr, check, (str(rval) if rval is not None else ''), img_val))
 
 
 class ImageMetadataGate(Gate):
