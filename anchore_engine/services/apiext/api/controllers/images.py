@@ -997,7 +997,7 @@ def images(request_inputs):
                         if sub_type not in foundtypes:
                             try:
                                 default_active = False
-                                if sub_type in ['tag_update']:
+                                if sub_type in ['tag_update', 'analysis_update']:
                                     default_active = True
                                 catalog.add_subscription(user_auth, {'active': default_active, 'subscription_type': sub_type, 'subscription_key': fulltag})
                             except:

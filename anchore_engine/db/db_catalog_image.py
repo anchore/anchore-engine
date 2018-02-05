@@ -130,6 +130,20 @@ def get(imageDigest, userId, session=None):
 
     return(ret)
 
+def get_docker_created_at(record):
+    latest_ts = 0
+
+    try:
+        for image_detail in record['image_detail']:
+            try:
+                if image_detail['created_at'] > latest_ts:
+                    latest_ts = image_detail['created_at']
+            except:
+                pass
+    except:
+        pass
+    return(latest_ts)
+
 def get_created_at(record):
     if 'created_at' in record and record['created_at']:
         return(record['created_at'])
@@ -144,20 +158,30 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
     ret_results = []
     if image_type == 'docker':
         results = db.db_catalog_image_docker.get_byfilter(userId, session=session, **dbfilter)
+        latest = None
         for result in results:
             imageDigest = result['imageDigest']
             dbobj = get(imageDigest, userId, session=session)
+
+            if not latest:
+                latest = dbobj
+
             ret_results.append(dbobj)
             
-    sorted_results = sorted(ret_results, key=get_created_at, reverse=True)
+    #sorted_results = sorted(ret_results, key=get_created_at, reverse=True)
+    #sorted_results = sorted(ret_results, key=get_docker_created_at, reverse=True)
 
+    ret = []
     if not onlylatest:
-        ret = sorted_results
+        ret = ret_results
+        #ret = sorted_results
     else:
-        if sorted_results:
-            ret = [sorted_results[0]]
-        else:
-            ret = []
+        if latest:
+            ret = [latest]
+        #if sorted_results:
+        #    ret = [sorted_results[0]]
+        #else:
+        #    ret = []
 
     return(ret)
 
