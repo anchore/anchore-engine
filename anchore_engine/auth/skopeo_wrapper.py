@@ -35,7 +35,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True):
 
     return(True)
 
-def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
+def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, lookuptag=None):
     try:
         proc_env = os.environ.copy()
         if user and pw:
@@ -51,6 +51,9 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
             tlsverifystr = "--tls-verify=false"
             
         pullstring = registry + "/" + repo
+        if lookuptag:
+            pullstring = pullstring + ":" + lookuptag
+
         repotags = []
 
         cmd = ["/bin/sh", "-c", "skopeo inspect {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]

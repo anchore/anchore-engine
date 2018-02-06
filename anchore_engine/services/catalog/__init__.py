@@ -401,12 +401,16 @@ def handle_repo_watcher(*args, **kwargs):
                     subscription_value = json.loads(subscription_record['subscription_value'])
                     if 'autosubscribe' not in subscription_value:
                         subscription_value['autosubscribe'] = False
+                    if 'lookuptag' not in subscription_value:
+                        subscription_value['lookuptag'] = 'latest'
+                    
                 else:
-                    subscription_value = {'autosubscribe': False}
+                    subscription_value = {'autosubscribe': False, 'lookuptag': 'latest'}
 
                 stored_repotags = subscription_value.get('repotags', [])
 
-                image_info = anchore_engine.services.common.get_image_info(userId, "docker", regrepo, registry_lookup=False, registry_creds=(None, None))
+                fulltag = regrepo + ":" + subscription_value.get('lookuptag', 'latest')
+                image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
 
                 repotags = set(curr_repotags).difference(set(stored_repotags))
@@ -419,7 +423,7 @@ def handle_repo_watcher(*args, **kwargs):
                             fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + repotag
                             logger.debug("found new tag in repo: " + str(fulltag))
                             new_image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=True, registry_creds=registry_creds)
-                            logger.debug("checking image: got registry info: " + str(new_image_info))
+                            #logger.debug("checking image: got registry info: " + str(new_image_info))
 
                             manifest = None
                             try:
@@ -431,7 +435,7 @@ def handle_repo_watcher(*args, **kwargs):
                                 raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                             with db.session_scope() as dbsession:
-                                logger.debug("ADDING/UPDATING IMAGE IN REPO WATCHER " + str(new_image_info))
+                                logger.debug("adding/updating image frok repo scan " + str(new_image_info['fulltag']))
                                 # add the image
                                 image_records = catalog_impl.add_or_update_image(dbsession, userId, new_image_info['imageId'], tags=[new_image_info['fulltag']], digests=[new_image_info['fulldigest']], manifest=manifest)
                                 # add the subscription records with the configured default activations
@@ -1016,7 +1020,7 @@ threads = {
     'notifications': {'handler':handle_notifications, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_run': 0, 'last_return': False},
     'service_watcher': {'handler':handle_service_watcher, 'args':[], 'thread': None, 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_run': 0, 'last_return': False},
     'feed_sync': {'handler':handle_feed_sync, 'args':[], 'thread': None, 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_run': 0, 'last_return': False},
-    'repo_watcher': {'handler':handle_repo_watcher, 'args':[], 'thread': None, 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
+    'repo_watcher': {'handler':handle_repo_watcher, 'args':[], 'thread': None, 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_run': 0, 'last_return': False},
     #'history_watcher': {'handler':handle_history_trimmer, 'args':[], 'thread': None, 'cycle_timer': 86400, 'min_cycle_timer': 1, 'max_cycle_timer': 86400*30, 'last_run': 0, 'last_return': False},
     #'catalog_duty': {'handler':handle_catalog_duty, 'args':[], 'thread': None, 'cycle_timer': 30, 'min_cycle_timer': 29, 'max_cycle_timer': 31, 'last_run': 0, 'last_return': False}
 }

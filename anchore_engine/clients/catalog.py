@@ -94,7 +94,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
-def add_repo(userId, regrepo=None, autosubscribe=False):
+def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
     global localconfig, headers
 
     if not regrepo:
@@ -115,6 +115,8 @@ def add_repo(userId, regrepo=None, autosubscribe=False):
 
     url = base_url + "/repo"
     url = url + "?regrepo="+regrepo+"&autosubscribe="+str(autosubscribe)
+    if lookuptag:
+        url = url + "&lookuptag="+str(lookuptag)
 
     ret = http.anchy_post(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

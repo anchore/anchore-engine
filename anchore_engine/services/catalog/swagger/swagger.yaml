@@ -63,6 +63,11 @@ paths:
         type: boolean
         description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
         required: false
+      - name: 'lookuptag'
+        in: query
+        type: string
+        description: "specify a tag to use for scanning a repo (default is 'latest')"
+        required: false
       responses:
         200:
           description: "success"
