@@ -451,12 +451,16 @@ def handle_repo_watcher(*args, **kwargs):
                     subscription_value = json.loads(subscription_record['subscription_value'])
                     if 'autosubscribe' not in subscription_value:
                         subscription_value['autosubscribe'] = False
+                    if 'lookuptag' not in subscription_value:
+                        subscription_value['lookuptag'] = 'latest'
+                    
                 else:
-                    subscription_value = {'autosubscribe': False}
+                    subscription_value = {'autosubscribe': False, 'lookuptag': 'latest'}
 
                 stored_repotags = subscription_value.get('repotags', [])
 
-                image_info = anchore_engine.services.common.get_image_info(userId, "docker", regrepo, registry_lookup=False, registry_creds=(None, None))
+                fulltag = regrepo + ":" + subscription_value.get('lookuptag', 'latest')
+                image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
 
                 # update the subscription record with the latest image tags from the repo scan
@@ -484,7 +488,8 @@ def handle_repo_watcher(*args, **kwargs):
                                 raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                             with db.session_scope() as dbsession:
-                                logger.debug("adding image from repo" + str([new_image_info['fulltag'], new_image_info['digest']]))
+                                logger.debug("adding/updating image from repo scan " + str(new_image_info['fulltag']))
+
                                 # add the image
                                 image_records = catalog_impl.add_or_update_image(dbsession, userId, new_image_info['imageId'], tags=[new_image_info['fulltag']], digests=[new_image_info['fulldigest']], manifest=manifest)
                                 # add the subscription records with the configured default activations
@@ -1074,7 +1079,7 @@ bundle_user_is_updated = {}
 
 watchers = {
     'image_watcher': {'handler': handle_image_watcher, 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'repo_watcher': {'handler': handle_repo_watcher, 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'repo_watcher': {'handler': handle_repo_watcher, 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'policy_eval': {'handler':handle_policyeval, 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'analyzer_queue': {'handler':handle_analyzer_queue, 'taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},

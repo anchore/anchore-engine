@@ -68,6 +68,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
     return_object = {}
     httpcode = 500
 
+    fulltag = None
     regrepo = False
     if params and 'regrepo' in params:
         regrepo = params['regrepo']
@@ -76,9 +77,15 @@ def repo(dbsession, request_inputs, bodycontent={}):
     if params and 'autosubscribe' in params:
         autosubscribe = params['autosubscribe']
 
+    lookuptag = 'latest'
+    if params and 'lookuptag' in params and params['lookuptag']:
+        lookuptag = str(params['lookuptag'])
+
+    fulltag = regrepo + ":"+ lookuptag
+
     try:
         if method == 'POST':
-            image_info = anchore_engine.services.common.get_image_info(userId, "docker", regrepo, registry_lookup=False, registry_creds=(None, None))
+            image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
 
             registry_creds = db_registries.get_byuserId(userId, session=dbsession)
             try:
@@ -91,7 +98,8 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
             except Exception as err:
                 httpcode = 404
-                raise Exception("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
+                logger.warn("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
+                raise Exception("no tags could be added from input regrepo ("+str(regrepo)+")")
 
             try:
                 regrepo = image_info['registry']+"/"+image_info['repo']
@@ -103,15 +111,16 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 
                 subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
                 if not subscription_records:
-                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe, 'tagcount': len(repotags)})}, session=dbsession)
+                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe, 'lookuptag': lookuptag, 'tagcount': len(repotags)})}, session=dbsession)
                     if not rc:
                         raise Exception ("adding required subscription failed")
 
                 else:
-                    # update with a new autosubscribe setting
+                    # update new metadata
                     subscription_record = subscription_records[0]
                     subscription_value = json.loads(subscription_record['subscription_value'])
                     subscription_value['autosubscribe'] = autosubscribe
+                    subscription_value['lookuptag'] = lookuptag
                     rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
 
                 subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
@@ -119,18 +128,12 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 httpcode = 500
                 raise Exception("could not add the required subscription to anchore-engine")
                 
-
-            #dbfilter = {
-            #    'subscription_type': 'repo_update',
-            #    'subscription_key': image_info['registry']+"/"+image_info['repo']
-            #}
-            #return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             if not subscription_records:
                 httpcode = 500
                 raise Exception("unable to add/update subscripotion records in anchore-engine")
 
             return_object = subscription_records
-            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags, 'tagcount': len(repotags)})
+            return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags, 'tagcount': len(repotags), 'lookuptag': lookuptag})
 
             httpcode = 200
     except Exception as err:

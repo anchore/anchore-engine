@@ -602,12 +602,16 @@ def repositories(request_inputs):
     if params and 'autosubscribe' in params:
         autosubscribe = params['autosubscribe']
 
+    lookuptag = None
+    if params and 'lookuptag' in params:
+        lookuptag = params['lookuptag']
+
     try:
         if method == 'POST':
             logger.debug("handling POST: ")
             try:
                 return_object = []
-                repo_records = catalog.add_repo(user_auth, regrepo=input_repo, autosubscribe=autosubscribe)
+                repo_records = catalog.add_repo(user_auth, regrepo=input_repo, autosubscribe=autosubscribe, lookuptag=lookuptag)
                 for repo_record in repo_records:
                     return_object.append(repo_record)
                 httpcode = 200
