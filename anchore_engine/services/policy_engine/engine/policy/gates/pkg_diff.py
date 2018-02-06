@@ -4,7 +4,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseT
 
 
 class PkgDiffTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGDIFF'
+    __trigger_name__ = 'pkgdiff'
     __description__ = 'triggers if any one of the other events has triggered'
 
     def evaluate(self, image_obj, context):
@@ -13,7 +13,7 @@ class PkgDiffTrigger(BaseTrigger):
 
 
 class PkgVersionDiffTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGVERSIONDIFF'
+    __trigger_name__ = 'pkgversiondiff'
     __description__ = 'triggers if the evaluated image has a package installed with a different version of the same package from a previous base image'
 
     def evaluate(self, image_obj, context):
@@ -25,7 +25,7 @@ class PkgVersionDiffTrigger(BaseTrigger):
 
 
 class PkgAddTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGADD'
+    __trigger_name__ = 'pkgadd'
     __description__ = 'triggers if image contains a package that is not in its base'
 
     def evaluate(self, image_obj, context):
@@ -37,7 +37,7 @@ class PkgAddTrigger(BaseTrigger):
 
 
 class PkgDelTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGDEL'
+    __trigger_name__ = 'pkgdel'
     __description__ = 'triggers if image has removed a package that is installed in its base'
 
     def evaluate(self, image_obj, context):
@@ -49,7 +49,8 @@ class PkgDelTrigger(BaseTrigger):
 
 
 class PkgDiffGate(Gate):
-    __gate_name__ = 'PKGDIFF'
+    __gate_name__ = 'pkgdiff'
+    __description__ = 'Distro Package Difference Checks From Base Image'
     __triggers__ = [
         PkgVersionDiffTrigger,
         PkgAddTrigger,

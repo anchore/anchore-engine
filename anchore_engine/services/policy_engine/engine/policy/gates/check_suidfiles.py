@@ -2,7 +2,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseT
 
 
 class SuidModeDiffTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDMODEDIFF'
+    __trigger_name__ = 'suidmodediff'
     __description__ = 'triggers if file is suid, but mode is different between the image and its base'
 
     def evaluate(self, image_obj, context):
@@ -13,7 +13,7 @@ class SuidModeDiffTrigger(BaseTrigger):
 
 
 class SuidFileAddTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDFILEADD'
+    __trigger_name__ = 'suidfileadd'
     __description__ = 'triggers if the evaluated image has a file that is SUID and the base image does not'
 
     def evaluate(self, image_obj, context):
@@ -23,7 +23,7 @@ class SuidFileAddTrigger(BaseTrigger):
 
 
 class SuidFileDelTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDFILEDEL'
+    __trigger_name__ = 'suidfiledel'
     __description__ = 'triggers if the base image has a SUID file, but the evaluated image does not'
 
     def evaluate(self, image_obj, context):
@@ -34,7 +34,7 @@ class SuidFileDelTrigger(BaseTrigger):
 
 
 class SuidDiffTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDDIFF'
+    __trigger_name__ = 'suiddiff'
     __description__ = 'triggers if any one of the other events for this gate have triggered'
 
     def evaluate(self, image_obj, context):
@@ -47,7 +47,8 @@ class SuidDiffTrigger(BaseTrigger):
 
 
 class SuidDiffGate(Gate):
-    __gate_name__ = 'SUIDDIFF'
+    __gate_name__ = 'suiddiff'
+    __description__ = 'SetUID File Checks'
     __triggers__ = [
         SuidDiffTrigger,
         SuidFileAddTrigger,

@@ -7,7 +7,7 @@ from anchore_engine.services.policy_engine.engine.logs import get_logger
 log = get_logger()
 
 class BaseOutOfDateTrigger(BaseTrigger):
-    __trigger_name__ = 'BASEOUTOFDATE'
+    __trigger_name__ = 'baseoutofdate'
     __description__ = 'triggers if the image\'s base image has been updated since the image was built/analyzed'
     __params__ = {}
 
@@ -88,7 +88,8 @@ class BaseOutOfDateTrigger(BaseTrigger):
 
 
 class ImageCheckGate(Gate):
-    __gate_name__ =  "IMAGECHECK"
+    __gate_name__ =  'imagecheck'
+    __description__ = 'Checks on image ancestry'
     __triggers__ = [BaseOutOfDateTrigger]
 
     def prepare_context(self, image_obj, context):

@@ -8,7 +8,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.auth.anchore_resources
 import anchore_engine.auth.aws_ecr
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, archive as archive_sys
+from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_eventlog, \
     db_registries, db_services, db_archivedocument
@@ -1310,15 +1310,21 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         # if different, set up a policy eval notification update
         if doqueue:
-            logger.debug("queueing vulnerability update notification")
-            inobj = {
-                'userId': userId,
-                'subscription_key': scantag,
-                'notificationId': str(uuid.uuid4()),
-                'diff_vulnerability_result': vdiff
-            }
-            qobj = simplequeue.enqueue(system_user_auth, 'vuln_update', inobj)
-            logger.debug("queueing vulnerability notification: " + json.dumps(qobj, indent=4))        
+            try:
+                logger.debug("queueing vulnerability update notification")
+                npayload = {'diff_vulnerability_result': vdiff}
+                rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
+            except Exception as err:
+                logger.warn("failed to enqueue notification - exception: " + str(err))
+
+            #inobj = {
+            #    'userId': userId,
+            #    'subscription_key': scantag,
+            #    'notificationId': str(uuid.uuid4()),
+            #    'diff_vulnerability_result': vdiff
+            #}
+            #qobj = simplequeue.enqueue(system_user_auth, 'vuln_update', inobj)
+            #logger.debug("queueing vulnerability notification: " + json.dumps(qobj, indent=4))        
     
     return(True)
 
@@ -1410,17 +1416,25 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                 logger.debug("no difference in policy evaluation")
 
         # if different, set up a policy eval notification update
-        if doqueue:
-            logger.debug("queueing policy eval notification")
-            inobj = {
-                'userId': userId,
-                'subscription_key': fulltag,
-                'notificationId': str(uuid.uuid4()),
-                'last_eval': last_evaluation_result,
-                'curr_eval': curr_evaluation_result,
-            }
-            qobj = simplequeue.enqueue(system_user_auth, 'policy_eval', inobj)
-            logger.debug("queueing eval notification: " + json.dumps(qobj, indent=4))
+        if doqueue:            
+            try:
+                logger.debug("queueing policy eval notification")
+                npayload = {
+                    'last_eval': last_evaluation_result,
+                    'curr_eval': curr_evaluation_result,
+                }
+                rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
+            except Exception as err:
+                logger.warn("failed to enqueue notification - exception: " + str(err))
+            #inobj = {
+            #    'userId': userId,
+            #    'subscription_key': fulltag,
+            #    'notificationId': str(uuid.uuid4()),
+            #    'last_eval': last_evaluation_result,
+            #    'curr_eval': curr_evaluation_result,
+            #}
+            #qobj = simplequeue.enqueue(system_user_auth, 'policy_eval', inobj)
+            #logger.debug("queueing eval notification: " + json.dumps(qobj, indent=4))
 
         # done
             

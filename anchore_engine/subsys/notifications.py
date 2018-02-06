@@ -1,12 +1,35 @@
 import json
 import os
+import uuid
 import subprocess
 import tempfile
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
+from anchore_engine.clients import simplequeue
 
+def queue_notification(userId, subscription_key, subscription_type, payload):
+    
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    system_user_auth = localconfig['system_user_auth']
+
+    rc = False
+    try:
+        nobj = {
+            'userId': userId,
+            'subscription_key': subscription_key,
+            'notificationId': str(uuid.uuid4()),
+        }
+        if payload:
+            nobj.update(payload)
+        if not simplequeue.is_inqueue(system_user_auth, subscription_type, nobj):
+            rc = simplequeue.enqueue(system_user_auth, subscription_type, nobj)
+    except Exception as err:
+        logger.warn("failed to create/enqueue notification")
+        raise err
+
+    return(rc)
 
 def make_notification(user_record, subscription_type, notification):
     ret = {}

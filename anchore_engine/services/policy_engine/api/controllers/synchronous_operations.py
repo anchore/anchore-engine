@@ -478,10 +478,11 @@ def describe_policy():
     try:
 
         doc = []
-        for k, v in Gate.registry.items():
+        for name in Gate.registered_gate_names():
+            v = Gate.get_gate_by_name(name)
             g = GateSpec()
-            g.name = k
-            g.description = v.description if hasattr(v, 'description') else ''
+            g.name = name
+            g.description = v.__description__ if v.__description__ else ''
             g.triggers = []
 
             for t in v.__triggers__:

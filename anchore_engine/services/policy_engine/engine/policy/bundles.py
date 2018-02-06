@@ -331,10 +331,10 @@ class ExecutablePolicyRule(object):
 
         # Configure the trigger instance
         try:
-            self.gate_cls = Gate.registry[self.gate_name.lower()]
+            self.gate_cls = Gate.get_gate_by_name(self.gate_name)
         except KeyError:
             # Gate not found
-            self.error_exc = GateNotFoundError(gate=self.gate_name, valid_gates=Gate.registry.keys(), rule_id=self.rule_id)
+            self.error_exc = GateNotFoundError(gate=self.gate_name, valid_gates=Gate.registered_gate_names(), rule_id=self.rule_id)
             self.configured_trigger = None
             raise self.error_exc
 
@@ -714,7 +714,7 @@ class ExecutableWhitelistItem(object):
     """
     def __init__(self, item_json, parent):
         self.id = item_json.get('id')
-        self.gate = item_json.get('gate')
+        self.gate = item_json.get('gate').lower()
         self.trigger_id = item_json.get('trigger_id')
         self.parent_whitelist = parent
 
@@ -734,7 +734,7 @@ class ExecutableWhitelistItem(object):
                 return trigger_match
 
     def matches(self, fired_trigger_obj):
-        return self.gate == fired_trigger_obj.trigger.gate_cls.__gate_name__ and \
+        return self.gate == fired_trigger_obj.trigger.gate_cls.__gate_name__.lower() and \
                (self.trigger_id == fired_trigger_obj.id or is_match(regexify, self.trigger_id, fired_trigger_obj.id))
 
     def json(self):

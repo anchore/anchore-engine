@@ -10,7 +10,7 @@ log = get_logger()
 
 
 class VerifyTrigger(BaseTrigger):
-    __trigger_name__ = 'VERIFY'
+    __trigger_name__ = 'verify'
     __description__ = 'Check package integrity against package db in in the image. Triggers for changes or removal or content in all or the selected DIRS param if provided, and can filter type of check with the CHECK_ONLY param'
 
     pkgs = CommaDelimitedStringListParameter(name='pkgs', description='List of package names to verify', is_required=False)
@@ -133,8 +133,8 @@ class VerifyTrigger(BaseTrigger):
 
 
 class PkgNotPresentTrigger(BaseTrigger):
-    __trigger_name__ = 'PKGNOTPRESENT'
-    __description__ = 'triggers if the package(s) specified in the params are not installed in the container image.  PKGFULLMATCH param can specify an exact match (ex: "curl|7.29.0-35.el7.centos").  PKGNAMEMATCH param can specify just the package name (ex: "curl").  PKGVERSMATCH can specify a minimum version and will trigger if installed version is less than the specified minimum version (ex: zlib|0.2.8-r2)',
+    __trigger_name__ = 'pkgnotpresent'
+    __description__ = 'triggers if the package(s) specified in the params are not installed in the container image. The parameters specify different types of matches.',
 
     pkg_full_match = NameVersionStringListParameter(name='pkgfullmatch', description='Match these values on both name and exact version. Entries are comma-delimited with a pipe between pkg name and version. E.g. "pkg1|version1,pkg2|version2"', is_required=False)
     pkg_name_match = CommaDelimitedStringListParameter(name='pkgnamematch', description='List of names to match', is_required=False)
@@ -189,7 +189,8 @@ class PkgNotPresentTrigger(BaseTrigger):
 
 
 class PackageCheckGate(Gate):
-    __gate_name__ = 'PKGCHECK'
+    __gate_name__ = 'pkgcheck'
+    __description__ = 'Distro package checks'
     __triggers__ = [
         PkgNotPresentTrigger,
         VerifyTrigger,

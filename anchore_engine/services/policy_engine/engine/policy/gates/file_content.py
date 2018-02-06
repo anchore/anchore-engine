@@ -8,15 +8,12 @@ log = get_logger()
 
 
 class ContentMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'CONTENTMATCH'
+    __trigger_name__ = 'contentmatch'
     __description__ = 'Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the FILECHECK_CONTENTMATCH parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches.'
-    #__params__ = {
-    #    'FILECHECK_CONTENTREGEXP': PipeDelimitedStringListValidator()
-    #}
+
     contentregex_names = PipeDelimitedStringListParameter(name='filecheck_contentregexp', description='Pipe delimited list of named regexes from the FILECHECK_CONTENTMATCH parameter list for the analyzers')
 
     def evaluate(self, image_obj, context):
-        #match_filter = self.eval_params.get(self.__params__.keys()[0])
         match_filter = self.contentregex_names.value()
 
         if match_filter:
@@ -46,18 +43,14 @@ class ContentMatchTrigger(BaseTrigger):
 
 
 class FilenameMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'FILENAMEMATCH'
+    __trigger_name__ = 'filenamematch'
     __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as FILECHECK_NAMEREGEXP parameters.'
-    #__params__ = {
-    #    'FILECHECK_NAMEREGEXP': PipeDelimitedStringListValidator()
-    #}
 
-    regex_names = PipeDelimitedStringListParameter(name='filecheck_nameregexp', description='Pipe-delimited list of names of regexes from the FILECHECK_NAMEREGEXP paramter in the analyzer configuration')
+    regex_names = PipeDelimitedStringListParameter(name='filecheck_nameregexp', description='Pipe-delimited list of names of regexes from the FILECHECK_NAMEREGEXP parameter in the analyzer configuration')
 
     def evaluate(self, image_obj, context):
         # decode the param regexes from b64
         fname_regexps = []
-        #regex_param = self.eval_params.get(self.__params__.keys()[0])
         regex_param = self.regex_names.value()
 
         if regex_param:
@@ -80,7 +73,7 @@ class FilenameMatchTrigger(BaseTrigger):
 
 
 class SuidCheckTrigger(BaseTrigger):
-    __trigger_name__ = 'SUIDSGIDCHECK'
+    __trigger_name__ = 'suidsgidcheck'
     __description__ = 'Fires for each file found to have suid or sgid set'
 
     def evaluate(self, image_obj, context):
@@ -98,7 +91,8 @@ class SuidCheckTrigger(BaseTrigger):
 
 
 class FileCheckGate(Gate):
-    __gate_name__ = 'FILECHECK'
+    __gate_name__ = 'filecheck'
+    __description__ = 'Image File Checks'
     __triggers__ = [
         ContentMatchTrigger,
         FilenameMatchTrigger,

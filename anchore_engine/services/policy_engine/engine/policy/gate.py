@@ -28,6 +28,12 @@ class GateMeta(type):
 
         super(GateMeta, cls).__init__(name, bases, dct)
 
+    def get_gate_by_name(cls, name):
+        return cls.registry[name.lower()]
+
+    def registered_gate_names(cls):
+        return cls.registry.keys()
+
 
 class ExecutionContext(object):
     """
@@ -267,6 +273,7 @@ class Gate(object):
 
     __gate_name__ = None
     __triggers__ = []
+    __description__ = None
 
     @classmethod
     def has_trigger(cls, name):

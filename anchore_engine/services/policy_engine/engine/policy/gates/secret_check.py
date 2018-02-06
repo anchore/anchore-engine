@@ -1,24 +1,28 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListValidator
+from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListValidator, PipeDelimitedStringListParameter
 from anchore_engine.db import AnalysisArtifact
 log = get_logger()
 
 
 class SecretContentMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'CONTENTMATCH'
+    __trigger_name__ = 'contentmatch'
     __description__ = 'Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the SECRETCHECK_CONTENTREGEXP parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches.'
-    __params__ = {
-        'SECRETCHECK_CONTENTREGEXP': PipeDelimitedStringListValidator()
-    }
+    secret_contentregexp = PipeDelimitedStringListParameter(name='secretcheck_contentregexp', description='Names of content regexps configured in the analyzer that should trigger if found in the image')
+
+    # __params__ = {
+    #     'secretcheck_contentregexp': PipeDelimitedStringListValidator()
+    # }
 
     def evaluate(self, image_obj, context):
-        match_filter = self.eval_params.get(self.__params__.keys()[0])
+        #match_filter = self.eval_params.get(self.__params__.keys()[0])
 
+        match_filter = self.secret_contentregexp.value(default_if_none=[])
         if match_filter:
-            matches = [x.encode('base64') for x in match_filter.split('|')]
-            matches_decoded = match_filter.split('|')
+            matches = [x.encode('base64') for x in match_filter]
+            #matches_decoded = match_filter.split('|')
+            matches_decoded = match_filter
         else:
             matches = []
             matches_decoded = []
@@ -43,18 +47,21 @@ class SecretContentMatchTrigger(BaseTrigger):
 
 
 class SecretFilenameMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'FILENAMEMATCH'
+    __trigger_name__ = 'filenamematch'
     __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as SECRETCHECK_NAMEREGEXP parameters.'
-    __params__ = {
-        'SECRETCHECK_NAMEREGEXP': PipeDelimitedStringListValidator()
-    }
+    name_regexps = PipeDelimitedStringListParameter(name='secretcheck_nameregexp', description='List of regexp names in the analyzer that should trigger if matched in the image')
+    #__params__ = {
+    #    'secretcheck_nameregexp': PipeDelimitedStringListValidator()
+    #}
 
     def evaluate(self, image_obj, context):
         # decode the param regexes from b64
         fname_regexps = []
-        regex_param = self.eval_params.get(self.__params__.keys()[0])
-        if regex_param:
-            fname_regexps = regex_param.split('|')
+        #regex_param = self.eval_params.get(self.__params__.keys()[0])
+        #if regex_param:
+        #    fname_regexps = regex_param.split('|')
+
+        fname_regexps = self.name_regexps.value(default_if_none=[])
 
         if not fname_regexps:
             # Short circuit
@@ -73,7 +80,8 @@ class SecretFilenameMatchTrigger(BaseTrigger):
 
 
 class SecretCheckGate(Gate):
-    __gate_name__ = 'SECRETCHECK'
+    __gate_name__ = 'secretcheck'
+    __description__ = 'Checks for Secrets Found in the Image'
     __triggers__ = [
         SecretContentMatchTrigger,
         SecretFilenameMatchTrigger

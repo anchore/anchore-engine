@@ -7,8 +7,8 @@ class AlwaysFireTrigger(BaseTrigger):
     Trigger always fires if invoked. This is intended for implementing things like short-circuits or blacklist/whitelist of images
     """
 
-    __trigger_name__ = 'ALWAYS'
-    __trigger_id__ = 'ALWAYS'
+    __trigger_name__ = 'always'
+    __trigger_id__ = 'always'
     __description__ = 'Always fires if present in a policy being evaluated'
 
     __msg__ = 'Unconditional trigger match'
@@ -19,10 +19,8 @@ class AlwaysFireTrigger(BaseTrigger):
 
 
 class AlwaysGate(Gate):
-    """
-
-    """
-    __gate_name__ = "ALWAYS"
+    __gate_name__ = 'always'
+    __description__ = 'Fires triggers unconditionally if present in policy'
     __triggers__ = [AlwaysFireTrigger]
 
     def prepare_context(self, image_obj, context):
