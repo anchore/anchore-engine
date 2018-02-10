@@ -46,9 +46,19 @@ def squash(unpackdir, cachedir, layers):
     for l in revlayer:
         htype, layer = l.split(":",1)
 
-        layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
-        if not os.path.exists(layertar) and cachedir:
-            layertar = os.path.join(cachedir, 'sha256', layer)
+        layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
+        if cachedir:
+            layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
+
+        layerfound = False
+        for layer_candidate in layer_candidates:
+            if os.path.exists(layer_candidate):
+                layertar = layer_candidate
+                break
+
+        #layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
+        #if not os.path.exists(layertar) and cachedir:
+        #    layertar = os.path.join(cachedir, 'sha256', layer)
         
         count = 0
 
@@ -110,9 +120,14 @@ def squash(unpackdir, cachedir, layers):
     for l in layers:
         htype, layer = l.split(":",1)
 
-        layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
-        if not os.path.exists(layertar) and cachedir:
-            layertar = os.path.join(cachedir, 'sha256', layer)
+        layerfound = False
+        for layer_candidate in layer_candidates:
+            if os.path.exists(layer_candidate):
+                layertar = layer_candidate
+                break
+        #layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
+        #if not os.path.exists(layertar) and cachedir:
+        #    layertar = os.path.join(cachedir, 'sha256', layer)
 
         imageSize = imageSize + os.path.getsize(layertar) 
         
@@ -292,7 +307,7 @@ def delete_staging_dirs(staging_dirs):
 
     return(True)
 
-def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None):
+def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, dest_type='oci'):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
     copydir = staging_dirs['copydir']
@@ -311,10 +326,9 @@ def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None):
 
     # download
     try:
-        rc = anchore_engine.auth.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, use_cache_dir=cachedir)
+        rc = anchore_engine.auth.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, use_cache_dir=cachedir, dest_type=dest_type)
     except Exception as err:
         raise err
-
 
     return(True)
 
@@ -497,35 +511,44 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
     imageArch = ""
 
     # get "history"    
-    try:
-        blobdir = os.path.join(copydir, 'blobs', 'sha256')
-        if cachedir:
-            blobdir = os.path.join(cachedir, 'sha256')
-
-        dfile = nfile = None
-        with open(os.path.join(copydir, "index.json"), 'r') as FH:
-            idata = json.loads(FH.read())
-            d_digest = idata['manifests'][0]['digest'].split(":", 1)[1]
-            dfile = os.path.join(blobdir, d_digest)
-
-        if dfile:
-            with open(dfile, 'r') as FH:
-                n_data = json.loads(FH.read())
-                n_digest = n_data['config']['digest'].split(":", 1)[1]
-                nfile = os.path.join(blobdir, n_digest)
-        else:
-            raise Exception("could not find intermediate digest - exception: " + str(err))
-
-        if nfile:
-            with open(nfile, 'r') as FH:
+    if os.path.exists(os.path.join(copydir, imageId+".tar")):
+        try:
+            with open(os.path.join(copydir, imageId+".tar"), 'r') as FH:
                 configdata = json.loads(FH.read())
                 rawhistory = configdata['history']
                 imageArch = configdata['architecture']
-        else:
-            raise Exception("could not find final digest - exception: " + str(err))
+        except Exception as err:
+            raise err
+    elif os.path.exists(os.path.join(copydir, "index.json")):
+        try:
+            blobdir = os.path.join(copydir, 'blobs', 'sha256')
+            if cachedir:
+                blobdir = os.path.join(cachedir, 'sha256')
 
-    except Exception as err:
-        raise err
+            dfile = nfile = None
+            with open(os.path.join(copydir, "index.json"), 'r') as FH:
+                idata = json.loads(FH.read())
+                d_digest = idata['manifests'][0]['digest'].split(":", 1)[1]
+                dfile = os.path.join(blobdir, d_digest)
+
+            if dfile:
+                with open(dfile, 'r') as FH:
+                    n_data = json.loads(FH.read())
+                    n_digest = n_data['config']['digest'].split(":", 1)[1]
+                    nfile = os.path.join(blobdir, n_digest)
+            else:
+                raise Exception("could not find intermediate digest - exception: " + str(err))
+
+            if nfile:
+                with open(nfile, 'r') as FH:
+                    configdata = json.loads(FH.read())
+                    rawhistory = configdata['history']
+                    imageArch = configdata['architecture']
+            else:
+                raise Exception("could not find final digest - exception: " + str(err))
+
+        except Exception as err:
+            raise err
 
     try:
         done=False
@@ -703,11 +726,19 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[],
     docker_history = {}
     rdigest = ""
     staging_dirs = None
+    manifest_schema_version = 0
+    dest_type = 'oci'
 
     try:
         imageDigest = image_record['imageDigest']
         try:
             manifest_data = json.loads(manifest)
+            manifest_schema_version = manifest_data['schemaVersion']
+            if manifest_schema_version == 1:
+                dest_type = 'dir'
+            else:
+                dest_type = 'oci'
+
         except Exception as err:
             raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
 
@@ -729,7 +760,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[],
             raise err
 
         try:
-            rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest)
+            rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, dest_type=dest_type)
         except Exception as err:
             raise Exception("failed to pull image ("+str(pullstring)+") - exception: " + str(err))
 

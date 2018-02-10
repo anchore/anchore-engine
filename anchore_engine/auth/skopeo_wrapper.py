@@ -5,7 +5,7 @@ import re
 from anchore_engine.subsys import logger
 import anchore_engine.services.common
 
-def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None):
+def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None, dest_type='oci'):
     try:
         proc_env = os.environ.copy()
         if user and pw:
@@ -20,16 +20,19 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         else:
             tlsverifystr = "--src-tls-verify=false"
 
-        if manifest:
-            with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
-                OFH.write(manifest)
-
         if use_cache_dir and os.path.exists(use_cache_dir):
             cachestr = "--dest-shared-blob-dir " + use_cache_dir
         else:
             cachestr = ""
 
-        cmd = ["/bin/sh", "-c", "skopeo copy {} {} {} docker://{} oci:{}:image".format(tlsverifystr, credstr, cachestr, fulltag, copydir)]
+        if dest_type == 'oci':
+            if manifest:
+                with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
+                    OFH.write(manifest)
+            cmd = ["/bin/sh", "-c", "skopeo copy {} {} {} docker://{} oci:{}:image".format(tlsverifystr, credstr, cachestr, fulltag, copydir)]
+        else:
+            cmd = ["/bin/sh", "-c", "skopeo copy {} {} docker://{} dir:{}".format(tlsverifystr, credstr, fulltag, copydir)]
+
         cmdstr = ' '.join(cmd)
         try:
             rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
