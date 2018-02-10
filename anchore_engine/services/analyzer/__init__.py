@@ -1,4 +1,5 @@
 import copy
+import os
 import re
 import threading
 import time
@@ -90,7 +91,7 @@ system_user_auth = ('anchore-system', '')
 current_avg = 0.0
 current_avg_count = 0.0
 
-def perform_analyze(userId, manifest, image_record, registry_creds):
+def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
         myconfig = localconfig['services']['analyzer']
@@ -102,11 +103,11 @@ def perform_analyze(userId, manifest, image_record, registry_creds):
         driver = myconfig['analyzer_driver']
 
     if driver == 'nodocker':
-        return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds))
+        return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
     else:
-        return(perform_analyze_localanchore(userId, manifest, image_record, registry_creds))
+        return(perform_analyze_localanchore(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
 
-def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
+def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
     ret_analyze = {}
     ret_query = {}
 
@@ -116,6 +117,10 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
     except Exception as err:
         logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
         tmpdir = "/tmp"
+
+    use_cache_dir=None
+    if layer_cache_enable:
+        use_cache_dir = os.path.join(tmpdir, "anchore_layercache")
 
     # choose the first TODO possible more complex selection here
     try:
@@ -135,14 +140,14 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds):
     logger.debug("obtaining anchorelock..." + str(pullstring))
     with localanchore.get_anchorelock(lockId=pullstring):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
-        analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, registry_creds=registry_creds)
+        analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, registry_creds=registry_creds, use_cache_dir=use_cache_dir)
         ret_analyze = analyzed_image_report
 
     logger.info("performing analysis on image complete: " + str(pullstring))
 
     return (ret_analyze)
 
-def perform_analyze_localanchore(userId, manifest, image_record, registry_creds):
+def perform_analyze_localanchore(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
     ret_analyze = {}
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -221,7 +226,7 @@ def perform_analyze_localanchore(userId, manifest, image_record, registry_creds)
     return (ret_analyze)
 
 
-def process_analyzer_job(system_user_auth, qobj):
+def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     global current_avg, current_avg_count
 
     timer = int(time.time())
@@ -270,7 +275,7 @@ def process_analyzer_job(system_user_auth, qobj):
 
             # actually do analysis
             registry_creds = catalog.get_registry(user_auth)
-            image_data = perform_analyze(userId, manifest, image_record, registry_creds)
+            image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
 
             imageId = None
             try:
@@ -407,11 +412,13 @@ def monitor_func(**kwargs):
         if True:
             try:
 
-                try:
-                    myconfig = localconfig['services']['analyzer']
-                    max_analyze_threads = int(myconfig['max_threads'])
-                except:
-                    max_analyze_threads = 1
+                myconfig = localconfig['services']['analyzer']
+                max_analyze_threads = int(myconfig.get('max_threads', 1))
+                layer_cache_enable = myconfig.get('layer_cache_enable', False)
+                #try:
+                #    max_analyze_threads = int(myconfig['max_threads'])
+                #except:
+                #    max_analyze_threads = 1
 
                 logger.debug("max threads: " + str(max_analyze_threads))
                 threads = []
@@ -423,7 +430,7 @@ def monitor_func(**kwargs):
                         logger.spew("incoming queue object: " + str(myqobj))
                         logger.debug("incoming queue task: " + str(myqobj.keys()))
                         logger.debug("starting thread")
-                        athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,))
+                        athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,layer_cache_enable))
                         athread.start()
                         threads.append(athread)
                         logger.debug("thread started")
@@ -435,6 +442,8 @@ def monitor_func(**kwargs):
                     athread.join()
                     logger.debug("thread joined")
 
+                # TODO - perform cache maint here, no analyzer threads running
+                
             except Exception as err:
                 logger.error(str(err))
     except Exception as err:
