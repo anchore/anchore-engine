@@ -54,6 +54,11 @@ def squash(unpackdir, cachedir, layers):
         for layer_candidate in layer_candidates:
             if os.path.exists(layer_candidate):
                 layertar = layer_candidate
+                try:
+                    # try to update atime for the file
+                    os.utime(layertar, None)
+                except:
+                    pass
                 break
 
         #layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
