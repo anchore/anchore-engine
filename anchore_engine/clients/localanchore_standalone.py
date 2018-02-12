@@ -26,6 +26,27 @@ except:
     logger.setLevel("DEBUG")
     log = logger
 
+def get_layertarfile(unpackdir, cachedir, layer):
+
+    layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
+    if cachedir:
+        layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
+        
+    layerfound = False
+    for layer_candidate in layer_candidates:
+        try:
+            if os.path.exists(layer_candidate):
+                try:
+                    # try to update atime for the file
+                    os.utime(layer_candidate, None)
+                except:
+                    pass
+                return(layer_candidate)
+        except:
+            pass
+
+    return(None)
+
 def squash(unpackdir, cachedir, layers):
     rootfsdir = unpackdir + "/rootfs"
 
@@ -46,25 +67,22 @@ def squash(unpackdir, cachedir, layers):
     for l in revlayer:
         htype, layer = l.split(":",1)
 
-        layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
-        if cachedir:
-            layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
+        layertar = get_layertarfile(unpackdir, cachedir, layer)
 
-        layerfound = False
-        for layer_candidate in layer_candidates:
-            if os.path.exists(layer_candidate):
-                layertar = layer_candidate
-                try:
-                    # try to update atime for the file
-                    os.utime(layertar, None)
-                except:
-                    pass
-                break
+        #layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
+        #if cachedir:
+        #    layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
 
-        #layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
-        #if not os.path.exists(layertar) and cachedir:
-        #    layertar = os.path.join(cachedir, 'sha256', layer)
-        
+        #for layer_candidate in layer_candidates:
+        #    if os.path.exists(layer_candidate):
+        #        layertar = layer_candidate
+        #        try:
+        #            # try to update atime for the file
+        #            os.utime(layertar, None)
+        #        except:
+        #            pass
+        #        break
+
         count = 0
 
         logger.debug("\tPass 1: " + str(layertar))
@@ -125,14 +143,7 @@ def squash(unpackdir, cachedir, layers):
     for l in layers:
         htype, layer = l.split(":",1)
 
-        layerfound = False
-        for layer_candidate in layer_candidates:
-            if os.path.exists(layer_candidate):
-                layertar = layer_candidate
-                break
-        #layertar = os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)
-        #if not os.path.exists(layertar) and cachedir:
-        #    layertar = os.path.join(cachedir, 'sha256', layer)
+        layertar = get_layertarfile(unpackdir, cachedir, layer)
 
         imageSize = imageSize + os.path.getsize(layertar) 
         
@@ -359,7 +370,7 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
     except Exception as err:
         logger.error("cannot get layers - exception: " + str(err))
         raise err
-
+    
     try:
         hfinal = []
         count=0
