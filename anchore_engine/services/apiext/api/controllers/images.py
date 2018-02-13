@@ -12,6 +12,10 @@ from anchore_engine.subsys import taskstate, logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
+from anchore_engine.subsys.metrics import flask_metrics
+
+# this is how we skip an entire operation
+#@flask_metrics.do_not_track()
 
 def make_response_content(content_type, content_data):
     ret = []

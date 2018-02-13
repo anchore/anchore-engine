@@ -12,12 +12,14 @@ from twisted.internet.task import LoopingCall
 import anchore_engine.services.common
 import anchore_engine.subsys.simplequeue
 import anchore_engine.subsys.servicestatus
+import anchore_engine.subsys.metrics
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-    application.app.url_map.strict_slashes = False
+    flask_app = application.app
+    flask_app.url_map.strict_slashes = False
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app)
     application.add_api('swagger.yaml')
-    flask_app = application
 except Exception as err:
     traceback.print_exc()
     raise err
@@ -70,7 +72,7 @@ def createService(sname, config):
     if doapi:
         # start up flask service
 
-        flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
+        flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
         realroot = Resource()
         realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
         realroot.putChild(b"health", anchore_engine.services.common.HealthResource())

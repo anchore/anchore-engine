@@ -17,6 +17,7 @@ from twisted.web import rewrite
 from anchore_engine.clients import catalog, localanchore, simplequeue, localanchore_standalone
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+import anchore_engine.subsys.metrics
 import anchore_engine.services.common
 import anchore_engine.subsys.taskstate
 import anchore_engine.subsys.notifications
@@ -27,9 +28,10 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-    application.app.url_map.strict_slashes = False
+    flask_app = application.app
+    flask_app.url_map.strict_slashes = False
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app)
     application.add_api('swagger.yaml')
-    flask_app = application
 except Exception as err:
     traceback.print_exc()
     raise err
@@ -79,7 +81,7 @@ def createService(sname, config):
     if doapi:
         # start up flask service
 
-        flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
+        flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
         realroot = Resource()
         realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
         realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
@@ -398,11 +400,15 @@ def process_analyzer_job(system_user_auth, qobj):
                 new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
                 current_avg = new_avg
 
-                localconfig = anchore_engine.configuration.localconfig.get_config()
-                service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
-                anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count}, update_db=True)
+                anchore_engine.subsys.metrics.histogram_observe('mean_analysis_time_sec', current_avg, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0])
+                anchore_engine.subsys.metrics.counter_inc('total_images_analyzed')
 
-            except:
+                #localconfig = anchore_engine.configuration.localconfig.get_config()
+                #service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
+                #anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count}, update_db=True)
+
+            except Exception as err:
+                logger.warn(str(err))
                 pass
 
         except Exception as err:
