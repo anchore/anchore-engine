@@ -1100,13 +1100,15 @@ def watcher_func(*args, **kwargs):
     global system_user_auth
 
     while(True):
-
+        logger.debug("starting generic watcher")
         all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
         if not all_ready:
             logger.info("simplequeue service not yet ready, will retry")
         else:
             try:
+                logger.debug("attempting dequeue")
                 qobj = simplequeue.dequeue(system_user_auth, 'watcher_tasks')
+                logger.debug("dequeue complete")
                 if qobj:
                     logger.debug("got task from queue: " + str(qobj))
                     watcher = qobj['data']['watcher']
@@ -1114,10 +1116,11 @@ def watcher_func(*args, **kwargs):
                     args = []
                     kwargs = {'mythread': watchers[watcher]}
                     rc = handler(*args, **kwargs)
-
+                else:
+                    logger.debug("nothing in queue")
             except Exception as err:
                 logger.warn("failed to process task this cycle: " + str(err))
-
+        logger.debug("generic watcher done")
         time.sleep(5)
 
 def monitor_func(**kwargs):
