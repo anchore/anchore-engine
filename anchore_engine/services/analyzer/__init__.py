@@ -394,7 +394,8 @@ def handle_layer_cache():
         localconfig = anchore_engine.configuration.localconfig.get_config()
         myconfig = localconfig['services']['analyzer']
 
-        cachemax = int(myconfig.get('layer_cache_maxbytes', 100000000))
+        cachemax_gbs = int(myconfig.get('layer_cache_max_gigabytes', 1))
+        cachemax = cachemax_gbs * 1000000000
 
         try:
             tmpdir = localconfig['tmp_dir']
