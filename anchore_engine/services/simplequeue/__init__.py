@@ -1,4 +1,5 @@
 import os
+import time
 import traceback
 
 import connexion
@@ -14,20 +15,19 @@ import anchore_engine.subsys.simplequeue
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
 
+servicename = 'simplequeue'
+_default_api_version = "v1"
+queues = {}
+
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     flask_app = application.app
     flask_app.url_map.strict_slashes = False
-    anchore_engine.subsys.metrics.init_flask_metrics(flask_app)
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
     application.add_api('swagger.yaml')
 except Exception as err:
     traceback.print_exc()
     raise err
-
-servicename = 'simplequeue'
-_default_api_version = "v1"
-
-queues = {}
 
 # service funcs (must be here)            
 
@@ -128,10 +128,31 @@ def registerService(sname, config):
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
 
     return (rc)
+
+# monitors
+
+def handle_metrics(*args, **kwargs):
+
+    cycle_timer = kwargs['mythread']['cycle_timer']
+    while(True):
+        try:
+            for qname in anchore_engine.subsys.simplequeue.get_queuenames():
+                try:
+                    qlen = anchore_engine.subsys.simplequeue.qlen(qname)
+                    anchore_engine.subsys.metrics.gauge_set("current_queue_length_"+str(qname), qlen)
+                except:
+                    logger.warn("could not get/set queue length metric for queue ("+str(qname)+")")
+        except Exception as err:
+            logger.warn("handler failed - exception: " + str(err))
+
+        time.sleep(cycle_timer)
+
+    return(True)
     
 # monitor infrastructure
 
 monitors = {
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [servicename], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 monitor_threads = {}

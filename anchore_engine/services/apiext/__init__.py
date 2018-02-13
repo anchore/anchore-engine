@@ -18,20 +18,17 @@ from anchore_engine.services.common import apiext_status
 from anchore_engine.subsys import logger
 
 _default_api_version = "v1"
-application = None
+servicename = 'apiext'
 
 try:
-    if not application:
-        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-        flask_app = application.app
-        flask_app.url_map.strict_slashes = False
-        anchore_engine.subsys.metrics.init_flask_metrics(flask_app)
-        application.add_api('swagger.yaml')
+    application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+    flask_app = application.app
+    flask_app.url_map.strict_slashes = False
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
+    application.add_api('swagger.yaml')
 except Exception as err:
     traceback.print_exc()
     raise err
-
-servicename = 'apiext'
 
 if False:
     @flask_app.before_request

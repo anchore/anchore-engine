@@ -26,18 +26,18 @@ from anchore_engine.subsys import logger
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
+servicename = 'analyzer'
+_default_api_version = "v1"
+
 try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     flask_app = application.app
     flask_app.url_map.strict_slashes = False
-    anchore_engine.subsys.metrics.init_flask_metrics(flask_app)
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
     application.add_api('swagger.yaml')
 except Exception as err:
     traceback.print_exc()
     raise err
-
-servicename = 'analyzer'
-_default_api_version = "v1"
 
 # service funcs (must be here)
 def default_version_rewrite(request):

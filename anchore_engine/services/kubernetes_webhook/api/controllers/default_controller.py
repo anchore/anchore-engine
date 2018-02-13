@@ -5,6 +5,7 @@ import connexion
 from anchore_engine.clients import catalog
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+import anchore_engine.subsys.metrics
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
 
@@ -114,6 +115,12 @@ def imagepolicywebhook(bodycontent):
 
             return_object['status']['allowed'] = final_allowed
             return_object['status']['reason'] = reason
+
+            if final_allowed:
+                anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_allowed_total")
+            else:
+                anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_denied_total")
+            anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_evaluated_total")
 
             #logger.debug("final return: " + json.dumps(return_object, indent=4))
             httpcode = 200

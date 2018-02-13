@@ -8,24 +8,15 @@ import anchore_engine.subsys.servicestatus
 def status():
     request_inputs = common.do_request_prep(connexion.request, default_params={})
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'simplequeue'})
-
+    return_object = {}
+    httpcode = 500
     try:
-        queue_detail = {}
-        try:
-            queuenames = simplequeue.get_queuenames()
-            for queuename in queuenames:
-                queue_detail[queuename] = {}
-                qlen = simplequeue.qlen(queuename)
-                queue_detail[queuename]['qlen'] = qlen
-        except:
-            pass
-        return_object['detail'] = queue_detail
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'simplequeue'})
         httpcode = 200
     except Exception as err:
-        return_object = str(err)
-        httpcode = 500
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
 
     return(return_object, httpcode)
 
