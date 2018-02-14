@@ -32,7 +32,7 @@ def update_status(service_record):
     servicename = service_record['servicename']
     service = '__'.join([service_record['hostid'], service_record['servicename']])
 
-    timer = time.time()
+    #timer = time.time()
     with session_scope() as dbsession:
         my_service_record = db_services.get(hostid, servicename, session=dbsession)
         my_service_record['heartbeat'] = time.time()
@@ -45,7 +45,7 @@ def update_status(service_record):
             my_service_record['short_description'] = json.dumps(service_statuses[service])
             db_services.update_record(my_service_record, session=dbsession)
 
-    anchore_engine.subsys.metrics.summary_observe('db_rw_probe', time.time() - timer)
+    #anchore_engine.subsys.metrics.summary_observe('db_rw_probe', time.time() - timer)
 
     return(True)
 

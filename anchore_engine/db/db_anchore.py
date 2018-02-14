@@ -46,3 +46,12 @@ def add(service_version, db_version, inobj, session=None):
 def update(service_version, db_version, scanner_version, inobj, session=None):
     return(add(service_version, db_version, scanner_version, inobj, session=session))
 
+def update_record(input_record, session=None):
+    if not session:
+        session = db.Session
+
+    our_result = session.query(Anchore).filter_by(service_version=input_record['service_version'], db_version=input_record['db_version']).first()
+    if our_result:
+        our_result.update(input_record)
+        
+    return(True)

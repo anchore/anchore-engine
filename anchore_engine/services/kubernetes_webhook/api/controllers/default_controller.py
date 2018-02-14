@@ -116,11 +116,7 @@ def imagepolicywebhook(bodycontent):
             return_object['status']['allowed'] = final_allowed
             return_object['status']['reason'] = reason
 
-            if final_allowed:
-                anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_allowed_total")
-            else:
-                anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_denied_total")
-            anchore_engine.subsys.metrics.counter_inc("image_policy_webhooks_evaluated_total")
+            anchore_engine.subsys.metrics.counter_inc("anchore_image_policy_webhooks_evaluation_total", allowed=final_allowed)
 
             #logger.debug("final return: " + json.dumps(return_object, indent=4))
             httpcode = 200

@@ -113,7 +113,7 @@ def initializeService(sname, config):
     except Exception as err:
         raise err
 
-    for q in anchore_engine.services.common.queue_names:        
+    for q in anchore_engine.services.common.queue_names:
         anchore_engine.subsys.simplequeue.create_queue(q)
 
     for st in anchore_engine.services.common.subscription_types:
@@ -139,7 +139,7 @@ def handle_metrics(*args, **kwargs):
             for qname in anchore_engine.subsys.simplequeue.get_queuenames():
                 try:
                     qlen = anchore_engine.subsys.simplequeue.qlen(qname)
-                    anchore_engine.subsys.metrics.gauge_set("current_queue_length_"+str(qname), qlen)
+                    anchore_engine.subsys.metrics.gauge_set("anchore_queue_length", qlen, queuename=qname)
                 except:
                     logger.warn("could not get/set queue length metric for queue ("+str(qname)+")")
         except Exception as err:

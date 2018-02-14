@@ -1058,9 +1058,31 @@ def handle_notifications(*args, **kwargs):
 def handle_metrics(*args, **kwargs):
     cycle_timer = kwargs['mythread']['cycle_timer']
 
-    # perform some DB read/writes for metrics gathering
-    if anchore_engine.subsys.metrics.is_enabled():
-        pass
+    while(True):
+
+        # perform some DB read/writes for metrics gathering
+        if anchore_engine.subsys.metrics.is_enabled():
+
+            # DB probes
+            anchore_record = None
+            try:
+                with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_read_seconds").time() as mtimer:
+                    with db.session_scope() as dbsession:
+                        anchore_record = db.db_anchore.get(session=dbsession)
+            except Exception as err:
+                logger.warn("unable to perform DB read probe - exception: " + str(err))
+
+            if anchore_record:
+                try:
+                    with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_write_seconds").time() as mtimer:
+                        with db.session_scope() as dbsession:
+                            anchore_record['record_state_val'] = str(time.time())
+                            rc = db.db_anchore.update_record(anchore_record, session=dbsession)
+
+                except Exception as err:
+                    logger.warn("unable to perform DB write probe - exception: " + str(err))
+
+        time.sleep(cycle_timer)
 
 def handle_catalog_duty (*args, **kwargs):
     global system_user_auth
@@ -1095,7 +1117,7 @@ watchers = {
     'feed_sync': {'handler':handle_feed_sync, 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_watcher': {'handler':handle_service_watcher, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'handle_metrics': {'handler': handle_metrics, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'taskType': None, 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 
 watcher_task_template = {
@@ -1124,9 +1146,9 @@ def watcher_func(*args, **kwargs):
                     args = []
                     kwargs = {'mythread': watchers[watcher]}
 
-                    mtimer = anchore_engine.subsys.metrics.get_summary_obj('monitor_'+str(watcher)+"_runtime")
+                    mtimer = anchore_engine.subsys.metrics.get_summary_obj('anchore_monitor_runtime_seconds', function=watcher)
                     if mtimer:
-                        with mtimer.time():
+                        with mtimer.labels(function=watcher).time():
                             rc = handler(*args, **kwargs)
                     else:
                         rc = handler(*args, **kwargs)

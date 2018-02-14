@@ -41,7 +41,7 @@ def get_flask_metrics_obj():
 
     return(flask_metrics)
 
-def get_summary_obj(name, description=""):
+def get_summary_obj(name, description="", **kwargs):
     global enabled
 
     if not enabled:
@@ -50,14 +50,14 @@ def get_summary_obj(name, description=""):
     ret = None
     try:
         if name not in metrics:
-            metrics[name] = Summary(name, description)
+            metrics[name] = Summary(name, description, kwargs.keys())
         ret = metrics[name]
     except:
         logger.warn("could not create/get named metric ("+str(name)+")")
 
     return(ret)
 
-def summary_observe(name, observation, description=""):
+def summary_observe(name, observation, description="", **kwargs):
     global metrics, enabled
 
     if not enabled:
@@ -65,15 +65,19 @@ def summary_observe(name, observation, description=""):
 
     try:
         if name not in metrics:
-            metrics[name] = Summary(name, description)
+            metrics[name] = Summary(name, description, kwargs.keys())
 
-        metrics[name].observe(observation)
+        if kwargs:
+            metrics[name].labels(**kwargs).observe(observation)
+        else:
+            metrics[name].observe(observation)
+
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
         
     return(True)
 
-def histogram_observe(name, observation, description="", buckets=None):
+def histogram_observe(name, observation, description="", buckets=None, **kwargs):
     global metrics, enabled
 
     if not enabled:
@@ -83,17 +87,20 @@ def histogram_observe(name, observation, description="", buckets=None):
     try:
         if name not in metrics:
             if buckets:
-                metrics[name] = Histogram(name, description, buckets=buckets)
+                metrics[name] = Histogram(name, description, kwargs.keys(), buckets=buckets)
             else:
-                metrics[name] = Histogram(name, description)
+                metrics[name] = Histogram(name, description, kwargs.keys())
 
-        metrics[name].observe(observation)
+        if kwargs:
+            metrics[name].labels(**kwargs).observe(observation)
+        else:
+            metrics[name].observe(observation)
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
         
     return(True)
 
-def gauge_set(name, observation, description=""):
+def gauge_set(name, observation, description="", **kwargs):
     global metrics
 
     if not enabled:
@@ -101,14 +108,19 @@ def gauge_set(name, observation, description=""):
 
     try:
         if name not in metrics:
-            metrics[name] = Gauge(name, description)
-        metrics[name].set(observation)
+            metrics[name] = Gauge(name, description, kwargs.keys())
+
+        if kwargs:
+            metrics[name].labels(**kwargs).set(observation)
+        else:
+            metrics[name].set(observation)
+
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
         
     return(True)
 
-def counter_inc(name, step=1, description=""):
+def counter_inc(name, step=1, description="", **kwargs):
     global metrics
 
     if not enabled:
@@ -116,8 +128,13 @@ def counter_inc(name, step=1, description=""):
 
     try:
         if name not in metrics:
-            metrics[name] = Counter(name, description)
-        metrics[name].inc(step)
+            metrics[name] = Counter(name, description, kwargs.keys())
+
+        if kwargs:
+            metrics[name].labels(**kwargs).inc(step)
+        else:
+            metrics[name].inc(step)
+
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
         

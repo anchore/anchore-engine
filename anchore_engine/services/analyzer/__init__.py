@@ -117,8 +117,8 @@ def registerService(sname, config):
 
 queuename = "images_to_analyze"
 system_user_auth = ('anchore-system', '')
-current_avg = 0.0
-current_avg_count = 0.0
+#current_avg = 0.0
+#current_avg_count = 0.0
 
 def perform_analyze(userId, manifest, image_record, registry_creds):
     global servicename
@@ -254,7 +254,7 @@ def perform_analyze_localanchore(userId, manifest, image_record, registry_creds)
 
 
 def process_analyzer_job(system_user_auth, qobj):
-    global current_avg, current_avg_count, servicename
+    global servicename #current_avg, current_avg_count
 
     timer = int(time.time())
     try:
@@ -396,12 +396,12 @@ def process_analyzer_job(system_user_auth, qobj):
 
             try:
                 run_time = float(time.time() - timer)
-                current_avg_count = current_avg_count + 1.0
-                new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
-                current_avg = new_avg
+                #current_avg_count = current_avg_count + 1.0
+                #new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
+                #current_avg = new_avg
 
-                anchore_engine.subsys.metrics.histogram_observe('mean_analysis_time_sec', current_avg, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0])
-                anchore_engine.subsys.metrics.counter_inc('total_images_analyzed')
+                anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0])
+                #anchore_engine.subsys.metrics.counter_inc('anchore_images_analyzed_total')
 
                 #localconfig = anchore_engine.configuration.localconfig.get_config()
                 #service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
