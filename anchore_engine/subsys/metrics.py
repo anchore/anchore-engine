@@ -57,6 +57,22 @@ def get_summary_obj(name, description=""):
 
     return(ret)
 
+def summary_observe(name, observation, description=""):
+    global metrics, enabled
+
+    if not enabled:
+        return(True)
+
+    try:
+        if name not in metrics:
+            metrics[name] = Summary(name, description)
+
+        metrics[name].observe(observation)
+    except Exception as err:
+        logger.warn("adding metric failed - exception: " + str(err))
+        
+    return(True)
+
 def histogram_observe(name, observation, description="", buckets=None):
     global metrics, enabled
 
