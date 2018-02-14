@@ -1055,6 +1055,13 @@ def handle_notifications(*args, **kwargs):
         pass
     return(True)
 
+def handle_metrics(*args, **kwargs):
+    cycle_timer = kwargs['mythread']['cycle_timer']
+
+    # perform some DB read/writes for metrics gathering
+    if anchore_engine.subsys.metrics.is_enabled():
+        pass
+
 def handle_catalog_duty (*args, **kwargs):
     global system_user_auth
 
@@ -1088,6 +1095,7 @@ watchers = {
     'feed_sync': {'handler':handle_feed_sync, 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_watcher': {'handler':handle_service_watcher, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 
 watcher_task_template = {

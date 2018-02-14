@@ -14,7 +14,7 @@ DEFAULT_CONFIG = {
     'service_dir': '/root/.anchore_engine',
     'tmp_dir': '/tmp',
     'log_level': 'INFO',
-    'metrics_enable': False,
+    'metrics': {'enable': False},
     'image_analyze_timeout_seconds': '36000',
     'cleanup_images': False,
     'internal_ssl_verify': True,
