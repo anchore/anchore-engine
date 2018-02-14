@@ -9,6 +9,7 @@ import anchore_engine.auth.anchore_resources
 import anchore_engine.auth.aws_ecr
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
+import anchore_engine.subsys.metrics
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_eventlog, \
     db_registries, db_services, db_archivedocument
