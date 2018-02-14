@@ -8,6 +8,8 @@ from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 
+from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
+
 def status():
     httpcode = 500
     try:
@@ -74,6 +76,7 @@ def image_post(bodycontent={}, tag=None):
 
 
 # @api.route('/image/<imageDigest>', methods=['GET', 'PUT', 'DELETE'])
+@flask_metrics.do_not_track()
 def image_imageDigest_get(imageDigest):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -86,7 +89,7 @@ def image_imageDigest_get(imageDigest):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def image_imageDigest_put(imageDigest, bodycontent):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -99,7 +102,7 @@ def image_imageDigest_put(imageDigest, bodycontent):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def image_imageDigest_delete(imageDigest, force=False):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'force':False})
@@ -114,6 +117,7 @@ def image_imageDigest_delete(imageDigest, force=False):
 
 
 # @api.route('/registry_lookup', methods=['GET'])
+@flask_metrics.do_not_track()
 def registry_lookup(tag=None, digest=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
@@ -278,6 +282,7 @@ def subscriptions_post(bodycontent):
 
 
 # @api.route('/subscriptions/<subscriptionId>', methods=['GET', 'PUT', 'DELETE'])
+@flask_metrics.do_not_track()
 def subscriptions_subscriptionId_get(subscriptionId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -290,7 +295,7 @@ def subscriptions_subscriptionId_get(subscriptionId):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def subscriptions_subscriptionId_put(subscriptionId, bodycontent):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -303,7 +308,7 @@ def subscriptions_subscriptionId_put(subscriptionId, bodycontent):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def subscriptions_subscriptionId_delete(subscriptionId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -374,6 +379,7 @@ def users_get():
 
 
 # @api.route("/users/<inuserId>", methods=['GET', 'DELETE'])
+@flask_metrics.do_not_track()
 def users_userId_get(inuserId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -386,7 +392,7 @@ def users_userId_get(inuserId):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def users_userId_delete(inuserId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -402,6 +408,7 @@ def users_userId_delete(inuserId):
 
 # archive calls
 # @api.route('/archive/<bucket>/<archiveid>', methods=['GET', 'POST'])
+@flask_metrics.do_not_track()
 def archive_get(bucket, archiveid):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -414,7 +421,7 @@ def archive_get(bucket, archiveid):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def archive_post(bucket, archiveid, bodycontent):
     try:
         # jsonbodycontent = json.loads(bodycontent)
@@ -528,6 +535,7 @@ def system_registries_post(bodycontent):
 
 
 # @api.route("/system/registries/<registry>", methods=['GET', 'DELETE', 'PUT'])
+@flask_metrics.do_not_track()
 def system_registries_registry_get(registry):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -540,7 +548,7 @@ def system_registries_registry_get(registry):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def system_registries_registry_delete(registry):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -553,7 +561,7 @@ def system_registries_registry_delete(registry):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def system_registries_registry_put(registry, bodycontent):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})

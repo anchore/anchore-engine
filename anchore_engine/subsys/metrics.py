@@ -1,3 +1,5 @@
+import time
+
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.version import version
@@ -7,9 +9,42 @@ from prometheus_flask_exporter import PrometheusMetrics
 
 enabled = False
 flask_metrics = None
+flask_metric_name = "flask_http_request_duration_seconds"
 metrics = {}
 
-def init_flask_metrics(flask_app, **kwargs):
+#class anchore_flask_track(object):
+#    def __init__(self, enabled, flask_metrics):
+#        self.enabled = enabled
+#        self.flask_metrics = flask_metrics
+#    def __call__(self, func):
+#        if self.enabled and self.flask_metrics:
+#            import anchore_engine.subsys.metrics
+#            timer = time.time()
+#            rc = func
+#            anchore_engine.subsys.metrics.histogram_observe("anchore_http_request_duration_seconds", time.time() - timer, path=request.path, method=request.method, status=httpcode)
+#            return(rc)
+#        else:
+#            return(func)
+            
+
+#class anchore_flask_track(object):
+#    def __init__(self):
+#        pass
+#    def __call__(self, func):
+#        from anchore_engine.subsys.metrics import flask_metrics, enabled
+#        if enabled:
+#            flask_metrics.do_not_track()
+#            with flask_metrics.histogram('anchore_http_request_duration_seconds', "", labels={'path': lambda: request.path, 'method': lambda: request.method, 'status': lambda respon#se: response[1]}).time():
+#                rc = func
+##            #@flask_metrics.do_not_track()
+##            #rc = None
+##            #with flask_metrics.histogram('anchore_http_request_duration_seconds', "", labels={'path': lambda: request.path, 'method': lambda: request.method, 'status': lambda resp#o#nse: response[1]}).time():
+##            #    rc = func
+#            return(rc)
+#        else:
+#            return(func)
+
+def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
     global flask_metrics, enabled
 
     try:
@@ -24,7 +59,7 @@ def init_flask_metrics(flask_app, **kwargs):
         return(True)
     
     if not flask_metrics:
-        flask_metrics = PrometheusMetrics(flask_app)
+        flask_metrics = PrometheusMetrics(flask_app, export_defaults=export_defaults)
         flask_metrics.info('anchore_service_info', "Anchore Service Static Information", version=version, **kwargs)
 
     return(True)
@@ -83,10 +118,10 @@ def histogram_observe(name, observation, description="", buckets=None, **kwargs)
     if not enabled:
         return(True)
 
-    buckets.append(float("inf"))
     try:
         if name not in metrics:
             if buckets:
+                buckets.append(float("inf"))
                 metrics[name] = Histogram(name, description, kwargs.keys(), buckets=buckets)
             else:
                 metrics[name] = Histogram(name, description, kwargs.keys())
