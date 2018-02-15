@@ -1082,6 +1082,26 @@ def handle_metrics(*args, **kwargs):
                 except Exception as err:
                     logger.warn("unable to perform DB write probe - exception: " + str(err))
 
+            try:
+                with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_readwrite_seconds").time() as mtimer:
+                    with db.session_scope() as dbsession:
+                        anchore_record = db.db_anchore.get(session=dbsession)
+                        anchore_record['record_state_val'] = str(time.time())
+                        rc = db.db_anchore.update_record(anchore_record, session=dbsession)
+            except Exception as err:
+                logger.warn("unable to perform DB read/write probe - exception: " + str(err))
+
+
+            # FS probes
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            try:
+                tmpdir = localconfig['tmp_dir']
+                svfs = os.statvfs(tmpdir)
+                available_bytes = svfs.f_bsize * svfs.f_bavail
+                anchore_engine.subsys.metrics.gauge_set("anchore_tmpspace_available_bytes", available_bytes)
+            except Exception as err:
+                logger.warn("unable to detect available bytes probe - exception: " + str(err))
+
         time.sleep(cycle_timer)
 
 def handle_catalog_duty (*args, **kwargs):

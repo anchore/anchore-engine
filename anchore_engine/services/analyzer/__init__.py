@@ -400,7 +400,7 @@ def process_analyzer_job(system_user_auth, qobj):
                 #new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
                 #current_avg = new_avg
 
-                anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0])
+                anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="success")
                 #anchore_engine.subsys.metrics.counter_inc('anchore_images_analyzed_total')
 
                 #localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -412,7 +412,9 @@ def process_analyzer_job(system_user_auth, qobj):
                 pass
 
         except Exception as err:
+            run_time = float(time.time() - timer)
             logger.exception("problem analyzing image - exception: " + str(err))
+            anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="fail")
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.fault_state('analyze')
             image_record['image_status'] = anchore_engine.subsys.taskstate.fault_state('image_status')
             rc = catalog.update_image(user_auth, imageDigest, image_record)
