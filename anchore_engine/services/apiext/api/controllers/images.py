@@ -13,6 +13,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.clients.policy_engine
 from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 import anchore_engine.subsys.metrics
+
 from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
 
 def make_response_content(content_type, content_data):
@@ -630,8 +631,6 @@ def repositories(request_inputs):
 
 # images CRUD
 def list_imagetags():
-    timer = time.time()
-
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
 
@@ -652,18 +651,13 @@ def list_imagetags():
         httpcode = 500
         return_object = str(err)
 
-    if flask_metrics_enabled:
-        anchore_engine.subsys.metrics.histogram_observe(flask_metric_name, time.time() - timer, path=request.path, method=request.method, status=httpcode)
-
     return return_object, httpcode    
 
-#@flask_metrics.do_not_track()
-#@flask_metrics.histogram(flask_metric_name, "", labels={'path': lambda: request.path, 'method': lambda: request.method, 'status': lambda response: response[1]})
-#from anchore_engine.subsys.metrics import anchore_flask_track
-#@anchore_flask_track(flask_metrics_enabled, flask_metrics)
+
+@flask_metrics.do_not_track()
+@flask_metrics.histogram(flask_metric_name, "", labels={'path': lambda: request.path, 'method': lambda: request.method, 'status': lambda response: response[1]})
 def list_images(history=None, image_to_get=None):
 
-    timer = time.time()
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'history': False})
         return_object, httpcode = images(request_inputs)
@@ -671,24 +665,17 @@ def list_images(history=None, image_to_get=None):
         httpcode = 500
         return_object = str(err)
 
-    if flask_metrics_enabled:
-        anchore_engine.subsys.metrics.histogram_observe(flask_metric_name, time.time() - timer, path=request.path, method=request.method, status=httpcode)
-
     return return_object, httpcode
 
 
 def add_image(image, force=None):
 
-    timer = time.time()
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': False})
         return_object, httpcode = images(request_inputs)
     except Exception as err:
         httpcode = 500
         return_object = str(err)
-
-    if flask_metrics_enabled:
-        anchore_engine.subsys.metrics.histogram_observe(flask_metric_name, time.time() - timer, path=request.path, method=request.method, status=httpcode)
 
     return return_object, httpcode
 
@@ -706,17 +693,12 @@ def delete_image(imageDigest):
 
 def get_image(imageDigest, history=None):
     
-    timer = time.time()
-
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'history': False})
         return_object, httpcode = images_imageDigest(request_inputs, imageDigest)
     except Exception as err:
         httpcode = 500
         return_object = str(err)
-
-    if flask_metrics_enabled:
-        anchore_engine.subsys.metrics.histogram_observe(flask_metric_name, time.time() - timer, path=request.path, method=request.method, status=httpcode)
 
     return return_object, httpcode
 

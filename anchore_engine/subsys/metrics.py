@@ -1,3 +1,4 @@
+import functools
 import time
 
 import anchore_engine.configuration.localconfig
@@ -44,6 +45,25 @@ metrics = {}
 #        else:
 #            return(func)
 
+class disabled_flask_metrics(object):
+    def _call_nop(self):
+        def decorator(f):
+            @functools.wraps(f)
+            def func(*args, **kwargs):
+                return f(*args, **kwargs)
+            return func
+        return decorator
+    def do_not_track(self):
+        return self._call_nop()
+    def counter(self, *args, **kwargs):
+        return self._call_nop()
+    def gauge(self, *args, **kwargs):
+        return self._call_nop()
+    def summary(self, *args, **kwargs):
+        return self._call_nop()
+    def histogram(self, *args, **kwargs):
+        return self._call_nop()
+
 def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
     global flask_metrics, enabled
 
@@ -56,6 +76,7 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
         enabled = False
 
     if not enabled:
+        flask_metrics = disabled_flask_metrics()
         return(True)
     
     if not flask_metrics:
