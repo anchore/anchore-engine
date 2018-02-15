@@ -91,17 +91,15 @@ def is_enabled():
 
 def get_flask_metrics_obj():
     global flask_metrics, enabled
-
     if not enabled:
-        return(True)
-
+        return(None)
     return(flask_metrics)
 
 def get_summary_obj(name, description="", **kwargs):
-    global enabled
+    global metrics, enabled
 
     if not enabled:
-        return(True)
+        return(None)
 
     ret = None
     try:
