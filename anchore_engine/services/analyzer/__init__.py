@@ -1,3 +1,4 @@
+import os
 import copy
 import re
 import threading
@@ -470,10 +471,31 @@ def handle_image_analyzer(*args, **kwargs):
         time.sleep(cycle_timer)
     return(True)
 
+def handle_metrics(*args, **kwargs):
+
+    cycle_timer = kwargs['mythread']['cycle_timer']
+    while(True):
+        try:
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            try:
+                tmpdir = localconfig['tmp_dir']
+                svfs = os.statvfs(tmpdir)
+                available_bytes = svfs.f_bsize * svfs.f_bavail
+                anchore_engine.subsys.metrics.gauge_set("anchore_tmpspace_available_bytes", available_bytes)
+            except Exception as err:
+                logger.warn("unable to detect available bytes probe - exception: " + str(err))
+        except Exception as err:
+            logger.warn("handler failed - exception: " + str(err))
+
+        time.sleep(cycle_timer)
+
+    return(True)
+
 # monitor infrastructure
 
 monitors = {
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [servicename], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
 }
 monitor_threads = {}
