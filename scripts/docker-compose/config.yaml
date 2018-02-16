@@ -115,6 +115,7 @@ services:
       notifications: 30
       service_watcher: 15
       policy_bundle_sync: 300
+      repo_watcher: 600
   simplequeue:
     enabled: True
     require_auth: True
