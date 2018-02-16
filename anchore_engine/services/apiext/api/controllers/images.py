@@ -355,6 +355,13 @@ def make_response_image(user_auth, image_record, params={}):
         image_content['metadata'][key] = val
     image_record['image_content'] = image_content
 
+    if image_record['annotations']:
+        try:
+            annotation_data = json.loads(image_record['annotations'])
+            image_record['annotations'] = annotation_data
+        except:
+            pass
+
     # try to assemble full strings
     if image_record and 'image_detail' in image_record:
         for image_detail in image_record['image_detail']:
@@ -925,7 +932,7 @@ def images(request_inputs):
     httpcode = 500
 
     userId, pw = user_auth
-    digest = tag = imageId = imageDigest = dockerfile = None
+    digest = tag = imageId = imageDigest = dockerfile = annotations = None
 
     history = False
     if params and 'history' in params:
@@ -949,6 +956,9 @@ def images(request_inputs):
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
+        
+        if 'annotations' in jsondata:
+            annotations = jsondata['annotations']
 
     try:
         if method == 'GET':
@@ -965,7 +975,7 @@ def images(request_inputs):
 
         elif method == 'POST':
             logger.debug("handling POST: ")
-
+            logger.debug("HELLO: " + str(annotations))
             # if not, add it and set it up to be analyzed
             if not tag:
                 # dont support digest add, yet
@@ -973,7 +983,7 @@ def images(request_inputs):
                 raise Exception("digest add unsupported")
 
             # add the image to the catalog
-            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
+            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile, annotations=annotations)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return

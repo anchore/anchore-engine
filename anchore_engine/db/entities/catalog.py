@@ -284,6 +284,7 @@ class CatalogImage(Base):
     dockerfile_mode = Column(String)
     image_size = Column(BigInteger)
     layer_count = Column(Integer)
+    annotations = Column(String)
 
     analysis_status = Column(String)
     image_status = Column(String)

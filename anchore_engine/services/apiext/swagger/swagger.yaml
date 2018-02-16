@@ -1109,6 +1109,9 @@ definitions:
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
+      annotations:
+        type: object
+        description: Annotations to be associated with the added image in key/value form
   PolicyBundle:
     description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
     type: object

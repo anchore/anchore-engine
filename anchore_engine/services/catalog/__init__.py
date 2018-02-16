@@ -435,7 +435,7 @@ def handle_repo_watcher(*args, **kwargs):
                                 raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                             with db.session_scope() as dbsession:
-                                logger.debug("adding/updating image frok repo scan " + str(new_image_info['fulltag']))
+                                logger.debug("adding/updating image from repo scan " + str(new_image_info['fulltag']))
                                 # add the image
                                 image_records = catalog_impl.add_or_update_image(dbsession, userId, new_image_info['imageId'], tags=[new_image_info['fulltag']], digests=[new_image_info['fulldigest']], manifest=manifest)
                                 # add the subscription records with the configured default activations
@@ -561,21 +561,36 @@ def handle_image_watcher(*args, **kwargs):
                         last_dbfilter = {}
                         last_dbfilter.update(dbfilter)
                         last_dbfilter.pop('digest', None)
+
                         last_digests = []
+                        last_annotations = {}
+                        is_latest = True
                         with db.session_scope() as dbsession:
                             last_image_records = db.db_catalog_image.get_byimagefilter(userId, 'docker', last_dbfilter, session=dbsession)
+
                         if last_image_records:
                             for last_image_record in last_image_records:
                                 imageDigest = last_image_record['imageDigest']
                                 for image_detail in last_image_record['image_detail']:
                                     last_digests.append(image_detail['digest'])
+
+                                # only do this (bring forward annotations) for the first found digest (last digest associated with tag)
+                                if is_latest:
+                                    if not last_annotations and last_image_record['annotations']:
+                                        try:
+                                            last_annotations.update(json.loads(last_image_record['annotations']))
+                                        except:
+                                            pass
+                                    is_latest = False
+
                     except Exception as err:
                         logger.error(str(err))
 
                     # add and store the new image
                     with db.session_scope() as dbsession:
-                        logger.debug("ADDING/UPDATING IMAGE IN IMAGE WATCHER " + str(image_info))
-                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], manifest=manifest)
+                        logger.debug("adding new image from tag watcher " + str(image_info))
+                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], manifest=manifest, annotations=last_annotations)
+
                     if image_records:
                         image_record = image_records[0]
                     else:
