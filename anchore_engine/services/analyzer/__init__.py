@@ -3,6 +3,7 @@ import re
 import threading
 import time
 import uuid
+import json
 import traceback
 
 import connexion
@@ -345,11 +346,19 @@ def process_analyzer_job(system_user_auth, qobj):
                 rc = catalog.update_image(user_auth, imageDigest, image_record)
 
                 try:
+                    annotations = {}
+                    try:
+                        annotations = json.loads(image_record.get('annotations', {}))
+                    except Exception as err:
+                        logger.warn("could not marshal annotations from json - exception: " + str(err))
+
                     for image_detail in image_record['image_detail']:
                         fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                        last_payload = {'imageDigest': imageDigest, 'analysis_status': last_analysis_status, 'annotations': annotations}
+                        curr_payload = {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status'], 'annotations': annotations}
                         npayload = {
-                            'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
-                            'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
+                            'last_eval': last_payload,
+                            'curr_eval': curr_payload,
                         }
                         rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
                 except Exception as err:

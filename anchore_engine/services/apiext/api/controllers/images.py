@@ -960,6 +960,21 @@ def images(request_inputs):
         if 'annotations' in jsondata:
             annotations = jsondata['annotations']
 
+        autosubscribes = []
+        subscriptions = {
+            'tag_update': True, 
+            'analysis_update': True,
+        }
+        if 'subscriptions' in jsondata:
+            try:
+                subscriptions.update(jsondata['subscriptions'])
+            except:
+                logger.warn("unable to update auto-subscriptions on image add - exception: " + str(err))
+
+        for sub_type in subscriptions.keys():
+            if subscriptions[sub_type]:
+                autosubscribes.append(sub_type)
+
     try:
         if method == 'GET':
             logger.debug("handling GET: ")
@@ -975,7 +990,6 @@ def images(request_inputs):
 
         elif method == 'POST':
             logger.debug("handling POST: ")
-            logger.debug("HELLO: " + str(annotations))
             # if not, add it and set it up to be analyzed
             if not tag:
                 # dont support digest add, yet
@@ -1011,7 +1025,9 @@ def images(request_inputs):
                         if sub_type not in foundtypes:
                             try:
                                 default_active = False
-                                if sub_type in ['tag_update', 'analysis_update']:
+                                #if sub_type in ['tag_update', 'analysis_update']:
+                                if sub_type in autosubscribes:
+                                    logger.debug("auto-subscribing image: " + str(sub_type))
                                     default_active = True
                                 catalog.add_subscription(user_auth, {'active': default_active, 'subscription_type': sub_type, 'subscription_key': fulltag})
                             except:
