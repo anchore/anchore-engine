@@ -1018,7 +1018,6 @@ def images(request_inputs):
                         if sub_type not in foundtypes:
                             try:
                                 default_active = False
-                                #if sub_type in ['tag_update', 'analysis_update']:
                                 if sub_type in autosubscribes:
                                     logger.debug("auto-subscribing image: " + str(sub_type))
                                     default_active = True

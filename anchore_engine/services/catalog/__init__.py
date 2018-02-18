@@ -413,6 +413,10 @@ def handle_repo_watcher(*args, **kwargs):
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
 
+                autosubscribes = ['analysis_update']
+                if subscription_value['autosubscribe']:
+                    autosubscribes.append("tag_update")
+
                 repotags = set(curr_repotags).difference(set(stored_repotags))
                 if repotags:
                     logger.debug("new tags to watch in repo ("+str(regrepo)+"): " + str(repotags))
@@ -444,7 +448,7 @@ def handle_repo_watcher(*args, **kwargs):
                                     activate = False
                                     if stype == 'repo_update':
                                         continue
-                                    elif stype in ['tag_update', 'analysis_update'] and subscription_value['autosubscribe']:
+                                    elif stype in autosubscribes:
                                         activate = True
                                     db_subscriptions.add(userId, new_image_info['fulltag'], stype, {'active': activate}, session=dbsession)
 
