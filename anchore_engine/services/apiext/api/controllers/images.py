@@ -942,6 +942,10 @@ def images(request_inputs):
     if params and 'force' in params:
         force = params['force']
 
+    autosubscribe = True
+    if params and 'autosubscribe' in params:
+        autosubscribe = params['autosubscribe']
+
     if bodycontent:
         jsondata = json.loads(bodycontent)
 
@@ -960,20 +964,9 @@ def images(request_inputs):
         if 'annotations' in jsondata:
             annotations = jsondata['annotations']
 
-        autosubscribes = []
-        subscriptions = {
-            'tag_update': True, 
-            'analysis_update': True,
-        }
-        if 'subscriptions' in jsondata:
-            try:
-                subscriptions.update(jsondata['subscriptions'])
-            except:
-                logger.warn("unable to update auto-subscriptions on image add - exception: " + str(err))
-
-        for sub_type in subscriptions.keys():
-            if subscriptions[sub_type]:
-                autosubscribes.append(sub_type)
+        autosubscribes = ['analysis_update']
+        if autosubscribe:
+            autosubscribes.append("tag_update")
 
     try:
         if method == 'GET':
