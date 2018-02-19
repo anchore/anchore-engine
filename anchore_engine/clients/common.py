@@ -44,12 +44,14 @@ def update_service_cache(user_auth, servicename, skipcache=False):
             logger.warn("cannot get service: " + str(err))
             service_records = []
 
-        scache[servicename]['records'] = []
         if service_records:
+            new_records = []
             for service_record in service_records:
                 if service_record['status']:
-                    scache[servicename]['records'].append(service_record)
-                    scache[servicename]['last_updated'] = time.time()
+                    new_records.append(service_record)
+
+            scache[servicename]['records'] = new_records
+            scache[servicename]['last_updated'] = time.time()
 
     return(fromCache)
     
