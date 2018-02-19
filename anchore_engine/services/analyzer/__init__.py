@@ -266,10 +266,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     try:
         record = qobj['data']
         userId = record['userId']
-        image_record = record['image_record']
+        imageDigest = record['imageDigest']
         manifest = record['manifest']
 
-        imageDigest = image_record['imageDigest']
         user_record = catalog.get_user(system_user_auth, userId)
         user_auth = (user_record['userId'], user_record['password'])
 

@@ -839,7 +839,7 @@ def handle_analyzer_queue(*args, **kwargs):
 
                     qobj = {}
                     qobj['userId'] = userId
-                    qobj['image_record'] = image_record
+                    qobj['imageDigest'] = image_record['imageDigest']
                     qobj['manifest'] = manifest
                     try:
                         if not simplequeue.is_inqueue(system_user_auth, 'images_to_analyze', qobj):
