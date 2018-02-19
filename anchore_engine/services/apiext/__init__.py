@@ -24,7 +24,7 @@ try:
     application = connexion.FlaskApp(__name__, specification_dir='swagger/')
     flask_app = application.app
     flask_app.url_map.strict_slashes = False
-    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, export_defaults=False, servicename=servicename)
+    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
     application.add_api('swagger.yaml')
 except Exception as err:
     traceback.print_exc()

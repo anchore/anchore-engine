@@ -467,6 +467,7 @@ def system_services_get():
 
 
 # @api.route("/system/services/<servicename>", methods=['GET'])
+@flask_metrics.do_not_track()
 def system_services_servicename_get(servicename):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -481,6 +482,7 @@ def system_services_servicename_get(servicename):
 
 
 # @api.route("/system/services/<servicename>/<hostId>", methods=['GET', 'DELETE'])
+@flask_metrics.do_not_track()
 def system_services_servicename_hostId_get(servicename, hostId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -493,7 +495,7 @@ def system_services_servicename_hostId_get(servicename, hostId):
 
     return (return_object, httpcode)
 
-
+@flask_metrics.do_not_track()
 def system_services_servicename_hostId_delete(servicename, hostId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})

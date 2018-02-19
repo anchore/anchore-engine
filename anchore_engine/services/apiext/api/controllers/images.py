@@ -418,7 +418,6 @@ def impl_template(request_inputs):
 
     return (return_object, httpcode)
 
-
 def lookup_imageDigest_from_imageId(request_inputs, imageId):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -654,8 +653,6 @@ def list_imagetags():
     return return_object, httpcode    
 
 
-@flask_metrics.do_not_track()
-@flask_metrics.histogram(flask_metric_name, "", labels={'path': lambda: request.path, 'method': lambda: request.method, 'status': lambda response: response[1]})
 def list_images(history=None, image_to_get=None):
 
     try:
@@ -702,7 +699,7 @@ def get_image(imageDigest, history=None):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_by_imageId(imageId, history=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'history': False})
@@ -718,7 +715,7 @@ def get_image_by_imageId(imageId, history=None):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def delete_image_by_imageId(imageId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
@@ -746,7 +743,7 @@ def get_image_policy_check(imageDigest, policyId=None, tag=None, detail=True, hi
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=None, history=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
@@ -774,7 +771,7 @@ def list_image_content(imageDigest):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def list_image_content_by_imageid(imageId):
     try:
         return_object = anchore_engine.services.common.image_content_types
@@ -785,6 +782,7 @@ def list_image_content_by_imageid(imageId):
 
     return return_object, httpcode
 
+@flask_metrics.do_not_track()
 def get_image_content_by_type(imageDigest, ctype):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
@@ -803,6 +801,7 @@ def get_image_content_by_type(imageDigest, ctype):
 
     return return_object, httpcode
 
+@flask_metrics.do_not_track()
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
@@ -819,7 +818,7 @@ def get_image_content_by_type_imageId(imageId, ctype):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_vulnerability_types(imageDigest):
     try:
         return_object = anchore_engine.services.common.image_vulnerability_types
@@ -831,7 +830,7 @@ def get_image_vulnerability_types(imageDigest):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_vulnerability_types_by_imageId(imageId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
@@ -848,7 +847,7 @@ def get_image_vulnerability_types_by_imageId(imageId):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_vulnerabilities_by_type(imageDigest, vtype):
     try:
         vulnerability_type = vtype
@@ -868,7 +867,7 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     try:
         vulnerability_type = vtype
@@ -886,7 +885,7 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
 
     return return_object, httpcode
 
-
+@flask_metrics.do_not_track()
 def import_image(analysis_report):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
