@@ -326,6 +326,11 @@ paths:
         type: boolean
         required: false
         description: Override any existing entry in the system
+      - name: autosubscribe
+        in: query
+        type: boolean
+        required: false
+        description: Instruct engine to automatically begin watching the added tag for updates from registry
       - name: image
         required: true
         in: body
@@ -1109,6 +1114,9 @@ definitions:
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
+      annotations:
+        type: object
+        description: Annotations to be associated with the added image in key/value form
   PolicyBundle:
     description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
     type: object

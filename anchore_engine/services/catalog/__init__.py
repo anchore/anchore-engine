@@ -464,10 +464,9 @@ def handle_repo_watcher(*args, **kwargs):
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
 
-                # update the subscription record with the latest image tags from the repo scan
-                #with db.session_scope() as dbsession:
-                #    subscription_value['repotags'] = curr_repotags
-                #    db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+                autosubscribes = ['analysis_update']
+                if subscription_value['autosubscribe']:
+                    autosubscribes.append("tag_update")
 
                 repotags = set(curr_repotags).difference(set(stored_repotags))
                 if repotags:
@@ -499,7 +498,7 @@ def handle_repo_watcher(*args, **kwargs):
                                     activate = False
                                     if stype == 'repo_update':
                                         continue
-                                    elif stype in ['tag_update', 'analysis_update'] and subscription_value['autosubscribe']:
+                                    elif stype in autosubscribes:
                                         activate = True
                                     db_subscriptions.add(userId, new_image_info['fulltag'], stype, {'active': activate}, session=dbsession)
 
@@ -616,21 +615,36 @@ def handle_image_watcher(*args, **kwargs):
                         last_dbfilter = {}
                         last_dbfilter.update(dbfilter)
                         last_dbfilter.pop('digest', None)
+
                         last_digests = []
+                        last_annotations = {}
+                        is_latest = True
                         with db.session_scope() as dbsession:
                             last_image_records = db.db_catalog_image.get_byimagefilter(userId, 'docker', last_dbfilter, session=dbsession)
+
                         if last_image_records:
                             for last_image_record in last_image_records:
                                 imageDigest = last_image_record['imageDigest']
                                 for image_detail in last_image_record['image_detail']:
                                     last_digests.append(image_detail['digest'])
+
+                                # only do this (bring forward annotations) for the first found digest (last digest associated with tag)
+                                if is_latest:
+                                    if not last_annotations and last_image_record['annotations']:
+                                        try:
+                                            last_annotations.update(json.loads(last_image_record['annotations']))
+                                        except:
+                                            pass
+                                    is_latest = False
+
                     except Exception as err:
                         logger.error(str(err))
 
                     # add and store the new image
                     with db.session_scope() as dbsession:
-                        logger.debug("ADDING/UPDATING IMAGE IN IMAGE WATCHER " + str(image_info))
-                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], manifest=manifest)
+                        logger.debug("adding new image from tag watcher " + str(image_info))
+                        image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], manifest=manifest, annotations=last_annotations)
+
                     if image_records:
                         image_record = image_records[0]
                     else:

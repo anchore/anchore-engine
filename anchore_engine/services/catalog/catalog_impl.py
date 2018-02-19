@@ -263,6 +263,10 @@ def image(dbsession, request_inputs, bodycontent={}):
                 except Exception as err:
                     raise Exception("input dockerfile data must be base64 encoded - exception on decode: " + str(err))
 
+            annotations = {}
+            if 'annotations' in jsondata:
+                annotations = jsondata['annotations']
+
             logger.debug("MARK1: " + str(time.time() - timer))
 
             image_record = {}
@@ -301,7 +305,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                     logger.debug("MARK4: " + str(time.time() - timer))
 
                     logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
-                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest)
+                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
                     logger.debug("MARK5: " + str(time.time() - timer))
                     if image_records:
                         image_record = image_records[0]
@@ -1444,7 +1448,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             
     return(True)
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
     ret = []
 
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
@@ -1488,7 +1492,6 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
             dockerfile_mode = None
 
     #logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
-
     addlist = {}
     for registry in image_ids.keys():
         for repo in image_ids[registry].keys():
@@ -1499,7 +1502,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                 fulldigest = registry + "/" + repo + "@" + d
                 for t in tags:
                     fulltag = registry + "/" + repo + ":" + t
-                    new_image_record = anchore_engine.services.common.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode}, registry_lookup=False, registry_creds=(None, None))
+                    new_image_record = anchore_engine.services.common.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
                     imageDigest = new_image_record['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
@@ -1549,6 +1552,26 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                         
                         if dockerfile_mode:
                             image_record['dockerfile_mode'] = dockerfile_mode
+
+                        if annotations:
+                            if image_record['annotations']:
+                                try:
+                                    annotation_data = json.loads(image_record['annotations'])
+                                except Exception as err:
+                                    logger.warn("could not marshal annotations into json - exception: " + str(err))
+                                    annotation_data = {}
+                            else:
+                                annotation_data = {}
+
+                            try:
+                                annotation_data.update(annotations)
+                                final_annotation_data = {}
+                                for k,v in annotation_data.items():
+                                    if v != 'null':
+                                        final_annotation_data[k] = v
+                                image_record['annotations'] = json.dumps(final_annotation_data)
+                            except Exception as err:
+                                logger.debug("could not prepare annotations for store - exception: " + str(err))
 
                         rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
                         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)

@@ -358,6 +358,13 @@ def make_response_image(user_auth, image_record, params={}):
         image_content['metadata'][key] = val
     image_record['image_content'] = image_content
 
+    if image_record['annotations']:
+        try:
+            annotation_data = json.loads(image_record['annotations'])
+            image_record['annotations'] = annotation_data
+        except:
+            pass
+
     # try to assemble full strings
     if image_record and 'image_detail' in image_record:
         for image_detail in image_record['image_detail']:
@@ -933,7 +940,7 @@ def images(request_inputs):
     httpcode = 500
 
     userId, pw = user_auth
-    digest = tag = imageId = imageDigest = dockerfile = None
+    digest = tag = imageId = imageDigest = dockerfile = annotations = None
 
     history = False
     if params and 'history' in params:
@@ -942,6 +949,10 @@ def images(request_inputs):
     force = False
     if params and 'force' in params:
         force = params['force']
+
+    autosubscribe = True
+    if params and 'autosubscribe' in params:
+        autosubscribe = params['autosubscribe']
 
     if bodycontent:
         jsondata = json.loads(bodycontent)
@@ -957,6 +968,13 @@ def images(request_inputs):
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
+        
+        if 'annotations' in jsondata:
+            annotations = jsondata['annotations']
+
+        autosubscribes = ['analysis_update']
+        if autosubscribe:
+            autosubscribes.append("tag_update")
 
     try:
         if method == 'GET':
@@ -973,7 +991,6 @@ def images(request_inputs):
 
         elif method == 'POST':
             logger.debug("handling POST: ")
-
             # if not, add it and set it up to be analyzed
             if not tag:
                 # dont support digest add, yet
@@ -981,7 +998,7 @@ def images(request_inputs):
                 raise Exception("digest add unsupported")
 
             # add the image to the catalog
-            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile)
+            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile, annotations=annotations)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return
@@ -1009,7 +1026,8 @@ def images(request_inputs):
                         if sub_type not in foundtypes:
                             try:
                                 default_active = False
-                                if sub_type in ['tag_update', 'analysis_update']:
+                                if sub_type in autosubscribes:
+                                    logger.debug("auto-subscribing image: " + str(sub_type))
                                     default_active = True
                                 catalog.add_subscription(user_auth, {'active': default_active, 'subscription_type': sub_type, 'subscription_key': fulltag})
                             except:

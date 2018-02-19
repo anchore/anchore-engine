@@ -70,7 +70,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
 
     return(ret)    
 
-def add_image(userId, tag=None, dockerfile=None):
+def add_image(userId, tag=None, dockerfile=None, annotations={}):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -92,6 +92,9 @@ def add_image(userId, tag=None, dockerfile=None):
         url = url + "?tag="+tag
         if dockerfile:
             payload['dockerfile'] = dockerfile
+
+        if annotations:
+            payload['annotations'] = annotations
 
     ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

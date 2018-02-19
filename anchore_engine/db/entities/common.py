@@ -369,6 +369,26 @@ def db_upgrade_003_004():
 
     return True
 
+def db_upgrade_004_005():
+    global engine
+    from sqlalchemy import Column, String, BigInteger
+    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image, db_archivedocument
+    import anchore_engine.services.common
+    import anchore_engine.subsys.archive
+
+    newcolumns = [
+        Column('annotations', String, primary_key=False),
+    ]
+    for column in newcolumns:
+        try:
+            table_name = 'catalog_image'
+            cn = column.compile(dialect=engine.dialect)
+            ct = column.type.compile(engine.dialect)
+            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+        except Exception as e:
+            log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+            raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -376,6 +396,7 @@ upgrade_functions = (
     (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
     (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
+    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
 )
 
 @contextmanager
