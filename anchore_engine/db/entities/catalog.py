@@ -81,6 +81,10 @@ class EventLog(Base, UtilMixin):
 
 
 class QueueItem(Base, UtilMixin):
+    """
+    Queue data used by notification system for queueing up notifications for delivery.
+
+    """
     __tablename__ = 'queues'
 
     queueId = Column(String, primary_key=True)
@@ -98,54 +102,56 @@ class QueueItem(Base, UtilMixin):
         return "queueId='%s'" % (self.queueId)
 
 
-if True:
-    class QueueMeta(Base, UtilMixin):
-        __tablename__ = 'queuemeta'
+class QueueMeta(Base, UtilMixin):
+    """
+    Metadata for queues themselves. msgs are stored in the queue table for simplequeue service.
+    """
+    __tablename__ = 'queuemeta'
 
-        queueName = Column(String, primary_key=True)
-        userId = Column(String, primary_key=True)
-        created_at = Column(Integer, default=anchore_now)
-        last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
-        record_state_key = Column(String, default="active")
-        record_state_val = Column(String)
-        qlen = Column(BigInteger, default=0)
+    queueName = Column(String, primary_key=True)
+    userId = Column(String, primary_key=True)
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    record_state_key = Column(String, default="active")
+    record_state_val = Column(String)
+    qlen = Column(BigInteger, default=0)
 
-        # For support of limiting number of messages being processed
-        max_outstanding_messages = Column(Integer, default=0)
+    # For support of limiting number of messages being processed
+    max_outstanding_messages = Column(Integer, default=0)
 
-        # Default visibility timeout in seconds to be applied to messages if set
-        visibility_timeout = Column(Integer, default=0)
+    # Default visibility timeout in seconds to be applied to messages if set
+    visibility_timeout = Column(Integer, default=0)
 
-        # Auto incrementing lock id to use for any advisory locks for this queue
-        #lock_id = Column(Integer, Sequence('queuemeta_lock_id_seq'))
-
-        def __repr__(self):
-            return "queueName='%s'" % (self.queueName)
+    def __repr__(self):
+        return "queueName='%s'" % (self.queueName)
 
 
-    class Queue(Base, UtilMixin):
-        __tablename__ = 'queue'
+class Queue(Base, UtilMixin):
+    """
+    Queue data used by the simplequeue service.
+    """
+    __tablename__ = 'queue'
 
-        queueId = Column(BigInteger, primary_key=True, autoincrement=True)
-        userId = Column(String, primary_key=True)
-        queueName = Column(String, primary_key=True)
-        created_at = Column(Integer, default=anchore_now)
-        last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
-        record_state_key = Column(String, default="active")
-        record_state_val = Column(String)
-        popped = Column(Boolean, default=False)
-        priority = Column(Boolean, default=False)
-        data = Column(String, default='{}')
-        dataId = Column(String)
-        tries = Column(Integer, default=0)
-        max_tries = Column(Integer, default=0)
+    queueId = Column(BigInteger, primary_key=True, autoincrement=True)
+    userId = Column(String, primary_key=True)
+    queueName = Column(String, primary_key=True)
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    record_state_key = Column(String, default="active")
+    record_state_val = Column(String)
+    popped = Column(Boolean, default=False)
+    priority = Column(Boolean, default=False)
+    data = Column(String, default='{}')
+    dataId = Column(String)
+    tries = Column(Integer, default=0)
+    max_tries = Column(Integer, default=0)
 
-        # Receipt handle is generated on dequeue and stored with the message as well as returned to the caller to support later deletion of the message
-        receipt_handle = Column(String)
-        visible_at = Column(DateTime)
+    # Receipt handle is generated on dequeue and stored with the message as well as returned to the caller to support later deletion of the message
+    receipt_handle = Column(String)
+    visible_at = Column(DateTime)
 
-        def __repr__(self):
-            return "queueId='%s'" % (self.queueId)
+    def __repr__(self):
+        return "queueId='%s'" % (self.queueId)
 
 
 class Subscription(Base, UtilMixin):

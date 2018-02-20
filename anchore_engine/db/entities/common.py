@@ -419,10 +419,7 @@ def db_upgrade_003_004():
 
 def db_upgrade_004_005():
     global engine
-    from sqlalchemy import Column, String, BigInteger
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image, db_archivedocument
-    import anchore_engine.services.common
-    import anchore_engine.subsys.archive
+    from sqlalchemy import Column, String
 
     newcolumns = [
         Column('annotations', String, primary_key=False),
@@ -437,6 +434,37 @@ def db_upgrade_004_005():
             log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
             raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
 
+def db_upgrade_005_006():
+    global engine
+    from sqlalchemy import Column, Integer, DateTime
+
+    new_columns = [
+        {'table_name': 'queuemeta',
+         'columns': [
+             Column('max_outstanding_msgs', Integer, primary_key=False, default=0),
+             Column('visibility_timeout', Integer, primary_key=False, default=0)
+         ]
+         },
+        {'table_name': 'queue',
+         'columns': [
+             Column('receipt_handle', String, primary_key=False),
+             Column('visible_at', DateTime, primary_key=False)
+
+         ]
+         }
+    ]
+
+    for table in new_columns:
+        for column in table['columns']:
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+            except Exception as e:
+                log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+                raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -444,7 +472,8 @@ upgrade_functions = (
     (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
     (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
-    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ])
+    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
+    (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ])
 )
 
 @contextmanager
