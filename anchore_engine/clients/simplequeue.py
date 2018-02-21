@@ -456,6 +456,6 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
                 resp = release_lease(user_auth, lease_id=lease['id'], client_id=lease['held_by'], epoch=lease['epoch'])
                 logger.debug('Lease {} released with response: {}'.format(lease_id, resp))
             else:
-                logger.warn('No lease found to release.')
+                logger.debug('No lease found to release.')
         except Exception as e:
             logger.exception('Error releasing lease. Lease will expire on its own. Err: {}'.format(str(e)))

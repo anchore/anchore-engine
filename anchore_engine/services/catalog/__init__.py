@@ -31,16 +31,6 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
 servicename = 'catalog'
 _default_api_version = "v1"
 
-try:
-    application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-    flask_app = application.app
-    flask_app.url_map.strict_slashes = False
-    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
-    application.add_api('swagger.yaml')
-except Exception as err:
-    traceback.print_exc()
-    raise err
-
 # service funcs (must be here)
 
 def default_version_rewrite(request):
@@ -55,9 +45,17 @@ def default_version_rewrite(request):
         raise err
 
 def createService(sname, config):
-    global flask_app, servicename
+    global servicename
 
-    servicename = sname
+    try:
+        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+        flask_app = application.app
+        flask_app.url_map.strict_slashes = False
+        anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
+        application.add_api('swagger.yaml')
+    except Exception as err:
+        traceback.print_exc()
+        raise err
 
     flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
     realroot = Resource()

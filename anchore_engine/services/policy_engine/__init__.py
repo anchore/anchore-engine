@@ -1,5 +1,8 @@
 import time
 import sys
+import traceback
+import connexion
+
 from twisted import internet
 from twisted.internet import reactor
 from twisted.web.wsgi import WSGIResource
@@ -10,14 +13,16 @@ import anchore_engine.services.common
 import anchore_engine.clients.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.taskstate
+import anchore_engine.subsys.metrics
 import anchore_engine.clients.catalog
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients import simplequeue
 
 servicename = 'policy_engine'
-temp_logger = None
+_default_api_version = "v1"
 
+temp_logger = None
 feed_sync_queuename = 'feed_sync_tasks'
 system_user_auth = None
 feed_sync_msg = {
@@ -27,8 +32,17 @@ feed_sync_msg = {
 
 # service funcs (must be here)
 def createService(sname, config):
-    from anchore_engine.services.policy_engine.application import application as flask_app
     global monitor_threads, monitors, servicename
+
+    try:
+        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+        flask_app = application.app
+        flask_app.url_map.strict_slashes = False
+        anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
+        application.add_api('swagger.yaml')
+    except Exception as err:
+        traceback.print_exc()
+        raise err
 
     try:
         myconfig = config['services'][sname]
@@ -61,11 +75,10 @@ def createService(sname, config):
     kwargs['servicename'] = servicename
     kwargs['cycle_timers'] = cycle_timers
 
-
     if doapi:
         # start up flask service
 
-        flask_site = WSGIResource(reactor, reactor.getThreadPool(), flask_app)
+        flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
         root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
         ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
 

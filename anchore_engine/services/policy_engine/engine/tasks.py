@@ -18,8 +18,8 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnera
 from anchore_engine.clients import catalog
 
 # A hack to get admin credentials for executing api ops
-from anchore_engine.services.catalog import db_users
-from anchore_engine.db import session_scope
+#from anchore_engine.services.catalog import db_users
+from anchore_engine.db import session_scope, db_users
 
 log = get_logger()
 

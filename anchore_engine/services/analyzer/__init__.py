@@ -34,17 +34,6 @@ servicename = 'analyzer'
 _default_api_version = "v1"
 default_q_wait = 60 # Wait up to 60 seconds for message to appear in the queue
 
-try:
-    application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-    flask_app = application.app
-    flask_app.url_map.strict_slashes = False
-    anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
-    application.add_api('swagger.yaml')
-except Exception as err:
-    traceback.print_exc()
-    raise err
-
-
 # service funcs (must be here)
 def default_version_rewrite(request):
     global _default_api_version
@@ -58,7 +47,17 @@ def default_version_rewrite(request):
         raise err
 
 def createService(sname, config):
-    global flask_app, monitor_threads, monitors, servicename
+    global monitor_threads, monitors, servicename
+
+    try:
+        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
+        flask_app = application.app
+        flask_app.url_map.strict_slashes = False
+        anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
+        application.add_api('swagger.yaml')
+    except Exception as err:
+        traceback.print_exc()
+        raise err
 
     try:
         myconfig = config['services'][sname]
