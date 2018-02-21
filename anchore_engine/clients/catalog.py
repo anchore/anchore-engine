@@ -35,7 +35,6 @@ def get_catalog_endpoint():
         init = True
 
     if init:
-        init_catalog_services = []
         logger.debug('initializing catalog endpoint')
         if localconfig == None:
             localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -44,19 +43,25 @@ def get_catalog_endpoint():
         if 'catalog_endpoint' in localconfig:
             base_url = re.sub("/+$", "", localconfig['catalog_endpoint'])
         else:
+            new_catalog_services = []
+
             with db.session_scope() as dbsession:
                 service_reports = db.db_services.get_byname('catalog', session=dbsession)
                 if service_reports:
                     for service in service_reports:
                         if service['status']:
-                            init_catalog_services.append(service)
-            
-    if init_catalog_services:
-        service = init_catalog_services[random.randint(0, len(init_catalog_services)-1)]
-    else:
-        raise Exception("cannot locate registered and available service in config/DB: catalog")
+                            new_catalog_services.append(service)
 
-    base_url = '/'.join([service['base_url'], service['version']])
+            if new_catalog_services:
+                init_catalog_services = new_catalog_services
+
+            if init_catalog_services:
+                service = init_catalog_services[random.randint(0, len(init_catalog_services)-1)]
+            else:
+                raise Exception("cannot locate registered and available service in config/DB: catalog")
+
+            base_url = '/'.join([service['base_url'], service['version']])
+
     return(base_url)
 
 def lookup_registry_image(userId, tag=None, digest=None):
