@@ -441,7 +441,7 @@ def db_upgrade_005_006():
     new_columns = [
         {'table_name': 'queuemeta',
          'columns': [
-             Column('max_outstanding_msgs', Integer, primary_key=False, default=0),
+             Column('max_outstanding_messages', Integer, primary_key=False, default=0),
              Column('visibility_timeout', Integer, primary_key=False, default=0)
          ]
          },
