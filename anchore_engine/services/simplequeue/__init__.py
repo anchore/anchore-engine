@@ -23,7 +23,7 @@ _default_api_version = "v1"
 
 # A regular queue configuration with no extra features enabled
 default_queue_config = {
-    'max_outstanding_messages': 0,
+    'max_outstanding_messages': -1,
     'visibility_timeout': 0
 }
 

@@ -136,8 +136,8 @@ services:
     port: 8087
     cycle_timer_seconds: 1
     cycle_timers:
-      feed_sync: 1
-      feed_sync_checker: 3
+      feed_sync: 21600 # 6 hours between feed syncs
+      feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
 
     #ssl_enable: True
     #ssl_cert: '/config/selfsigned-example.cert'

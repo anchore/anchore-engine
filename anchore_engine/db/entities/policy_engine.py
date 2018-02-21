@@ -302,7 +302,7 @@ class ImagePackage(Base):
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id', 'images.user_id']),
-        Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
+                             Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
         {}
     )
 

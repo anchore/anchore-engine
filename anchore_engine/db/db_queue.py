@@ -1,13 +1,48 @@
+import copy
 import datetime
 import json
 import hashlib
 import json
 import uuid
+import threading
 
 from sqlalchemy import asc, desc, or_, and_
 
 from anchore_engine import db
 from anchore_engine.db import Queue, QueueMeta
+
+from anchore_engine.subsys import logger
+
+
+class TTLCache(object):
+    def __init__(self, default_ttl_sec=60):
+        self.cache = {}
+        self.default_ttl = default_ttl_sec
+
+    def cache_it(self, key, obj, ttl=None):
+        if ttl is None:
+            ttl = self.default_ttl
+        self.cache[key] = (datetime.datetime.now() + datetime.timedelta(seconds=ttl), obj)
+
+    def lookup(self, key):
+        found = self.cache.get(key)
+        if found and found[0] >= datetime.datetime.now():
+            logger.debug('TTLCache {} hit for {}'.format(self.__hash__(), key))
+            return found[1]
+        elif found:
+            self.cache.pop(key)
+            logger.debug('TTLCache {} hit for {}'.format(self.__hash__(), key))
+            return None
+        else:
+            logger.debug('TTLCache {} miss for {}'.format(self.__hash__(), key))
+            return None
+
+    def flush(self):
+        self.cache.clear()
+
+# Initialize a thread-local cache
+local_cache = threading.local()
+local_cache.qconfigs = TTLCache()
 
 
 def _to_dict(obj):
@@ -17,7 +52,7 @@ def _to_dict(obj):
         return dict((key, value) for key, value in vars(obj).iteritems() if not key.startswith('_'))
 
 
-def create(queueName, userId, session=None, max_outstanding_msgs=0, visibility_timeout=0):
+def create(queueName, userId, session=None, max_outstanding_msgs=-1, visibility_timeout=0):
     if not session:
         session = db.Session
 
@@ -29,8 +64,10 @@ def create(queueName, userId, session=None, max_outstanding_msgs=0, visibility_t
         session.add(newrecord)
         record = newrecord
 
+
     if record:
         ret = _to_dict(record)
+        local_cache.qconfigs.cache_it(key=(userId, queueName), obj=copy.deepcopy(ret))
         
     return(ret)
 
@@ -63,7 +100,7 @@ def enqueue(queueName, userId, data, qcount=0, max_qcount=0, priority=False, ses
 
     # Use the queue meta record as the lock for queue insertion/deletion since we are tracking queue length and count of
     # outstanding messages
-    metarecord = session.query(QueueMeta).with_for_update(of=QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+    metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
 
     dataId, datajson = generate_dataId(data)
     new_service = Queue(queueName=queueName, userId=userId, data=datajson, dataId=dataId, priority=priority, tries=qcount, max_tries=max_qcount)
@@ -91,11 +128,21 @@ def dequeue(queueName, userId, visibility_timeout=None, session=None):
 
     ret = {}
 
-    # Lock on the queue record since it will be updated
-    metarecord = session.query(QueueMeta).with_for_update(of=QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+    # Is it cached?
+    cached_record = local_cache.qconfigs.lookup(key=(userId, queueName))
+    if cached_record:
+        outstanding_count_setting = cached_record['max_outstanding_messages']
 
-    if metarecord.max_outstanding_messages <= 0:
-        result = session.query(Queue).with_for_update(of=Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(desc(Queue.priority)).order_by(asc(Queue.queueId)).first()
+    else:
+        metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+        local_cache.qconfigs.cache_it(key=(userId, queueName), obj=copy.deepcopy(_to_dict(metarecord)))
+        outstanding_count_setting = metarecord.max_outstanding_messages
+        metarecord = None
+
+#    if metarecord.max_outstanding_messages < 0:
+    if outstanding_count_setting < 0:
+        metarecord = metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+        result = session.query(Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(desc(Queue.priority)).order_by(asc(Queue.queueId)).first()
 
         if result:
             result.update({'popped': True})
@@ -109,6 +156,10 @@ def dequeue(queueName, userId, visibility_timeout=None, session=None):
                 rcount = session.query(Queue).filter_by(queueName=queueName, userId=userId, popped=False).count()
                 metarecord.update({'qlen': rcount})
     else:
+        # Flush the record from the session and memory. Then reload it with a lock
+        # Refetch with lock
+        metarecord = session.query(QueueMeta).with_for_update(of=QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+
         # Limits are configured on this queue, do appropriate checks
         if _not_visible_msg_count(queueName, userId, session) < int(metarecord.max_outstanding_messages):
             # Will select any unpopped or popped-but-expired messages
@@ -140,7 +191,7 @@ def delete_msg_by_handle(queueName, userId, receipt_handle, session=None):
     if not session:
         session = db.Session
 
-    metarecord = session.query(QueueMeta).with_for_update(of=QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+    metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
     obj = session.query(Queue).with_for_update(of=Queue).filter_by(queueName=queueName, userId=userId, receipt_handle=receipt_handle, popped=True).one_or_none()
     if obj:
         session.delete(obj)
@@ -155,7 +206,7 @@ def update_visibility_by_handle(queueName, userId, receipt_handle, visibility_ti
     if not session:
         session = db.Session
 
-    queueMeta = session.query(QueueMeta).with_for_update(of=QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+    queueMeta = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
     if not queueMeta:
         return False
 
