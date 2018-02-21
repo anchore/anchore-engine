@@ -134,8 +134,6 @@ class FeedsUpdateTask(IAsyncTask):
             raise
         finally:
             end_session()
-            log.info('Pausing for test...60 sec')
-            time.sleep(60)
             end_time = datetime.datetime.utcnow()
 
             self.rescan_images_created_between(from_time=start_time, to_time=end_time)

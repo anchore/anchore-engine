@@ -23,12 +23,38 @@ def init():
 class TestSimpleQueue(unittest.TestCase):
     singleton_queue = 'testq1'
     multi_queue = 'testq2'
+    std_queue = 'testq3'
 
     @classmethod
     def setUpClass(cls):
         init()
         simplequeue.create_queue(cls.singleton_queue, max_outstanding_msgs=1, visibility_timeout=10)
         simplequeue.create_queue(cls.multi_queue, max_outstanding_msgs=5, visibility_timeout=10)
+        simplequeue.create_queue(cls.std_queue, max_outstanding_msgs=0, visibility_timeout=0)
+
+
+    def test_std_queue(self):
+        print('Testing standard queue')
+        simplequeue.enqueue(self.std_queue, {'key1': 'value1'})
+
+        msg = simplequeue.dequeue(self.std_queue)
+        print('Got msg: {}'.format(msg))
+
+        while msg:
+            print('Deleting msg {}'.format(msg))
+            simplequeue.delete_msg(self.std_queue, msg.get('receipt_handle'))
+            msg = simplequeue.dequeue(self.std_queue)
+            print('Got msg: {}'.format(msg))
+
+
+        simplequeue.enqueue(self.std_queue, {'key1': 'value1'})
+        msg = simplequeue.dequeue(self.std_queue)
+        print('Got msg: {}'.format(msg))
+        self.assertIsNotNone(msg)
+        msg = simplequeue.dequeue(self.std_queue)
+        print('Got msg: {}'.format(msg))
+        self.assertEqual(msg, {})
+
 
     def test_singleton_queues(self):
         print('Inserting')

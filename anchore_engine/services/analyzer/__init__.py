@@ -508,6 +508,7 @@ def handle_image_analyzer(*args, **kwargs):
             for i in range(0, max_analyze_threads):
                 qobj = simplequeue.dequeue(system_user_auth, queuename, max_wait_seconds=default_q_wait)
                 if qobj:
+                    logger.info('Starting analysis task Id: {}'.format(qobj.get('queueId', 'unkown')))
                     myqobj = copy.deepcopy(qobj)
                     logger.spew("incoming queue object: " + str(myqobj))
                     logger.debug("incoming queue task: " + str(myqobj.keys()))
