@@ -416,7 +416,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
         lease = acquire_lease(user_auth, lease_id, client_id=my_id, ttl=ttl)
 
         if not lease:
-            logger.warn('No lease returned from service, cannot proceed with task execution. Will retry on next cycle. Lease_id: {}'.format(lease_id))
+            logger.debug('No lease returned from service, cannot proceed with task execution. Will retry on next cycle. Lease_id: {}'.format(lease_id))
         else:
             logger.debug('Got lease: {}'.format(lease))
 

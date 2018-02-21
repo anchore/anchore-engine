@@ -373,12 +373,6 @@ def handle_service_watcher(*args, **kwargs):
                 else:
                     logger.warn("no service_update_record populated - nothing to update")
 
-        #with db.session_scope() as dbsession:
-        #    anchore_services = db.db_services.get_all(session=dbsession)
-        #    # update the global latest service record dict in services.common
-        #    latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
-
-
         if False:
             with db.session_scope() as dbsession:
                 anchore_services = db.db_services.get_all(session=dbsession)
@@ -403,7 +397,12 @@ def handle_service_watcher(*args, **kwargs):
 def handle_repo_watcher(*args, **kwargs):
     global system_user_auth
 
-    logger.debug("FIRING: repo watcher")
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
     with db.session_scope() as dbsession:
         users = db.db_users.get_all(session=dbsession)
 
@@ -498,17 +497,27 @@ def handle_repo_watcher(*args, **kwargs):
             except Exception as err:
                 logger.warn("failed to process repo_update subscription - exception: " + str(err))
 
-    logger.debug("FIRING DONE: repo watcher")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)
 
 def handle_image_watcher(*args, **kwargs):
     global system_user_auth
 
-    logger.debug("FIRING: image watcher")
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
     with db.session_scope() as dbsession:
         users = db.db_users.get_all(session=dbsession)
 
@@ -543,11 +552,14 @@ def handle_image_watcher(*args, **kwargs):
                     logger.warn("problem creating taglist for image watcher - exception: " + str(err))
 
         for registry_record in registry_creds:
-            registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
-            if not registry_status:
-                registry_record['record_state_key'] = 'auth_failure'
-                registry_record['record_state_val'] = str(int(time.time()))
-                
+            try:
+                registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+                if not registry_status:
+                    registry_record['record_state_key'] = 'auth_failure'
+                    registry_record['record_state_val'] = str(int(time.time()))
+            except Exception as err:
+                logger.warn("registry ping failed - exception: " + str(err))
+
         logger.debug("checking tags for update: " + str(userId) + " : " + str(alltags))
         for fulltag in alltags:
             try:
@@ -661,11 +673,17 @@ def handle_image_watcher(*args, **kwargs):
             except Exception as err:
                 logger.error("failed to check/update image - exception: " + str(err))
 
-    logger.debug("FIRING DONE: image watcher")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)
 
 def check_feedmeta_update(dbsession):
@@ -705,7 +723,12 @@ def check_policybundle_update(userId, dbsession):
 
 def handle_policyeval(*args, **kwargs):
     global system_user_auth, bundle_user_is_updated, feed_sync_updated
-    logger.debug("FIRING: policy eval / vuln scan")
+
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
 
     try:
         all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine', 'simplequeue'])
@@ -762,15 +785,27 @@ def handle_policyeval(*args, **kwargs):
     except Exception as err:
         logger.warn("failure in policy eval / vuln scan handler - exception: " + str(err))
 
-    logger.debug("FIRING DONE: policy eval / vuln scan")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)    
 
 def handle_analyzer_queue(*args, **kwargs):
     global system_user_auth
+
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
@@ -778,8 +813,6 @@ def handle_analyzer_queue(*args, **kwargs):
     except:
         max_working_time = 36000
 
-    logger.debug("FIRING: analyzer queuer")
-    
     all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine', 'simplequeue'])
     if not all_ready:
         logger.debug("FIRING DONE: analyzer queuer (skipping due to required services not being available)")
@@ -853,19 +886,30 @@ def handle_analyzer_queue(*args, **kwargs):
                     except Exception as err:
                         logger.error("failed to check/queue image for analysis - exception: " + str(err))
                 
-    logger.debug("FIRING DONE: analyzer queuer")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)
 
 def handle_policy_bundle_sync(*args, **kwargs):
     global system_user_auth, bundle_user_last_updated
 
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
     localconfig = anchore_engine.configuration.localconfig.get_config()
 
-    logger.debug("FIRING: policy_bundle_sync")
     with db.session_scope() as dbsession:
         users = db.db_users.get_all(session=dbsession)
         for user in users:
@@ -944,17 +988,28 @@ def handle_policy_bundle_sync(*args, **kwargs):
             except Exception as err:
                 logger.warn("no valid bundle available for user ("+str(userId)+") - exception: " + str(err))
 
-    logger.debug("FIRING DONE: policy_bundle_sync")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)
 
 def handle_notifications(*args, **kwargs):
     global system_user_auth
 
-    logger.debug("FIRING: notifier")
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
     with db.session_scope() as dbsession:
         # special handling of the error event queue, if configured as a webhook
         try:
@@ -1043,11 +1098,17 @@ def handle_notifications(*args, **kwargs):
                         else:
                             db.db_queues.update_record(notification_record, session=dbsession)
 
-    logger.debug("FIRING DONE: notifier")
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
+
     return(True)
 
 def handle_metrics(*args, **kwargs):
@@ -1168,18 +1229,13 @@ def watcher_func(*args, **kwargs):
                     lease_id = watchers[watcher]['task_lease_id']
 
                     # Old way
+                    timer = time.time()
                     if not lease_id:
                         logger.debug('No task lease defined for watcher {}, initiating without lock protection'.format(watcher))
                         rc = handler(*args, **kwargs)
                     else:
                         rc = simplequeue.run_target_with_lease(system_user_auth, lease_id, handler, ttl=default_lease_ttl, *args, **kwargs)
 
-                    mtimer = anchore_engine.subsys.metrics.get_summary_obj('anchore_monitor_runtime_seconds', function=watcher)
-                    if mtimer:
-                        with mtimer.labels(function=watcher).time():
-                            rc = handler(*args, **kwargs)
-                    else:
-                        rc = handler(*args, **kwargs)
                 else:
                     logger.debug("nothing in queue")
             except Exception as err:
