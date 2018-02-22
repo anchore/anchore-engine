@@ -110,7 +110,7 @@ services:
     cycle_timers:
       image_watcher: 3600
       policy_eval: 3600
-      feed_sync: 14400
+      vulnerability_scan: 14400
       analyzer_queue: 1
       notifications: 30
       service_watcher: 15

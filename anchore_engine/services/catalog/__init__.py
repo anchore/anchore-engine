@@ -148,10 +148,15 @@ def registerService(sname, config):
 
 # monitor section
 
-def handle_feed_sync(*args, **kwargs):
+def handle_vulnerability_scan(*args, **kwargs):
     global feed_sync_updated
 
-    logger.debug("FIRING: feed syncer")
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+    
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
     try:
         all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine'])
         if not all_ready:
@@ -205,99 +210,28 @@ def handle_feed_sync(*args, **kwargs):
     except Exception as err:
         logger.warn("failure in feed sync handler - exception: " + str(err))
 
-    logger.debug("FIRING DONE: feed syncer")
 
+    logger.debug("FIRING DONE: " + str(watcher))
     try:
-        kwargs['mythread']['last_return'] = True
+        kwargs['mythread']['last_return'] = handler_success
     except:
         pass
 
-    return(True)
-
-def handle_history_trimmer(*args, **kwargs):
-    logger.debug("FIRING: history trimmer")
-
-    if False:
-        try:
-            # TODO - deal with configuring these items (per user, via API, via config) - disabled here across the board
-            trim_policies = {
-                'images': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-                'policies': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-                'registries': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-                'subscriptions': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-                'archive': {'prune': False, 'dangling': True, 'olderthan': 6*30*86400},
-                'evaluations': {'prune': False, 'dangling': True, 'olderthan': 12*30*86400}
-            }
-
-            #trim_policies = {
-            #    'images': {'prune': True, 'dangling': True, 'olderthan': 1},
-            #    'policies': {'prune': True, 'dangling': True, 'olderthan': 1},
-            #    'registries': {'prune': True, 'dangling': True, 'olderthan': 1},
-            #    'subscriptions': {'prune': True, 'dangling': True, 'olderthan': 1},
-            #    'archive': {'prune': True, 'dangling': True, 'olderthan': 1},
-            #    'evaluations': {'prune': True, 'dangling': True, 'olderthan': 1}
-            #}
-
-            all_users = []
-            with db.session_scope() as dbsession:
-                all_users = db.db_users.get_all(session=dbsession)
-
-            for user in all_users:
-                userId = user['userId']
-                resource_types = anchore_engine.services.common.resource_types
-                for resourcetype in resource_types:
-
-                    prune_candidates = {}
-                    httpcode = 500
-
-                    try:
-                        if resourcetype in trim_policies and trim_policies[resourcetype]['prune']:
-                            dangling = trim_policies[resourcetype]['dangling']
-                            olderthan = trim_policies[resourcetype]['olderthan']
-
-                            with db.session_scope() as dbsession:
-                                prune_candidates, httpcode = catalog_impl.get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan, resource_user=userId)
-                            logger.debug("prune candidates " + str(userId) + " : " + str(resourcetype) + " : " + json.dumps(prune_candidates, indent=4))
-                        else:
-                            logger.debug("prune policy absent or disabled for resourcetype " + str(resourcetype) + " - skipping")
-                    except Exception as err:
-                        logger.warn("cannot get prune candidates for userId="+str(userId)+" resourcetype="+str(resourcetype) +  " - exception: " + str(err))
-                    else:
-                        if httpcode in range(200, 299) and 'prune_candidates' in prune_candidates and prune_candidates['prune_candidates']:
-                            # TODO do the prune
-                            prunes = {}
-                            httpcode = 500
-
-                            with db.session_scope() as dbsession:
-                                prunes, httpcode = catalog_impl.delete_prune_candidates(resourcetype, prune_candidates, dbsession, resource_user=userId)
-
-                            logger.debug("the prune resulted in: " + str(httpcode) + " : " + json.dumps(prunes))
-                            if prunes:
-                                logger.debug("pruned: " + json.dumps(prunes, indent=4))
-                        else:
-                            logger.debug("skipping pruning: " + str(userId) + " : " + str(resourcetype) + " : " + str(httpcode) + " : " + str(prune_candidates))
-
-        except Exception as err:
-            logger.warn("failure in history trimmer: " + str(err))
-
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
-
-    logger.debug("FIRING DONE: history trimmer")
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
 
     return(True)
 
 def handle_service_watcher(*args, **kwargs):
     #global latest_service_records
 
-    logger.debug("ENTERING: " + str(kwargs))
     cycle_timer = kwargs['mythread']['cycle_timer']
     max_service_heartbeat_timer = 300
 
     while(True):
-        logger.debug("FIRING: service watcher: " + str(kwargs))
+        logger.debug("FIRING: service watcher")
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
@@ -341,7 +275,6 @@ def handle_service_watcher(*args, **kwargs):
 
                         try:
                             # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
-                            #if False:
                             if status['up'] and status['available']:
                                 if time.time() - service['heartbeat'] > max_service_heartbeat_timer:
                                     logger.warn("no service heartbeat within allowed time period ("+str([service['hostid'], service['base_url']]) + " - disabling service")
@@ -370,18 +303,6 @@ def handle_service_watcher(*args, **kwargs):
                         logger.warn("could not update DB: " + str(err))
                 else:
                     logger.warn("no service_update_record populated - nothing to update")
-
-        if False:
-            with db.session_scope() as dbsession:
-                anchore_services = db.db_services.get_all(session=dbsession)
-                logger.debug("checking for expired service entries")
-                expire_time = (kwargs['mythread']['cycle_timer'] * 2) + 10
-                for service in anchore_services:
-                    logger.debug("service update delta: " + str(time.time() - service['last_updated']) + " : " + str(expire_time))
-                    if service['base_url'] and service['base_url'] != 'N/A':
-                        if (time.time() - service['last_updated']) > expire_time:
-                            logger.debug("clearing expired service entry: " + str(service))
-                            db.db_services.delete(service['hostid'], service['servicename'], session=dbsession)
 
         logger.debug("FIRING DONE: service watcher")
         try:
@@ -540,14 +461,13 @@ def handle_image_watcher(*args, **kwargs):
             if not subscription_record['active']:
                 continue
 
-            if True:
-                try:
-                    fulltag = subscription_record['subscription_key']
-                    if fulltag not in alltags:
-                        alltags.append(fulltag)
+            try:
+                fulltag = subscription_record['subscription_key']
+                if fulltag not in alltags:
+                    alltags.append(fulltag)
 
-                except Exception as err:
-                    logger.warn("problem creating taglist for image watcher - exception: " + str(err))
+            except Exception as err:
+                logger.warn("problem creating taglist for image watcher - exception: " + str(err))
 
         for registry_record in registry_creds:
             try:
@@ -1158,20 +1078,6 @@ def handle_metrics(*args, **kwargs):
 
         time.sleep(cycle_timer)
 
-def handle_catalog_duty (*args, **kwargs):
-    global system_user_auth
-
-    import anchore_engine.auth.aws_ecr
-
-    logger.debug("FIRING: catalog duty cycle")
-    logger.debug("FIRING DONE: catalog duty cycle")
-    try:
-        kwargs['mythread']['last_return'] = True
-    except:
-        pass
-
-    return(True)
-
 click = 0
 running = False
 last_run = 0
@@ -1184,11 +1090,11 @@ bundle_user_is_updated = {}
 watchers = {
     'image_watcher': {'handler': handle_image_watcher, 'task_lease_id': 'image_watcher', 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'repo_watcher': {'handler': handle_repo_watcher, 'task_lease_id': 'repo_watcher', 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_eval': {'handler':handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 5, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_eval': {'handler':handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'task_lease_id': 'policy_bundle_sync','taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'analyzer_queue': {'handler':handle_analyzer_queue, 'task_lease_id': 'analyzer_queue','taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'notifications': {'handler':handle_notifications, 'task_lease_id': 'notifications','taskType': 'handle_notifications', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'feed_sync': {'handler':handle_feed_sync, 'task_lease_id': 'feed_sync', 'taskType': 'handle_feed_sync', 'args': [], 'cycle_timer': 21600, 'min_cycle_timer': 3600, 'max_cycle_timer': 86400*14, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'vulnerability_scan': {'handler':handle_vulnerability_scan, 'task_lease_id': 'vulnerability_scan', 'taskType': 'handle_vulnerability_scan', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_watcher': {'handler':handle_service_watcher, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'task_lease_id': False, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
     'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
@@ -1252,6 +1158,7 @@ def monitor_func(**kwargs):
     if running or ((time.time() - last_run) < kwargs['kick_timer']):
         return(True)
 
+    logger.debug("FIRING: catalog_monitor")
     try:
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
