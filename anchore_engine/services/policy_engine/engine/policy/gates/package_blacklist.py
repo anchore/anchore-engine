@@ -9,9 +9,6 @@ log = get_logger()
 class FullMatchTrigger(BaseTrigger):
     __trigger_name__ = 'pkgfullmatch'
     __description__ = 'triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name|vers)'
-    #__params__ = {
-    #    'BLACKLIST_FULLMATCH': NameVersionListValidator()
-    #}
     fullmatch_blacklist = NameVersionStringListParameter(name='blacklist_fullmatch', description='List of package name|version pairs for exact match')
 
     def evaluate(self, image_obj, context):
@@ -30,10 +27,6 @@ class FullMatchTrigger(BaseTrigger):
 class NameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'pkgnamematch'
     __description__ = 'triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name)'
-    #__params__ = {
-    #    'BLACKLIST_NAMEMATCH': CommaDelimitedStringListValidator()
-    #}
-
     namematch_blacklist = CommaDelimitedStringListParameter(name='blacklist_namematch', description='List of package names to be blacklisted')
 
     def evaluate(self, image_obj, context):
