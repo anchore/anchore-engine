@@ -21,7 +21,9 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         'exists': CheckOperation(requires_rvalue=False, eval_function=lambda x, y: bool(x)),
         'not_exists': CheckOperation(requires_rvalue=False, eval_function=lambda x, y: not bool(x)),
         'like': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: bool(re.match(y, x))),
-        'not_like': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: not bool(re.match(y, x)))
+        'not_like': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: not bool(re.match(y, x))),
+        'in': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: x in [z.strip() for z in y.split(',')]),
+        'not_in': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: x not in [z.strip() for z in y.split(',')])
     }
 
     __valid_attributes__ = {
