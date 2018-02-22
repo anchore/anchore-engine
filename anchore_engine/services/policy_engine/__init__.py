@@ -205,6 +205,8 @@ def do_feed_sync(msg):
     if 'get_selected_feeds_to_sync' not in locals():
         from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 
+    handler_success = False
+    timer = time.time()
     logger.info("FIRING: feed syncer")
     try:
         task = FeedsUpdateTask.from_json(msg.get('data'))
@@ -215,12 +217,18 @@ def do_feed_sync(msg):
 
         if task:
             result = task.execute()
+            handler_success = True
         else:
             logger.warn('Feed sync task marked as disabled, so skipping')
     except ValueError as e:
         logger.warn('Received msg of wrong type')
     except Exception as err:
         logger.warn("failure in feed sync handler - exception: " + str(err))
+
+    if handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function='do_feed_sync', status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function='do_feed_sync', status="fail")
 
 
 def handle_feed_sync(*args, **kwargs):

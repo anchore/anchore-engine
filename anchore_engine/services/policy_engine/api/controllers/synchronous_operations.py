@@ -32,6 +32,8 @@ from anchore_engine.services.policy_engine.engine.feeds import get_selected_feed
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
 from anchore_engine.services.policy_engine.engine.policy import gates
+import anchore_engine.subsys.metrics
+from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
 
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL']
 
@@ -146,7 +148,7 @@ def list_user_images(user_id):
 
     return imgs
 
-
+@flask_metrics.do_not_track()
 def delete_image(user_id, image_id):
     """
     DELETE the image and all resources for it. Returns 204 - No Content on success
@@ -205,6 +207,7 @@ def problem_from_exception(eval_exception, severity=None):
     return prob
 
 
+@flask_metrics.do_not_track()
 def check_user_image_inline(user_id, image_id, tag, bundle):
     """
     Execute a policy evaluation using the info in the request body including the bundle content
@@ -215,6 +218,8 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
     :param bundle:
     :return:
     """
+
+    timer = time.time()
     db = get_session()
     try:
         # Input validation
@@ -270,6 +275,9 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         if resp.evaluation_problems:
             for i in resp.evaluation_problems:
                 log.warn('Returning evaluation response for image {}/{} w/tag {} and bundle {} that contains error: {}'.format(user_id, image_id, tag, bundle['id'], json.dumps(i.to_dict())))
+            anchore_engine.subsys.metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="fail")
+        else:
+            anchore_engine.subsys.metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="success")
 
         return resp.to_dict()
 
@@ -285,6 +293,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         db.close()
 
 
+@flask_metrics.do_not_track()
 def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
