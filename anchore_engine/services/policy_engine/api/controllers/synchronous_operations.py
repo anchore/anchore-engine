@@ -21,8 +21,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
 from anchore_engine.db import Image, get_thread_scoped_session as get_session
-from anchore_engine.services.policy_engine.engine.policy.bundles import get_bundle, build_bundle, \
-    build_empty_error_execution
+from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, PolicyRuleValidationErrorCollection
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
@@ -219,6 +218,10 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
     db = get_session()
     try:
         # Input validation
+        if tag is None:
+            # set tag value to a value that only matches wildcards
+            tag = '*/*:*'
+
         try:
             img_obj = db.query(Image).get((image_id, user_id))
         except:

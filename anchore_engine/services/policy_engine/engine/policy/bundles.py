@@ -53,17 +53,14 @@ class SimpleMemoryBundleCache(object):
     def __init__(self):
         self._bundles = {}
 
-    def get(self, id):
-        return self._bundles.get(id)
+    def get(self, user_id, bundle_id):
+        return self._bundles.get((user_id, bundle_id))
 
-    def cache(self, bundle):
-        self._bundles[bundle.id] = bundle
+    def cache(self, user_id, bundle):
+        self._bundles[(user_id, bundle.id)] = bundle
 
     def flush(self):
         self._bundles = {}
-
-
-bundle_cache = SimpleMemoryBundleCache()
 
 
 class WhitelistAwarePolicyDecider(object):
@@ -557,9 +554,22 @@ class PolicyMappingRule(object):
         self.registry = rule_json.get('registry')
         self.repository = rule_json.get('repository')
         self.image_match_type = rule_json.get('image').get('type')
-        self.image_tag = rule_json.get('image').get('value')
-        self.image_id = rule_json.get('image').get('value')
-        self.image_digest = rule_json.get('image').get('value')
+
+        if self.image_match_type == 'tag':
+            self.image_tag = rule_json.get('image').get('value')
+        else:
+            self.image_tag = None
+
+        if self.image_match_type == 'id':
+            self.image_id = rule_json.get('image').get('value')
+        else:
+            self.image_id = None
+
+        if self.image_match_type == 'digest':
+            self.image_digest = rule_json.get('image').get('value')
+        else:
+            self.image_digest = None
+
         self.policy_id = rule_json.get('policy_id')
         self.whitelist_ids = rule_json.get('whitelist_ids')
         self.raw = rule_json
@@ -607,10 +617,10 @@ class PolicyMappingRule(object):
         return is_match(regexify, self.image_tag, tag_str)
 
     def _id_match(self, image_id):
-        return self.is_id() and self.image_id == image_id and image_id is not None
+        return self.image_id == image_id and image_id is not None
 
     def _digest_match(self, image_digest):
-        return self.is_digest() and self.image_digest == image_digest and image_digest is not None
+        return self.image_digest == image_digest and image_digest is not None
 
     def matches(self, image_obj, tag):
         """
@@ -620,18 +630,26 @@ class PolicyMappingRule(object):
         :param tag: tag string
         :return: Boolean
         """
-        if tag:
-            match_target = parse_dockerimage_string(tag)
-        else:
-            match_target = {}
 
-        if not (self._registry_match(match_target['registry']) and self._repository_match(match_target['repo'])):
+        if not tag:
+            raise ValueError('Tag cannot be empty or null for matching evaluation')
+        else:
+            match_target = parse_dockerimage_string(tag)
+
+        # Must match registry and repo first
+        if not (self._registry_match(match_target.get('registry')) and self._repository_match(match_target.get('repo'))):
             return False
 
-        if image_obj:
-            return self._tag_match(match_target.get('tag')) or self._id_match(image_obj.id) or self._digest_match(image_obj.digest)
-        else:
-            return self._tag_match(match_target.get('tag'))
+        if self.is_digest():
+            return self._digest_match(image_obj.digest)
+        elif self.is_id():
+            return self._id_match(image_obj.id)
+        elif self.is_tag():
+
+            if image_obj:
+                return self._tag_match(match_target.get('tag')) or self._id_match(image_obj.id) or self._digest_match(image_obj.digest)
+            else:
+                return self._tag_match(match_target.get('tag'))
 
 
 class ExecutableMapping(object):
@@ -653,6 +671,9 @@ class ExecutableMapping(object):
         :param tag: tag string
         :return: ExecutableMappingRule that is the first match in the ruleset
         """
+
+        if not tag:
+            raise ValueError('tag cannot be None')
 
         # Special handling of 'dockerhub' -> 'docker.io' conversion.
         if tag and tag.startswith('dockerhub/'):
@@ -1149,23 +1170,6 @@ def build_empty_error_execution(image_obj, tag, bundle, errors=None, warnings=No
     b.errors = errors
     b.warnings = warnings
     return b
-
-
-def get_bundle(bundle_id):
-    """
-    Load from cache or catalog
-    :param bundle_id:
-    :return:
-    """
-    bundle = bundle_cache.get(bundle_id)
-
-    raise NotImplementedError('Bundle fetch not enabled')
-    # bundle = bundle_cache.get(bundle_id)
-    #
-    # if not bundle:
-    #     client = CatalogClient()
-    #     bundle = client.get_policy_bundle(bundle_id=bundle_id)
-    #     return bundle.to_dict()
 
 
 def build_bundle(bundle_json, for_tag=None):
