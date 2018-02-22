@@ -772,8 +772,15 @@ def handle_analyzer_queue(*args, **kwargs):
             #dbfilter = {}
             basestate_image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
-        for image_record in basestate_image_records:
-            imageDigest = image_record['imageDigest']
+        for basestate_image_record in basestate_image_records:
+            imageDigest = basestate_image_record['imageDigest']
+
+            image_record = basestate_image_record
+            #dbfilter = {'imageDigest': imageDigest}
+            #with db.session_scope() as dbsession:
+            #    image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
+            #    image_record = image_records[0]
+
             if image_record['image_status'] == taskstate.complete_state('image_status'):
                 logger.debug("image check")
                 if image_record['analysis_status'] == taskstate.base_state('analyze'):

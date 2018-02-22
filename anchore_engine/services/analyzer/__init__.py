@@ -287,7 +287,10 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             return (True)
 
         logger.info("image dequeued for analysis: " + str(userId) + " : " + str(imageDigest))
-
+        if image_record['analysis_status'] != anchore_engine.subsys.taskstate.base_state('analyze'):
+            logger.debug("dequeued image is not in base state - skipping analysis")
+            return(True)
+        
         try:
             logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
 
