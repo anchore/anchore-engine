@@ -1003,7 +1003,6 @@ def images(request_inputs):
 
             # finally, do any state updates and return
             if image_record:
-                #logger.debug("fetched image_info: " + json.dumps(image_record, indent=4))
                 logger.debug("added image: " + str(imageDigest))
 
                 # auto-subscribe for NOW
@@ -1013,11 +1012,12 @@ def images(request_inputs):
                     foundtypes = []
                     try:
                         subscription_records = catalog.get_subscription(user_auth, subscription_key=fulltag)
-                        for subscription_record in subscription_records:
-                            if subscription_record['subscription_key'] == fulltag:
-                                foundtypes.append(subscription_record['subscription_type'])
                     except Exception as err:
-                        logger.warn("cannot load subscription records - exception: " + str(err))
+                        subscription_records = []
+
+                    for subscription_record in subscription_records:
+                        if subscription_record['subscription_key'] == fulltag:
+                            foundtypes.append(subscription_record['subscription_type'])
 
                     sub_types = anchore_engine.services.common.subscription_types
                     for sub_type in sub_types:
