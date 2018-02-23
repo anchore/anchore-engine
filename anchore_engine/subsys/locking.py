@@ -72,4 +72,4 @@ class DbLeaseManager(object):
         :param epoch:
         :return:
         """
-        return db_locks.refresh_lease(lease_id, client_id, ttl, epoch)
+        return db_locks.refresh_lease(lease_id, client_id, epoch, ttl)

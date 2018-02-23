@@ -1113,7 +1113,7 @@ watcher_task_template = {
 }
 watcher_threads = {}
 
-default_lease_ttl = 3600 # 1 hour ttl, should be more than enough in most cases
+default_lease_ttl = 60 # 1 hour ttl, should be more than enough in most cases
 
 
 def watcher_func(*args, **kwargs):

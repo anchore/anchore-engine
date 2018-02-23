@@ -436,6 +436,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
                                 logger.debug('Lease {} refreshed with response: {}'.format(lease_id, resp))
                                 if resp:
                                     lease = resp
+                                    t = time.time()
                                     break
                             except Exception as e:
                                 logger.exception('Error updating lease {}'.format(lease['id']))
