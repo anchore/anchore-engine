@@ -112,5 +112,5 @@ Subscribe to receive webhook notifications when new CVEs are added to an update
 
 ## More Information
 
-For further details on use of the Anchore CLI with the Anchore Engine please refer to the [Anchore Engine Wiki](https://github.com/anchore/anchore-engine/wiki)
+For further details on use of the Anchore CLI with the Anchore Engine please refer to the [Anchore Engine Documentation](https://anchore.freshdesk.com/support/home)
 
