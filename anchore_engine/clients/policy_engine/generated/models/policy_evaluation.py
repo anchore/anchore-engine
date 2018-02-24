@@ -36,10 +36,13 @@ class PolicyEvaluation(object):
         'tag': 'str',
         'bundle': 'object',
         'matched_mapping_rule': 'object',
+        'matched_whitelisted_images_rule': 'object',
+        'matched_blacklisted_images_rule': 'object',
         'result': 'object',
         'created_at': 'int',
         'last_modified': 'int',
         'final_action': 'str',
+        'final_action_reason': 'str',
         'evaluation_problems': 'list[PolicyEvaluationProblem]'
     }
 
@@ -49,14 +52,17 @@ class PolicyEvaluation(object):
         'tag': 'tag',
         'bundle': 'bundle',
         'matched_mapping_rule': 'matched_mapping_rule',
+        'matched_whitelisted_images_rule': 'matched_whitelisted_images_rule',
+        'matched_blacklisted_images_rule': 'matched_blacklisted_images_rule',
         'result': 'result',
         'created_at': 'created_at',
         'last_modified': 'last_modified',
         'final_action': 'final_action',
+        'final_action_reason': 'final_action_reason',
         'evaluation_problems': 'evaluation_problems'
     }
 
-    def __init__(self, user_id=None, image_id=None, tag=None, bundle=None, matched_mapping_rule=None, result=None, created_at=None, last_modified=None, final_action=None, evaluation_problems=None):
+    def __init__(self, user_id=None, image_id=None, tag=None, bundle=None, matched_mapping_rule=None, matched_whitelisted_images_rule=None, matched_blacklisted_images_rule=None, result=None, created_at=None, last_modified=None, final_action=None, final_action_reason=None, evaluation_problems=None):
         """
         PolicyEvaluation - a model defined in Swagger
         """
@@ -66,10 +72,13 @@ class PolicyEvaluation(object):
         self._tag = None
         self._bundle = None
         self._matched_mapping_rule = None
+        self._matched_whitelisted_images_rule = None
+        self._matched_blacklisted_images_rule = None
         self._result = None
         self._created_at = None
         self._last_modified = None
         self._final_action = None
+        self._final_action_reason = None
         self._evaluation_problems = None
 
         if user_id is not None:
@@ -78,12 +87,16 @@ class PolicyEvaluation(object):
         self.tag = tag
         self.bundle = bundle
         self.matched_mapping_rule = matched_mapping_rule
+        if matched_whitelisted_images_rule is not None:
+          self.matched_whitelisted_images_rule = matched_whitelisted_images_rule
+        self.matched_blacklisted_images_rule = matched_blacklisted_images_rule
         self.result = result
         if created_at is not None:
           self.created_at = created_at
         if last_modified is not None:
           self.last_modified = last_modified
         self.final_action = final_action
+        self.final_action_reason = final_action_reason
         if evaluation_problems is not None:
           self.evaluation_problems = evaluation_problems
 
@@ -207,6 +220,54 @@ class PolicyEvaluation(object):
         self._matched_mapping_rule = matched_mapping_rule
 
     @property
+    def matched_whitelisted_images_rule(self):
+        """
+        Gets the matched_whitelisted_images_rule of this PolicyEvaluation.
+        The trusted image entry matched if any
+
+        :return: The matched_whitelisted_images_rule of this PolicyEvaluation.
+        :rtype: object
+        """
+        return self._matched_whitelisted_images_rule
+
+    @matched_whitelisted_images_rule.setter
+    def matched_whitelisted_images_rule(self, matched_whitelisted_images_rule):
+        """
+        Sets the matched_whitelisted_images_rule of this PolicyEvaluation.
+        The trusted image entry matched if any
+
+        :param matched_whitelisted_images_rule: The matched_whitelisted_images_rule of this PolicyEvaluation.
+        :type: object
+        """
+
+        self._matched_whitelisted_images_rule = matched_whitelisted_images_rule
+
+    @property
+    def matched_blacklisted_images_rule(self):
+        """
+        Gets the matched_blacklisted_images_rule of this PolicyEvaluation.
+        The image blacklist entry matched if any
+
+        :return: The matched_blacklisted_images_rule of this PolicyEvaluation.
+        :rtype: object
+        """
+        return self._matched_blacklisted_images_rule
+
+    @matched_blacklisted_images_rule.setter
+    def matched_blacklisted_images_rule(self, matched_blacklisted_images_rule):
+        """
+        Sets the matched_blacklisted_images_rule of this PolicyEvaluation.
+        The image blacklist entry matched if any
+
+        :param matched_blacklisted_images_rule: The matched_blacklisted_images_rule of this PolicyEvaluation.
+        :type: object
+        """
+        if matched_blacklisted_images_rule is None:
+            raise ValueError("Invalid value for `matched_blacklisted_images_rule`, must not be `None`")
+
+        self._matched_blacklisted_images_rule = matched_blacklisted_images_rule
+
+    @property
     def result(self):
         """
         Gets the result of this PolicyEvaluation.
@@ -301,6 +362,37 @@ class PolicyEvaluation(object):
             raise ValueError("Invalid value for `final_action`, must not be `None`")
 
         self._final_action = final_action
+
+    @property
+    def final_action_reason(self):
+        """
+        Gets the final_action_reason of this PolicyEvaluation.
+        The reason for the final result
+
+        :return: The final_action_reason of this PolicyEvaluation.
+        :rtype: str
+        """
+        return self._final_action_reason
+
+    @final_action_reason.setter
+    def final_action_reason(self, final_action_reason):
+        """
+        Sets the final_action_reason of this PolicyEvaluation.
+        The reason for the final result
+
+        :param final_action_reason: The final_action_reason of this PolicyEvaluation.
+        :type: str
+        """
+        if final_action_reason is None:
+            raise ValueError("Invalid value for `final_action_reason`, must not be `None`")
+        allowed_values = ["whitelisted", "blacklisted", "policy_evaluation"]
+        if final_action_reason not in allowed_values:
+            raise ValueError(
+                "Invalid value for `final_action_reason` ({0}), must be one of {1}"
+                .format(final_action_reason, allowed_values)
+            )
+
+        self._final_action_reason = final_action_reason
 
     @property
     def evaluation_problems(self):

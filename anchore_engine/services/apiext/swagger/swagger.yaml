@@ -1153,6 +1153,16 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/MappingRule"
+      whitelisted_images:
+        description: List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
+      blacklisted_images:
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
   WhitelistItem:
     type: object
     description: Identifies a specific gate and trigger match from a policy against an image and indicates it should be ignored in final policy decisions
@@ -1248,6 +1258,24 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/PolicyRule"
+  ImageSelectionRule:
+    type: object
+    required:
+    - "name"
+    - "registry"
+    - "repository"
+    - "image"
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      registry:
+        type: string
+      repository:
+        type: string
+      image:
+        $ref: "#/definitions/ImageRef"
   MappingRule:
     type: object
     required:

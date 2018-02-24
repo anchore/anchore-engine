@@ -462,6 +462,8 @@ definitions:
     required:
     - "id"
     - "version"
+    - "mappings"
+    - "policies"
     properties:
       id:
         type: string
@@ -484,6 +486,16 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/MappingRule"
+      whitelisted_images:
+        description: List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
+      blacklisted_images:
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
   WhitelistItem:
     type: object
     required:
@@ -575,6 +587,24 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/PolicyRule"
+  ImageSelectionRule:
+    type: object
+    required:
+    - "name"
+    - "registry"
+    - "repository"
+    - "image"
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      registry:
+        type: string
+      repository:
+        type: string
+      image:
+        $ref: "#/definitions/ImageRef"
   MappingRule:
     type: object
     required:
@@ -682,6 +712,9 @@ definitions:
       - final_action
       - matched_mapping_rule
       - result
+      - matched_whitelisted_images_rule
+      - matched_blacklisted_images_rule
+      - final_action_reason
     properties:
       user_id:
         type: string
@@ -698,6 +731,12 @@ definitions:
         description: >-
           The bundle mapping rule that was evaluated to result in the evaluated
           policy and whitelists being selected
+      matched_whitelisted_images_rule:
+        type: object
+        description: The trusted image entry matched if any
+      matched_blacklisted_images_rule:
+        type: object
+        description: The image blacklist entry matched if any
       result:
         type: object
         description: >-
@@ -712,6 +751,13 @@ definitions:
       final_action:
         type: string
         description: The overall outcome of the evaluation. STOP|GO|WARN
+      final_action_reason:
+        type: string
+        description: The reason for the final result
+        enum:
+        - whitelisted
+        - blacklisted
+        - policy_evaluation
       evaluation_problems:
         type: array
         description: list of error objects indicating errors encountered during evaluation execution

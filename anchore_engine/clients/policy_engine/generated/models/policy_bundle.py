@@ -37,7 +37,9 @@ class PolicyBundle(object):
         'version': 'str',
         'whitelists': 'list[Whitelist]',
         'policies': 'list[Policy]',
-        'mappings': 'list[MappingRule]'
+        'mappings': 'list[MappingRule]',
+        'whitelisted_images': 'list[ImageSelectionRule]',
+        'blacklisted_images': 'list[ImageSelectionRule]'
     }
 
     attribute_map = {
@@ -47,10 +49,12 @@ class PolicyBundle(object):
         'version': 'version',
         'whitelists': 'whitelists',
         'policies': 'policies',
-        'mappings': 'mappings'
+        'mappings': 'mappings',
+        'whitelisted_images': 'whitelisted_images',
+        'blacklisted_images': 'blacklisted_images'
     }
 
-    def __init__(self, id=None, name=None, comment=None, version=None, whitelists=None, policies=None, mappings=None):
+    def __init__(self, id=None, name=None, comment=None, version=None, whitelists=None, policies=None, mappings=None, whitelisted_images=None, blacklisted_images=None):
         """
         PolicyBundle - a model defined in Swagger
         """
@@ -62,6 +66,8 @@ class PolicyBundle(object):
         self._whitelists = None
         self._policies = None
         self._mappings = None
+        self._whitelisted_images = None
+        self._blacklisted_images = None
 
         self.id = id
         if name is not None:
@@ -75,6 +81,10 @@ class PolicyBundle(object):
           self.policies = policies
         if mappings is not None:
           self.mappings = mappings
+        if whitelisted_images is not None:
+          self.whitelisted_images = whitelisted_images
+        if blacklisted_images is not None:
+          self.blacklisted_images = blacklisted_images
 
     @property
     def id(self):
@@ -228,6 +238,52 @@ class PolicyBundle(object):
         """
 
         self._mappings = mappings
+
+    @property
+    def whitelisted_images(self):
+        """
+        Gets the whitelisted_images of this PolicyBundle.
+        List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+
+        :return: The whitelisted_images of this PolicyBundle.
+        :rtype: list[ImageSelectionRule]
+        """
+        return self._whitelisted_images
+
+    @whitelisted_images.setter
+    def whitelisted_images(self, whitelisted_images):
+        """
+        Sets the whitelisted_images of this PolicyBundle.
+        List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+
+        :param whitelisted_images: The whitelisted_images of this PolicyBundle.
+        :type: list[ImageSelectionRule]
+        """
+
+        self._whitelisted_images = whitelisted_images
+
+    @property
+    def blacklisted_images(self):
+        """
+        Gets the blacklisted_images of this PolicyBundle.
+        List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+
+        :return: The blacklisted_images of this PolicyBundle.
+        :rtype: list[ImageSelectionRule]
+        """
+        return self._blacklisted_images
+
+    @blacklisted_images.setter
+    def blacklisted_images(self, blacklisted_images):
+        """
+        Sets the blacklisted_images of this PolicyBundle.
+        List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+
+        :param blacklisted_images: The blacklisted_images of this PolicyBundle.
+        :type: list[ImageSelectionRule]
+        """
+
+        self._blacklisted_images = blacklisted_images
 
     def to_dict(self):
         """
