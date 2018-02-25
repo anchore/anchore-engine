@@ -98,11 +98,10 @@ class FeedOutOfDateTrigger(BaseTrigger):
                     oldest_update = calendar.timegm(oldest_update.timetuple())
                     mintime = time.time() - int(int(self.max_age.value()) * 86400)
                     if oldest_update < mintime:
-                        self._fire(msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE ("+str(self.max_age)+") days")
+                        self._fire(msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE ("+str(self.max_age.value())+") days")
                 else:
                     self._fire(
-                        msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE (" + str(
-                            self.max_age) + ") days")
+                        msg="FEEDOUTOFDATE The vulnerability feed for this image distro is older than MAXAGE (" + str(self.max_age.value()) + ") days")
             except Exception as err:
                 self._fire(msg="FEEDOUTOFDATE Cannot perform data feed up-to-date check - message from server: " + str(err))
 
