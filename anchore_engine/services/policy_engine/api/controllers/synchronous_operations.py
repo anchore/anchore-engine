@@ -247,6 +247,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             log.exception('Bundle construction and initialization returned errors')
             problems = e.causes
 
+        eval_result = None
         if not problems:
             # Execute bundle
             try:
@@ -267,7 +268,10 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         resp.bundle = bundle
         resp.matched_mapping_rule = eval_result.executed_mapping.json() if eval_result.executed_mapping else {}
         resp.last_modified = int(time.time())
-        resp.final_action = eval_result.policy_decision.final_decision
+        resp.final_action = eval_result.bundle_decision.final_decision.name
+        resp.final_action_reason = eval_result.bundle_decision.reason
+        resp.matched_whitelisted_images_rule = eval_result.bundle_decision.whitelisted_image.json() if eval_result.bundle_decision.whitelisted_image else {}
+        resp.matched_blacklisted_images_rule = eval_result.bundle_decision.blacklisted_image.json() if eval_result.bundle_decision.blacklisted_image else {}
         resp.result = eval_result.as_table_json()
         resp.created_at = int(time.time())
         resp.evaluation_problems = [problem_from_exception(i) for i in eval_result.errors]

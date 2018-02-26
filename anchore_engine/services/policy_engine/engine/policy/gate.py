@@ -75,7 +75,7 @@ class TriggerMatch(object):
         return self.__str__()
 
     def __str__(self):
-        return '<{}.{} Trigger:{}, Id: {}, Msg: {}>'.format(self.__class__.__module__, self.__class__.__name__, self.trigger, self.id, self.msg)
+        return '<{}.{} Trigger:{}, Id: {}, Msg: {}>'.format(self.__class__.__module__, self.__class__.__name__, self.trigger.__trigger_name__, self.id, self.msg)
 
 
 class BaseTrigger(object):

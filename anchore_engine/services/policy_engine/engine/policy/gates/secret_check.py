@@ -11,17 +11,10 @@ class SecretContentMatchTrigger(BaseTrigger):
     __description__ = 'Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the SECRETCHECK_CONTENTREGEXP parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches.'
     secret_contentregexp = PipeDelimitedStringListParameter(name='secretcheck_contentregexp', description='Names of content regexps configured in the analyzer that should trigger if found in the image')
 
-    # __params__ = {
-    #     'secretcheck_contentregexp': PipeDelimitedStringListValidator()
-    # }
-
     def evaluate(self, image_obj, context):
-        #match_filter = self.eval_params.get(self.__params__.keys()[0])
-
         match_filter = self.secret_contentregexp.value(default_if_none=[])
         if match_filter:
             matches = [x.encode('base64') for x in match_filter]
-            #matches_decoded = match_filter.split('|')
             matches_decoded = match_filter
         else:
             matches = []
@@ -50,17 +43,8 @@ class SecretFilenameMatchTrigger(BaseTrigger):
     __trigger_name__ = 'filenamematch'
     __description__ = 'Triggers if a file exists in the container that matches with any of the regular expressions given as SECRETCHECK_NAMEREGEXP parameters.'
     name_regexps = PipeDelimitedStringListParameter(name='secretcheck_nameregexp', description='List of regexp names in the analyzer that should trigger if matched in the image')
-    #__params__ = {
-    #    'secretcheck_nameregexp': PipeDelimitedStringListValidator()
-    #}
 
     def evaluate(self, image_obj, context):
-        # decode the param regexes from b64
-        fname_regexps = []
-        #regex_param = self.eval_params.get(self.__params__.keys()[0])
-        #if regex_param:
-        #    fname_regexps = regex_param.split('|')
-
         fname_regexps = self.name_regexps.value(default_if_none=[])
 
         if not fname_regexps:

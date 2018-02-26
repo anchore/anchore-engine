@@ -3,7 +3,7 @@ import json
 import copy
 import os
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
-from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle
+from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, GateAction
 from anchore_engine.db import get_thread_scoped_session as get_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
@@ -162,6 +162,129 @@ class TestPolicyBundleEval(unittest.TestCase):
         print(json.dumps(evaluation.json(), indent=2))
         print(json.dumps(evaluation.as_table_json(), indent=2))
 
+    def test_image_whitelist(self):
+        bundle = {
+            'id': 'multigate1',
+            'name': 'Multigate test1',
+            'version': '1_0',
+            'policies': [
+                {
+                    'id': 'policy1',
+                    'name': 'Test policy1',
+                    'version': '1_0',
+                    'rules': [
+                        {
+                            'gate': 'always',
+                            'trigger': 'always',
+                            'params': [],
+                            'action': 'STOP'
+                        }
+                    ]
+                }
+            ],
+            'whitelists': [],
+            'mappings': [
+                {
+                    'registry': '*', 'repository': '*', 'image': {'type': 'tag', 'value': '*'}, 'policy_id': 'policy1', 'whitelist_ids': []
+                }
+            ],
+            'whitelisted_images': [
+                {
+                    'registry': '*',
+                    'repository': '*',
+                    'image': {
+                        'type': 'tag',
+                        'value': 'latest'
+                    }
+                }
+            ],
+            'blacklisted_images': []
+        }
+
+        db = get_session()
+        img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+        if not img_obj:
+            self.load_images()
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        test_tag = 'docker.io/library/ruby:alpine'
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.stop, evaluation.bundle_decision.final_decision)
+        self.assertEqual('policy_evaluation', evaluation.bundle_decision.reason)
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        test_tag = 'docker.io/library/ruby:latest'
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.go, evaluation.bundle_decision.final_decision)
+        self.assertEqual('whitelisted', evaluation.bundle_decision.reason)
+
+    def test_image_blacklist(self):
+        bundle = {
+            'id': 'multigate1',
+            'name': 'Multigate test1',
+            'version': '1_0',
+            'policies': [
+                {
+                    'id': 'policy1',
+                    'name': 'Test policy1',
+                    'version': '1_0',
+                    'rules': [
+                        {
+                            'gate': 'always',
+                            'trigger': 'always',
+                            'params': [],
+                            'action': 'STOP'
+                        }
+                    ]
+                }
+            ],
+            'whitelists': [],
+            'mappings': [
+                {
+                    'registry': '*', 'repository': '*', 'image': {'type': 'tag', 'value': '*'}, 'policy_id': 'policy1', 'whitelist_ids': []
+                }
+            ],
+            'blacklisted_images': [
+                {
+                    'registry': '*',
+                    'repository': '*',
+                    'image': {
+                        'type': 'tag',
+                        'value': 'latest'
+                    }
+                }
+            ],
+            'whitelisted_images': []
+        }
+
+        db = get_session()
+        img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+        if not img_obj:
+            self.load_images()
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        test_tag = 'docker.io/library/ruby:alpine'
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.stop, evaluation.bundle_decision.final_decision)
+        self.assertEqual('policy_evaluation', evaluation.bundle_decision.reason)
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        test_tag = 'docker.io/library/ruby:latest'
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.stop, evaluation.bundle_decision.final_decision)
+        self.assertEqual('blacklisted', evaluation.bundle_decision.reason)
 
     def testWhitelists(self):
         print('Building executable bundle from default bundle')
@@ -183,7 +306,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         print(json.dumps(evaluation.json(), indent=2))
         print(json.dumps(evaluation.as_table_json(), indent=2))
 
-        to_whitelist = evaluation.policy_decision.decisions[0]
+        to_whitelist = evaluation.bundle_decision.policy_decision.decisions[0]
         whitelist_bundle = copy.deepcopy(self.default_bundle)
         whitelist_bundle['whitelists'].append({
             'id': 'generated_whitelist1',
@@ -216,7 +339,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         #print(json.dumps(evaluation.json(), indent=2))
         #print(json.dumps(evaluation.as_table_json(), indent=2))
 
-        self.assertNotIn(to_whitelist.match.id, map(lambda x: x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None, evaluation.policy_decision.decisions))
+        self.assertNotIn(to_whitelist.match.id, map(lambda x: x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None, evaluation.bundle_decision.policy_decision.decisions))
 
 
     def testErrorEvaluation(self):

@@ -35,7 +35,9 @@ CONDITIONS = [
     'exists',
     'not_exists',
     'like',
-    'not_like'
+    'not_like',
+    'in',
+    'not_in'
 ]
 
 
@@ -84,7 +86,7 @@ class DirectiveCheckTrigger(BaseTrigger):
     check_value = TriggerParameter(name='check_value', description='The value to check the dockerfile instruction against', is_required=False, related_to='directive, check', validator=TypeValidator("string"))
 
     _conditions_requiring_check_val = [
-        '=', '!=', 'like', 'not_like'
+        '=', '!=', 'like', 'not_like', 'in', 'not_in'
     ]
 
     ops = {
@@ -93,7 +95,9 @@ class DirectiveCheckTrigger(BaseTrigger):
         'exists': lambda x, y: True,
         'not_exists': lambda x, y: False,
         'like': lambda x, y: bool(re.match(y, x)),
-        'not_like': lambda x, y: not bool(re.match(y, x))
+        'not_like': lambda x, y: not bool(re.match(y, x)),
+        'in': lambda x, y: x in [z.strip() for z in y.split(',')],
+        'not_in': lambda x, y: x not in [z.strip() for z in y.split(',')]
     }
 
     def evaluate(self, image_obj, context):

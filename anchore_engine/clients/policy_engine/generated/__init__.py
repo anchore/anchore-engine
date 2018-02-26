@@ -24,6 +24,7 @@ from .models.image_ingress_request import ImageIngressRequest
 from .models.image_ingress_response import ImageIngressResponse
 from .models.image_policy_check_request import ImagePolicyCheckRequest
 from .models.image_ref import ImageRef
+from .models.image_selection_rule import ImageSelectionRule
 from .models.image_update_notification import ImageUpdateNotification
 from .models.image_vulnerability_listing import ImageVulnerabilityListing
 from .models.legacy_vulnerability_report import LegacyVulnerabilityReport

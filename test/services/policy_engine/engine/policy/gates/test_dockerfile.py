@@ -192,6 +192,37 @@ class DockerfileGateTest(GateUnitTest):
         self.assertEqual(len(t.fired), 0)
         print('Fired: {}'.format([x.json() for x in t.fired]))
 
+    def test_directiveschecktrigger_in(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, directives='USER', check='in', check_value='testuser,someuser')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, directives='USER', check='in', check_value='root,someuser')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+    def test_directiveschecktrigger_notin(self):
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, directives='USER', check='not_in', check_value='root')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 1)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+        t, gate, test_context = self.get_initialized_trigger(DirectiveCheckTrigger.__trigger_name__, directives='USER', check='not_in', check_value='root,testuser')
+        test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'
+        test_context = gate.prepare_context(test_image, test_context)
+        t.evaluate(test_image, test_context)
+        self.assertEqual(len(t.fired), 0)
+        print('Fired: {}'.format([x.json() for x in t.fired]))
+
+
     def test_effectiveuser_trigger(self):
         t, gate, test_context = self.get_initialized_trigger(EffectiveUserTrigger.__trigger_name__, allowed='root')
         test_image.dockerfile_contents = 'RUN apt-get install blah1 balh2 blah2 testuser1\nRUN echo hi\nUSER testuser\n'

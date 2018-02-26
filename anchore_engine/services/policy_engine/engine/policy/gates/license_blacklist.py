@@ -1,6 +1,6 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.params import NameVersionStringListParameter, CommaDelimitedStringListParameter
+from anchore_engine.services.policy_engine.engine.policy.params import CommaDelimitedStringListParameter
 
 
 class FullMatchTrigger(BaseTrigger):
@@ -25,12 +25,12 @@ class SubstringMatchTrigger(BaseTrigger):
     __trigger_name__ = 'licsubmatch'
     __description__ = 'triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)'
 
-    licenseblacklise_submatches = CommaDelimitedStringListParameter(name='licblacklist_submatch', description='List of strings to do substring match for blacklist')
+    licenseblacklist_submatches = CommaDelimitedStringListParameter(name='licblacklist_submatch', description='List of strings to do substring match for blacklist')
 
     def evaluate(self, image_obj, context):
         matchpkgs = []
 
-        match_vals = [x.strip() for x in self.licenseblacklise_submatches.value()] if self.licenseblacklise_submatches.value() else []
+        match_vals = [x.strip() for x in self.licenseblacklist_submatches.value()] if self.licenseblacklist_submatches.value() else []
 
         for pkg, license in context.data.get('licenses', []):
             for l in match_vals:
