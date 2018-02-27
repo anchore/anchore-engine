@@ -118,28 +118,17 @@ def get_service_detail():
                 except Exception as err:
                     pass
 
-                service_detail['queues'] = {}
-                ret_queues = {}
-                try:
-                    queues = simplequeue.get_queues(user_auth)
-                    for queuename in queues:
-                        ret_queues[queuename] = {}
-                        qlen = simplequeue.qlen(user_auth, queuename)
-                        ret_queues[queuename]['qlen'] = qlen
-                    service_detail['queues'] = ret_queues
-                except:
-                    pass
-
-                service_detail['error_event'] = []
-                try:
-                    events = catalog.get_event(user_auth)
-                    for event in events:
-                        el = {}
-                        for k in ['message_ts', 'hostId', 'message', 'level']:
-                            el[k] = event[k]
-                        service_detail['error_event'].append(el)
-                except:
-                    pass
+                # Bring back when eventing subsystem is utilized
+                #service_detail['error_event'] = []
+                #try:
+                #    events = catalog.get_event(user_auth)
+                #    for event in events:
+                #        el = {}
+                #        for k in ['message_ts', 'hostId', 'message', 'level']:
+                #            el[k] = event[k]
+                #        service_detail['error_event'].append(el)
+                #except:
+                #    pass
                 httpcode = 200
 
             except Exception as err:

@@ -259,15 +259,12 @@ def handle_service_watcher(*args, **kwargs):
                     status = anchore_engine.subsys.servicestatus.get_status(service)
                     service_update_record.update({'heartbeat': int(time.time()), 'status': True, 'status_message': taskstate.complete_state('service_status'), 'short_description': json.dumps(status)})
                 else:
-                    #url = '/'.join([service['base_url'], service['version'], 'status'])
                     try:
-                        #status = http.anchy_get(url, auth=(userId, password), verify=verify, timeout=30)
                         try:
                             status = json.loads(service['short_description'])
                         except:
                             status = {'up': False, 'available': False}
                             
-                        #service_update_record['heartbeat'] = int(time.time())
                         # set to down until the response can be parsed
                         service_update_record['status'] = False                    
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
