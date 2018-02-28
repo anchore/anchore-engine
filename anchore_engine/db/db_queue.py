@@ -27,14 +27,14 @@ class TTLCache(object):
     def lookup(self, key):
         found = self.cache.get(key)
         if found and found[0] >= datetime.datetime.now():
-            logger.debug('TTLCache {} hit for {}'.format(self.__hash__(), key))
+            logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
             return found[1]
         elif found:
             self.cache.pop(key)
-            logger.debug('TTLCache {} hit for {}'.format(self.__hash__(), key))
+            logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
             return None
         else:
-            logger.debug('TTLCache {} miss for {}'.format(self.__hash__(), key))
+            logger.spew('TTLCache {} miss for {}'.format(self.__hash__(), key))
             return None
 
     def flush(self):
