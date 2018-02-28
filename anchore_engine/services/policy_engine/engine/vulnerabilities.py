@@ -43,7 +43,7 @@ def match_but_not_fixed(fix_obj, package_obj):
 
     dist = DistroNamespace.for_obj(package_obj)
     flavor = dist.flavor
-    log.debug('Package: {}, Fix: {}, Flavor: {}'.format(package_obj.name, fix_obj.name, flavor))
+    log.spew('Package: {}, Fix: {}, Flavor: {}'.format(package_obj.name, fix_obj.name, flavor))
 
     # Double-check names
     if fix_obj.name != package_obj.name and fix_obj.name != package_obj.normalized_src_pkg:
@@ -58,15 +58,15 @@ def match_but_not_fixed(fix_obj, package_obj):
     # Is the package older than the fix?
     if flavor == 'RHEL':
         if rpm_compare_versions(package_obj.name, package_obj.fullversion, fix_obj.name, fix_obj.epochless_version) < 0:
-            log.debug('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+            log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
             return True
     elif flavor == 'DEB':
         if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
-            log.debug('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+            log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
             return True
     elif flavor == 'ALPINE':
         if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
-            log.debug('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+            log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
             return True
 
     # Newer or the same
