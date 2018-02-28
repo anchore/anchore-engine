@@ -9,8 +9,9 @@ import threading
 import subprocess
 import watchdog
 import anchore_engine.configuration.localconfig
-from watchdog.observers import Observer  
+from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
+
 
 class AnchoreLogWatcher(RegexMatchingEventHandler):
     regexes = [re.compile(".*/anchore-.*\.log$")]
@@ -43,7 +44,7 @@ class AnchoreLogWatcher(RegexMatchingEventHandler):
                 logname = event.src_path
 
             for line in self.files[event.src_path]['filehandle'].readlines():
-                sys.stdout.write("[service:"+str(logname)+"] "+line)
+                sys.stdout.write("[service:" + str(logname) + "] " + line)
 
             self.files[event.src_path]['filetell'] = self.files[event.src_path]['filehandle'].tell()
 
@@ -67,17 +68,19 @@ class AnchoreLogWatcher(RegexMatchingEventHandler):
         if event.src_path not in self.files:
             self.files[event.src_path] = {'filehandle': None, 'filetell': 0}
 
+
 class ServiceThread():
 
     def __init__(self, thread_target, thread_args):
         self.thread_target = thread_target
         self.thread_args = thread_args
         self.start()
-    
+
     def start(self):
-        self.thread = threading.Thread(target = self.thread_target, args = self.thread_args)
+        self.thread = threading.Thread(target=self.thread_target, args=self.thread_args)
         self.thread.name = self.thread_args[0]
         self.thread.start()
+
 
 def terminate_service(service, flush_pidfile=False):
     pidfile = "/var/run/" + service + ".pid"
@@ -101,11 +104,12 @@ def terminate_service(service, flush_pidfile=False):
     except Exception as err:
         print "could not shut down running twistd - exception: " + str(err)
 
+
 def startup_service(service, configdir):
-    pidfile = "/var/run/"+service+".pid"
-    logfile = "/var/log/anchore/"+service+".log"
-    #os.environ['ANCHORE_LOGFILE'] = logfile
-    
+    pidfile = "/var/run/" + service + ".pid"
+    logfile = "/var/log/anchore/" + service + ".log"
+    # os.environ['ANCHORE_LOGFILE'] = logfile
+
     print "cleaning up service: " + str(service)
     terminate_service(service, flush_pidfile=True)
 
@@ -119,7 +123,6 @@ def startup_service(service, configdir):
     print "\t " + ' '.join(cmd)
 
     try:
-        #status = subprocess.call(cmd)
         newenv = os.environ.copy()
         newenv['ANCHORE_LOGFILE'] = logfile
         pipes = subprocess.Popen(cmd, env=newenv)
@@ -128,13 +131,19 @@ def startup_service(service, configdir):
         raise Exception("process exited: " + str(rc))
     except Exception as err:
         traceback.print_exc()
-        print "service process exited at ("+str(time.ctime())+"): " + str(err)
+        print "service process exited at (" + str(time.ctime()) + "): " + str(err)
 
     print "exiting service thread"
-    return(False)
+    return (False)
+
 
 service_map = {
-    'analyzer': 'anchore-worker'
+    'analyzer': 'anchore-worker',
+    'simplequeue': 'anchore-simplequeue',
+    'apiext': 'anchore-api',
+    'catalog': 'anchore-catalog',
+    'kubernetes_webhook': 'anchore-kubernetes-webhook',
+    'policy_engine': 'anchore-policy-engine'
 }
 
 configdirs = []
@@ -147,31 +156,40 @@ if not configdirs:
     configdirs.append("/config")
 
 configfile = configdir = None
+localconfig = None
 for thedir in configdirs:
     thefile = os.path.join(thedir, 'config.yaml')
     if os.path.exists(thefile):
         configdir = thedir
         configfile = thefile
-        try: 
-            localconfig = anchore_engine.configuration.localconfig.read_config(configfile=configfile)
+        try:
+            localconfig = anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile)
         except Exception as err:
             print "cannot load local configuration: " + str(err)
             sys.exit(1)
         break
 
 if not configdir or not os.path.exists(configdir):
-    print "cannot locate configdir/config.yaml in ("+str(configdirs)+"): directory needs to exist with a valid config.yaml within"
+    print "cannot locate configdir/config.yaml in (" + str(configdirs) + "): directory needs to exist with a valid config.yaml within"
     sys.exit(1)
 
 if not configfile or not os.path.exists(configfile):
-    print "cannot locate configfile (config.yaml) in ("+str(configdirs)+"): valid config.yaml must exist"
+    print "cannot locate configfile (config.yaml) in (" + str(configdirs) + "): valid config.yaml must exist"
     sys.exit(1)
 
 startFailed = False
 if 'ANCHORE_ENGINE_SERVICES' in os.environ:
     services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
 else:
-    services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
+    config_services = localconfig.get('services', {})
+    if not config_services:
+        print('Warn: Did not find any services to execute in the config file')
+        sys.exit(1)
+
+    services = [ name for name, srv_conf in config_services.items() if srv_conf.get('enabled')]
+
+print('Starting services: {}'.format(services))
+#services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
 
 try:
     if not os.path.exists("/var/log/anchore"):
@@ -182,8 +200,14 @@ except Exception as err:
 
 pids = []
 keepalive_threads = []
-for service in services:
-    pidfile = "/var/run/"+service+".pid"
+for service_conf_name in services:
+    service = service_map.get(service_conf_name)
+    if not service:
+        print('Error: Twistd plugin mapping for service name {} not found in map: {}'.format(service_conf_name, service_map))
+        startFailed = True
+        break
+
+    pidfile = "/var/run/" + service + ".pid"
     try:
         service_thread = ServiceThread(startup_service, (service, configdir))
         keepalive_threads.append(service_thread)
