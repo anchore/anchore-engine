@@ -7,7 +7,6 @@ import uuid
 import time
 import traceback
 from contextlib import contextmanager
-from distutils.version import StrictVersion
 
 import sqlalchemy
 from sqlalchemy import Column, Integer, String
@@ -28,8 +27,6 @@ Session = None  # Standard session maker
 ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
-upgrade_enabled = True
-
 
 class UtilMixin(object):
     """
@@ -96,23 +93,45 @@ def get_entity_tables(entity):
     return(ftables)
 
 # some DB management funcs
-def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
-    """
-    Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
+def get_engine():
+    global engine
+    return(engine)
 
-    :param versions:
-    :param bootstrap_db:
-    :param specific_entities: a list of entity classes to initialize if a subset is desired. Expects a list of classes.
-    :return:
-    """
+def do_connect(db_params):
     global engine, Session, SerializableSession
 
-    if versions is None:
-        versions = {}
+    db_connect = db_params.get('db_connect', None)
+    db_connect_args = db_params.get('db_connect_args', None)
+    db_pool_size = db_params.get('db_pool_size', None)
+    db_pool_max_overflow = db_params.get('db_pool_max_overflow', None)
 
-    #localconfig = anchore_engine.configuration.localconfig.get_config()
+    if db_connect:
+        try:
+            if db_connect.startswith('sqlite://'):
+                # Special case for testing with sqlite. Not for production use, unit tests only
+                engine = sqlalchemy.create_engine(db_connect, echo=False)
+            else:
+                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=False,
+                                                  pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
+        except Exception as err:
+            raise Exception("could not connect to DB - exception: " + str(err))
+    else:
+        raise Exception(
+            "could not locate db_connect string from configuration: add db_connect parameter to configuration file")
 
-    ret = True
+    # set up the global session
+    try:
+        #                SerializableSession = sessionmaker(bind=engine.execution_options(isolation_level='SERIALIZABLE'))
+        Session = sessionmaker(bind=engine)
+    except Exception as err:
+        raise Exception("could not create DB session - exception: " + str(err))
+
+    # set up thread-local session factory
+    init_thread_session()
+
+    return(True)
+
+def get_params(localconfig):
     try:
         db_auth = localconfig['credentials']['database']
 
@@ -133,42 +152,56 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
 
+    ret = {
+        'db_connect': db_connect,
+        'db_connect_args': db_connect_args,
+        'db_pool_size': db_pool_size,
+        'db_pool_max_overflow': db_pool_max_overflow
+    }
+    return(ret)
+
+def do_create(specific_tables):
+    global engine, Base
+
+    try:
+        if specific_tables:
+            logger.info('Initializing only a subset of tables as requested: {}'.format(specific_tables))
+            Base.metadata.create_all(engine, tables=specific_tables)
+        else:
+            Base.metadata.create_all(engine)
+    except Exception as err:
+        raise Exception("could not create/re-create DB tables - exception: " + str(err))
+
+
+def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
+    """
+    Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
+
+    :param versions:
+    :param bootstrap_db:
+    :param specific_entities: a list of entity classes to initialize if a subset is desired. Expects a list of classes.
+    :return:
+    """
+    global engine, Session, SerializableSession
+
+    if versions is None:
+        versions = {}
+
+    ret = True
+
+    # get params from configuration
+    db_params = get_params(localconfig)
+
+    # enter loop to try connecting to the DB - upon connect, create the ORM tables if they dont exist
     db_connect_retry_max = 60
     for count in range(0, db_connect_retry_max):
         try:
-            if db_connect:
-                try:
-                    if db_connect.startswith('sqlite://'):
-                        # Special case for testing with sqlite. Not for production use, unit tests only
-                        engine = sqlalchemy.create_engine(db_connect, echo=False)
-                    else:
-                        engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=False,
-                                                          pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
-                except Exception as err:
-                    raise Exception("could not connect to DB - exception: " + str(err))
-            else:
-                raise Exception(
-                    "could not locate db_connect string from configuration: add db_connect parameter to configuration file")
 
-            # set up the global session
-            try:
-#                SerializableSession = sessionmaker(bind=engine.execution_options(isolation_level='SERIALIZABLE'))
-                Session = sessionmaker(bind=engine)
-            except Exception as err:
-                raise Exception("could not create DB session - exception: " + str(err))
-
-            # set up thread-local session factory
-            init_thread_session()
+            # connect
+            rc = do_connect(db_params)
 
             # create
-            try:
-                if specific_tables:
-                    logger.info('Initializing only a subset of tables as requested: {}'.format(specific_tables))
-                    Base.metadata.create_all(engine, tables=specific_tables)
-                else:
-                    Base.metadata.create_all(engine)
-            except Exception as err:
-                raise Exception("could not create/re-create DB tables - exception: " + str(err))
+            rc = do_create(specific_tables)
 
             break
         except Exception as err:
@@ -178,12 +211,14 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
                 log.err("could not connect to db, retrying in 10 seconds - exception: " + str(err))
                 time.sleep(5)
 
-    if bootstrap_db:
-        from anchore_engine.db import db_anchore, db_users
+    # these imports need to be here, after the connect/creates have happened
+    from anchore_engine.db import db_anchore, db_users
+    
+    with session_scope() as dbsession:
+        # version check
+        version_record = db_anchore.get(session=dbsession)
 
-        with session_scope() as dbsession:
-            # version check
-            version_record = db_anchore.get(session=dbsession)
+        if bootstrap_db:
             if not version_record:
                 db_anchore.add(versions['service_version'], versions['db_version'], versions, session=dbsession)
                 version_record = db_anchore.get(session=dbsession)
@@ -234,247 +269,26 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
                     raise Exception(
                         "Initialization failed: could not add users from config into DB - exception: " + str(err))
 
+    # finally, check to make sure that the running code DB version is == the running DB version
+    try:
         print ("Starting up version: " + json.dumps(versions))
         print ("\tDB version: " + json.dumps(version_record))
 
-        try:
-            rc = do_upgrade(version_record, versions)
-            if rc:
-                # if successful upgrade, set the DB values to the incode values
-                with session_scope() as dbsession:
-                    db_anchore.add(versions['service_version'], versions['db_version'], versions, session=dbsession)
+        # version checks
+        code_db_version = versions.get('db_version', None)
+        running_db_version = version_record.get('db_version', None)
 
-        except Exception as err:
-            raise Exception("Initialization failed: upgrade failed - exception: " + str(err))
-
-    return (ret)
-
-
-def do_upgrade(inplace, incode):
-    global engine, upgrade_enabled, upgrade_functions
-
-    if StrictVersion(inplace['db_version']) > StrictVersion(incode['db_version']):
-        raise Exception("DB downgrade not supported")
-
-    if inplace['db_version'] != incode['db_version']:
-        print ("upgrading DB: from=" + str(inplace['db_version']) + " to=" + str(incode['db_version']))
-
-        if upgrade_enabled:
-            db_current = inplace['db_version']
-            db_target = incode['db_version']
-
-            for version_tuple, functions_to_run in upgrade_functions:
-                db_from = version_tuple[0]
-                db_to = version_tuple[1]
-
-                # finish if we've reached the target version
-                if StrictVersion(db_current) >= StrictVersion(db_target):
-                    # done
-                    break
-                elif StrictVersion(db_to) <= StrictVersion(db_current):
-                    # Upgrade code is for older version, skip it.
-                    continue
-                else:
-                    print("Executing upgrade functions for version {} to {}".format(db_from, db_to))
-                    for fn in functions_to_run:
-                        try:
-                            print("Executing upgrade function: {}".format(fn.__name__))
-                            fn()
-                        except Exception as e:
-                            log.exception('Upgrade function {} raised an error. Failing upgrade.'.format(fn.__name__))
-                            raise e
-
-                    db_current = db_to
-
-    if inplace['service_version'] != incode['service_version']:
-        print ("upgrading service: from=" + str(inplace['service_version']) + " to=" + str(incode['service_version']))
-
-    ret = True
-    return (ret)
-
-
-def db_upgrade_001_002():
-    global engine
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image
-
-    try:
-        table_name = 'registries'
-        column = Column('registry_type', String, primary_key=False)
-        cn = column.compile(dialect=engine.dialect)
-        ct = column.type.compile(engine.dialect)
-        engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
-
-        with session_scope() as dbsession:
-            registry_records = db_registries.get_all(session=dbsession)
-            for registry_record in registry_records:
-                try:
-                    if not registry_record['registry_type']:
-                        registry_record['registry_type'] = 'docker_v2'
-                        db_registries.update_record(registry_record, session=dbsession)
-                except Exception as err:
-                    pass
-    except Exception as err:
-        raise Exception("failed to perform DB registry table upgrade - exception: " + str(err))
-
-    try:
-        table_name = 'policy_bundle'
-        column = Column('policy_source', String, primary_key=False)
-        cn = column.compile(dialect=engine.dialect)
-        ct = column.type.compile(engine.dialect)
-        engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
-
-        with session_scope() as dbsession:
-            policy_records = db_policybundle.get_all(session=dbsession)
-            for policy_record in policy_records:
-                try:
-                    if not policy_record['policy_source']:
-                        policy_record['policy_source'] = 'local'
-                        db_policybundle.update_record(policy_record, session=dbsession)
-                except Exception as err:
-                    pass
+        if not code_db_version or not running_db_version:
+            raise Exception("cannot get either the running DB version or support code DB version: (running/code) (" + str([running_db_version, code_db_version]) + ")")
+        elif code_db_version != running_db_version:
+            raise Exception("DB version mismatch - code code_db_version="+str(code_db_version)+" running_db_version="+str(running_db_version)+" - will need to sync the DB version with this version of anchore-engine before the service will start.")
+        else:
+            logger.info("DB version checks passed")
 
     except Exception as err:
-        raise Exception("failed to perform DB policy_bundle table upgrade - exception: " + str(err))
+        raise err
 
-    return (True)
-
-
-def db_upgrade_002_003():
-    global engine
-    from sqlalchemy import Column, BigInteger
-
-    try:
-        table_name = 'images'
-        column = Column('size', BigInteger)
-        cn = column.compile(dialect=engine.dialect)
-        ct = column.type.compile(engine.dialect)
-        engine.execute('ALTER TABLE %s ALTER COLUMN %s TYPE %s' % (table_name, cn, ct))
-    except Exception as e:
-        raise Exception('failed to perform DB upgrade on images.size field change from int to bigint - exception: {}'.format(str(e)))
-
-    try:
-        table_name = 'feed_data_gem_packages'
-        column = Column('id', BigInteger)
-        cn = column.compile(dialect=engine.dialect)
-        ct = column.type.compile(engine.dialect)
-        engine.execute('ALTER TABLE %s ALTER COLUMN %s TYPE %s' % (table_name, cn, ct))
-    except Exception as e:
-        raise Exception('failed to perform DB upgrade on feed_data_gem_packages.id field change from int to bigint - exception: {}'.format(str(e)))
-
-    return True
-
-def db_upgrade_003_004():
-    global engine
-    from sqlalchemy import Column, String, BigInteger
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image, db_archivedocument
-    import anchore_engine.services.common
-    import anchore_engine.subsys.archive
-
-    newcolumns = [
-        Column('arch', String, primary_key=False),
-        Column('distro', String, primary_key=False),
-        Column('distro_version', String, primary_key=False),
-        Column('dockerfile_mode', String, primary_key=False),
-        Column('image_size', BigInteger, primary_key=False),
-        Column('layer_count', Integer, primary_key=False)
-    ]
-    for column in newcolumns:
-        try:
-            table_name = 'catalog_image'
-            cn = column.compile(dialect=engine.dialect)
-            ct = column.type.compile(engine.dialect)
-            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
-        except Exception as e:
-            log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-            raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-
-    with session_scope() as dbsession:
-        image_records = db_catalog_image.get_all(session=dbsession)
-
-    for image_record in image_records:
-        userId = image_record['userId']
-        imageDigest = image_record['imageDigest']
-
-        log.err("upgrade: processing image " + str(imageDigest) + " : " + str(userId))
-        try:
-
-            # get the image analysis data from archive
-            image_data = None
-            with session_scope() as dbsession:
-                result = db_archivedocument.get(userId, 'analysis_data', imageDigest, session=dbsession)
-            if result and 'jsondata' in result:
-                image_data = json.loads(result['jsondata'])['document']
-                
-            if image_data:
-                # update the record and store
-                anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
-                with session_scope() as dbsession:
-                    db_catalog_image.update_record(image_record, session=dbsession)
-            else:
-                raise Exception("upgrade: no analysis data found in archive for image: " + str(imageDigest))
-        except Exception as err:
-            log.err("upgrade: failed to populate new columns with existing data for image (" + str(imageDigest) + "), record may be incomplete: " + str(err))
-
-    return True
-
-def db_upgrade_004_005():
-    global engine
-    from sqlalchemy import Column, String
-
-    newcolumns = [
-        Column('annotations', String, primary_key=False),
-    ]
-    for column in newcolumns:
-        try:
-            table_name = 'catalog_image'
-            cn = column.compile(dialect=engine.dialect)
-            ct = column.type.compile(engine.dialect)
-            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
-        except Exception as e:
-            log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-            raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-
-def db_upgrade_005_006():
-    global engine
-    from sqlalchemy import Column, Integer, DateTime
-
-    new_columns = [
-        {'table_name': 'queuemeta',
-         'columns': [
-             Column('max_outstanding_messages', Integer, primary_key=False, default=0),
-             Column('visibility_timeout', Integer, primary_key=False, default=0)
-         ]
-         },
-        {'table_name': 'queue',
-         'columns': [
-             Column('receipt_handle', String, primary_key=False),
-             Column('visible_at', DateTime, primary_key=False)
-
-         ]
-         }
-    ]
-
-    for table in new_columns:
-        for column in table['columns']:
-            try:
-                cn = column.compile(dialect=engine.dialect)
-                ct = column.type.compile(engine.dialect)
-                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
-            except Exception as e:
-                log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-                raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
-
-
-# Global upgrade definitions. For a given version these will be executed in order of definition here
-# If multiple functions are defined for a version pair, they will be executed in order.
-# If any function raises and exception, the upgrade is failed and halted.
-upgrade_functions = (
-    (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
-    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
-    (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
-    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
-    (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ])
-)
+    return (ret)
 
 @contextmanager
 def session_scope():
