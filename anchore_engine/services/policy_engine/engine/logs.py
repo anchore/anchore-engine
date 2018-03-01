@@ -25,6 +25,9 @@ class LoggingWrapper(object):
     def error(self, *args, **kwargs):
         twistd_logging.error(*args, **kwargs)
 
+    def spew(self, *args, **kwargs):
+        twistd_logging.spew(*args, **kwargs)
+
 
 def get_logger():
     """

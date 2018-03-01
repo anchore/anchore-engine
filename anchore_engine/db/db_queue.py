@@ -1,10 +1,8 @@
 import copy
 import datetime
-import json
 import hashlib
 import json
 import uuid
-import threading
 
 from sqlalchemy import asc, desc, or_, and_
 
@@ -12,37 +10,11 @@ from anchore_engine import db
 from anchore_engine.db import Queue, QueueMeta
 
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.caching import local_named_cache
 
 
-class TTLCache(object):
-    def __init__(self, default_ttl_sec=60):
-        self.cache = {}
-        self.default_ttl = default_ttl_sec
-
-    def cache_it(self, key, obj, ttl=None):
-        if ttl is None:
-            ttl = self.default_ttl
-        self.cache[key] = (datetime.datetime.now() + datetime.timedelta(seconds=ttl), obj)
-
-    def lookup(self, key):
-        found = self.cache.get(key)
-        if found and found[0] >= datetime.datetime.now():
-            logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
-            return found[1]
-        elif found:
-            self.cache.pop(key)
-            logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
-            return None
-        else:
-            logger.spew('TTLCache {} miss for {}'.format(self.__hash__(), key))
-            return None
-
-    def flush(self):
-        self.cache.clear()
-
-# Initialize a thread-local cache
-local_cache = threading.local()
-local_cache.qconfigs = TTLCache()
+def config_cache():
+    return local_named_cache('queue_configs')
 
 
 def _to_dict(obj):
@@ -67,7 +39,7 @@ def create(queueName, userId, session=None, max_outstanding_msgs=-1, visibility_
 
     if record:
         ret = _to_dict(record)
-        local_cache.qconfigs.cache_it(key=(userId, queueName), obj=copy.deepcopy(ret))
+        config_cache().cache_it(key=(userId, queueName), obj=copy.deepcopy(ret))
         
     return(ret)
 
@@ -129,13 +101,12 @@ def dequeue(queueName, userId, visibility_timeout=None, session=None):
     ret = {}
 
     # Is it cached?
-    cached_record = local_cache.qconfigs.lookup(key=(userId, queueName))
+    cached_record = config_cache().lookup(key=(userId, queueName))
     if cached_record:
         outstanding_count_setting = cached_record['max_outstanding_messages']
-
     else:
         metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
-        local_cache.qconfigs.cache_it(key=(userId, queueName), obj=copy.deepcopy(_to_dict(metarecord)))
+        config_cache().cache_it(key=(userId, queueName), obj=copy.deepcopy(_to_dict(metarecord)))
         outstanding_count_setting = metarecord.max_outstanding_messages
         metarecord = None
 

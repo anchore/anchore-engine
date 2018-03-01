@@ -114,7 +114,7 @@ def acquire_lease(lease_id, client_id, ttl=DEFAULT_LOCK_DURATION_SECONDS, timeou
             if not is_lock_acquisition_error(e):
                 logger.exception('Unexpected exception during lease acquire. Will retry')
 
-        logger.info('Retrying acquire of lease {} for {}'.format(lease_id, client_id))
+        logger.debug('Retrying acquire of lease {} for {}'.format(lease_id, client_id))
         t += 1
         time.sleep(1)
     else:
@@ -147,7 +147,7 @@ def release_lease(lease_id, client_id, epoch):
         if not lease:
             raise KeyError(lease_id)
         elif lease.held_by != client_id or lease.epoch > epoch:
-            logger.info('Lost the lease {}. Cannot update'.format(lease_id))
+            logger.warn('Lost the lease {}. Cannot update'.format(lease_id))
         else:
             lease.release_holder()
 
