@@ -341,7 +341,6 @@ class TestPolicyBundleEval(unittest.TestCase):
 
         self.assertNotIn(to_whitelist.match.id, map(lambda x: x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None, evaluation.bundle_decision.policy_decision.decisions))
 
-
     def testErrorEvaluation(self):
         bundle = {
             'id': 'someid',
@@ -370,6 +369,67 @@ class TestPolicyBundleEval(unittest.TestCase):
         with self.assertRaises(BundleTargetTagMismatchError) as f:
             evaluation = built.execute(img_obj, tag='docker.io/library/ubuntu:vivid-2015',
                                        context=ExecutionContext(db_session=db, configuration={}))
+
+    def testDeprecatedGateEvaluation(self):
+        bundle = {
+            'id': 'someid',
+            'version': '1_0',
+            'whitelists': [],
+            'policies': [
+                {'id': 'abc',
+                 'name': 'Deprecated Policy',
+                 'version': '1_0',
+                 'rules': [
+                     {
+                         'gate': 'PKGDIFF',
+                         'trigger': 'pkgadd',
+                         'params': [],
+                         'action': 'stop'
+                     },
+                     {
+                         'gate': 'always',
+                         'trigger': 'always',
+                         'action': 'go',
+                         'params': []
+                     }
+                 ]
+                 }
+            ],
+            'mappings': [
+                {'registry': '*', 'repository': '*', 'image': {'type': 'tag', 'value': '*'}, 'name': 'Default', 'policy_id': 'abc', 'whitelist_ids': []}
+            ]
+        }
+
+        print('Building executable bundle from default bundle')
+        test_tag = 'docker.io/library/ruby:latest'
+        with self.assertRaises(InitializationError) as ex:
+            built = build_bundle(bundle, for_tag=test_tag)
+            print('Got: {}'.format(built))
+
+            db = get_session()
+            img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+            if not img_obj:
+                self.load_images()
+
+            self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+            evaluation = built.execute(img_obj, tag=test_tag,
+                                       context=ExecutionContext(db_session=db, configuration={}))
+
+        built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=True)
+        print('Got: {}'.format(built))
+
+        db = get_session()
+        img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+        if not img_obj:
+            self.load_images()
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+
+        self.assertIsNotNone(evaluation, 'Got None eval')
+        print('Result: {}'.format(json.dumps(evaluation.json(), indent=2)))
+        self.assertIsNotNone(evaluation.warnings)
 
 
     def testPolicyInitError(self):

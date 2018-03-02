@@ -9,6 +9,10 @@ class PolicyError(StandardError):
     """
     severity = 'error'
 
+    def __init__(self, message, *args, **kwargs):
+        super(PolicyError, self).__init__(*args, **kwargs)
+        self.message = message
+
     @classmethod
     def caused_by(cls, cause):
         return PolicyError(cause)
@@ -156,13 +160,10 @@ class PolicyRuleValidationError(ValidationError):
     """
 
     def __init__(self, message=None, gate=None, trigger=None, rule_id=None):
-        super(PolicyRuleValidationError, self).__init__('Rule validation error' if not message else message) # {} on rule (id={},gate={},trigger={}). Error: {}".format(self.__class__.__name__, rule_id, gate, trigger, message))
+        super(PolicyRuleValidationError, self).__init__('Rule validation error' if not message else message)
         self.gate = gate
         self.trigger = trigger
         self.rule_id = rule_id
-
-    #def details(self):
-    #    return "{} on rule (id={},gate={},trigger={}). Error: {}".format(self.__class__.__name__, self.rule_id, self.gate, self.trigger, self.message)
 
 
 class GateNotFoundError(PolicyRuleValidationError):
@@ -171,7 +172,7 @@ class GateNotFoundError(PolicyRuleValidationError):
         :param valid_gates:
         :param kwargs:
         """
-        super(GateNotFoundError, self).__init__('The specified gate is not found in the policy engine as an option. Valid gates = {}'.format(valid_gates), **kwargs)
+        super(GateNotFoundError, self).__init__('The specified gate is not found in the policy engine as an option: {}. Valid gates = {}'.format(kwargs.get('gate', ''), valid_gates), **kwargs)
         self.valid_gates = valid_gates
 
 
@@ -182,13 +183,21 @@ class TriggerNotFoundError(PolicyRuleValidationError):
 
 class GateEvaluationError(EvaluationError):
     """
-    Error occurred during gate initializeation or context preparation
+    Error occurred during gate initialization or context preparation
     """
     gate = None
 
-    def __init__(self, gate, message):
-        super(GateEvaluationError, self).__init__('Gate evaluation failed for gate {} due to: {}. Detail: {}'.format(self.gate.__gate_name__, self.message, message))
-        self.gate = gate
+    def __init__(self, gate_name, message):
+        super(GateEvaluationError, self).__init__('Gate evaluation failed for gate {}. Detail: {}'.format(gate_name, message))
+        self.gate = gate_name
+
+
+class DeprecatedGateWarning(GateEvaluationError):
+    severity = 'warn'
+
+    def __init__(self, gate_name):
+        super(DeprecatedGateWarning, self).__init__(gate_name, 'Gate {} is deprecated and was not evaluated. Should be removed from policy'.format(gate_name))
+        self.gate_name = gate_name
 
 
 class ParameterValueInvalidError(PolicyRuleValidationError):

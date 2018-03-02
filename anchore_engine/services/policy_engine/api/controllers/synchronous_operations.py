@@ -230,7 +230,8 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         problems = []
         executable_bundle = None
         try:
-            executable_bundle = build_bundle(bundle, for_tag=tag)
+            # Allow deprecated gates here to support upgrade cases from old policy bundles.
+            executable_bundle = build_bundle(bundle, for_tag=tag, allow_deprecated=True)
             if executable_bundle.init_errors:
                 problems = executable_bundle.init_errors
         except InitializationError as e:
@@ -256,12 +257,12 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         resp.image_id = image_id
         resp.tag = tag
         resp.bundle = bundle
-        resp.matched_mapping_rule = eval_result.executed_mapping.json() if eval_result.executed_mapping else {}
+        resp.matched_mapping_rule = eval_result.executed_mapping.json() if eval_result.executed_mapping else False
         resp.last_modified = int(time.time())
         resp.final_action = eval_result.bundle_decision.final_decision.name
         resp.final_action_reason = eval_result.bundle_decision.reason
-        resp.matched_whitelisted_images_rule = eval_result.bundle_decision.whitelisted_image.json() if eval_result.bundle_decision.whitelisted_image else {}
-        resp.matched_blacklisted_images_rule = eval_result.bundle_decision.blacklisted_image.json() if eval_result.bundle_decision.blacklisted_image else {}
+        resp.matched_whitelisted_images_rule = eval_result.bundle_decision.whitelisted_image.json() if eval_result.bundle_decision.whitelisted_image else False
+        resp.matched_blacklisted_images_rule = eval_result.bundle_decision.blacklisted_image.json() if eval_result.bundle_decision.blacklisted_image else False
         resp.result = eval_result.as_table_json()
         resp.created_at = int(time.time())
         resp.evaluation_problems = [problem_from_exception(i) for i in eval_result.errors]
@@ -448,12 +449,9 @@ def validate_bundle(policy_bundle):
         resp = PolicyValidationResponse()
         problems = []
         try:
-            executable_bundle = build_bundle(policy_bundle)
+            executable_bundle = build_bundle(policy_bundle, allow_deprecated=False)
             if executable_bundle.init_errors:
                 problems = executable_bundle.init_errors
-        # except TriggerParameterValidationError as e:
-        #     problems = e.validation_errors
-        #     log.warn('Trigger parameter validation failed: {}'.format(e))
         except InitializationError as e:
             # Expand any validation issues
             problems = e.causes

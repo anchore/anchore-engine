@@ -13,6 +13,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
     TriggerEvaluationError, \
     TriggerNotFoundError, \
     GateEvaluationError, \
+    DeprecatedGateWarning, \
     GateNotFoundError, \
     ParameterValueInvalidError, \
     InvalidParameterError, \
@@ -208,8 +209,8 @@ class BundleDecision(object):
 
     def __init__(self, policy_decision, whitelist_match=None, blacklist_match=None):
         self.policy_decision = policy_decision
-        self.whitelisted_image = whitelist_match if whitelist_match else {}
-        self.blacklisted_image = blacklist_match if blacklist_match else {}
+        self.whitelisted_image = whitelist_match if whitelist_match else None
+        self.blacklisted_image = blacklist_match if blacklist_match else None
 
         if self.blacklisted_image:
             self.final_decision = GateAction.stop
@@ -223,10 +224,10 @@ class BundleDecision(object):
 
     def json(self):
         return {
-            'policy_decision': self.policy_decision.json() if self.policy_decision else {},
+            'policy_decision': self.policy_decision.json() if self.policy_decision else None,
             'policy_final_action': self.policy_decision.final_decision.name,
-            'matched_whitelisted_image_rule': self.whitelisted_image.json() if self.whitelisted_image else {},
-            'matched_blacklisted_image_rule': self.blacklisted_image.json() if self.blacklisted_image else {},
+            'matched_whitelisted_image_rule': self.whitelisted_image.json() if self.whitelisted_image else None,
+            'matched_blacklisted_image_rule': self.blacklisted_image.json() if self.blacklisted_image else None,
             'final_action': self.final_decision.name,
             'reason': self.reason
         }
@@ -269,7 +270,8 @@ class BundleExecution(object):
             'image_id': self.image_id,
             'tag': self.tag,
             'bundle_decision': self.bundle_decision.json() if self.bundle_decision else None,
-            'warnings': self.warnings
+            'warnings': [str(x) for x in self.warnings] if self.warnings else None,
+            'errors': [str(x) for x in self.errors] if self.errors else None
         }
 
     def _row_json(self, policy_rule_decision):
@@ -331,7 +333,66 @@ class BundleExecution(object):
         return table
 
 
-class ExecutablePolicyRule(object):
+class PolicyRule(object):
+    def __init__(self, policy_json=None):
+        self.gate_name = policy_json.get('gate')
+        self.trigger_name = policy_json.get('trigger')
+        self.rule_id = policy_json.get('id')
+
+        # Convert to lower-case for case-insensitive matches
+        self.trigger_params = {p.get('name').lower(): p.get('value') for p in policy_json.get('params')}
+
+        action = policy_json.get('action', '').lower()
+        try:
+            self.action = GateAction.__members__[action]
+        except KeyError:
+            raise InvalidGateAction(gate=self.gate_name, trigger=self.trigger_name, rule_id=self.rule_id, action=action,
+                                    valid_actions=filter(lambda x: not x.startswith('_'), GateAction.__dict__.keys()))
+
+        self.error_exc = None
+        self.errors = []
+
+    def execute(self, image_obj, exec_context):
+        pass
+
+
+def policy_rule_factory(policy_json, strict_validation=True):
+    try:
+        rule = ExecutablePolicyRule(policy_json)
+    except GateNotFoundError as ex:
+        if not strict_validation and DeprecatedPolicyRule.is_deprecated(policy_json):
+            rule = DeprecatedPolicyRule(policy_json)
+        else:
+            raise ex
+
+    return rule
+
+
+class DeprecatedPolicyRule(PolicyRule):
+    deprecated_gates = [
+        'pkgdiff',
+        'suiddiff',
+        'base_check'
+    ]
+
+    class DeprecatedGate(Gate):
+        def prepare_context(self, image_obj, context):
+            return context
+
+    def __init__(self, policy_json=None):
+        super(DeprecatedPolicyRule, self).__init__(policy_json)
+        self.errors.append(DeprecatedGateWarning(self.gate_name))
+        self.gate_cls = DeprecatedPolicyRule.DeprecatedGate
+
+    def execute(self, image_obj, exec_context):
+        return self.errors, []
+
+    @classmethod
+    def is_deprecated(cls, policy_json):
+        return policy_json.get('gate').lower() in cls.deprecated_gates
+
+
+class ExecutablePolicyRule(PolicyRule):
     """
     A single rule to be compiled and executable.
 
@@ -340,21 +401,7 @@ class ExecutablePolicyRule(object):
     """
 
     def __init__(self, policy_json=None):
-        self.gate_name = policy_json.get('gate')
-        self.trigger_name = policy_json.get('trigger')
-        self.rule_id = policy_json.get('id')
-
-        # Convert to lower-case for case-insensitive matches
-        self.trigger_params = { p.get('name').lower(): p.get('value') for p in policy_json.get('params')}
-
-        action = policy_json.get('action', '').lower()
-        try:
-            self.action = GateAction.__members__[action]
-        except KeyError:
-            raise InvalidGateAction(gate=self.gate_name, trigger=self.trigger_name, rule_id=self.rule_id, action=action, valid_actions=filter(lambda x: not x.startswith('_'), GateAction.__dict__.keys()))
-
-        self.error_exc = None
-        self.errors = []
+        super(ExecutablePolicyRule, self).__init__(policy_json)
 
         # Configure the trigger instance
         try:
@@ -400,7 +447,7 @@ class ExecutablePolicyRule(object):
 
         :param image_obj: The image to execute against
         :param exec_context: The prepared execution context from the gate init
-        :return: a tuple of a list of erros and a list of PolicyRuleDecisions, one for each fired trigger match produced by the trigger execution
+        :return: a tuple of a list of errors and a list of PolicyRuleDecisions, one for each fired trigger match produced by the trigger execution
         """
 
         matches = None
@@ -503,7 +550,7 @@ class ExecutablePolicy(VersionedEntityMixin):
 
     """
 
-    def __init__(self, raw_json=None):
+    def __init__(self, raw_json=None, strict_validation=True):
         self.raw = raw_json
         if not raw_json:
             raise ValueError('Empty whitelist json')
@@ -518,7 +565,7 @@ class ExecutablePolicy(VersionedEntityMixin):
 
         for x in raw_json.get('rules'):
             try:
-                self.rules.append(ExecutablePolicyRule(x))
+                self.rules.append(policy_rule_factory(x, strict_validation=strict_validation))
             except PolicyRuleValidationErrorCollection as e:
                 for err in e.validation_errors:
                     errors.append(err)
@@ -1012,14 +1059,16 @@ class ExecutableBundle(VersionedEntityMixin):
     each time for efficiency.
     """
 
-    def __init__(self, bundle_json, tag=None):
+    def __init__(self, bundle_json, tag=None, strict_validation=True):
         """
         Build and initialize the bundle. If errors are encountered they are buffered until the end and all returned
         at once in an aggregated InitializationError to ensure that all errors can be presented back to the user, not
         just the first one. The exception to that rule is the version check on the bundle itself, which is returned directly
         if the UnsupportedVersionError is raised since parsing cannot proceed reliably.
 
-        :param bundle_json:
+        :param bundle_json: the json the build
+        :param tag: a string tag value to use to execute mapping and optimize bundle for if present (optional)
+        :param strict_validation: bool to toggle support for deprecated gates
         """
         if not bundle_json:
             raise ValidationError('No bundle json received')
@@ -1071,7 +1120,7 @@ class ExecutableBundle(VersionedEntityMixin):
                     elif len(policy) > 1:
                         raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
 
-                    self.policies[rule.policy_id] = ExecutablePolicy(policy[0])
+                    self.policies[rule.policy_id] = ExecutablePolicy(policy[0], strict_validation=strict_validation)
                 except Exception as e:
                     if isinstance(e, InitializationError):
                         self.init_errors += e.causes
@@ -1232,7 +1281,7 @@ def build_empty_error_execution(image_obj, tag, bundle, errors=None, warnings=No
     return b
 
 
-def build_bundle(bundle_json, for_tag=None):
+def build_bundle(bundle_json, for_tag=None, allow_deprecated=False):
     """
     Parse and build an executable bundle from the input. Handles versions to construct the
     proper bundle object or raises an exception if version is not supported.
@@ -1248,7 +1297,7 @@ def build_bundle(bundle_json, for_tag=None):
 
         if for_tag:
             try:
-                bundle = ExecutableBundle(bundle_json, tag=for_tag)
+                bundle = ExecutableBundle(bundle_json, tag=for_tag, strict_validation=(not allow_deprecated))
             except KeyError:
                 bundle = None
         else:
