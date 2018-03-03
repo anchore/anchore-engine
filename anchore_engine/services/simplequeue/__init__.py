@@ -132,12 +132,12 @@ def initializeService(sname, config):
     except Exception as err:
         raise err
 
-    for qname, config in queues_to_bootstrap.iteritems():
-        anchore_engine.subsys.simplequeue.create_queue(name=qname, max_outstanding_msgs=config.get('max_outstanding_messages', 0), visibility_timeout=config.get('visibility_timeout', 0))
-
     for st in anchore_engine.services.common.subscription_types:
-        anchore_engine.subsys.simplequeue.create_queue(st)
+        if st not in queues_to_bootstrap:
+            queues_to_bootstrap[st] = default_queue_config
 
+    for qname, config in queues_to_bootstrap.iteritems():
+        anchore_engine.subsys.simplequeue.create_queue(name=qname, max_outstanding_msgs=config.get('max_outstanding_messages', -1), visibility_timeout=config.get('visibility_timeout', 0))
     return(True)
 
 def registerService(sname, config):

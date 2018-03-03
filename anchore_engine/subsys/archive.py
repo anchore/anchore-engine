@@ -7,6 +7,7 @@ import re
 import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.db import db_archivedocument
+
 from anchore_engine.subsys import logger
 
 use_db = False
@@ -14,7 +15,9 @@ data_volume = None
 archive_initialized = False
 archive_driver = 'db'
 
-def initialize():
+archive_drivers = ['db', 'localfs']
+
+def initialize(use_driver=None):
     global archive_initialized, data_volume, use_db, archive_driver
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -25,66 +28,106 @@ def initialize():
         if 'archive_data_dir' in myconfig:
             data_volume = myconfig['archive_data_dir']
 
-        archive_driver = 'db'
+        configured_archive_driver = 'db'
         if 'archive_driver' in myconfig:
-            archive_driver = myconfig['archive_driver']
-        
+            configured_archive_driver = myconfig['archive_driver']
         if 'use_db' in myconfig and myconfig['use_db']:
-            archive_driver = 'db'
+            configured_archive_driver = 'db'
+
+        if configured_archive_driver not in archive_drivers:
+            raise Exception("driver set in config.yaml ("+str(configured_archive_driver)+") is not a valid driver: " + str(archive_drivers))
+
+        if use_driver:
+            if use_driver not in archive_drivers:
+                raise Exception("specified driver to initialize ("+str(use_driver)+") is not a valid driver: " + str(archive_drivers))
+            elif use_driver != configured_archive_driver:
+                raise Exception("specified driver to use ("+str(use_driver)+") does not match what is set in config.yaml ("+str(configured_archive_driver)+") - please update config.yaml to desired driver and try again")
+            archive_driver=use_driver
+        else:
+            archive_driver = configured_archive_driver
 
         # driver specific initializations here
         if archive_driver == 'db':
             use_db = True
         else:
             use_db = False
-            initialize_archive_file(myconfig)
+
+        initialize_archive_file(myconfig)
 
     except Exception as err:
         raise err
 
     logger.debug("archive initialization config: " + str([archive_driver, use_db, data_volume]))
+    
+    archive_initialized = True
+    return(True)
 
-    # this section is for conversion on initialization between db driver and other driver
+def get_driver_list():
+    global archive_drivers
+    return(archive_drivers)
+
+def do_archive_convert(localconfig, from_driver, to_driver):
+    myconfig = localconfig['services']['catalog']
+    if from_driver == 'db' and to_driver == 'localfs':
+        return(_converter_db_to_localfs(myconfig))
+
+    elif from_driver == 'localfs' and to_driver == 'db':
+        return(_converter_localfs_to_db(myconfig))
+
+    else:
+        raise Exception("no converter available for archive driver from="+str(from_driver)+" to="+str(to_driver))
+
+    return(False)
+
+def _converter_db_to_localfs(myconfig):
+    if 'archive_data_dir' not in myconfig:
+        raise Exception("conversion to localfs from db requires archive_data_dir to be specified in config.yaml, cannot proceed")
+
     with db.session_scope() as dbsession:
-        logger.debug("running archive driver converter")
+        logger.debug("running archive driver converter (db->localfs")
+        # need to check if any archive records DO have the document field populated, and if so try to export to localfs
+        archive_matches = db_archivedocument.list_all_notempty(session=dbsession)
+        for archive_match in archive_matches:
+            userId = archive_match['userId']
+            bucket = archive_match['bucket']
+            archiveid = archive_match['archiveId']
+            archive_record = db_archivedocument.get(userId, bucket, archiveid, session=dbsession)
+            db_data = json.loads(archive_record['jsondata'])
 
-        if use_db:
-            # need to check if any archive records do not have the document field populated, and if so try to import from localfs
-            dbfilter = {'jsondata': '{}'}
-            archive_matches = db_archivedocument.list_all(session=dbsession, **dbfilter)
-            for archive_match in archive_matches:
-                userId = archive_match['userId']
-                bucket = archive_match['bucket']
-                archiveid = archive_match['archiveId']
-                try:
-                    fs_data = read_archive_file(userId, bucket, archiveid, driver_override='localfs')
-                except Exception as err:
-                    logger.debug("no data: " + str(err))
-                    fs_data = None
-
-                if fs_data:
-                    logger.debug("document data - converting driver->DB: " + str([userId, bucket, archiveid]))
-                    with db.session_scope() as subdbsession:
-                        db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': json.dumps(fs_data)}, session=subdbsession)
-                    delete_archive_file(userId, bucket, archiveid, driver_override='localfs')
-                
-        else:
-            # need to check if any archive records DO have the document field populated, and if so try to export to localfs
-            archive_matches = db_archivedocument.list_all_notempty(session=dbsession)
-            for archive_match in archive_matches:
-                userId = archive_match['userId']
-                bucket = archive_match['bucket']
-                archiveid = archive_match['archiveId']
-                archive_record = db_archivedocument.get(userId, bucket, archiveid, session=dbsession)
-                db_data = json.loads(archive_record['jsondata'])
-
-                logger.debug("document data - converting DB->driver: " + str([userId, bucket, archiveid]))
-                dataref = write_archive_file(userId, bucket, archiveid, db_data, driver_override='localfs')
-                with db.session_scope() as subdbsession:
-                    db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': "{}"}, session=subdbsession)                
+            logger.debug("document data - converting DB->driver: " + str([userId, bucket, archiveid]))
+            dataref = write_archive_file(userId, bucket, archiveid, db_data, driver_override='localfs')
+            with db.session_scope() as subdbsession:
+                db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': "{}"}, session=subdbsession)                
 
         logger.debug("archive driver converter complete")
-    archive_initialized = True
+    return(True)
+
+def _converter_localfs_to_db(myconfig):
+    if 'archive_data_dir' not in myconfig:
+        raise Exception("conversion to db from localfs requires archive_data_dir (location of previous localfs archive data) to be specified in config.yaml, cannot proceed")
+
+    with db.session_scope() as dbsession:
+        logger.debug("running archive driver converter (localfs->db)")
+        # need to check if any archive records do not have the document field populated, and if so try to import from localfs
+        dbfilter = {'jsondata': '{}'}
+        archive_matches = db_archivedocument.list_all(session=dbsession, **dbfilter)
+        for archive_match in archive_matches:
+            userId = archive_match['userId']
+            bucket = archive_match['bucket']
+            archiveid = archive_match['archiveId']
+            try:
+                fs_data = read_archive_file(userId, bucket, archiveid, driver_override='localfs')
+            except Exception as err:
+                logger.debug("no data: " + str(err))
+                fs_data = None
+
+            if fs_data:
+                logger.debug("document data - converting driver->DB: " + str([userId, bucket, archiveid]))
+                with db.session_scope() as subdbsession:
+                    db_archivedocument.add(userId, bucket, archiveid, archiveid+".json", {'jsondata': json.dumps(fs_data)}, session=subdbsession)
+                delete_archive_file(userId, bucket, archiveid, driver_override='localfs')
+
+        logger.debug("archive driver converter complete")
     return(True)
 
 def put_document(userId, bucket, archiveId, data):
@@ -310,6 +353,7 @@ def initialize_archive_file(myconfig):
 
 def get_archive_filepath(userId, bucket, archiveId):
     global data_volume, use_db
+
     ret = None
     if data_volume:
         filehash = hashlib.md5(archiveId).hexdigest()
