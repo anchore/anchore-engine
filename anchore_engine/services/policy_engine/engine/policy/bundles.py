@@ -1226,7 +1226,7 @@ def build_empty_error_execution(image_obj, tag, bundle, errors=None, warnings=No
     """
 
     b = BundleExecution(bundle=bundle, image_id=image_obj.id, tag=tag)
-    b.bundle_decision = FailurePolicyDecision()
+    b.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
     b.errors = errors
     b.warnings = warnings
     return b
