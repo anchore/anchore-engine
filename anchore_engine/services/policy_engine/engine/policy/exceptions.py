@@ -172,7 +172,7 @@ class GateNotFoundError(PolicyRuleValidationError):
         :param valid_gates:
         :param kwargs:
         """
-        super(GateNotFoundError, self).__init__('The specified gate is not found in the policy engine as an option: {}. Valid gates = {}'.format(kwargs.get('gate', ''), valid_gates), **kwargs)
+        super(GateNotFoundError, self).__init__('The specified gate is not found in the policy engine as a valid gate name', **kwargs)
         self.valid_gates = valid_gates
 
 
