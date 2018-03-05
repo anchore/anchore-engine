@@ -273,6 +273,7 @@ class Gate(object):
 
     __gate_name__ = None
     __triggers__ = []
+    __deprecated_trigger_names__ = []
     __description__ = None
 
     @classmethod
@@ -287,6 +288,13 @@ class Gate(object):
     @classmethod
     def trigger_names(cls):
         return [x.__trigger_name__.lower() for x in cls.__triggers__]
+
+    @classmethod
+    def is_deprecated_trigger(cls, name):
+        if name is None:
+            raise ValueError('Trigger name cannot be None')
+
+        return name.lower() in cls.__deprecated_trigger_names__
 
     @classmethod
     def get_trigger_named(cls, name):

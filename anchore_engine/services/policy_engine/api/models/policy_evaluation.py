@@ -241,6 +241,8 @@ class PolicyEvaluation(Model):
         :param matched_whitelisted_images_rule: The matched_whitelisted_images_rule of this PolicyEvaluation.
         :type matched_whitelisted_images_rule: object
         """
+        if matched_whitelisted_images_rule is None:
+            raise ValueError("Invalid value for `matched_whitelisted_images_rule`, must not be `None`")
 
         self._matched_whitelisted_images_rule = matched_whitelisted_images_rule
 
