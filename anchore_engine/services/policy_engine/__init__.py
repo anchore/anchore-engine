@@ -111,8 +111,8 @@ def registerService(sname, config):
     reg_return = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
     logger.info('Registration complete.')
 
-    #if reg_return:
-    #    process_preflight()
+    if reg_return:
+        process_preflight()
 
     service_record = {'hostid': config['host_id'], 'servicename': sname}
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
