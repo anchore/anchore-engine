@@ -491,16 +491,15 @@ def describe_policy():
                 tr.name = t.__trigger_name__
                 tr.description = t.__description__ if t.__description__ else ''
                 tr.parameters = []
-
                 params = t._parameters()
                 if params:
-                    for param in params.values():
+                    param_list = sorted(params.values(), key=lambda x: x.sort_order)
+                    for param in param_list:
                         tps = TriggerParamSpec()
                         tps.name = param.name
                         tps.description = param.description
                         tps.validator = param.validator.json()
                         tps.required = param.required
-
                         tr.parameters.append(tps)
 
                 g.triggers.append(tr)

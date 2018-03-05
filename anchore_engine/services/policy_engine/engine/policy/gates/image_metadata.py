@@ -39,9 +39,9 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __checks__ = CheckOperations(__ops__)
     __value_validator__ = lambda x: True
 
-    attribute = EnumStringParameter(name='attributes', description='Attribute name to apply as rvalue to the check operation', enum_values=__valid_attributes__.keys(), is_required=True)
-    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True)
-    check_value = TriggerParameter(name='check_value', description='The lvalue in the check operation.', validator=TypeValidator('string'))
+    attribute = EnumStringParameter(name='attributes', description='Attribute name to apply as rvalue to the check operation', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
+    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True, sort_order=2)
+    check_value = TriggerParameter(name='check_value', description='The lvalue in the check operation.', validator=TypeValidator('string'), sort_order=3)
 
     def evaluate(self, image_obj, context):
         attr = self.attribute.value()

@@ -81,9 +81,9 @@ class DirectiveCheckTrigger(BaseTrigger):
     __trigger_name__ = 'directivecheck'
     __description__ = 'Triggers if any directives in the list are found to match the described condition in the dockerfile'
 
-    directive = EnumStringParameter(name='directives', description='The Dockerfile instruction to check', enum_values=DIRECTIVES, is_required=True, related_to='check')
-    check = EnumStringParameter(name='check', description='The type of check to perform', enum_values=CONDITIONS, is_required=True, related_to='directive, check_value')
-    check_value = TriggerParameter(name='check_value', description='The value to check the dockerfile instruction against', is_required=False, related_to='directive, check', validator=TypeValidator("string"))
+    directive = EnumStringParameter(name='directives', description='The Dockerfile instruction to check', enum_values=DIRECTIVES, is_required=True, related_to='check', sort_order=1)
+    check = EnumStringParameter(name='check', description='The type of check to perform', enum_values=CONDITIONS, is_required=True, related_to='directive, check_value', sort_order=2)
+    check_value = TriggerParameter(name='check_value', description='The value to check the dockerfile instruction against', is_required=False, related_to='directive, check', validator=TypeValidator("string"), sort_order=3)
 
     _conditions_requiring_check_val = [
         '=', '!=', 'like', 'not_like', 'in', 'not_in'
