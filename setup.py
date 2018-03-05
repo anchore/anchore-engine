@@ -45,5 +45,9 @@ setup(
     include_package_data=True,
     package_data=package_data,
     install_requires=requirements,
-    scripts=scripts
+    scripts=scripts,
+    entry_points='''
+    [console_scripts]
+    anchore-manager=anchore_manager.cli:main_entry
+    '''
 )
