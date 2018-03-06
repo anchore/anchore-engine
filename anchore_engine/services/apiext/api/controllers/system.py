@@ -69,11 +69,16 @@ def get_status():
     return_object = {}
     httpcode = 500
 
+    code_version = anchore_engine.version.version
+    db_version = anchore_engine.version.db_version
+
     try:
         return_object = {
             'busy':False,
             'up':True,
-            'message': 'all good'
+            'message': 'all good',
+            'version': code_version,
+            'db_version': db_version
         }
         httpcode = 200
     except Exception as err:
