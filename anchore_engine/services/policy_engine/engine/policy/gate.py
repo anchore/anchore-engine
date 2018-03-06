@@ -9,7 +9,7 @@ import inspect
 import anchore_engine
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import TriggerParameter
-from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, PolicyRuleValidationError, InvalidParameterError,  \
+from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, InvalidParameterError,  \
     TriggerEvaluationError, PolicyRuleValidationErrorCollection, ValidationError
 
 

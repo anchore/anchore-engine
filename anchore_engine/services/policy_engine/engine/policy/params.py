@@ -261,12 +261,18 @@ class TriggerParameter(object):
     To create a parameter for a trigger, instantiate this class with a validations function.
     param = TriggerParameter('strname', description='a string', is_required=False, validator=lambda x: bool(str(x)))
 
+
+    In kwargs, options are:
+
+    sort_order: allows the trigger to define the output order of parameters in the policy spec display. It does not affect evaluation.
+
     """
 
     # Optional class-level validator if it does not require instance-specific configuration
     __validator__ = None
 
-    def __init__(self, name, description=None, is_required=False, related_to=None, validator=None):
+
+    def __init__(self, name, description=None, is_required=False, related_to=None, validator=None, **kwargs):
         """
 
         :param name: The name to use for the parameter, will be matched and displayed in docs (converted to lower-case for comparisons)
@@ -280,6 +286,8 @@ class TriggerParameter(object):
         self.required = is_required
         self.related_params = related_to
         self._param_value = None
+        self.sort_order = kwargs.get('sort_order', -1)
+
         if validator:
             self.validator = validator
         else:
@@ -377,7 +385,7 @@ class EnumStringParameter(TriggerParameter):
     __choices__ = None
     __validator__ = None
 
-    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None):
+    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None, **kwargs):
         """
         :param name:
         :param description:
@@ -388,7 +396,7 @@ class EnumStringParameter(TriggerParameter):
         if not enum_values:
             enum_values = self.__choices__
 
-        super(EnumStringParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=EnumValidator(enum_values))
+        super(EnumStringParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=EnumValidator(enum_values), **kwargs)
 
 
 class EnumCommaDelimStringListParameter(TriggerParameter):
@@ -400,7 +408,7 @@ class EnumCommaDelimStringListParameter(TriggerParameter):
     __choices__ = None
     __validator__ = None
 
-    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None):
+    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None, **kwargs):
         """
         :param name:
         :param description:
@@ -411,7 +419,7 @@ class EnumCommaDelimStringListParameter(TriggerParameter):
         if not enum_values:
             enum_values = self.__choices__
 
-        super(EnumCommaDelimStringListParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=DelimitedEnumStringValidator(enum_values, delimiter=','))
+        super(EnumCommaDelimStringListParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=DelimitedEnumStringValidator(enum_values, delimiter=','), **kwargs)
 
     def _output_value(self):
         return delim_parser(self._param_value, item_delimiter=',')
