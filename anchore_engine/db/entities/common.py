@@ -131,6 +131,11 @@ def do_connect(db_params):
 
     return(True)
 
+def do_disconnect():
+    global engine
+    if engine:
+        engine.dispose()
+
 def get_params(localconfig):
     try:
         db_auth = localconfig['credentials']['database']

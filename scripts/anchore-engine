@@ -9,6 +9,8 @@ import threading
 import subprocess
 import watchdog
 import anchore_engine.configuration.localconfig
+import anchore_engine.db.entities.upgrade
+
 from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
 
@@ -177,6 +179,34 @@ if not configfile or not os.path.exists(configfile):
     print "cannot locate configfile (config.yaml) in (" + str(configdirs) + "): valid config.yaml must exist"
     sys.exit(1)
 
+# preflight - db checks
+try:
+    db_params = anchore_engine.db.entities.common.get_params(localconfig)
+
+    try:
+        rc = anchore_engine.db.entities.common.do_connect(db_params)
+    except Exception as err:
+        raise Exception("Cannot connect to configured DB - exception: " + str(err))
+
+    code_versions = db_versions = None
+    try:
+        code_versions, db_versions = anchore_engine.db.entities.upgrade.get_versions()
+    except Exception as err:
+        pass
+
+    if code_versions and db_versions:
+        if code_versions['db_version'] != db_versions['db_version']:
+            raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
+    else:
+        print('Warn: no existing anchore DB data can be discovered, assuming bootstrap')
+
+except Exception as err:
+    raise err
+
+finally:
+    rc = anchore_engine.db.entities.common.do_disconnect()
+
+# start up the services
 startFailed = False
 if 'ANCHORE_ENGINE_SERVICES' in os.environ:
     services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
@@ -216,7 +246,7 @@ for service_conf_name in services:
         while not os.path.exists(pidfile) and tries < max_tries:
             time.sleep(1)
             tries = tries + 1
-
+        time.sleep(2)
     except Exception as err:
         startFailed = True
         print "service start failed - exception: " + str(err)
@@ -228,6 +258,7 @@ if startFailed:
 
     sys.exit(1)
 else:
+    # start up the log watchers
     try:
         observer = Observer()
         observer.schedule(AnchoreLogWatcher(), path="/var/log/anchore/")
