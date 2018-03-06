@@ -5,6 +5,7 @@ from anchore_engine.db import db_services, session_scope
 from anchore_engine.subsys import logger
 import anchore_engine.subsys.metrics
 import anchore_engine.configuration.localconfig
+import anchore_engine.version
 
 service_statuses = {}
 
@@ -17,11 +18,16 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     if service not in service_statuses:
         service_statuses[service] = {}
 
+    code_version = anchore_engine.version.version
+    db_version = anchore_engine.version.db_version
+
     service_statuses[service]['up']= up
     service_statuses[service]['available'] = available
     service_statuses[service]['busy'] = busy 
     service_statuses[service]['message'] = message
     service_statuses[service]['detail'] = detail
+    service_statuses[service]['version'] = code_version
+    service_statuses[service]['db_version'] = db_version
 
     if update_db:
         update_status(service_record)
