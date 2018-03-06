@@ -2,7 +2,7 @@ import unittest
 import os
 import datetime
 from requests.exceptions import HTTPError
-from anchore_engine.clients.feeds.anchore_io.feeds import get_client, InvalidCredentialsError, InsufficientAccessTierError
+from anchore_engine.clients.feeds.feed_service.feeds import get_client, InvalidCredentialsError, InsufficientAccessTierError
 
 
 class TestAnchoreIOFeedClient(unittest.TestCase):
