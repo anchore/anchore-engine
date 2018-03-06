@@ -181,6 +181,17 @@ paths:
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.subscriptions
       operationId: list_subscriptions
       summary: List all subscriptions
+      parameters:
+      - name: 'subscription_key'
+        in: query
+        type: string
+        description: "filter only subscriptions matching key"
+        required: false
+      - name: 'subscription_type'
+        in: query
+        type: string
+        description: "filter only subscriptions matching type"
+        required: false
       responses:
         200:
           description: Subscription listing

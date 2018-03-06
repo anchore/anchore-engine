@@ -33,13 +33,13 @@ def make_response_subscription(user_auth, subscription_record, params):
     return (ret)
 
 
-def list_subscriptions():
+def list_subscriptions(subscription_key=None, subscription_type=None):
     """
     GET /subscriptions
     :return: list of subscription objects serialized into json
     """
 
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'subscription_key': subscription_key, 'subscription_type': subscription_type})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -50,7 +50,7 @@ def list_subscriptions():
     userId, pw = user_auth
 
     try:
-        subscription_records = catalog.get_subscription(user_auth)
+        subscription_records = catalog.get_subscription(user_auth, subscription_key=subscription_key, subscription_type=subscription_type)
         for subscription_record in subscription_records:
             return_object.append(make_response_subscription(user_auth, subscription_record, params))
         httpcode = 200
