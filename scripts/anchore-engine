@@ -246,6 +246,7 @@ for service_conf_name in services:
         while not os.path.exists(pidfile) and tries < max_tries:
             time.sleep(1)
             tries = tries + 1
+
         time.sleep(2)
     except Exception as err:
         startFailed = True

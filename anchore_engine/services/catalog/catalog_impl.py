@@ -994,13 +994,17 @@ def system_services_servicename_hostId(dbsession, request_inputs, inservicename,
                         return_object = [service_record]
                         httpcode = 200
                     elif method == 'DELETE':
-                        db_services.delete(hostId, servicename, session=dbsession)
-                        return_object = True
-                        httpcode = 200
+                        if service_record['status']:
+                            httpcode = 409
+                            raise Exception("cannot delete an active service")
+                        else:
+                            db_services.delete(hostId, servicename, session=dbsession)
+                            return_object = True
+                            httpcode = 200
 
         if not return_object:
             httpcode = 404
-            raise Exception("servicename/hostId not found")
+            raise Exception("servicename/host_id ("+str(inservicename)+"/"+str(inhostId)+") not found in anchore-engine")
             
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)

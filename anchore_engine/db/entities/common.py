@@ -201,7 +201,6 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
     db_connect_retry_max = 60
     for count in range(0, db_connect_retry_max):
         try:
-
             # connect
             rc = do_connect(db_params)
 
@@ -211,9 +210,9 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
             break
         except Exception as err:
             if count > db_connect_retry_max:
-                raise Exception("could not establish connection to DB after retry - last exception: " + str(err))
+                raise Exception("ERROR: could not establish connection to DB after retries - last exception: " + str(err))
             else:
-                log.err("could not connect to db, retrying in 10 seconds - exception: " + str(err))
+                log.err("WARN: could not connect to/initialize db, retrying in 5 seconds - exception: " + str(err))
                 time.sleep(5)
 
     # these imports need to be here, after the connect/creates have happened
