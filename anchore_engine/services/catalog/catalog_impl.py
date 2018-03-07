@@ -1262,6 +1262,13 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+
+        annotations = {}
+        try:
+            annotations = json.loads(image_record.get('annotations', {}))
+        except Exception as err:
+            logger.warn("could not marshal annotations from json - exception: " + str(err))
+
         if not scantag:
             raise Exception("must supply a scantag")
     except Exception as err:
@@ -1282,17 +1289,6 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         except Exception as err:
             logger.warn("failed to load image data into policy engine: " + str(err))
             
-#        try:
-#            request = ImageIngressRequest()
-#            request.user_id = userId
-#            request.image_id = imageId
-#            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-#            logger.debug("policy engine request (image add): " + str(request))
-#            resp = client.ingress_image(request)
-#            logger.debug("policy engine response (image add): " + str(resp))
-#        except Exception as err:
-#            logger.warn("failed to add/check image")
-
         resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
         curr_vuln_result = resp.to_dict()
 
@@ -1325,19 +1321,13 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
             try:
                 logger.debug("queueing vulnerability update notification")
                 npayload = {'diff_vulnerability_result': vdiff}
+                if annotations:
+                    npayload['annotations'] = annotations
+
                 rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
             except Exception as err:
                 logger.warn("failed to enqueue notification - exception: " + str(err))
 
-            #inobj = {
-            #    'userId': userId,
-            #    'subscription_key': scantag,
-            #    'notificationId': str(uuid.uuid4()),
-            #    'diff_vulnerability_result': vdiff
-            #}
-            #qobj = simplequeue.enqueue(system_user_auth, 'vuln_update', inobj)
-            #logger.debug("queueing vulnerability notification: " + json.dumps(qobj, indent=4))        
-    
     return(True)
 
 def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None):
@@ -1350,6 +1340,13 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+
+        annotations = {}
+        try:
+            annotations = json.loads(image_record.get('annotations', {}))
+        except Exception as err:
+            logger.warn("could not marshal annotations from json - exception: " + str(err))
+
         if not policyId:
             policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
             policyId = policy_record['policyId']
@@ -1381,17 +1378,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
     tagset = [evaltag]
     for fulltag in tagset:
-#        try:
-#            request = ImageIngressRequest()
-#            request.user_id = userId
-#            request.image_id = imageId
-#            request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-#            logger.debug("policy engine request (image add): " + str(request))
-#            resp = client.ingress_image(request)
-#            logger.debug("policy engine response (image add): " + str(resp))
-#        except Exception as err:
-#            logger.warn("failed to add/check image")
-
         logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag))
 
         try:
@@ -1435,6 +1421,9 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                     'last_eval': last_evaluation_result,
                     'curr_eval': curr_evaluation_result,
                 }
+                if annotations:
+                    npayload['annotations'] = annotations
+
                 rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
             except Exception as err:
                 logger.warn("failed to enqueue notification - exception: " + str(err))

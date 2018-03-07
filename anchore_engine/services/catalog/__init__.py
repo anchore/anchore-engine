@@ -567,6 +567,9 @@ def handle_image_watcher(*args, **kwargs):
                             'last_eval': last_digests,
                             'curr_eval': new_digests,
                         }
+                        if last_annotations:
+                            npayload['annotations'] = last_annotations
+
                         rc = notifications.queue_notification(userId, fulltag, 'tag_update', npayload)
                         logger.debug("queued image tag update notification: " + fulltag)
 

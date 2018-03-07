@@ -400,6 +400,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                             'last_eval': last_payload,
                             'curr_eval': curr_payload,
                         }
+                        if annotations:
+                            npayload['annotations'] = annotations
+
                         rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
                 except Exception as err:
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
