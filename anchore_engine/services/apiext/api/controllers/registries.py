@@ -1,6 +1,7 @@
 # anchore modules
 import datetime
 import json
+import re
 
 from connexion import request
 
@@ -104,6 +105,19 @@ def create_registry(registrydata):
 
     try:
         registrydata = json.loads(bodycontent)
+
+        try:
+            input_registry = registrydata.get('registry', None)
+
+            if input_registry:
+                # do some input string checking
+                if re.match(".*\/.*", input_registry):
+                    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
+
+        except Exception as err:
+            httpcode = 409
+            raise err
+
         registry_records = catalog.add_registry(user_auth, registrydata)
         for registry_record in registry_records:
             return_object.append(make_response_registry(user_auth, registry_record, params))
@@ -133,6 +147,17 @@ def update_registry(registry, registrydata):
 
     try:
         registrydata = json.loads(bodycontent)
+
+        try:
+            input_registry = registrydata.get('registry', None)
+            if input_registry:
+                # do some input string checking
+                if re.match(".*\/.*", input_registry):
+                    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
+        except Exception as err:
+            httpcode = 409
+            raise err
+
         registry_records = catalog.update_registry(user_auth, registry, registrydata)
         for registry_record in registry_records:
             return_object.append(make_response_registry(user_auth, registry_record, params))
