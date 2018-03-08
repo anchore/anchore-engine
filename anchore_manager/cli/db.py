@@ -70,7 +70,8 @@ def db(ctx_config, db_connect, db_use_ssl):
 
 @db.command(name='upgrade', short_help="Upgrade DB to version compatible with installed anchore-engine code.")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB upgrade routines from (default=anchore_engine)")
-def upgrade(anchore_module):
+@click.option("--dontask", is_flag=True, help="Perform upgrade (if necessary) without prompting.")
+def upgrade(anchore_module, dontask):
     """
     """
     ecode = 0
@@ -99,12 +100,15 @@ def upgrade(anchore_module):
             print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
 
             do_upgrade = False
-            try:
-                answer = raw_input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
-            except:
-                answer = "n"
-            if 'y' == answer.lower():
+            if dontask:
                 do_upgrade = True
+            else:
+                try:
+                    answer = raw_input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
+                except:
+                    answer = "n"
+                if 'y' == answer.lower():
+                    do_upgrade = True
 
             if do_upgrade:
                 print "Performing upgrade."
