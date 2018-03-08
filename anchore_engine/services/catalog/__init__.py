@@ -540,7 +540,8 @@ def handle_image_watcher(*args, **kwargs):
                                 if is_latest:
                                     if not last_annotations and last_image_record['annotations']:
                                         try:
-                                            last_annotations.update(json.loads(last_image_record['annotations']))
+                                            if last_image_record.get('annotations', '{}'):
+                                                last_annotations.update(json.loads(last_image_record.get('annotations', '{}')))
                                         except:
                                             pass
                                     is_latest = False

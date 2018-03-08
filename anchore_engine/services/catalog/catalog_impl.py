@@ -1265,7 +1265,8 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         annotations = {}
         try:
-            annotations = json.loads(image_record.get('annotations', {}))
+            if image_record.get('annotations', '{}'):
+                annotations = json.loads(image_record.get('annotations', '{}'))
         except Exception as err:
             logger.warn("could not marshal annotations from json - exception: " + str(err))
 
@@ -1343,7 +1344,8 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
         annotations = {}
         try:
-            annotations = json.loads(image_record.get('annotations', {}))
+            if image_record.get('annotations', '{}'):
+                annotations = json.loads(image_record.get('annotations', '{}'))
         except Exception as err:
             logger.warn("could not marshal annotations from json - exception: " + str(err))
 

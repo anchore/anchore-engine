@@ -388,7 +388,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 try:
                     annotations = {}
                     try:
-                        annotations = json.loads(image_record.get('annotations', {}))
+                        if image_record.get('annotations', '{}'):
+                            annotations = json.loads(image_record.get('annotations', '{}'))
                     except Exception as err:
                         logger.warn("could not marshal annotations from json - exception: " + str(err))
 
@@ -499,20 +500,22 @@ def handle_image_analyzer(*args, **kwargs):
     localconfig = anchore_engine.configuration.localconfig.get_config()
     system_user_auth = localconfig['system_user_auth']
 
+    threads = []
+    layer_cache_dirty = True
     while(True):
         logger.debug("analyzer thread cycle start")
         try:
             myconfig = localconfig['services']['analyzer']
             max_analyze_threads = int(myconfig.get('max_threads', 1))
             layer_cache_enable = myconfig.get('layer_cache_enable', False)
-            layer_cache_dirty = False
 
             logger.debug("max threads: " + str(max_analyze_threads))
-            threads = []
-            for i in range(0, max_analyze_threads):
+
+            if len(threads) < max_analyze_threads:
+                logger.debug("analyzer has free worker threads {} / {}".format(len(threads), max_analyze_threads))
                 qobj = simplequeue.dequeue(system_user_auth, queuename)
                 if qobj:
-                    logger.info('Starting analysis task Id: {}'.format(qobj.get('queueId', 'unkown')))
+                    logger.debug("got work from queue task Id: {}".format(qobj.get('queueId', 'unknown')))
                     myqobj = copy.deepcopy(qobj)
                     logger.spew("incoming queue object: " + str(myqobj))
                     logger.debug("incoming queue task: " + str(myqobj.keys()))
@@ -524,20 +527,34 @@ def handle_image_analyzer(*args, **kwargs):
                     layer_cache_dirty = True
                 else:
                     logger.debug("analyzer queue is empty - no work this cycle")
+            else:
+                logger.debug("all workers are busy")
 
-            for athread in threads:
-                logger.debug("joining thread")
-                athread.join()
-                logger.debug("thread joined")
+            alive_threads = []
+            while(threads):
+                athread = threads.pop()
+                if not athread.isAlive():
+                    try:
+                        logger.debug("thread completed - joining")
+                        athread.join()
+                        logger.debug("thread joined")
+                    except Exception as err:
+                        logger.warn("cannot join thread - exception: " + str(err))
+                else:
+                    alive_threads.append(athread)
+            threads = alive_threads
 
-            if layer_cache_enable and layer_cache_dirty:
+            if layer_cache_enable and layer_cache_dirty and len(threads) == 0:
                 logger.debug("running layer cache handler")
                 try:
                     handle_layer_cache()
+                    layer_cache_dirty = False
                 except Exception as err:
                     logger.warn("layer cache management failed - exception: " + str(err))
 
         except Exception as err:
+            import traceback
+            traceback.print_exc()
             logger.error(str(err))
 
         logger.debug("analyzer thread cycle complete: next in "+str(cycle_timer))
