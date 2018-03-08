@@ -124,10 +124,14 @@ services:
     port: 8083
   analyzer:
     enabled: True
-    cycle_timer_seconds: '1'
-    max_threads: '1'
+    require_auth: True
+    cycle_timer_seconds: 1
+    max_threads: 1
     #analyzer_driver: 'localanchore'
     analyzer_driver: 'nodocker'
+    endpoint_hostname: 'localhost'
+    listen: '0.0.0.0'
+    port: 8084
   policy_engine:
     enabled: True
     require_auth: True

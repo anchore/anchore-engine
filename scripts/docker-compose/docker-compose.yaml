@@ -37,7 +37,6 @@
 version: '2'
 services:
   anchore-engine:
-    #image: "anchore-engine"
     image: docker.io/anchore/anchore-engine:latest
     #privileged: true
     depends_on:
@@ -66,3 +65,16 @@ services:
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
     #ports:
     # - "2345:5432"
+#### uncomment this section to enable a prometheus service running alongside anchore-engine for metrics gathering/display
+#  anchore-prometheus:
+#    image: docker.io/prom/prometheus:latest
+#    depends_on:
+#     - anchore-engine
+#    volumes:
+#     - /root/aevolume/anchore-prometheus.yml:/etc/prometheus/prometheus.yml:Z
+#    logging:
+#     driver: "json-file"
+#     options:
+#      max-size: 100m
+#    ports:
+#     - "9090:9090"
