@@ -49,8 +49,8 @@ def thread_local_cache():
         local_cache = threading.local()
 
     if not hasattr(local_cache, 'general'):
-        local_cache.cache = TTLCache()
-        logger.debug('Added qconfig to cache: {}'.format(local_cache.cache))
+        local_cache.general = TTLCache()
+        logger.debug('Added general to cache: {}'.format(local_cache.general))
 
     return local_cache
 
