@@ -188,17 +188,34 @@ try:
     except Exception as err:
         raise Exception("Cannot connect to configured DB - exception: " + str(err))
 
-    code_versions = db_versions = None
-    try:
-        code_versions, db_versions = anchore_engine.db.entities.upgrade.get_versions()
-    except Exception as err:
-        pass
+    in_sync = False
+    timed_out = False
+    max_timeout = 3600
 
-    if code_versions and db_versions:
-        if code_versions['db_version'] != db_versions['db_version']:
-            raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
-    else:
-        print('Warn: no existing anchore DB data can be discovered, assuming bootstrap')
+    timer = time.time()
+    while not in_sync and not timed_out:
+        code_versions = db_versions = None
+        try:
+            code_versions, db_versions = anchore_engine.db.entities.upgrade.get_versions()
+        except Exception as err:
+            pass
+
+        if code_versions and db_versions:
+            if code_versions['db_version'] != db_versions['db_version']:
+                print "this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - it is safe to run the upgrade while seeing this message - will retry for "+str(max_timeout - int(time.time() - timer))+" more seconds."
+                time.sleep(5)
+            else:
+                print "DB version and code version in sync."
+                in_sync = True
+        else:
+            print('Warn: no existing anchore DB data can be discovered, assuming bootstrap')
+            in_sync = True
+
+        if (max_timeout - int(time.time() - timer)) < 0:
+            timed_out = True
+
+    if not in_sync:
+        raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
 
 except Exception as err:
     raise err

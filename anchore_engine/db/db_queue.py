@@ -110,10 +110,9 @@ def dequeue(queueName, userId, visibility_timeout=None, session=None):
         outstanding_count_setting = metarecord.max_outstanding_messages
         metarecord = None
 
-#    if metarecord.max_outstanding_messages < 0:
     if outstanding_count_setting < 0:
-        metarecord = metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
-        result = session.query(Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(desc(Queue.priority)).order_by(asc(Queue.queueId)).first()
+        metarecord = session.query(QueueMeta).filter_by(queueName=queueName, userId=userId).first()
+        result = session.query(Queue).with_for_update(of=Queue).filter_by(queueName=queueName, userId=userId, popped=False).order_by(desc(Queue.priority)).order_by(asc(Queue.queueId)).first()
 
         if result:
             result.update({'popped': True})
