@@ -95,6 +95,9 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
 @click.option("--dontask", is_flag=True, help="Perform upgrade (if necessary) without prompting.")
 def upgrade(anchore_module, dontask):
     """
+    Run a Database Upgrade idempotently. If database is not initialized yet, but can be connected, then exit cleanly with status = 0, if no connection available then return error.
+    Otherwise, upgrade from the db running version to the code version and exit.
+
     """
     ecode = 0
 
@@ -114,8 +117,11 @@ def upgrade(anchore_module, dontask):
         code_db_version = code_versions.get('db_version', None)
         running_db_version = db_versions.get('db_version', None)
 
-        if not code_db_version or not running_db_version:
-            raise Exception("cannot gather either code or running DB version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
+        if not code_db_version:
+            raise Exception("cannot code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
+        elif code_db_version and running_db_version is None:
+            print "Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally."
+            ecode = 0
         elif code_db_version == running_db_version:
             print "Detected anchore-engine version {} and running DB version {} match, nothing to do.".format(code_db_version, running_db_version)
         else:
