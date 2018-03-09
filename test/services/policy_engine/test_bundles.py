@@ -286,6 +286,60 @@ class TestPolicyBundleEval(unittest.TestCase):
         self.assertEqual(GateAction.stop, evaluation.bundle_decision.final_decision)
         self.assertEqual('blacklisted', evaluation.bundle_decision.reason)
 
+        bundle = {
+            'id': 'emptytest1',
+            'name': 'Empty mapping test1',
+            'version': '1_0',
+            'policies': [],
+            'whitelists': [],
+            'mappings': [],
+            'blacklisted_images': [
+                {
+                    'registry': '*',
+                    'repository': '*',
+                    'image': {
+                        'type': 'tag',
+                        'value': '*'
+                    }
+                }
+            ],
+            'whitelisted_images': []
+        }
+
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.stop, evaluation.bundle_decision.final_decision)
+        self.assertEqual('blacklisted', evaluation.bundle_decision.reason)
+
+        bundle = {
+            'id': 'emptytest1',
+            'name': 'Empty mapping test1',
+            'version': '1_0',
+            'policies': [],
+            'whitelists': [],
+            'mappings': [],
+            'whitelisted_images': [
+                {
+                    'registry': '*',
+                    'repository': '*',
+                    'image': {
+                        'type': 'tag',
+                        'value': '*'
+                    }
+                }
+            ],
+            'blacklisted_images': []
+        }
+
+        built = build_bundle(bundle, for_tag=test_tag)
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+        self.assertIsNotNone(evaluation)
+        self.assertEqual(GateAction.go, evaluation.bundle_decision.final_decision)
+        self.assertEqual('whitelisted', evaluation.bundle_decision.reason)
+
     def testWhitelists(self):
         print('Building executable bundle from default bundle')
         test_tag = 'docker.io/library/ruby:latest'

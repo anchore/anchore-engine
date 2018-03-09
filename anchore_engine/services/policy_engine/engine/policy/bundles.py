@@ -81,6 +81,12 @@ class AlwaysStopDecider(object):
         return GateAction.stop
 
 
+class AlwaysGoDecider(object):
+    @classmethod
+    def decide(cls, decisions):
+        return GateAction.go
+
+
 class PolicyRuleDecision(object):
     """
     A policy decision is a combination of a TriggerMatch and an 'action' as defined by a policy.
@@ -231,6 +237,10 @@ class BundleDecision(object):
             'final_action': self.final_decision.name,
             'reason': self.reason
         }
+
+
+class FallThruPolicyDecision(PolicyDecision):
+    __decider__ = AlwaysGoDecider
 
 
 class FailurePolicyDecision(PolicyDecision):
@@ -1227,22 +1237,22 @@ class ExecutableBundle(VersionedEntityMixin):
                 # Send thru the whitelist handlers
                 for wl in bundle_exec.executed_mapping.whitelist_ids:
                     policy_decision.decisions = self.whitelists[wl].execute(policy_decision.decisions)
-
-                # Send thru the whitelist mapping
-                whitelisted_image_match = None
-                if self.whitelisted_image_mapping:
-                    whitelisted_image_match = self.whitelisted_image_mapping.execute(image_obj=image_object, tag=tag)
-
-                # Send thru the blacklist mapping
-                blacklist_image_match = None
-                if self.blacklisted_image_mapping:
-                    blacklist_image_match = self.blacklisted_image_mapping.execute(image_obj=image_object, tag=tag)
-
-                bundle_exec.bundle_decision = BundleDecision(policy_decision=policy_decision, whitelist_match=whitelisted_image_match, blacklist_match=blacklist_image_match)
             else:
                 errors = None
-                policy_decision = BundleDecision(policy_decision=PolicyDecision(policy_obj=None, rule_decisions=[]))
-                bundle_exec.bundle_decision = policy_decision
+                policy_decision = FallThruPolicyDecision()
+
+            # Send thru the whitelist mapping
+            whitelisted_image_match = None
+            if self.whitelisted_image_mapping:
+                whitelisted_image_match = self.whitelisted_image_mapping.execute(image_obj=image_object, tag=tag)
+
+            # Send thru the blacklist mapping
+            blacklist_image_match = None
+            if self.blacklisted_image_mapping:
+                blacklist_image_match = self.blacklisted_image_mapping.execute(image_obj=image_object, tag=tag)
+
+            bundle_exec.bundle_decision = BundleDecision(policy_decision=policy_decision, whitelist_match=whitelisted_image_match, blacklist_match=blacklist_image_match)
+
         except PolicyEvaluationError as e:
             bundle_exec.errors.append(e.errors)
 
