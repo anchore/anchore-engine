@@ -5,6 +5,7 @@ import json
 import click
 import urllib
 import importlib
+import time
 
 import sqlalchemy
 from sqlalchemy import Column, Integer, String
@@ -24,7 +25,9 @@ module = None
 @click.pass_obj
 @click.option("--db-connect", nargs=1, help="DB connection string override.")
 @click.option("--db-use-ssl", is_flag=True, help="Set if DB connection is using SSL.")
-def db(ctx_config, db_connect, db_use_ssl):
+@click.option("--db-retries", nargs=1, default=1, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
+
+def db(ctx_config, db_connect, db_use_ssl, db_retries):
     global config, module
     config = ctx_config
 
@@ -61,6 +64,25 @@ def db(ctx_config, db_connect, db_use_ssl):
             print "DB Params: {}".format(json.dumps(db_params))
             rc = anchore_engine.db.entities.common.do_connect(db_params)
             print "DB connection configured: " + str(rc)
+
+            db_connected = False
+            last_db_connect_err = ""
+            for i in range(0, int(db_retries)):
+                print "Attempting to connect to DB..."
+                try:
+                    rc = anchore_engine.db.entities.common.test_connection()
+                    print "DB connected: " + str(rc)
+                    db_connected = True
+                    break
+                except Exception as err:
+                    last_db_connect_err = str(err)
+                    if db_retries > 1:
+                        print "DB connection failed, retrying - exception: " + str(last_db_connect_err)
+                        time.sleep(5)
+
+            if not db_connected:
+                raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
+
         except Exception as err:
             raise err
 

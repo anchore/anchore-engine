@@ -97,6 +97,19 @@ def get_engine():
     global engine
     return(engine)
 
+def test_connection():
+    global engine
+
+    test_connection = None
+    try:
+        test_connection = engine.connect()
+    except Exception as err:
+        raise Exception("test connection failed - exception: " + str(err))
+    finally:
+        if test_connection:
+            test_connection.close()
+    return(True)
+
 def do_connect(db_params):
     global engine, Session, SerializableSession
 
@@ -113,6 +126,7 @@ def do_connect(db_params):
             else:
                 engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=False,
                                                   pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
+
         except Exception as err:
             raise Exception("could not connect to DB - exception: " + str(err))
     else:
@@ -203,6 +217,9 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
         try:
             # connect
             rc = do_connect(db_params)
+
+            # test the connection
+            rc = test_connection()
 
             # create
             rc = do_create(specific_tables)
