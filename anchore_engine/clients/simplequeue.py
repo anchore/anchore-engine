@@ -341,9 +341,13 @@ def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_
     """
 
     qobj = dequeue(user_auth, queue, max_wait_seconds=max_wait_seconds, visibility_timeout=visibility_timeout)
+    logger.debug('Got msg: {}'.format(qobj))
+    if not qobj:
+        logger.debug("Got empty message from queue - nothing to do")
+        return(True)
+
     receipt_handle = qobj.get('receipt_handle')
     msg_id = qobj.get('id')
-    logger.debug('Got msg: {}'.format(qobj))
     if not receipt_handle:
         raise Exception('No receipt handle found in queue message: {}'.format(qobj))
 
