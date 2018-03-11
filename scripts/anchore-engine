@@ -148,6 +148,15 @@ service_map = {
     'policy_engine': 'anchore-policy-engine'
 }
 
+# look for other CLI options and strip them out of the argument list
+auto_upgrade = False
+try:
+    sys.argv.remove('--auto-upgrade')
+    auto_upgrade = True
+except:
+    pass
+
+# find/set up configuration
 configdirs = []
 try:
     configdirs.append(sys.argv[1])
@@ -202,8 +211,20 @@ try:
 
         if code_versions and db_versions:
             if code_versions['db_version'] != db_versions['db_version']:
-                print "this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - it is safe to run the upgrade while seeing this message - will retry for "+str(max_timeout - int(time.time() - timer))+" more seconds."
-                time.sleep(5)
+                if auto_upgrade:
+                    # call upgrade
+                    cmd = "anchore-manager --configdir {} db upgrade --dontask".format(configdir)
+                    try:
+                        print "Performing auto-upgrade: {}".format(cmd)
+                        sout = subprocess.check_output(cmd.split())
+                        print "Auto-upgrade successful."
+                    except Exception as err:
+                        print "Auto-upgrade failed."
+                        raise err
+                    in_sync = True
+                else:
+                    print "this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - it is safe to run the upgrade while seeing this message - will retry for "+str(max_timeout - int(time.time() - timer))+" more seconds."
+                    time.sleep(5)
             else:
                 print "DB version and code version in sync."
                 in_sync = True
@@ -214,6 +235,7 @@ try:
         if (max_timeout - int(time.time() - timer)) < 0:
             timed_out = True
 
+    sys.exit(0)
     if not in_sync:
         raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
 
