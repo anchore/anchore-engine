@@ -7,6 +7,8 @@ import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.anchore_resources
 import anchore_engine.auth.aws_ecr
+import anchore_engine.services.catalog
+
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 import anchore_engine.subsys.metrics
@@ -137,6 +139,15 @@ def repo(dbsession, request_inputs, bodycontent={}):
             return_object[0]['subscription_value'] = json.dumps({'autosubscribe': autosubscribe, 'repotags': repotags, 'tagcount': len(repotags), 'lookuptag': lookuptag})
 
             httpcode = 200
+            
+            # check and kick a repo watcher task if necessary
+            try:
+                rc = anchore_engine.services.catalog.schedule_watcher("repo_watcher")
+                logger.debug("scheduled repo_watcher task")
+            except Exception as err:
+                logger.warn("failed to schedule repo_watcher task: " + str(err))
+                pass
+
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
@@ -1399,8 +1410,11 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
         last_evaluation_result = {}
         last_final_action = None
         if last_evaluation_record:
-            last_evaluation_result = archive_sys.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
-            last_final_action = last_evaluation_result['final_action'].upper()
+            try:
+                last_evaluation_result = archive_sys.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
+                last_final_action = last_evaluation_result['final_action'].upper()
+            except:
+                logger.warn("no last eval record - skipping")
 
         # store the newest evaluation
         archive_sys.put_document(userId, 'policy_evaluations', evalId, curr_evaluation_result)
@@ -1429,15 +1443,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                 rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
             except Exception as err:
                 logger.warn("failed to enqueue notification - exception: " + str(err))
-            #inobj = {
-            #    'userId': userId,
-            #    'subscription_key': fulltag,
-            #    'notificationId': str(uuid.uuid4()),
-            #    'last_eval': last_evaluation_result,
-            #    'curr_eval': curr_evaluation_result,
-            #}
-            #qobj = simplequeue.enqueue(system_user_auth, 'policy_eval', inobj)
-            #logger.debug("queueing eval notification: " + json.dumps(qobj, indent=4))
 
         # done
             

@@ -1155,6 +1155,31 @@ def watcher_func(*args, **kwargs):
         logger.debug("generic watcher done")
         time.sleep(5)
 
+def schedule_watcher(watcher):
+    global watchers, watcher_task_template, system_user_auth
+
+    if watcher not in watchers:
+        logger.warn("input watcher {} not in list of available watchers {}".format(watcher, watchers.keys()))
+        return(False)
+
+    if watchers[watcher]['taskType']:
+        logger.debug("should queue job: " + watcher)
+        watcher_task = copy.deepcopy(watcher_task_template)
+        watcher_task['watcher'] = watcher
+        watcher_task['taskType'] = watchers[watcher]['taskType']
+        try:
+            if not simplequeue.is_inqueue(system_user_auth, 'watcher_tasks', watcher_task):
+                qobj = simplequeue.enqueue(system_user_auth, 'watcher_tasks', watcher_task)
+                logger.debug(str(watcher_task)+": init task queued: " + str(qobj))
+            else:
+                logger.debug(str(watcher_task)+": init task already queued")
+
+            watchers[watcher]['last_queued'] = time.time()
+        except Exception as err:
+            logger.warn("failed to enqueue watcher task: " + str(err))    
+
+    return(True)
+
 def monitor_func(**kwargs):
     global click, running, last_queued, system_user_auth, watchers, last_run
     
@@ -1213,21 +1238,22 @@ def monitor_func(**kwargs):
             if not all_ready:
                 logger.info("simplequeue service not yet ready, will retry")
             elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
-                if watchers[watcher]['taskType']:
-                    logger.debug("should queue job: " + watcher)
-                    watcher_task = copy.deepcopy(watcher_task_template)
-                    watcher_task['watcher'] = watcher
-                    watcher_task['taskType'] = watchers[watcher]['taskType']
-                    try:
-                        if not simplequeue.is_inqueue(system_user_auth, 'watcher_tasks', watcher_task):
-                            qobj = simplequeue.enqueue(system_user_auth, 'watcher_tasks', watcher_task)
-                            logger.debug(str(watcher_task)+": init task queued: " + str(qobj))
-                        else:
-                            logger.debug(str(watcher_task)+": init task already queued")
+                rc = schedule_watcher(watcher)
 
-                        watchers[watcher]['last_queued'] = time.time()
-                    except Exception as err:
-                        logger.warn("failed to enqueue watcher task: " + str(err))
+                #if watchers[watcher]['taskType']:
+                #    logger.debug("should queue job: " + watcher)
+                #    watcher_task = copy.deepcopy(watcher_task_template)
+                #    watcher_task['watcher'] = watcher
+                #    watcher_task['taskType'] = watchers[watcher]['taskType']
+                #    try:
+                #        if not simplequeue.is_inqueue(system_user_auth, 'watcher_tasks', watcher_task):
+                #            qobj = simplequeue.enqueue(system_user_auth, 'watcher_tasks', watcher_task)
+                #            logger.debug(str(watcher_task)+": init task queued: " + str(qobj))
+                #        else:
+                #            logger.debug(str(watcher_task)+": init task already queued")
+                #        watchers[watcher]['last_queued'] = time.time()
+                #    except Exception as err:
+                #        logger.warn("failed to enqueue watcher task: " + str(err))
 
     except Exception as err:
         logger.error(str(err))

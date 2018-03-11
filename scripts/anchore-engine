@@ -235,7 +235,6 @@ try:
         if (max_timeout - int(time.time() - timer)) < 0:
             timed_out = True
 
-    sys.exit(0)
     if not in_sync:
         raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
 

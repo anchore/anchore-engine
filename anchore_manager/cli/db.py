@@ -30,7 +30,7 @@ module = None
 def db(ctx_config, db_connect, db_use_ssl, db_retries):
     global config, module
     config = ctx_config
-
+    
     try:
         # do some DB connection/pre-checks here
         try:
