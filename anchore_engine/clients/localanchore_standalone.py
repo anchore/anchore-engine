@@ -168,120 +168,14 @@ def squash(unpackdir, cachedir, layers):
         except Exception as err:
             logger.error("command failed with exception - " + str(err))
             raise err
-            logger.debug(tarcmd)
-            try:
-                sout = subprocess.check_output(tarcmd.split())
-            except Exception as err:
-                raise err
+
+            #logger.debug(tarcmd)
+            #try:
+            #    sout = subprocess.check_output(tarcmd.split())
+            #except Exception as err:
+            #    raise err
 
     return ("done", imageSize)
-
-def squash_orig(unpackdir, layers):
-    rootfsdir = unpackdir + "/rootfs"
-
-    if os.path.exists(unpackdir + "/squashed.tar"):
-        return (True)
-
-    if not os.path.exists(rootfsdir):
-        os.makedirs(rootfsdir)
-
-    revlayer = list(layers)
-    revlayer.reverse()
-
-    squashtarfile = tarfile.open(unpackdir + '/squashed_tmp.tar', mode='w', format=tarfile.PAX_FORMAT)
-
-    allfiles = {}
-    lastexcludes = list()
-    excludes = {}
-    hlinks = {}
-    hfiles = {}
-    layerfiles = {}
-    thetfile = {}
-
-    for l in revlayer:
-        htype, lfile = l.split(":",1)
-
-        layertar = unpackdir + "/raw/"+lfile+".tar"
-        layerfiles[l] = {}
-
-        count = 0
-        logger.debug("\tPass 1: " + str(layertar))
-        layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
-        whpatt = re.compile(".*\.wh\..*")
-        for member in layertarfile.getmembers():
-            layerfiles[l][member.name] = True
-
-            count = count + 1
-            #if count % 100 == 0:
-            #    logger.debug("layer file processed count: " + str([count, member.name, len(excludes.keys())]))
-
-            # check if file member is a whiteout
-            if whpatt.match(member.name):    
-                fsub = re.sub(r"\.wh\.", "", member.name)
-
-                # never include a whiteout file
-                if member.name not in excludes:
-                    excludes[member.name] = True
-
-                if fsub not in allfiles:
-                    # if whiteouted file is not in allfiles from a higher layer, it means the file should be removed in lower layer
-                    if fsub not in excludes:
-                        excludes[fsub] = True
-
-            # check for exclusion cases
-            skip = False
-            if member.name in allfiles:
-                skip = True
-            else:
-                if member.name in excludes.keys():
-                    skip = True
-                elif excludes:
-                    # discover if file is in an excluded directory
-                    dtoks = member.name.split("/")
-                    for i in range(0, len(dtoks)):
-                        dtok = '/'.join(dtoks[0:i])
-                        if dtok in excludes:
-                            skip = True
-                            break
-                            
-            if not skip:
-                allfiles[member.name] = True
-
-                if member.isfile():
-                    squashtarfile.addfile(member, layertarfile.extractfile(member))
-                else:
-                    try:
-                        squashtarfile.addfile(member, layertarfile.extractfile(member))
-                    except:
-                        squashtarfile.addfile(member)
-            else:
-                pass
-
-        layertarfile.close()
-
-    squashtarfile.close()
-
-    squashtar = os.path.join(unpackdir, "squashed_tmp.tar")
-
-    logger.debug("\tPass 3: " + str(squashtar))
-
-    #tarcmd = "bsdtar -C " + rootfsdir + " -x -p -f " + squashtar
-    tarcmd = "tar -C " + rootfsdir + " -x -f " + squashtar
-    logger.debug("untarring squashed tarball: " + str(tarcmd))
-
-    try:
-        rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
-        if rc != 0:
-            raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-        else:
-            logger.debug("command succeeded: stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-    except Exception as err:
-        logger.error("command failed with exception - " + str(err))
-        raise err
-
-    imageSize = os.path.getsize(squashtar)
-
-    return (squashtar, imageSize)
 
 def make_staging_dirs(rootdir, use_cache_dir=None):
     if not os.path.exists(rootdir):
