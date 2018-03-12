@@ -71,6 +71,8 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         metrics_config = localconfig.get('metrics', {})
         enabled = bool(metrics_config.get('enable', False))
+        if not enabled:
+            enabled = bool(metrics_config.get('enabled', False))
     except Exception as err:
         logger.warn("unable to determine if metrics are enabled - exception: " + str(err))
         enabled = False

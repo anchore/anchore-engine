@@ -9,7 +9,7 @@ alerting:
     scheme: http
     timeout: 10s
 scrape_configs:
-- job_name: anchore-api0
+- job_name: anchore-api
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
@@ -21,7 +21,7 @@ scrape_configs:
     username: admin
     password: foobar
 
-- job_name: anchore-catalog0
+- job_name: anchore-catalog
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
@@ -33,7 +33,7 @@ scrape_configs:
     username: admin
     password: foobar
 
-- job_name: anchore-simplequeue0
+- job_name: anchore-simplequeue
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
@@ -45,7 +45,7 @@ scrape_configs:
     username: admin
     password: foobar
 
-- job_name: anchore-analyzer0
+- job_name: anchore-analyzer
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
@@ -57,7 +57,7 @@ scrape_configs:
     username: admin
     password: foobar
 
-- job_name: anchore-k8s0
+- job_name: anchore-k8s
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
@@ -69,7 +69,7 @@ scrape_configs:
     username: admin
     password: foobar
 
-- job_name: anchore-policy-engine0
+- job_name: anchore-policy-engine
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
