@@ -9,6 +9,23 @@ from sqlalchemy.exc import ProgrammingError
 
 PG_UNIQUE_CONSTRAINT_VIOLATION_CODE = '23505'
 PG_COULD_NOT_GET_ROWLOCK_CODE = '55P03'
+PG_RELATION_NOT_FOUND_CODE = '42P01'
+
+
+class AnchoreDbError(StandardError):
+    pass
+
+
+class DuplicateKeyError(AnchoreDbError):
+    pass
+
+
+class LockAcquisitionError(AnchoreDbError):
+    pass
+
+
+class TableNotFoundError(AnchoreDbError):
+    pass
 
 
 def is_unique_violation(ex):
@@ -30,3 +47,7 @@ def is_lock_acquisition_error(ex):
     """
 
     return isinstance(ex, ProgrammingError) and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_COULD_NOT_GET_ROWLOCK_CODE
+
+
+def is_table_not_found(ex):
+    return isinstance(ex, ProgrammingError) and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE

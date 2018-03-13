@@ -19,9 +19,6 @@ DEFAULT_ACQUIRE_TIMEOUT_SECONDS = 3
 DEFAULT_LOCK_DURATION_SECONDS = 10
 REFRESH_RETRIES = 3
 
-# Use a tuple for specific functional locks
-LEASE_LOCK_ID = -1
-
 
 def init_lease(lease_id):
     """
@@ -220,3 +217,39 @@ def least_with_ttl(lease_id, client_id, ttl):
             release_lease(l['id'], l['held_by'], l['epoch'])
     else:
         return
+
+
+@contextmanager
+def db_application_lock(engine, lock_id):
+    """
+    Provide a context with an acquired application lock from postgresql.
+    This is postgresql specific code as it uses native features of postgres.
+
+    :param lock_id:
+    :return: context object
+    """
+    got_lock_id = None
+    try:
+        logger.debug('Acquiring pg advisory lock {}'.format(lock_id))
+        if type(lock_id) == tuple:
+            result = engine.execute('select pg_advisory_lock({}, {});'.format(lock_id[0], lock_id[1])).first()
+        else:
+            result = engine.execute('select pg_advisory_lock({});'.format(lock_id)).first()
+
+        if result is not None:
+            got_lock_id = lock_id
+            yield got_lock_id
+        else:
+            got_lock_id = None
+            raise Exception('No lock available')
+    finally:
+        if got_lock_id:
+            logger.debug('Releasing pg advisory lock {}'.format(got_lock_id))
+            if type(lock_id) == tuple:
+                result = engine.execute('select pg_advisory_unlock({}, {});'.format(lock_id[0], lock_id[1]))
+            else:
+                result = engine.execute('select pg_advisory_unlock({});'.format(lock_id))
+
+
+
+

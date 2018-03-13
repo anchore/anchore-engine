@@ -1,19 +1,14 @@
 import sys
 import os
-import re
 import json
 import click
-import urllib
 import importlib
 import time
 
-import sqlalchemy
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
-
 import anchore_engine.configuration.localconfig
 import anchore_engine.db.entities.common
+from anchore_engine.db.entities.exceptions import TableNotFoundError
+from anchore_engine.db.entities.exceptions import is_table_not_found
 from anchore_engine.subsys import logger
 
 import anchore_manager.cli.utils
@@ -21,16 +16,16 @@ import anchore_manager.cli.utils
 config = {}
 module = None
 
+
 @click.group(name='db', short_help='DB operations')
 @click.pass_obj
 @click.option("--db-connect", nargs=1, help="DB connection string override.")
 @click.option("--db-use-ssl", is_flag=True, help="Set if DB connection is using SSL.")
 @click.option("--db-retries", nargs=1, default=1, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
-
 def db(ctx_config, db_connect, db_use_ssl, db_retries):
     global config, module
     config = ctx_config
-    
+
     try:
         # do some DB connection/pre-checks here
         try:
@@ -90,6 +85,7 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
         print anchore_manager.cli.utils.format_error_output(config, 'db', {}, err)
         sys.exit(2)
 
+
 @db.command(name='upgrade', short_help="Upgrade DB to version compatible with installed anchore-engine code.")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB upgrade routines from (default=anchore_engine)")
 @click.option("--dontask", is_flag=True, help="Perform upgrade (if necessary) without prompting.")
@@ -111,8 +107,12 @@ def upgrade(anchore_module, dontask):
             print "Loading DB upgrade routines from module."
             module = importlib.import_module(module_name + ".db.entities.upgrade")
             code_versions, db_versions = module.get_versions()
+        except TableNotFoundError as ex:
+            print "Db not found to be initialized. No upgrade needed"
+            ecode = 0
+            anchore_manager.cli.utils.doexit(ecode)
         except Exception as err:
-            raise Exception("Input anchore-module ("+str(module_name)+") cannot be found/imported - exception: " + str(err))
+                raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 
         code_db_version = code_versions.get('db_version', None)
         running_db_version = db_versions.get('db_version', None)
@@ -142,15 +142,11 @@ def upgrade(anchore_module, dontask):
                 print "Performing upgrade."
                 try:
                     # perform the upgrade logic here
-                    rc = module.do_upgrade(db_versions, code_versions)
+                    rc = module.run_upgrade()
                     if rc:
-                        # if successful upgrade, set the DB values to the incode values
-                        rc = module.do_upgrade_success(db_versions, code_versions)
-                        print "Upgrade success: " + str(rc)
+                        print "Upgrade completed"
                     else:
-                        raise Exception("Upgrade routine from module returned false, please check your DB/environment and try again")
-
-                    print "Done."
+                        print "No upgrade necessary. Completed."
                 except Exception as err:
                     raise err
             else:
@@ -161,4 +157,3 @@ def upgrade(anchore_module, dontask):
             ecode = 2
 
     anchore_manager.cli.utils.doexit(ecode)
-

@@ -1,10 +1,12 @@
-import time
 import json
 
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
 import anchore_engine.db.entities.common
+from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
 from distutils.version import StrictVersion
+from contextlib import contextmanager
+
 
 try:
     from anchore_engine.subsys import logger
@@ -16,6 +18,9 @@ except:
     log = logger
 
 upgrade_enabled = True
+upgrade_lock_namespace = 1
+my_module_upgrade_id = 1
+
 
 def get_versions():
     code_versions = {}
@@ -26,15 +31,16 @@ def get_versions():
     code_versions['service_version'] = version.version
     code_versions['db_version'] = version.db_version
 
-    #code_versions = anchore_engine.configuration.localconfig.get_versions()
     try:
         from anchore_engine.db import db_anchore, session_scope
-
-        db_versions = {}
         with session_scope() as dbsession:
             db_versions = db_anchore.get(session=dbsession)
+
     except Exception as err:
-        raise Exception("Cannot find existing/populated anchore DB tables in connected database - has anchore-engine initialized this DB?\n\nDB - exception: " + str(err))
+        if is_table_not_found(err):
+            raise TableNotFoundError('anchore table not found')
+        else:
+            raise Exception("Cannot find existing/populated anchore DB tables in connected database - has anchore-engine initialized this DB?\n\nDB - exception: " + str(err))
 
     return(code_versions, db_versions)
 
@@ -46,10 +52,65 @@ def do_upgrade_success(db_versions, code_versions):
 
     return(True)
 
+
+@contextmanager
+def upgrade_context(lock_id):
+    """
+    Provides a context for upgrades including a lock on the db to ensure only one upgrade process at a time doing checks.
+
+    Use a postgresql application lock to block schema updates and serialize checks
+    :param lock_id: the lock id (int) for the lock to acquire
+    :return:
+    """
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    from anchore_engine.db.db_locks import db_application_lock
+
+    with db_application_lock(engine, (upgrade_lock_namespace, lock_id)):
+        versions = get_versions()
+        yield versions
+
+
+def run_upgrade():
+    """
+    Entry point for upgrades (idempotent). If already upgraded, this is a no-op. If database is un-initialized.
+    Will raise exception on failure and return bool. True = upgrade completed, False = no upgrade necessary.
+
+    :return: True if upgrade executed, False if success, but no upgrade needed.
+    """
+
+    with upgrade_context(my_module_upgrade_id) as ctx:
+        code_versions = ctx[0]
+        db_versions = ctx[1]
+
+        code_db_version = ctx[0].get('db_version', None)
+        running_db_version = ctx[1].get('db_version', None)
+
+        if not code_db_version:
+            raise Exception("cannot code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
+        elif code_db_version and running_db_version is None:
+            print "Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally."
+            ecode = 0
+        elif code_db_version == running_db_version:
+            print "Detected anchore-engine version {} and running DB version {} match, nothing to do.".format(code_db_version, running_db_version)
+        else:
+            print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
+            print "Performing upgrade."
+            try:
+                # perform the upgrade logic here
+                rc = do_upgrade(db_versions, code_versions)
+                if rc:
+                    # if successful upgrade, set the DB values to the incode values
+                    rc = do_upgrade_success(db_versions, code_versions)
+                    print "Upgrade success: " + str(rc)
+                    return rc
+                else:
+                    raise Exception("Upgrade routine from module returned false, please check your DB/environment and try again")
+            except Exception as err:
+                raise err
+
 def do_upgrade(inplace, incode):
     global upgrade_enabled, upgrade_functions
-
-    engine = anchore_engine.db.entities.common.get_engine()
 
     if StrictVersion(inplace['db_version']) > StrictVersion(incode['db_version']):
         raise Exception("DB downgrade not supported")
@@ -95,7 +156,7 @@ def do_upgrade(inplace, incode):
 def db_upgrade_001_002():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image
+    from anchore_engine.db import db_registries, db_policybundle
 
     try:
         table_name = 'registries'
@@ -165,7 +226,7 @@ def db_upgrade_002_003():
 def db_upgrade_003_004():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_anchore, db_users, db_registries, db_policybundle, db_catalog_image, db_archivedocument
+    from anchore_engine.db import db_catalog_image, db_archivedocument
     import anchore_engine.services.common
     import anchore_engine.subsys.archive
 

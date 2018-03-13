@@ -9,7 +9,6 @@ import traceback
 from contextlib import contextmanager
 
 import sqlalchemy
-from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 import datetime
@@ -368,3 +367,5 @@ def init_thread_session():
     global ThreadLocalSession, engine
     if not ThreadLocalSession:
         ThreadLocalSession = scoped_session(sessionmaker(bind=engine))
+
+
