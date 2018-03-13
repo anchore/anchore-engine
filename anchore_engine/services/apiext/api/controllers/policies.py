@@ -112,6 +112,7 @@ def add_policy(bundle):
             response = p_client.validate_bundle(policy_bundle=jsondata)
 
             if not response.valid:
+                httpcode = 400
                 raise Exception('Bundle failed validation. Validation errors: {}'.format([x.to_dict() for x in response.validation_details]))
 
         except ApiException as err:
