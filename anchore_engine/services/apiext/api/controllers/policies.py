@@ -113,7 +113,8 @@ def add_policy(bundle):
 
             if not response.valid:
                 httpcode = 400
-                raise Exception('Bundle failed validation. Validation errors: {}'.format([x.to_dict() for x in response.validation_details]))
+                return_object = anchore_engine.services.common.make_response_error('Bundle failed validation', in_httpcode=400, detail={'validation_details': [x.to_dict() for x in response.validation_details]})
+                return (return_object, httpcode)
 
         except ApiException as err:
             raise Exception('Error response from policy service during bundle validation. Validation could not be performed: {}'.format(err))

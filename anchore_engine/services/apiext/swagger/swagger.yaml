@@ -1465,7 +1465,8 @@ definitions:
       message:
         type: "string"
       detail:
-        type: "string"
+        type: object
+        description: Details structure for additional information about the error if available. Content and structure will be error specific.
   Service:
     description: "A service status record"
     type: object
