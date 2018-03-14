@@ -529,6 +529,11 @@ def get_content(request_inputs, content_type, doformat=False):
 
             imageDigest = image_report['imageDigest']
             image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
+
+            #anchore_data = catalog.get_document(user_auth, 'analysis_data', imageDigest)
+            #image_content_data = {}
+            #image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type)
+
             if content_type not in image_content_data:
                 httpcode = 404
                 raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
