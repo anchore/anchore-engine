@@ -517,9 +517,9 @@ def make_response_error(errmsg, in_httpcode=None, **kwargs):
     msg = str(errmsg)
 
     ret = {
-        'message': str(msg),
+        'message': msg,
         'httpcode': int(httpcode),
-        'detail':detail
+        'detail': kwargs.get('detail', {})
     }
 
     if type(errmsg) == Exception:
