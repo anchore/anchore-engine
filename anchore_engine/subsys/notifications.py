@@ -104,7 +104,8 @@ def do_notify_webhook(user_record, notification):
                 try:
                     logger.debug("webhook post: " + str(url) + " : " + str(notification))
                     #result = http.post(url, data=payload, auth=auth, timeout=2.0, verify=verify)
-                    result = http.anchy_post(url, data=payload, auth=auth, timeout=2.0, verify=verify)
+                    headers = {'Content-Type': 'application/json'}
+                    result = http.anchy_post(url, data=payload, auth=auth, timeout=2.0, verify=verify, headers=headers)
                     logger.debug("webhook response: " + str(result))
                     return(True)
                 except Exception as err:
