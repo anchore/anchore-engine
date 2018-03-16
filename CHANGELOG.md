@@ -2,10 +2,15 @@
 
 ## 0.1.9 (2018-XX-YY)
 
++ Added ability to specify metadata attributes on image add, which are carried through to webhook payloads
++ Added capability to enable image layer caching on analyzers via options in config.yaml
++ Added version information in API /v1/system/status
++ Added new webhook/subscription type analysis_update that fires when image analysis has completed
++ Fixed issue for analysis failure resulting from layers that replace populated subdirectories with softlinks in a single layer
+
 ## 0.1.8 (2018-02-16)
 
 + Added ability to add a repository for anchore-engine to automatically scan (adds all tags found at add time, and adds new tags on-going)
-+ Added capability to enable image layer caching on analyzers via options in config.yaml
 + Added first custom route to /summaries API (/summaries/imagetags), which is a fast path to fetch a complete image listing summary
 + Added API and call to describe policy language to get full set of gates and triggers.
 + Added /v1/system/policy_spec route to apiext service that returns a list of gate json objects.
