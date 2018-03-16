@@ -38,14 +38,38 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
     try:
         account_id, region = parse_registry_url(registry)
 
-        # check for special awsauto case
+        # aws: assume role on the ec2 instance
         if access_key_id == 'awsauto' or secret_access_key == 'awsauto':
             if 'allow_awsecr_iam_auto' in localconfig and localconfig['allow_awsecr_iam_auto']:
                 access_key_id = secret_access_key = None
+                client = boto3.client('ecr',
+                                      aws_access_key_id=access_key_id,
+                                      aws_secret_access_key=secret_access_key,
+                                      region_name=region)
             else:
                 raise Exception("registry is set to 'awsauto', but system is not configured to allow (allow_awsecr_iam_auto: False)")
 
-        client = boto3.client('ecr', aws_access_key_id=access_key_id, aws_secret_access_key=secret_access_key, region_name=region)
+        # aws: assume cross account roles
+        elif access_key_id == '_iam_role':
+            try:
+                sts = boto3.client('sts')
+                session = sts.assume_role(RoleArn=secret_access_key, RoleSessionName=str(int(time.time())))
+                access_key_id = session['Credentials']['AccessKeyId']
+                secret_access_key = session['Credentials']['SecretAccessKey']
+                session_token = session['Credentials']['SessionToken']
+                client = boto3.client('ecr',
+                                      aws_access_key_id=access_key_id,
+                                      aws_secret_access_key=secret_access_key,
+                                      aws_session_token=session_token,
+                                      region_name=region)
+            except Exception as err:
+                raise err
+        # aws: provide key & secret
+        else:
+            client = boto3.client('ecr',
+                                  aws_access_key_id=access_key_id,
+                                  aws_secret_access_key=secret_access_key,
+                                  region_name=region)
         r = client.get_authorization_token(registryIds=[account_id])
         ecr_data = r['authorizationData'][0]
     except Exception as err:
