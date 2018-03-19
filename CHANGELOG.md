@@ -1,13 +1,16 @@
 # Changelog
 
-## 0.1.9 (2018-XX-YY)
+## 0.1.9 (2018-03-19)
 
 + Added ability to specify metadata attributes on image add, which are carried through to webhook payloads
 + Added capability to enable image layer caching on analyzers via options in config.yaml
 + Added version information in API /v1/system/status
 + Added new webhook/subscription type analysis_update that fires when image analysis has completed
 + Fixed issue for analysis failure resulting from layers that replace populated subdirectories with softlinks in a single layer
-
++ Adds ability to whitelist and blacklist images in the policy bundle using new sections: "whitelisted_images", and "blacklisted_images". Each are json arrays of {"registry": str, "repository": str, "image": {"type":str, "value": str} entries to select images and affect the final evaluation result irrespective of policy evaluation result
++ Removes some old gates that were ineffective. Will result in eval warning if found in an existing policy: base_check, pkgdiff, suiddiff. These gates required data not reliably available from registry-pushed images
++ Adds 'in' and 'not_in' checks for image metadata checks and dockerfile directive checks to allow membership tests in lists of strings
++ Fixes some rule mapping bugs in specifying mapping rules by digest or image id
 ## 0.1.8 (2018-02-16)
 
 + Added ability to add a repository for anchore-engine to automatically scan (adds all tags found at add time, and adds new tags on-going)
