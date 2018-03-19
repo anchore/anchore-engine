@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.9 (2018-XX-YY)
+## 0.1.9 (2018-03-19)
 
 + Added ability to specify metadata attributes on image add, which are carried through to webhook payloads
 + Added capability to enable image layer caching on analyzers via options in config.yaml
