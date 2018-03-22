@@ -583,9 +583,9 @@ class ImageLoader(object):
         cpes = []
         
         # do java first (from analysis)
-        java_json = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
-        if java_json:
-            for path, java_str in java_json.items():
+        java_json_raw = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
+        if java_json_raw:
+            for path, java_str in java_json_raw.items():
                 java_json = json.loads(java_str)
 
                 try:
@@ -625,7 +625,45 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-        # disable for now
+
+        python_json_raw = analysis_json.get('package_list', {}).get('pkgs.python', {}).get('base')
+        if python_json_raw:
+            for path, python_str in python_json_raw.items():
+                python_json = json.loads(python_str)
+                guessed_names = [python_json['name']]
+                guessed_versions = [python_json['version']]
+
+                for n in guessed_names:
+                    for v in guessed_versions:
+                        rawcpe = "cpe:/a:-:{}:{}".format(n, v)
+
+                        toks = rawcpe.split(":")
+                        final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                        for i in range(1, len(final_cpe)):
+                            try:
+                                if toks[i]:
+                                    final_cpe[i] = toks[i]
+                                else:
+                                    final_cpe[i] = '-'
+                            except:
+                                final_cpe[i] = '-'
+                        thecpe = ':'.join(final_cpe)
+
+                        if thecpe not in allcpes:
+                            allcpes[thecpe] = True
+
+                            cpe = ImageCpe()
+                            cpe.pkg_type = "python"
+                            cpe.cpetype = final_cpe[1]
+                            cpe.vendor = final_cpe[2]
+                            cpe.name = final_cpe[3]
+                            cpe.version = final_cpe[4]
+                            cpe.update = final_cpe[5]
+                            cpe.meta = final_cpe[6]
+                            cpe.image_user_id = containing_image.user_id
+                            cpe.image_id = containing_image.id
+
+                            cpes.append(cpe)
         if True:
             if containing_image.gems:
                 for gem in containing_image.gems:

@@ -17,7 +17,8 @@ class CpeSeverityTrigger(BaseTrigger):
                 continue
 
             for image_cpe, vulnerability_cpe in severity_matches[vuln_level]:
-                message="matched a CPE vulnerability {} level {}".format(vulnerability_cpe.vulnerability_id, vuln_level)
+                #message="matched a CPE vulnerability {} level {}".format(vulnerability_cpe.vulnerability_id, vuln_level)
+                message="{} Vulnerability found in package - {} ({} - https://nvd.nist.gov/vuln/detail/{})".format(vuln_level.upper(), image_cpe.name+"-"+image_cpe.version, vulnerability_cpe.vulnerability_id, vulnerability_cpe.vulnerability_id)
                 self._fire(instance_id="{}+{}".format(vulnerability_cpe.vulnerability_id, image_cpe.name+"-"+image_cpe.version), msg=message)
         
 
@@ -57,20 +58,17 @@ class CpeGate(Gate):
 
     def prepare_context(self, image_obj, context):
         timer = time.time()
-        #all_cpe_matches = context.db.query(ImageCpe,CpeVulnerability,NvdMetadata).filter(ImageCpe.image_id==image_obj.id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version).filter(NvdMetadata.name==CpeVulnerability.vulnerability_id)
         all_cpe_matches = context.db.query(ImageCpe,CpeVulnerability).filter(ImageCpe.image_id==image_obj.id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
         if not all_cpe_matches:
             all_cpe_matches = []
 
         severity_matches = {}
-        #for image_cpe, vulnerability_cpe, nvd_metadata in all_cpe_matches:
         for image_cpe, vulnerability_cpe in all_cpe_matches:
             sev = vulnerability_cpe.severity
             if sev not in severity_matches:
                 severity_matches[sev] = []
             severity_matches[sev].append((image_cpe, vulnerability_cpe))
 
-        #context.data['all_cpe_matches'] = all_cpe_matches        
         context.data['severity_matches'] = severity_matches
         log.debug("context prep time: {}".format(time.time() - timer))
 
