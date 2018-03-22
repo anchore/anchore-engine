@@ -149,7 +149,7 @@ service_map = {
 }
 
 # look for other CLI options and strip them out of the argument list
-auto_upgrade = False
+auto_upgrade = True
 try:
     sys.argv.remove('--auto-upgrade')
     auto_upgrade = True
