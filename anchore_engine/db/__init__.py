@@ -22,6 +22,7 @@ from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage
 from .entities.policy_engine import ImageGem
 from .entities.policy_engine import ImageNpm
+from .entities.policy_engine import ImageCpe
 from .entities.policy_engine import ImagePackageVulnerability
 from .entities.policy_engine import FeedMetadata
 from .entities.policy_engine import FeedGroupMetadata
@@ -34,5 +35,7 @@ from .entities.policy_engine import DistroNamespace
 from .entities.policy_engine import FilesystemAnalysis
 from .entities.policy_engine import NpmMetadata
 from .entities.policy_engine import GemMetadata
+from .entities.policy_engine import NvdMetadata
+from .entities.policy_engine import CpeVulnerability
 from .entities.policy_engine import AnalysisArtifact
 from .entities.policy_engine import ImagePackageManifestEntry

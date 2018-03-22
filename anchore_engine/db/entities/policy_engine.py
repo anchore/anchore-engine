@@ -261,8 +261,86 @@ class FixedArtifact(Base):
                                            refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
 
     def __repr__(self):
-        return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name,
-                                                                                                                        self.created_at)
+        return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name, self.created_at)
+
+
+class NvdMetadata(Base):
+    __tablename__ = 'feed_data_nvd_vulnerabilities'
+
+    name = Column(String(vuln_id_length), primary_key=True)
+    namespace_name = Column(String(namespace_length), primary_key=True)  # e.g. nvddb:2018"
+    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    vulnerable_configuration = Column(StringJSON)
+    vulnerable_software = Column(StringJSON)
+    summary = Column(String)
+    cvss = Column(StringJSON)
+    vulnerable_cpes = relationship('CpeVulnerability', back_populates='parent', cascade='all, delete-orphan')
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
+
+    def get_severity(self):
+        sev = "Unknown"
+        try:
+            cvss_json = json.loads(self.cvss)
+            score = float(cvss_json['base_metrics']['score'])
+            if score <= 3.9:
+                sev = "Low"
+            elif score <= 6.9:
+                sev = "Medium"
+            elif score <= 10.0:
+                sev = "High"
+            else:
+                sev = "Unknown"
+        except:
+            sev = "Unknown"
+        return(sev)
+
+    def key_tuple(self):
+        return self.name
+
+
+class CpeVulnerability(Base):
+    __tablename__ = 'feed_data_cpe_vulnerabilities'
+
+    feed_name = Column(String(feed_name_length), primary_key=True)
+    namespace_name = Column(String(namespace_length), primary_key=True)
+    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
+    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    cpetype = Column(String(pkg_name_length), primary_key=True)
+    vendor = Column(String(pkg_name_length), primary_key=True)
+    name = Column(String(pkg_name_length), primary_key=True)
+    version = Column(String(pkg_version_length), primary_key=True)
+    update = Column(String(pkg_version_length), primary_key=True)
+    meta = Column(String(pkg_name_length), primary_key=True)
+    parent = relationship('NvdMetadata', back_populates='vulnerable_cpes')
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # This is necessary for ensuring correct FK behavior against a composite foreign key
+    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]), {})
+
+    def __repr__(self):
+        return '<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.name, self.version, self.created_at.isoformat())
+
+    def get_cpestring(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe[1] = self.cpetype
+            final_cpe[2] = self.vendor
+            final_cpe[3] = self.name
+            final_cpe[4] = self.version
+            final_cpe[5] = self.update
+            final_cpe[6] = self.meta
+            ret = final_cpe
+        except:
+            ret = None
+
+        return(ret)
+
 
 # Analysis Data for Images
 
@@ -406,6 +484,60 @@ class ImageGem(Base):
     def __repr__(self):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
+#class TestA(Base):
+#    __tablename__ = 'test_a'
+
+#    akey = Column(String, primary_key=True)
+#    aval = Column(String, primary_key=True)
+
+#class TestB(Base):
+#    __tablename__ = 'test_b'
+
+#    bkey = Column(String, primary_key=True)
+#    bval = Column(String)
+#    avalcopy = Column(String, ForeignKey(TestA.aval), nullable=False)
+
+class ImageCpe(Base):
+    __tablename__ = 'image_cpes'
+
+    image_user_id = Column(String(user_id_length), primary_key=True)
+    image_id = Column(String(image_id_length), primary_key=True)
+    pkg_type = Column(String(pkg_type_length), primary_key=True)  # java, python, gem, npm, etc
+
+    cpetype = Column(String(pkg_name_length), primary_key=True)
+    vendor = Column(String(pkg_name_length), primary_key=True)
+    name = Column(String(pkg_name_length), primary_key=True)
+    version = Column(String(pkg_version_length), primary_key=True)
+    update = Column(String(pkg_version_length), primary_key=True)
+    meta = Column(String(pkg_name_length), primary_key=True)
+
+    image = relationship('Image', back_populates='cpes')
+
+    __table_args__ = (
+        ForeignKeyConstraint(columns=[image_id, image_user_id],
+                             refcolumns=['images.id','images.user_id']),
+        {}
+    )
+
+    def __repr__(self):
+        return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
+
+    def get_cpestring(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe[1] = self.cpetype
+            final_cpe[2] = self.vendor
+            final_cpe[3] = self.name
+            final_cpe[4] = self.version
+            final_cpe[5] = self.update
+            final_cpe[6] = self.meta
+            ret = final_cpe
+        except:
+            ret = None
+
+        return(ret)
+
 
 class FilesystemAnalysis(Base):
     """
@@ -540,6 +672,7 @@ class Image(Base):
     fs = relationship('FilesystemAnalysis', uselist=False, lazy='select', cascade=['all','delete','delete-orphan'])
     gems = relationship('ImageGem', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     npms = relationship('ImageNpm', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+    cpes = relationship('ImageCpe', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     analysis_artifacts = relationship('AnalysisArtifact', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
 
     @property

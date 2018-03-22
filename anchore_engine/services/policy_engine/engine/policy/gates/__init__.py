@@ -15,3 +15,4 @@ from .npm_check import NpmCheckGate
 from .secret_check import SecretCheckGate
 from .image_metadata import ImageMetadataGate
 from .always import AlwaysGate
+from .cpesec import CpeGate

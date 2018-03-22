@@ -15,7 +15,7 @@ import time
 
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
-from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata
+from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.clients.feeds.feed_service.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 
@@ -159,6 +159,92 @@ class NpmPackageDataMapper(KeyIDFeedDataMapper):
         db_rec.lics_json = data.get('lics')
         return db_rec
 
+
+class NvdFeedDataMapper(FeedDataMapper):
+    """
+    Maps an NVD record into an NvdMetadata ORM object
+    """
+    def map(self, record_json):
+        db_rec = NvdMetadata()
+        db_rec.name = record_json['@id']
+        db_rec.namespace_name = self.group
+        db_rec.summary = record_json.get('summary', "")
+
+        rawvc = record_json.get('vulnerable-configuration', {})
+        db_rec.vulnerable_configuration = rawvc
+        #db_rec.vulnerable_configuration = json.dumps(rawvc)
+
+        rawvsw = record_json.get('vulnerable-software-list', {})
+        db_rec.vulnerable_software = rawvsw
+        #db_rec.vulnerable_software = json.dumps(rawvsw)
+
+        rawcvss = record_json.get('cvss', {})
+        db_rec.cvss = rawcvss
+        #db_rec.cvss = json.dumps(rawcvss)
+
+        sev = "Unknown"
+        try:
+            #cvss_json = json.loads(self.cvss)
+            score = float(rawcvss['base_metrics']['score'])
+            if score <= 3.9:
+                sev = "Low"
+            elif score <= 6.9:
+                sev = "Medium"
+            elif score <= 10.0:
+                sev = "High"
+            else:
+                sev = "Unknown"
+        except:
+            sev = "Unknown"
+        db_rec.severity = sev
+
+        db_rec.vulnerable_cpes = []
+
+        vswlist = []
+        try:
+            if isinstance(rawvsw['product'], list):
+               vswlist = rawvsw['product']
+            else:
+                vswlist = [rawvsw['product']]
+        except:
+            pass
+
+        # convert each vulnerable software list CPE into a DB record
+        all_cpes = {}
+        for vsw in vswlist:
+            try:
+
+                # tokenize the input CPE
+                toks = vsw.split(":")
+                final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                for i in range(1, len(final_cpe)):
+                    try:
+                        if toks[i]:
+                            final_cpe[i] = toks[i]
+                        else:
+                            final_cpe[i] = '-'
+                    except:
+                        final_cpe[i] = '-'
+
+                if ':'.join(final_cpe) not in all_cpes:
+                    all_cpes[':'.join(final_cpe)] = True
+                    if final_cpe[1] == '/a':
+                        newcpe = CpeVulnerability()
+                        newcpe.feed_name = 'nvd'
+                        #newcpe.namespace_name = db_rec.namespace_name
+                        #newcpe.vulnerability_id = db_rec.name
+                        newcpe.cpetype = final_cpe[1]
+                        newcpe.vendor = final_cpe[2]
+                        newcpe.name = final_cpe[3]
+                        newcpe.version = final_cpe[4]
+                        newcpe.update = final_cpe[5]
+                        newcpe.meta = final_cpe[6]
+                        db_rec.vulnerable_cpes.append(newcpe)
+
+            except Exception as err:
+                log.warn("failed to convert vulnerable-software-list into database CPE record - exception: " + str(err))
+
+        return db_rec
 
 class VulnerabilityFeedDataMapper(FeedDataMapper):
     """  
@@ -1052,6 +1138,29 @@ class PackagesFeed(AnchoreServiceFeed):
         return item.name
 
 
+class NvdFeed(AnchoreServiceFeed):
+    """
+    Feed for package data, served from the anchore feed service backend
+    """
+
+    __feed_name__ = 'nvd'
+    _cve_key = '@id'
+    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, NvdFeedDataMapper, _cve_key)
+
+    def query_by_key(self, key, group=None):
+        if not group:
+            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
+
+        db = get_session()
+        try:
+            return db.query(NvdMetadata).get((key, group))
+        except Exception as e:
+            log.exception('Could not retrieve nvd vulnerability by key:')
+
+    def _dedup_data_key(self, item):
+        return item.name
+
+
 class FeedFactory(object):
     """
     Factory class for creating feed objects. Not necessary yet because we don't have any dynamically updated feeds such that we
@@ -1060,7 +1169,8 @@ class FeedFactory(object):
     """
     override_mapping = {
         'vulnerabilities': VulnerabilityFeed,
-        'packages': PackagesFeed
+        'packages': PackagesFeed,
+        'nvd': NvdFeed
     }
 
     default_mapping = AnchoreServiceFeed
@@ -1100,6 +1210,7 @@ class DataFeeds(object):
     _proxy = None
     _vulnerabilitiesFeed_cls = VulnerabilityFeed
     _packagesFeed_cls = PackagesFeed
+    _nvdsFeed_cls = NvdFeed
 
     @classmethod
     def instance(cls):
@@ -1124,7 +1235,12 @@ class DataFeeds(object):
         try:
             self.packages.refresh_groups()
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
-            log.error('Cannot update group metadata for vulnerabilities feed due to insufficient access or invalid credentials: {}'.format(e.message))
+            log.error('Cannot update group metadata for packages feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
+        try:
+            self.nvd.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
     def sync(self, to_sync=None):
         """
@@ -1150,6 +1266,14 @@ class DataFeeds(object):
                 updated_records['packages'] = self.packages.sync()
             except:
                 log.exception('Failure updating the packages feed.')
+                all_success = False
+
+        if to_sync is None or 'nvd' in to_sync:
+            try:
+                log.info('Syncing nvd feed')
+                updated_records['nvd'] = self.nvd.sync()
+            except:
+                log.exception('Failure updating the nvd feed.')
                 all_success = False
 
         if not all_success:
@@ -1192,6 +1316,18 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
+        if to_sync is None or 'nvd' in to_sync:
+            if not only_if_unsynced or self.nvd.never_synced():
+                try:
+                    log.info('Syncing nvd feed')
+                    updated_records['nvd'] = self.nvd.bulk_sync()
+                except Exception as err:
+                    log.exception('Failure updating the nvd feed. Continuing with next feed')
+                    all_success = False
+
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
+
         if not all_success:
             raise Exception("one or more feeds failed to sync")
 
@@ -1204,3 +1340,7 @@ class DataFeeds(object):
     @property
     def packages(self):
         return self._packagesFeed_cls()
+
+    @property
+    def nvd(self):
+        return self._nvdsFeed_cls()
