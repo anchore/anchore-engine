@@ -1,7 +1,11 @@
+import json
+import hashlib
 import time
 
 from anchore_engine import db
+from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.db import PolicyBundle
+
 
 # specific DB interface helpers for the 'services' table
 
@@ -13,15 +17,16 @@ def add(policyId, userId, active, inobj, session=None):
 
     inobj.pop('last_updated', None)
     inobj.pop('created_at', None)
-
     our_result = session.query(PolicyBundle).filter_by(policyId=policyId).filter_by(userId=userId).first()
     if not our_result:
-
         new_service = PolicyBundle(policyId=policyId, userId=userId)
         new_service.update(inobj)
 
         session.add(new_service)
     else:
+        # Force an update here to cover updates even if content doesn't change.
+        # This is probably worth revisiting later, to use a content digest to ensure changes actually
+        inobj['last_updated'] = anchore_now()
         our_result.update(inobj)
 
     return(True)
