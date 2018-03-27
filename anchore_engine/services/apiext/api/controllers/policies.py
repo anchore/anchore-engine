@@ -23,7 +23,6 @@ def make_response_policy(user_auth, policy_record, params):
         if 'description' in policy_record['policybundle']:
             policy_description = policy_record['policybundle']['description']
 
-        #for datekey in ['last_updated', 'created_at']:
         for datekey in ['last_updated', 'created_at']:
             try:
                 policy_record[datekey] = datetime.datetime.utcfromtimestamp(policy_record[datekey]).isoformat()
