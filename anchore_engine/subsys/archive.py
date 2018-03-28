@@ -17,10 +17,12 @@ archive_driver = 'db'
 
 archive_drivers = ['db', 'localfs']
 
-def initialize(use_driver=None):
+def initialize(use_driver=None, localconfig=None):
     global archive_initialized, data_volume, use_db, archive_driver
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
+    if not localconfig:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
     myconfig = localconfig['services']['catalog']
 
     try:

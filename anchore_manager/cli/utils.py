@@ -3,6 +3,7 @@ import re
 import sys
 import copy
 import json
+import time
 import yaml
 import urllib
 import logging
@@ -12,6 +13,7 @@ from prettytable import PrettyTable, PLAIN_COLUMNS
 from collections import OrderedDict
 #from textwrap import fill
 
+import anchore_engine.db.entities.common
 import anchorecli.clients.apiexternal
 
 _logger = logging.getLogger(__name__)
@@ -108,3 +110,39 @@ def doexit(ecode):
         pass
     sys.exit(ecode)
 
+def init_database(config, db_connect, db_use_ssl, db_retries=1):
+    # allow override of db connect string on CLI, otherwise get DB params from anchore-engine config.yaml
+    db_connect_args = {'ssl': False}
+    if db_use_ssl:
+        db_connect_args['ssl'] = True
+
+    db_params = {
+        'db_connect': db_connect,
+        'db_connect_args': db_connect_args,
+        'db_pool_size': 10,
+        'db_pool_max_overflow': 20
+    }
+
+    print "DB Params: {}".format(json.dumps(db_params))
+    rc = anchore_engine.db.entities.common.do_connect(db_params)
+    print "DB connection configured: " + str(rc)
+
+    db_connected = False
+    last_db_connect_err = ""
+    for i in range(0, int(db_retries)):
+        print "Attempting to connect to DB..."
+        try:
+            rc = anchore_engine.db.entities.common.test_connection()
+            print "DB connected: " + str(rc)
+            db_connected = True
+            break
+        except Exception as err:
+            last_db_connect_err = str(err)
+            if db_retries > 1:
+                print "DB connection failed, retrying - exception: " + str(last_db_connect_err)
+                time.sleep(5)
+
+    if not db_connected:
+        raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
+
+    return(db_params)

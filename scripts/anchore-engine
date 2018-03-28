@@ -213,7 +213,13 @@ try:
             if code_versions['db_version'] != db_versions['db_version']:
                 if auto_upgrade:
                     # call upgrade
-                    cmd = "anchore-manager --configdir {} db upgrade --dontask".format(configdir)
+                    db_use_ssl = ""
+                    try:
+                        if db_params['db_connect_args']['ssl']:
+                            db_use_ssl = "--db-use-ssl"
+                    except:
+                        pass
+                    cmd = "anchore-manager db --db-connect {} {} --db-retries 1 upgrade --dontask".format(db_params['db_connect'], db_use_ssl)
                     try:
                         print "Performing auto-upgrade: {}".format(cmd)
                         sout = subprocess.check_output(cmd.split())
