@@ -4,7 +4,7 @@ import subprocess
 import sys
 import logging
 
-import db, archivestorage
+import db, archivestorage, service
 from anchore_manager import version
 #import anchore_manager.clients
 
@@ -36,3 +36,4 @@ def main_entry(ctx, debug, json, configdir):
 
 main_entry.add_command(db.db)
 main_entry.add_command(archivestorage.archivestorage)
+main_entry.add_command(service.service)
