@@ -253,7 +253,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
                 if code_versions and db_versions:
                     if code_versions['db_version'] != db_versions['db_version']:
                         if auto_upgrade:
-                            print "Performing upgrade."
+                            print "Auto-upgrade is set - performing upgrade."
                             try:
                                 # perform the upgrade logic here
                                 rc = module.run_upgrade()
