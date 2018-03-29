@@ -51,6 +51,9 @@ services:
      driver: "json-file"
      options:
       max-size: 100m
+    environment:
+     # NOTE: this should be set to the same name as this service (e.g. anchore-engine)
+     - ANCHORE_HOST_ID=anchore-engine
   anchore-db:
     image: "postgres:9"
     volumes:
