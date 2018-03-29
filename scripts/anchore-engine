@@ -6,6 +6,6 @@ else
     CONFIGDIR="/config"
 fi
 
-REST="$2 $3 $4"
+REST="${@:2}"
 
 /usr/bin/anchore-manager --configdir ${CONFIGDIR} service start $REST
