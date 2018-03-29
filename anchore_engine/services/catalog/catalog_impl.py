@@ -733,8 +733,6 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 policybundle = jsondata['policybundle']
                 rc =  archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle)
                 rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
-                record = db_policybundle.get(userId, policyId, session=dbsession)
-                record['policybundle'] = jsondata['policybundle']
 
                 #record['policybundlemeta'] = {}
                 #meta = archive_sys.get_document_meta(userId, 'policy_bundles', record['policyId'])
@@ -750,6 +748,10 @@ def policies(dbsession, request_inputs, bodycontent={}):
                         except Exception as err:
                             httpcode = 500
                             raise Exception("could not set policy as active - exception: " + str(err))
+
+                    record = db_policybundle.get(userId, policyId, session=dbsession)
+                    record['policybundle'] = jsondata['policybundle']
+
                     httpcode = 200
                     return_object = record
 

@@ -23,18 +23,23 @@ def make_response_policy(user_auth, policy_record, params):
         if 'description' in policy_record['policybundle']:
             policy_description = policy_record['policybundle']['description']
 
-        #for datekey in ['last_updated', 'created_at']:
+        latest_ts = 0
         for datekey in ['last_updated', 'created_at']:
             try:
-                policy_record[datekey] = datetime.datetime.utcfromtimestamp(policy_record[datekey]).isoformat()
+                update_ts = policy_record[datekey] #datetime.datetime.utcfromtimestamp(policy_record[datekey]).isoformat()
+                if update_ts > latest_ts:
+                    latest_ts = update_ts
             except:
                 pass
 
-        for datekey in ['last_updated']:
             try:
-                policy_record[datekey] = datetime.datetime.utcfromtimestamp(policy_record['policybundlemeta'][datekey]).isoformat()
+                update_ts = policy_record['policybundlemeta'][datekey] #datetime.datetime.utcfromtimestamp(policy_record['policybundlemeta'][datekey]).isoformat()
+                if update_ts > latest_ts:
+                    latest_ts = update_ts
             except:
                 pass
+
+        policy_record['last_updated'] = datetime.datetime.utcfromtimestamp(latest_ts).isoformat()
 
         if 'detail' in params and not params['detail']:
             # strip out the detail

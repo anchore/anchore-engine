@@ -5,7 +5,6 @@ import click
 import importlib
 import time
 
-import anchore_engine.configuration.localconfig
 import anchore_engine.db.entities.common
 from anchore_engine.db.entities.exceptions import TableNotFoundError
 from anchore_engine.db.entities.exceptions import is_table_not_found
@@ -16,10 +15,9 @@ import anchore_manager.cli.utils
 config = {}
 module = None
 
-
 @click.group(name='db', short_help='DB operations')
 @click.pass_obj
-@click.option("--db-connect", nargs=1, help="DB connection string override.")
+@click.option("--db-connect", nargs=1, required=True, help="DB connection string override.")
 @click.option("--db-use-ssl", is_flag=True, help="Set if DB connection is using SSL.")
 @click.option("--db-retries", nargs=1, default=1, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
 def db(ctx_config, db_connect, db_use_ssl, db_retries):
@@ -29,54 +27,13 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
     try:
         # do some DB connection/pre-checks here
         try:
-            # allow override of db connect string on CLI, otherwise get DB params from anchore-engine config.yaml
-            if db_connect:
-                db_connect_args = {'ssl': False}
-                if db_use_ssl:
-                    db_connect_args['ssl'] = True
-                db_params = {
-                    'db_connect': db_connect,
-                    'db_connect_args': db_connect_args,
-                    'db_pool_size': 10,
-                    'db_pool_max_overflow': 20
-                }
-            else:
-                # config and init                                                                                                                                                
-                configfile = configdir = None
-                configdir = config['configdir']
-                configfile = os.path.join(configdir, 'config.yaml')
 
-                anchore_engine.configuration.localconfig.load_config(configdir=configdir, configfile=configfile)
-                localconfig = anchore_engine.configuration.localconfig.get_config()
+            log_level = 'INFO'
+            if config['debug']:
+                log_level = 'DEBUG'
+            logger.set_log_level(log_level, log_to_stdout=True)
 
-                log_level = 'INFO'
-                if config['debug']:
-                    log_level = 'DEBUG'
-                logger.set_log_level(log_level, log_to_stdout=True)
-
-                db_params = anchore_engine.db.entities.common.get_params(localconfig)
-
-            print "DB Params: {}".format(json.dumps(db_params))
-            rc = anchore_engine.db.entities.common.do_connect(db_params)
-            print "DB connection configured: " + str(rc)
-
-            db_connected = False
-            last_db_connect_err = ""
-            for i in range(0, int(db_retries)):
-                print "Attempting to connect to DB..."
-                try:
-                    rc = anchore_engine.db.entities.common.test_connection()
-                    print "DB connected: " + str(rc)
-                    db_connected = True
-                    break
-                except Exception as err:
-                    last_db_connect_err = str(err)
-                    if db_retries > 1:
-                        print "DB connection failed, retrying - exception: " + str(last_db_connect_err)
-                        time.sleep(5)
-
-            if not db_connected:
-                raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
+            db_params = anchore_manager.cli.utils.init_database(config, db_connect, db_use_ssl, db_retries=db_retries)
 
         except Exception as err:
             raise err
