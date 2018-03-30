@@ -39,6 +39,7 @@ def make_response_policy(user_auth, policy_record, params):
             except:
                 pass
 
+        policy_record['created_at'] = datetime.datetime.utcfromtimestamp(policy_record['created_at']).isoformat()
         policy_record['last_updated'] = datetime.datetime.utcfromtimestamp(latest_ts).isoformat()
 
         if 'detail' in params and not params['detail']:
