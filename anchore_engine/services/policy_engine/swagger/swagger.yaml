@@ -642,9 +642,37 @@ definitions:
       legacy_report:
         $ref: "#/definitions/LegacyVulnerabilityReport"
       cpe_report:
-        type: "array"
+        type: array
         items:
-          type: string
+          $ref: "#/definitions/CpeVulnerabilityReport"
+  CpeVulnerabilityReport:
+    type: object
+    description: "Generic object container for the cpe vulnerability report"
+    properties:
+      vulnerability_id:
+        type: string
+        description: "vulnerability id"
+      severity:
+        type: string
+        description: "severity of the vulnerability"
+      link:
+        type: string
+        description: "source URL to vulnerability information"
+      pkg_type:
+        type: string
+        description: "type of software package (e.g. java, npm, gem, ...)"
+      name:
+        type: string
+        description: "name of software from CPE"
+      version:
+        type: string
+        description: "version of software fro CPE"
+      pkg_path:
+        type: string
+        description: "location of software package artifact within the image"
+      cpe:
+        type: string
+        description: "full CPE string of software artifcat"
   LegacyVulnerabilityReport:
     type: object
     description: "Generic object container for the legecy cve report"
