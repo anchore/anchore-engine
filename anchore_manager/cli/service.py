@@ -377,7 +377,6 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
                 print "failed to startup log watchers - exception: " + str(err)
                 raise err
 
-        print "THERE"
     except Exception as err:
         print anchore_manager.cli.utils.format_error_output(config, 'servicestart', {}, err)
         if not ecode:
