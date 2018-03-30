@@ -614,6 +614,7 @@ class ImageLoader(object):
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "java"
+                            cpe.pkg_path = path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]
@@ -654,6 +655,7 @@ class ImageLoader(object):
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "python"
+                            cpe.pkg_path = path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]
@@ -687,6 +689,7 @@ class ImageLoader(object):
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "gem"
+                            cpe.pkg_path = gem.path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]
@@ -720,6 +723,7 @@ class ImageLoader(object):
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "npm"
+                            cpe.pkg_path = npm.path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]

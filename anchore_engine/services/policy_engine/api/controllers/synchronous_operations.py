@@ -20,7 +20,7 @@ from anchore_engine.services.policy_engine.api.models import ImageUpdateNotifica
     ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, get_thread_scoped_session as get_session
+from anchore_engine.db import Image, ImageCpe, CpeVulnerability, get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, PolicyRuleValidationErrorCollection
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -422,8 +422,29 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
             }
         }
 
+        cpe_vuln_listing = []
+        try:
+            all_cpe_matches = db.query(ImageCpe,CpeVulnerability).filter(ImageCpe.image_id==image_id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+            if not all_cpe_matches:
+                all_cpe_matches = []
+
+            for image_cpe, vulnerability_cpe in all_cpe_matches:
+                cpe_vuln_el = {
+                    'vulnerability_id': vulnerability_cpe.vulnerability_id,
+                    'severity': vulnerability_cpe.severity,
+                    'link': vulnerability_cpe.link,
+                    'pkg_type': image_cpe.pkg_type,
+                    'pkg_path': image_cpe.pkg_path,
+                    'name': image_cpe.name,
+                    'version': image_cpe.version,
+                    'cpe': image_cpe.get_cpestring(),
+                }
+                cpe_vuln_listing.append(cpe_vuln_el)
+        except Exception as err:
+            log.warn("could not fetch CPE matches - exception: " + str(err))
+
         report = LegacyVulnerabilityReport.from_dict(vuln_listing)
-        resp = ImageVulnerabilityListing(user_id=user_id, image_id=image_id, legacy_report=report)
+        resp = ImageVulnerabilityListing(user_id=user_id, image_id=image_id, legacy_report=report, cpe_report=cpe_vuln_listing)
         return resp.to_dict()
     except HTTPException:
         db.rollback()

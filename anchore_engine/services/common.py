@@ -41,7 +41,7 @@ resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 's
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data", "manifest_data"]
 super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
-image_vulnerability_types = ['os']
+image_vulnerability_types = ['os', 'non-os']
 
 def update_image_record_with_analysis_data(image_record, image_data):
 

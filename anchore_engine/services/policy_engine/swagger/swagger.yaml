@@ -641,6 +641,10 @@ definitions:
         type: string
       legacy_report:
         $ref: "#/definitions/LegacyVulnerabilityReport"
+      cpe_report:
+        type: "array"
+        items:
+          type: string
   LegacyVulnerabilityReport:
     type: object
     description: "Generic object container for the legecy cve report"

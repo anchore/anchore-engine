@@ -315,6 +315,7 @@ class CpeVulnerability(Base):
     version = Column(String(pkg_version_length), primary_key=True)
     update = Column(String(pkg_version_length), primary_key=True)
     meta = Column(String(pkg_name_length), primary_key=True)
+    link = Column(String(link_length), nullable=True)
     parent = relationship('NvdMetadata', back_populates='vulnerable_cpes')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -335,7 +336,7 @@ class CpeVulnerability(Base):
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.meta
-            ret = final_cpe
+            ret = ':'.join(final_cpe)
         except:
             ret = None
 
@@ -504,6 +505,7 @@ class ImageCpe(Base):
     image_id = Column(String(image_id_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # java, python, gem, npm, etc
 
+    pkg_path = Column(String(file_path_length), primary_key=True)
     cpetype = Column(String(pkg_name_length), primary_key=True)
     vendor = Column(String(pkg_name_length), primary_key=True)
     name = Column(String(pkg_name_length), primary_key=True)
@@ -532,7 +534,7 @@ class ImageCpe(Base):
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.meta
-            ret = final_cpe
+            ret = ':'.join(final_cpe)
         except:
             ret = None
 

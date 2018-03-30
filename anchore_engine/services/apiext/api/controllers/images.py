@@ -184,6 +184,35 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         except Exception as err:
             logger.warn("could not prepare query response - exception: " + str(err))
             ret = []
+    elif vulnerability_type == 'non-os':
+        keymap = {
+            'vuln': 'vulnerability_id',
+            'severity': 'severity',
+            'package_path': 'pkg_path',
+            'package_type': 'pkg_type',
+            'package_cpe': 'cpe',
+            'url': 'link',
+        }
+        scan_result = vulnerability_data['cpe_report']
+        for vuln in scan_result:
+            el = {}
+            for k in keymap.keys():
+                el[k] = vuln[keymap[k]]
+
+            #el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+            try:
+                pkgs = []
+                toks = el['package_path'].split(":")
+                for tok in toks:
+                    pkg = tok.split("/")[-1]
+                    pkgs.append(pkg)
+                el['package'] = '->'.join(pkgs)
+            except:
+                el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+
+            el['fix'] = 'None'
+            #el['url'] = "https://nvd.nist.gov/vuln/detail/{}".format(el['vuln'])
+            ret.append(el)
     else:
         ret = vulnerability_data
 
@@ -479,7 +508,7 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
             imageDigest = image_report['imageDigest']
             try:
-                if vulnerability_type == 'os':
+                if vulnerability_type in ['os', 'non-os']:
                     image_detail = image_report['image_detail'][0]
                     imageId = image_detail['imageId']
                     client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)

@@ -231,14 +231,13 @@ class NvdFeedDataMapper(FeedDataMapper):
                     if final_cpe[1] == '/a':
                         newcpe = CpeVulnerability()
                         newcpe.feed_name = 'nvd'
-                        #newcpe.namespace_name = db_rec.namespace_name
-                        #newcpe.vulnerability_id = db_rec.name
                         newcpe.cpetype = final_cpe[1]
                         newcpe.vendor = final_cpe[2]
                         newcpe.name = final_cpe[3]
                         newcpe.version = final_cpe[4]
                         newcpe.update = final_cpe[5]
                         newcpe.meta = final_cpe[6]
+                        newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
                         db_rec.vulnerable_cpes.append(newcpe)
 
             except Exception as err:
