@@ -35,7 +35,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
     If you want to use a filesystem but want replication and redundancy across nodes, you must use a shared/distributed filesystem like Gluster, Nfs, CephFS, EFS, etc.
 
     """
-    __config_name__ = 'fs'
+    __config_name__ = 'localfs'
     __driver_version__ = '2'
     __uri_scheme__ = 'file'
 

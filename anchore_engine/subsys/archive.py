@@ -62,7 +62,8 @@ def client_for(content_uri):
     return archive_clients[parsed.scheme]
 
 
-def initialize(archive_config):
+#def initialize(archive_config):
+def initialize(service_config):
     """
     Initialize the archve system. If driver_config is not provide, looks for it in the broader system configuration under services->catalog->archive_driver.
 
@@ -74,6 +75,14 @@ def initialize(archive_config):
 
     global archive_clients, primary_client, archive_configuration
 
+    archive_config = service_config.get(MAIN_CONFIG_KEY)
+    
+    if not archive_config:
+        logger.warn("no '{}' section found in service config, using legacy configuration options".format(MAIN_CONFIG_KEY))
+        archive_config = {}
+        bkwd = _parse_legacy_config(service_config)
+        archive_config.update(bkwd)
+    
     try:
         archive_configuration = copy.copy(default_config)
         if DRIVER_SECTION_KEY in archive_config:
@@ -130,15 +139,15 @@ def _parse_legacy_config(config):
     }
 
     if 'archive_driver' in config and type(config['archive_driver']) in [str, unicode]:
-        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY] = config['archive_driver']
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = config['archive_driver']
     else:
         return config
 
     if 'use_db' in config and config['use_db']:
         mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = 'db'
 
-    if mapped_config[DRIVER_SECTION_KEY] == 'fs' and 'archive_data_dir' in config:
-        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]['data_dir'] = config['archive_data_dir']
+    if mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] == 'localfs' and 'archive_data_dir' in config:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]['archive_data_dir'] = config['archive_data_dir']
 
     if mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] is not None:
         return mapped_config

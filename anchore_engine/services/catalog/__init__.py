@@ -74,7 +74,8 @@ def initializeService(sname, config):
         raise Exception("could not initialize service status - exception: " + str(err))
 
     try:
-        rc = archive.initialize(config['services'][sname].get(archive.MAIN_CONFIG_KEY))
+        #rc = archive.initialize(config['services'][sname].get(archive.MAIN_CONFIG_KEY))
+        rc = archive.initialize(config['services'][sname])
         if not rc:
             raise Exception("unable to initialize archive: check catalog configuration")
 
