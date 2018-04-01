@@ -43,9 +43,13 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
 
         if 'url' in self.config:
             self.endpoint = self.config.get('url')
+            if not self.endpoint:
+                raise DriverConfigurationError('Missing valid value for configuration parameter "url" ({})'.format(self.endpoint))
             self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'))
         elif 'region' in self.config:
             self.region = self.config.get('region')
+            if not self.region:
+                raise DriverConfigurationError('Missing valid value for configuration parameter "region" ({})'.format(self.region))
             self.s3_client = self.session.client(service_name='s3', region_name=self.config.get('region'))
         else:
             self.s3_client = self.session.client(service_name='s3')
