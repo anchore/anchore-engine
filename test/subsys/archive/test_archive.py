@@ -2,6 +2,7 @@ import unittest
 import json
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import archive
+from anchore_engine.subsys.object_store.exc import DriverConfigurationError, BadCredentialsError
 
 
 class TestArchiveSubsys(unittest.TestCase):
@@ -97,13 +98,15 @@ class TestArchiveSubsys(unittest.TestCase):
 
     def test_fs(self):
         config = {
-            'compression': {
-                'enabled': True
-            },
-            'storage_driver': {
-                'name': 'fs',
-                'config': {
-                    'archive_data_dir': '/tmp/archive_test/fs_driver'
+            'archive': {
+                'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'localfs',
+                    'config': {
+                        'archive_data_dir': '/tmp/archive_test/fs_driver'
+                    }
                 }
             }
         }
@@ -112,16 +115,18 @@ class TestArchiveSubsys(unittest.TestCase):
 
     def test_swift(self):
         config = {
-            'compression': {
-                'enabled': True
-            },
-            'storage_driver': {
-                'name': 'swift',
-                'config': {
-                    'user': 'test:tester',
-                    'key': 'testing',
-                    'auth': 'http://localhost:8080/auth/v1.0',
-                    'bucket': 'testarchive'
+            'archive': {
+                    'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'swift',
+                    'config': {
+                        'user': 'test:tester',
+                        'key': 'testing',
+                        'auth': 'http://localhost:8080/auth/v1.0',
+                        'container': 'testarchive'
+                    }
                 }
             }
         }
@@ -129,14 +134,82 @@ class TestArchiveSubsys(unittest.TestCase):
         archive.initialize(config)
         self.run_test()
 
+    def test_swift_create_container(self):
+        config = {
+            'archive':{
+                'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'swift',
+                    'config': {
+                        'user': 'test:tester',
+                        'key': 'testing',
+                        'auth': 'http://localhost:8080/auth/v1.0',
+                        'container': 'testarchive2',
+                        'create_container': True
+                    }
+                }
+            }
+        }
+
+        archive.initialize(config)
+        self.run_test()
+
+    def test_swift_bad_creds(self):
+        config = {
+            'archive': {
+                'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'swift',
+                    'config': {
+                        'user': 'test:tester',
+                        'key': 'testing123',
+                        'auth': 'http://localhost:8080/auth/v1.0',
+                        'container': 'testarchive'
+                    }
+                }
+            }
+        }
+
+        with self.assertRaises(BadCredentialsError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))
+
+    def test_swift_bad_container(self):
+        config = {
+            'archive': {
+                'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'swift',
+                    'config': {
+                        'user': 'test:tester',
+                        'key': 'testing123',
+                        'auth': 'http://localhost:8080/auth/v1.0',
+                        'container': 'testarchive_does_not_exist'
+                    }
+                }
+            }
+        }
+
+        with self.assertRaises(DriverConfigurationError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))
+
     def test_db(self):
         config = {
-            'compression': {
-                'enabled': True
-            },
-            'storage_driver': {
-                'name': 'db2',
-                'config': {}
+            'archive': {
+                'compression': {
+                    'enabled': True
+                },
+                'storage_driver': {
+                    'name': 'db2',
+                    'config': {}
+                }
             }
         }
         archive.initialize(config)
@@ -145,12 +218,14 @@ class TestArchiveSubsys(unittest.TestCase):
     def test_legacy_db(self):
         # NOTE: legacy db driver does not support compression since it uses string type instead of binary for content storage
         config = {
-            'compression': {
-                'enabled': False
-            },
-            'storage_driver': {
-                'name': 'db',
-                'config': {}
+            'archive': {
+                'compression': {
+                    'enabled': False
+                },
+                'storage_driver': {
+                    'name': 'db',
+                    'config': {}
+                }
             }
         }
 
@@ -175,3 +250,99 @@ class TestArchiveSubsys(unittest.TestCase):
         }
         archive.initialize(config)
         self.run_test()
+
+    def test_s3_create_bucket(self):
+        config = {
+            'compression': {
+                'enabled': False
+            },
+            'storage_driver': {
+                'name': 's3',
+                'config': {
+                    'create_bucket': True,
+                    'access_key': '827H1W4ZSQBABMX3PTM9',
+                    'secret_key': 'TJWq5d5932NDIDzgswvdhftoWl7ww40dLPuYDJkm',
+                    'url': 'http://localhost:9000',
+                    'region': None,
+                    'bucket': 'testarchivebucket2'
+                }
+            }
+        }
+        archive.initialize(config)
+        self.run_test()
+
+    def test_s3_bad_creds(self):
+        config = {
+            'compression': {
+                'enabled': False
+            },
+            'storage_driver': {
+                'name': 's3',
+                'config': {
+                    'access_key': '827H1W4ZSQBABMX3PTM9-111',
+                    'secret_key': 'TJWq5d5932NDIDzgswvdhftoWl7ww40dLPuYDJkm-111',
+                    'url': 'http://localhost:9000',
+                    'region': None,
+                    'bucket': 'testarchivebucket'
+                }
+            }
+        }
+        with self.assertRaises(BadCredentialsError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))
+
+        config = {
+            'compression': {
+                'enabled': False
+            },
+            'storage_driver': {
+                'name': 's3',
+                'config': {
+                    'access_key': '827H1W4ZSQBABMX3PTM9',
+                    'secret_key': 'TJWq5d5932NDIDzgswvdhftoWl7ww40dLPuYDJkm-111',
+                    'url': 'http://localhost:9000',
+                    'region': None,
+                    'bucket': 'testarchivebucket'
+                }
+            }
+        }
+        with self.assertRaises(BadCredentialsError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))
+
+    def test_s3_bad_bucket(self):
+        config = {
+            'compression': {
+                'enabled': False
+            },
+            'storage_driver': {
+                'name': 's3',
+                'config': {
+                    'access_key': '827H1W4ZSQBABMX3PTM9',
+                    'secret_key': 'TJWq5d5932NDIDzgswvdhftoWl7ww40dLPuYDJkm',
+                    'url': 'http://localhost:9000',
+                    'region': None,
+                    'bucket': 'testarchivebucket_does_not_exist'
+                }
+            }
+        }
+        with self.assertRaises(DriverConfigurationError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))
+
+    def test_s3_auto(self):
+        config = {
+            'compression': {
+                'enabled': False
+            },
+            'storage_driver': {
+                'name': 's3',
+                'config': {
+                    'iamauto': True,
+                    'bucket': 'testarchivebucket_does_not_exist'
+                }
+            }
+        }
+        with self.assertRaises(DriverConfigurationError) as err:
+            archive.initialize(config)
+        print('Got expected error: {}'.format(err.exception.message))

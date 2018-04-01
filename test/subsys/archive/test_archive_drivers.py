@@ -123,7 +123,7 @@ class TestSwiftArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
         'user':'test:tester',
         'key':'testing',
         'auth':'http://localhost:8080/auth/v1.0',
-        'bucket': 'testarchive'
+        'container': 'testarchive'
     }
 
     driver_cls = SwiftObjectStorageDriver

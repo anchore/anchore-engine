@@ -1,8 +1,9 @@
 import boto3
 import urlparse
 
+from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
-from anchore_engine.subsys.object_store.exc import DriverConfigurationError, ObjectKeyNotFoundError
+from anchore_engine.subsys.object_store.exc import DriverConfigurationError, ObjectKeyNotFoundError, BadCredentialsError
 
 class S3ObjectStorageDriver(ObjectStorageDriver):
     """
@@ -23,29 +24,60 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
 
         self.endpoint = None
         self.region = None
+        self.s3_client = None
+        self.session = None
 
         # Initialize the client
-        if 'access_key' not in self.config:
-            raise DriverConfigurationError('Missing access_key in configuration for S3 driver')
-        if 'secret_key' not in self.config:
-            raise DriverConfigurationError('Missing secret_key in configuration for S3 driver')
+        # if 'access_key' not in self.config:
+        #     raise DriverConfigurationError('Missing access_key in configuration for S3 driver')
+        # if 'secret_key' not in self.config:
+        #     raise DriverConfigurationError('Missing secret_key in configuration for S3 driver')
+
+        if 'access_key' in self.config and 'secret_key' in self.config:
+            self.session = boto3.Session(aws_access_key_id=self.config.get('access_key'),
+                                         aws_secret_access_key=self.config.get('secret_key'))
+        elif self.config.get('iamauto'):
+            self.session = boto3.Session()
+        else:
+            raise DriverConfigurationError('Missing either "access_key" and "secret_key" configuration values or "iamauto"=True in configuration for credentials')
 
         if 'url' in self.config:
             self.endpoint = self.config.get('url')
-            self.session = boto3.Session(aws_access_key_id = self.config.get('access_key'), aws_secret_access_key = self.config.get('secret_key'))
             self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'))
         elif 'region' in self.config:
             self.region = self.config.get('region')
-            self.session = boto3.Session(aws_access_key_id=self.config.get('access_key'), aws_secret_access_key=self.config.get('secret_key'))
             self.s3_client = self.session.client(service_name='s3', region_name=self.config.get('region'))
         else:
-            raise DriverConfigurationError('No region or url specified for s3 driver. Set a region for AWS or url for s3-api service')
+            self.s3_client = self.session.client(service_name='s3')
 
         self.bucket_name = self.config.get('bucket')
+        self.create_bucket = self.config.get('create_bucket', False)
         if not self.bucket_name:
             raise ValueError('Cannot configure s3 driver with out a provided bucket to use')
 
+        self._check_creds()
+        self._check_bucket()
+
         self.prefix = self.config.get('prefix', '')
+
+    def _check_creds(self):
+        try:
+            self.s3_client.get_bucket_location(Bucket=self.bucket_name)
+        except Exception as ex:
+            if type(ex).__name__ == 'ClientError' and hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [403, 401]:
+                raise BadCredentialsError(creds_dict=self.session.get_credentials().__dict__, endpoint=self.s3_client._endpoint, cause=ex)
+
+    def _check_bucket(self):
+        try:
+            self.s3_client.get_bucket_location(Bucket=self.bucket_name)
+        except Exception as ex:
+            if type(ex).__name__ == 'NoSuchBucket' and self.create_bucket: # and hasattr(ex, 'response') and ex.response.get('ResponseMeta', {}).get('HTTPStatusCode') == 400 and self.create_bucket:
+                self.s3_client.create_bucket(Bucket=self.bucket_name)
+            else:
+                logger.error(
+                    'Error checking configured bucket for location during driver preflight check. Bucket = {}'.format(
+                        self.bucket_name))
+                raise DriverConfigurationError(cause=ex)
 
     def _build_key(self, userId, usrBucket, key):
         return self._key_format.format(prefix=self.prefix, userid=userId, bucket=usrBucket, key=key)

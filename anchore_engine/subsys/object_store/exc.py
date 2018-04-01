@@ -14,7 +14,28 @@ class DriverConfigurationError(ObjectStorageDriverError):
     """
     Base type for errors related to configuration issues, as opposed to server-side (of the driver's backing service) errors.
     """
-    pass
+
+    def __init__(self, message=None, cause=None):
+        super(DriverConfigurationError, self).__init__(cause)
+        self.message = message if message else 'Driver configuration error caused by: {}'.format(cause.message)
+
+
+class BadCredentialsError(DriverConfigurationError):
+    def __init__(self, creds_dict, endpoint, cause=None):
+        super(BadCredentialsError, self).__init__(cause)
+        self.credentials = creds_dict
+        self.endpoint = endpoint
+        self.redacted_creds = {}
+        for key, val in self.credentials.items():
+            if val is not None:
+                if len(val) > 2:
+                    self.redacted_creds[key] = val[:2] + ''.join(['*' for z in range(len(val) - 2)])
+                else:
+                    self.redacted_creds[key] = ['*' for z in val]
+            else:
+                self.redacted_creds[key] = val
+
+        self.message = 'Invalid credentials used: {} for endpoint {}. Details: {}'.format(self.redacted_creds, endpoint, cause.message)
 
 
 class DriverBackendError(ObjectStorageDriverError):
