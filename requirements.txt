@@ -21,7 +21,7 @@ jsonschema==2.6.0
 MarkupSafe==1.0
 pathlib==1.0.1
 python-dateutil==2.6.0
-pytz==2012d
+#pytz==2012d
 PyYAML==3.12
 requests==2.17.3
 s3transfer==0.1.10
@@ -35,6 +35,10 @@ Werkzeug==0.12.2
 passlib==1.7.1
 prometheus_client==0.1.1
 prometheus-flask-exporter==0.1.2
+python-swiftclient==3.5.0
+python-keystoneclient==3.15.0
+pytz==2013.6
 anchore
 certifi
-python-swiftclient
+
+
