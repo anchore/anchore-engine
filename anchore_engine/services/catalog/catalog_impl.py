@@ -688,7 +688,7 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 for record in records:
                     record['policybundle'] = {}
                     try:
-                        policybundle =  archive_sys.get_document(userId, 'policy_bundles', record['policyId'])
+                        policybundle = archive_sys.get_document(userId, 'policy_bundles', record['policyId'])
                         if policybundle:
                             record['policybundle'] = policybundle
 
@@ -701,6 +701,7 @@ def policies(dbsession, request_inputs, bodycontent={}):
                         logger.warn("failed to fetch policy bundle from archive - exception: " + str(err))
 
                 return_object = records
+                logger.info('Policy obj: {}'.format(return_object))
                 httpcode = 200
 
         elif method == 'DELETE':
@@ -731,8 +732,11 @@ def policies(dbsession, request_inputs, bodycontent={}):
                 raise Exception("existing policyId not found to update")
             else:
                 policybundle = jsondata['policybundle']
-                rc =  archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle)
-                rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
+
+                if archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle):
+                    rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
+                else:
+                    rc = False
 
                 #record['policybundlemeta'] = {}
                 #meta = archive_sys.get_document_meta(userId, 'policy_bundles', record['policyId'])
@@ -861,7 +865,7 @@ def users(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
-def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
+def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
@@ -873,7 +877,7 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
     try:
         if method == 'GET':
             try:
-                return_object =  archive_sys.get(userId, bucket, archiveid)
+                return_object = json.loads(archive_sys.get(userId, bucket, archiveid))
                 httpcode = 200
             except Exception as err:
                 httpcode = 404
@@ -882,7 +886,7 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent={}):
         elif method == 'POST':
             try:
                 jsondata = bodycontent
-                rc =  archive_sys.put(userId, bucket, archiveid, jsondata)
+                rc =  archive_sys.put(userId, bucket, archiveid, json.dumps(jsondata))
                 
                 service_records = db_services.get_byname('catalog', session=dbsession)
                 if service_records:

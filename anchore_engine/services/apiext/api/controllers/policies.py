@@ -39,6 +39,7 @@ def make_response_policy(user_auth, policy_record, params):
             except:
                 pass
 
+        policy_record['created_at'] = datetime.datetime.utcfromtimestamp(policy_record['created_at']).isoformat()
         policy_record['last_updated'] = datetime.datetime.utcfromtimestamp(latest_ts).isoformat()
 
         if 'detail' in params and not params['detail']:
@@ -163,6 +164,7 @@ def get_policy(policyId, detail=None):
 
         try:
             policy_records = catalog.get_policy(user_auth, policyId=policyId)
+            logger.info('Got from catalog: {}'.format(policy_records))
         except Exception as err:
             logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
             policy_records = []

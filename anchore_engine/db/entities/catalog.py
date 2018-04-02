@@ -5,10 +5,11 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 import json
 import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, Sequence
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, Sequence, JSON, LargeBinary
 from sqlalchemy import inspect
 
 from .common import Base, anchore_now, UtilMixin
+
 
 class Anchore(Base, UtilMixin):
     __tablename__ = 'anchore'
@@ -27,6 +28,24 @@ class Anchore(Base, UtilMixin):
         self.service_version, self.db_version, self.scanner_version)
 
 
+class ArchiveMetadata(Base, UtilMixin):
+    __tablename__ = 'archive_metadata'
+
+    bucket = Column(String, primary_key=True)
+    archiveId = Column(String, primary_key=True)
+    userId = Column(String, primary_key=True)
+    documentName = Column(String, primary_key=True)
+    content_url = Column(String)
+    is_compressed = Column(Boolean)
+    digest = Column(String)
+    size = Column(BigInteger)
+    document_metadata = Column(String)
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    record_state_key = Column(String, default="active")
+    record_state_val = Column(String)
+
+
 class ArchiveDocument(Base, UtilMixin):
     __tablename__ = 'archive_document'
 
@@ -40,9 +59,24 @@ class ArchiveDocument(Base, UtilMixin):
     record_state_val = Column(String)
     jsondata = Column(String)
 
-
     def __repr__(self):
         return "userId='%s'" % (self.userId)
+
+
+class ObjectStorageRecord(Base, UtilMixin):
+    """
+    Content storage for the db driver for object storage.
+    """
+    __tablename__ = 'object_storage'
+
+    userId = Column(String, primary_key=True)
+    bucket = Column(String, primary_key=True)
+    key = Column(String, primary_key=True)
+    version = Column(String, primary_key=True, default='')
+    object_metadata = Column(String)
+    content = Column(LargeBinary)
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
 
 
 class User(Base, UtilMixin):

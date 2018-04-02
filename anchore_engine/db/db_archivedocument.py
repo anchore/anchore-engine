@@ -1,3 +1,7 @@
+"""
+This is a deprecated module. Archive model has changed to use the db_archivemeta module for meta record updates and db_objectstorage for the content.
+"""
+
 import time
 from anchore_engine import db
 from anchore_engine.db import ArchiveDocument
