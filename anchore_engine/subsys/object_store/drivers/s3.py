@@ -1,4 +1,5 @@
 import boto3
+#import botocore.config
 import urlparse
 
 from anchore_engine.subsys import logger
@@ -41,10 +42,12 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         else:
             raise DriverConfigurationError('Missing either "access_key" and "secret_key" configuration values or "iamauto"=True in configuration for credentials')
 
+        #boto_config = botocore.config.Config(retries={'max_attempts': 0})
         if 'url' in self.config:
             self.endpoint = self.config.get('url')
             if not self.endpoint:
                 raise DriverConfigurationError('Missing valid value for configuration parameter "url" ({})'.format(self.endpoint))
+            #self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'), config=boto_config)
             self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'))
         elif 'region' in self.config:
             self.region = self.config.get('region')

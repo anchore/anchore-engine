@@ -699,6 +699,7 @@ def policies(dbsession, request_inputs, bodycontent={}):
 
                     except Exception as err:
                         logger.warn("failed to fetch policy bundle from archive - exception: " + str(err))
+                        raise anchore_engine.services.common.make_anchore_exception(err, input_message="failed to fetch policy bundle from archive", input_httpcode=500)
 
                 return_object = records
                 logger.info('Policy obj: {}'.format(return_object))
@@ -733,15 +734,13 @@ def policies(dbsession, request_inputs, bodycontent={}):
             else:
                 policybundle = jsondata['policybundle']
 
-                if archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle):
-                    rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
-                else:
-                    rc = False
-
-                #record['policybundlemeta'] = {}
-                #meta = archive_sys.get_document_meta(userId, 'policy_bundles', record['policyId'])
-                #if meta:
-                #    record['policybundlemeta'] = meta
+                try:
+                    if archive_sys.put_document(userId, 'policy_bundles', policyId, policybundle):
+                        rc = db_policybundle.update(policyId, userId, active, jsondata, session=dbsession)
+                    else:
+                        rc = False
+                except Exception as err:
+                    raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add policy, failed to update archive/DB", input_httpcode=500)
 
                 if not rc:
                     raise Exception("DB update failed")
@@ -804,6 +803,7 @@ def evals(dbsession, request_inputs, bodycontent={}):
                     policyId = dbfilter['policyId']
                 else:
                     policyId = None
+
                 rc = perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId)
 
             except Exception as err:
@@ -1513,6 +1513,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
                         new_image_record['image_status'] = taskstate.init_state('image_status', None)
+
                         if anchore_data:
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
@@ -1536,11 +1537,15 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                         else:
                             new_image_record['analysis_status'] = taskstate.init_state('analyze', None)
 
-                        rc = db_catalog_image.add_record(new_image_record, session=dbsession)
-                        image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if not manifest:
-                            manifest = json.dumps({})
-                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        try:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+
+                            rc = db_catalog_image.add_record(new_image_record, session=dbsession)
+                            image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                            if not manifest:
+                                manifest = json.dumps({})
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
                     else:
                         new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
@@ -1579,11 +1584,15 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             except Exception as err:
                                 logger.debug("could not prepare annotations for store - exception: " + str(err))
 
-                        rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
-                        image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if not manifest:
-                            manifest = json.dumps({})
-                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        try:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+
+                            rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
+                            image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                            if not manifest:
+                                manifest = json.dumps({})
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
                     addlist[imageDigest] = image_record
 

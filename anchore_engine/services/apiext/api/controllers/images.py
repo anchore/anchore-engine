@@ -557,56 +557,17 @@ def get_content(request_inputs, content_type, doformat=False):
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
 
             imageDigest = image_report['imageDigest']
-            image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
 
-            #anchore_data = catalog.get_document(user_auth, 'analysis_data', imageDigest)
-            #image_content_data = {}
-            #image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type)
+            try:
+                image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
+            except Exception as err:
+                raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
 
             if content_type not in image_content_data:
                 httpcode = 404
                 raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
 
             return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
-
-        httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
-
-def query_orig(request_inputs, queryType, doformat=False):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
-
-    return_object = {}
-    httpcode = 500
-    userId, pw = user_auth
-    try:
-        tag = params.pop('tag', None)
-        imageDigest = params.pop('imageDigest', None)
-        digest = params.pop('digest', None)
-
-        image_reports = catalog.get_image(user_auth, tag=tag, digest=digest, imageDigest=imageDigest)
-        for image_report in image_reports:
-            if image_report['analysis_status'] != taskstate.complete_state('analyze'):
-                httpcode = 404
-                raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
-            imageDigest = image_report['imageDigest']
-            query_data = catalog.get_document(user_auth, 'query_data', imageDigest)
-            if not queryType:
-                return_object[imageDigest] = query_data.keys()
-            elif queryType in query_data:
-                if doformat:
-                    return_object[imageDigest] = make_response_query(queryType, query_data[queryType])
-                else:
-                    return_object[imageDigest] = query_data[queryType]
-
-            else:
-                return_object[imageDigest] = []
 
         httpcode = 200
     except Exception as err:

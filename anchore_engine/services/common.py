@@ -502,6 +502,43 @@ def make_response_error(errmsg, in_httpcode=None, **kwargs):
                 
     return(ret)
 
+def make_anchore_exception(err, input_message=None, input_httpcode=None, input_detail=None, override_existing=False):
+    ret = Exception(err)
+
+    if not input_message:
+        message = str(err)
+    else:
+        message = input_message
+
+    if input_detail != None:
+        detail = input_detail
+    else:
+        detail = {'raw_exception_message': str(err)}
+
+    if not input_httpcode:
+        httpcode = 500
+    else:
+        httpcode = input_httpcode
+
+    anchore_error_json = {}
+    try:
+        if type(err) == Exception:
+            if 'anchore_error_json' in err.__dict__:
+                anchore_error_json.update(err.__dict__['anchore_error_json'])
+    except:
+        pass
+
+    if override_existing or not anchore_error_json:
+        ret.anchore_error_json = {
+            'message': message,
+            'detail': detail,
+            'httpcode': httpcode,
+        }
+    else:
+        ret.anchore_error_json = anchore_error_json
+
+    return(ret)
+
 def make_response_routes(apiversion, inroutes):
     return_object = {}
     httpcode = 500

@@ -14,7 +14,6 @@ from collections import OrderedDict
 #from textwrap import fill
 
 import anchore_engine.db.entities.common
-import anchorecli.clients.apiexternal
 
 _logger = logging.getLogger(__name__)
 
