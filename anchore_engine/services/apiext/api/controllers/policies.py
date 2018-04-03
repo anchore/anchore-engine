@@ -77,8 +77,8 @@ def list_policies(detail=None):
         try:
             policy_records = catalog.get_policy(user_auth)
         except Exception as err:
-            httpcode = 404
-            raise Exception("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
+            logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
+            raise err
 
         if policy_records:
             httpcode = 200
@@ -167,7 +167,8 @@ def get_policy(policyId, detail=None):
             logger.info('Got from catalog: {}'.format(policy_records))
         except Exception as err:
             logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
-            policy_records = []
+            raise err
+
 
         if policy_records:
             ret = []
@@ -217,7 +218,7 @@ def update_policy(bundle, policyId, active=False):
             policy_records = catalog.get_policy(user_auth, policyId=policyId)
         except Exception as err:
             logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
-            policy_records = []
+            raise err
 
         if policy_records:
             policy_record = policy_records[0]
@@ -258,7 +259,7 @@ def delete_policy(policyId):
                 policy_records = catalog.get_policy(user_auth, policyId=policyId)
             except Exception as err:
                 logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
-                policy_records = []
+                raise err
 
             if not policy_records:
                 rc = True
