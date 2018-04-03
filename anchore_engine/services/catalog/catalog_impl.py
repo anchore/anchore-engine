@@ -1513,6 +1513,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
                         new_image_record['image_status'] = taskstate.init_state('image_status', None)
+
                         if anchore_data:
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
@@ -1536,11 +1537,18 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                         else:
                             new_image_record['analysis_status'] = taskstate.init_state('analyze', None)
 
-                        rc = db_catalog_image.add_record(new_image_record, session=dbsession)
-                        image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if not manifest:
-                            manifest = json.dumps({})
-                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        try:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to access archive storage", input_httpcode=500)
+                        
+                        try:
+                            rc = db_catalog_image.add_record(new_image_record, session=dbsession)
+                            image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                            if not manifest:
+                                manifest = json.dumps({})
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update image in DB", input_httpcode=500)
 
                     else:
                         new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
@@ -1579,11 +1587,18 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             except Exception as err:
                                 logger.debug("could not prepare annotations for store - exception: " + str(err))
 
-                        rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
-                        image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                        if not manifest:
-                            manifest = json.dumps({})
-                        rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        try:
+                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to access archive storage", input_httpcode=500)
+
+                        try:
+                            rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
+                            image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
+                            if not manifest:
+                                manifest = json.dumps({})
+                        except Exception as err:
+                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update image in DB", input_httpcode=500)
 
                     addlist[imageDigest] = image_record
 
