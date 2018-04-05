@@ -5,12 +5,31 @@ Base types for gate implementations and triggers.
 import copy
 import hashlib
 import inspect
+import enum
 
 import anchore_engine
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import TriggerParameter
 from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, InvalidParameterError,  \
     TriggerEvaluationError, PolicyRuleValidationErrorCollection, ValidationError
+from anchore_engine.services.policy_engine.engine.policy.exceptions import EndOfLifedError
+
+
+class LifecycleStates(enum.Enum):
+    active = 1
+    deprecated = 2
+    eol = 3
+
+
+class LifecycleMixin(object):
+    """
+    Mixin for tracking lifecycle of any object.
+    Adds a __state__ field and __superceded_by__  field
+    """
+
+    __lifecycle_state__ = LifecycleStates.active
+    __superceded_by__ = None
+    __aliases__ = []
 
 
 class GateMeta(type):
@@ -29,7 +48,17 @@ class GateMeta(type):
         super(GateMeta, cls).__init__(name, bases, dct)
 
     def get_gate_by_name(cls, name):
-        return cls.registry[name.lower()]
+        # Try direct name
+        found = cls.registry.get(name.lower())
+
+        if found is not None:
+            return found
+        else:
+            found = filter(lambda x: name.lower() in x.__aliases__, cls.registry.values())
+            if found:
+                return found[0]
+            else:
+                raise KeyError(name)
 
     def registered_gate_names(cls):
         return cls.registry.keys()
@@ -55,6 +84,7 @@ class TriggerMatch(object):
     """
 
     def __init__(self, trigger, match_instance_id=None, msg=None):
+
         self.trigger = trigger
         self.id = match_instance_id
         self.msg = msg
@@ -78,7 +108,7 @@ class TriggerMatch(object):
         return '<{}.{} Trigger:{}, Id: {}, Msg: {}>'.format(self.__class__.__module__, self.__class__.__name__, self.trigger.__trigger_name__, self.id, self.msg)
 
 
-class BaseTrigger(object):
+class BaseTrigger(LifecycleMixin):
     """
     An evaluation trigger, representing something found image analysis specifically requested. Contained
     by a single gate, with execution context defined by the parent gate object.
@@ -89,7 +119,7 @@ class BaseTrigger(object):
 
     e.g. in class definition:
 
-    testparam = TriggerParamter(display_name='should_fire', is_required=False, validator=BooleanValidator())
+    tBaseTriggerestparam = TriggerParamter(display_name='should_fire', is_required=False, validator=BooleanValidator())
 
     in usage of the instance object:
 
@@ -116,26 +146,45 @@ class BaseTrigger(object):
         self._fired_instances = []
         self.rule_id = rule_id
 
+        # Short circuit if gate is eol or trigger is eol
+        if self.gate_cls.__lifecycle_state__ == LifecycleStates.eol or self.__lifecycle_state__ == LifecycleStates.eol:
+            return
+
         # Setup the parameters, try setting each. If not provided, set to None to handle validation path for required params
         invalid_params = []
 
         # The list of class vars that are parameters
         params = self.__class__._parameters()
 
+        param_name_map = {}
+
         if kwargs is None:
             kwargs = {}
 
         # Find all class objects that are params
         for attr_name, param_obj in params.items():
+            for a in param_obj.aliases:
+                param_name_map[a] = param_obj.name
+
+            param_name_map[param_obj.name] = param_obj.name
+
             try:
                 setattr(self, attr_name, copy.deepcopy(param_obj))
-                getattr(self, attr_name).set_value(kwargs.get(param_obj.name, None))
+                param_value = kwargs.get(param_obj.name, None)
+                if param_value is None:
+                    # Try aliases
+                    for alias in param_obj.aliases:
+                        param_value = kwargs.get(alias, None)
+                        if param_value:
+                            break
+
+                getattr(self, attr_name).set_value(param_value)
             except ValidationError as e:
                 invalid_params.append(ParameterValueInvalidError(validation_error=e, gate=self.gate_cls.__gate_name__, trigger=self.__trigger_name__, rule_id=self.rule_id))
 
         # Then, check for any parameters provided that are not defined in the trigger.
         if kwargs:
-            given_param_names = set(kwargs.keys())
+            given_param_names = set([param_name_map.get(x) for x in kwargs.keys()])
             for i in given_param_names.difference(set([x.name for x in params.values()])):
                 # Need to aggregate and return all invalid if there is more than one
                 invalid_params.append(InvalidParameterError(i, params.keys(), trigger=self.__trigger_name__, gate=self.gate_cls.__gate_name__))
@@ -176,11 +225,15 @@ class BaseTrigger(object):
         :return:
         """
         self.reset()
-        try:
-            self.evaluate(image_obj, context)
-        except Exception as e:
-            logger.exception('Error evaluating trigger. Aborting trigger execution')
-            raise TriggerEvaluationError(trigger=self, message='Error executing gate {} trigger {} with params: {}. Msg: {}'.format(self.gate_cls.__gate_name__, self.__trigger_name__, self.eval_params, e.message))
+
+        if self.gate_cls.__lifecycle_state__ != LifecycleStates.eol and self.__lifecycle_state__ != LifecycleStates.eol:
+            if image_obj is None:
+                raise TriggerEvaluationError(trigger=self, message='No image provided to evaluate against')
+            try:
+                self.evaluate(image_obj, context)
+            except Exception as e:
+                logger.exception('Error evaluating trigger. Aborting trigger execution')
+                raise TriggerEvaluationError(trigger=self, message='Error executing gate {} trigger {} with params: {}. Msg: {}'.format(self.gate_cls.__gate_name__, self.__trigger_name__, self.eval_params, e.message))
 
         return True
 
@@ -246,7 +299,7 @@ class BaseTrigger(object):
         return '<{}.{} object Name:{}, TriggerId:{}, Params:{}>'.format(self.__class__.__module__, self.__class__.__name__, self.__trigger_name__, self.__trigger_id__, self.parameters() if self.parameters() else [])
 
 
-class Gate(object):
+class Gate(LifecycleMixin):
     """
     Base type for a gate module.
     
@@ -273,7 +326,6 @@ class Gate(object):
 
     __gate_name__ = None
     __triggers__ = []
-    __deprecated_trigger_names__ = []
     __description__ = None
 
     @classmethod
@@ -288,13 +340,6 @@ class Gate(object):
     @classmethod
     def trigger_names(cls):
         return [x.__trigger_name__.lower() for x in cls.__triggers__]
-
-    @classmethod
-    def is_deprecated_trigger(cls, name):
-        if name is None:
-            raise ValueError('Trigger name cannot be None')
-
-        return name.lower() in cls.__deprecated_trigger_names__
 
     @classmethod
     def get_trigger_named(cls, name):
@@ -320,16 +365,13 @@ class Gate(object):
         """
         self.image = None
         self.selected_triggers = None
-        self.evaluated_triggers = []
-        self.evaluated_at = None
-        self.evaluation_duration = None
-        self.evaluation_success = False
 
     def prepare_context(self, image_obj, context):
         """
         Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
         data prior to execution of the gate/triggers.
-        :return:         
+        :rtype:
+        :return:
         """
         return context
 
@@ -339,16 +381,9 @@ class Gate(object):
         :return: 
         """
         trigger_json = [t.config_json() for t in self.__triggers__]
-        eval_json = [t.json() for t in self.evaluated_triggers] if self.evaluated_triggers else []
-
         return {
             'name': self.__gate_name__,
-            'configured_triggers': trigger_json,
-            'evaluation': {
-                'triggers': eval_json,
-                'timestamp': self.evaluated_at,
-                'duration': self.evaluation_duration
-            }
+            'configured_triggers': trigger_json
         }
 
     @classmethod
@@ -360,6 +395,7 @@ class Gate(object):
         trigger_json = [t.json() for t in cls.__triggers__]
         return {
             'name': cls.__gate_name__,
+            'aliases': cls.__aliases__,
             'triggers': trigger_json
         }
 

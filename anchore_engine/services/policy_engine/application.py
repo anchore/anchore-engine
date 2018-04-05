@@ -2,6 +2,7 @@ import connexion
 import traceback
 import uuid
 from anchore_engine.db import end_session
+from anchore_engine.services.policy_engine.api.encoder import JSONEncoder
 from flask import g
 
 SWAGGER_DIR = 'swagger/'
@@ -12,6 +13,7 @@ try:
     # Uses the x-swagger-router-controller directive to set which module handles the routes
     application = connexion.FlaskApp(__name__, specification_dir=SWAGGER_DIR)
     application.app.url_map.strict_slashes = False
+    application.app.json_encoder = JSONEncoder
     application.add_api(SWAGGER_FILE)
 except:
     traceback.print_exc()

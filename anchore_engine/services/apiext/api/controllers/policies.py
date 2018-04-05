@@ -7,7 +7,7 @@ from connexion import request
 
 # anchore modules
 from anchore_engine.clients import catalog, policy_engine
-from anchore_engine.clients.policy_engine.generated.api_client import ApiException
+from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
 
@@ -201,8 +201,8 @@ def update_policy(bundle, policyId, active=False):
 
         if not bodycontent:
             bodycontent = '{}'
-        else:
-            jsondata = json.loads(bodycontent)
+
+        jsondata = json.loads(bodycontent)
 
         if not jsondata:
             jsondata['policyId'] = policyId
@@ -229,6 +229,24 @@ def update_policy(bundle, policyId, active=False):
 
             policy_record.update(jsondata)
             policy_record['policyId'] = policyId
+
+            # schema check
+            try:
+                p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+                response = p_client.validate_bundle(policy_bundle=jsondata['policybundle'])
+
+                if not response.valid:
+                    httpcode = 400
+                    return_object = anchore_engine.services.common.make_response_error('Bundle failed validation',
+                                                                                       in_httpcode=400, detail={
+                            'validation_details': [x.to_dict() for x in response.validation_details]})
+                    return (return_object, httpcode)
+
+            except ApiException as err:
+                raise Exception(
+                    'Error response from policy service during bundle validation. Validation could not be performed: {}'.format(
+                        err))
+
             return_policy_record = catalog.update_policy(user_auth, policyId, policy_record=policy_record)
             return_object = [make_response_policy(user_auth, return_policy_record, params)]
             httpcode = 200

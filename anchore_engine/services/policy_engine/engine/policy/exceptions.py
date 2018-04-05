@@ -9,9 +9,8 @@ class PolicyError(StandardError):
     """
     severity = 'error'
 
-    def __init__(self, message, *args, **kwargs):
-        super(PolicyError, self).__init__(*args, **kwargs)
-        self.message = message
+    def __init__(self, message):
+        super(PolicyError, self).__init__(message)
 
     @classmethod
     def caused_by(cls, cause):
@@ -42,7 +41,6 @@ class EvaluationError(PolicyError):
     """
     Any error during execution of the a policy or policy component
     """
-    pass
 
 
 class PolicyEvaluationError(EvaluationError):
@@ -192,12 +190,32 @@ class GateEvaluationError(EvaluationError):
         self.gate = gate_name
 
 
-class DeprecatedGateWarning(GateEvaluationError):
+class EndOfLifedError(GateEvaluationError):
+    severity = 'error'
+
+    def __init__(self, gate_name, trigger_name=None, superceded=None):
+        if trigger_name:
+            msg = 'Gate/trigger {}/{} has been End-of-Lifed. It will not be evaluated, and should be removed from policies'.format(gate_name, trigger_name) + ("and replaced with '{}'".format(superceded) if superceded else '')
+        else:
+            msg = 'Gate {} has been End-of-Lifed. It will not be evaluated, and should be removed from policies'.format(gate_name) + ("and replaced with '{}'".format(superceded) if superceded else '')
+        super(EndOfLifedError, self).__init__(gate_name, msg)
+        self.gate_name = gate_name
+        self.trigger_name = trigger_name
+        self.superceded_by = superceded
+
+
+class DeprecationWarning(GateEvaluationError):
     severity = 'warn'
 
-    def __init__(self, gate_name):
-        super(DeprecatedGateWarning, self).__init__(gate_name, 'Gate {} is deprecated and was not evaluated. Should be removed from policy'.format(gate_name))
+    def __init__(self, gate_name, trigger_name=None, superceded=None):
+        if trigger_name:
+            msg = 'Gate/trigger {}/{} is deprecated. It will continue to function, but it should be removed from policies'.format(gate_name, trigger_name) + ("and replaced with '{}'".format(superceded) if superceded else '')
+        else:
+            msg = 'Gate {} is deprecated. It will continue to function, but it should be removed from policies'.format(gate_name) + ("and replaced with '{}'".format(superceded) if superceded else '')
+        super(DeprecationWarning, self).__init__(gate_name, msg)
         self.gate_name = gate_name
+        self.trigger_name = trigger_name
+        self.superceded_by = superceded
 
 
 class ParameterValueInvalidError(PolicyRuleValidationError):
