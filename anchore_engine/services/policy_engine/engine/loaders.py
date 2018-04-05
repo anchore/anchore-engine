@@ -607,10 +607,10 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        thecpe = ':'.join(final_cpe)
+                        cpekey = ':'.join(final_cpe + [path])
 
-                        if thecpe not in allcpes:
-                            allcpes[thecpe] = True
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "java"
@@ -648,10 +648,10 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        thecpe = ':'.join(final_cpe)
+                        cpekey = ':'.join(final_cpe + [path])
 
-                        if thecpe not in allcpes:
-                            allcpes[thecpe] = True
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "python"
@@ -682,10 +682,10 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        thecpe = ':'.join(final_cpe)
+                        cpekey = ':'.join(final_cpe + [gem.path])
 
-                        if thecpe not in allcpes:
-                            allcpes[thecpe] = True
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "gem"
@@ -716,10 +716,10 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        thecpe = ':'.join(final_cpe)
+                        cpekey = ':'.join(final_cpe + [npm.path])
 
-                        if thecpe not in allcpes:
-                            allcpes[thecpe] = True
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "npm"
