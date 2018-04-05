@@ -112,6 +112,7 @@ class BooleanStringValidator(JsonSchemaValidator):
 class RegexParamValidator(JsonSchemaValidator):
     __regex__ = '.*'
     __validator_type__ = 'RegexValidator'
+    __validator_description__ = 'Value must pass regex match'
     __validation_schema__ = {
         'type': 'string',
         'pattern': '.*'
@@ -143,6 +144,7 @@ class RegexParamValidator(JsonSchemaValidator):
 
 class DelimitedStringValidator(RegexParamValidator):
     __regex__ = '^\s*(\s*({item})\s*{delim})*\s*({item}){mult}\s*$'
+    __validator_description__ = 'A string of character delimited values validated by a regex'
     __validator_type__ = 'DelimitedString'
     __item_regex__ = '.*'
     __delim__ = ','
@@ -165,14 +167,13 @@ class DelimitedStringValidator(RegexParamValidator):
         self.validation_schema['pattern'] = self.regex
 
 
-class CommaDelimitedNumberListValidator(RegexParamValidator):
-    __regex__ = '^\s*(\d+\s*,?\s*)*\s*$'
+class CommaDelimitedNumberListValidator(DelimitedStringValidator):
+    __item_regex__ = '\d+'
     __validator_type__ = 'CommaDelimitedStringOfNumbers'
     __validator_description__ = 'Comma delimited list of numbers'
 
 
 class NameVersionListValidator(DelimitedStringValidator):
-    #__regex__ =  '^\s*(([^,|])\|([^,|])\s*,\s*)*(\S+)\|(\S+)\s*$'
     __validator_description__ = 'Comma delimited list of name/version strings of format: name|version.'
     __validator_type__ = 'CommaDelimitedStringOfNameVersionPairs'
     __item_regex__ = '[^|,]+\|[^|,]+'
@@ -210,8 +211,10 @@ class EnumValidator(JsonSchemaValidator):
 
     def __init__(self, enums):
         super(EnumValidator, self).__init__()
-
-        self.validation_schema['enum'] = enums if enums else self.__enums__
+        if enums:
+            self.__enums__ = enums
+        self.validation_schema['enum'] = self.__enums__
+        self.__validator_description__= 'One of [{}]'.format(self.__enums__)
 
 
 class DelimitedEnumStringValidator(RegexParamValidator):
@@ -221,14 +224,14 @@ class DelimitedEnumStringValidator(RegexParamValidator):
 
     def __init__(self, enum_choices, delimiter=','):
         if enum_choices:
-            self.enum_choices = enum_choices
-        else:
-            self.enum_choices = self.__enums__
+            self.__enums__ = enum_choices
 
-        choice_regex = '|'.join(enum_choices)
+        choice_regex = '|'.join(self.__enums__)
+        self.delimiter = delimiter
 
         regex = self.__regex__.format(enums=choice_regex, delim=delimiter)
         super(DelimitedEnumStringValidator, self).__init__(regex=regex)
+        self.__validator_description__ = 'Delimited (char={}) string where each item must be one of: [{}]'.format(self.delimiter, self.__enums__)
 
 
 def delim_parser(param_value, item_delimiter=','):
