@@ -1,18 +1,20 @@
 # Import all valid gates
 
 from .dockerfile import DockerfileGate
-from .file_content import FileCheckGate
-from .fileparse_passwd import FileparsePasswordGate
-#from .image_base_check import ImageCheckGate
-from .check_package_info import PackageCheckGate
-#from .pkg_diff import PkgDiffGate
-from .anchoresec import AnchoreSecGate
-from .package_blacklist import PackageBlacklistGate
-#from .check_suidfiles import SuidDiffGate
-from .license_blacklist import LicenseBlacklistGate
-from .gem_check import GemCheckGate
-from .npm_check import NpmCheckGate
-from .secret_check import SecretCheckGate
+from .files import FileCheckGate
+from .passwd_file import FileparsePasswordGate
+from .packages import PackagesCheckGate
+from .vulnerabilities import VulnerabilitiesGate
+from .licenses import LicensesGate
+from .gems import GemCheckGate
+from .npms import NpmCheckGate
+from .secrets import SecretCheckGate
 from .image_metadata import ImageMetadataGate
 from .always import AlwaysGate
 from .cpesec import CpeGate
+
+# Bring in deprecated gates
+from .deprecated import *
+
+# Bring in eol'd gates
+from .eol import *

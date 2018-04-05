@@ -36,30 +36,43 @@
       "rules": [
         {
           "action": "STOP",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "EXPOSE",
+          "gate": "dockerfile",
+          "trigger": "exposed_ports",
           "params": [
             {
-              "name": "DENIEDPORTS",
+              "name": "ports",
               "value": "22"
+            },
+            {
+              "name": "type",
+              "value": "blacklist"
             }
           ],
           "id": "ce7b8000-829b-4c27-8122-69cd59018400"
         },
         {
           "action": "WARN",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "NOHEALTHCHECK",
-          "params": [],
+          "gate": "dockerfile",
+          "trigger": "instruction",
+          "params": [
+            {
+              "name": "instruction",
+              "value": "HEALTHCHECK"
+            },
+            {
+              "name": "check",
+              "value": "not_exists"
+            }
+          ],
           "id": "312d9e41-1c05-4e2f-ad89-b7d34b0855bb"
         },
         {
           "action": "WARN",
-          "gate": "ANCHORESEC",
-          "trigger": "FEEDOUTOFDATE",
+          "gate": "vulnerabilities",
+          "trigger": "stale_feed_data",
           "params": [
             {
-              "name": "MAXAGE",
+              "name": "max_days_since_sync",
               "value": "2"
             }
           ],
@@ -67,31 +80,50 @@
         },
         {
           "action": "WARN",
-          "gate": "ANCHORESEC",
-          "trigger": "UNSUPPORTEDDISTRO",
+          "gate": "vulnerabilities",
+          "trigger": "vulnerability_data_unavailable",
           "params": [],
           "id": "3e79ea94-18c4-4d26-9e29-3b9172a62c2e"
         },
         {
           "action": "WARN",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNMEDIUM",
-          "params": [],
+          "gate": "vulnerabilities",
+          "trigger": "package",
+          "params": [
+            {
+              "name": "package_type",
+              "value": "all"
+            },
+            {
+              "name": "severity_comparison",
+              "value": "="
+            },
+            {
+              "name": "severity",
+              "value": "medium"
+            }
+          ],
           "id": "6063fdde-b1c5-46af-973a-915739451ac4"
         },
         {
           "action": "STOP",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNHIGH",
-          "params": [],
+          "gate": "vulnerabilities",
+          "trigger": "package",
+          "params": [
+            {
+              "name": "package_type",
+              "value": "all"
+            },
+            {
+              "name": "severity_comparison",
+              "value": ">"
+            },
+            {
+              "name": "severity",
+              "value": "medium"
+            }
+          ],
           "id": "b30e8abc-444f-45b1-8a37-55be1b8c8bb5"
-        },
-        {
-          "action": "STOP",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNCRITICAL",
-          "params": [],
-          "id": "295adc9f-28b9-4aab-a5d6-833cf7727db7"
         }
       ],
       "version": "1_0",

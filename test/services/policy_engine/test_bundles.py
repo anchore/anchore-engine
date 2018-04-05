@@ -38,6 +38,7 @@ class TestPolicyBundleEval(unittest.TestCase):
     def setUpClass(cls):
         init_db(cls.test_env.mk_db())
         cls.default_bundle = cls.test_env.get_bundle('default')
+        cls.old_bundle = cls.test_env.get_bundle('old_default')
 
     def load_images(self):
         for img in self.test_image_ids.values():
@@ -63,6 +64,27 @@ class TestPolicyBundleEval(unittest.TestCase):
         self.assertIsNotNone(evaluation, 'Got None eval')
         print(json.dumps(evaluation.json(), indent=2))
         print(json.dumps(evaluation.as_table_json(), indent=2))
+
+
+        print('Building executable bundle from old default bundle')
+        test_tag = 'docker.io/library/ruby:latest'
+        built = build_bundle(self.old_bundle, for_tag=test_tag)
+        self.assertFalse(built.init_errors)
+        print('Got: {}'.format(built))
+
+        db = get_session()
+        img_obj = db.query(Image).get((self.test_image_ids['ruby'], '0'))
+        if not img_obj:
+            self.load_images()
+
+        self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
+        evaluation = built.execute(img_obj, tag=test_tag,
+                                   context=ExecutionContext(db_session=db, configuration={}))
+
+        self.assertIsNotNone(evaluation, 'Got None eval')
+        print(json.dumps(evaluation.json(), indent=2))
+        print(json.dumps(evaluation.as_table_json(), indent=2))
+
 
     def testDuplicateRuleEvaluation(self):
         print('Building executable bundle from default bundle')
@@ -445,6 +467,12 @@ class TestPolicyBundleEval(unittest.TestCase):
                          'trigger': 'always',
                          'action': 'go',
                          'params': []
+                     },
+                     {
+                         'gate': 'ANCHORESEC',
+                         'trigger': 'VULNLOW',
+                         'action': 'warn',
+                         'params': []
                      }
                  ]
                  }
@@ -457,7 +485,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         print('Building executable bundle from default bundle')
         test_tag = 'docker.io/library/ruby:latest'
         with self.assertRaises(InitializationError) as ex:
-            built = build_bundle(bundle, for_tag=test_tag)
+            built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=False)
             print('Got: {}'.format(built))
 
             db = get_session()

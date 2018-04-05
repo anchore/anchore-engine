@@ -1,0 +1,7 @@
+{
+	"packageName": "anchore_engine.clients.policy_engine.generated",
+	"packageVersion": "0.1",
+	"controllerPackage": "controllers",
+	"defaultController": "main",
+	"supportPython2": true
+}

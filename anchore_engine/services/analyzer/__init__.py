@@ -370,13 +370,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     resp = client.ingress_image(request)
                     logger.debug("policy engine image add response: " + str(resp))
 
-                    #try:
-                    #    # force a fresh CVE scan
-                    #    resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=True)
-                    #except Exception as err:
-                    #    logger.warn("post analysis CVE scan failed for image: " + str(imageId))
-
                 except Exception as err:
+                    import traceback
+                    traceback.print_exc()
                     raise Exception("adding image to policy-engine failed - exception: " + str(err))
 
                 logger.debug("updating image catalog record analysis_status")

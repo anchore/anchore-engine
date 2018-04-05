@@ -14,7 +14,6 @@ from twisted.internet.task import LoopingCall
 import anchore_engine.services.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.services.common import apiext_status
 from anchore_engine.subsys import logger
 
 _default_api_version = "v1"

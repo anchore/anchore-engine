@@ -147,13 +147,15 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
     return(manifest, digest)
 
 def ping_docker_registry(registry_record):
-
     ret = False
+    user = ''
+    url = ''
+
     try:
-        user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
         registry = registry_record['registry']
         verify = registry_record['registry_verify']
-        url = "https://"+registry
+        url = "https://" + registry
+        user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
 
         drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify)
         logger.debug("registry access check success ("+str(url)+","+str(user)+")")

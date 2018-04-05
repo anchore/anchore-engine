@@ -872,6 +872,16 @@ definitions:
       description:
         type: string
         description: Description of the gate
+      state:
+        type: string
+        description: State of the gate, applied transitively to all triggers if a state other than active
+        enum:
+        - active
+        - deprecated
+        - eol
+      superceded_by:
+        type: string
+        description: The name of another gate that supercedes this on functionally if this is deprecated
       triggers:
         type: array
         description: List of the triggers that can fire for this Gate
@@ -887,6 +897,16 @@ definitions:
       description:
         type: string
         description: Trigger description for what it tests and when it will fire during evaluation
+      state:
+        type: string
+        description: State of the trigger
+        enum:
+        - active
+        - deprecated
+        - eol
+      superceded_by:
+        type: string
+        description: The name of another trigger that supercedes this on functionally if this is deprecated
       parameters:
         type: array
         description: The list of parameters that are valid for this trigger
@@ -900,9 +920,22 @@ definitions:
         description: Parameter name as it appears in policy document
       description:
         type: string
+      example:
+        type: string
+        description: An example value for the parameter (encoded as a string if the parameter is an object or list type)
       required:
-        description: Is this a required parameter or optional
+        description: Is this a required parameter or optional. If required it must be present in the json and validate based on the provided validator. If optional it can be present in json and null or omitted.
         type: boolean
+      state:
+        type: string
+        description: State of the trigger parameter
+        enum:
+        - active
+        - deprecated
+        - eol
+      superceded_by:
+        type: string
+        description: The name of another gate that supercedes this on functionally if this is deprecated
       validator:
         type: object
         description: If present, a definition for validation of input. Typically a jsonschema object that can be used to validate an input against.

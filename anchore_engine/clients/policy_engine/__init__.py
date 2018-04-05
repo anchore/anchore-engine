@@ -17,26 +17,25 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
     :return: initialized client object
     """
 
-    global configuration
-    if host:
-        configuration.host = host
-    else:
+    if not host:
         try:
             endpoint = anchore_engine.clients.common.get_service_endpoint((user, password), SERVICE_NAME)
             if endpoint:
-                configuration.host = endpoint
+                host = endpoint
             else:
                 raise Exception("cannot find endpoint for service: {}".format(SERVICE_NAME))
         except Exception as err:
             raise err
 
-    if user:
-        configuration.username = user
-    if password:
-        configuration.password = password
-
-    configuration.verify_ssl = verify_ssl
-
     configuration.api_client = None
     c = DefaultApi()
+    if host:
+        c.api_client.configuration.host = host
+    if user:
+        c.api_client.configuration.username = user
+    if password:
+        c.api_client.configuration.password = password
+
+    c.api_client.configuration.verify_ssl = verify_ssl
+
     return c

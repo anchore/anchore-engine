@@ -31,6 +31,8 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnera
 from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
+
+# Leave this here to ensure gates registry is fully loaded
 from anchore_engine.services.policy_engine.engine.policy import gates
 import anchore_engine.subsys.metrics
 from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
@@ -529,12 +531,30 @@ def describe_policy():
             g.name = name
             g.description = v.__description__ if v.__description__ else ''
             g.triggers = []
+            if hasattr(v, '__superceded_by__'):
+                g.superceded_by = v.__superceded_by__
+            else:
+                g.superceded_by = None
+
+            if hasattr(v, '__lifecycle_state__'):
+                g.state = v.__lifecycle_state__.name
+            else:
+                g.state = 'active'
 
             for t in v.__triggers__:
                 tr = TriggerSpec()
                 tr.name = t.__trigger_name__
                 tr.description = t.__description__ if t.__description__ else ''
                 tr.parameters = []
+                if hasattr(t, '__superceded_by__'):
+                    tr.superceded_by = t.__superceded_by__
+                else:
+                    tr.superceded_by = None
+                if hasattr(t, '__lifecycle_state__'):
+                    tr.state = t.__lifecycle_state__.name
+                else:
+                    tr.state = 'active'
+
                 params = t._parameters()
                 if params:
                     param_list = sorted(params.values(), key=lambda x: x.sort_order)
@@ -542,13 +562,26 @@ def describe_policy():
                         tps = TriggerParamSpec()
                         tps.name = param.name
                         tps.description = param.description
+                        tps.example = param.example
                         tps.validator = param.validator.json()
                         tps.required = param.required
+                        if hasattr(param, '__superceded_by__'):
+                            tps.superceded_by = param.__superceded_by__
+                        else:
+                            tps.superceded_by = None
+
+                        if hasattr(param, '__lifecycle_state__'):
+                            tps.state = param.__lifecycle_state__.name
+                        else:
+                            tps.state = 'active'
+
                         tr.parameters.append(tps)
 
                 g.triggers.append(tr)
 
             doc.append(g.to_dict())
+
+            doc = sorted(doc, key=lambda x: x['state'])
 
         return doc, 200
 
