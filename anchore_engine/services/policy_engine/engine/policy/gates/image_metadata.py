@@ -1,6 +1,6 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.gates.conditions import CheckOperation, CheckOperations
+from anchore_engine.services.policy_engine.engine.policy.gates.util import CheckOperation
 from anchore_engine.services.policy_engine.engine.policy.params import EnumStringParameter, TypeValidator, TriggerParameter
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
@@ -8,8 +8,8 @@ log = get_logger()
 
 
 class ImageMetadataAttributeCheckTrigger(BaseTrigger):
-    __trigger_name__ = 'attributecheck'
-    __description__ = 'triggers if a named image attribute matches the given condition'
+    __trigger_name__ = 'attribute'
+    __description__ = 'Triggers if a named image metadata value matches the given condition. For example, to trigger if image is larger than 1GB: "attribute":"size", "check": ">", "value":"1073741824"'
 
     __ops__ = {
         '=': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: x == y),
@@ -29,19 +29,16 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __valid_attributes__ = {
         'size': lambda x: x.size,
         'architecture': lambda x: x.docker_data_json.get('Architecture') if x.docker_data_json else None,
-        'os_type': lambda x: x.docker_data_json.get('Os') if x.docker_data_json else None,
+        'os_type': lambda x: x.docker_data_json.get('Os', x.docker_data_json.get('os')) if x.docker_data_json else None,
         'distro': lambda x: x.distro_name,
         'distro_version': lambda x: x.distro_version,
         'like_distro': lambda x: x.like_distro,
         'layer_count': lambda x: len(x.layers_json) if x.layers_json else 0
     }
 
-    __checks__ = CheckOperations(__ops__)
-    __value_validator__ = lambda x: True
-
-    attribute = EnumStringParameter(name='attributes', description='Attribute name to apply as rvalue to the check operation', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
-    check = EnumStringParameter(name='check', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True, sort_order=2)
-    check_value = TriggerParameter(name='check_value', description='The lvalue in the check operation.', validator=TypeValidator('string'), sort_order=3)
+    attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
+    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True, sort_order=2)
+    check_value = TriggerParameter(name='value', example_str='1073741824', description='Value used in comparison', validator=TypeValidator('string'), is_required=False, sort_order=3)
 
     def evaluate(self, image_obj, context):
         attr = self.attribute.value()
@@ -51,7 +48,8 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         if not attr or not check:
             return
 
-        if self.__checks__.get_op(check).requires_rvalue and not rval:
+        op = self.__ops__.get(check)
+        if op is None or op.requires_rvalue and not rval:
             # Raise exception or fall thru
             return
 
@@ -60,13 +58,13 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         if type(img_val) in [str, int, float, unicode]:
             rval = type(img_val)(rval)
 
-        if self.__checks__.get_op(check).eval_function(img_val, rval):
+        if op.eval_function(img_val, rval):
             self._fire(msg="Attribute check for attribute: '{}' check: '{}' check_value: '{}' matched image value: '{}'".format(attr, check, (str(rval) if rval is not None else ''), img_val))
 
 
 class ImageMetadataGate(Gate):
-    __gate_name__ = 'metadatacheck'
-    __description__ = 'Check Image Metadata'
+    __gate_name__ = 'metadata'
+    __description__ = 'Checks against image metadata, such as size, OS, distro, architecture, etc'
 
     __triggers__ = [
         ImageMetadataAttributeCheckTrigger,
@@ -80,6 +78,7 @@ class ImageMetadataGate(Gate):
         context.data['dockerfile']['RUN'] = ['RUN apt-get update', 'RUN blah']
         context.data['dockerfile']['VOLUME'] = ['VOLUME /tmp', 'VOLUMN /var/log']
 
+        :rtype:
         :return: updated context
         """
 

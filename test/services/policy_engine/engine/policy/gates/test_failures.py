@@ -4,7 +4,7 @@ import unittest
 from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, BundleExecution
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, ExposeTrigger
+from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, ExposedPortsTrigger
 from anchore_engine.services.policy_engine.engine.policy.exceptions import TriggerEvaluationError, TriggerNotAvailableError, TriggerNotFoundError, ValidationError, PolicyRuleValidationErrorCollection
 
 test_bundle = {
@@ -45,16 +45,16 @@ class GateFailureTest(unittest.TestCase):
         with self.assertRaises(KeyError) as f:
             t = self.gate_clazz.get_trigger_named('NOT_A_REAL_TRIGGER')
 
-        t = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
+        t = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
 
     def test_trigger_exec_failure(self):
-        clazz = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
-        trigger = clazz(self.gate_clazz)
+        clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
+        trigger = clazz(self.gate_clazz, ports='8088', type='whitelist')
         with self.assertRaises(TriggerEvaluationError) as f:
             trigger.execute(image_obj=None, context=None)
 
     def test_trigger_parameter_invalid(self):
-        clazz = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
+        clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
 
         with self.assertRaises(PolicyRuleValidationErrorCollection) as f:
             trigger = clazz(self.gate_clazz, notaparam='testing123')
@@ -63,7 +63,7 @@ class GateFailureTest(unittest.TestCase):
             trigger = clazz(self.gate_clazz, allowed_ports='80')
 
     def test_trigger_parameter_validation_failure(self):
-        clazz = self.gate_clazz.get_trigger_named(ExposeTrigger.__trigger_name__)
+        clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
 
         with self.assertRaises(PolicyRuleValidationErrorCollection) as f:
             trigger = clazz(self.gate_clazz, allowedports=80)

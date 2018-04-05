@@ -1,0 +1,7 @@
+{
+	"packageName": "anchore_engine.services.policy_engine.api",
+	"packageVersion": "0.1",
+	"controllerPackage": "controllers",
+	"defaultController": "main",
+	"supportPython2": true
+}

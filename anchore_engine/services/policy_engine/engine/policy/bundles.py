@@ -13,7 +13,8 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
     TriggerEvaluationError, \
     TriggerNotFoundError, \
     GateEvaluationError, \
-    DeprecatedGateWarning, \
+    EndOfLifedError, \
+    DeprecationWarning,\
     GateNotFoundError, \
     ParameterValueInvalidError, \
     InvalidParameterError, \
@@ -331,7 +332,7 @@ class BundleExecution(object):
                     'header': self.CLI_COMPATIBLE_HEADER_SET,
                     'row_count': len(self.bundle_decision.policy_decision.decisions),
                     'rows': [self._row_json(t) for t in self.bundle_decision.policy_decision.decisions],
-                    'final_action': self.bundle_decision.final_decision.name.upper(),
+                    'final_action': self.bundle_decision.policy_decision.final_decision.name,
                 },
             },
             'policy_name': self.executed_mapping.policy_id if self.executed_mapping else '',
@@ -354,7 +355,7 @@ class PolicyRule(object):
 
         action = policy_json.get('action', '').lower()
         try:
-            self.action = GateAction.__members__[action]
+            self.action = getattr(GateAction, action)
         except KeyError:
             raise InvalidGateAction(gate=self.gate_name, trigger=self.trigger_name, rule_id=self.rule_id, action=action,
                                     valid_actions=filter(lambda x: not x.startswith('_'), GateAction.__dict__.keys()))
@@ -367,39 +368,13 @@ class PolicyRule(object):
 
 
 def policy_rule_factory(policy_json, strict_validation=True):
-    try:
-        rule = ExecutablePolicyRule(policy_json)
-    except GateNotFoundError as ex:
-        if not strict_validation and DeprecatedPolicyRule.is_deprecated(policy_json):
-            rule = DeprecatedPolicyRule(policy_json)
-        else:
-            raise ex
-
+    rule = ExecutablePolicyRule(policy_json)
+    if strict_validation:
+        if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
+            raise EndOfLifedError(rule.gate_name, superceded=rule.gate_cls.__superceded_by__)
+        elif rule.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
+            raise EndOfLifedError(rule.gate_name, trigger_name=rule.trigger_name, superceded=rule.configured_trigger.__superceded_by__)
     return rule
-
-
-class DeprecatedPolicyRule(PolicyRule):
-    deprecated_gates = [
-        'pkgdiff',
-        'suiddiff',
-        'base_check'
-    ]
-
-    class DeprecatedGate(Gate):
-        def prepare_context(self, image_obj, context):
-            return context
-
-    def __init__(self, policy_json=None):
-        super(DeprecatedPolicyRule, self).__init__(policy_json)
-        self.errors.append(DeprecatedGateWarning(self.gate_name))
-        self.gate_cls = DeprecatedPolicyRule.DeprecatedGate
-
-    def execute(self, image_obj, exec_context):
-        return self.errors, []
-
-    @classmethod
-    def is_deprecated(cls, policy_json):
-        return policy_json.get('gate').lower() in cls.deprecated_gates
 
 
 class ExecutablePolicyRule(PolicyRule):
@@ -430,7 +405,6 @@ class ExecutablePolicyRule(PolicyRule):
             raise self.error_exc
 
         try:
-
             try:
                 self.configured_trigger = selected_trigger_cls(parent_gate_cls=self.gate_cls, rule_id=self.rule_id, **self.trigger_params)
             except [TriggerNotFoundError, InvalidParameterError, ParameterValueInvalidError] as e:
@@ -467,14 +441,22 @@ class ExecutablePolicyRule(PolicyRule):
                 log.error('No configured trigger to execute for gate {} and trigger: {}. Returning'.format(self.gate_name, self.trigger_name))
                 raise TriggerNotFoundError(trigger_name=self.trigger_name, gate_name=self.gate_name)
 
+            if self.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
+                self.errors.append(EndOfLifedError(gate_name=self.gate_name, superceded=self.gate_cls.__superceded_by__))
+            elif self.gate_cls.__lifecycle_state__ == LifecycleStates.deprecated:
+                self.errors.append(DeprecationWarning(gate_name=self.gate_name, superceded=self.gate_cls.__superceded_by__))
+            elif self.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
+                self.errors.append(EndOfLifedError(gate_name=self.gate_name, trigger_name=self.trigger_name, superceded=self.configured_trigger.__superceded_by__))
+            elif self.configured_trigger.__lifecycle_state__ == LifecycleStates.deprecated:
+                self.errors.append(DeprecationWarning(gate_name=self.gate_name, trigger_name=self.trigger_name, superceded=self.configured_trigger.__superceded_by__))
+
             try:
                 self.configured_trigger.execute(image_obj, exec_context)
-            except TriggerEvaluationError as e:
-                log.exception('Error executing trigger {} on image {}'.format(self.trigger_name, image_obj.id))
+            except TriggerEvaluationError:
                 raise
             except Exception as e:
                 log.exception('Unmapped exception caught during trigger evaluation')
-                raise TriggerEvaluationError('Could not evaluate trigger due to error in evaluation execution')
+                raise TriggerEvaluationError(trigger=self.configured_trigger, message='Could not evaluate trigger due to error in evaluation execution')
 
             matches = self.configured_trigger.fired
             decisions = []
@@ -489,7 +471,7 @@ class ExecutablePolicyRule(PolicyRule):
 
             return self.errors, decisions
         except Exception as e:
-            log.exception('Error executing trigger!')
+            log.exception('Error executing trigger {} on image {}'.format(self.trigger_name, image_obj.id))
             raise
 
     def _safe_execute(self, image_obj, exec_context):
@@ -861,6 +843,8 @@ class ExecutableWhitelistItem(object):
                 return trigger_match
 
     def matches(self, fired_trigger_obj):
+        # TODO: add alias checks here for backwards compat
+
         return self.gate == fired_trigger_obj.trigger.gate_cls.__gate_name__.lower() and \
                (self.trigger_id == fired_trigger_obj.id or is_match(regexify, self.trigger_id, fired_trigger_obj.id))
 
@@ -1078,7 +1062,7 @@ class ExecutableBundle(VersionedEntityMixin):
 
         :param bundle_json: the json the build
         :param tag: a string tag value to use to execute mapping and optimize bundle for if present (optional)
-        :param strict_validation: bool to toggle support for deprecated gates
+        :param strict_validation: bool to toggle support for eol/deprecated gates
         """
         if not bundle_json:
             raise ValidationError('No bundle json received')

@@ -9,7 +9,6 @@ import anchore_engine.services.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.services.common import apiext_status
 
 def make_response_service(user_auth, service_record, params):
     ret = {}
@@ -82,7 +81,6 @@ def get_status():
     return (return_object, httpcode)
 
 def get_service_detail():
-    global apiext_status
     """
     GET /system/status
 
@@ -141,7 +139,6 @@ def get_service_detail():
     except Exception as err:
         return_object = str(err)
 
-    apiext_status.update(return_object)
     return (return_object, httpcode)
 
 
