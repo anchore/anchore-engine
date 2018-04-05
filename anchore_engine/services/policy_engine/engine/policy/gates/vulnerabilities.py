@@ -74,8 +74,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
 class FeedOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'stale_feed_data'
-    __description__ = 'triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days)'
-    max_age = IntegerStringParameter(name='max_days_since_sync', example_str='10', description='Fire the trigger if the last sync was more than this number of days ago', is_required=True)
+    __description__ = 'Triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days).'
+    max_age = IntegerStringParameter(name='max_days_since_sync', example_str='10', description='Fire the trigger if the last sync was more than this number of days ago.', is_required=True)
 
     def evaluate(self, image_obj, context):
         # Map to a namespace

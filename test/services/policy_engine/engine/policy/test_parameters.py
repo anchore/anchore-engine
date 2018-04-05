@@ -17,9 +17,9 @@ class ValidatorTestMixin(object):
         for input, expected in value_matrix:
             print('Testing value: {} with expected output: {}'.format(input, expected))
             if expected:
-                self.assertTrue(validator.validate(input))
+                self.assertTrue(validator.validate(input), msg='Expected true for input: {}'.format(input))
             else:
-                with self.assertRaises(ValidationError) as e:
+                with self.assertRaises(ValidationError, msg='Expected exception for input: {}'.format(input)) as e:
                     validator.validate(input)
 
 
@@ -298,6 +298,20 @@ class TestRegexRelatedValidators(unittest.TestCase, ValidatorTestMixin):
         self.run_matrix_test(matrix, v)
 
 
+class FakeTrigger(gate.BaseTrigger):
+    __trigger_name__ = 'TestingTrigger'
+    __description__ = 'Not real'
+    __trigger_id__ = 'Blah123'
+
+    param1 = params.TriggerParameter(name='param_test', example_str='somevalue', description='Test parameter', validator=TypeValidator("string"), is_required=False)
+
+    def test1(self):
+        print(type(self.param1))
+
+class FakeGate(gate.Gate):
+    __gate_name__ = 'Somegate'
+    __triggers__ = [FakeTrigger]
+
 class TestTriggerParams(unittest.TestCase):
 
     def test_param_basics(self):
@@ -317,17 +331,9 @@ class TestTriggerParams(unittest.TestCase):
 
         print('Correctly got exception {}'.format(ex.exception))
 
-    class FakeTrigger(gate.BaseTrigger):
-        __trigger_name__ = 'TestingTrigger'
-        __description__ = 'Not real'
-        __trigger_id__ = 'Blah123'
-        param1 = params.TriggerParameter(name='param_test', description='Test parameter', validator=TypeValidator("string"), is_required=False)
-
-        def test1(self):
-            print(type(self.param1))
 
     def test_param_integration(self):
-        t = TestTriggerParams.FakeTrigger(parent_gate_cls=None, param_test='blah')
+        t = FakeTrigger(parent_gate_cls=FakeGate, param_test='blah')
         # print('Inst value: {}'.format(t.eval_params.get(t.param1.name)))
         print('Inst value: {}'.format(t.param1.value()))
         print('Class value: {}'.format(t.__class__.param1.value()))
