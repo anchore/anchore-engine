@@ -2,7 +2,7 @@ import json
 import hashlib
 import uuid
 import zlib
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text
 
 import anchore_engine.db.entities.common
 from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
@@ -423,9 +423,42 @@ def archive_data_upgrade_005_006():
             db_session.add(meta)
             db_session.flush()
 
+
+def fixed_artifact_upgrade_005_006():
+    """
+    Upgrade the feed_data_vulnerabilities_fixed_artifacts schema with new columns and fill in the defaults
+
+    """
+    from anchore_engine.db import session_scope, FixedArtifact
+    from sqlalchemy import Column, Text, Boolean
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    table_name = 'feed_data_vulnerabilities_fixed_artifacts'
+    newcolumns = [
+        Column('vendor_no_advisory', Boolean, primary_key=False),
+        Column('fix_metadata', Text, primary_key=False)
+    ]
+
+    for column in newcolumns:
+        try:
+            cn = column.compile(dialect=engine.dialect)
+            ct = column.type.compile(engine.dialect)
+            engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table_name, cn, ct))
+        except Exception as e:
+            raise Exception('failed to perform DB upgrade on {} adding column {} - exception: {}'.format(table_name, column.name, str(e)))
+
+    with session_scope() as db_session:
+        for fa in db_session.query(FixedArtifact):
+            if fa.vendor_no_advisory is None:
+                fa.vendor_no_advisory = False
+                db_session.flush()
+
+
 def db_upgrade_005_006():
     queue_data_upgrades_005_006()
     archive_data_upgrade_005_006()
+    fixed_artifact_upgrade_005_006()
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here

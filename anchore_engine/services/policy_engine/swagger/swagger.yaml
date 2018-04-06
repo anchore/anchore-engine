@@ -210,6 +210,10 @@ paths:
         in: "query"
         type: boolean
         required: false
+      - name: "vendor_only"
+        in: "query"
+        type: boolean
+        required: false
       responses:
         200:
           description: "Vulnerability listing"

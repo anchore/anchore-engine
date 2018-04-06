@@ -14,6 +14,7 @@ log = get_logger()
 class CveSeverityTrigger(BaseTrigger):
     __vuln_levels__ = None
     fix_available = BooleanStringParameter(name='fix_available', description='If present, the fix availability for the CVE record must match the value of this parameter.', is_required=False)
+    vendor_only = BooleanStringParameter(name='vendor_only', description='If True, an available fix for this CVE must not be explicitly marked as wont be addressed by the vendor', is_required=False)
 
     def evaluate(self, image_obj, context):
         vulns = context.data.get('loaded_vulnerabilities')
@@ -21,10 +22,16 @@ class CveSeverityTrigger(BaseTrigger):
             return
 
         is_fix_available = self.fix_available.value()
+        is_vendor_only = self.vendor_only.value(default_if_none=True)
 
         for pkg_vuln in vulns:
             # Filter by level first
             if pkg_vuln.vulnerability.severity in self.__vuln_levels__:
+
+                # Check vendor_only flag specified by the user in policy
+                if is_vendor_only and pkg_vuln.fix_has_no_advisory():
+                    # skip this vulnerability
+                    continue
 
                 # Check fix_available status if specified by user in policy
                 if is_fix_available is not None:

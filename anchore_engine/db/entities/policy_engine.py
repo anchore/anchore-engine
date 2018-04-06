@@ -254,6 +254,8 @@ class FixedArtifact(Base):
     epochless_version = Column(String(pkg_version_length))
     include_later_versions = Column(Boolean, default=True)
     parent = relationship('Vulnerability', back_populates='fixed_in')
+    vendor_no_advisory = Column(Boolean, default=False)
+    fix_metadata = Column(StringJSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -602,23 +604,46 @@ class ImagePackageVulnerability(Base):
          {}
     )
 
+    def fixed_artifact(self):
+        """
+        Return the FixedArtifact record given a package has been matched to the vulnerability
+        :return: the matched FixedArtifact record or None if not found
+        """
+        if self.vulnerability.fixed_in:
+            name_matches = [self.pkg_name, self.package.normalized_src_pkg]
+            fixed_artifacts = filter(lambda x: x.name in name_matches, self.vulnerability.fixed_in)
+            if fixed_artifacts and len(fixed_artifacts) == 1:
+                fixed_in = fixed_artifacts[0]
+            elif fixed_artifacts and len(fixed_artifacts) > 1:
+                # TODO version comparision logic to select the correct fixed in record.
+                # Temporary workaround: return the first match after sorting by name
+                fixed_in = sorted(fixed_artifacts, key=lambda fixed_artifact: fixed_artifact.name)[0]
+            else:
+                fixed_in = None
+        else:
+            fixed_in = None
+
+        return fixed_in
+
     def fixed_in(self):
         """
         Return the fixed_in value given a package matched (in case there are multiple packages specified in the vuln.
         :param package: package to find a fix version for, if available
         :return: the fixed in version string if any or None if not found
         """
-        if self.vulnerability.fixed_in:
-            name_matches = [self.pkg_name, self.package.normalized_src_pkg]
-            fix_candidates = self.vulnerability.fixed_in
-            fixes_in = filter(lambda x: x.name in name_matches, fix_candidates)
-            fix_available_in = fixes_in[0].version if fixes_in else None
-            if fix_available_in == 'None':
-                fix_available_in = None
-        else:
-            fix_available_in = None
+        fixed_in = self.fixed_artifact()
+        fix_available_in = fixed_in.version if fixed_in and fixed_in.version != 'None' else None
 
         return fix_available_in
+
+    def fix_has_no_advisory(self):
+        """
+        For a given package vulnerability match, if the issue won't be addressed by the vendor return True.
+        Return False otherwise
+        :return:
+        """
+        fixed_in = self.fixed_artifact()
+        return fixed_in and fixed_in.vendor_no_advisory
 
     @classmethod
     def from_pair(cls, package_obj, vuln_obj):
