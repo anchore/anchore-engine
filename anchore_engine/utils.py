@@ -1,7 +1,13 @@
 """
 Generic utilities
 """
+import hashlib
 import json
+import subprocess
+from collections import OrderedDict
+
+import re
+
 
 def process_cve_status(old_cves_result=None, new_cves_result=None):
     """
@@ -142,3 +148,47 @@ def filter_record_keys(record_list, whitelist_keys):
 
     filtered = map(lambda x: {k: v for k, v in filter(lambda y: y[0] in whitelist_keys, x.items())}, record_list)
     return filtered
+
+
+def run_command_list(cmd_list, env=None):
+    """
+    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
+    :param cmd_list: list of command e.g. ['ls', '/tmp']
+    :param env: dict of env vars for the environment if desired. will replace normal env, not augment
+    :return: tuple (rc_int, stdout_str, stderr_str)
+    """
+
+    rc = -1
+    sout = serr = None
+
+    try:
+        if env:
+            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        else:
+            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = pipes.communicate()
+        rc = pipes.returncode
+    except Exception as err:
+        raise err
+
+    return(rc, sout, serr)
+
+
+def run_command(cmdstr, env=None):
+    return run_command_list(cmdstr.split(), env=env)
+
+
+def manifest_to_digest(rawmanifest):
+
+    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
+    d.pop('signatures', None)
+
+    # this is using regular json
+    dmanifest = re.sub(" +\n", "\n", json.dumps(d, indent=3))
+
+    # this if using simplejson
+    #dmanifest = json.dumps(d, indent=3)
+
+    ret = "sha256:" + str(hashlib.sha256(dmanifest).hexdigest())
+
+    return(ret)

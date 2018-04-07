@@ -1,19 +1,17 @@
 import os
 import re
-import sys
 import json
 import uuid
-import time
 import shutil
-import struct
 import tarfile
-import logging
 from pkg_resources import resource_filename
 
 import anchore_engine.services.common
 import anchore_engine.auth.common
 import anchore_engine.auth.skopeo_wrapper
 from anchore.anchore_utils import read_kvfile_todict
+
+from anchore_engine import utils
 
 try:
     from anchore_engine.subsys import logger
@@ -172,7 +170,7 @@ def squash(unpackdir, cachedir, layers):
             tarcmd = "tar -C " + rootfsdir + " -x -X " + unpackdir+"/efile -f " + layertar
             logger.debug("untarring squashed tarball: " + str(tarcmd))
             try:
-                rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
+                rc, sout, serr = utils.run_command(tarcmd)
                 if rc != 0:
                     logger.debug("tar error encountered, attempting to handle")
                     handled = handle_tar_error(tarcmd, rc, sout, serr, unpackdir=unpackdir, rootfsdir=rootfsdir, layer=layer, layertar=layertar)
@@ -301,7 +299,7 @@ def squash_backup(unpackdir, cachedir, layers):
         logger.debug("untarring squashed tarball: " + str(tarcmd))
 
         try:
-            rc, sout, serr = anchore_engine.services.common.run_command(tarcmd)
+            rc, sout, serr = utils.run_command(tarcmd)
             if rc != 0:
                 raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             else:
@@ -582,7 +580,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                     n_digest = n_data['config']['digest'].split(":", 1)[1]
                     nfile = os.path.join(blobdir, n_digest)
             else:
-                raise Exception("could not find intermediate digest - exception: " + str(err))
+                raise Exception("could not find intermediate digest - no blob digest data file found in index.json")
 
             if nfile:
                 with open(nfile, 'r') as FH:
@@ -590,7 +588,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                     rawhistory = configdata['history']
                     imageArch = configdata['architecture']
             else:
-                raise Exception("could not find final digest - exception: " + str(err))
+                raise Exception("could not find final digest - no blob config file found in digest file: {}".format(dfile))
 
         except Exception as err:
             raise err
@@ -684,7 +682,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId):
             cmdstr = " ".join([thecmd, imageId, unpackdir, outputdir, unpackdir])
             if True:
                 try:
-                    rc, sout, serr = anchore_engine.services.common.run_command(cmdstr)
+                    rc, sout, serr = utils.run_command(cmdstr)
                     if rc != 0:
                         raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                     else:

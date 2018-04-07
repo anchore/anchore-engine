@@ -1,9 +1,8 @@
 import json
 import os
-import re
 
+from anchore_engine.utils import run_command_list, manifest_to_digest
 from anchore_engine.subsys import logger
-import anchore_engine.services.common
 
 def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None, dest_type='oci'):
     try:
@@ -35,7 +34,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
 
         cmdstr = ' '.join(cmd)
         try:
-            rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
+            rc, sout, serr = run_command_list(cmd, env=proc_env)
             if rc != 0:
                 raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             else:
@@ -67,7 +66,7 @@ def download_image_orig(fulltag, copydir, user=None, pw=None, verify=True):
         cmd = ["/bin/sh", "-c", "skopeo copy {} {} docker://{} dir:{}".format(tlsverifystr, credstr, fulltag, copydir)]
         cmdstr = ' '.join(cmd)
         try:
-            rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
+            rc, sout, serr = run_command_list(cmd, env=proc_env)
             if rc != 0:
                 raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             else:
@@ -105,7 +104,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
         cmd = ["/bin/sh", "-c", "skopeo inspect {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]
         cmdstr = ' '.join(cmd)
         try:
-            rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
+            rc, sout, serr = run_command_list(cmd, env=proc_env)
             if rc != 0:
                 raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             else:
@@ -154,7 +153,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             cmd = ["/bin/sh", "-c", "skopeo inspect --raw {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]
             cmdstr = ' '.join(cmd)
             try:
-                rc, sout, serr = anchore_engine.services.common.run_command_list(cmd, env=proc_env)
+                rc, sout, serr = run_command_list(cmd, env=proc_env)
                 if rc != 0:
                     raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
@@ -163,9 +162,19 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                 logger.error("command failed with exception - " + str(err))
                 raise err
 
-            digest = anchore_engine.services.common.manifest_to_digest(sout)
+            digest = manifest_to_digest(sout)
             manifest = json.loads(sout)
 
+            if manifest.get('schemaVersion') == 2 and manifest.get('mediaType') == 'application/vnd.docker.distribution.manifest.list.v2+json':
+                # Get the arch-specific version for amd64 and linux
+                new_digest = None
+                for entry in manifest.get('manifests'):
+                    platform = entry.get('platform')
+                    if platform and platform.get('architecture') in ['amd64'] and platform.get('os') == 'linux':
+                        new_digest = entry.get('digest')
+                        break
+
+                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify)
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
             digest = None

@@ -3,16 +3,13 @@ import os
 import re
 import copy
 import time
-import urllib
 import attr
-import hashlib
 import traceback
 import importlib
 import threading
 import subprocess
 
 #import simplejson as json
-from collections import OrderedDict
 
 from twisted.application import service, internet
 from twisted.cred.portal import IRealm, Portal
@@ -32,8 +29,8 @@ import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
+from anchore_engine.services.policy_engine.api.models import ImageIngressRequest
 from anchore_engine.subsys import logger, taskstate
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 subscription_types = ['policy_eval', 'tag_update', 'vuln_update', 'repo_update', 'analysis_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
@@ -160,9 +157,7 @@ def registerService(sname, config, enforce_unique=True):
     service_template = {
         'type': 'anchore',
         'base_url': 'N/A',
-        'status_base_url': 'N/A',
-        'version': 'v1',
-        'short_description': ''
+        'version': 'v1'
     }
 
     if 'ssl_enable' in myconfig and myconfig['ssl_enable']:
@@ -171,7 +166,6 @@ def registerService(sname, config, enforce_unique=True):
         hstring = "http"
 
     endpoint_hostname = endpoint_port = endpoint_hostport = None
-
     if 'endpoint_hostname' in myconfig:
         endpoint_hostname = myconfig['endpoint_hostname']
         service_template['base_url'] = hstring + "://"+myconfig['endpoint_hostname']
@@ -185,8 +179,8 @@ def registerService(sname, config, enforce_unique=True):
             endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
 
     try:
-        service_template['status'] = False
-        service_template['status_message'] = taskstate.base_state('service_status')
+        service_template['status'] = True
+        service_template['status_message'] = "registered"
 
         with session_scope() as dbsession:
             service_records = db_services.get_byname(sname, session=dbsession)
@@ -201,13 +195,13 @@ def registerService(sname, config, enforce_unique=True):
                         raise Exception("service type ("+str(sname)+") already exists in system with different host_id - detail: my_host_id=" + str(config['host_id']) + " db_host_id=" + str(service_record['hostid']))
 
             # in any case, check if another host is registered that has the same endpoint
-            #for service_record in service_records:
-            #    if service_record['base_url'] and service_record['base_url'] != 'N/A':
-            #        service_hostport = re.sub("^http.//", "", service_record['base_url'])
-            #        # if a different host_id has the same endpoint, fail
-            #        if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
-            #            raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
-
+            for service_record in service_records:
+                if service_record['base_url'] and service_record['base_url'] != 'N/A':
+                    service_hostport = re.sub("^http.//", "", service_record['base_url'])
+                    # if a different host_id has the same endpoint, fail
+                    if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
+                        raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
+                7
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)
 
@@ -215,6 +209,36 @@ def registerService(sname, config, enforce_unique=True):
         raise err
 
     return(ret)
+
+def check_services_ready(servicelist):
+    global latest_service_records
+
+    all_ready = False
+    try:
+        required_services_up = {}
+        for s in servicelist:
+            required_services_up[s] = False
+
+        service_records = latest_service_records['service_records']
+        for service_record in service_records:
+            if service_record['servicename'] in required_services_up.keys():
+                if service_record['status']:
+                    required_services_up[service_record['servicename']] = True
+
+        all_ready = True
+        logger.debug("checking service readiness: " + str(required_services_up.keys()))
+        for servicename in required_services_up.keys():
+            if not required_services_up[servicename]:
+                logger.warn("required service ("+str(servicename)+") is not (yet) available - will not queue analysis tasks this cycle")
+                all_ready = False
+                break
+
+    except Exception as err:
+        logger.error("could not check service status - exception: " + str(err))
+        all_ready = False
+
+    return(all_ready)
+
 
 def createServiceAPI(resource, sname, config):
     myconfig = config['services'][sname]
@@ -268,6 +292,7 @@ def initializeService(sname, config):
 
 # the anchore twistd plugins call this to initialize and make individual services
 def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
+
     try:
         logger.enable_bootstrap_logging(service_name=','.join(snames))
 
@@ -556,21 +581,6 @@ def make_response_routes(apiversion, inroutes):
         return_object = routes
 
     return(return_object, httpcode)
-
-def manifest_to_digest(rawmanifest):
-
-    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
-    d.pop('signatures', None)
-
-    # this is using regular json
-    dmanifest = re.sub(" +\n", "\n", json.dumps(d, indent=3))
-
-    # this if using simplejson
-    #dmanifest = json.dumps(d, indent=3)
-
-    ret = "sha256:" + str(hashlib.sha256(dmanifest).hexdigest())
-
-    return(ret)
 
 def lookup_registry_image(userId, image_info, registry_creds):
     digest = None
@@ -912,34 +922,6 @@ def extract_analyzer_content(image_data, content_type):
     return(ret)
 
 
-def run_command_list(cmd_list, env=None):
-    """
-    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
-    :param cmd_list: list of command e.g. ['ls', '/tmp']
-    :param env: dict of env vars for the environment if desired. will replace normal env, not augment
-    :return: tuple (rc_int, stdout_str, stderr_str)
-    """
-
-    rc = -1
-    sout = serr = None
-
-    try:
-        if env:
-            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        else:
-            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sout, serr = pipes.communicate()
-        rc = pipes.returncode
-    except Exception as err:
-        raise err
-
-    return(rc, sout, serr)
-
-
-def run_command(cmdstr, env=None):
-    return run_command_list(cmdstr.split(), env=env)
-
-
 def get_system_user_auth(session=None):
     localconfig = anchore_engine.configuration.localconfig.get_config()
     if 'system_user_auth' in localconfig and localconfig['system_user_auth'] != (None, None):
@@ -978,7 +960,7 @@ def monitor_func(**kwargs):
     try:
         running = True
         last_run = time.time()
-        
+
         # handle setting the cycle timers based on configuration
         for monitor_name in monitors.keys():
             if not monitors[monitor_name]['initialized']:
@@ -1006,7 +988,7 @@ def monitor_func(**kwargs):
                         logger.warn("exception setting custom cycle timer for handler ("+str(monitor_name)+") - using default")
 
                 monitors[monitor_name]['initialized'] = True
- 
+
         # handle the thread (re)starters here
         for monitor_name in monitors.keys():
             start_thread = False
@@ -1017,7 +999,7 @@ def monitor_func(**kwargs):
                     logger.debug("thread stopped - restarting: " + str(monitor_name))
                     monitor_threads[monitor_name].join()
                     start_thread = True
-            
+
             if start_thread:
                 monitor_threads[monitor_name] = threading.Thread(target=monitors[monitor_name]['handler'], args=monitors[monitor_name]['args'], kwargs={'mythread': monitors[monitor_name]})
                 logger.debug("starting up monitor_thread: " + str(monitor_name))
@@ -1056,4 +1038,4 @@ def monitor(**kwargs):
 
     except Exception as err:
         logger.warn("MON thread start exception: " + str(err))
-        
+
