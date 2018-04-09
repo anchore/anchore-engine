@@ -11,10 +11,10 @@ log = get_logger()
 
 class VerifyTrigger(BaseTrigger):
     __trigger_name__ = 'verify'
-    __description__ = 'Check package integrity against package db in in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter.'
+    __description__ = 'Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter.'
 
     pkgs = CommaDelimitedStringListParameter(name='only_packages', example_str='libssl,openssl', description='List of package names to limit verification.', is_required=False, sort_order=1)
-    directories = CommaDelimitedStringListParameter(name='only_directories', example_str='/usr,/var/lib', description='List of directories to limit checks to so as to avoid checks on all dir.', is_required=False, sort_order=2)
+    directories = CommaDelimitedStringListParameter(name='only_directories', example_str='/usr,/var/lib', description='List of directories to limit checks so as to avoid checks on all dir.', is_required=False, sort_order=2)
     check_only = EnumStringParameter(name='check', enum_values=['changed', 'missing'], example_str='changed', description='Check to perform instead of all.', is_required=False, sort_order=3)
 
     analyzer_type = 'base'

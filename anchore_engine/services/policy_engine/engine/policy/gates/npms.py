@@ -103,8 +103,8 @@ class PkgMatchTrigger(BaseTrigger):
     __trigger_name__ = 'blacklisted_name_version'
     __description__ = 'Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters.'
 
-    name = TriggerParameter(validator=TypeValidator('string'), name='name', is_required=True, description='npm package name to blacklist.', example_str='time_diff', sort_order=1)
-    version = TriggerParameter(validator=TypeValidator('string'), name='version', is_required=False, description='npm package version to blacklist specifically.', example_str='0.2.9', sort_order=2)
+    name = TriggerParameter(validator=TypeValidator('string'), name='name', is_required=True, description='Npm package name to blacklist.', example_str='time_diff', sort_order=1)
+    version = TriggerParameter(validator=TypeValidator('string'), name='version', is_required=False, description='Npm package version to blacklist specifically.', example_str='0.2.9', sort_order=2)
 
     def evaluate(self, image_obj, context):
         """
@@ -136,7 +136,7 @@ class PkgMatchTrigger(BaseTrigger):
 
 class NoFeedTrigger(BaseTrigger):
     __trigger_name__ = 'feed_data_unavailable'
-    __description__ = 'Triggers if anchore does not have access to the NPM data feed'
+    __description__ = 'Triggers if the engine does not have access to the NPM data feed.'
 
     def evaluate(self, image_obj, context):
         try:

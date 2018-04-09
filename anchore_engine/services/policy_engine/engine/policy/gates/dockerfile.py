@@ -161,9 +161,9 @@ class InstructionCheckTrigger(ParameterizedDockerfileModeBaseTrigger):
 
 class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
     __trigger_name__ = 'exposed_ports'
-    __description__ = 'Evaluates on the set of ports exposed. Allows configuring whitelist or blacklist behavior. If allowed=True then any ports found exposed that are not in the list will cause the trigger to fire. If allowed=False than any ports exposed that are in the list will cause the trigger to fire.'
+    __description__ = 'Evaluates the set of ports exposed. Allows configuring whitelist or blacklist behavior. If type=whitelist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=blacklist, then any ports exposed that are in the list will cause the trigger to fire.'
 
-    ports = CommaDelimitedNumberListParameter(name='ports', example_str='80,8080,8088', description='List of port numbers that will cause the trigger to fire.', is_required=True, sort_order=1)
+    ports = CommaDelimitedNumberListParameter(name='ports', example_str='80,8080,8088', description='List of port numbers.', is_required=True, sort_order=1)
     allowed_type = EnumStringParameter(name='type', example_str='false', enum_values=['whitelist', 'blacklist'], description='Whether to use port list as a whitelist or blacklist.', is_required=True, sort_order=2)
 
     def _evaluate(self, image_obj, context):

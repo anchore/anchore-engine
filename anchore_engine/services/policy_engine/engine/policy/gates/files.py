@@ -63,7 +63,7 @@ class FilenameMatchTrigger(BaseTrigger):
 
 class SuidCheckTrigger(BaseTrigger):
     __trigger_name__ = 'suid_or_guid_set'
-    __description__ = 'Fires for each file found to have suid or sgid bit set'
+    __description__ = 'Fires for each file found to have suid or sgid bit set.'
 
     def evaluate(self, image_obj, context):
         if not image_obj.fs:
