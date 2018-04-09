@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.10 (2018-XX-YY)
+## 0.1.10 (2018-04-09)
 
 + Fix timestamp inconsistencies when updating/adding policy bundles (PUT/POST)
 + Adds policy validation for the /v1/policies/<id> PUT route
