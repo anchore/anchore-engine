@@ -594,7 +594,8 @@ def lookup_registry_image(userId, image_info, registry_creds):
             #if 'schemaVersion' not in manifest or manifest['schemaVersion'] != 2:
             #    raise Exception("manifest schemaVersion != 2 not supported")
         except Exception as err:
-            raise Exception("cannot fetch image digest/manifest from registry - exception: " + str(err))
+            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch image digest/manifest from registry", input_httpcode=400)
+            #raise Exception("cannot fetch image digest/manifest from registry - exception: " + str(err))
 
     return(digest, manifest)
 

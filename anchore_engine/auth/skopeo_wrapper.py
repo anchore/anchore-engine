@@ -155,7 +155,13 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             try:
                 rc, sout, serr = run_command_list(cmd, env=proc_env)
                 if rc != 0:
-                    raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    err = Exception("command failed")
+                    err.cmd = "{}".format(cmdstr)
+                    err.exitcode = "{}".format(rc)
+                    err.sout = "{}".format(sout)
+                    err.serr = "{}".format(serr)
+                    raise err
+                    #raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             except Exception as err:
@@ -177,6 +183,12 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                 return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify)
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
+            errmsg = str(err)
+            for k in ['sout', 'serr']:
+                if k in err.__dict__:
+                    errmsg = errmsg + " ({})".format(err.__dict__[k])
+
+            raise Exception(errmsg)
             digest = None
             manifest = {}
 
