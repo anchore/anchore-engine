@@ -232,18 +232,19 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
                 time.sleep(5)
 
     # these imports need to be here, after the connect/creates have happened
-    from anchore_engine.db import db_anchore, db_users
+    #from anchore_engine.db import db_anchore, db_users
     
     with session_scope() as dbsession:
         # version check
-        version_record = db_anchore.get(session=dbsession)
+        #version_record = db_anchore.get(session=dbsession)
 
         if bootstrap_db:
-            if not version_record:
-                db_anchore.add(versions['service_version'], versions['db_version'], versions, session=dbsession)
-                version_record = db_anchore.get(session=dbsession)
+            #if not version_record:
+            #    db_anchore.add(versions['service_version'], versions['db_version'], versions, session=dbsession)
+            #    version_record = db_anchore.get(session=dbsession)
 
             if bootstrap_users:
+                from anchore_engine.db import db_users
                 # system user
                 try:
                     system_user_record = db_users.get('anchore-system', session=dbsession)
@@ -290,23 +291,23 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
                         "Initialization failed: could not add users from config into DB - exception: " + str(err))
 
     # finally, check to make sure that the running code DB version is == the running DB version
-    try:
-        print ("Starting up version: " + json.dumps(versions))
-        print ("\tDB version: " + json.dumps(version_record))
+    #try:
+    #    print ("Starting up version: " + json.dumps(versions))
+    #    print ("\tDB version: " + json.dumps(version_record))
 
-        # version checks
-        code_db_version = versions.get('db_version', None)
-        running_db_version = version_record.get('db_version', None)
+    #    # version checks
+    #    code_db_version = versions.get('db_version', None)
+    #    running_db_version = version_record.get('db_version', None)
 
-        if not code_db_version or not running_db_version:
-            raise Exception("cannot get either the running DB version or support code DB version: (running/code) (" + str([running_db_version, code_db_version]) + ")")
-        elif code_db_version != running_db_version:
-            raise Exception("DB version mismatch - code code_db_version="+str(code_db_version)+" running_db_version="+str(running_db_version)+" - will need to sync the DB version with this version of anchore-engine before the service will start.")
-        else:
-            logger.info("DB version checks passed")
+    #    if not code_db_version or not running_db_version:
+    #        raise Exception("cannot get either the running DB version or support code DB version: (running/code) (" + str([running_db_version, code_db_version]) + ")")
+    #    elif code_db_version != running_db_version:
+    #        raise Exception("DB version mismatch - code code_db_version="+str(code_db_version)+" running_db_version="+str(running_db_version)+" - will need to sync the DB version with this version of anchore-engine before the service will start.")
+    #    else:
+    #        logger.info("DB version checks passed")
 
-    except Exception as err:
-        raise err
+    #except Exception as err:
+    #    raise err
 
     return (ret)
 
