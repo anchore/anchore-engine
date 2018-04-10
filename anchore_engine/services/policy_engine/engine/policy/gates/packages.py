@@ -11,11 +11,11 @@ log = get_logger()
 
 class VerifyTrigger(BaseTrigger):
     __trigger_name__ = 'verify'
-    __description__ = 'Check package integrity against package db in in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter'
+    __description__ = 'Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter.'
 
-    pkgs = CommaDelimitedStringListParameter(name='only_packages', example_str='libssl,openssl', description='List of package names to limit verification', is_required=False, sort_order=1)
-    directories = CommaDelimitedStringListParameter(name='only_directories', example_str='/usr,/var/lib', description='List of directories to limit checks to so as to avoid checks on all dir', is_required=False, sort_order=2)
-    check_only = EnumStringParameter(name='check', enum_values=['changed', 'missing'], example_str='changed', description='Check to perform instead of all', is_required=False, sort_order=3)
+    pkgs = CommaDelimitedStringListParameter(name='only_packages', example_str='libssl,openssl', description='List of package names to limit verification.', is_required=False, sort_order=1)
+    directories = CommaDelimitedStringListParameter(name='only_directories', example_str='/usr,/var/lib', description='List of directories to limit checks so as to avoid checks on all dir.', is_required=False, sort_order=2)
+    check_only = EnumStringParameter(name='check', enum_values=['changed', 'missing'], example_str='changed', description='Check to perform instead of all.', is_required=False, sort_order=3)
 
     analyzer_type = 'base'
     analyzer_id = 'file_package_verify'
@@ -136,14 +136,14 @@ class VerifyTrigger(BaseTrigger):
 
 class RequiredPackageTrigger(BaseTrigger):
     __trigger_name__ = 'required_package'
-    __description__ = 'Triggers if the specified package and optionally a specific version is not found in the image'
+    __description__ = 'Triggers if the specified package and optionally a specific version is not found in the image.'
 
-    pkg_name = TriggerParameter(name='name', example_str='libssl', description='Name of package that must be found installed in image', is_required=True, validator=TypeValidator('string'), sort_order=1)
-    pkg_version = TriggerParameter(name='version', example_str='1.10.3rc3', description='Optional version of package for exact version match', is_required=False, validator=TypeValidator('string'), sort_order=2)
+    pkg_name = TriggerParameter(name='name', example_str='libssl', description='Name of package that must be found installed in image.', is_required=True, validator=TypeValidator('string'), sort_order=1)
+    pkg_version = TriggerParameter(name='version', example_str='1.10.3rc3', description='Optional version of package for exact version match.', is_required=False, validator=TypeValidator('string'), sort_order=2)
     version_comparison = EnumStringParameter(name='version_match_type', example_str='exact',
                                              enum_values=['exact', 'minimum'],
                                              is_required=False,
-                                             description='The type of comparison to use for version if a version is provided',
+                                             description='The type of comparison to use for version if a version is provided.',
                                              sort_order=3)
 
     def evaluate(self, image_obj, context):
@@ -186,50 +186,12 @@ class RequiredPackageTrigger(BaseTrigger):
                 self._fire(msg="Required input package ({}) is not present in container image".format(str(name)))
 
 
-
-# class RequirePackageMinVersionTrigger(BaseTrigger):
-#     __trigger_name__ = 'required_package_minimum_version'
-#     __description__ = 'Triggers if the package specified in the params are not installed in the container image or does not have at least the specified version'
-#
-#     pkg_name = TriggerParameter(name='name', example_str='libssl', description='Name of package that must be found installed in image', is_required=True, validator=TypeValidator('string'), sort_order=1)
-#     min_version = TriggerParameter(name='version', example_str='0.0.9b', description='Minimum version that must be installed. Trigger fires if none or older version found.', is_required=True, validator=TypeValidator('string'), sort_order=2)
-#
-#     def evaluate(self, image_obj, context):
-#         name = self.pkg_name.value()
-#         min_version = self.min_version.value()
-#
-#         if not name:
-#             names = []
-#             vermatch = {}
-#
-#         else:
-#             names = [name]
-#             vermatch = {name: min_version}
-#
-#         # Filter is possible since the lazy='dynamic' is set on the packages relationship in Image.
-#         for img_pkg in image_obj.packages.filter(ImagePackage.name.in_(names)).all():
-#             if img_pkg.name in vermatch:
-#                 if img_pkg.fullversion != vermatch[img_pkg.name]:
-#                     # Check if version is less than param value
-#                     if compare_package_versions(img_pkg.distro_namespace_meta.flavor, img_pkg.name, img_pkg.version, img_pkg.name, vermatch[img_pkg.name]) < 0:
-#                         self._fire(msg="Required min-version input package (" + str(img_pkg.name) + ") is present (" + str(
-#                             img_pkg.fullversion) + "), but is lower version than what is specified in policy (" + str(
-#                             vermatch[img_pkg.name]) + ")")
-#
-#                 vermatch.pop(img_pkg.name)
-#
-#         # Any remaining
-#         for pkg, version in vermatch.items():
-#             self._fire(msg="Required min-version input package (" + str(pkg) + "-" + str(
-#                 version) + ") is not present in container image")
-
-
 class BlackListTrigger(BaseTrigger):
     __trigger_name__ = 'blacklist'
-    __description__ = 'Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well'
+    __description__ = 'Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well.'
 
-    pkg_name = TriggerParameter(name='name', example_str='openssh-server', description="Package name to blacklist", sort_order=1, validator=TypeValidator('string'), is_required=True)
-    pkg_version = TriggerParameter(name='version', example_str='1.0.1', description='Specific version of package to blacklist', validator=TypeValidator('string'), sort_order=2, is_required=False)
+    pkg_name = TriggerParameter(name='name', example_str='openssh-server', description="Package name to blacklist.", sort_order=1, validator=TypeValidator('string'), is_required=True)
+    pkg_version = TriggerParameter(name='version', example_str='1.0.1', description='Specific version of package to blacklist.', validator=TypeValidator('string'), sort_order=2, is_required=False)
 
     def evaluate(self, image_obj, context):
         pkg = self.pkg_name.value()

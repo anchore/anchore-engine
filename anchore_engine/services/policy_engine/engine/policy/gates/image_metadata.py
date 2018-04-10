@@ -9,7 +9,7 @@ log = get_logger()
 
 class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     __trigger_name__ = 'attribute'
-    __description__ = 'Triggers if a named image metadata value matches the given condition. For example, to trigger if image is larger than 1GB: "attribute":"size", "check": ">", "value":"1073741824"'
+    __description__ = 'Triggers if a named image metadata value matches the given condition.'
 
     __ops__ = {
         '=': CheckOperation(requires_rvalue=True, eval_function=lambda x, y: x == y),
@@ -36,9 +36,9 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         'layer_count': lambda x: len(x.layers_json) if x.layers_json else 0
     }
 
-    attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
-    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True, sort_order=2)
-    check_value = TriggerParameter(name='value', example_str='1073741824', description='Value used in comparison', validator=TypeValidator('string'), is_required=False, sort_order=3)
+    attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked.', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
+    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation.', enum_values=__ops__.keys(), is_required=True, sort_order=2)
+    check_value = TriggerParameter(name='value', example_str='1073741824', description='Value used in comparison.', validator=TypeValidator('string'), is_required=False, sort_order=3)
 
     def evaluate(self, image_obj, context):
         attr = self.attribute.value()
@@ -64,7 +64,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
 
 class ImageMetadataGate(Gate):
     __gate_name__ = 'metadata'
-    __description__ = 'Checks against image metadata, such as size, OS, distro, architecture, etc'
+    __description__ = 'Checks against image metadata, such as size, OS, distro, architecture, etc.'
 
     __triggers__ = [
         ImageMetadataAttributeCheckTrigger,

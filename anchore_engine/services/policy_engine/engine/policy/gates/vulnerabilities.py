@@ -33,9 +33,10 @@ class VulnerabilityMatchTrigger(BaseTrigger):
         '>=': lambda x, y: x >= y
     }
 
-    package_type = EnumStringParameter(name='package_type', example_str='all', enum_values=['os', 'all'], description='Only trigger for specific package type.', is_required=True, sort_order=1)
+
+    package_type = EnumStringParameter(name='package_type', example_str='all', enum_values=['all'], description='Only trigger for specific package type.', is_required=True, sort_order=1)
     severity_comparison = EnumStringParameter(name='severity_comparison', example_str='>', description='The type of comparison to perform for severity evaluation.', enum_values=SEVERITY_COMPARISONS.keys(), is_required=True, sort_order=2)
-    severity = EnumStringParameter(name='severity', example_str='high', description='Severity to compare against', enum_values=SEVERITY_ORDERING, is_required=True, sort_order=3)
+    severity = EnumStringParameter(name='severity', example_str='high', description='Severity to compare against.', enum_values=SEVERITY_ORDERING, is_required=True, sort_order=3)
     fix_available = BooleanStringParameter(name='fix_available', example_str='true', description='If present, the fix availability for the vulnerability record must match the value of this parameter.', is_required=False, sort_order=4)
 
     def evaluate(self, image_obj, context):
@@ -74,8 +75,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
 class FeedOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'stale_feed_data'
-    __description__ = 'triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days)'
-    max_age = IntegerStringParameter(name='max_days_since_sync', example_str='10', description='Fire the trigger if the last sync was more than this number of days ago', is_required=True)
+    __description__ = 'Triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days).'
+    max_age = IntegerStringParameter(name='max_days_since_sync', example_str='10', description='Fire the trigger if the last sync was more than this number of days ago.', is_required=True)
 
     def evaluate(self, image_obj, context):
         # Map to a namespace
@@ -108,7 +109,7 @@ class FeedOutOfDateTrigger(BaseTrigger):
 
 class UnsupportedDistroTrigger(BaseTrigger):
     __trigger_name__ = 'vulnerability_data_unavailable'
-    __description__ = "Triggers if vulnerability data is unavailable for the image's distro"
+    __description__ = "Triggers if vulnerability data is unavailable for the image's distro."
 
     def evaluate(self, image_obj, context):
         if not have_vulnerabilities_for(DistroNamespace.for_obj(image_obj)):
@@ -117,7 +118,7 @@ class UnsupportedDistroTrigger(BaseTrigger):
 
 class VulnerabilitiesGate(Gate):
     __gate_name__ = 'vulnerabilities'
-    __description__ = 'CVE/Vulnerability checks'
+    __description__ = 'CVE/Vulnerability checks.'
     __triggers__ = [
         VulnerabilityMatchTrigger,
         FeedOutOfDateTrigger,

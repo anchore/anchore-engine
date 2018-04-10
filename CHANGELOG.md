@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.10 (2018-04-09)
+
++ Fix timestamp inconsistencies when updating/adding policy bundles (PUT/POST)
++ Adds policy validation for the /v1/policies/<id> PUT route
++ Fix the final_action in the results section of bundle eval table to reflect the policy result without image whitelist/blacklist application
++ Adds full lifecycle state for gates, triggers, and params to specify 'active', 'depreated', or 'eol'.
++ Re-adds eol'd gate defs for pkgdiff, base_check, and suiddiff gate to conform to the lifecycle state scheme.
++ Deprecated and EOL gates/triggers will raise warnings in policy evaluation and EOL gates will automatically become no-ops in evaluation.
++ Initial migration of gates to new naming and consolidation. Old gates moved to deprecated/ and marked as deprecated state
+
 ## 0.1.9 (2018-03-19)
 
 + Added ability to specify metadata attributes on image add, which are carried through to webhook payloads
@@ -11,6 +21,7 @@
 + Removes some old gates that were ineffective. Will result in eval warning if found in an existing policy: base_check, pkgdiff, suiddiff. These gates required data not reliably available from registry-pushed images
 + Adds 'in' and 'not_in' checks for image metadata checks and dockerfile directive checks to allow membership tests in lists of strings
 + Fixes some rule mapping bugs in specifying mapping rules by digest or image id
+
 ## 0.1.8 (2018-02-16)
 
 + Added ability to add a repository for anchore-engine to automatically scan (adds all tags found at add time, and adds new tags on-going)
