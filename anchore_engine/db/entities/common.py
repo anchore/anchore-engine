@@ -221,7 +221,7 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
             rc = test_connection()
 
             # create
-            rc = do_create(specific_tables)
+            #rc = do_create(specific_tables)
 
             break
         except Exception as err:

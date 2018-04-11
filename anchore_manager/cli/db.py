@@ -33,7 +33,7 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
                 log_level = 'DEBUG'
             logger.set_log_level(log_level, log_to_stdout=True)
 
-            db_params = anchore_manager.cli.utils.init_database(config, db_connect, db_use_ssl, db_retries=db_retries)
+            db_params = anchore_manager.cli.utils.connect_database(config, db_connect, db_use_ssl, db_retries=db_retries)
 
         except Exception as err:
             raise err
@@ -47,6 +47,7 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB upgrade routines from (default=anchore_engine)")
 @click.option("--dontask", is_flag=True, help="Perform upgrade (if necessary) without prompting.")
 def upgrade(anchore_module, dontask):
+
     """
     Run a Database Upgrade idempotently. If database is not initialized yet, but can be connected, then exit cleanly with status = 0, if no connection available then return error.
     Otherwise, upgrade from the db running version to the code version and exit.
@@ -63,24 +64,19 @@ def upgrade(anchore_module, dontask):
         try:
             print "Loading DB upgrade routines from module."
             module = importlib.import_module(module_name + ".db.entities.upgrade")
-            code_versions, db_versions = module.get_versions()
-        except TableNotFoundError as ex:
-            print "Db not found to be initialized. No upgrade needed"
-            ecode = 0
-            anchore_manager.cli.utils.doexit(ecode)
         except Exception as err:
-                raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
+            raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
+
+        code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module)
 
         code_db_version = code_versions.get('db_version', None)
         running_db_version = db_versions.get('db_version', None)
 
-        if not code_db_version:
-            raise Exception("cannot code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
-        elif code_db_version and running_db_version is None:
-            print "Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally."
-            ecode = 0
+        if not code_db_version or not running_db_version:
+            raise Exception("cannot get version information (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
         elif code_db_version == running_db_version:
-            print "Detected anchore-engine version {} and running DB version {} match, nothing to do.".format(code_db_version, running_db_version)
+            print "Code and DB versions are in sync."
+            ecode = 0
         else:
             print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
 
