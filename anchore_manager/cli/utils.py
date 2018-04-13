@@ -145,7 +145,7 @@ def connect_database(config, db_connect, db_use_ssl, db_retries=1):
         raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
         
 
-def init_database(upgrade_module=None):
+def init_database(upgrade_module=None, localconfig=None):
     code_versions = db_versions = None
     if upgrade_module:
         try:
@@ -153,6 +153,7 @@ def init_database(upgrade_module=None):
             if code_versions and not db_versions:
                 print "DB not initialized - initializing tables"
                 upgrade_module.do_create_tables()
+                upgrade_module.do_db_bootstrap(localconfig=localconfig)
                 upgrade_module.do_version_update(db_versions, code_versions)
                 code_versions, db_versions = upgrade_module.get_versions()
         except Exception as err:

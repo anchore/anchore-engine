@@ -1,5 +1,6 @@
 import json
 import hashlib
+import uuid
 import zlib
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
@@ -81,6 +82,48 @@ def do_create_tables(specific_tables=None):
         raise err
     print ("DB Tables created")
     return(True)
+
+def do_db_bootstrap(localconfig=None):
+    with upgrade_context(my_module_upgrade_id) as ctx:
+
+        from anchore_engine.db import db_users, session_scope
+        with session_scope() as dbsession:
+            # system user
+            try:
+                system_user_record = db_users.get('anchore-system', session=dbsession)
+                if not system_user_record:
+                    rc = db_users.add('anchore-system', str(uuid.uuid4()), {'active': True}, session=dbsession)
+                else:
+                    db_users.update(system_user_record['userId'], system_user_record['password'], {'active': True}, session=dbsession)
+
+            except Exception as err:
+                raise Exception("Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(err))
+
+            if localconfig:
+                try:
+                    for userId in localconfig['credentials']['users']:
+                        if not localconfig['credentials']['users'][userId]:
+                            localconfig['credentials']['users'][userId] = {}
+
+                        cuser = localconfig['credentials']['users'][userId]
+
+                        password = cuser.pop('password', None)
+                        email = cuser.pop('email', None)
+                        if password and email:
+                            db_users.add(userId, password, {'email': email, 'active': True}, session=dbsession)
+                        else:
+                            raise Exception("user defined but has empty password/email: " + str(userId))
+
+                    user_records = db_users.get_all(session=dbsession)
+                    for user_record in user_records:
+                        if user_record['userId'] == 'anchore-system':
+                            continue
+                        if user_record['userId'] not in localconfig['credentials']['users']:
+                            logger.info("flagging user '"+str(user_record['userId']) + "' as inactive (in DB, not in configuration)")
+                            db_users.update(user_record['userId'], user_record['password'], {'active': False}, session=dbsession)
+
+                except Exception as err:
+                    raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
 
 def run_upgrade():
     """
