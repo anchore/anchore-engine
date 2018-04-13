@@ -137,7 +137,20 @@ def initializeService(sname, config):
             queues_to_bootstrap[st] = default_queue_config
 
     for qname, config in queues_to_bootstrap.iteritems():
-        anchore_engine.subsys.simplequeue.create_queue(name=qname, max_outstanding_msgs=config.get('max_outstanding_messages', -1), visibility_timeout=config.get('visibility_timeout', 0))
+        
+        success = False
+        retries = 5
+        for i in range(0, retries):
+            try:
+                anchore_engine.subsys.simplequeue.create_queue(name=qname, max_outstanding_msgs=config.get('max_outstanding_messages', -1), visibility_timeout=config.get('visibility_timeout', 0))
+                success = True
+                break
+            except Exception as err:
+                time.sleep(1)
+
+        if not success:
+            raise err
+
     return(True)
 
 def registerService(sname, config):

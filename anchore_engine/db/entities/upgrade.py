@@ -74,7 +74,11 @@ def upgrade_context(lock_id):
 
 def do_create_tables(specific_tables=None):
     print ("Creating DB Tables")
-    anchore_engine.db.entities.common.do_create(specific_tables)
+    try:
+        with upgrade_context(my_module_upgrade_id) as ctx:
+            anchore_engine.db.entities.common.do_create(specific_tables)
+    except Exception as err:
+        raise err
     print ("DB Tables created")
     return(True)
 

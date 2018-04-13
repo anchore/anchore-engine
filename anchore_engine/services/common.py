@@ -3,13 +3,16 @@ import os
 import re
 import copy
 import time
+import urllib
 import attr
+import hashlib
 import traceback
 import importlib
 import threading
 import subprocess
 
 #import simplejson as json
+from collections import OrderedDict
 
 from twisted.application import service, internet
 from twisted.cred.portal import IRealm, Portal
@@ -29,8 +32,9 @@ import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
-from anchore_engine.services.policy_engine.api.models import ImageIngressRequest
 from anchore_engine.subsys import logger, taskstate
+from anchore_engine.services.policy_engine.api.models import ImageIngressRequest
+
 
 subscription_types = ['policy_eval', 'tag_update', 'vuln_update', 'repo_update', 'analysis_update']
 resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 'subscriptions', 'archive']
@@ -157,7 +161,9 @@ def registerService(sname, config, enforce_unique=True):
     service_template = {
         'type': 'anchore',
         'base_url': 'N/A',
-        'version': 'v1'
+        'status_base_url': 'N/A',
+        'version': 'v1',
+        'short_description': ''
     }
 
     if 'ssl_enable' in myconfig and myconfig['ssl_enable']:
@@ -166,6 +172,7 @@ def registerService(sname, config, enforce_unique=True):
         hstring = "http"
 
     endpoint_hostname = endpoint_port = endpoint_hostport = None
+
     if 'endpoint_hostname' in myconfig:
         endpoint_hostname = myconfig['endpoint_hostname']
         service_template['base_url'] = hstring + "://"+myconfig['endpoint_hostname']
@@ -179,8 +186,8 @@ def registerService(sname, config, enforce_unique=True):
             endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
 
     try:
-        service_template['status'] = True
-        service_template['status_message'] = "registered"
+        service_template['status'] = False
+        service_template['status_message'] = taskstate.base_state('service_status')
 
         with session_scope() as dbsession:
             service_records = db_services.get_byname(sname, session=dbsession)
@@ -195,13 +202,13 @@ def registerService(sname, config, enforce_unique=True):
                         raise Exception("service type ("+str(sname)+") already exists in system with different host_id - detail: my_host_id=" + str(config['host_id']) + " db_host_id=" + str(service_record['hostid']))
 
             # in any case, check if another host is registered that has the same endpoint
-            for service_record in service_records:
-                if service_record['base_url'] and service_record['base_url'] != 'N/A':
-                    service_hostport = re.sub("^http.//", "", service_record['base_url'])
-                    # if a different host_id has the same endpoint, fail
-                    if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
-                        raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
-                7
+            #for service_record in service_records:
+            #    if service_record['base_url'] and service_record['base_url'] != 'N/A':
+            #        service_hostport = re.sub("^http.//", "", service_record['base_url'])
+            #        # if a different host_id has the same endpoint, fail
+            #        if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
+            #            raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
+
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)
 
@@ -209,36 +216,6 @@ def registerService(sname, config, enforce_unique=True):
         raise err
 
     return(ret)
-
-def check_services_ready(servicelist):
-    global latest_service_records
-
-    all_ready = False
-    try:
-        required_services_up = {}
-        for s in servicelist:
-            required_services_up[s] = False
-
-        service_records = latest_service_records['service_records']
-        for service_record in service_records:
-            if service_record['servicename'] in required_services_up.keys():
-                if service_record['status']:
-                    required_services_up[service_record['servicename']] = True
-
-        all_ready = True
-        logger.debug("checking service readiness: " + str(required_services_up.keys()))
-        for servicename in required_services_up.keys():
-            if not required_services_up[servicename]:
-                logger.warn("required service ("+str(servicename)+") is not (yet) available - will not queue analysis tasks this cycle")
-                all_ready = False
-                break
-
-    except Exception as err:
-        logger.error("could not check service status - exception: " + str(err))
-        all_ready = False
-
-    return(all_ready)
-
 
 def createServiceAPI(resource, sname, config):
     myconfig = config['services'][sname]
