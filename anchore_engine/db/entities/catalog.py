@@ -2,10 +2,9 @@
 Entities for the catalog service including services, users, images, etc. Pretty much everything except image analysis data
 
 """
-import json
 import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, Sequence, JSON, LargeBinary
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, LargeBinary
 from sqlalchemy import inspect
 
 from .common import Base, anchore_now, UtilMixin
@@ -449,3 +448,5 @@ class Lease(Base, UtilMixin):
 
     def __str__(self):
         return '<{} id={},held_by={},expires_at={},epoch={}>'.format(self.__class__.__name__, self.id, self.held_by, self.expires_at.isoformat() if self.expires_at else self.expires_at, self.epoch)
+
+

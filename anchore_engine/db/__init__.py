@@ -20,6 +20,8 @@ from .entities.catalog import Lease
 from .entities.catalog import ArchiveMetadata
 from .entities.catalog import ObjectStorageRecord
 
+from .entities.tasks import Task, ArchiveMigrationTask
+
 from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage
 from .entities.policy_engine import ImageGem

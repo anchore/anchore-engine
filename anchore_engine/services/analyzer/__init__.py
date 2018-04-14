@@ -1,10 +1,8 @@
-import os
 import copy
 import os
 import re
 import threading
 import time
-import uuid
 import json
 import traceback
 import operator
@@ -28,7 +26,7 @@ import anchore_engine.subsys.notifications
 from anchore_engine.subsys import logger
 
 import anchore_engine.clients.policy_engine
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
+from anchore_engine.clients.policy_engine.generated.models import ImageIngressRequest
 
 servicename = 'analyzer'
 _default_api_version = "v1"
@@ -265,6 +263,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
     timer = int(time.time())
     try:
+        logger.info('QObj: {}'.format(qobj))
+
         record = qobj['data']
         userId = record['userId']
         imageDigest = record['imageDigest']
@@ -362,10 +362,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     except Exception as err:
                         logger.warn("exception on pre-delete - exception: " + str(err))
 
-                    request = ImageIngressRequest()
-                    request.user_id = userId
-                    request.image_id = imageId
-                    request.fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+                    logger.info('Loading image: {} {}'.format(userId, imageId))
+                    request = ImageIngressRequest(user_id=userId, image_id=imageId, fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest))
                     logger.debug("policy engine request: " + str(request))
                     resp = client.ingress_image(request)
                     logger.debug("policy engine image add response: " + str(resp))

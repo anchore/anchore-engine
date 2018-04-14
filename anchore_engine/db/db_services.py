@@ -1,9 +1,5 @@
 from anchore_engine import db
 from anchore_engine.db import Service
-#from db import Base
-
-
-#Base = declarative_base()
 
 # specific DB interface helpers for the 'services' table
 

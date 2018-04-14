@@ -5,8 +5,10 @@ Operations for CRUD on document references and metadata. Actual document content
 """
 
 import time
+import urlparse
 from anchore_engine import db
 from anchore_engine.db import ArchiveMetadata
+from anchore_engine.subsys import logger
 
 
 def add(userId, bucket, archiveId, documentName, content_url=None, metadata=None, is_compressed=None, content_digest=None, size=None, session=None):
@@ -16,16 +18,6 @@ def add(userId, bucket, archiveId, documentName, content_url=None, metadata=None
     doc_record = ArchiveMetadata(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName, content_url=content_url, document_metadata=metadata, is_compressed=is_compressed, digest=content_digest, size=size)
     merged_result = session.merge(doc_record)
     return (True)
-
-
-def get_all_iter(session=None):
-    if not session:
-        session = db.Session
-
-    for top_result in session.query(ArchiveMetadata.userId, ArchiveMetadata.bucket, ArchiveMetadata.archiveId):
-        result = session.query(ArchiveMetadata).filter_by(userId=top_result.userId, bucket=top_result.bucket, archiveId=top_result.archiveId).first()
-        obj = dict((key, value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-        yield obj
 
 
 def get_all(session=None):
@@ -54,16 +46,13 @@ def get(userId, bucket, archiveId, session=None):
 
 
 def get_onlymeta(userId, bucket, archiveId, session=None):
+    if not session:
+        session = db.Session
+
     ret = {}
 
-    result = session.query(ArchiveMetadata.userId, ArchiveMetadata.bucket, ArchiveMetadata.archiveId, ArchiveMetadata.record_state_key, ArchiveMetadata.record_state_val, ArchiveMetadata.created_at,
-                           ArchiveMetadata.last_updated).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
-    if result:
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
-            ret[k] = result[i]
-
-    return (ret)
+    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    return result.to_dict()
 
 
 def get_byname(userId, documentName, session=None):
@@ -82,25 +71,42 @@ def get_byname(userId, documentName, session=None):
 
 
 def exists(userId, bucket, archiveId, session=None):
+    """
+    Return boolean on existence of a specific archive document in the system. Checks metadata only.
+
+    :param userId:
+    :param bucket:
+    :param archiveId:
+    :param session:
+    :return:
+    """
     if not session:
         session = db.Session
 
     ret = {}
 
-    result = session.query(ArchiveMetadata.userId, ArchiveMetadata.bucket, ArchiveMetadata.archiveId).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    return result is not None
 
-    if result:
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
-            ret[k] = result[i]
 
-    return (ret)
+def list_schemas(session=None):
+    if not session:
+        session = db.Session
+
+    found_schemas = []
+
+    for record in session.query(ArchiveMetadata.content_url):
+        logger.info('Got record: {}'.format(record))
+        parsed = urlparse.urlparse(record[0])
+        found_schemas.append(parsed.scheme)
+
+    return set(found_schemas)
 
 
 def list_all_notempty(session=None):
     ret = []
 
-    results = session.query(ArchiveMetadata.bucket, ArchiveMetadata.archiveId, ArchiveMetadata.userId).filter(ArchiveMetadata.content_url != None)
+    results = session.query(ArchiveMetadata).filter(ArchiveMetadata.content_url != None)
     for result in results:
         obj = {}
         for i in range(0, len(result.keys())):
@@ -117,8 +123,7 @@ def list_all(session=None, **dbfilter):
         session = db.Session
     ret = []
 
-    results = session.query(ArchiveMetadata.bucket, ArchiveMetadata.archiveId, ArchiveMetadata.userId, ArchiveMetadata.record_state_key, ArchiveMetadata.record_state_val, ArchiveMetadata.created_at,
-                            ArchiveMetadata.last_updated).filter_by(**dbfilter)
+    results = session.query(ArchiveMetadata).filter_by(**dbfilter)
 
     for result in results:
         obj = {}
@@ -139,8 +144,7 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     dbfilter['userId'] = userId
 
-    results = session.query(ArchiveMetadata.bucket, ArchiveMetadata.archiveId, ArchiveMetadata.userId, ArchiveMetadata.record_state_key, ArchiveMetadata.record_state_val, ArchiveMetadata.created_at,
-                            ArchiveMetadata.last_updated).filter_by(**dbfilter)
+    results = session.query(ArchiveMetadata).filter_by(**dbfilter)
 
     for result in results:
         obj = {}

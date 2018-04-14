@@ -20,8 +20,7 @@ except:
     log = logger
 
 upgrade_enabled = True
-upgrade_lock_namespace = 1
-my_module_upgrade_id = 1
+#my_module_upgrade_id = 1
 
 
 def get_versions():
@@ -57,7 +56,7 @@ def do_version_update(db_versions, code_versions):
 
 
 @contextmanager
-def upgrade_context(lock_id):
+def upgrade_context():
     """
     Provides a context for upgrades including a lock on the db to ensure only one upgrade process at a time doing checks.
 
@@ -67,9 +66,9 @@ def upgrade_context(lock_id):
     """
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db.db_locks import db_application_lock
+    from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
 
-    with db_application_lock(engine, (upgrade_lock_namespace, lock_id)):
+    with db_application_lock(engine, (application_lock_ids['upgrade']['namespace'], application_lock_ids['upgrade']['ids']['db_upgrade'])):
         versions = get_versions()
         yield versions
 
@@ -133,7 +132,7 @@ def run_upgrade():
     :return: True if upgrade executed, False if success, but no upgrade needed.
     """
 
-    with upgrade_context(my_module_upgrade_id) as ctx:
+    with upgrade_context() as ctx:
         code_versions = ctx[0]
         db_versions = ctx[1]
 

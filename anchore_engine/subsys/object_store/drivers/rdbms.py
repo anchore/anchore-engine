@@ -28,10 +28,14 @@ class LegacyDbDriver(ObjectStorageDriver):
 
         return self.get_by_uri(self.uri_for(userId, bucket, key))
 
-    def get_by_uri(self, uri):
+    def _parse_uri(self, uri):
         parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
         userId = parsed.hostname
         empty, bucket, key = parsed.path.split('/', 2)
+        return userId, bucket, key
+
+    def get_by_uri(self, uri):
+        userId, bucket, key = self._parse_uri(uri)
 
         try:
             with db.session_scope() as dbsession:
@@ -56,6 +60,10 @@ class LegacyDbDriver(ObjectStorageDriver):
         except Exception as err:
             logger.debug("cannot put data: exception - " + str(err))
             raise err
+
+    def delete_by_uri(self, uri):
+        userId, bucket, key = self._parse_uri(uri)
+        return self.delete(userId, bucket, key)
 
     def delete(self, userId, bucket, key):
         if not self.initialized:
@@ -152,6 +160,10 @@ class DbDriver(ObjectStorageDriver):
                     return True
         except Exception as err:
             raise err
+
+    def delete_by_uri(self, uri):
+        userId, bucket, key = self._parse_uri(uri)
+        return self.delete(userId, bucket, key)
 
     def uri_for(self, userId, bucket, key):
         return '{}://{}'.format(self.__uri_scheme__, self._to_key(userId, bucket, key))

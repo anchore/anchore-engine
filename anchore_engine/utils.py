@@ -3,9 +3,13 @@ Generic utilities
 """
 import hashlib
 import json
+import platform
 import subprocess
+import thread
+import uuid
 from collections import OrderedDict
 
+import os
 import re
 
 
@@ -192,3 +196,14 @@ def manifest_to_digest(rawmanifest):
     ret = "sha256:" + str(hashlib.sha256(dmanifest).hexdigest())
 
     return(ret)
+
+
+def get_threadbased_id(guarantee_uniq=False):
+    """
+    Returns a string for use with acquire() calls optionally. Constructs a consistent id from the platform node, process_id and thread_id
+
+    :param guarantee_uniq: bool to have the id generate a uuid suffix to guarantee uniqeness between invocations even in the same thread
+    :return: string
+    """
+
+    return '{}:{}:{}:{}'.format(platform.node(), os.getpid(), str(thread.get_ident()), uuid.uuid4().hex if guarantee_uniq else '')

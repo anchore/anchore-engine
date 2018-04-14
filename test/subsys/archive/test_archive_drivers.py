@@ -2,17 +2,19 @@
 Tests for the archive subsystem. Tests for each driver are here.
 """
 import unittest
+import os
 
 from anchore_engine.subsys.object_store.drivers.filesystem import FilesystemObjectStorageDriver
 from anchore_engine.subsys.object_store.drivers.rdbms import DbDriver
 from anchore_engine.subsys.object_store.drivers.s3 import S3ObjectStorageDriver
 from anchore_engine.subsys.object_store.drivers.swift import SwiftObjectStorageDriver
-import logging
-import sys
 from anchore_engine.subsys import logger
 
 logger.set_log_level('INFO')
 logger.enable_bootstrap_logging()
+
+test_s3_key = os.getenv('TEST_ACCESS_KEY')
+test_s3_secret_key = os.getenv('TEST_SECRET_KEY')
 
 
 class TestArchiveDriverMixin(object):
@@ -97,9 +99,10 @@ class TestRDBMSArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
         """
         conf = TestRDBMSArchiveDriver.setup_engine_config(connect_str)
         from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord
+        from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
         initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf, specific_tables=[ArchiveDocument.__table__, Anchore.__table__, ObjectStorageRecord.__table__], bootstrap_db=do_bootstrap)
-
+        do_create(specific_tables=[ArchiveDocument.__table__,  Anchore.__table__, ObjectStorageRecord.__table__])
 
     @classmethod
     def setUpClass(cls):
@@ -108,8 +111,8 @@ class TestRDBMSArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
 
 class TestS3ArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
     driver_config = {
-        'access_key':'827H1W4ZSQBABMX3PTM9',
-        'secret_key':'TJWq5d5932NDIDzgswvdhftoWl7ww40dLPuYDJkm',
+        'access_key': test_s3_key,
+        'secret_key': test_s3_secret_key,
         'url':'http://localhost:9000',
         'region': None,
         'bucket': 'testarchivebucket'
