@@ -25,9 +25,12 @@ REFRESH_RETRIES = 3
 application_lock_ids = {
     'upgrade': {
         'namespace': 1,
+        'ids': {}
+    },
+    'archive_migration': {
+        'namespace': 2,
         'ids': {
-            'db_upgrade': 1,
-            'archive_migration': 2
+            'default': 1
         }
     }
 }

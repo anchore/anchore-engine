@@ -36,15 +36,13 @@ def migration_context(from_archive_config, to_archive_config, do_lock=True):
 
     logger.info('Initializing source archive: {}'.format(from_archive_config))
     from_archive = ArchiveManager(from_archive_config)
-    #from_client = object_store.init_driver(from_archive_config['storage_driver'])
 
     logger.info('Initializing dest archive: {}'.format(to_archive_config))
-    #to_client = object_store.init_driver(to_archive_config)
     to_archive = ArchiveManager(to_archive_config)
 
     if do_lock:
         engine = anchore_engine.db.entities.common.get_engine()
-        with db_application_lock(engine, (application_lock_ids['upgrade']['namespace'], application_lock_ids['upgrade']['ids']['archive_migration'])):
+        with db_application_lock(engine, (application_lock_ids['archive_migration']['namespace'], application_lock_ids['archive_migration']['ids']['default'])):
             yield MigrationContext(from_archive=from_archive, to_archive=to_archive)
     else:
         yield MigrationContext(from_archive=from_archive, to_archive=to_archive)
