@@ -355,3 +355,16 @@ def rescan_image(image_obj, db_session):
     db_session.flush()
 
     return vulns
+
+
+def delete_matches(namespace_name, db_session):
+    """
+    Flush all vuln matches for the specified namespace.
+
+    :param namespace_name:
+    :return: count of records deleted
+    """
+
+    #for rec in db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name):
+    return db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name).delete()
+

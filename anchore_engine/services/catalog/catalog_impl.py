@@ -16,7 +16,6 @@ from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_eventlog, \
     db_registries, db_services, db_archivedocument
 import anchore_engine.clients.policy_engine
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
