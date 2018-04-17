@@ -815,6 +815,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
     __feed_name__ = 'vulnerabilities'
     _cve_key = 'Name'
     __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, VulnerabilityFeedDataMapper, _cve_key)
+    __processing_fn__ = None
 
     def query_by_key(self, key, group=None):
         if not group:
@@ -883,6 +884,10 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         sync_time = time.time()
         updated_images = []
         db = get_session()
+
+        if vulnerability_processing_fn is None and self.__processing_fn__ is not None:
+            vulnerability_processing_fn = self.__processing_fn__
+
         try:
             next_token = ''
             while next_token is not None:
@@ -1101,6 +1106,9 @@ class DataFeeds(object):
     _vulnerabilitiesFeed_cls = VulnerabilityFeed
     _packagesFeed_cls = PackagesFeed
 
+    def __init__(self):
+        self.vuln_fn = None
+
     @classmethod
     def instance(cls):
         if not cls._proxy:
@@ -1139,7 +1147,7 @@ class DataFeeds(object):
         if to_sync is None or 'vulnerabilities' in to_sync:
             try:
                 log.info('Syncing vulnerability feed')
-                updated_records['vulnerabilities'] = self.vulnerabilities.sync()
+                updated_records['vulnerabilities'] = self.vulnerabilities.sync(item_processing_fn=self.vuln_fn)
             except:
                 log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
                 all_success = False

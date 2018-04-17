@@ -123,6 +123,7 @@ class FeedsUpdateTask(IAsyncTask):
             f = DataFeeds.instance()
             updated = []
             start_time = datetime.datetime.utcnow()
+            f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
             updated_dict = f.sync(to_sync=self.feeds)
             for g in updated_dict:
                 updated += updated_dict[g]
