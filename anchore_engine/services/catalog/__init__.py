@@ -224,6 +224,7 @@ def handle_service_watcher(*args, **kwargs):
 
     cycle_timer = kwargs['mythread']['cycle_timer']
     max_service_heartbeat_timer = 300
+    max_service_orphaned_timer = 3600
 
     while(True):
         logger.debug("FIRING: service watcher")
@@ -261,7 +262,7 @@ def handle_service_watcher(*args, **kwargs):
                             status = {'up': False, 'available': False}
                             
                         # set to down until the response can be parsed
-                        service_update_record['status'] = False                    
+                        service_update_record['status'] = False
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
                         service_update_record['short_description'] = "could not get service status description"
 
@@ -270,7 +271,7 @@ def handle_service_watcher(*args, **kwargs):
                             if status['up'] and status['available']:
                                 if time.time() - service['heartbeat'] > max_service_heartbeat_timer:
                                     logger.warn("no service heartbeat within allowed time period ("+str([service['hostid'], service['base_url']]) + " - disabling service")
-                                    service_update_record['short_description'] = "no heartbeat from service"
+                                    service_update_record['short_description'] = "no heartbeat from service in ({}) seconds".format(max_service_heartbeat_timer)
                                 else:
                                     service_update_record['status'] = True
                                     service_update_record['status_message'] = taskstate.complete_state('service_status')
@@ -278,6 +279,13 @@ def handle_service_watcher(*args, **kwargs):
                                         service_update_record['short_description'] = json.dumps(status)
                                     except:
                                         service_update_record['short_description'] = str(status)
+                            else:
+                                if time.time() - service['heartbeat'] > max_service_orphaned_timer:
+                                    logger.warn("no service heartbeat within max allowed time period ("+str([service['hostid'], service['base_url']]) + " - orphaning service")
+                                    service_update_record['status'] = False
+                                    service_update_record['status_message'] = taskstate.orphaned_state('service_status')
+                                    service_update_record['short_description'] = "no heartbeat from service in ({}) seconds".format(max_service_orphaned_timer)
+
                         except Exception as err:
                             logger.warn("could not get/parse service status record for service: - exception: " + str(err))
 
