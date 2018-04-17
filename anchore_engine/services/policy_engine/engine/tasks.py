@@ -125,8 +125,12 @@ class FeedsUpdateTask(IAsyncTask):
             start_time = datetime.datetime.utcnow()
             f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
             updated_dict = f.sync(to_sync=self.feeds)
-            for g in updated_dict:
-                updated += updated_dict[g]
+
+            # Response is dict with feed name and dict for each group mapped to list of images updated
+            log.info('Updated: {}'.format(updated_dict))
+            for feed in updated_dict:
+                for updated_imgs in updated_dict[feed].values():
+                    updated += updated_imgs
 
             log.info('Feed sync complete')
             return updated
@@ -239,7 +243,7 @@ class FeedsUpdateTask(IAsyncTask):
                 changed_images.append((v.pkg_user_id, v.pkg_image_id))
 
             db.flush()
-        log.info('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+        log.debug('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
         return changed_images
 
     @classmethod

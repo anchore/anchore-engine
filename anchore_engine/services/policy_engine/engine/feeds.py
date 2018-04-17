@@ -815,7 +815,6 @@ class VulnerabilityFeed(AnchoreServiceFeed):
     __feed_name__ = 'vulnerabilities'
     _cve_key = 'Name'
     __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, VulnerabilityFeedDataMapper, _cve_key)
-    __processing_fn__ = None
 
     def query_by_key(self, key, group=None):
         if not group:
@@ -882,11 +881,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         :return:
         """
         sync_time = time.time()
-        updated_images = []
+        updated_images = set() # A set
         db = get_session()
-
-        if vulnerability_processing_fn is None and self.__processing_fn__ is not None:
-            vulnerability_processing_fn = self.__processing_fn__
 
         try:
             next_token = ''
@@ -902,7 +898,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 for rec in new_data_deduped:
                     # Make any updates and changes within this single transaction scope
                     updated_image_ids = self.update_vulnerability(db, rec, vulnerability_processing_fn=vulnerability_processing_fn)
-                    updated_images += updated_image_ids  # Record after commit to ensure in-sync.
+                    updated_images = updated_images.union(set(updated_image_ids))  # Record after commit to ensure in-sync.
                     db.flush()
                 log.debug('Db merge took {} sec'.format(time.time() - db_time))
 
