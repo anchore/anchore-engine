@@ -847,39 +847,6 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         except Exception as e:
             log.exception('Could not retrieve vulnerability by key:')
 
-    def _is_match_impacting_update(self, old_record, new_record):
-        """
-        Is the conversion from old to new a change that will impact matching logic?
-
-        Does attribute checks that are part of the match process. Specifically, the fixedIn and VulnIn sets and their
-        attributes.
-
-        :param old_record: previous version of the vulnerability object
-        :param new_record: updated vulnerability object
-        :return: boolean result
-        """
-
-        # Some sanity checks
-        if old_record.id != new_record.id or old_record.namespace_name != new_record.namespace_name:
-            return False
-
-        # Simple checks for collection counts and existence
-        if (new_record.fixed_in and not old_record.fixed_in) or (old_record.fixed_in and not new_record.fixed_in) or \
-                (len(new_record.fixed_in) != len(old_record.fixed_in)):
-            return True
-        elif (new_record.vulnerable_in and not old_record.vulnerable_in) or (old_record.vulnerable_in and not new_record.vulnerable_in) or \
-                (len(new_record.vulnerable_in) != len(old_record.vulnerable_in)):
-            return True
-
-        # Item checks
-        if set(new_record.fixed_id).symmetric_difference(set(old_record.fixed_in)):
-            return True
-
-        if set(new_record.vulnerable_id).symmetric_difference(set(old_record.vulnerable_in)):
-            return True
-
-        return False
-
     def _dedup_data_key(self, item):
         return item.id
 
@@ -924,28 +891,43 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             sync_time = time.time() - sync_time
             log.info('Syncing group took {} sec'.format(sync_time))
 
-        #
-        #
-        # new_data_deduped, next_token = self._get_deduped_data(group_obj=group_obj, since=group_obj.last_sync)
-        # updated_images = []
-        # db = get_session()
-        # try:
-        #     log.info('Merging {} vulnerabilities into db for group {}'.format(len(new_data_deduped), group_obj.name))
-        #     for rec in new_data_deduped:
-        #         # Make any updates and changes within this single transaction scope
-        #         updated_image_ids = self.update_vulnerability(db, rec, vulnerability_processing_fn=vulnerability_processing_fn)
-        #         updated_images += updated_image_ids  # Record after commit to ensure in-sync.
-        #         db.flush()
-        #
-        #     group_obj.last_sync = datetime.datetime.utcnow()
-        #     db.add(group_obj)
-        #     db.commit()
-        # except Exception as e:
-        #     log.exception('Error during processing of vulnerabilities. Rolling back transaction and aborting')
-        #     db.rollback()
-        #     raise
-
         return updated_images
+
+    @staticmethod
+    def _are_match_equivalent(vulnerability_a, vulnerability_b):
+        """
+        Returns true if the two records (including child fixedin and/or vulnerablein records) are equivalent in terms of package matching.
+
+        TODO: move this logic to an vuln-scan abstraction, but that abstraction needs more work before it's ready. Would like to keep the definition of what impacts matches centralized so as not to get out-of-sync.
+
+        :param vulnerability_a:
+        :param vulnerability_b:
+        :return:
+        """
+
+        if not (vulnerability_a and vulnerability_b) or vulnerability_a.id != vulnerability_b.id or vulnerability_a.namespace_name != vulnerability_b.namespace_name:
+            # They aren't the same item reference
+            log.debug('Vuln id or namespaces are different: {} {} {} {}'.format(vulnerability_a.id, vulnerability_b.id, vulnerability_a.namespace_name, vulnerability_b.namespace_name))
+            return False
+
+        normalized_fixes_a = {(fix.name, fix.epochless_version, fix.version) for fix in vulnerability_a.fixed_in}
+        normalized_fixes_b = {(fix.name, fix.epochless_version, fix.version) for fix in vulnerability_b.fixed_in}
+
+        fix_diff = normalized_fixes_a.symmetric_difference(normalized_fixes_b)
+        if fix_diff:
+            log.debug('Fixed In records diff: {}'.format(fix_diff))
+            return False
+
+        normalized_vulnin_a = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_a.vulnerable_in}
+        normalized_vulnin_b = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_b.vulnerable_in}
+
+        vulnin_diff = normalized_vulnin_a.symmetric_difference(normalized_vulnin_b)
+
+        if vulnin_diff:
+            log.debug('VulnIn records diff: {}'.format(vulnin_diff))
+            return False
+
+        return True
 
     def update_vulnerability(self, db, vulnerability_record, vulnerability_processing_fn=None):
         """
@@ -960,11 +942,26 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         """
         try:
             updates = []
-            merged = db.merge(vulnerability_record)
-            db.add(merged)
 
-            if vulnerability_processing_fn:
+            try:
+                existing = db.query(Vulnerability).filter(Vulnerability.id == vulnerability_record.id, Vulnerability.namespace_name == vulnerability_record.namespace_name).one_or_none()
+            except:
+                log.debug('No current record found for {}'.format(vulnerability_record))
+                existing = None
+
+            if existing:
+                needs_update = not VulnerabilityFeed._are_match_equivalent(existing, vulnerability_record)
+                if needs_update:
+                    log.debug('Found update that requires an image match update from {} to {}'.format(existing, vulnerability_record))
+            else:
+                needs_update = True
+
+            merged = db.merge(vulnerability_record)
+
+            if vulnerability_processing_fn and needs_update:
                 updates = vulnerability_processing_fn(db, merged)
+            else:
+                log.debug('Skipping image processing due to no diff: {}'.format(merged))
 
             return updates
         except Exception as e:
