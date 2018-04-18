@@ -1,13 +1,9 @@
-import json
-import hashlib
-import time
-
 from anchore_engine import db
 from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.db import PolicyBundle
 
 
-# specific DB interface helpers for the 'services' table
+# specific DB interface helpers for the 'policybundle' table
 
 def add(policyId, userId, active, inobj, session=None):
     if not session:

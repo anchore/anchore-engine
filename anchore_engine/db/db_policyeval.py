@@ -5,12 +5,7 @@ from sqlalchemy import desc
 from anchore_engine import db
 from anchore_engine.db import PolicyEval
 
-
-# from db import Base
-
-#Base = declarative_base()
-
-# specific DB interface helpers for the 'services' table
+# specific DB interface helpers for the 'policyeval' table
 
 def tsadd(policyId, userId, imageDigest, tag, final_action, inobj, session=None):
     if not session:

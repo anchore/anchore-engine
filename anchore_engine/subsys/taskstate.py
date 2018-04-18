@@ -44,6 +44,7 @@ state_graphs = {
         'queued_state': 'available',
         'working_state': 'available',
         'complete_state': 'available',
+        'orphaned_state': 'orphaned',
         'transitions': {
             'init': 'registered',
             'registered':'available',
@@ -97,3 +98,9 @@ def next_state(state_type, current_state):
 def complete_state(state_type):
     return(state_graphs[state_type]['complete_state'])
 
+def orphaned_state(state_type):
+    if 'orphaned_state' in state_graphs[state_type]:
+        ret = state_graphs[state_type]['orphaned_state']
+    else:
+        ret = state_graphs[state_type]['fault_state']
+    return(ret)

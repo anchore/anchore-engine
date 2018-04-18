@@ -1,5 +1,6 @@
 import json
 import hashlib
+import uuid
 import zlib
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
@@ -19,7 +20,8 @@ except:
     log = logger
 
 upgrade_enabled = True
-upgrade_lock_namespace = 1
+
+# Set at module level for any db module that needs db upgrade ability
 my_module_upgrade_id = 1
 
 
@@ -39,13 +41,14 @@ def get_versions():
 
     except Exception as err:
         if is_table_not_found(err):
-            raise TableNotFoundError('anchore table not found')
+            logger.info("anchore table not found")
+            #raise TableNotFoundError('anchore table not found')
         else:
             raise Exception("Cannot find existing/populated anchore DB tables in connected database - has anchore-engine initialized this DB?\n\nDB - exception: " + str(err))
 
     return(code_versions, db_versions)
 
-def do_upgrade_success(db_versions, code_versions):
+def do_version_update(db_versions, code_versions):
     from anchore_engine.db import db_anchore, session_scope
 
     with session_scope() as dbsession:
@@ -65,12 +68,63 @@ def upgrade_context(lock_id):
     """
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db.db_locks import db_application_lock
+    from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
 
-    with db_application_lock(engine, (upgrade_lock_namespace, lock_id)):
+    with db_application_lock(engine, (application_lock_ids['upgrade']['namespace'], lock_id)):
         versions = get_versions()
         yield versions
 
+def do_create_tables(specific_tables=None):
+    print ("Creating DB Tables")
+    try:
+        with upgrade_context(my_module_upgrade_id) as ctx:
+            anchore_engine.db.entities.common.do_create(specific_tables)
+    except Exception as err:
+        raise err
+    print ("DB Tables created")
+    return(True)
+
+def do_db_bootstrap(localconfig=None):
+    with upgrade_context(my_module_upgrade_id) as ctx:
+
+        from anchore_engine.db import db_users, session_scope
+        with session_scope() as dbsession:
+            # system user
+            try:
+                system_user_record = db_users.get('anchore-system', session=dbsession)
+                if not system_user_record:
+                    rc = db_users.add('anchore-system', str(uuid.uuid4()), {'active': True}, session=dbsession)
+                else:
+                    db_users.update(system_user_record['userId'], system_user_record['password'], {'active': True}, session=dbsession)
+
+            except Exception as err:
+                raise Exception("Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(err))
+
+            if localconfig:
+                try:
+                    for userId in localconfig['credentials']['users']:
+                        if not localconfig['credentials']['users'][userId]:
+                            localconfig['credentials']['users'][userId] = {}
+
+                        cuser = localconfig['credentials']['users'][userId]
+
+                        password = cuser.pop('password', None)
+                        email = cuser.pop('email', None)
+                        if password and email:
+                            db_users.add(userId, password, {'email': email, 'active': True}, session=dbsession)
+                        else:
+                            raise Exception("user defined but has empty password/email: " + str(userId))
+
+                    user_records = db_users.get_all(session=dbsession)
+                    for user_record in user_records:
+                        if user_record['userId'] == 'anchore-system':
+                            continue
+                        if user_record['userId'] not in localconfig['credentials']['users']:
+                            logger.info("flagging user '"+str(user_record['userId']) + "' as inactive (in DB, not in configuration)")
+                            db_users.update(user_record['userId'], user_record['password'], {'active': False}, session=dbsession)
+
+                except Exception as err:
+                    raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
 
 def run_upgrade():
     """
@@ -88,7 +142,7 @@ def run_upgrade():
         running_db_version = ctx[1].get('db_version', None)
 
         if not code_db_version:
-            raise Exception("cannot code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
+            raise Exception("cannot get code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
         elif code_db_version and running_db_version is None:
             print "Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally."
             ecode = 0
@@ -98,12 +152,18 @@ def run_upgrade():
             print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
             print "Performing upgrade."
             try:
+                rc = do_create_tables()
+                if rc:
+                    print "Table create success."
+                else:
+                    raise Exception("Failure while creating tables.")
+
                 # perform the upgrade logic here
                 rc = do_upgrade(db_versions, code_versions)
                 if rc:
                     # if successful upgrade, set the DB values to the incode values
-                    rc = do_upgrade_success(db_versions, code_versions)
-                    print "Upgrade success: " + str(rc)
+                    rc = do_version_update(db_versions, code_versions)
+                    print "Upgrade success."
                     return rc
                 else:
                     raise Exception("Upgrade routine from module returned false, please check your DB/environment and try again")
@@ -141,7 +201,7 @@ def do_upgrade(inplace, incode):
                             print("Executing upgrade function: {}".format(fn.__name__))
                             fn()
                         except Exception as e:
-                            log.exception('Upgrade function {} raised an error. Failing upgrade.'.format(fn.__name__))
+                            log.err('Upgrade function {} raised an error. Failing upgrade.'.format(fn.__name__))
                             raise e
 
                     db_current = db_to
@@ -346,7 +406,7 @@ def archive_data_upgrade_005_006():
                                    documentName=doc.documentName,
                                    is_compressed=False,
                                    document_metadata=None,
-                                   content_url=client.uri_for(userid=doc.userId, bucket=doc.bucket, key=doc.archiveId),
+                                   content_url=client.uri_for(userId=doc.userId, bucket=doc.bucket, key=doc.archiveId),
                                    created_at=doc.created_at,
                                    last_updated=doc.last_updated,
                                    record_state_key=doc.record_state_key,

@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.4"
+  version: "0.1.5"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -912,7 +912,54 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-
+  /system/feeds:
+    get:
+      tags:
+      - "catalog"
+      summary: "list feeds operations and information"
+      description: ""
+      operationId: "get_system_feeds"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: array
+            items:
+              type: string
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
+    post:
+      tags:
+      - "catalog"
+      summary: "trigger feeds operations"
+      description: ""
+      operationId: "post_system_feeds"
+      parameters:
+      - name: 'flush'
+        in: query
+        type: boolean
+        description: "instruct system to flush existing data feeds records from anchore-engine"
+        required: false
+      - name: 'sync'
+        in: query
+        type: boolean
+        description: "instruct system to re-sync data feeds"
+        required: false
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "Feeds operation success"
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
   /system/prune:
     get:
       tags:

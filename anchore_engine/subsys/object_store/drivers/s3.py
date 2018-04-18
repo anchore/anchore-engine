@@ -42,12 +42,11 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         else:
             raise DriverConfigurationError('Missing either "access_key" and "secret_key" configuration values or "iamauto"=True in configuration for credentials')
 
-        #boto_config = botocore.config.Config(retries={'max_attempts': 0})
         if 'url' in self.config:
             self.endpoint = self.config.get('url')
             if not self.endpoint:
                 raise DriverConfigurationError('Missing valid value for configuration parameter "url" ({})'.format(self.endpoint))
-            #self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'), config=boto_config)
+
             self.s3_client = self.session.client(service_name='s3', endpoint_url=self.config.get('url'))
         elif 'region' in self.config:
             self.region = self.config.get('region')
@@ -78,12 +77,12 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         try:
             self.s3_client.get_bucket_location(Bucket=self.bucket_name)
         except Exception as ex:
-            if type(ex).__name__ == 'NoSuchBucket' and self.create_bucket: # and hasattr(ex, 'response') and ex.response.get('ResponseMeta', {}).get('HTTPStatusCode') == 400 and self.create_bucket:
+            if type(ex).__name__ == 'NoSuchBucket' and self.create_bucket:
                 self.s3_client.create_bucket(Bucket=self.bucket_name)
             else:
                 logger.error(
-                    'Error checking configured bucket for location during driver preflight check. Bucket = {}'.format(
-                        self.bucket_name))
+                    'Error checking configured bucket for location during driver preflight check. Bucket = {}. Error = {}'.format(
+                        self.bucket_name, ex))
                 raise DriverConfigurationError(cause=ex)
 
     def _build_key(self, userId, usrBucket, key):

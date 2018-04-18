@@ -247,6 +247,45 @@ def delete_service(servicename, hostid):
 
     return (return_object, httpcode)
 
+def get_system_feeds():
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    user_auth = request_inputs['auth']
+
+    return_object = []
+    httpcode = 500
+    try:
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        # do the p.e. feed get call
+        #return_object = p_client.get_feeds()
+        #return_object = [x.to_dict() for x in return_object]
+        return_object = ['not_implemented']
+        if return_object:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)    
+
+def post_system_feeds(flush=False, sync=False):
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'flush': flush, 'sync': sync})
+    user_auth = request_inputs['auth']
+
+    return_object = []
+    httpcode = 500
+    try:
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        # do the p.e. feed post call
+        #return_object = p_client.operate_on_feeds(flush=flush, sync=sync)
+        return_object = "Success"
+        if return_object:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return (return_object, httpcode)    
+
 def get_system_prune_resourcetypes():
     request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']

@@ -1,16 +1,12 @@
 import json
 import threading
-import thread
-import uuid
-import os
-import platform
 import time
 
 from anchore_engine.clients import http
 import anchore_engine.clients.common
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
-
+from anchore_engine.utils import get_threadbased_id
 
 localconfig = None
 headers = {'Content-Type': 'application/json'}
@@ -309,17 +305,6 @@ def refresh_lease(userId, lease_id, client_id, epoch, ttl):
     ret = http.anchy_aa(http.anchy_put, base_urls, url_postfix, auth=auth, headers=headers, verify=verify)
 
     return (ret)
-
-
-def get_threadbased_id(guarantee_uniq=False):
-    """
-    Returns a string for use with acquire() calls optionally. Constructs a consistent id from the platform node, process_id and thread_id
-
-    :param guarantee_uniq: bool to have the id generate a uuid suffix to guarantee uniqeness between invocations even in the same thread
-    :return: string
-    """
-
-    return '{}:{}:{}:{}'.format(platform.node(), os.getpid(), str(thread.get_ident()), uuid.uuid4().hex if guarantee_uniq else '')
 
 
 def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_wait_seconds=0, autorefresh=True, *args, **kwargs):

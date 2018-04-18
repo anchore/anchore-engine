@@ -19,6 +19,22 @@ DEFAULT_ACQUIRE_TIMEOUT_SECONDS = 3
 DEFAULT_LOCK_DURATION_SECONDS = 10
 REFRESH_RETRIES = 3
 
+# Global application lock namespaces to isolate lock ids
+# First layer of keys defined namespaces (the 'namespace' element is the id used in the db
+# The 2nd layer of keys are named lock ids within each namespace.
+application_lock_ids = {
+    'upgrade': {
+        'namespace': 1,
+        'ids': {}
+    },
+    'archive_migration': {
+        'namespace': 2,
+        'ids': {
+            'default': 1
+        }
+    }
+}
+
 
 def init_lease(lease_id):
     """

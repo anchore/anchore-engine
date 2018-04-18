@@ -9,26 +9,6 @@ from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError
 
 
-# def load_json(filename, find_key=None):
-#     """
-#     Load a json but only get a single key
-#
-#     :param filename:
-#     :param find_key:
-#     :return:
-#     """
-#
-#     with open(filename, 'r') as fd:
-#         if find_key:
-#             parser = ijson.parse(fd)
-#             for prefix, event, value in parser:
-#                 if (prefix, event) == ('find_key', 'map_key'):
-#                     return value
-#             return None
-#         else:
-#             return json.load(fd)
-
-
 class FilesystemObjectStorageDriver(ObjectStorageDriver):
     """
     A Driver that uses a mounted filesystem on the host for storing documents. This driver does not handle distribution or replication.
@@ -131,17 +111,29 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             logger.debug("cannot get data: exception - " + str(err))
             raise err
 
+    def _parse_uri(self, uri):
+        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        return parsed.path
+
     def get_by_uri(self, uri):
         if not self.initialized:
             raise Exception("archive not initialized")
 
         try:
-            parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
-            path = parsed.path
+            path = self._parse_uri(uri)
             content = self._load_content(path)
             return content
         except Exception as e:
             raise ObjectKeyNotFoundError(userId='', bucket='', key='', caused_by=e)
+
+    def delete_by_uri(self, uri):
+        archive_file = self._parse_uri(uri)
+        if os.path.exists(archive_file):
+            try:
+                os.remove(archive_file)
+                return True
+            except Exception as err:
+                logger.error("could not delete archive file (" + str(archive_file) + ") - exception: " + str(err))
 
     def delete(self, userId, bucket, key):
         if not self.initialized:

@@ -966,8 +966,9 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         :return:
         """
         sync_time = time.time()
-        updated_images = []
+        updated_images = set() # A set
         db = get_session()
+
         try:
             next_token = ''
             while next_token is not None:
@@ -982,7 +983,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 for rec in new_data_deduped:
                     # Make any updates and changes within this single transaction scope
                     updated_image_ids = self.update_vulnerability(db, rec, vulnerability_processing_fn=vulnerability_processing_fn)
-                    updated_images += updated_image_ids  # Record after commit to ensure in-sync.
+                    updated_images = updated_images.union(set(updated_image_ids))  # Record after commit to ensure in-sync.
                     db.flush()
                 log.debug('Db merge took {} sec'.format(time.time() - db_time))
 
@@ -1211,6 +1212,9 @@ class DataFeeds(object):
     _packagesFeed_cls = PackagesFeed
     _nvdsFeed_cls = NvdFeed
 
+    def __init__(self):
+        self.vuln_fn = None
+
     @classmethod
     def instance(cls):
         if not cls._proxy:
@@ -1254,7 +1258,7 @@ class DataFeeds(object):
         if to_sync is None or 'vulnerabilities' in to_sync:
             try:
                 log.info('Syncing vulnerability feed')
-                updated_records['vulnerabilities'] = self.vulnerabilities.sync()
+                updated_records['vulnerabilities'] = self.vulnerabilities.sync(item_processing_fn=self.vuln_fn)
             except:
                 log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
                 all_success = False

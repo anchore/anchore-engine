@@ -236,7 +236,9 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
         # preflight - db checks
         try:
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
-            db_params = anchore_manager.cli.utils.init_database(config, db_params['db_connect'], db_params['db_connect_args']['ssl'], db_retries=300)
+            db_params = anchore_manager.cli.utils.connect_database(config, db_params['db_connect'], db_params['db_connect_args']['ssl'], db_retries=300)
+
+            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig)
 
             in_sync = False
             timed_out = False
@@ -244,11 +246,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
 
             timer = time.time()
             while not in_sync and not timed_out:
-                code_versions = db_versions = None
-                try:
-                    code_versions, db_versions = module.get_versions()
-                except Exception as err:
-                    pass
+                code_versions, db_versions = module.get_versions()
 
                 if code_versions and db_versions:
                     if code_versions['db_version'] != db_versions['db_version']:

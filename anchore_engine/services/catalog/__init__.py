@@ -21,7 +21,7 @@ import anchore_engine.subsys.metrics
 import anchore_engine.services.common
 import anchore_engine.clients.common
 from anchore_engine import db
-from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users
+from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users, db_anchore, db_services
 from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
 
@@ -74,24 +74,21 @@ def initializeService(sname, config):
         raise Exception("could not initialize service status - exception: " + str(err))
 
     try:
-        #rc = archive.initialize(config['services'][sname].get(archive.MAIN_CONFIG_KEY))
-        rc = archive.initialize(config['services'][sname])
-        if not rc:
-            raise Exception("unable to initialize archive: check catalog configuration")
-
+        archive.initialize(config['services'][sname])
     except Exception as err:
+        logger.exception("Error initializing archive: check catalog configuration")
         raise err
 
     # set up defaults for users if not yet set up
     try:
         with db.session_scope() as dbsession:
-            user_records = db.db_users.get_all(session=dbsession)
+            user_records = db_users.get_all(session=dbsession)
             for user_record in user_records:
                 userId = user_record['userId']
                 if userId == 'anchore-system':
                     continue
 
-                bundle_records = db.db_policybundle.get_all_byuserId(userId, session=dbsession)
+                bundle_records = db_policybundle.get_all_byuserId(userId, session=dbsession)
                 if not bundle_records:
                     logger.debug("user has no policy bundle - installing default: " +str(userId))
                     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -104,7 +101,7 @@ def initializeService(sname, config):
                             if default_bundle:
                                 bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'], default_bundle)
                                 policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle, active=True)
-                                rc = db.db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
+                                rc = db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
                                 if not rc:
                                     raise Exception("policy bundle DB add failed")
                         except Exception as err:
@@ -166,7 +163,7 @@ def handle_vulnerability_scan(*args, **kwargs):
             return(True)
 
         with db.session_scope() as dbsession:
-            users = db.db_users.get_all(session=dbsession)
+            users = db_users.get_all(session=dbsession)
 
         for user in users:
             userId = user['userId']
@@ -180,7 +177,7 @@ def handle_vulnerability_scan(*args, **kwargs):
             for subscription_type in ['vuln_update']:
                 dbfilter = {'subscription_type': subscription_type}
                 with db.session_scope() as dbsession:
-                    subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
                 for subscription_record in subscription_records:
                     if subscription_record['active']:
                         image_info = anchore_engine.services.common.get_image_info(userId, "docker", subscription_record['subscription_key'], registry_lookup=False, registry_creds=(None, None))
@@ -227,6 +224,7 @@ def handle_service_watcher(*args, **kwargs):
 
     cycle_timer = kwargs['mythread']['cycle_timer']
     max_service_heartbeat_timer = 300
+    max_service_orphaned_timer = 3600
 
     while(True):
         logger.debug("FIRING: service watcher")
@@ -235,11 +233,11 @@ def handle_service_watcher(*args, **kwargs):
         verify = localconfig['internal_ssl_verify']
 
         with db.session_scope() as dbsession:
-            system_user = db.db_users.get('anchore-system', session=dbsession)
+            system_user = db_users.get('anchore-system', session=dbsession)
             userId = system_user['userId']
             password = system_user['password']
 
-            anchore_services = db.db_services.get_all(session=dbsession)
+            anchore_services = db_services.get_all(session=dbsession)
             # update the global latest service record dict in services.common
             #latest_service_records.update({"service_records": copy.deepcopy(anchore_services)})
 
@@ -264,7 +262,7 @@ def handle_service_watcher(*args, **kwargs):
                             status = {'up': False, 'available': False}
                             
                         # set to down until the response can be parsed
-                        service_update_record['status'] = False                    
+                        service_update_record['status'] = False
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
                         service_update_record['short_description'] = "could not get service status description"
 
@@ -273,7 +271,7 @@ def handle_service_watcher(*args, **kwargs):
                             if status['up'] and status['available']:
                                 if time.time() - service['heartbeat'] > max_service_heartbeat_timer:
                                     logger.warn("no service heartbeat within allowed time period ("+str([service['hostid'], service['base_url']]) + " - disabling service")
-                                    service_update_record['short_description'] = "no heartbeat from service"
+                                    service_update_record['short_description'] = "no heartbeat from service in ({}) seconds".format(max_service_heartbeat_timer)
                                 else:
                                     service_update_record['status'] = True
                                     service_update_record['status_message'] = taskstate.complete_state('service_status')
@@ -281,6 +279,13 @@ def handle_service_watcher(*args, **kwargs):
                                         service_update_record['short_description'] = json.dumps(status)
                                     except:
                                         service_update_record['short_description'] = str(status)
+                            else:
+                                if time.time() - service['heartbeat'] > max_service_orphaned_timer:
+                                    logger.warn("no service heartbeat within max allowed time period ("+str([service['hostid'], service['base_url']]) + " - orphaning service")
+                                    service_update_record['status'] = False
+                                    service_update_record['status_message'] = taskstate.orphaned_state('service_status')
+                                    service_update_record['short_description'] = "no heartbeat from service in ({}) seconds".format(max_service_orphaned_timer)
+
                         except Exception as err:
                             logger.warn("could not get/parse service status record for service: - exception: " + str(err))
 
@@ -293,7 +298,7 @@ def handle_service_watcher(*args, **kwargs):
                 if service_update_record:
                     service.update(service_update_record)
                     try:
-                        db.db_services.update_record(service, session=dbsession)
+                        db_services.update_record(service, session=dbsession)
                     except Exception as err:
                         logger.warn("could not update DB: " + str(err))
                 else:
@@ -318,7 +323,7 @@ def handle_repo_watcher(*args, **kwargs):
     logger.debug("FIRING: " + str(watcher))
 
     with db.session_scope() as dbsession:
-        users = db.db_users.get_all(session=dbsession)
+        users = db_users.get_all(session=dbsession)
 
     for user in users:
         userId = user['userId']
@@ -328,9 +333,9 @@ def handle_repo_watcher(*args, **kwargs):
         dbfilter = {}
         with db.session_scope() as dbsession:
             dbfilter['subscription_type'] = 'repo_update'
-            subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
 
-            registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
+            registry_creds = db_registries.get_byuserId(userId, session=dbsession)
             try:
                 catalog_impl.refresh_registry_creds(registry_creds, dbsession)
             except Exception as err:
@@ -433,7 +438,7 @@ def handle_image_watcher(*args, **kwargs):
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
     with db.session_scope() as dbsession:
-        users = db.db_users.get_all(session=dbsession)
+        users = db_users.get_all(session=dbsession)
 
     for user in users:
         userId = user['userId']
@@ -443,9 +448,9 @@ def handle_image_watcher(*args, **kwargs):
         with db.session_scope() as dbsession:
             dbfilter = {}
             dbfilter['subscription_type'] = 'tag_update'
-            subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+            subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
 
-            registry_creds = db.db_registries.get_byuserId(userId, session=dbsession)
+            registry_creds = db_registries.get_byuserId(userId, session=dbsession)
             try:
                 catalog_impl.refresh_registry_creds(registry_creds, dbsession)
             except Exception as err:
@@ -511,7 +516,7 @@ def handle_image_watcher(*args, **kwargs):
 
                 logger.debug("checking image: looking up image in db using dbfilter: " + str(dbfilter))
                 with db.session_scope() as dbsession:
-                    record = db.db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter, session=dbsession)
+                    record = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter, session=dbsession)
                 if record:
                     logger.debug("checking image: found match, no update, nothing to do: " + str(fulltag))
                 else:
@@ -526,7 +531,7 @@ def handle_image_watcher(*args, **kwargs):
                         last_annotations = {}
                         is_latest = True
                         with db.session_scope() as dbsession:
-                            last_image_records = db.db_catalog_image.get_byimagefilter(userId, 'docker', last_dbfilter, session=dbsession)
+                            last_image_records = db_catalog_image.get_byimagefilter(userId, 'docker', last_dbfilter, session=dbsession)
 
                         if last_image_records:
                             for last_image_record in last_image_records:
@@ -614,7 +619,7 @@ def check_policybundle_update(userId, dbsession):
 
     try:
         last_bundle_update = 0
-        active_policy_record = db.db_policybundle.get_active_policy(userId, session=dbsession)
+        active_policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
         if active_policy_record:
             last_bundle_update = active_policy_record['last_updated']
         else:
@@ -659,7 +664,7 @@ def handle_policyeval(*args, **kwargs):
 
         with db.session_scope() as dbsession:
             feed_updated = check_feedmeta_update(dbsession)
-            users = db.db_users.get_all(session=dbsession)
+            users = db_users.get_all(session=dbsession)
 
         for user in users:
             userId = user['userId']
@@ -673,7 +678,7 @@ def handle_policyeval(*args, **kwargs):
             for subscription_type in ['policy_eval']:
                 dbfilter = {'subscription_type': subscription_type}
                 with db.session_scope() as dbsession:
-                    subscription_records = db.db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
                 for subscription_record in subscription_records:
                     if subscription_record['active']:
                         image_info = anchore_engine.services.common.get_image_info(userId, "docker", subscription_record['subscription_key'], registry_lookup=False, registry_creds=(None, None))
@@ -740,7 +745,7 @@ def handle_analyzer_queue(*args, **kwargs):
         return(True)
 
     with db.session_scope() as dbsession:
-        users = db.db_users.get_all(session=dbsession)
+        users = db_users.get_all(session=dbsession)
 
     for user in users:
         userId = user['userId']
@@ -751,7 +756,7 @@ def handle_analyzer_queue(*args, **kwargs):
 
         with db.session_scope() as dbsession:
             dbfilter = {'analysis_status': taskstate.working_state('analyze')}
-            workingstate_image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
+            workingstate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
         # first, evaluate images looking for those that have been in working state for too long and reset
         for image_record in workingstate_image_records:
@@ -763,13 +768,13 @@ def handle_analyzer_queue(*args, **kwargs):
                     logger.warn("image has been in working state ("+str(taskstate.working_state('analyze'))+") for over ("+str(max_working_time)+") seconds - resetting and requeueing for analysis")
                     image_record['analysis_status'] = taskstate.reset_state('analyze')
                     with db.session_scope() as dbsession:
-                        db.db_catalog_image.update_record(image_record, session=dbsession)
+                        db_catalog_image.update_record(image_record, session=dbsession)
 
         # next, look for any image in base state (not_analyzed) for queuing
         with db.session_scope() as dbsession:
             dbfilter = {'analysis_status': taskstate.base_state('analyze')}
             #dbfilter = {}
-            basestate_image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
+            basestate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
         for basestate_image_record in basestate_image_records:
             imageDigest = basestate_image_record['imageDigest']
@@ -835,7 +840,7 @@ def handle_policy_bundle_sync(*args, **kwargs):
     localconfig = anchore_engine.configuration.localconfig.get_config()
 
     with db.session_scope() as dbsession:
-        users = db.db_users.get_all(session=dbsession)
+        users = db_users.get_all(session=dbsession)
         for user in users:
             userId = user['userId']
             if userId == 'anchore-system':
@@ -871,7 +876,7 @@ def handle_policy_bundle_sync(*args, **kwargs):
                 # TODO should compare here to determine if new bundle is different from stored/active bundle
                 do_update = True
                 try:
-                    current_policy_record = db.db_policybundle.get_active_policy(userId, session=dbsession)
+                    current_policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
                     if current_policy_record:
                         current_policy_bundle = archive.get_document(userId, 'policy_bundles', current_policy_record['policyId'])
                         if current_policy_bundle and current_policy_bundle == anchore_user_bundle:
@@ -902,12 +907,12 @@ def handle_policy_bundle_sync(*args, **kwargs):
                     policyId = new_policybundle_record['policyId']
                     rc = archive.put_document(userId, 'policy_bundles', policyId, anchore_user_bundle)
                     logger.debug("bundle record archived: " + str(userId) + " : " + str(policyId))
-                    rc = db.db_policybundle.update(policyId, userId, True, new_policybundle_record, session=dbsession)
+                    rc = db_policybundle.update(policyId, userId, True, new_policybundle_record, session=dbsession)
                     logger.debug("bundle record stored: " + str(userId) + " : " + str(policyId))
                     if not rc:
                         raise Exception("DB update failed")
                     else:
-                        rc = db.db_policybundle.set_active_policy(policyId, userId, session=dbsession)
+                        rc = db_policybundle.set_active_policy(policyId, userId, session=dbsession)
                         bundle_user_last_updated[userId] = 0
             except Exception as err:
                 logger.warn("no valid bundle available for user ("+str(userId)+") - exception: " + str(err))
@@ -953,8 +958,8 @@ def handle_notifications(*args, **kwargs):
                 logger.debug("error_event webhook is not configured, skipping webhook for error_event")
 
             if do_erreventhooks:
-                system_user_record = db.db_users.get('admin', session=dbsession)
-                errevent_records = db.db_eventlog.get_all(session=dbsession)
+                system_user_record = db_users.get('admin', session=dbsession)
+                errevent_records = db_eventlog.get_all(session=dbsession)
                 for errevent in errevent_records:
                     notification = errevent
                     userId = system_user_record['userId']
@@ -962,15 +967,15 @@ def handle_notifications(*args, **kwargs):
                     subscription_type = 'error_event'
                     notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
                     logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
-                    db.db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
-                    db.db_eventlog.delete_record(errevent, session=dbsession)
+                    db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
+                    db_eventlog.delete_record(errevent, session=dbsession)
         except Exception as err:
             logger.warn("failed to queue error eventlog for notification - exception: " + str(err))
 
         # regular event queue notifications
         for subscription_type in anchore_engine.services.common.subscription_types + ['error_event']:
             logger.debug("notifier: " + subscription_type)
-            users = db.db_users.get_all(session=dbsession)
+            users = db_users.get_all(session=dbsession)
 
             try:
                 qlen = simplequeue.qlen(system_user_auth, subscription_type)
@@ -990,13 +995,13 @@ def handle_notifications(*args, **kwargs):
                         try:
                             if userId == user['userId']:
                                 dbfilter = {'subscription_type': subscription_type, 'subscription_key': subscription_key}
-                                subscription_records = db.db_subscriptions.get_byfilter(user['userId'], session=dbsession, **dbfilter)
+                                subscription_records = db_subscriptions.get_byfilter(user['userId'], session=dbsession, **dbfilter)
                                 if subscription_records:
                                     subscription = subscription_records[0]
                                     if subscription and subscription['active']:
                                         notification_record = notifications.make_notification(user, subscription_type, notification)
                                         logger.spew("Storing NOTIFICATION: " + str(user) + str(notification_record))
-                                        db.db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
+                                        db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
 
                         except Exception as err:
                             import traceback
@@ -1006,21 +1011,21 @@ def handle_notifications(*args, **kwargs):
                 qlen = simplequeue.qlen(system_user_auth, subscription_type)
 
             for user in users:
-                notification_records = db.db_queues.get_all(subscription_type, user['userId'], session=dbsession)
+                notification_records = db_queues.get_all(subscription_type, user['userId'], session=dbsession)
                 for notification_record in notification_records:
                     logger.debug("drained to send: " + json.dumps(notification_record))
                     try:
                         rc = notifications.notify(user, notification_record)
                         if rc:
-                            db.db_queues.delete_record(notification_record, session=dbsession)
+                            db_queues.delete_record(notification_record, session=dbsession)
                     except Exception as err:
                         logger.debug("failed to send notification, storing for retry - exception: " + str(err))
                         notification_record['tries'] = int(time.time())
                         if notification_record['tries'] > notification_record['max_tries']:
                             logger.error("hit max notification timeout: dropping notificaion")
-                            db.db_queues.delete_record(notification_record, session=dbsession)
+                            db_queues.delete_record(notification_record, session=dbsession)
                         else:
-                            db.db_queues.update_record(notification_record, session=dbsession)
+                            db_queues.update_record(notification_record, session=dbsession)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -1048,7 +1053,7 @@ def handle_metrics(*args, **kwargs):
             try:
                 with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_read_seconds").time() as mtimer:
                     with db.session_scope() as dbsession:
-                        anchore_record = db.db_anchore.get(session=dbsession)
+                        anchore_record = db_anchore.get(session=dbsession)
             except Exception as err:
                 logger.warn("unable to perform DB read probe - exception: " + str(err))
 
@@ -1057,7 +1062,7 @@ def handle_metrics(*args, **kwargs):
                     with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_write_seconds").time() as mtimer:
                         with db.session_scope() as dbsession:
                             anchore_record['record_state_val'] = str(time.time())
-                            rc = db.db_anchore.update_record(anchore_record, session=dbsession)
+                            rc = db_anchore.update_record(anchore_record, session=dbsession)
 
                 except Exception as err:
                     logger.warn("unable to perform DB write probe - exception: " + str(err))
@@ -1065,9 +1070,9 @@ def handle_metrics(*args, **kwargs):
             try:
                 with anchore_engine.subsys.metrics.get_summary_obj("anchore_db_readwrite_seconds").time() as mtimer:
                     with db.session_scope() as dbsession:
-                        anchore_record = db.db_anchore.get(session=dbsession)
+                        anchore_record = db_anchore.get(session=dbsession)
                         anchore_record['record_state_val'] = str(time.time())
-                        rc = db.db_anchore.update_record(anchore_record, session=dbsession)
+                        rc = db_anchore.update_record(anchore_record, session=dbsession)
             except Exception as err:
                 logger.warn("unable to perform DB read/write probe - exception: " + str(err))
 

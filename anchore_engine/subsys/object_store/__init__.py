@@ -1,7 +1,7 @@
-import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 
 from .drivers import ObjectStorageDriverMeta, ObjectStorageDriver, interface
+from .drivers import S3ObjectStorageDriver, SwiftObjectStorageDriver, FilesystemObjectStorageDriver, DbDriver
 
 
 def _from_config(configuration):

@@ -109,7 +109,7 @@ def doexit(ecode):
         pass
     sys.exit(ecode)
 
-def init_database(config, db_connect, db_use_ssl, db_retries=1):
+def connect_database(config, db_connect, db_use_ssl, db_retries=1):
     # allow override of db connect string on CLI, otherwise get DB params from anchore-engine config.yaml
     db_connect_args = {'ssl': False}
     if db_use_ssl:
@@ -143,5 +143,20 @@ def init_database(config, db_connect, db_use_ssl, db_retries=1):
 
     if not db_connected:
         raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
+        
 
-    return(db_params)
+def init_database(upgrade_module=None, localconfig=None):
+    code_versions = db_versions = None
+    if upgrade_module:
+        try:
+            code_versions, db_versions = upgrade_module.get_versions()
+            if code_versions and not db_versions:
+                print "DB not initialized - initializing tables"
+                upgrade_module.do_create_tables()
+                upgrade_module.do_db_bootstrap(localconfig=localconfig)
+                upgrade_module.do_version_update(db_versions, code_versions)
+                code_versions, db_versions = upgrade_module.get_versions()
+        except Exception as err:
+            raise err
+
+    return(code_versions, db_versions)
