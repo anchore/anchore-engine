@@ -524,6 +524,8 @@ class ImageLoader(object):
         ret_names = []
         ret_versions = []
 
+        known_nomatch_inclusions = {'springframework': ['spring_framework', 'springsource_spring_framework']}
+
         iversion = input_el.get('implementation-version', "N/A")
         if iversion != 'N/A':
             ret_versions.append(iversion)
@@ -566,12 +568,57 @@ class ImageLoader(object):
                         ret_names.append('-'.join([gthing]+fullname))
 
             if firstversion:
-                firstversion_nosuffix = re.sub("\.(RELEASE|GA)$", "", firstversion)
+                firstversion_nosuffix = re.sub("\.(RELEASE|GA|SEC.*)$", "", firstversion)
                 for gthing in [firstversion, firstversion_nosuffix]:
                     if gthing not in ret_versions:
                         ret_versions.append(gthing)
                     if '-'.join([gthing]+fullversion) not in ret_versions:
                         ret_versions.append('-'.join([gthing]+fullversion))
+
+            # attempt to get some hints from the manifest, if available
+            try:
+                manifest = input_el['metadata'].get('MANIFEST.MF', None)
+                if manifest:
+                    pnames = []
+                    manifest = re.sub("\r\n ", "", manifest)
+                    for mline in manifest.splitlines():
+                        if mline:
+                            key,val = mline.split(" ",1)
+                            if key.lower() == 'export-package:':
+                                val = re.sub(';uses:=".*?"', '', val)
+                                val = re.sub(';version=".*?"', '', val)
+                                val = val.split(';')[0]
+                                pnames = pnames + val.split(',')
+                            #elif key.lower() == 'bundle-symbolicname:':
+                            #    pnames.append(val)
+                            #elif key.lower() == 'name:':
+                            #    tmp = val.split("/")
+                            #    pnames.append('.'.join(tmp[:-1]))
+
+                    packagename = None
+                    if pnames:
+                        shortest = min(pnames)
+                        longest = max(pnames)
+                        if shortest == longest:
+                            packagename = shortest
+                        else:
+                            for i in range(0, len(shortest)):
+                                if i > 0 and shortest[i] != longest[i]:
+                                    packagename = shortest[:i-1]
+                                    break
+                    if packagename:
+                        candidate = packagename.split(".")[-1]
+                        if candidate in known_nomatch_inclusions.keys():
+                            for matchmap_candidate in known_nomatch_inclusions[candidate]:
+                                if matchmap_candidate not in ret_names:
+                                    ret_names.append(matchmap_candidate)
+                        elif (candidate not in ['com', 'org', 'net'] and len(candidate) > 2):
+                            for r in list(ret_names):
+                                if r in candidate and candidate not in ret_names:
+                                    ret_names.append(candidate)
+
+            except Exception as err:
+                log.err(err)
 
         except Exception as err:
             log.warn("failed to detect java package name/version guesses - exception: " + str(err))
