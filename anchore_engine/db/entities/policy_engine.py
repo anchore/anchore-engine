@@ -524,6 +524,9 @@ class ImageCpe(Base):
     def __repr__(self):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
+    def fixed_in(self):
+        return(None)
+
     def get_cpestring(self):
         ret = None
         try:

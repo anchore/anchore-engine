@@ -4,7 +4,7 @@ import time
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
-from anchore_engine.db import DistroNamespace
+from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter
 log = get_logger()
@@ -34,43 +34,68 @@ class VulnerabilityMatchTrigger(BaseTrigger):
     }
 
 
-    package_type = EnumStringParameter(name='package_type', example_str='all', enum_values=['all'], description='Only trigger for specific package type.', is_required=True, sort_order=1)
+    package_type = EnumStringParameter(name='package_type', example_str='all', enum_values=['all', 'os', 'non-os'], description='Only trigger for specific package type.', is_required=True, sort_order=1)
     severity_comparison = EnumStringParameter(name='severity_comparison', example_str='>', description='The type of comparison to perform for severity evaluation.', enum_values=SEVERITY_COMPARISONS.keys(), is_required=True, sort_order=2)
     severity = EnumStringParameter(name='severity', example_str='high', description='Severity to compare against.', enum_values=SEVERITY_ORDERING, is_required=True, sort_order=3)
     fix_available = BooleanStringParameter(name='fix_available', example_str='true', description='If present, the fix availability for the vulnerability record must match the value of this parameter.', is_required=False, sort_order=4)
 
     def evaluate(self, image_obj, context):
-        vulns = context.data.get('loaded_vulnerabilities')
-        if not vulns:
-            return
-
         is_fix_available = self.fix_available.value()
         comparison_idx = SEVERITY_ORDERING.index(self.severity.value().lower())
         comparison_fn = self.SEVERITY_COMPARISONS.get(self.severity_comparison.value())
-
         if not comparison_fn:
             raise KeyError(self.severity_comparison)
 
-        for pkg_vuln in vulns:
-            # Filter by level first
-            found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
+        if self.package_type.value() in ['all', 'non-os']:
+            cpevulns = context.data.get('loaded_cpe_vulnerabilities')
+            if cpevulns:
+                try:
+                    for sev in cpevulns.keys():
+                        found_severity_idx = SEVERITY_ORDERING.index(sev.lower()) if sev else 0
+                        if comparison_fn(found_severity_idx, comparison_idx):
+                            for image_cpe, vulnerability_cpe in cpevulns[sev]:
+                                trigger_fname = image_cpe.pkg_path.split("/")[-1]
+                                if not trigger_fname:
+                                    trigger_fname = image_cpe.name
 
-            if comparison_fn(found_severity_idx, comparison_idx):
-                # Check fix_available status if specified by user in policy
-                if is_fix_available is not None:
-                    # Must to a fix_available check
-                    fix_available_in = pkg_vuln.fixed_in()
+                                if is_fix_available is not None:
+                                    # Must to a fix_available check
+                                    fix_available_in = image_cpe.fixed_in()
+                                    if is_fix_available == (fix_available_in is not None):                                    
+                                        message = sev.upper() + " Vulnerability found in non-os package type ("+image_cpe.pkg_type+") - " + \
+                                                  image_cpe.pkg_path + " (" + vulnerability_cpe.vulnerability_id + " - https://nvd.nist.gov/vuln/detail/" + vulnerability_cpe.vulnerability_id + ")"
+                                        self._fire(instance_id=vulnerability_cpe.vulnerability_id + '+' + trigger_fname, msg=message)
+                                else:
+                                    message = sev.upper() + " Vulnerability found in non-os package type ("+image_cpe.pkg_type+") - " + \
+                                              image_cpe.pkg_path + " (" + vulnerability_cpe.vulnerability_id + " - https://nvd.nist.gov/vuln/detail/" + vulnerability_cpe.vulnerability_id + ")"
+                                    self._fire(instance_id=vulnerability_cpe.vulnerability_id + '+' + trigger_fname, msg=message)
 
-                    if is_fix_available == (fix_available_in is not None):
-                        # explicit fix state check matches fix availability
-                        message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
-                                  pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
-                        self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
-                else:
-                    # No fix status check since not specified by user
-                    message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in package - " + \
-                              pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
-                    self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
+                except Exception as err:
+                    log.warn("problem during non-os vulnerability evaluation - exception: {}".format(err))
+
+        if self.package_type.value() in ['all', 'os']:
+            vulns = context.data.get('loaded_vulnerabilities')
+            if vulns:
+                for pkg_vuln in vulns:
+                    # Filter by level first
+                    found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
+
+                    if comparison_fn(found_severity_idx, comparison_idx):
+                        # Check fix_available status if specified by user in policy
+                        if is_fix_available is not None:
+                            # Must to a fix_available check
+                            fix_available_in = pkg_vuln.fixed_in()
+
+                            if is_fix_available == (fix_available_in is not None):
+                                # explicit fix state check matches fix availability
+                                message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                          pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                                self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
+                        else:
+                            # No fix status check since not specified by user
+                            message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                      pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                            self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
 
 
 class FeedOutOfDateTrigger(BaseTrigger):
@@ -130,6 +155,21 @@ class VulnerabilitiesGate(Gate):
 
         :rtype:
         """
-        # Load the vulnerability info up front
+        # Load the package vulnerability info up front
         context.data['loaded_vulnerabilities'] = image_obj.vulnerabilities()
+
+        # Load the non-package (CPE) vulnerability info up front
+        all_cpe_matches = context.db.query(ImageCpe,CpeVulnerability).filter(ImageCpe.image_id==image_obj.id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+        if not all_cpe_matches:
+            all_cpe_matches = []
+
+        severity_matches = {}
+        for image_cpe, vulnerability_cpe in all_cpe_matches:
+            sev = vulnerability_cpe.severity
+            if sev not in severity_matches:
+                severity_matches[sev] = []
+            severity_matches[sev].append((image_cpe, vulnerability_cpe))
+
+        context.data['loaded_cpe_vulnerabilities'] = severity_matches
+
         return context
