@@ -11,7 +11,6 @@ from .npms import NpmCheckGate
 from .secrets import SecretCheckGate
 from .image_metadata import ImageMetadataGate
 from .always import AlwaysGate
-from .cpesec import CpeGate
 
 # Bring in deprecated gates
 from .deprecated import *
