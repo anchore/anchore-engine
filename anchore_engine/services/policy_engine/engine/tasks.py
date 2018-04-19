@@ -197,7 +197,7 @@ class FeedsUpdateTask(IAsyncTask):
         :param: db: The db session to use, should be valid and open
         :return: list of (user_id, image_id) that were affected
         """
-        log.debug('Processing CVE update for: {}'.format(vulnerability.id))
+        log.spew('Processing CVE update for: {}'.format(vulnerability.id))
         changed_images = []
 
         # Find any packages already matched with the CVE ID.
@@ -205,7 +205,7 @@ class FeedsUpdateTask(IAsyncTask):
 
         # May need to remove vuln from some packages.
         if vulnerability.is_empty():
-            log.debug('Detected an empty CVE. Removing all existing matches on this CVE')
+            log.spew('Detected an empty CVE. Removing all existing matches on this CVE')
 
             # This is a flush, nothing can be vulnerable to this, so remove it from packages.
             if current_affected:
@@ -243,7 +243,9 @@ class FeedsUpdateTask(IAsyncTask):
                 changed_images.append((v.pkg_user_id, v.pkg_image_id))
 
             db.flush()
-        log.debug('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+
+        log.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+
         return changed_images
 
     @classmethod
