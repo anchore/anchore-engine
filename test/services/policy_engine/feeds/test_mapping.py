@@ -20,7 +20,16 @@ class TestVulnerabilityMapping(unittest.TestCase):
                     'Name': 'async-http-client',
                     'NamespaceName': 'debian:9',
                     'Version': '1.6.5-3',
-                    'VersionFormat': 'dpkg'
+                    'VersionFormat': 'dpkg',
+                    'VendorAdvisory': {
+                        'NoAdvisory': False,
+                        'AdvisorySummary': [
+                            {
+                                'ID': 'DSA-0000-0',
+                                'Link': 'https://security-tracker.debian.org/tracker/DSA-0000-0'
+                            }
+                        ]
+                    }
                 }
             ],
             'Link': 'https://security-tracker.debian.org/tracker/CVE-2013-7397',
@@ -99,6 +108,7 @@ class TestVulnerabilityMapping(unittest.TestCase):
 
     def test_invalid(self):
         with self.assertRaises(Exception) as f:
+
             self.mapper.map(self.invalid_1)
 
         with self.assertRaises(Exception) as f:

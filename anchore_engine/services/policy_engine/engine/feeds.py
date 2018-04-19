@@ -258,7 +258,16 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
                     'Name': 'async-http-client',
                     'NamespaceName': 'debian:9',
                     'Version': '1.6.5-3',
-                    'VersionFormat': 'dpkg'
+                    'VersionFormat': 'dpkg',
+                    'VendorAdvisory': {
+                        'NoAdvisory': False,
+                        'AdvisorySummary': [
+                            {
+                                'ID': 'DSA-0000-0',
+                                'Link': 'https://security-tracker.debian.org/tracker/DSA-0000-0'
+                            }
+                        ]
+                    }
                 }
             ],
             'Link': 'https://security-tracker.debian.org/tracker/CVE-2013-7397',
@@ -322,6 +331,8 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
                 fix.epochless_version = re.sub(r'^[0-9]*:', '', f['Version'])
                 fix.vulnerability_id = db_rec.id
                 fix.namespace_name = self.group
+                fix.vendor_no_advisory = f.get('VendorAdvisory', {}).get('NoAdvisory', False)
+                fix.fix_metadata = {'VendorAdvisorySummary': f['VendorAdvisory']['AdvisorySummary']} if f.get('VendorAdvisory', {}).get('AdvisorySummary', []) else None
 
                 db_rec.fixed_in.append(fix)
 

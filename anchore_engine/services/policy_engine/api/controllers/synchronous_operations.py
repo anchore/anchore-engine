@@ -301,7 +301,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 
 
 @flask_metrics.do_not_track()
-def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
+def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_only=True):
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
     to do so.
@@ -337,6 +337,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
     :param user_id: user id of image to evaluate
     :param image_id: image id to evaluate
     :param force_refresh: if true, flush and recompute vulnerabilities rather than returning current values
+    :param vendor_only: if true, filter out the vulnerabilities that vendors will explicitly not address
     :return:
     """
 
@@ -398,6 +399,10 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False):
             #     fix_available_in = fixes_in[0].version if fixes_in else 'None'
             # else:
             #     fix_available_in = 'None'
+
+            # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
+            if vendor_only and vuln.fix_has_no_advisory():
+                continue
 
             rows.append([
                 vuln.vulnerability_id,
