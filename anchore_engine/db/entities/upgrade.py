@@ -435,8 +435,9 @@ def fixed_artifact_upgrade_005_006():
     engine = anchore_engine.db.entities.common.get_engine()
 
     table_name = 'feed_data_vulnerabilities_fixed_artifacts'
+    vna = 'vendor_no_advisory'
     newcolumns = [
-        Column('vendor_no_advisory', Boolean, primary_key=False),
+        Column(vna, Boolean, primary_key=False),
         Column('fix_metadata', Text, primary_key=False)
     ]
 
@@ -448,11 +449,10 @@ def fixed_artifact_upgrade_005_006():
         except Exception as e:
             raise Exception('failed to perform DB upgrade on {} adding column {} - exception: {}'.format(table_name, column.name, str(e)))
 
-    with session_scope() as db_session:
-        for fa in db_session.query(FixedArtifact):
-            if fa.vendor_no_advisory is None:
-                fa.vendor_no_advisory = False
-                db_session.flush()
+    try:
+        engine.execute('UPDATE %s SET %s = FALSE WHERE %s IS NULL' % (table_name, vna, vna))
+    except Exception as e:
+        raise Exception('failed to perform DB upgrade on {} setting default value for column {} - exception: {}'.format(table_name, vna, str(e)))
 
 
 def db_upgrade_005_006():
