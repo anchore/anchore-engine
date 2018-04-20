@@ -20,7 +20,7 @@ from anchore_engine.clients import catalog
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.common import get_system_user_auth
-from anchore_engine.clients.simplequeue import run_target_with_lease, create_lease
+from anchore_engine.clients.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
 
 # A hack to get admin credentials for executing api ops
 #from anchore_engine.services.catalog import db_users
@@ -157,6 +157,9 @@ class FeedsUpdateTask(IAsyncTask):
                 result = task.execute()
 
             return result
+        except LeaseAcquisitionFailedError as ex:
+            log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
+            raise Exception('Cannot execute feed sync, lock is held by another feed sync in progress')
         except Exception as e:
             log.exception('Error executing feeds update')
             raise e
