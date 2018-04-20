@@ -1206,16 +1206,11 @@ class DataFeeds(object):
         db = get_session()
         try:
             feeds = db.query(FeedMetadata).all()
-            #response = [feed.to_detached() for feed in feeds]
             response = []
             for f in feeds:
-                log.info('Groups: {}'.format(f.groups))
-                for g in f.groups:
-                    log.info('Group: {}'.format(g))
                 f.groups = [g.to_detached() for g in f.groups]
                 response.append(f.to_detached())
 
-            log.info('Listing: {}'.format(response))
             return response
         except Exception as e:
             log.exception('Could not get feed metadata')

@@ -23,16 +23,16 @@ def list_feeds(include_counts=False):
     for feed in meta:
         i = FeedMetadata()
         i.name = feed.name
-        i.last_full_sync = feed.last_full_sync.isoformat()
-        i.created_at = feed.created_at.isoformat()
-        i.updated_at = feed.last_update.isoformat()
+        i.last_full_sync = feed.last_full_sync.isoformat() if feed.last_full_sync else None
+        i.created_at = feed.created_at.isoformat() if feed.created_at else None
+        i.updated_at = feed.last_update.isoformat() if feed.last_update else None
         i.groups = []
 
         for group in feed.groups:
             g = FeedGroupMetadata()
             g.name = group.name
-            g.last_sync = group.last_sync
-            g.created_at = group.created_at.isoformat()
+            g.last_sync = group.last_sync.isoformat() if group.last_sync else None
+            g.created_at = group.created_at.isoformat() if group.created_at else None
 
             if include_counts:
                 # Compute count (this is slow)
