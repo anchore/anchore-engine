@@ -11,6 +11,8 @@ from anchore_engine.utils import get_threadbased_id
 localconfig = None
 headers = {'Content-Type': 'application/json'}
 
+class LeaseAcquisitionFailedError(Exception):
+    pass
 
 def get_queues(userId):
     global localconfig, headers
@@ -406,6 +408,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
 
         if not lease:
             logger.debug('No lease returned from service, cannot proceed with task execution. Will retry on next cycle. Lease_id: {}'.format(lease_id))
+            raise LeaseAcquisitionFailedError('Could not acquire lease {} within timeout'.format(lease_id))
         else:
             logger.debug('Got lease: {}'.format(lease))
 
@@ -440,6 +443,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
 
     except Exception as e:
         logger.warn('Attempting to get lease {} failed: {}'.format(lease_id, e))
+        raise e
     finally:
         try:
             if lease:

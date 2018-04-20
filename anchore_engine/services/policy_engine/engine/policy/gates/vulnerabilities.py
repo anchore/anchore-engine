@@ -38,9 +38,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
     severity_comparison = EnumStringParameter(name='severity_comparison', example_str='>', description='The type of comparison to perform for severity evaluation.', enum_values=SEVERITY_COMPARISONS.keys(), is_required=True, sort_order=2)
     severity = EnumStringParameter(name='severity', example_str='high', description='Severity to compare against.', enum_values=SEVERITY_ORDERING, is_required=True, sort_order=3)
     fix_available = BooleanStringParameter(name='fix_available', example_str='true', description='If present, the fix availability for the vulnerability record must match the value of this parameter.', is_required=False, sort_order=4)
+    vendor_only = BooleanStringParameter(name='vendor_only', example_str='true', description='If True, an available fix for this CVE must not be explicitly marked as wont be addressed by the vendor', is_required=False, sort_order=5)
 
     def evaluate(self, image_obj, context):
         is_fix_available = self.fix_available.value()
+        is_vendor_only = self.vendor_only.value(default_if_none=True)
         comparison_idx = SEVERITY_ORDERING.index(self.severity.value().lower())
         comparison_fn = self.SEVERITY_COMPARISONS.get(self.severity_comparison.value())
         if not comparison_fn:
@@ -81,6 +83,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
 
                     if comparison_fn(found_severity_idx, comparison_idx):
+                        # Check vendor_only flag specified by the user in policy
+                        if is_vendor_only and pkg_vuln.fix_has_no_advisory():
+                            # skip this vulnerability
+                            continue
+
                         # Check fix_available status if specified by user in policy
                         if is_fix_available is not None:
                             # Must to a fix_available check

@@ -927,7 +927,7 @@ paths:
           schema:
             type: array
             items:
-              type: string
+              $ref: "#/definitions/FeedMetadata"
         500:
           description: Internal Error
           schema:
@@ -1761,3 +1761,39 @@ definitions:
       validator:
         type: object
         description: If present, a definition for validation of input. Typically a jsonschema object that can be used to validate an input against.
+  FeedMetadata:
+    type: object
+    description: Metadata on a single feed based on what the engine finds from querying the endpoints
+    properties:
+      name:
+        type: string
+        description: name of the feed
+      created_at:
+        type: string
+        format: date-time
+        description: Date the metadata record was created in engine (first seen on source)
+      updated_at:
+        type: string
+        format: date-time
+        description: Date the metadata was last updated
+      groups:
+        type: array
+        items:
+          $ref: "#/definitions/FeedGroupMetadata"
+      last_full_sync:
+        type: string
+        format: date-time
+  FeedGroupMetadata:
+    type: object
+    properties:
+      name:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      last_sync:
+        type: string
+        format: date-time
+      record_count:
+        type: integer
+

@@ -16,7 +16,7 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-from .common import Base
+from .common import Base, UtilMixin
 from .common import get_thread_scoped_session
 
 
@@ -71,13 +71,13 @@ class StringJSON(types.TypeDecorator):
 
 
 # Feeds
-class FeedMetadata(Base):
+class FeedMetadata(Base, UtilMixin):
     __tablename__ = 'feeds'
 
     name = Column(String(feed_name_length), primary_key=True)
     description = Column(String(512))
     access_tier = Column(Integer)
-    groups = relationship('FeedGroupMetadata')
+    groups = relationship('FeedGroupMetadata', back_populates='feed')
     last_full_sync = Column(DateTime)
     last_update = Column(DateTime)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -90,7 +90,7 @@ class FeedMetadata(Base):
         return '<{}(name={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.access_tier, self.created_at.isoformat())
 
 
-class FeedGroupMetadata(Base):
+class FeedGroupMetadata(Base, UtilMixin):
     __tablename__ = 'feed_groups'
 
     name = Column(String(feed_group_length), primary_key=True)

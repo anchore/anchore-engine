@@ -25,7 +25,8 @@ from anchore_engine.clients.policy_engine.generated.configuration import Configu
 from anchore_engine.clients.policy_engine.generated.models.distro_mapping import DistroMapping
 from anchore_engine.clients.policy_engine.generated.models.error_response import ErrorResponse
 from anchore_engine.clients.policy_engine.generated.models.event_status import EventStatus
-from anchore_engine.clients.policy_engine.generated.models.feed_update_notification import FeedUpdateNotification
+from anchore_engine.clients.policy_engine.generated.models.feed_group_metadata import FeedGroupMetadata
+from anchore_engine.clients.policy_engine.generated.models.feed_metadata import FeedMetadata
 from anchore_engine.clients.policy_engine.generated.models.gate_spec import GateSpec
 from anchore_engine.clients.policy_engine.generated.models.image import Image
 from anchore_engine.clients.policy_engine.generated.models.image_ingress_request import ImageIngressRequest

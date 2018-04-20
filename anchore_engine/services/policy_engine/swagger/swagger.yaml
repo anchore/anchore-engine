@@ -256,33 +256,6 @@ paths:
             $ref: "#/definitions/PolicyEvaluation"
         404:
           description: "User id not found in this service"
-  /notifications/feeds:
-    post:
-      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
-      operationId: create_feed_update
-      description: "Send the system a feed update notification"
-      consumes:
-      - "application/json"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "notification"
-        in: "body"
-        required: true
-        schema:
-          $ref: "#/definitions/FeedUpdateNotification"
-      responses:
-        200:
-          description: "Processed successfully"
-          schema:
-            type: array
-            items:
-              description: List of userid/image_ids updated by the sync
-              type: string
-        500:
-          description: "Internal server error processing the request. Retry expected"
-        400:
-          description: "Bad request, fix and resend"
   /validate_bundle:
     post:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
@@ -307,6 +280,53 @@ paths:
           description: "Bad request, likely problem in json structure of policy_bundle"
         500:
           description: "Internal server error processing the request."
+  /feeds:
+    get:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: list_feeds
+      description: Show feed and group metadata
+      produces:
+      - "application/json"
+      consumes:
+      - "application/json"
+      parameters:
+      - name: include_counts
+        in: query
+        required: false
+        type: boolean
+        description: If set, include record counts for each group, this can incur a lot of latency in the response
+      responses:
+        200:
+          description: "FeedInfo listing"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/FeedMetadata"
+    post:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: sync_feeds
+      description: "Execute a feed sync operation"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "force_flush"
+        in: "query"
+        required: false
+        type: boolean
+      responses:
+        200:
+          description: "Processed successfully"
+          schema:
+            type: array
+            items:
+              description: List of userid/image_ids updated by the sync
+              type: string
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        400:
+          description: "Bad request, fix and resend"
 definitions:
   Image:
     type: object
@@ -404,23 +424,6 @@ definitions:
         type: string
         format: "date-time"
         description: "The time of the external event. Should be set to when the event occurred, to the delivery time"
-  FeedUpdateNotification:
-    type: object
-    description: "A notification event to tell the service there is new feed data to ingest. This is direct data injection"
-    properties:
-      event_timestamp:
-        type: string
-        format: "date-time"
-        description: "The time of the external event. Should be set to when the event occurred, to the delivery time"
-      feed_name:
-        type: string
-      feed_group:
-        type: string
-      data:
-        type: "array"
-        items:
-          type: object
-          description: "Generic object holder since each feed can have different data schemas"
   ImagePolicyCheckRequest:
     type: object
     description: "A request object that includes the image id, tag name, and bundle content to evaluate"
@@ -955,3 +958,39 @@ definitions:
         description: An array of validation details including error messages as appropriate. Will be empty on a successful validation.
         items:
           $ref: "#/definitions/PolicyEvaluationProblem"
+  FeedMetadata:
+    type: object
+    description: Metadata on a single feed based on what the engine finds from querying the endpoints
+    properties:
+      name:
+        type: string
+        description: name of the feed
+      created_at:
+        type: string
+        format: date-time
+        description: Date the metadata record was created in engine (first seen on source)
+      updated_at:
+        type: string
+        format: date-time
+        description: Date the metadata was last updated
+      groups:
+        type: array
+        items:
+          $ref: "#/definitions/FeedGroupMetadata"
+      last_full_sync:
+        type: string
+        format: date-time
+  FeedGroupMetadata:
+    type: object
+    properties:
+      name:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      last_sync:
+        type: string
+        format: date-time
+      record_count:
+        type: integer
+

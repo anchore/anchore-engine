@@ -6,7 +6,9 @@ from __future__ import absolute_import
 from anchore_engine.services.policy_engine.api.models.distro_mapping import DistroMapping
 from anchore_engine.services.policy_engine.api.models.error_response import ErrorResponse
 from anchore_engine.services.policy_engine.api.models.event_status import EventStatus
-from anchore_engine.services.policy_engine.api.models.feed_update_notification import FeedUpdateNotification
+from anchore_engine.services.policy_engine.api.models.feed_group_metadata import FeedGroupMetadata
+from anchore_engine.services.policy_engine.api.models.feed_metadata import FeedMetadata
+from anchore_engine.services.policy_engine.api.models.feed_metadata_listing import FeedMetadataListing
 from anchore_engine.services.policy_engine.api.models.gate_spec import GateSpec
 from anchore_engine.services.policy_engine.api.models.image import Image
 from anchore_engine.services.policy_engine.api.models.image_ingress_request import ImageIngressRequest

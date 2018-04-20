@@ -1,7 +1,5 @@
 import json
-import copy
 import stat
-import time
 import datetime
 
 from flask import request
@@ -11,10 +9,9 @@ import anchore_engine.services.common
 from anchore_engine.subsys import taskstate, logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.clients.policy_engine
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport
 import anchore_engine.subsys.metrics
 
-from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
+from anchore_engine.subsys.metrics import flask_metrics
 
 def make_response_content(content_type, content_data):
     ret = []

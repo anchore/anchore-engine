@@ -243,105 +243,6 @@ class DefaultApi(object):
             _request_timeout=params.get('_request_timeout'),
             collection_formats=collection_formats)
 
-    def create_feed_update(self, notification, **kwargs):  # noqa: E501
-        """create_feed_update  # noqa: E501
-
-        Send the system a feed update notification  # noqa: E501
-        This method makes a synchronous HTTP request by default. To make an
-        asynchronous HTTP request, please pass async=True
-        >>> thread = api.create_feed_update(notification, async=True)
-        >>> result = thread.get()
-
-        :param async bool
-        :param FeedUpdateNotification notification: (required)
-        :return: list[str]
-                 If the method is called asynchronously,
-                 returns the request thread.
-        """
-        kwargs['_return_http_data_only'] = True
-        if kwargs.get('async'):
-            return self.create_feed_update_with_http_info(notification, **kwargs)  # noqa: E501
-        else:
-            (data) = self.create_feed_update_with_http_info(notification, **kwargs)  # noqa: E501
-            return data
-
-    def create_feed_update_with_http_info(self, notification, **kwargs):  # noqa: E501
-        """create_feed_update  # noqa: E501
-
-        Send the system a feed update notification  # noqa: E501
-        This method makes a synchronous HTTP request by default. To make an
-        asynchronous HTTP request, please pass async=True
-        >>> thread = api.create_feed_update_with_http_info(notification, async=True)
-        >>> result = thread.get()
-
-        :param async bool
-        :param FeedUpdateNotification notification: (required)
-        :return: list[str]
-                 If the method is called asynchronously,
-                 returns the request thread.
-        """
-
-        all_params = ['notification']  # noqa: E501
-        all_params.append('async')
-        all_params.append('_return_http_data_only')
-        all_params.append('_preload_content')
-        all_params.append('_request_timeout')
-
-        params = locals()
-        for key, val in six.iteritems(params['kwargs']):
-            if key not in all_params:
-                raise TypeError(
-                    "Got an unexpected keyword argument '%s'"
-                    " to method create_feed_update" % key
-                )
-            params[key] = val
-        del params['kwargs']
-        # verify the required parameter 'notification' is set
-        if ('notification' not in params or
-                params['notification'] is None):
-            raise ValueError("Missing the required parameter `notification` when calling `create_feed_update`")  # noqa: E501
-
-        collection_formats = {}
-
-        path_params = {}
-
-        query_params = []
-
-        header_params = {}
-
-        form_params = []
-        local_var_files = {}
-
-        body_params = None
-        if 'notification' in params:
-            body_params = params['notification']
-        # HTTP header `Accept`
-        header_params['Accept'] = self.api_client.select_header_accept(
-            ['application/json'])  # noqa: E501
-
-        # HTTP header `Content-Type`
-        header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
-            ['application/json'])  # noqa: E501
-
-        # Authentication setting
-        auth_settings = ['anchore_basic']  # noqa: E501
-
-        return self.api_client.call_api(
-            '/notifications/feeds', 'POST',
-            path_params,
-            query_params,
-            header_params,
-            body=body_params,
-            post_params=form_params,
-            files=local_var_files,
-            response_type='list[str]',  # noqa: E501
-            auth_settings=auth_settings,
-            async=params.get('async'),
-            _return_http_data_only=params.get('_return_http_data_only'),
-            _preload_content=params.get('_preload_content', True),
-            _request_timeout=params.get('_request_timeout'),
-            collection_formats=collection_formats)
-
     def delete_distro_mapping(self, **kwargs):  # noqa: E501
         """Remove a specific mapping  # noqa: E501
 
@@ -1001,6 +902,101 @@ class DefaultApi(object):
             _request_timeout=params.get('_request_timeout'),
             collection_formats=collection_formats)
 
+    def list_feeds(self, **kwargs):  # noqa: E501
+        """list_feeds  # noqa: E501
+
+        Show feed and group metadata  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.list_feeds(async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param bool include_counts: If set, include record counts for each group, this can incur a lot of latency in the response
+        :return: list[FeedMetadata]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('async'):
+            return self.list_feeds_with_http_info(**kwargs)  # noqa: E501
+        else:
+            (data) = self.list_feeds_with_http_info(**kwargs)  # noqa: E501
+            return data
+
+    def list_feeds_with_http_info(self, **kwargs):  # noqa: E501
+        """list_feeds  # noqa: E501
+
+        Show feed and group metadata  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.list_feeds_with_http_info(async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param bool include_counts: If set, include record counts for each group, this can incur a lot of latency in the response
+        :return: list[FeedMetadata]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['include_counts']  # noqa: E501
+        all_params.append('async')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in six.iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method list_feeds" % key
+                )
+            params[key] = val
+        del params['kwargs']
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'include_counts' in params:
+            query_params.append(('include_counts', params['include_counts']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # HTTP header `Content-Type`
+        header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/feeds', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='list[FeedMetadata]',  # noqa: E501
+            auth_settings=auth_settings,
+            async=params.get('async'),
+            _return_http_data_only=params.get('_return_http_data_only'),
+            _preload_content=params.get('_preload_content', True),
+            _request_timeout=params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
     def list_image_users(self, **kwargs):  # noqa: E501
         """List user ids known to the eval system  # noqa: E501
 
@@ -1180,6 +1176,101 @@ class DefaultApi(object):
             post_params=form_params,
             files=local_var_files,
             response_type='list[Image]',  # noqa: E501
+            auth_settings=auth_settings,
+            async=params.get('async'),
+            _return_http_data_only=params.get('_return_http_data_only'),
+            _preload_content=params.get('_preload_content', True),
+            _request_timeout=params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def sync_feeds(self, **kwargs):  # noqa: E501
+        """sync_feeds  # noqa: E501
+
+        Execute a feed sync operation  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.sync_feeds(async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param bool force_flush:
+        :return: list[str]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('async'):
+            return self.sync_feeds_with_http_info(**kwargs)  # noqa: E501
+        else:
+            (data) = self.sync_feeds_with_http_info(**kwargs)  # noqa: E501
+            return data
+
+    def sync_feeds_with_http_info(self, **kwargs):  # noqa: E501
+        """sync_feeds  # noqa: E501
+
+        Execute a feed sync operation  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.sync_feeds_with_http_info(async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param bool force_flush:
+        :return: list[str]
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['force_flush']  # noqa: E501
+        all_params.append('async')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in six.iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method sync_feeds" % key
+                )
+            params[key] = val
+        del params['kwargs']
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'force_flush' in params:
+            query_params.append(('force_flush', params['force_flush']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # HTTP header `Content-Type`
+        header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/feeds', 'POST',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='list[str]',  # noqa: E501
             auth_settings=auth_settings,
             async=params.get('async'),
             _return_http_data_only=params.get('_return_http_data_only'),

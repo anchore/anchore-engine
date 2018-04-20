@@ -228,14 +228,11 @@ def do_feed_sync(msg):
     timer = time.time()
     logger.info("FIRING: feed syncer")
     try:
-        task = FeedsUpdateTask.from_json(msg.get('data'))
         feeds = get_selected_feeds_to_sync(localconfig.get_config())
-        task.feeds = feeds
-
         logger.info('Syncing configured feeds: {}'.format(feeds))
+        result = FeedsUpdateTask.run_feeds_update(json_obj=msg.get('data'))
 
-        if task:
-            result = task.execute()
+        if result is not None:
             handler_success = True
         else:
             logger.warn('Feed sync task marked as disabled, so skipping')

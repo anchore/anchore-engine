@@ -9,13 +9,18 @@ import requests
 import time
 import urllib
 
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image
+from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image, delete_matches
+
 from anchore_engine.clients import catalog
+from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
+from anchore_engine.configuration import localconfig
+from anchore_engine.services.common import get_system_user_auth
+from anchore_engine.clients.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
 
 # A hack to get admin credentials for executing api ops
 #from anchore_engine.services.catalog import db_users
@@ -96,6 +101,23 @@ class EchoTask(IAsyncTask):
         return
 
 
+class FeedsFlushTask(IAsyncTask):
+    """
+    A task that only flushes feed data, not resyncs
+
+    """
+    def execute(self):
+        db = get_session()
+        try:
+            count = db.query(ImagePackageVulnerability).delete()
+            log.info('Deleted {} vulnerability match records in flush'.format(count))
+            f = DataFeeds.instance()
+            f.flush()
+            db.commit()
+        except:
+            log.exception('Error executing feeds flush task')
+            raise
+
 class FeedsUpdateTask(IAsyncTask):
     """
     Scan and sync all configured and available feeds to ensure latest state.
@@ -104,10 +126,48 @@ class FeedsUpdateTask(IAsyncTask):
     """
 
     __task_name__ = 'feed_sync'
+    locking_enabled = True
 
-    def __init__(self, feeds_to_sync=None):
+    @classmethod
+    def run_feeds_update(cls, json_obj=None, force_flush=False):
+        """
+        Creates a task and runs it, optionally with a thread if locking is enabled.
+
+        :return:
+        """
+
+        try:
+            feeds = get_selected_feeds_to_sync(localconfig.get_config())
+            if json_obj:
+                task = cls.from_json(json_obj)
+                if not task:
+                    return None
+                task.feeds = feeds
+            else:
+                task = FeedsUpdateTask(feeds_to_sync=feeds, flush=force_flush)
+
+            result = []
+            if cls.locking_enabled:
+                system_user = get_system_user_auth()
+                run_target_with_lease(user_auth=system_user, lease_id='feed_sync', ttl=90, target=lambda: result.append(task.execute()))
+                # A bit of work-around for the lambda def to get result from thread execution
+                if result:
+                    result = result[0]
+            else:
+                result = task.execute()
+
+            return result
+        except LeaseAcquisitionFailedError as ex:
+            log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
+            raise Exception('Cannot execute feed sync, lock is held by another feed sync in progress')
+        except Exception as e:
+            log.exception('Error executing feeds update')
+            raise e
+
+    def __init__(self, feeds_to_sync=None, flush=False):
         self.feeds = feeds_to_sync
         self.created_at = datetime.datetime.utcnow()
+        self.full_flush = flush
 
     def is_full_sync(self):
         return self.feeds is None
@@ -123,8 +183,11 @@ class FeedsUpdateTask(IAsyncTask):
             f = DataFeeds.instance()
             updated = []
             start_time = datetime.datetime.utcnow()
+
             f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
-            updated_dict = f.sync(to_sync=self.feeds)
+            f.vuln_flush_fn = FeedsUpdateTask.flush_vulnerability_matches
+
+            updated_dict = f.sync(to_sync=self.feeds, full_flush=self.full_flush)
 
             # Response is dict with feed name and dict for each group mapped to list of images updated
             log.info('Updated: {}'.format(updated_dict))
@@ -188,6 +251,20 @@ class FeedsUpdateTask(IAsyncTask):
         return count
 
     @staticmethod
+    def flush_vulnerability_matches(db, feed_name=None, group_name=None):
+        """
+        Delete image vuln matches for the namespacename that matches the group name
+        :param db:
+        :param feed_name:
+        :param group_name:
+        :return:
+        """
+
+        count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
+        log.info('Deleted {} rows in flush for group {}'.format(count, group_name))
+
+
+    @staticmethod
     def process_updated_vulnerability(db, vulnerability):
         """
         Update vulnerability matches for this vulnerability. This function will add objects to the db session but
@@ -197,7 +274,7 @@ class FeedsUpdateTask(IAsyncTask):
         :param: db: The db session to use, should be valid and open
         :return: list of (user_id, image_id) that were affected
         """
-        log.debug('Processing CVE update for: {}'.format(vulnerability.id))
+        log.spew('Processing CVE update for: {}'.format(vulnerability.id))
         changed_images = []
 
         # Find any packages already matched with the CVE ID.
@@ -205,7 +282,7 @@ class FeedsUpdateTask(IAsyncTask):
 
         # May need to remove vuln from some packages.
         if vulnerability.is_empty():
-            log.debug('Detected an empty CVE. Removing all existing matches on this CVE')
+            log.spew('Detected an empty CVE. Removing all existing matches on this CVE')
 
             # This is a flush, nothing can be vulnerable to this, so remove it from packages.
             if current_affected:
@@ -243,7 +320,9 @@ class FeedsUpdateTask(IAsyncTask):
                 changed_images.append((v.pkg_user_id, v.pkg_image_id))
 
             db.flush()
-        log.debug('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+
+        log.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+
         return changed_images
 
     @classmethod

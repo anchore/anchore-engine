@@ -9,35 +9,33 @@ import json
 import time
 
 import connexion
-from flask import abort, jsonify, Response
+from flask import abort, Response
 from werkzeug.exceptions import HTTPException
 
-from anchore_engine.configuration import localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
 
-from anchore_engine.services.policy_engine.api.models import ImageUpdateNotification, FeedUpdateNotification, \
-    ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
+from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
 from anchore_engine.db import Image, ImageCpe, CpeVulnerability, get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
-from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, PolicyRuleValidationErrorCollection
+from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
-from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, rescan_image
-from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
+from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
 
 # Leave this here to ensure gates registry is fully loaded
-from anchore_engine.services.policy_engine.engine.policy import gates
 import anchore_engine.subsys.metrics
-from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
+from anchore_engine.subsys.metrics import flask_metrics
 
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL']
+
+# Toggle of lock usage, primarily for testing and debugging usage
+feed_sync_locking_enabled = True
 
 
 def get_status():
@@ -59,31 +57,6 @@ def get_status():
         return_object = str(err)
 
     return (return_object, httpcode)
-
-
-def create_feed_update(notification):
-    """
-    Creates a feed data update notification.
-
-    :param notification:
-    :return:
-    """
-    if not connexion.request.is_json:
-        abort(400)
-
-    notification = FeedUpdateNotification.from_dict(notification)
-    result = []
-    try:
-        feeds = get_selected_feeds_to_sync(localconfig.get_config())
-        task = FeedsUpdateTask(feeds_to_sync=feeds)
-        result = task.execute()
-    except HTTPException:
-        raise
-    except Exception as e:
-        log.exception('Error executing feed update task')
-        abort(Response(status=500, response=json.dumps({'error': 'feed sync failure', 'details': 'Failure syncing feed: {}'.format(e.message)}), mimetype='application/json'))
-
-    return jsonify(['{}/{}'.format(x[0], x[1]) for x in result]), 200
 
 
 class ImageMessageMapper(object):
