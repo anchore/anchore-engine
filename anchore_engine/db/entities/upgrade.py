@@ -394,31 +394,28 @@ def archive_data_upgrade_005_006():
 
     from anchore_engine.db import ArchiveDocument, session_scope, ArchiveMetadata
     import anchore_engine.subsys.object_store
+    from anchore_engine.subsys import archive
+    from anchore_engine.subsys.archive import operations
+    from anchore_engine.configuration import localconfig
 
-    # TODO: which client? Look at local config or as provided by the upgrade operation explicitly
-    client = anchore_engine.subsys.object_store.init_driver(configuration={'name': 'db', 'config': {}})
+    config = localconfig.get_config()
+    archive.initialize(config.get('services', {}).get('catalog', {}))
+    client = operations.get_archive().primary_client
 
     with session_scope() as db_session:
-        for doc in db_session.query(ArchiveDocument):
-            meta = ArchiveMetadata(userId=doc.userId,
-                                   bucket=doc.bucket,
-                                   archiveId=doc.archiveId,
-                                   documentName=doc.documentName,
+        for doc in db_session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.documentName, ArchiveDocument.created_at, ArchiveDocument.last_updated, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val):
+            meta = ArchiveMetadata(userId=doc[0],
+                                   bucket=doc[1],
+                                   archiveId=doc[2],
+                                   documentName=doc[3],
                                    is_compressed=False,
                                    document_metadata=None,
-                                   content_url=client.uri_for(userId=doc.userId, bucket=doc.bucket, key=doc.archiveId),
-                                   created_at=doc.created_at,
-                                   last_updated=doc.last_updated,
-                                   record_state_key=doc.record_state_key,
-                                   record_state_val=doc.record_state_val
+                                   content_url=client.uri_for(userId=doc[0], bucket=doc[1], key=doc[2]),
+                                   created_at=doc[4],
+                                   last_updated=doc[5],
+                                   record_state_key=doc[6],
+                                   record_state_val=doc[6]
                                    )
-
-            if doc.jsondata is not None:
-                meta.size = len(doc.jsondata)
-                meta.digest = hashlib.md5(doc.jsondata).hexdigest()
-            else:
-                pass
-                # TODO: get info on digest/size from fs driver (the only other option from db prior to this version)
 
             db_session.add(meta)
             db_session.flush()
