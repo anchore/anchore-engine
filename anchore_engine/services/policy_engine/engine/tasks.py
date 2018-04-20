@@ -201,10 +201,9 @@ class FeedsUpdateTask(IAsyncTask):
             log.exception('Failure refreshing and syncing feeds')
             raise
         finally:
-            end_session()
             end_time = datetime.datetime.utcnow()
-
             self.rescan_images_created_between(from_time=start_time, to_time=end_time)
+            end_session()
 
     def rescan_images_created_between(self, from_time, to_time):
         """
@@ -224,17 +223,22 @@ class FeedsUpdateTask(IAsyncTask):
         log.info('Rescanning images loaded between {} and {}'.format(from_time.isoformat(), to_time.isoformat()))
         count = 0
 
-        with session_scope() as db:
+        db = get_session()
+        try:
             # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
             imgs = [(x.id, x.user_id) for x in db.query(Image).filter(Image.created_at >= from_time, Image.created_at <= to_time)]
             log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs])))
+        finally:
+            db.rollback()
+
 
         retry_max = 3
         for img in imgs:
             for i in range(retry_max):
                 try:
                     # New transaction for each image to get incremental progress
-                    with session_scope() as db:
+                    db = get_session()
+                    try:
                         # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
                         image_obj = db.query(Image).get(img)
                         if image_obj:
@@ -243,6 +247,12 @@ class FeedsUpdateTask(IAsyncTask):
                             count += 1
                         else:
                             log.warn('Failed to lookup image with tuple: {}'.format(str(img)))
+
+                        db.commit()
+
+                    finally:
+                        db.rollback()
+
                     break
                 except Exception as e:
                     log.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying'.format(img))
