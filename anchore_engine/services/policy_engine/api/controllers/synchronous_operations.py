@@ -352,8 +352,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
                 db = get_session()
                 db.refresh(img)
-            else:
-                vulns = img.vulnerabilities()
+            
+            vulns = img.vulnerabilities()
 
         # Has vulnerabilities?
         warns = []

@@ -460,6 +460,9 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
     system_user_auth = localconfig['system_user_auth']
     verify = localconfig['internal_ssl_verify']
 
+    force_refresh = params.get('force_refresh', False)
+    vendor_only = params.get('vendor_only', True)
+
     try:
         if vulnerability_type not in anchore_engine.services.common.image_vulnerability_types:
             httpcode = 404
@@ -480,7 +483,7 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                     image_detail = image_report['image_detail'][0]
                     imageId = image_detail['imageId']
                     client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
-                    resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=False)
+                    resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
                     if doformat:
                         return_object[imageDigest] = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     else:
@@ -818,11 +821,11 @@ def get_image_vulnerability_types_by_imageId(imageId):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-def get_image_vulnerabilities_by_type(imageDigest, vtype):
+def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, vendor_only=True):
     try:
         vulnerability_type = vtype
 
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest, 'force_refresh': force_refresh, 'vendor_only': vendor_only})
         return_object, httpcode = vulnerability_query(request_inputs, vulnerability_type, doformat=True)
         if httpcode == 200:
             return_object = {
