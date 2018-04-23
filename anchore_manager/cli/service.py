@@ -233,6 +233,39 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 
+        # get the list of local services to start
+        startFailed = False
+        if 'ANCHORE_ENGINE_SERVICES' in os.environ:
+            input_services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
+        else:
+            config_services = localconfig.get('services', {})
+            if not config_services:
+                print('Warn: Did not find any services to execute in the config file')
+                sys.exit(1)
+
+            input_services = [ name for name, srv_conf in config_services.items() if srv_conf.get('enabled')]
+
+        services = []
+        for service_conf_name in input_services:
+            if service_conf_name in service_map.values():
+                service = service_conf_name
+            else:
+                service = service_map.get(service_conf_name)
+
+            if service:
+                services.append(service)
+            else:
+                print('Warn: specified service {} not found in list of available services {} - removing from list of services to start'.format(service_conf_name, service_map.keys()))
+
+        if 'anchore-catalog' in services:
+            services.remove('anchore-catalog')
+            services.insert(0, 'anchore-catalog')
+
+        if not services:
+            print "No services found in ANCHORE_ENGINE_SERVICES or as enabled in config.yaml to start - exiting"
+            sys.exit(1)
+
+
         # preflight - db checks
         try:
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
@@ -250,7 +283,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
 
                 if code_versions and db_versions:
                     if code_versions['db_version'] != db_versions['db_version']:
-                        if auto_upgrade:
+                        if auto_upgrade and 'anchore-catalog' in services:
                             print "Auto-upgrade is set - performing upgrade."
                             try:
                                 # perform the upgrade logic here
@@ -285,41 +318,8 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
         finally:
             rc = anchore_engine.db.entities.common.do_disconnect()
 
-        # start up the services
-        startFailed = False
-        if 'ANCHORE_ENGINE_SERVICES' in os.environ:
-            input_services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
-        else:
-            config_services = localconfig.get('services', {})
-            if not config_services:
-                print('Warn: Did not find any services to execute in the config file')
-                sys.exit(1)
-
-            input_services = [ name for name, srv_conf in config_services.items() if srv_conf.get('enabled')]
-
-        services = []
-        for service_conf_name in input_services:
-            if service_conf_name in service_map.values():
-                service = service_conf_name
-            else:
-                service = service_map.get(service_conf_name)
-
-            if service:
-                services.append(service)
-            else:
-                print('Warn: specified service {} not found in list of available services {} - removing from list of services to start'.format(service_conf_name, service_map.keys()))
-
-        if 'anchore-catalog' in services:
-            services.remove('anchore-catalog')
-            services.insert(0, 'anchore-catalog')
-
-        if not services:
-            print "No services found in ANCHORE_ENGINE_SERVICES or as enabled in config.yaml to start - exiting"
-            sys.exit(1)
-
+        # start up services
         print('Starting services: {}'.format(services))
-        #services = ['anchore-catalog', 'anchore-api', 'anchore-simplequeue', 'anchore-worker', 'anchore-kubernetes-webhook', 'anchore-policy-engine']
-
         try:
             if not os.path.exists("/var/log/anchore"):
                 os.makedirs("/var/log/anchore/", 0755)
