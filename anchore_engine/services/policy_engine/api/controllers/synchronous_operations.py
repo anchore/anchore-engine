@@ -325,30 +325,12 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             if force_refresh:
                 log.info('Forcing refresh of vulnerabiltiies for {}/{}'.format(user_id, image_id))
                 try:
-                    rescan_image(img, db_session=db)
+                    vulns = rescan_image(img, db_session=db)
                     db.commit()
                 except Exception as e:
                     log.exception('Error refreshing cve matches for image {}/{}'.format(user_id, image_id))
                     db.rollback()
                     abort(Response('Error refreshing vulnerability listing for image.', 500))
-
-                #
-                # try:
-                #     current_vulns = img.vulnerabilities()
-                #     log.info('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), user_id, image_id))
-                #     for v in current_vulns:
-                #         db.delete(v)
-                #
-                #     db.flush()
-                #     vulns = vulnerabilities_for_image(img)
-                #     log.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), user_id, image_id))
-                #     for v in vulns:
-                #         db.add(v)
-                #     db.commit()
-                # except Exception as e:
-                #     log.exception('Error refreshing cve matches for image {}/{}'.format(user_id, image_id))
-                #     db.rollback()
-                #     abort(Response('Error refreshing vulnerability listing for image.', 500))
 
                 db = get_session()
                 db.refresh(img)
