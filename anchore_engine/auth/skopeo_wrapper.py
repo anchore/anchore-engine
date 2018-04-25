@@ -1,8 +1,33 @@
 import json
 import os
+import re
+import tempfile
 
-from anchore_engine.utils import run_command_list, manifest_to_digest
+from anchore_engine.utils import run_command, run_command_list, manifest_to_digest
 from anchore_engine.subsys import logger
+
+def manifest_to_digest_shellout(rawmanifest):
+    ret = None
+    tmpmanifest = None
+    try:
+        fd,tmpmanifest = tempfile.mkstemp()
+        os.write(fd, rawmanifest)
+        os.close(fd)
+
+        cmd = "skopeo manifest-digest {}".format(tmpmanifest)
+        rc, sout, serr = run_command(cmd)
+        if rc == 0 and re.match("^sha256:.*", sout):
+            ret = sout
+        else:
+            logger.warn("failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(cmd, rc, sout, serr))
+            raise Exception("failed to calculate digest from schema v1 manifest")
+    except Exception as err:
+        raise err
+    finally:
+        if tmpmanifest:
+            os.remove(tmpmanifest)
+
+    return(ret)
 
 def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None, dest_type='oci'):
     try:
