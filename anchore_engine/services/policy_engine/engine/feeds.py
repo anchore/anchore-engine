@@ -1126,9 +1126,9 @@ class PackagesFeed(AnchoreServiceFeed):
         db = get_session()
         try:
             if group_name == 'npm':
-                return db.query(GemMetadata).count()
-            elif group_name == 'gem':
                 return db.query(NpmMetadata).count()
+            elif group_name == 'gem':
+                return db.query(GemMetadata).count()
             else:
                 return 0
         except Exception as e:
