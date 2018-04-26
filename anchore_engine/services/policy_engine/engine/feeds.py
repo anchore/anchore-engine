@@ -1208,8 +1208,9 @@ class DataFeeds(object):
             feeds = db.query(FeedMetadata).all()
             response = []
             for f in feeds:
-                f.groups = [g.to_detached() for g in f.groups]
-                response.append(f.to_detached())
+                t = f.to_detached()
+                t.groups = [g.to_detached() for g in f.groups]
+                response.append(t)
 
             return response
         except Exception as e:
