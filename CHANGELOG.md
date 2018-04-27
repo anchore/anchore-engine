@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0 (2018-04-26)
+
++ Many new features and deployment options!
++ New feature: anchore-engine services now supply prometheus metrics on the /metrics route for each service
++ New feature: deployments of anchore-engine now support running multiple core service instances (catalog, policy_engine, simplequeue, api), in addition to multiple workers (analyzer)
++ New feature: archive document driver subsystem for storing the large image analysis documents of anchore-engine in a variety of different external locations (db, localfs, S3, Swift)
++ New feature: ability to migrate archive documents between external sources when changing archive document drivers
++ New feature: inclusion checks to filter vulnerabilities for debian images by whether there is a vendor advisory
++ New documentation available at: https://anchore.freshdesk.com/support/solutions/articles/36000052880-anchore-engine-0-2-0-
++ Improved service registration process - services now push registration on startup/during operation instead of being polled centrally
++ Improved service startup / upgrade / management processes by introducing the anchore-manager utility
++ Improved example docker-compose and config YAMLs to better illustrate configuration options and provide quick start
++ Improved error information from API/CLI calls, in particular when adding an image fails due to registry access or archive document store failures
++ Add new management API route for manually triggering a feed sync
++ Fix to handle image analysis failures for some manifest schema v1 formats
++ Fix to better handle images using manifest lists
++ Fix to handle case where image vulnerability scan could be skipped during a feed sync
++ Fix to analyzer process to handle images with layers that contain PAX headers that are incompatible with python tarfile library
++ Many small performance improvements to reduce DB pressure and perform catalog monitor processes more efficiently
+
 ## 0.1.10 (2018-04-09)
 
 + Fix timestamp inconsistencies when updating/adding policy bundles (PUT/POST)

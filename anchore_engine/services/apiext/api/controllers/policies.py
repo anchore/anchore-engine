@@ -164,7 +164,6 @@ def get_policy(policyId, detail=None):
 
         try:
             policy_records = catalog.get_policy(user_auth, policyId=policyId)
-            logger.info('Got from catalog: {}'.format(policy_records))
         except Exception as err:
             logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
             raise err

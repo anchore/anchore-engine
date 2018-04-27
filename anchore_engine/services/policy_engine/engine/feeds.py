@@ -1211,9 +1211,9 @@ class PackagesFeed(AnchoreServiceFeed):
         db = get_session()
         try:
             if group_name == 'npm':
-                return db.query(GemMetadata).count()
-            elif group_name == 'gem':
                 return db.query(NpmMetadata).count()
+            elif group_name == 'gem':
+                return db.query(GemMetadata).count()
             else:
                 return 0
         except Exception as e:
@@ -1318,8 +1318,9 @@ class DataFeeds(object):
             feeds = db.query(FeedMetadata).all()
             response = []
             for f in feeds:
-                f.groups = [g.to_detached() for g in f.groups]
-                response.append(f.to_detached())
+                t = f.to_detached()
+                t.groups = [g.to_detached() for g in f.groups]
+                response.append(t)
 
             return response
         except Exception as e:

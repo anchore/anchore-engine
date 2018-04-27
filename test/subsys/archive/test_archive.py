@@ -100,6 +100,15 @@ class TestArchiveSubsys(unittest.TestCase):
         print('Document JSON GET Dock: {}'.format(resp))
         self.assertEqual(self.document_json, resp)
 
+        print('Document operations')
+        resp = archive.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
+                                    data=self.document_1)
+        print('Document string PUT Doc: {}'.format(resp))
+
+        resp = archive.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
+        print('Document string GET Dock: {}'.format(resp))
+        self.assertEqual(self.document_1, resp)
+
     def test_fs(self):
         config = {
             'archive': {

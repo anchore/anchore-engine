@@ -537,6 +537,7 @@ class DefaultApi(object):
         :param str user_id: (required)
         :param str image_id: (required)
         :param bool force_refresh:
+        :param bool vendor_only:
         :return: ImageVulnerabilityListing
                  If the method is called asynchronously,
                  returns the request thread.
@@ -561,12 +562,13 @@ class DefaultApi(object):
         :param str user_id: (required)
         :param str image_id: (required)
         :param bool force_refresh:
+        :param bool vendor_only:
         :return: ImageVulnerabilityListing
                  If the method is called asynchronously,
                  returns the request thread.
         """
 
-        all_params = ['user_id', 'image_id', 'force_refresh']  # noqa: E501
+        all_params = ['user_id', 'image_id', 'force_refresh', 'vendor_only']  # noqa: E501
         all_params.append('async')
         all_params.append('_return_http_data_only')
         all_params.append('_preload_content')
@@ -601,6 +603,8 @@ class DefaultApi(object):
         query_params = []
         if 'force_refresh' in params:
             query_params.append(('force_refresh', params['force_refresh']))  # noqa: E501
+        if 'vendor_only' in params:
+            query_params.append(('vendor_only', params['vendor_only']))  # noqa: E501
 
         header_params = {}
 

@@ -41,7 +41,7 @@ class LegacyDbDriver(ObjectStorageDriver):
             with db.session_scope() as dbsession:
                 result = db_archivedocument.get(userId, bucket, key, session=dbsession)
             if result:
-                return json.loads(result.get('jsondata'))
+                return result.get('jsondata')
             else:
                 raise ObjectKeyNotFoundError(userId, bucket, key, caused_by=None)
         except Exception as err:
@@ -54,7 +54,7 @@ class LegacyDbDriver(ObjectStorageDriver):
 
         try:
             with db.session_scope() as dbsession:
-                dbdata = {'jsondata': json.dumps(data)}
+                dbdata = {'jsondata': data}
                 db_archivedocument.add(userId, bucket, key, key + ".json", inobj=dbdata, session=dbsession)
                 return self.uri_for(userId, bucket, key)
         except Exception as err:
