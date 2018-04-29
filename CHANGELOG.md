@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2018-04-29)
+
++ Security fix for github issue #36: anchore-engine allows authenticated user to issue malformed input on image/repo adds, allowing command execution on the engine host.  Many thanks to Cameron Lonsdale (https://github.com/CameronLonsdale) for discovering and reporting the issue.
++ Fix issue where manifest v1 schema based images could not be fetched by imageId
++ Fix issue where NPM feed data fails to sync due to DB column size limitations
+
 ## 0.2.0 (2018-04-26)
 
 + Many new features and deployment options!
@@ -25,7 +31,7 @@
 + Fix timestamp inconsistencies when updating/adding policy bundles (PUT/POST)
 + Adds policy validation for the /v1/policies/<id> PUT route
 + Fix the final_action in the results section of bundle eval table to reflect the policy result without image whitelist/blacklist application
-+ Adds full lifecycle state for gates, triggers, and params to specify 'active', 'depreated', or 'eol'.
++ Adds full lifecycle state for gates, triggers, and params to specify 'active', 'deprecated', or 'eol'.
 + Re-adds eol'd gate defs for pkgdiff, base_check, and suiddiff gate to conform to the lifecycle state scheme.
 + Deprecated and EOL gates/triggers will raise warnings in policy evaluation and EOL gates will automatically become no-ops in evaluation.
 + Initial migration of gates to new naming and consolidation. Old gates moved to deprecated/ and marked as deprecated state
