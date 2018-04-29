@@ -4,6 +4,7 @@ import hashlib
 import time
 import copy
 import random
+import urllib
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
@@ -31,9 +32,9 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     if digest:
-        url = base_url + "/registry_lookup?digest=" + digest
+        url = base_url + "/registry_lookup?{}".format(urllib.urlencode({'digest': digest}))
     elif tag:
-        url = base_url + "/registry_lookup?tag=" + tag
+        url = base_url + "/registry_lookup?{}".format(urllib.urlencode({'tag': tag}))
     else:
         logger.error("no input (tag=, digest=)")
         raise Exception("bad input")
@@ -62,9 +63,14 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     url = base_url + "/repo"
-    url = url + "?regrepo="+regrepo+"&autosubscribe="+str(autosubscribe)
+    params = {}
+    params['regrepo'] = str(regrepo)
+    params['autosubscribe'] = str(autosubscribe)
     if lookuptag:
-        url = url + "&lookuptag="+str(lookuptag)
+        params['lookuptag'] = str(lookuptag)
+
+    if params:
+        url = url + "?{}".format(urllib.urlencode(params))
 
     ret = http.anchy_post(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -89,7 +95,7 @@ def add_image(userId, tag=None, dockerfile=None, annotations={}):
 
     payload = {}
     if tag:
-        url = url + "?tag="+tag
+        url = url + "?{}".format(urllib.urlencode({'tag': tag}))
         if dockerfile:
             payload['dockerfile'] = dockerfile
 
@@ -139,14 +145,11 @@ def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, reg
     if imageDigest:
         url = base_url + "/image/" + imageDigest
     elif tag:
-        url = url + "?tag=" + tag
-        url = url + "&history="+str(history)+"&registry_lookup="+str(registry_lookup)
+        url = url + "?{}".format(urllib.urlencode({'tag': tag, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
     elif digest:
-        url = url + "?digest=" + digest
-        url = url + "&history="+str(history)+"&registry_lookup="+str(registry_lookup)
+        url = url + "?{}".format(urllib.urlencode({'digest': digest, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
     elif imageId:
-        url = url + "?imageId=" + imageId
-        url = url + "&history="+str(history)+"&registry_lookup="+str(registry_lookup)
+        url = url + "?{}".format(urllib.urlencode({'imageId': imageId, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -193,7 +196,7 @@ def delete_image(userId, imageDigest, force=False):
     url = base_url + "/image/" + imageDigest
 
     if force:
-        url = url+"?force=True"
+        url = url+"?{}".format(urllib.urlencode({'force': True}))
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -319,7 +322,7 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/policies?cleanup_evals="+str(cleanup_evals)
+    url = base_url + "/policies?{}".format(urllib.urlencode({'cleanup_evals': str(cleanup_evals)}))
 
     payload = {}
     if policyId:
@@ -413,11 +416,13 @@ def get_subscription(userId, subscription_id=None, subscription_key=None, subscr
     if subscription_id:
         url = url + "/" + subscription_id
     elif subscription_key or subscription_type:
-        url = url + "?"
+        params = {}
         if subscription_key:
-            url = url + "subscription_key="+subscription_key+"&"
+            params['subscription_key'] = subscription_key
         if subscription_type:
-            url = url + "subscription_type="+subscription_type+"&"
+            params['subscription_type'] = subscription_type
+        if params:
+            url = url + "?{}".format(urllib.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -817,10 +822,14 @@ def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
     auth = (userId, pw)
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/system/prune/"+resourcetype+"?dangling="+str(dangling)
+    url = base_url + "/system/prune/"+resourcetype
+    params = {}
+    params['dangling'] = str(dangling)
     if olderthan:
-        url = url + "&olderthan="+str(int(olderthan))
-    
+        params['olderthan'] = str(int(olderthan))
+    if params:
+        url = url + "?{}".format(urllib.urlencode(params))
+        
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)

@@ -3,7 +3,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import threading
 
@@ -19,7 +18,6 @@ anchorelocks = {}
 def get_anchorelock(lockId=None):
     global anchorelock, anchorelocks
     ret = anchorelock
-
 
     # first, check if we need to update the anchore configs
     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -110,80 +108,12 @@ def remove_image(pullstring, docker_remove=True, anchore_remove=True):
         cmd = ['anchore', 'toolbox', '--image', pullstring, 'delete', '--dontask']
         try:
             logger.debug("removing image from anchore: " + str(' '.join(cmd)))
-            try:
-                sout = subprocess.check_output(cmd)
-            except subprocess.CalledProcessError as err:
-                if (err.returncode == 1 or err.returncode == 2) and err.output:
-                    sout = err.output.decode('utf8')
-                else:
-                    sout = "invalid query"
-            except Exception as err:
-                raise err
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
         except Exception as err:
             logger.warn("image removal from anchore failed - exception: " + str(err))
 
     logger.debug("image removed: " + str(pullstring))
     return(True)
-
-def run_query(pullstring, query):
-    ret = {}
-    
-    query_name = query['name']
-    
-    params = []
-    for p in query['params']:
-        param = p['key']
-        if 'val' in p and p['val']:
-            param = param + "=" + p['val']
-        params.append(param)
-    
-    cmd = ['anchore', '--json', 'query', '--image', pullstring, query_name] + params
-    try:
-        logger.debug("running query: " + str(' '.join(cmd)))
-        try:
-            sout = subprocess.check_output(cmd)
-        except subprocess.CalledProcessError as err:
-            if (err.returncode == 1 or err.returncode == 2) and err.output:
-                sout = err.output.decode('utf8')
-            else:
-                sout = "invalid query"
-        except Exception as err:
-            raise err
-
-        try:
-            query_result = json.loads(sout)
-        except Exception as err:
-            query_result = {'error':str(sout)}
-
-        ret = query_result
-
-    except Exception as err:
-        raise err
-        
-    return(ret)
-
-def run_queries(pullstring, image_detail, args={}):
-    ret = {}
-
-    queries_to_run = [
-        {'name':'list-package-detail', 'params':[ {'key':'all'} ] },
-        {'name':'list-files-detail', 'params':[ {'key':'all'} ] },
-        {'name':'list-npm-detail', 'params':[ {'key':'all'} ] },
-        {'name':'list-gem-detail', 'params':[ {'key':'all'} ] }
-        #{'name':'cve-scan', 'params':[ {'key':'all'} ] }
-    ]
-
-    for query in queries_to_run:
-        try:
-            query_name = query['name']
-            ret[query_name] = {}
-            query_data = run_query(pullstring, query)
-            if query_data:
-                ret[query_name] = query_data
-        except Exception as err:
-            logger.warn("query failed: " + str(query) + " - exception: " + str(err))
-
-    return(ret)
 
 def analyze(pullstring, image_detail, args={}):
     ret = False
@@ -215,11 +145,8 @@ def analyze(pullstring, image_detail, args={}):
 
         try:
             logger.debug("running analyzer: " + str(' '.join(cmd)))
-            sout = subprocess.check_output(cmd)
-            try:
-                ret = True
-            except Exception as err:
-                raise(err)
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+            ret = True
         except Exception as err:
             raise err
     except Exception as err:
@@ -233,47 +160,6 @@ def analyze(pullstring, image_detail, args={}):
 
     return(ret)
 
-def do_image_import(pullstring, image_detail, image_content, args={}):
-    ret = False
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    thefile = None
-    try:
-
-        #import random
-        #thefile = os.path.join(localconfig['tmp_dir'], "tmp"+str(random.randint(0, 999999999999)))
-        #icbuf = json.dumps(image_content)
-        #with open(thefile, 'w') as OFH:
-        #    OFH.write(icbuf)
-
-        with tempfile.NamedTemporaryFile(dir=localconfig['tmp_dir'], delete=False) as OFH:
-            thefile = OFH.name
-            OFH.write(json.dumps(image_content))
-
-        cmd = ['anchore', 'toolbox', 'import', '--infile', thefile, '--force']
-        for a in args:
-            cmd.append(a)
-            cmd.append(args[a])
-
-        try:
-            logger.debug("running command: " + str(' '.join(cmd)))
-
-            sout = subprocess.check_output(cmd)
-            try:
-                ret = True
-            except Exception as err:
-                raise(err)
-        except Exception as err:
-            raise err
-    except Exception as err:
-        logger.error(str(err))
-    finally:
-        if thefile and os.path.exists(thefile):
-            os.remove(thefile)
-
-    return(ret)
-
 def get_image_export(pullstring, image_detail, args={}):
     ret = {}
 
@@ -284,59 +170,13 @@ def get_image_export(pullstring, image_detail, args={}):
             cmd.append(args[a])
 
         try:
-            sout = subprocess.check_output(cmd)
-            try:
-                ret = json.loads(sout)
-            except Exception as err:
-                raise(err)
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+            ret = json.loads(sout)
         except Exception as err:
             logger.error(str(err))
 
     return(ret)
 
-def feedsync(feed=None, args={}, anchore_user=None, anchore_pw=None):
-    ret = {}
-
-    if True:
-        try:
-            try:
-                anchore_login(anchore_user, anchore_pw)
-            except Exception as err:
-                logger.warn("could not log in, will try sync as anon - exception: " + str(err))
-                anchore_logout()
-
-            if feed:
-                cmd = ['anchore', '--json', 'feeds', 'sub', feed]
-                try:
-                    logger.debug("running feed subscriber: " + str(' '.join(cmd)))
-                    sout = subprocess.check_output(cmd)
-                except Exception as err:
-                    raise err
-
-
-            cmd = ['anchore', '--json', 'feeds', 'sync', '--do-compact']
-            for a in args:
-                cmd.append(a)
-                cmd.append(args[a])
-
-            logger.debug("running feed syncer: " + str(' '.join(cmd)))
-            sout = subprocess.check_output(cmd)
-
-            cmd = ['anchore', '--json', 'feeds', 'list', '--showgroups']
-            logger.debug("running feed lister: " + str(' '.join(cmd)))
-            sout = subprocess.check_output(cmd)
-            try:
-                ret = json.loads(sout)
-            except Exception as err:
-                raise(err)
-
-        except Exception as err:
-            logger.error(str(err))
-        finally:
-            #anchore_logout()
-            pass
-
-    return(ret)
 
 def anchore_login(anchore_user, anchore_pw):
     try:
@@ -346,13 +186,11 @@ def anchore_login(anchore_user, anchore_pw):
         sout = None
         current_loggedin_user = None
         try:
-            sout = subprocess.check_output(cmd)
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
             logger.debug("whoami output: " + str(sout))
             whoami_output = json.loads(sout)
             if whoami_output and 'Current user' in whoami_output:
                 current_loggedin_user = whoami_output['Current user']
-        except subprocess.CalledProcessError as err:
-            logger.warn("whoami failed: " + str(err))
         except Exception as err:
             logger.warn("whoami failed: " + str(err))
 
@@ -366,11 +204,6 @@ def anchore_login(anchore_user, anchore_pw):
             if skiplogin:
                 logger.debug("already logged in as user ("+str(anchore_user)+"), skipping login")
                 return(True)
-
-        #try:
-        #    anchore_logout()
-        #except:
-        #    pass
 
         if anchore_user:
             os.environ['ANCHOREUSER'] = anchore_user
@@ -394,15 +227,9 @@ def anchore_login(anchore_user, anchore_pw):
         cmd = ['anchore', 'login']
         logger.debug("running login: " + str(' '.join(cmd)))
         sout = None
-        try:
-            sout = subprocess.check_output(cmd)
-            logger.debug("login output: " + str(sout))
-        except subprocess.CalledProcessError as err:
-            logger.debug("login failed: " + str(err))
-            raise Exception("login failed: " + str(err.output))
-        except Exception as err:
-            logger.debug("login failed: " + str(err))
-            raise err    
+        rc, sout, serr = anchore_engine.utils.run_command_list(cmd, env=os.environ)
+        if rc:
+            raise Exception("login command failed: sout={} serr={}".format(sout, serr))
     except Exception as err:
         logger.error("anchore login failed ("+str(anchore_user)+") - exception: " + str(err))
         raise err
@@ -415,7 +242,8 @@ def anchore_login(anchore_user, anchore_pw):
 
 def anchore_logout():
     try:
-        subprocess.check_output(['anchore', 'logout'])
+        cmd = ['anchore', 'logout']
+        rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
     except Exception as err:
         logger.error("logout failed: " + str(err))
         raise err
@@ -428,72 +256,14 @@ def get_bundle(anchore_user, anchore_pw):
         
         cmd = ['anchore', '--json', 'policybundle', 'sync', '--outfile', '-']
         logger.debug("running bundle syncer: " + str(' '.join(cmd)))
-        sout = None
-        try:
-            sout = subprocess.check_output(cmd)
-            ret = json.loads(sout)
-        except subprocess.CalledProcessError as err:
-            logger.debug("sync failed: " + str(err.output))
-            raise err
-        except Exception as err:
-            logger.debug("sync failed: " + str(err))
-            raise err
-        finally:
-            #anchore_logout()
-            #subprocess.check_output(['anchore', 'logout'])
-            pass
+        rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+        ret = json.loads(sout)
 
     except Exception as err:
-        logger.debug("operation failed: " + str(err))
+        logger.error("operation failed: " + str(err))
         raise err
     finally:
-        #subprocess.check_output(['anchore', 'logout'])
-        #os.environ['ANCHOREUSER'] = ""
-        #os.environ['ANCHOREPASS'] = ""
         pass
-
-    return(ret)
-
-def eval_bundle(pullstring, tag, image_detail, bundleId, bundle_content, args={}):
-    ret = False
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    thefile = None
-    try:
-        usetag = tag
-
-        bcbuf = json.dumps(bundle_content)
-        with tempfile.NamedTemporaryFile(dir=localconfig['tmp_dir'], delete=False) as OFH:
-            thefile = OFH.name
-            OFH.write(bcbuf)
-
-        cmd = ['anchore', '--json', 'gate', '--image', pullstring, '--run-bundle', '--bundlefile', thefile, '--usetag', usetag]
-        for a in args:
-            cmd.append(a)
-            cmd.append(args[a])
-
-        try:
-            logger.debug("running policy evaluator: " + str(' '.join(cmd)))
-            try:
-                sout = subprocess.check_output(cmd)
-                ret = json.loads(sout)
-            except subprocess.CalledProcessError as err:
-                if (err.returncode == 1 or err.returncode == 2) and err.output:
-                    sout = err.output.decode('utf8')
-                    ret = json.loads(sout)
-                else:
-                    logger.warn("uncaught exit code from cmd, or output is empty: " + str(err.returncode) + " : " + str(err.output))
-
-            except Exception as err:
-                raise(err)
-        except Exception as err:
-            logger.error(str(err))
-    except Exception as err:
-        raise err
-    finally:
-        if thefile and os.path.exists(thefile):
-            os.remove(thefile)
 
     return(ret)
 
@@ -503,11 +273,8 @@ def get_config():
     if True:
         cmd = ['anchore', '--json', 'system', 'status', '--conf']
         try:
-            sout = subprocess.check_output(cmd)
-            try:
-                ret = json.loads(sout)
-            except Exception as err:
-                raise(err)
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+            ret = json.loads(sout)
         except Exception as err:
             logger.error(str(err))
 
@@ -524,6 +291,11 @@ def parse_dockerimage_string(instr):
     fulldigest = None
     digest = None
     imageId = None
+
+    logger.debug("input string to parse: {}".format(instr))
+    instr = instr.strip()
+    if re.match(r".*[^a-zA-Z0-9@:/_\.\-]", instr):
+        raise Exception("bad character in dockerimage string input ({})".format(instr))
 
     if re.match("^sha256:.*", instr):
         registry = 'docker.io'

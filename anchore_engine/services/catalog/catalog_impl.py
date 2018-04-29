@@ -29,15 +29,15 @@ def registry_lookup(dbsession, request_inputs):
     image_info = None
     input_type = None
 
-    for t in ['tag', 'digest']:
-        if t in params:
-            input_string = params[t]
-            if input_string:
-                input_type = t
-                image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None,None))
-                break
-
     try:
+        for t in ['tag', 'digest']:
+            if t in params:
+                input_string = params[t]
+                if input_string:
+                    input_type = t
+                    image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None,None))
+                    break
+
         if not image_info:
             httpcode = 500
             raise Exception("need 'tag' or 'digest' in url params")
@@ -83,7 +83,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
     if params and 'lookuptag' in params and params['lookuptag']:
         lookuptag = str(params['lookuptag'])
 
-    fulltag = regrepo + ":"+ lookuptag
+    fulltag = regrepo + ":" + lookuptag
 
     try:
         if method == 'POST':
@@ -191,16 +191,17 @@ def image(dbsession, request_inputs, bodycontent={}):
     if params and 'history' in params:
         history = params['history']
 
-    for t in ['tag', 'digest', 'imageId']:
-        if t in params:
-            input_string = params[t]
-            if input_string:
-                input_type = t
-                image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
-                break
 
     httpcode = 500
     try:
+        for t in ['tag', 'digest', 'imageId']:
+            if t in params:
+                input_string = params[t]
+                if input_string:
+                    input_type = t
+                    image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
+                    break
+
         if method == 'GET':
             if not input_string:
                 httpcode = 200

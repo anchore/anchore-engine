@@ -9,7 +9,6 @@ import hashlib
 import traceback
 import importlib
 import threading
-import subprocess
 
 #import simplejson as json
 from collections import OrderedDict
@@ -579,7 +578,11 @@ def lookup_registry_image(userId, image_info, registry_creds):
 def get_image_info(userId, image_type, input_string, registry_lookup=False, registry_creds=[]):
     ret = {}
     if image_type == 'docker':
-        image_info = anchore_engine.clients.localanchore.parse_dockerimage_string(input_string)
+        try:
+            image_info = anchore_engine.clients.localanchore.parse_dockerimage_string(input_string)
+        except Exception as err:
+            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot handle image input string", input_httpcode=400)
+
         ret.update(image_info)
 
         if registry_lookup and image_info['registry'] != 'localbuild':
