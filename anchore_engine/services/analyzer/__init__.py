@@ -263,7 +263,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
     timer = int(time.time())
     try:
-        logger.info('QObj: {}'.format(qobj))
+        logger.debug('dequeued object: {}'.format(qobj))
 
         record = qobj['data']
         userId = record['userId']
