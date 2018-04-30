@@ -155,6 +155,14 @@ def filter_record_keys(record_list, whitelist_keys):
     filtered = map(lambda x: {k: v for k, v in filter(lambda y: y[0] in whitelist_keys, x.items())}, record_list)
     return filtered
 
+def run_sanitize(cmd_list):
+    def shellcheck(x):
+        if not re.search("[;&<>]", x):
+            return(x)
+        else:
+            raise Exception("bad character in shell input")
+
+    return([x for x in cmd_list if shellcheck(x)])
 
 def run_command_list(cmd_list, env=None):
     """
@@ -166,7 +174,7 @@ def run_command_list(cmd_list, env=None):
 
     rc = -1
     sout = serr = None
-
+    cmd_list = run_sanitize(cmd_list)
     try:
         if env:
             pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)

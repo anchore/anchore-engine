@@ -1,7 +1,6 @@
 import json
 import os
 import uuid
-import subprocess
 import tempfile
 
 from anchore_engine.clients import http
@@ -48,14 +47,11 @@ def make_notification(user_record, subscription_type, notification):
     return(ret)
 
 def notify(user_record, notification):
-    #notification_modes = ['email', 'webhook']
     notification_modes = ['webhook']
 
     logger.debug("sending notification: " + json.dumps(notification, indent=4))
     for notification_mode in notification_modes:
-        if notification_mode == 'email':
-            rc = do_notify_email(user_record, notification)
-        elif notification_mode == 'webhook':
+        if notification_mode == 'webhook':
             rc = do_notify_webhook(user_record, notification)
 
     return(True)
@@ -114,24 +110,3 @@ def do_notify_webhook(user_record, notification):
     logger.debug("warning: notification generated, but no matching webhook could be found in config to send it to - dropping notification")
     return(False)
 
-def do_notify_email(user_record, notification):
-    try:
-        userId = user_record['userId']
-        email = user_record['email']
-
-        thefile = None
-        with tempfile.NamedTemporaryFile(dir="/tmp", delete=False, suffix=".json") as OFH:
-            thefile = OFH.name
-            OFH.write(json.dumps(notification, indent=4))
-
-        echocmd = subprocess.Popen(("echo", "policy update for image has been detected"), stdout=subprocess.PIPE)
-        cmd = ['mail', '-r', 'anchore-engine-notifications@anchore', '-s', '"anchore notification"', '-a', thefile, email]
-        sout = subprocess.check_output(cmd, stdin=echocmd.stdout)
-        echocmd.wait()
-
-        if thefile and os.path.exists(thefile):
-            os.remove(thefile)
-    except Exception as err:
-        raise err
-
-    return(True)

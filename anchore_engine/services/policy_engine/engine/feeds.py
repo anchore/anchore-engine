@@ -135,12 +135,12 @@ class GemPackageDataMapper(KeyIDFeedDataMapper):
 
     def map_inner(self, key, data):
         db_rec = GemMetadata()
-        db_rec.name = key
+        db_rec.name = key[:255]
         db_rec.id = int(data.get('id')) if data.get('id') else -1
         db_rec.authors_json = data.get('authors')
         db_rec.versions_json = data.get('versions')
         db_rec.licenses_json = data.get('licenses')
-        db_rec.latest = data.get('latest')
+        db_rec.latest = data.get('latest')[:255] if data.get('latest') else None
         return db_rec
 
 
@@ -151,10 +151,10 @@ class NpmPackageDataMapper(KeyIDFeedDataMapper):
 
     def map_inner(self, key, data):
         db_rec = NpmMetadata()
-        db_rec.name = key
+        db_rec.name = key[:255]
         db_rec.versions_json = data.get('versions')
-        db_rec.latest = data.get('latest')
-        db_rec.sourcepkg = data.get('sourcepkg')
+        db_rec.latest = data.get('latest')[:255] if data.get('latest') else None
+        db_rec.sourcepkg = data.get('sourcepkg')[:255] if data.get('sourcepkg') else None
         db_rec.origins_json = data.get('origins')
         db_rec.lics_json = data.get('lics')
         return db_rec

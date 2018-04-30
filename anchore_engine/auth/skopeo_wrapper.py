@@ -17,7 +17,7 @@ def manifest_to_digest_shellout(rawmanifest):
         cmd = "skopeo manifest-digest {}".format(tmpmanifest)
         rc, sout, serr = run_command(cmd)
         if rc == 0 and re.match("^sha256:.*", sout):
-            ret = sout
+            ret = sout.strip()
         else:
             logger.warn("failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(cmd, rc, sout, serr))
             raise Exception("failed to calculate digest from schema v1 manifest")
@@ -57,38 +57,6 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         else:
             cmd = ["/bin/sh", "-c", "skopeo copy {} {} docker://{} dir:{}".format(tlsverifystr, credstr, fulltag, copydir)]
 
-        cmdstr = ' '.join(cmd)
-        try:
-            rc, sout, serr = run_command_list(cmd, env=proc_env)
-            if rc != 0:
-                raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-            else:
-                logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-
-        except Exception as err:
-            logger.error("command failed with exception - " + str(err))
-            raise err
-    except Exception as err:
-        raise err
-
-    return(True)
-
-def download_image_orig(fulltag, copydir, user=None, pw=None, verify=True):
-    try:
-        proc_env = os.environ.copy()
-        if user and pw:
-            proc_env['SKOPUSER'] = user
-            proc_env['SKOPPASS'] = pw
-            credstr = '--src-creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
-        else:
-            credstr = ""
-
-        if verify:
-            tlsverifystr = "--src-tls-verify=true"
-        else:
-            tlsverifystr = "--src-tls-verify=false"
-            
-        cmd = ["/bin/sh", "-c", "skopeo copy {} {} docker://{} dir:{}".format(tlsverifystr, credstr, fulltag, copydir)]
         cmdstr = ' '.join(cmd)
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
@@ -186,7 +154,6 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                     err.sout = "{}".format(sout)
                     err.serr = "{}".format(serr)
                     raise err
-                    #raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             except Exception as err:

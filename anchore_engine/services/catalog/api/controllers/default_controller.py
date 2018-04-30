@@ -424,10 +424,8 @@ def archive_get(bucket, archiveid):
 @flask_metrics.do_not_track()
 def archive_post(bucket, archiveid, bodycontent):
     try:
-        # jsonbodycontent = json.loads(bodycontent)
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
-            # TODO HERE - some inputs are arrays of objects.....
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid, bodycontent=bodycontent)
 
     except Exception as err:
