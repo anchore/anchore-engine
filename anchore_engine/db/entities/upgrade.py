@@ -457,6 +457,46 @@ def db_upgrade_005_006():
     archive_data_upgrade_005_006()
     fixed_artifact_upgrade_005_006()
 
+def catalog_image_upgrades_006_007():
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    new_columns = [
+        {
+            'table_name': 'catalog_image',
+            'columns': [
+                Column('analyzed_at', Integer, primary_key=False)
+            ]
+        },
+        {
+            'table_name': 'catalog_image_docker',
+            'columns': [
+                Column('tag_detected_at', Integer, primary_key=False)
+            ]
+        }
+    ]
+
+    for table in new_columns:
+        for column in table['columns']:
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+            except Exception as e:
+                log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+                raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+
+    try:
+        engine.execute("UPDATE catalog_image SET analyzed_at=last_updated WHERE analyzed_at IS NULL AND analysis_status='analyzed'")
+    except Exception as e:
+        raise Exception('failed to perform DB upgrade on catalog_image setting default value for column analyzed_at - exception: {}'.format(str(e)))
+
+    try:
+        engine.execute("UPDATE catalog_image_docker SET tag_detected_at=created_at WHERE tag_detected_at IS NULL")
+    except Exception as e:
+        raise Exception('failed to perform DB upgrade on catalog_image_docker setting default value for column tag_detected_at - exception: {}'.format(str(e)))
+
+def db_upgrade_006_007():
+    catalog_image_upgrades_006_007()
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
@@ -466,7 +506,8 @@ upgrade_functions = (
     (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
     (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
-    (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ])
+    (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ]),
+    (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ])
 )
 
 

@@ -377,7 +377,7 @@ def make_response_image(user_auth, image_record, params={}):
             for removekey in ['record_state_val', 'record_state_key']:
                 image_detail.pop(removekey, None)
 
-            for datekey in ['last_updated', 'created_at']:
+            for datekey in ['last_updated', 'created_at', 'tag_detected_at']:
                 try:
                     image_detail[datekey] = datetime.datetime.utcfromtimestamp(image_detail[datekey]).isoformat()
                 except:
@@ -386,7 +386,7 @@ def make_response_image(user_auth, image_record, params={}):
     if params and 'detail' in params and not params['detail']:
         image_record['image_detail'] = []
 
-    for datekey in ['last_updated', 'created_at']:
+    for datekey in ['last_updated', 'created_at', 'analyzed_at']:
         try:
             image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat()
         except:

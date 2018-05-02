@@ -246,6 +246,7 @@ class CatalogImage(Base, UtilMixin):
     userId = Column(String, primary_key=True)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    analyzed_at = Column(Integer)
     record_state_key = Column(String, default="active")
     record_state_val = Column(String)
 
@@ -286,6 +287,7 @@ class CatalogImageDocker(Base, UtilMixin):
     tag = Column(String, primary_key=True)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    tag_detected_at = Column(Integer, default=anchore_now)
     record_state_key = Column(String, default="active")
     record_state_val = Column(String)
 

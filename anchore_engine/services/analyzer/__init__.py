@@ -377,6 +377,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 
                 last_analysis_status = image_record['analysis_status']
                 image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
+                image_record['analyzed_at'] = int(time.time())
                 rc = catalog.update_image(user_auth, imageDigest, image_record)
 
                 try:
