@@ -27,7 +27,7 @@ def add_record(record, session=None):
 
     return(True)
 
-def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, session=None):
+def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, tag_detected_at=None, session=None):
     if not session:
         session = db.Session
 
@@ -39,6 +39,8 @@ def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=No
         'imageId':imageId,
         'dockerfile':dockerfile
     }
+    if tag_detected_at:
+        dbobj['tag_detected_at'] = tag_detected_at
 
     our_result = session.query(CatalogImageDocker).filter_by(imageDigest=imageDigest, userId=userId, tag=tag).first()
     if not our_result:
@@ -52,7 +54,7 @@ def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=No
 
     return(True)
 
-def update(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, session=None):
+def update(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, tag_detected_at=None, session=None):
     return(add(imageDigest, userId, tag, registry=registry, user=user, repo=repo, digest=digest, imageId=imageId, dockerfile=dockerfile, session=session))
 
 def get_byfilter(userId, session=None, **kwargs):
