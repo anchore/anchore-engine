@@ -603,13 +603,17 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
     docker_history = []
     imageArch = ""
 
-    # get "history"    
+    # get "history"
     if os.path.exists(os.path.join(copydir, imageId+".tar")):
         try:
             with open(os.path.join(copydir, imageId+".tar"), 'r') as FH:
                 configdata = json.loads(FH.read())
                 rawhistory = configdata['history']
                 imageArch = configdata['architecture']
+                imageOs = configdata.get('os', None)
+                if imageOs in ['windows']:
+                    raise Exception("reported os type ({}) images are not supported".format(imageOs))
+                    
         except Exception as err:
             raise err
     elif os.path.exists(os.path.join(copydir, "index.json")):
@@ -637,6 +641,9 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                     configdata = json.loads(FH.read())
                     rawhistory = configdata['history']
                     imageArch = configdata['architecture']
+                    imageOs = configdata.get('os', None)
+                    if imageOs in ['windows']:
+                        raise Exception("image os type ({}) not supported".format(imageOs))
             else:
                 raise Exception("could not find final digest - no blob config file found in digest file: {}".format(dfile))
 
