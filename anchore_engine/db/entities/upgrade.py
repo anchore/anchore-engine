@@ -393,7 +393,6 @@ def archive_data_upgrade_005_006():
     """
 
     from anchore_engine.db import ArchiveDocument, session_scope, ArchiveMetadata
-    import anchore_engine.subsys.object_store
     from anchore_engine.subsys import archive
     from anchore_engine.subsys.archive import operations
     from anchore_engine.configuration import localconfig
@@ -401,6 +400,9 @@ def archive_data_upgrade_005_006():
     config = localconfig.get_config()
     archive.initialize(config.get('services', {}).get('catalog', {}))
     client = operations.get_archive().primary_client
+
+    session_counter = 0
+    max_pending_session_size = 10000
 
     with session_scope() as db_session:
         for doc in db_session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.documentName, ArchiveDocument.created_at, ArchiveDocument.last_updated, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val):
@@ -418,7 +420,12 @@ def archive_data_upgrade_005_006():
                                    )
 
             db_session.add(meta)
-            db_session.flush()
+
+            session_counter += 1
+
+            if session_counter >= max_pending_session_size:
+                db_session.flush()
+                session_counter = 0
 
 
 def fixed_artifact_upgrade_005_006():
