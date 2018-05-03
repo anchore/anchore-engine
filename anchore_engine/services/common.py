@@ -267,7 +267,7 @@ def initializeService(sname, config):
     return(True)
 
 # the anchore twistd plugins call this to initialize and make individual services
-def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_users=False, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}, specific_tables=None):
+def makeService(snames, options, db_connect=True, require_system_user_auth=True, module_name="anchore_engine.services", validate_params={}):
 
     try:
         logger.enable_bootstrap_logging(service_name=','.join(snames))
@@ -299,7 +299,7 @@ def makeService(snames, options, db_connect=True, bootstrap_db=False, bootstrap_
 
             # connect to DB
             try:
-                db.initialize(localconfig=localconfig, versions=versions, bootstrap_db=bootstrap_db, bootstrap_users=bootstrap_users, specific_tables=specific_tables)
+                db.initialize(localconfig=localconfig, versions=versions)
             except Exception as err:
                 logger.error("cannot connect to configured DB: exception - " + str(err))
                 raise err

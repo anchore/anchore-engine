@@ -192,7 +192,7 @@ def do_create(specific_tables):
         raise Exception("could not create/re-create DB tables - exception: " + str(err))
 
 
-def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tables=None, bootstrap_users=False):
+def initialize(localconfig=None, versions=None):
     """
     Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
 
@@ -220,9 +220,6 @@ def initialize(localconfig=None, versions=None, bootstrap_db=False, specific_tab
 
             # test the connection
             rc = test_connection()
-
-            # create
-            #rc = do_create(specific_tables)
 
             break
         except Exception as err:

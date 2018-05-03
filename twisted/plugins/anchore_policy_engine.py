@@ -69,7 +69,7 @@ class AnchoreServiceMaker(object):
             logger.set_log_level('INFO')
 
         #logger.enable_bootstrap_logging(name_prefix='policy_engine')
-        r = anchore_engine.services.common.makeService(slist, options, bootstrap_db=True)
+        r = anchore_engine.services.common.makeService(slist, options)
         #logger.disable_bootstrap_logging()
         return r
 

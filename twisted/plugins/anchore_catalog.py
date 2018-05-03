@@ -73,7 +73,7 @@ class AnchoreServiceMaker(object):
             log.err("exception while initializing logger - exception: "  + str(err))
             logger.set_log_level('INFO')
 
-        r = anchore_engine.services.common.makeService(slist, options, bootstrap_db=True, bootstrap_users=True)
+        r = anchore_engine.services.common.makeService(slist, options)
         return(r)
 
 serviceMaker = AnchoreServiceMaker()

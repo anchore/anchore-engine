@@ -89,7 +89,12 @@ def init_db(connect_str='sqlite:///:memory:', do_bootstrap=False):
     """
     conf = setup_engine_config(connect_str)
     from anchore_engine.db import initialize
-    initialize(localconfig=conf, specific_tables=get_policy_tables(), bootstrap_db=do_bootstrap)
+    from anchore_engine.db.entities.common import do_create
+    pol_tables = get_policy_tables()
+    initialize(localconfig=conf)
+    if do_bootstrap:
+        do_create(pol_tables)
+
     init_distro_mappings()
 
 
