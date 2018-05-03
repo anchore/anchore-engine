@@ -615,23 +615,28 @@ definitions:
   MappingRule:
     type: object
     required:
-    - "name"
-    - "whitelist_ids"
-    - "policy_id"
-    - "registry"
-    - "repository"
-    - "image"
+    - name
+    - registry
+    - repository
+    - image
     properties:
       id:
         type: string
       name:
         type: string
       whitelist_ids:
-        type: "array"
+        type: array
         items:
           type: string
       policy_id:
         type: string
+        description: Optional single policy to evalute, if set will override any value in policy_ids, for backwards compatibility. Generally, policy_ids should be used even with a array of length 1.
+      policy_ids:
+        type: array
+        description: List of policyIds to evaluate in order, to completion
+        items:
+          type: string
+          description: PolicyId to evaluate
       registry:
         type: string
       repository:

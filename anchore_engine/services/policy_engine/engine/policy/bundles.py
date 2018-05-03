@@ -2,6 +2,7 @@ from collections import OrderedDict, namedtuple
 import enum
 import copy
 import re
+import itertools
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.util.docker import parse_dockerimage_string
@@ -214,10 +215,12 @@ class BundleDecision(object):
     Extentions of a PolicyDecision to include Image Blacklist and Whitelist abilities
     """
 
-    def __init__(self, policy_decision, whitelist_match=None, blacklist_match=None):
-        self.policy_decision = policy_decision
+    def __init__(self, policy_decisions, whitelist_match=None, blacklist_match=None):
+        self.policy_decisions = policy_decisions if policy_decisions else [FallThruPolicyDecision()]
         self.whitelisted_image = whitelist_match if whitelist_match else None
         self.blacklisted_image = blacklist_match if blacklist_match else None
+
+        self.final_policy_decision = max([d.final_decision for d in self.policy_decisions])
 
         if self.blacklisted_image:
             self.final_decision = GateAction.stop
@@ -226,13 +229,13 @@ class BundleDecision(object):
             self.final_decision = GateAction.go
             self.reason = 'whitelisted'
         else:
-            self.final_decision = self.policy_decision.final_decision
+            self.final_decision = self.final_policy_decision
             self.reason = 'policy_evaluation'
 
     def json(self):
         return {
-            'policy_decision': self.policy_decision.json() if self.policy_decision else None,
-            'policy_final_action': self.policy_decision.final_decision.name,
+            'policy_decisions': [policy_decision.json() for policy_decision in self.policy_decisions] if self.policy_decisions else None,
+            'policy_final_action': self.final_policy_decision.name,
             'matched_whitelisted_image_rule': self.whitelisted_image.json() if self.whitelisted_image else None,
             'matched_blacklisted_image_rule': self.blacklisted_image.json() if self.blacklisted_image else None,
             'final_action': self.final_decision.name,
@@ -262,7 +265,8 @@ class BundleExecution(object):
         'Trigger',
         'Check_Output',
         'Gate_Action',
-        'Whitelisted'
+        'Whitelisted',
+        'Policy_Id'
     ]
 
     def __init__(self, bundle, image_id, tag, matched_mapping=None, decision=None):
@@ -273,6 +277,10 @@ class BundleExecution(object):
         self.bundle_decision = decision
         self.warnings = []
         self.errors = []
+
+    def abort_with_failure(self, exception_obj):
+        self.errors.append(exception_obj)
+        self.bundle_decision = BundleDecision(policy_decisions=[FailurePolicyDecision()])
 
     def json(self):
         return {
@@ -300,7 +308,8 @@ class BundleExecution(object):
             policy_rule_decision.match.trigger.__trigger_name__,
             policy_rule_decision.match.msg,
             policy_rule_decision.action.name,
-            policy_rule_decision.match.whitelisted_json() if hasattr(policy_rule_decision.match, 'whitelisted_json') else False
+            policy_rule_decision.match.whitelisted_json() if hasattr(policy_rule_decision.match, 'whitelisted_json') else False,
+            policy_rule_decision.policy_rule.parent_policy.id
         ]
 
     def as_table_json(self):
@@ -309,46 +318,37 @@ class BundleExecution(object):
         :return:
         """
 
-        wh_data = []
-        exec_policy = None
-        if self.executed_mapping:
-            for x in self.executed_mapping.whitelist_ids:
-                # A bit of error handling here for partial results due to validation errors that can make this not consistent
-                wl = self.executed_bundle.whitelists.get(x)
-                if wl:
-                    wh_data += whitelist_json_to_txt(wl.json())
-                else:
-                    log.warn('Executed bundle: {} against tag {}, image: {} contains whitelist reference {} in executed rule that is not found'.format(self.executed_bundle.id if self.executed_bundle else 'none', self.tag, self.image_id, x))
+        aggregated_decisions = itertools.chain.from_iterable([x.decisions for x in self.bundle_decision.policy_decisions])
+        # for policy_decision in self.bundle_decision.policy_decisions:
+        #     for d in policy_decision.decisions:
+        #         aggregated_decisions.append(d)
 
-        if self.executed_bundle and self.executed_bundle.policies and self.executed_mapping.policy_id:
-            exec_policy = self.executed_bundle.policies.get(self.executed_mapping.policy_id)
-            if exec_policy:
-                exec_policy = exec_policy.json()
-
+        rows = [self._row_json(t) for t in aggregated_decisions]
 
         table = {
             self.image_id: {
                 'result': {
                     'header': self.CLI_COMPATIBLE_HEADER_SET,
-                    'row_count': len(self.bundle_decision.policy_decision.decisions),
-                    'rows': [self._row_json(t) for t in self.bundle_decision.policy_decision.decisions],
-                    'final_action': self.bundle_decision.policy_decision.final_decision.name,
+                    'row_count': len(rows),
+                    'rows': rows,
+                    'final_action': self.bundle_decision.final_policy_decision.name
                 },
             },
-            'policy_name': self.executed_mapping.policy_id if self.executed_mapping else '',
-            'whitelist_names': self.executed_mapping.whitelist_ids if self.executed_mapping else [],
-            'policy_data': policy_json_to_txt(exec_policy),
-            'whitelist_data': wh_data
+            'policy_data': [],
+            'whitelist_data': [],
+            'policy_name': None,
+            'whitelist_names': []
         }
 
         return table
 
 
 class PolicyRule(object):
-    def __init__(self, policy_json=None):
+    def __init__(self, parent, policy_json=None):
         self.gate_name = policy_json.get('gate')
         self.trigger_name = policy_json.get('trigger')
         self.rule_id = policy_json.get('id')
+        self.parent_policy = parent
 
         # Convert to lower-case for case-insensitive matches
         self.trigger_params = {p.get('name').lower(): p.get('value') for p in policy_json.get('params')}
@@ -367,8 +367,8 @@ class PolicyRule(object):
         pass
 
 
-def policy_rule_factory(policy_json, strict_validation=True):
-    rule = ExecutablePolicyRule(policy_json)
+def policy_rule_factory(policy_obj, policy_json, strict_validation=True):
+    rule = ExecutablePolicyRule(policy_obj, policy_json)
     if strict_validation:
         if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
             raise EndOfLifedError(rule.gate_name, superceded=rule.gate_cls.__superceded_by__)
@@ -385,8 +385,8 @@ class ExecutablePolicyRule(PolicyRule):
     is the set of fired trigger instances resulting from execution against a specific image.
     """
 
-    def __init__(self, policy_json=None):
-        super(ExecutablePolicyRule, self).__init__(policy_json)
+    def __init__(self, parent, policy_json=None):
+        super(ExecutablePolicyRule, self).__init__(parent, policy_json)
 
         # Configure the trigger instance
         try:
@@ -557,7 +557,7 @@ class ExecutablePolicy(VersionedEntityMixin):
 
         for x in raw_json.get('rules'):
             try:
-                self.rules.append(policy_rule_factory(x, strict_validation=strict_validation))
+                self.rules.append(policy_rule_factory(self, x, strict_validation=strict_validation))
             except PolicyRuleValidationErrorCollection as e:
                 for err in e.validation_errors:
                     errors.append(err)
@@ -639,8 +639,6 @@ class MappingRule(object):
         else:
             self.image_digest = None
 
-        self.policy_id = rule_json.get('policy_id')
-        self.whitelist_ids = rule_json.get('whitelist_ids')
         self.raw = rule_json
 
     def json(self):
@@ -727,7 +725,16 @@ class PolicyMappingRule(MappingRule):
     def __init__(self, rule_json=None):
         super(PolicyMappingRule, self).__init__(rule_json)
 
-        self.policy_id = rule_json.get('policy_id')
+        if rule_json.get('policy_id') and rule_json.get('policy_ids'):
+            raise ValidationError('Cannot specify both policy_id and policy_ids properties in mapping rule, must use one or the other')
+
+        if rule_json.get('policy_id'):
+            self.policy_ids = [rule_json.get('policy_id')]
+        elif rule_json.get('policy_ids'):
+            self.policy_ids = rule_json.get('policy_ids')
+        else:
+            raise ValidationError('No policy_id or policy_ids property found for mapping rule: {}'.format(rule_json))
+
         self.whitelist_ids = rule_json.get('whitelist_ids')
 
     def json(self):
@@ -735,7 +742,7 @@ class PolicyMappingRule(MappingRule):
             return self.raw
         else:
             r = super(PolicyMappingRule, self).json()
-            r['policy_id'] = self.policy_id,
+            r['policy_ids'] = self.policy_ids,
             r['whitelist_ids'] = self.whitelist_ids
             return r
 
@@ -1097,24 +1104,23 @@ class ExecutableBundle(VersionedEntityMixin):
             if self.target_tag:
                 rule = self.mapping.execute(image_obj=None, tag=self.target_tag)
                 if rule is not None:
-                    rules = [rule]
-                    self.mapping.mapping_rules = filter(lambda x: x == rule, self.mapping.mapping_rules)
+                    self.mapping.mapping_rules = [rule]
                 else:
-                    rules = []
+                    self.mapping.mapping_rules = []
 
-            else:
-                rules = self.mapping.mapping_rules
-
-            for rule in rules:
+            for rule in self.mapping.mapping_rules:
                 try:
                     # Build the specified policy for the rule
-                    policy = filter(lambda x: x['id'] == rule.policy_id, self.raw.get('policies', []))
-                    if not policy:
-                        raise ReferencedObjectNotFoundError(reference_id=rule.policy_id, reference_type='policy')
-                    elif len(policy) > 1:
-                        raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
+                    policies = { policy_id: filter(lambda x: x['id'] == policy_id, self.raw.get('policies', [])) for policy_id in rule.policy_ids }
 
-                    self.policies[rule.policy_id] = ExecutablePolicy(policy[0], strict_validation=strict_validation)
+                    for policy_id in rule.policy_ids:
+                        if len(policies[policy_id]) > 1:
+                            raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
+                        if not policies[policy_id]:
+                            raise ReferencedObjectNotFoundError(reference_id=rule.policy_id, reference_type='policy')
+
+                        self.policies[policy_id] = ExecutablePolicy(policies[policy_id][0], strict_validation=strict_validation)
+
                 except Exception as e:
                     if isinstance(e, InitializationError):
                         self.init_errors += e.causes
@@ -1146,8 +1152,9 @@ class ExecutableBundle(VersionedEntityMixin):
     def _validate_mappings(self):
         # Validate mapping references
         for m in self.mapping.mapping_rules:
-            if m.policy_id not in self.policies:
-                raise ReferencedObjectNotFoundError(reference_id=m.policy_id, reference_type='policy')
+            for policy_id in m.policy_ids:
+                if policy_id not in self.policies:
+                    raise ReferencedObjectNotFoundError(reference_id=policy_id, reference_type='policy')
             for w in m.whitelist_ids:
                 if w not in self.whitelists:
                     raise ReferencedObjectNotFoundError(reference_id=w, reference_type='whitelist')
@@ -1159,6 +1166,78 @@ class ExecutableBundle(VersionedEntityMixin):
         """
 
         return self.init_errors
+
+    def _process_mapping(self, bundle_exec, image_object, tag):
+        # Execute the mapping to find the policy and whitelists to execute next
+
+        try:
+            if self.mapping:
+                bundle_exec.executed_mapping = self.mapping.execute(image_object, tag)
+            else:
+                bundle_exec.executed_mapping = None
+                bundle_exec.bundle_decision = BundleDecision(policy_decisions=[FailurePolicyDecision()])
+
+            return bundle_exec
+        except PolicyError as e:
+            log.exception('Error executing bundle mapping')
+            bundle_exec.abort_with_failure(e)
+            return bundle_exec
+        except Exception as e:
+            log.exception('Error executing bundle mapping')
+            bundle_exec.abort_with_failure(PolicyError.caused_by(e))
+            return bundle_exec
+
+    def _process_mapping_result(self, bundle_exec, image_object, tag, context):
+        # Evaluate the selected policy or set none if none found
+
+        try:
+            if bundle_exec.executed_mapping:
+                evaluated_policies = [self.policies[p_id] for p_id in bundle_exec.executed_mapping.policy_ids]
+            else:
+                evaluated_policies = None
+        except KeyError:
+            # Referenced policy is not found, mark error
+            bundle_exec.abort_with_failure(
+                ReferencedObjectNotFoundError(reference_id=bundle_exec.executed_mapping.policy_id,
+                                              reference_type='policy'))
+            return bundle_exec
+
+        try:
+            policy_decisions = []
+            if evaluated_policies:
+                for evaluated_policy in evaluated_policies:
+                    errors, policy_decision = evaluated_policy.execute(image_obj=image_object, context=context)
+                    if errors:
+                        log.warn('Evaluation encountered errors/warnings: {}'.format(errors))
+                        bundle_exec.errors += errors
+
+
+                    # Send thru the whitelist handlers
+                    for wl in bundle_exec.executed_mapping.whitelist_ids:
+                        policy_decision.decisions = self.whitelists[wl].execute(policy_decision.decisions)
+
+                    policy_decisions.append(policy_decision)
+            else:
+                errors = None
+
+            # Send thru the whitelist mapping
+            whitelisted_image_match = None
+            if self.whitelisted_image_mapping:
+                whitelisted_image_match = self.whitelisted_image_mapping.execute(image_obj=image_object, tag=tag)
+
+            # Send thru the blacklist mapping
+            blacklist_image_match = None
+            if self.blacklisted_image_mapping:
+                blacklist_image_match = self.blacklisted_image_mapping.execute(image_obj=image_object, tag=tag)
+
+            bundle_exec.bundle_decision = BundleDecision(policy_decisions=policy_decisions,
+                                                         whitelist_match=whitelisted_image_match,
+                                                         blacklist_match=blacklist_image_match)
+
+        except PolicyEvaluationError as e:
+            bundle_exec.errors.append(e.errors)
+
+        return bundle_exec
 
     def execute(self, image_object, tag, context):
         """
@@ -1178,67 +1257,9 @@ class ExecutableBundle(VersionedEntityMixin):
             raise InitializationError(message='Initialization of the bundle failed with errors',
                                       init_errors=self.init_errors)
 
-        # Execute the mapping to find the policy and whitelists to execute next
-        try:
-            if self.mapping:
-                bundle_exec.executed_mapping = self.mapping.execute(image_object, tag)
-            else:
-                bundle_exec.executed_mapping = None
-                bundle_exec.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
-                return bundle_exec
+        bundle_exec = self._process_mapping(bundle_exec, image_object, tag)
 
-        except PolicyError as e:
-            log.exception('Error executing bundle mapping')
-            bundle_exec.errors.append(e)
-            bundle_exec.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
-            return bundle_exec
-        except Exception as e:
-            log.exception('Error executing bundle mapping')
-            bundle_exec.errors.append(PolicyError.caused_by(e))
-            bundle_exec.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
-            return bundle_exec
-
-        # Evaluate the selected policy or set none if none found
-        try:
-            if bundle_exec.executed_mapping:
-                evaluated_policy = self.policies[bundle_exec.executed_mapping.policy_id]
-            else:
-                evaluated_policy = None
-        except KeyError:
-            # Referenced policy is not found, mark error
-            bundle_exec.errors.append(ReferencedObjectNotFoundError(reference_id=bundle_exec.executed_mapping.policy_id, reference_type='policy'))
-
-            bundle_exec.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
-            return bundle_exec
-
-        try:
-            if evaluated_policy:
-                errors, policy_decision = evaluated_policy.execute(image_obj=image_object, context=context)
-                if errors:
-                    log.warn('Evaluation encountered errors/warnings: {}'.format(errors))
-                    bundle_exec.errors += errors
-
-                # Send thru the whitelist handlers
-                for wl in bundle_exec.executed_mapping.whitelist_ids:
-                    policy_decision.decisions = self.whitelists[wl].execute(policy_decision.decisions)
-            else:
-                errors = None
-                policy_decision = FallThruPolicyDecision()
-
-            # Send thru the whitelist mapping
-            whitelisted_image_match = None
-            if self.whitelisted_image_mapping:
-                whitelisted_image_match = self.whitelisted_image_mapping.execute(image_obj=image_object, tag=tag)
-
-            # Send thru the blacklist mapping
-            blacklist_image_match = None
-            if self.blacklisted_image_mapping:
-                blacklist_image_match = self.blacklisted_image_mapping.execute(image_obj=image_object, tag=tag)
-
-            bundle_exec.bundle_decision = BundleDecision(policy_decision=policy_decision, whitelist_match=whitelisted_image_match, blacklist_match=blacklist_image_match)
-
-        except PolicyEvaluationError as e:
-            bundle_exec.errors.append(e.errors)
+        bundle_exec = self._process_mapping_result(bundle_exec, image_object, tag, context)
 
         return bundle_exec
 
