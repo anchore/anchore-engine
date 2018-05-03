@@ -24,6 +24,22 @@ upgrade_enabled = True
 # Set at module level for any db module that needs db upgrade ability
 my_module_upgrade_id = 1
 
+def do_db_compatibility_check():
+    required_pg_version = (9,6)
+    # TODO enable when more example DB response strings are verified
+    return(True)
+
+    try:
+        engine = anchore_engine.db.entities.common.get_engine()
+        if engine.dialect.server_version_info >= required_pg_version:
+            return(True)
+        else:
+            raise Exception("discovered db version {} is not >= required db version {}".format(engine.dialect.server_version_info, required_pg_version))
+    except Exception as err:
+        raise err
+
+    raise Exception("database compatibility could not be performed")
+        
 
 def get_versions():
     code_versions = {}

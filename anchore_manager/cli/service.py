@@ -271,7 +271,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
             db_params = anchore_manager.cli.utils.connect_database(config, db_params['db_connect'], db_params['db_connect_args']['ssl'], db_retries=300)
 
-            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig)
+            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=True)
 
             in_sync = False
             timed_out = False

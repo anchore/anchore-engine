@@ -102,6 +102,7 @@ def test_connection():
     test_connection = None
     try:
         test_connection = engine.connect()
+
     except Exception as err:
         raise Exception("test connection failed - exception: " + str(err))
     finally:
