@@ -144,10 +144,19 @@ def connect_database(config, db_connect, db_use_ssl, db_retries=1):
     if not db_connected:
         raise Exception("DB connection failed - exception: " + str(last_db_connect_err))
         
-
-def init_database(upgrade_module=None, localconfig=None):
+def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_check=False):
     code_versions = db_versions = None
     if upgrade_module:
+        try:
+            if do_db_compatibility_check and "do_db_compatibility_check" in dir(upgrade_module):
+                print "DB compatibility check running..."
+                upgrade_module.do_db_compatibility_check()
+                print "DB compatibility check success"
+            else:
+                print "DB compatibility check routine not present, skipping..."
+        except Exception as err:
+            raise err
+
         try:
             code_versions, db_versions = upgrade_module.get_versions()
             if code_versions and not db_versions:
