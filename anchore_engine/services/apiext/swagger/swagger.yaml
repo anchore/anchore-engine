@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.5"
+  version: "0.1.6"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -378,6 +378,11 @@ paths:
         x-nullable: true
         schema:
           $ref: "#/definitions/ImageFilter"
+      - name: fulltag
+        in: query
+        required: false
+        type: string
+        description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
       responses:
         200:
           description: "successful operation"

@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "Catalog service for anchore-engine"
-  version: "0.9.0"
+  version: "0.9.1"
   title: "Catalog"
   contact:
     email: "dev@anchore.com"
@@ -41,7 +41,6 @@ paths:
       responses:
         200:
           description: "success"
-          description: "service status"
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
@@ -288,14 +287,13 @@ paths:
       - "catalog"
       summary: "Get policy records from DB"
       description: ""
-      operationId: "policies_get"
+      operationId: "list_policies"
       parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "policy object to get"
+      - name: active
+        in: query
+        type: boolean
         required: false
+        description: "Filter policy bundles by active status"
       produces:
       - "application/json"
       responses:
@@ -303,18 +301,59 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policies"
+    post:
+      tags:
+      - "catalog"
+      summary: "Add policy record to DB"
+      description: ""
+      operationId: "add_policy"
+      parameters:
+      - name: bodycontent
+        in: body
+        schema:
+          type: object
+        description: "image record to update"
+        required: true
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policies"
+  /policies/{policyId}:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get policy record from DB"
+      description: "Get a single policy bundle"
+      operationId: "get_policy"
+      parameters:
+      - name: policyId
+        in: path
+        type: string
+        description: "policy id of object to get"
+        required: True
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policies"
     delete:
       tags:
       - "catalog"
       summary: "Delete policy record from DB"
       description: ""
-      operationId: "policies_delete"
+      operationId: "delete_policy"
       parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
+      - name: policyId
+        in: path
+        type: string
         description: "policy object to delete"
         required: true
       - name: 'cleanup_evals'
@@ -329,19 +368,23 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policies"
     put:
       tags:
       - "catalog"
       summary: "Update policy record from DB"
       description: ""
-      operationId: "policies_put"
+      operationId: "update_policy"
       parameters:
-      - name: 'bodycontent'
+      - name: policyId
+        in: path
+        type: string
+        required: true
+      - name: bodycontent
         in: body
         schema:
           type: object
-        description: "image record to update"
+        description: "Policy bundle content"
         required: true
       produces:
       - "application/json"
@@ -350,43 +393,35 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
-    post:
-      tags:
-      - "catalog"
-      summary: "Add policy record to DB"
-      description: ""
-      operationId: "policies_post"
-      parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "image record to update"
-        required: true
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "success"
-          schema:
-            type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
-
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policies"
   /evals:
     get:
       tags:
       - "catalog"
       summary: "Get eval records from DB"
       description: ""
-      operationId: "evals_get"
+      operationId: "get_evals"
       parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "eval object to get"
+      - name: policyId
+        type: string
+        in: query
         required: false
+      - name: imageDigest
+        type: string
+        in: query
+        required: false
+      - name: tag
+        type: string
+        in: query
+        required: false
+      - name: evalId
+        type: string
+        in: query
+        required: false
+      - name: newest_only
+        type: boolean
+        required: false
+        in: query
       produces:
       - "application/json"
       responses:
@@ -394,13 +429,13 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policy_evaluations"
     delete:
       tags:
       - "catalog"
       summary: "Delete eval record from DB"
       description: ""
-      operationId: "evals_delete"
+      operationId: "delete_eval"
       parameters:
       - name: 'bodycontent'
         in: body
@@ -415,13 +450,13 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policy_evaluations"
     put:
       tags:
       - "catalog"
       summary: "Update eval record from DB"
       description: ""
-      operationId: "evals_put"
+      operationId: "update_eval"
       parameters:
       - name: 'bodycontent'
         in: body
@@ -436,13 +471,13 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policy_evaluations"
     post:
       tags:
       - "catalog"
       summary: "Add eval record to DB"
       description: ""
-      operationId: "evals_post"
+      operationId: "add_eval"
       parameters:
       - name: 'bodycontent'
         in: body
@@ -457,7 +492,7 @@ paths:
           description: "success"
           schema:
             type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.policy_evaluations"
 
   /archive/{bucket}/{archiveid}:
     get:

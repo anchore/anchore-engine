@@ -19,7 +19,7 @@ def status():
         #    'busy': False,
         #    'up': True,
         #    'message': 'all good'
-        #}        
+        #}
         httpcode = 200
     except Exception as err:
         return_object = str(err)
@@ -46,7 +46,7 @@ def image_tags_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)    
+    return (return_object, httpcode)
 
 def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
     try:
@@ -145,112 +145,9 @@ def image_import(bodycontent):
     return (return_object, httpcode)
 
 
-# policy calls
-# @api.route('/policies', methods=['GET', 'POST', 'PUT', 'DELETE'])
-def policies_get(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.policies(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def policies_post(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.policies(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def policies_put(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.policies(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def policies_delete(bodycontent, cleanup_evals=True):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'cleanup_evals': cleanup_evals})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.policies(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
 
 # policy calls
-# @api.route('/evals', methods=['GET', 'POST', 'PUT', 'DELETE'])
-def evals_get(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.evals(session, request_inputs, bodycontent=bodycontent)
 
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def evals_post(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.evals(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def evals_put(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.evals(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
-def evals_delete(bodycontent):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.evals(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
 
 
 # subscription calls

@@ -1,15 +1,9 @@
 import json
-import re
 import hashlib
-import time
-import copy
-import random
 import urllib
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
-from anchore_engine import db
-from anchore_engine.db import db_services
 import anchore_engine.services.common
 import anchore_engine.clients.common
 from anchore_engine.subsys import logger
@@ -255,14 +249,14 @@ def get_active_policy(userId):
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
-    policy_records = get_policy(userId)
+    policy_records = list_policies(userId, active=True)
     for policy_record in policy_records:
         if policy_record['active']:
             return(policy_record)
 
     return({})
 
-def get_policy(userId, policyId=None):
+def get_policy(userId, policyId):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -276,15 +270,37 @@ def get_policy(userId, policyId=None):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/policies"
+    url = base_url + "/policies/" + policyId
 
-    payload = {}
-    if policyId:
-        payload["policyId"] = policyId
-
-    ret = http.anchy_get(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
+
+
+def list_policies(userId, active=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+    if active is not None:
+        params = {'active': active}
+    else:
+        params = None
+
+    url = base_url + "/policies"
+
+    ret = http.anchy_get(url, auth=auth, params=params, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return (ret)
 
 def update_policy(userId, policyId, policy_record={}):
     global localconfig, headers
@@ -300,7 +316,7 @@ def update_policy(userId, policyId, policy_record={}):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/policies"
+    url = base_url + "/policies/" + policyId
 
     payload = policy_record
 
@@ -332,7 +348,8 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
 
     return(ret)
 
-def get_eval(userId, policyId=None, imageDigest=None, tag=None, evalId=None):
+
+def get_evals(userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -348,17 +365,19 @@ def get_eval(userId, policyId=None, imageDigest=None, tag=None, evalId=None):
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/evals"
 
-    payload = {}
+    params = {}
     if policyId:
-        payload["policyId"] = policyId
+        params["policyId"] = policyId
     if imageDigest:
-        payload["imageDigest"] = imageDigest
+        params["imageDigest"] = imageDigest
     if evalId:
-        payload["evalId"] = evalId
+        params["evalId"] = evalId
     if tag:
-        payload["tag"] = tag
+        params["tag"] = tag
+    if newest_only:
+        params["newest_only"] = newest_only
 
-    ret = http.anchy_get(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    ret = http.anchy_get(url, params=params, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
 
@@ -367,9 +386,10 @@ def get_eval_latest(userId, policyId=None, imageDigest=None, tag=None, evalId=No
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
-    eval_records = get_eval(userId, policyId=policyId, imageDigest=imageDigest, tag=tag, evalId=evalId)
+    eval_records = get_evals(userId, policyId=policyId, imageDigest=imageDigest, tag=tag, evalId=evalId, newest_only=True)
     if eval_records:
         return(eval_records[0])
+
     return({})
 
 def add_eval(userId, evalId, policyId, imageDigest, tag, final_action, eval_url):
