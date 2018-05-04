@@ -56,9 +56,19 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         found_severity_idx = SEVERITY_ORDERING.index(sev.lower()) if sev else 0
                         if comparison_fn(found_severity_idx, comparison_idx):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:
-                                trigger_fname = image_cpe.pkg_path.split("/")[-1]
+                                if image_cpe.pkg_type in ['java', 'gem']:
+                                    try:
+                                        trigger_fname = image_cpe.pkg_path.split("/")[-1]
+                                    except:
+                                        trigger_fname = None
+                                elif image_cpe.pkg_type in ['npm']:
+                                    try:
+                                        trigger_fname = image_cpe.pkg_path.split("/")[-2]
+                                    except:
+                                        trigger_fname = None                                    
+
                                 if not trigger_fname:
-                                    trigger_fname = image_cpe.name
+                                    trigger_fname = "-".join([image_cpe.name, image_cpe.version])
 
                                 if is_fix_available is not None:
                                     # Must to a fix_available check

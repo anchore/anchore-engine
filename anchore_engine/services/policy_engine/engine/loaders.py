@@ -9,6 +9,31 @@ from .util.rpm import split_rpm_filename
 
 log = get_logger()
 
+# this is a static mapping of known package names (keys) to official cpe names for each package
+nomatch_inclusions = {
+    'java': {
+        'springframework': ['spring_framework', 'springsource_spring_framework'],
+    },
+    'npm': {
+        'hapi': ['hapi_server_framework'],
+        'handlebars.js': ['handlebars'],
+        'is-my-json-valid': ['is_my_json_valid'],
+        'mustache': ['mustache.js'],
+    },
+    'gem': {
+        'Arabic-Prawn': ['arabic_prawn'],
+        'bio-basespace-sdk': ['basespace_ruby_sdk'],
+        'cremefraiche': ['creme_fraiche'],
+        'html-sanitizer': ['html_sanitizer'],
+        'sentry-raven': ['raven-ruby'],
+        'RedCloth': ['redcloth_library'],
+        'VladTheEnterprising': ['vladtheenterprising'],
+        'yajl-ruby': ['yajl-ruby_gem'],
+    },
+    'python': {
+        'python-rrdtool': ['rrdtool'],
+    },
+}
 
 class ImageLoader(object):
     """
@@ -520,11 +545,55 @@ class ImageLoader(object):
 
         return gems
 
+    def _fuzzy_python(self, input_el):
+        global nomatch_inclusions
+
+        known_nomatch_inclusions = nomatch_inclusions.get('python', {})
+
+        ret_names = [input_el]
+        
+        if input_el in known_nomatch_inclusions:
+            for n in known_nomatch_inclusions[input_el]:
+                if n not in ret_names:
+                    ret_names.append(n)
+
+        return(ret_names)
+
+    def _fuzzy_npm(self, input_el):
+        global nomatch_inclusions
+
+        known_nomatch_inclusions = nomatch_inclusions.get('npm', {})
+
+        ret_names = [input_el]
+        
+        if input_el in known_nomatch_inclusions:
+            for n in known_nomatch_inclusions[input_el]:
+                if n not in ret_names:
+                    ret_names.append(n)
+
+        return(ret_names)
+
+    def _fuzzy_gem(self, input_el):
+        global nomatch_inclusions
+
+        known_nomatch_inclusions = nomatch_inclusions.get('gem', {})
+
+        ret_names = [input_el]
+        
+        if input_el in known_nomatch_inclusions:
+            for n in known_nomatch_inclusions[input_el]:
+                if n not in ret_names:
+                    ret_names.append(n)
+
+        return(ret_names)
+
     def _fuzzy_java(self, input_el):
+        global nomatch_inclusions
+
+        known_nomatch_inclusions = nomatch_inclusions.get('java', {})
+
         ret_names = []
         ret_versions = []
-
-        known_nomatch_inclusions = {'springframework': ['spring_framework', 'springsource_spring_framework']}
 
         iversion = input_el.get('implementation-version', "N/A")
         if iversion != 'N/A':
@@ -678,12 +747,12 @@ class ImageLoader(object):
         if python_json_raw:
             for path, python_str in python_json_raw.items():
                 python_json = json.loads(python_str)
-                guessed_names = [python_json['name']]
+                guessed_names = self._fuzzy_python(python_json['name'])
                 guessed_versions = [python_json['version']]
 
                 for n in guessed_names:
                     for v in guessed_versions:
-                        rawcpe = "cpe:/a:-:{}:{}".format(n, v)
+                        rawcpe = "cpe:/a:-:{}:{}:-:~~~python~~".format(n, v)
 
                         toks = rawcpe.split(":")
                         final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
@@ -713,11 +782,13 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
-        if True:
-            if containing_image.gems:
-                for gem in containing_image.gems:
+
+        if containing_image.gems:
+            for gem in containing_image.gems:
+                guessed_names = self._fuzzy_gem(gem.name)
+                for n in guessed_names:
                     for version in gem.versions_json:
-                        rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(gem.name, version)
+                        rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(n, version)
 
                         toks = rawcpe.split(":")
                         final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
@@ -748,10 +819,12 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-            if containing_image.npms:
-                for npm in containing_image.npms:
+        if containing_image.npms:
+            for npm in containing_image.npms:
+                guessed_names = self._fuzzy_npm(npm.name)
+                for n in guessed_names:
                     for version in npm.versions_json:
-                        rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(npm.name, version)
+                        rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(n, version)
 
                         toks = rawcpe.split(":")
                         final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']

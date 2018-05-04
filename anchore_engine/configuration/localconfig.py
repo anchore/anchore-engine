@@ -38,7 +38,8 @@ DEFAULT_CONFIG = {
             'enabled': True,
             'feeds': {
                 'vulnerabilities': True,
-                'packages': False
+                'packages': False,
+                'nvd': False
             }
         }
     }
@@ -47,9 +48,19 @@ DEFAULT_CONFIG = {
 localconfig = {}
 
 
-# Removed this, which was added by nurmi to fix load issues. should not be required.
-# localconfig.update(localconfig_defaults)
+def update_merge(base, override):
+    if not isinstance(base, dict) or not isinstance(override, dict):
+        return
 
+    for k, v in override.iteritems():
+        if k in base and type(base[k]) != type(v):
+            base[k] = v
+        else:
+            if k in base and isinstance(base[k], dict):
+                update_merge(base[k], v)
+            else:
+                base[k] = v
+    return
 
 def get_host_id():
     global localconfig
@@ -106,7 +117,8 @@ def load_config(configdir=None, configfile=None, validate_params={}):
     else:
         try:
             confdata = read_config(configfile=configfile, validate_params=validate_params)
-            localconfig.update(confdata)
+            #localconfig.update(confdata)
+            update_merge(localconfig, confdata)
         except Exception as err:
             raise err
 

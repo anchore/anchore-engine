@@ -236,7 +236,14 @@ class NvdFeedDataMapper(FeedDataMapper):
                         newcpe.name = final_cpe[3]
                         newcpe.version = final_cpe[4]
                         newcpe.update = final_cpe[5]
-                        newcpe.meta = final_cpe[6]
+                        themeta = final_cpe[6]
+                        if 'ruby' in final_cpe[6]:
+                            themeta = '~~~ruby~~'
+                        elif 'node.js' in final_cpe[6] or 'nodejs' in final_cpe[6]:
+                            themeta = '~~~node.js~~'
+                        elif 'python' in final_cpe[6]:
+                            themeta = '~~~python~~'
+                        newcpe.meta = themeta
                         newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
                         db_rec.vulnerable_cpes.append(newcpe)
 
@@ -738,8 +745,8 @@ class AnchoreServiceFeed(DataFeed):
         :param group_obj:
         :return:
         """
-
         sync_time = time.time()
+        updated_images = set()
         db = get_session()
         if full_flush:
             last_sync = None
@@ -774,6 +781,8 @@ class AnchoreServiceFeed(DataFeed):
         finally:
             sync_time = time.time() - sync_time
             log.info('Syncing group took {} sec'.format(sync_time))
+
+        return updated_images
 
     def _flush_group(self, group_obj, flush_helper_fn=None):
         """
@@ -1245,6 +1254,18 @@ class NvdFeed(AnchoreServiceFeed):
     def _dedup_data_key(self, item):
         return item.name
 
+    def record_count(self, group_name):
+        db = get_session()
+        try:
+            if 'nvddb' in group_name:
+                return db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_name).count()
+            else:
+                return 0
+        except Exception as e:
+            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
+        finally:
+            db.rollback()
 
 class FeedFactory(object):
     """
@@ -1334,6 +1355,8 @@ class DataFeeds(object):
             return self.vulnerabilities.record_count(group_name)
         elif feed_name == 'packages':
             return self.packages.record_count(group_name)
+        elif feed_name == 'nvd':
+            return self.nvd.record_count(group_name)
         else:
             return 0
 
