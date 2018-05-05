@@ -109,6 +109,12 @@ Subscribe to receive webhook notifications when new CVEs are added to an update
 
     anchore-cli subscription activate vuln_update docker.io/library/debian:latest
 
+## API
+Each service implements its own API, and all APIs are defined in Swagger/OpenAPI spec. You can find each in the _anchore_engine/services/\<servicename\>/api/swagger_ directory.
+
+For the exteranal API definition (the user-facing service), see: [External API Spec](https://github.com/anchore/anchore-engine/blob/master/anchore_engine/services/apiext/swagger/swagger.yaml).
+
+
 
 ## More Information
 
