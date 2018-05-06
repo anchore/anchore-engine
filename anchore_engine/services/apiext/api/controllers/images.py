@@ -361,7 +361,7 @@ def make_response_policyeval(user_auth, eval_record, params):
             else:
                 ret[tag]['status'] = 'fail'
 
-            ret[tag]['last_evaluation'] = datetime.datetime.fromtimestamp(eval_record['created_at']).isoformat()
+            ret[tag]['last_evaluation'] = datetime.datetime.fromtimestamp(eval_record['created_at']).isoformat() + 'Z'
 
         else:
             ret[tag]['policyId'] = "N/A"
@@ -408,7 +408,7 @@ def make_response_image(user_auth, image_record, params={}):
 
             for datekey in ['last_updated', 'created_at', 'tag_detected_at']:
                 try:
-                    image_detail[datekey] = datetime.datetime.utcfromtimestamp(image_detail[datekey]).isoformat()
+                    image_detail[datekey] = datetime.datetime.utcfromtimestamp(image_detail[datekey]).isoformat() + 'Z'
                 except:
                     pass
 
@@ -417,7 +417,7 @@ def make_response_image(user_auth, image_record, params={}):
 
     for datekey in ['last_updated', 'created_at', 'analyzed_at']:
         try:
-            image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat()
+            image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat() +'Z'
         except:
             pass
 
