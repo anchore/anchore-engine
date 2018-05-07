@@ -336,7 +336,7 @@ class BundleExecution(object):
             },
             'policy_data': [],
             'whitelist_data': [],
-            'policy_name': None,
+            'policy_name': '', # Use empty string here instead of 'null' to make more parser friendly
             'whitelist_names': []
         }
 
@@ -727,7 +727,6 @@ class PolicyMappingRule(MappingRule):
 
         if rule_json.get('policy_id') and rule_json.get('policy_ids'):
             raise ValidationError('Cannot specify both policy_id and policy_ids properties in mapping rule, must use one or the other')
-
         if rule_json.get('policy_id'):
             self.policy_ids = [rule_json.get('policy_id')]
         elif rule_json.get('policy_ids'):
