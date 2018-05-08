@@ -21,7 +21,7 @@ def make_response_registry(user_auth, registry_record, params):
 
         for datekey in ['last_updated', 'created_at']:
             try:
-                ret[datekey] = datetime.datetime.utcfromtimestamp(registry_record[datekey]).isoformat()
+                ret[datekey] = datetime.datetime.utcfromtimestamp(registry_record[datekey]).isoformat() + 'Z'
             except:
                 pass
     except Exception as err:
