@@ -26,14 +26,14 @@ def make_response_policy(user_auth, policy_record, params):
         latest_ts = 0
         for datekey in ['last_updated', 'created_at']:
             try:
-                update_ts = policy_record[datekey] #datetime.datetime.utcfromtimestamp(policy_record[datekey]).isoformat()
+                update_ts = policy_record[datekey] 
                 if update_ts > latest_ts:
                     latest_ts = update_ts
             except:
                 pass
 
             try:
-                update_ts = policy_record['policybundlemeta'][datekey] #datetime.datetime.utcfromtimestamp(policy_record['policybundlemeta'][datekey]).isoformat()
+                update_ts = policy_record['policybundlemeta'][datekey] 
                 if update_ts > latest_ts:
                     latest_ts = update_ts
             except:

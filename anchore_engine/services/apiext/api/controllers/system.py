@@ -39,7 +39,7 @@ def make_response_prune_candidate(user_auth, prune_record, params):
     try:
         for k in ['reason', 'resourcetype', 'userId']:
             ret[k] = prune_record[k]
-        ret['created_at'] = datetime.datetime.fromtimestamp(prune_record['created_at']).isoformat() + 'Z'
+        ret['created_at'] = datetime.datetime.utcfromtimestamp(prune_record['created_at']).isoformat() + 'Z'
 
         ret['resource_ids'] = {}
         if 'resource_ids' in prune_record:

@@ -361,7 +361,7 @@ def make_response_policyeval(user_auth, eval_record, params):
             else:
                 ret[tag]['status'] = 'fail'
 
-            ret[tag]['last_evaluation'] = datetime.datetime.fromtimestamp(eval_record['created_at']).isoformat() + 'Z'
+            ret[tag]['last_evaluation'] = datetime.datetime.utcfromtimestamp(eval_record['created_at']).isoformat() + 'Z'
 
         else:
             ret[tag]['policyId'] = "N/A"
