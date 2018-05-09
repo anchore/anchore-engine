@@ -9,12 +9,12 @@ import time
 import rpm
 import subprocess
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 analyzer_name = "package_list"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -24,8 +24,8 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore.anchore_utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-distrodict = anchore.anchore_utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 print "analyzer starting up: imageId="+str(imgid) + " meta="+str(meta) + " distrodict="+str(distrodict)
 
@@ -38,14 +38,14 @@ pkgsplussource = {}
 
 if distrodict['flavor'] == "RHEL":
     try:
-        rpms = anchore.anchore_utils.rpm_get_all_packages(unpackdir)
+        rpms = anchore_engine.analyzers.utils.rpm_get_all_packages(unpackdir)
         for pkg in rpms.keys():
             pkgsall[pkg] = rpms[pkg]['version'] + "-" + rpms[pkg]['release']
     except Exception as err:
         print "WARN: failed to generate RPM package list: " + str(err)
 
     try:
-        rpmfiles = anchore.anchore_utils.rpm_get_all_pkgfiles(unpackdir)
+        rpmfiles = anchore_engine.analyzers.utils.rpm_get_all_pkgfiles(unpackdir)
         for pkgfile in rpmfiles.keys():
             pkgfilesall[pkgfile] = "RPMFILE"
     except Exception as err:
@@ -53,7 +53,7 @@ if distrodict['flavor'] == "RHEL":
 
 elif distrodict['flavor'] == "DEB":
     try:
-        (all_packages, actual_packages, other_packages) = anchore.anchore_utils.dpkg_get_all_packages(unpackdir)
+        (all_packages, actual_packages, other_packages) = anchore_engine.analyzers.utils.dpkg_get_all_packages(unpackdir)
     
         for p in actual_packages.keys():
             pkgsall[p] = actual_packages[p]['version']
@@ -69,7 +69,7 @@ elif distrodict['flavor'] == "DEB":
         print "WARN: failed to get package list from DPKG: " + str(err)
 
     try:
-        dpkgfiles = anchore.anchore_utils.dpkg_get_all_pkgfiles(unpackdir)
+        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles(unpackdir)
         for pkgfile in dpkgfiles.keys():
             pkgfilesall[pkgfile] = "DPKGFILE"
 
@@ -78,7 +78,7 @@ elif distrodict['flavor'] == "DEB":
 
 elif distrodict['flavor'] == 'ALPINE':
     try:
-        apkgs = anchore.anchore_utils.apkg_get_all_pkgfiles(unpackdir)
+        apkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles(unpackdir)
         for pkg in apkgs.keys():
             # base
             if apkgs[pkg]['release'] != "N/A":
@@ -110,15 +110,15 @@ else:
 
 if pkgsall:
     ofile = os.path.join(outputdir, 'pkgs.all')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, pkgsall)
-    #anchore.anchore_utils.save_analysis_output(imgid, 'package_list', 'pkgs.all', pkgsall)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, pkgsall)
+    #anchore_engine.analyzers.utils.save_analysis_output(imgid, 'package_list', 'pkgs.all', pkgsall)
 if pkgfilesall:
     ofile = os.path.join(outputdir, 'pkgfiles.all')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, pkgfilesall)
-    #anchore.anchore_utils.save_analysis_output(imgid, 'package_list', 'pkgfiles.all', pkgfilesall)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, pkgfilesall)
+    #anchore_engine.analyzers.utils.save_analysis_output(imgid, 'package_list', 'pkgfiles.all', pkgfilesall)
 if pkgsplussource:
     ofile = os.path.join(outputdir, 'pkgs_plus_source.all')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, pkgsplussource)
-    #anchore.anchore_utils.save_analysis_output(imgid, 'package_list', 'pkgs_plus_source.all', pkgsplussource)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, pkgsplussource)
+    #anchore_engine.analyzers.utils.save_analysis_output(imgid, 'package_list', 'pkgs_plus_source.all', pkgsplussource)
 
 sys.exit(0)

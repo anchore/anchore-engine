@@ -18,12 +18,12 @@ import pkg_resources
 import zipfile
 from io import BytesIO
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 analyzer_name = "package_list"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -156,7 +156,7 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        fmap, allfiles = anchore.anchore_utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
@@ -173,6 +173,6 @@ except Exception as err:
 
 if resultlist:
     ofile = os.path.join(outputdir, 'pkgs.java')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, resultlist)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
 
 sys.exit(0)

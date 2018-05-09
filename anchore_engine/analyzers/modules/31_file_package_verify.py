@@ -14,7 +14,7 @@ import time
 import hashlib
 import copy
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 def apk_get_file_package_metadata(unpackdir, record_template):
     # derived from alpine apk checksum logic
@@ -233,7 +233,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
     result = {}
 
     try:
-        rpmdbdir = anchore.anchore_utils.rpm_prepdb(unpackdir)
+        rpmdbdir = anchore_engine.analyzers.utils.rpm_prepdb(unpackdir)
     except:
         rpmdbdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
 
@@ -282,7 +282,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
 analyzer_name = "file_package_verify"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -292,8 +292,8 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore.anchore_utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-distrodict = anchore.anchore_utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 flavor = distrodict['flavor']
 
 # gather file metadata from installed packages
@@ -339,13 +339,13 @@ if result:
 
 if resultlist:
     ofile = os.path.join(outputdir, 'distro.pkgfilemeta')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, resultlist)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
 
 # now run the distro package verifier, if present
 
 verify_result = {}
 try:
-    vhash, vcmd, voutput, verror, vexitcode = anchore.anchore_utils.verify_file_packages(unpackdir, flavor)
+    vhash, vcmd, voutput, verror, vexitcode = anchore_engine.analyzers.utils.verify_file_packages(unpackdir, flavor)
     if vcmd:
         verify_result = {
             'cmd': vcmd,
@@ -361,6 +361,6 @@ except Exception as err:
 if verify_result:
     verify_output = {'distroverify': json.dumps(verify_result)}
     ofile = os.path.join(outputdir, 'distro.verifyresult')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, verify_output)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, verify_output)
     
 sys.exit(0)

@@ -10,12 +10,12 @@ import rpm
 import subprocess
 import tarfile
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 analyzer_name = "content_search"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -65,7 +65,7 @@ if os.path.exists(unpackdir + "/anchore_allfiles.json"):
     with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
         allfiles = json.loads(FH.read())
 else:
-    fmap, allfiles = anchore.anchore_utils.get_files_from_path(unpackdir + "/rootfs")
+    fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
     with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
         OFH.write(json.dumps(allfiles))
 
@@ -127,9 +127,6 @@ for name in results.keys():
 
 if outputdata:
     ofile = os.path.join(outputdir, 'regexp_matches.all')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, outputdata)
-
-if params['storeonmatch'] and storefiles:
-    anchore.anchore_utils.save_files(imageId, analyzer_name, rootfsdir, storefiles)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outputdata)
 
 sys.exit(0)

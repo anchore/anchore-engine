@@ -14,7 +14,8 @@ from twisted.web import rewrite
 from twisted.internet.task import LoopingCall
 
 # anchore modules
-from anchore_engine.clients import http, localanchore, simplequeue
+from anchore_engine.clients import http, localanchore, simplequeue, policy_engine
+from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
@@ -24,6 +25,7 @@ from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users, db_anchore, db_services
 from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
+import anchore_engine.auth.anchore_io
 
 servicename = 'catalog'
 _default_api_version = "v1"
@@ -828,6 +830,33 @@ def handle_analyzer_queue(*args, **kwargs):
 
     return(True)
 
+def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
+    url = localconfig.get('policy_sync_url', None)
+    if not url:
+        raise Exception("cannot read policy_sync_url from loaded configuration")
+
+    client = anchore_engine.auth.anchore_io.get_anchoreio_client(anchoreio_user, anchoreio_pw)
+
+    bundledata = None
+    r = client.authenticated_get(url)
+    if r.get('status_code') == 200 and r.get('success'):
+        bundledataraw = r.get('text')
+        if bundledataraw:
+            bundledata = json.loads(bundledataraw).get('bundle')
+    else:
+        raise Exception("httpcode={} success={} text={}".format(r.get('status_code'), r.get('success', False), r.get('text', "")))
+
+    # schema check
+    try:
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        response = p_client.validate_bundle(policy_bundle=bundledata)
+        if not response.valid:
+            raise Exception("validation failed")
+    except ApiException as err:
+        raise Exception('Error response from policy service during bundle validation. Validation could not be performed: {}'.format(err))
+
+    return(bundledata)
+
 def handle_policy_bundle_sync(*args, **kwargs):
     global system_user_auth, bundle_user_last_updated
 
@@ -836,6 +865,20 @@ def handle_policy_bundle_sync(*args, **kwargs):
     
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
+
+    all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine'])
+    count=0
+    retries=10
+    while (not all_ready) and (count < retries):
+        logger.info("policy engine is not yet ready - retrying {}/{}".format(count, retries))
+        time.sleep(1)
+        count = count + 1
+        all_ready = anchore_engine.clients.common.check_services_ready(['policy_engine'])
+
+    if not all_ready:
+        logger.warn("policy engine not ready after {} retries - will try again next cycle".format(retries))
+        logger.debug("FIRING DONE: " + str(watcher))
+        return(True)
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
 
@@ -862,16 +905,20 @@ def handle_policy_bundle_sync(*args, **kwargs):
                 anchorecredstr = localconfig['credentials']['users'][userId]['external_service_auths']['anchoreio']['anchorecli']['auth']
                 anchore_user, anchore_pw = anchorecredstr.split(':')
 
-                with localanchore.get_anchorelock():
-                    anchore_user_bundle = localanchore.get_bundle(anchore_user, anchore_pw)
-
                 try:
-                    import anchore.anchore_policy
-                    rc = anchore.anchore_policy.verify_policy_bundle(bundle=anchore_user_bundle)
-                    if not rc:
-                        raise Exception("input bundle does not conform to anchore bundle schema")
+                    anchore_user_bundle = sync_policy_bundle((user['userId'], user['password']), anchore_user, anchore_pw, localconfig)
                 except Exception as err:
-                    raise Exception("cannot run bundle schema verification - exception: " + str(err))
+                    raise Exception("anchore.io bundle sync failed - exception: " + str(err))
+                    
+                #with localanchore.get_anchorelock():
+                #    anchore_user_bundle = localanchore.get_bundle(anchore_user, anchore_pw)
+                #try:
+                #    import anchore.anchore_policy
+                #    rc = anchore.anchore_policy.verify_policy_bundle(bundle=anchore_user_bundle)
+                #    if not rc:
+                #        raise Exception("input bundle does not conform to anchore bundle schema")
+                #except Exception as err:
+                #    raise Exception("cannot run bundle schema verification - exception: " + str(err))
 
                 # TODO should compare here to determine if new bundle is different from stored/active bundle
                 do_update = True

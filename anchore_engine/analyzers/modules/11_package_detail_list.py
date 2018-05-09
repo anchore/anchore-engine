@@ -9,13 +9,13 @@ import time
 import rpm
 import subprocess
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 def rpm_get_all_packages_detail(unpackdir):
     rpms = {}
 
     try:
-        rpmdbdir = anchore.anchore_utils.rpm_prepdb(unpackdir)
+        rpmdbdir = anchore_engine.analyzers.utils.rpm_prepdb(unpackdir)
     except:
         rpmdbdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
 
@@ -93,7 +93,7 @@ def deb_copyright_getlics(licfile):
 analyzer_name = "package_list"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -106,8 +106,8 @@ unpackdir = config['dirs']['unpackdir']
 #if not os.path.exists(outputdir):
 #    os.makedirs(outputdir)
 
-meta = anchore.anchore_utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-distrodict = anchore.anchore_utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 pkgs = None
 pkglist = {}
@@ -125,7 +125,7 @@ elif distrodict['flavor'] == "DEB":
         print "WARN: failed to generate DPKG package list: " + str(err)
 elif distrodict['flavor'] == "ALPINE":
     try:
-        pkgs = anchore.anchore_utils.apkg_get_all_pkgfiles(unpackdir)
+        pkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles(unpackdir)
     except Exception as err:
         print "WARN: failed to generate APKG package list: " + str(err)
 else:
@@ -137,6 +137,6 @@ if pkgs:
 
 if pkglist:
     ofile = os.path.join(outputdir, 'pkgs.allinfo')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, pkglist)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, pkglist)
 
 sys.exit(0)

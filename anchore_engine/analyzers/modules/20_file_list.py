@@ -9,7 +9,7 @@ import rpm
 import subprocess
 import stat
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
     rpmfiles = {}
@@ -17,10 +17,10 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
     nonmatchfiles = list()
     realnonmatchfiles = list()
     inpath = os.path.join(unpackdir, 'rootfs')
-    rpmdbdir = anchore.anchore_utils.rpm_prepdb(unpackdir)
+    rpmdbdir = anchore_engine.analyzers.utils.rpm_prepdb(unpackdir)
 
     if not allfiles:
-        filemap, allfiles = anchore.anchore_utils.get_files_from_path(inpath)
+        filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
 
     try:
         try:
@@ -82,12 +82,12 @@ def dpkg_check_file_membership_from_path(unpackdir, allfiles=None):
     inpath = os.path.join(unpackdir, 'rootfs')
 
     if not allfiles:
-        filemap, allfiles = anchore.anchore_utils.get_files_from_path(inpath)
+        filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
 
     try:
         try:
 
-            for flist in anchore.anchore_utils.grouper(allfiles.keys(), 256):
+            for flist in anchore_engine.analyzers.utils.grouper(allfiles.keys(), 256):
                 try:
                     sout = subprocess.check_output(['dpkg', "--admindir="+unpackdir+"/rootfs/var/lib/dpkg", '-S'] + flist, stderr=subprocess.STDOUT)
                     sout = sout.decode('utf8')
@@ -117,7 +117,7 @@ def dpkg_check_file_membership_from_path(unpackdir, allfiles=None):
 analyzer_name = "file_list"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -127,8 +127,8 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore.anchore_utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-distrodict = anchore.anchore_utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 simplefiles = {}
 outfiles = {}
@@ -140,7 +140,7 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        fmap, allfiles = anchore.anchore_utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
@@ -167,13 +167,13 @@ except Exception as err:
 
 if simplefiles:
     ofile = os.path.join(outputdir, 'files.all')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, simplefiles)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, simplefiles)
 
 if outfiles:
     ofile = os.path.join(outputdir, 'files.allinfo')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, outfiles)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles)
 if nonpkgoutfiles:
     ofile = os.path.join(outputdir, 'files.nonpkged')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, nonpkgoutfiles)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, nonpkgoutfiles)
 
 sys.exit(0)

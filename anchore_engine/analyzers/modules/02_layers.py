@@ -9,12 +9,12 @@ import time
 import rpm
 import subprocess
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 analyzer_name = "layer_info"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -50,6 +50,6 @@ except Exception as err:
     raise err
 
 ofile = os.path.join(outputdir, 'layers_to_dockerfile')
-anchore.anchore_utils.write_kvfile_fromdict(ofile, {'dockerfile_to_layer_map':json.dumps(output)})
+anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, {'dockerfile_to_layer_map':json.dumps(output)})
 
 sys.exit(0)

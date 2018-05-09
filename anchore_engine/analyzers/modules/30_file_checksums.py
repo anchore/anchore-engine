@@ -13,12 +13,12 @@ import tarfile
 import time
 import hashlib
 
-import anchore.anchore_utils
+import anchore_engine.analyzers.utils
 
 analyzer_name = "file_checksums"
 
 try:
-    config = anchore.anchore_utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
     print str(err)
     sys.exit(1)
@@ -38,14 +38,14 @@ outfiles_sha1 = {}
 outfiles_md5 = {}
 outfiles_sha256 = {}
 
-meta = anchore.anchore_utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-distrodict = anchore.anchore_utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 if distrodict['flavor'] == "ALPINE":
     dosha1 = True
 
 try:
     timer = time.time()
-    (tmp, allfiles) = anchore.anchore_utils.get_files_from_path(unpackdir + "/rootfs")
+    (tmp, allfiles) = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
     for name in allfiles.keys():
         name = re.sub("^\.", "", name)
         thefile = '/'.join([unpackdir, "rootfs", name])
@@ -91,15 +91,15 @@ except Exception as err:
 
 if outfiles_sha1:
     ofile = os.path.join(outputdir, 'files.sha1sums')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, outfiles_sha1)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles_sha1)
 
 if outfiles_md5:
     ofile = os.path.join(outputdir, 'files.md5sums')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, outfiles_md5)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles_md5)
 
 if outfiles_sha256:
     ofile = os.path.join(outputdir, 'files.sha256sums')
-    anchore.anchore_utils.write_kvfile_fromdict(ofile, outfiles_sha256)
+    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles_sha256)
 
 
 sys.exit(0)
