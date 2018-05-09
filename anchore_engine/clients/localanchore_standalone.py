@@ -9,7 +9,8 @@ from pkg_resources import resource_filename
 import anchore_engine.services.common
 import anchore_engine.auth.common
 import anchore_engine.auth.skopeo_wrapper
-from anchore.anchore_utils import read_kvfile_todict
+#from anchore.anchore_utils import read_kvfile_todict
+from anchore_engine.analyzers.utils import read_kvfile_todict
 
 from anchore_engine import utils
 

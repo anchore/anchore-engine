@@ -161,16 +161,18 @@ def load_config(configdir=None, configfile=None, validate_params={}):
         except:
             localconfig[key] = None
 
-    # try and populate local anchore config
-    # anchore_scanner_config = {}
-    # try:
-    #    anchore_scanner_config = clients.localanchore.get_config()
-    # except Exception as err:
-    #    logger.warn("cannot read local anchore config - skipping")
-    # localconfig['anchore_scanner_config'] = anchore_scanner_config
-
     # generate/setup the host_id in the service_dir
     localconfig['host_id'] = get_host_id()
+
+    # any special overrides/deprecation handling here
+    try:
+        analyzer_config = localconfig.get('services', {}).get('analyzer', {})
+        if analyzer_config and analyzer_config.get('analyzer_driver', 'localanchore') != 'nodocker':
+            logger.warn("the 'localanchore' analyzer driver has been removed from anchore-engine - defaulting to 'nodocker' analyzer driver")
+            localconfig['services']['analyzer']['analyzer_driver'] = 'nodocker'
+    except Exception as err:
+        logger.warn(str(err))
+        pass
 
     return (localconfig)
 

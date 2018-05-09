@@ -754,6 +754,21 @@ def rpm_verify_file_packages(unpackdir):
 
 ##### File IO helpers
 
+def read_kvfile_todict(file):
+    if not os.path.isfile(file):
+        return ({})
+
+    ret = {}
+    with open(file, 'r') as FH:
+        for l in FH.readlines():
+            l = l.strip().decode('utf8')
+            if l:
+                (k, v) = re.match('(\S*)\s*(.*)', l).group(1, 2)
+                k = re.sub("____", " ", k)
+                ret[k] = v
+
+    return (ret)
+
 def read_plainfile_tostr(file):
     if not os.path.isfile(file):
         return ("")

@@ -37,7 +37,6 @@ prometheus-flask-exporter==0.1.2
 python-swiftclient==3.5.0
 python-keystoneclient==3.15.0
 pytz==2013.6
-anchore
 certifi
 
 
