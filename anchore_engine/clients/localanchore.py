@@ -15,24 +15,44 @@ from anchore_engine.subsys import logger
 anchorelock = threading.Lock()
 anchorelocks = {}
 
-def get_anchorelock(lockId=None):
+def get_anchorelock(lockId=None, driver=None):
     global anchorelock, anchorelocks
     ret = anchorelock
 
     # first, check if we need to update the anchore configs
     localconfig = anchore_engine.configuration.localconfig.get_config()
-    if 'anchore_scanner_config' not in localconfig:
-        localconfig['anchore_scanner_config'] = get_config()
+
+    if not driver or driver in ['localanchore']:
+        if 'anchore_scanner_config' not in localconfig:
+            localconfig['anchore_scanner_config'] = get_config()
+            anchore_config = localconfig['anchore_scanner_config']
         anchore_config = localconfig['anchore_scanner_config']
-    anchore_config = localconfig['anchore_scanner_config']
+        anchore_data_dir = anchore_config['anchore_data_dir']
+    else:
+        anchore_data_dir = "/root/.anchore"
+        if not os.path.exists(os.path.join(anchore_data_dir, 'conf')):
+            try:
+                os.makedirs(os.path.join(anchore_data_dir, 'conf'))
+            except:
+                pass
 
     try:
-        for src,dst in [(localconfig['anchore_scanner_analyzer_config_file'], os.path.join(anchore_config['anchore_data_dir'], 'conf', 'analyzer_config.yaml')), (os.path.join(localconfig['service_dir'], 'anchore_config.yaml'), os.path.join(anchore_config['anchore_data_dir'], 'conf', 'config.yaml'))]:
+        for src,dst in [(localconfig['anchore_scanner_analyzer_config_file'], os.path.join(anchore_data_dir, 'conf', 'analyzer_config.yaml')), (os.path.join(localconfig['service_dir'], 'anchore_config.yaml'), os.path.join(anchore_data_dir, 'conf', 'config.yaml'))]:
             logger.debug("checking defaults against installed: " + src + " : " + dst)
-            if os.path.exists(src) and os.path.exists(dst):
+            if os.path.exists(src):
                 default_file = src
                 installed_file = dst
-                if not filecmp.cmp(default_file, installed_file):
+
+                do_copy = False
+                try:
+                    same = filecmp.cmp(default_file, installed_file)
+                    if not same:
+                        do_copy = True
+                except:
+                    do_copy = True
+
+                #if not filecmp.cmp(default_file, installed_file):
+                if do_copy:
                     logger.debug("checking source yaml ("+str(default_file)+")")
                     # check that it is at least valid yaml before copying in place
                     with open(default_file, 'r') as FH:

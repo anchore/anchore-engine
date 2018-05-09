@@ -14,7 +14,7 @@ from twisted.web import rewrite
 from twisted.internet.task import LoopingCall
 
 # anchore modules
-from anchore_engine.clients import http, localanchore, simplequeue, policy_engine
+from anchore_engine.clients import http, simplequeue, policy_engine
 from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
