@@ -168,8 +168,9 @@ def load_config(configdir=None, configfile=None, validate_params={}):
     try:
         analyzer_config = localconfig.get('services', {}).get('analyzer', {})
         if analyzer_config and analyzer_config.get('analyzer_driver', 'localanchore') != 'nodocker':
-            logger.warn("the 'localanchore' analyzer driver has been removed from anchore-engine - defaulting to 'nodocker' analyzer driver")
-            localconfig['services']['analyzer']['analyzer_driver'] = 'nodocker'
+            if not os.path.exists("/usr/bin/anchore"):
+                logger.warn("the 'localanchore' analyzer driver has been removed from anchore-engine - defaulting to 'nodocker' analyzer driver")
+                localconfig['services']['analyzer']['analyzer_driver'] = 'nodocker'
     except Exception as err:
         logger.warn(str(err))
         pass
