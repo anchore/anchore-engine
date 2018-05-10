@@ -655,7 +655,7 @@ def list_imagetags():
     return return_object, httpcode    
 
 
-def list_images(history=None, image_to_get=None):
+def list_images(history=None, image_to_get=None, fulltag=None):
 
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'history': False})
@@ -935,19 +935,25 @@ def images(request_inputs):
     httpcode = 500
 
     userId, pw = user_auth
-    digest = tag = imageId = imageDigest = dockerfile = annotations = None
+    fulltag = digest = tag = imageId = imageDigest = dockerfile = annotations = None
 
     history = False
-    if params and 'history' in params:
-        history = params['history']
-
     force = False
-    if params and 'force' in params:
-        force = params['force']
-
     autosubscribe = True
-    if params and 'autosubscribe' in params:
-        autosubscribe = params['autosubscribe']
+    query_fulltag = None
+
+    if params:
+        if 'history' in params:
+            history = params['history']
+
+        if 'force' in params:
+            force = params['force']
+
+        if 'autosubscribe' in params:
+            autosubscribe = params['autosubscribe']
+
+        if 'fulltag' in params:
+            query_fulltag = params['fulltag']
 
     if bodycontent:
         jsondata = json.loads(bodycontent)
@@ -976,6 +982,12 @@ def images(request_inputs):
             logger.debug("handling GET: ")
             try:
                 return_object = []
+
+                # Query param fulltag has precedence for search
+                if query_fulltag:
+                    tag = query_fulltag
+                    imageId = imageDigest = digest = None
+
                 image_records = catalog.get_image(user_auth, digest=digest, tag=tag, imageId=imageId,
                                                           imageDigest=imageDigest, history=history)
                 for image_record in image_records:
@@ -1163,7 +1175,7 @@ def images_check_impl(request_inputs, image_records):
 
                     try:
                         if params and 'history' in params and params['history']:
-                            results = catalog.get_eval(user_auth, imageDigest=imageDigest, tag=tag,
+                            results = catalog.get_evals(user_auth, imageDigest=imageDigest, tag=tag,
                                                                policyId=policyId)
                         else:
                             results = [catalog.get_eval_latest(user_auth, imageDigest=imageDigest, tag=tag,
