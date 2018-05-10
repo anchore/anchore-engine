@@ -32,7 +32,7 @@ from anchore_engine.subsys import logger as log
 import anchore_engine.subsys.metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
-TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL']
+TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group']
 
 # Toggle of lock usage, primarily for testing and debugging usage
 feed_sync_locking_enabled = True
@@ -367,7 +367,10 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 str(vuln.fixed_in()),
                 vuln.pkg_image_id,
                 'None', # Always empty this for now
-                vuln.vulnerability.link
+                vuln.vulnerability.link,
+                vuln.pkg_type,
+                'vulnerabilities',
+                vuln.vulnerability.namespace_name,
                 ]
             )
 
@@ -400,6 +403,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     'name': image_cpe.name,
                     'version': image_cpe.version,
                     'cpe': image_cpe.get_cpestring(),
+                    'feed_name': vulnerability_cpe.feed_name,
+                    'feed_namespace': vulnerability_cpe.namespace_name,
                 }
                 cpe_vuln_listing.append(cpe_vuln_el)
         except Exception as err:

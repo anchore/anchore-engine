@@ -152,13 +152,29 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         logger.warn("empty query data given to format - returning empty result")
         return (ret)
 
+    eltemplate = {
+        'vuln': 'None',
+        'severity': 'None',
+        'url': 'None',
+        'fix': 'None',
+        'package': 'None',
+        'package_type': 'None',
+        'package_cpe': 'None',
+        'package_path': 'None',
+        'feed': 'None',
+        'feed_group': 'None',
+    }
+
     if vulnerability_type == 'os':
         keymap = {
             'vuln': 'CVE_ID',
             'severity': 'Severity',
             'package': 'Vulnerable_Package',
             'fix': 'Fix_Available',
-            'url': 'URL'
+            'url': 'URL',
+            'package_type': 'Package_Type',
+            'feed': 'Feed',
+            'feed_group': 'Feed_Group',
         }
         scan_result = vulnerability_data['legacy_report']
         try:
@@ -167,15 +183,16 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                 rows = scan_result[imageId]['result']['rows']
                 for row in rows:
                     el = {}
+                    el.update(eltemplate)
                     for k in keymap.keys():
                         try:
                             el[k] = row[header.index(keymap[k])]
                         except:
-                            el[k] = None
+                            el[k] = 'None'
 
                         # conversions
                         if el[k] == 'N/A':
-                            el[k] = None
+                            el[k] = 'None'
 
                     ret.append(el)
         except Exception as err:
@@ -189,10 +206,14 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             'package_type': 'pkg_type',
             'package_cpe': 'cpe',
             'url': 'link',
+            'feed': 'feed_name',
+            'feed_group': 'feed_namespace',
         }
         scan_result = vulnerability_data['cpe_report']
         for vuln in scan_result:
             el = {}
+            el.update(eltemplate)
+
             for k in keymap.keys():
                 el[k] = vuln[keymap[k]]
 
@@ -207,8 +228,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             except:
                 el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
 
-            el['fix'] = 'None'
-            #el['url'] = "https://nvd.nist.gov/vuln/detail/{}".format(el['vuln'])
+            #el['fix'] = 'None'
             ret.append(el)
     else:
         ret = vulnerability_data
@@ -493,7 +513,7 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
     vendor_only = params.get('vendor_only', True)
 
     try:
-        if vulnerability_type not in anchore_engine.services.common.image_vulnerability_types:
+        if vulnerability_type not in anchore_engine.services.common.image_vulnerability_types + ['all']:
             httpcode = 404
             raise Exception("content type ("+str(vulnerability_type)+") not available")
 
@@ -508,17 +528,21 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                 raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
             imageDigest = image_report['imageDigest']
             try:
-                if vulnerability_type in ['os', 'non-os']:
-                    image_detail = image_report['image_detail'][0]
-                    imageId = image_detail['imageId']
-                    client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
-                    resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
-                    if doformat:
-                        return_object[imageDigest] = make_response_vulnerability(vulnerability_type, resp.to_dict())
+                image_detail = image_report['image_detail'][0]
+                imageId = image_detail['imageId']
+                client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
+                resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
+                if doformat:
+                    if vulnerability_type == 'all':
+                        ret = []
+                        for vtype in anchore_engine.services.common.image_vulnerability_types:
+                            ret = ret + make_response_vulnerability(vtype, resp.to_dict())
+                            #return_object[imageDigest] = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     else:
-                        return_object[imageDigest] = resp.to_dict()
+                        ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
+                    return_object[imageDigest] = ret
                 else:
-                    return_object[imageDigest] = []
+                    return_object[imageDigest] = resp.to_dict()
 
                 httpcode = 200
             except Exception as err:
@@ -823,7 +847,7 @@ def get_image_content_by_type_imageId(imageId, ctype):
 @flask_metrics.do_not_track()
 def get_image_vulnerability_types(imageDigest):
     try:
-        return_object = anchore_engine.services.common.image_vulnerability_types
+        return_object = anchore_engine.services.common.image_vulnerability_types + ['all']
         httpcode = 200
 
     except Exception as err:

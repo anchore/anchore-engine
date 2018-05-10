@@ -1689,6 +1689,21 @@ definitions:
       url:
         type: string
         description: The url for more information about the vulnerability
+      feed:
+        type: string
+        description: The name of the feed where vulnerability match was made
+      feed_group:
+        type: string
+        description: The name of the feed group where vulnerability match was made
+      package_type:
+        type: string
+        description: The type of vulnerable package
+      package_cpe:
+        type: string
+        description: The CPE string (if applicable) describing the package to vulnerability match
+      package_path:
+        type: string
+        description: The location (if applicable) of the vulnerable package in the container filesystem
   VulnerabilityList:
     type: array
     description: List of Vulnerability objects
