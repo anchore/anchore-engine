@@ -684,7 +684,13 @@ definitions:
         description: "location of software package artifact within the image"
       cpe:
         type: string
-        description: "full CPE string of software artifcat"
+        description: "full CPE string of software artifact"
+      feed_name:
+        type: string
+        description: "name of the feed where vulnerability was matched"
+      feed_namespace:
+        type: string
+        description: "name of the feed group where the vulnerability was matched"
   LegacyVulnerabilityReport:
     type: object
     description: "Generic object container for the legecy cve report"
