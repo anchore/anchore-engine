@@ -22,10 +22,14 @@ for root, dirnames, filenames in os.walk('./'+package_name):
 package_data = {
     package_name: [
         'conf/*',
-        #'twisted/plugins/*',
+        'analyzers/modules/*',
     ] + swaggers,
     'twisted':  ['plugins/*']
 }
+
+with open("/tmp/jj", 'w') as OFH:
+    import json
+    OFH.write(json.dumps(package_data, indent=4))
 
 data_files = []
 scripts = ['scripts/anchore-engine']

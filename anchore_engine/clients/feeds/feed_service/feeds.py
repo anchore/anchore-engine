@@ -157,7 +157,6 @@ class Oauth2AuthenticatedClient(object):
 
         :return: Dict of user metadata
         """
-
         user_url = self.anchore_auth['client_info_url'] + '/' + self.anchore_auth['username']
         user_timeout = 60
         retries = 3

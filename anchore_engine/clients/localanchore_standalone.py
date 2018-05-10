@@ -9,7 +9,8 @@ from pkg_resources import resource_filename
 import anchore_engine.services.common
 import anchore_engine.auth.common
 import anchore_engine.auth.skopeo_wrapper
-from anchore.anchore_utils import read_kvfile_todict
+#from anchore.anchore_utils import read_kvfile_todict
+from anchore_engine.analyzers.utils import read_kvfile_todict
 
 from anchore_engine import utils
 
@@ -725,18 +726,20 @@ def unpack(staging_dirs, layers):
     return(imageSize)
 
 
-def run_anchore_analyzers(staging_dirs, imageDigest, imageId):
+def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
     copydir = staging_dirs['copydir']
+    configdir = localconfig['service_dir']
 
     # run analyzers
-    anchore_module_root = resource_filename("anchore", "anchore-modules")
-    analyzer_root = os.path.join(anchore_module_root, "analyzers")
+    #anchore_module_root = resource_filename("anchore", "anchore-modules")
+    anchore_module_root = resource_filename("anchore_engine", "analyzers")
+    analyzer_root = os.path.join(anchore_module_root, "modules")
     for f in os.listdir(analyzer_root):
         thecmd = os.path.join(analyzer_root, f)
         if re.match(".*\.py$", thecmd):
-            cmdstr = " ".join([thecmd, imageId, unpackdir, outputdir, unpackdir])
+            cmdstr = " ".join([thecmd, configdir, imageId, unpackdir, outputdir, unpackdir])
             if True:
                 try:
                     rc, sout, serr = utils.run_command(cmdstr)
@@ -810,7 +813,7 @@ def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, i
     )
     return(image_report)
     
-def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[], use_cache_dir=None):
+def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None):
     # need all this
 
     imageId = None
@@ -880,7 +883,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, registry_creds=[],
         imageSize = unpack(staging_dirs, layers)
 
         familytree = layers
-        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId)
+        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
 
         image_report = generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, pullstring, analyzer_manifest)
 

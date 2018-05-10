@@ -138,6 +138,8 @@ def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_
     if driver == 'nodocker':
         return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
     else:
+        if not os.path.exists("/usr/bin/anchore"):
+            raise Exception("this build of anchore-engine does not include the local 'anchore' tool which is required for the 'localanchore' analyzer driver.  Please switch your analyzer driver to 'nodocker' mode and restart the service to proceed")
         return(perform_analyze_localanchore(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
 
 def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
@@ -171,9 +173,9 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
     logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
 
     logger.debug("obtaining anchorelock..." + str(pullstring))
-    with localanchore.get_anchorelock(lockId=pullstring):
+    with localanchore.get_anchorelock(lockId=pullstring, driver='nodocker'):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
-        analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, registry_creds=registry_creds, use_cache_dir=use_cache_dir)
+        analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, localconfig, registry_creds=registry_creds, use_cache_dir=use_cache_dir)
         ret_analyze = analyzed_image_report
 
     logger.info("performing analysis on image complete: " + str(pullstring))
