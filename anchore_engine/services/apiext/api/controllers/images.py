@@ -218,15 +218,16 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                 el[k] = vuln[keymap[k]]
 
             #el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
-            try:
-                pkgs = []
-                toks = el['package_path'].split(":")
-                for tok in toks:
-                    pkg = tok.split("/")[-1]
-                    pkgs.append(pkg)
-                el['package'] = '->'.join(pkgs)
-            except:
-                el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+            #try:
+            #    pkgs = []
+            #    toks = el['package_path'].split(":")
+            #    for tok in toks:
+            #        pkg = tok.split("/")[-1]
+            #        pkgs.append(pkg)
+            #    el['package'] = '->'.join(pkgs)
+            #except:
+            #    el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+            el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
 
             #el['fix'] = 'None'
             ret.append(el)
