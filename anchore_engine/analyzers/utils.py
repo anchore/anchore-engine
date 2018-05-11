@@ -6,6 +6,7 @@ import subprocess
 import hashlib
 import yaml
 import traceback
+import random
 from stat import *
 
 def init_analyzer_cmdline(argv, name):
@@ -15,13 +16,9 @@ def init_analyzer_cmdline(argv, name):
         print "ERROR: invalid input"
         raise Exception
 
-    #TODO - need to parameterize the location of the configdir
-    #configdir = "/config"
     configdir = argv[1]
 
-    #localconfig = anchore_engine.configuration.localconfig.load_config(configdir=configdir)
     anchore_conf = {
-        #'config_dir': localconfig['service_dir'],
         'config_dir': configdir,
     }
 
