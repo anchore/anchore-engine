@@ -345,6 +345,14 @@ def rpm_get_all_pkgfiles(unpackdir):
 
     return(rpmfiles)
 
+def make_anchoretmpdir(tmproot):
+    tmpdir = '/'.join([tmproot, str(random.randint(0, 9999999)) + ".anchoretmp"])
+    try:
+        os.makedirs(tmpdir)
+        return(tmpdir)
+    except:
+        return(False)
+
 def rpm_prepdb(unpackdir):
     origrpmdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
     ret = origrpmdir
