@@ -597,7 +597,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
     copydir = staging_dirs['copydir']
     cachedir = staging_dirs['cachedir']
 
-    rawlayers = manifest_data['layers']
+    rawlayers = list(manifest_data['layers'])
 
     hfinal = []
     layers = []
@@ -751,8 +751,6 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
                     logger.error("command failed with exception - " + str(err))
                     #raise err
 
-    analyzer_manifest = {}
-    #TODO populate analyzer_manifest?
     analyzer_report = {}
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
         if analyzer_output not in analyzer_report:
@@ -841,6 +839,9 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
                 dest_type = 'dir'
             else:
                 dest_type = 'oci'
+
+            #analyzer_manifest = {}
+            #analyzer_manifest.update(manifest_data)
 
         except Exception as err:
             raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))

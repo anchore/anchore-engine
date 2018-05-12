@@ -2,6 +2,7 @@ import json
 import uuid
 import hashlib
 import time
+import base64
 
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
@@ -1288,7 +1289,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
     if not dockerfile and anchore_data:
         a = anchore_data[0]
         try:
-            dockerfile = a['image']['imagedata']['image_report']['dockerfile_contents'].encode('base64')
+            dockerfile = base64.b64encode(a['image']['imagedata']['image_report']['dockerfile_contents'])
+            #dockerfile = a['image']['imagedata']['image_report']['dockerfile_contents'].encode('base64')
             dockerfile_mode = a['image']['imagedata']['image_report']['dockerfile_mode']
         except Exception as err:
             logger.warn("could not extract dockerfile_contents from input anchore_data - exception: " + str(err))
@@ -1316,9 +1318,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
                             image_content_data = {}
-                            for content_type in anchore_engine.services.common.image_content_types:
+                            for content_type in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
                                 try:
-                                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type)
+                                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type, manifest=manifest)
                                 except:
                                     image_content_data[content_type] = {}
                             if image_content_data:

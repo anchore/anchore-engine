@@ -764,6 +764,56 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/metadata:
+    get:
+      tags:
+      - Images
+      - Image Metadata
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_image_metadata
+      summary: List image metadata types
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Metadata listing for the image
+          schema:
+            type: array
+            items:
+              type: string
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/metadata/{mtype}:
+    get:
+      tags:
+      - Images
+      - Image Metadata
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_metadata_by_type
+      summary: Get the metadata of an image by type
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      - name: mtype
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Metadata of specified type from the image
+          schema:
+            $ref: "#/definitions/MetadataResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
   /repositories:
     post:
       tags:
@@ -1576,6 +1626,16 @@ definitions:
         type: array
         items:
           type: object
+  MetadataResponse:
+    type: object
+    description: "Generic wrapper for metadata listings from images"
+    properties:
+      imageDigest:
+        type: string
+      metadata_type:
+        type: string
+      metadata:
+        type: object
   PolicyEvaluation:
     description: Evaluation response object
     type: object

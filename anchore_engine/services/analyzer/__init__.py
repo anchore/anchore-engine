@@ -328,9 +328,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 try:
                     logger.debug("extracting image content data")
                     image_content_data = {}
-                    for content_type in anchore_engine.services.common.image_content_types:
+                    for content_type in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
                         try:
-                            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
+                            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type, manifest=manifest)
                         except:
                             image_content_data[content_type] = {}
 

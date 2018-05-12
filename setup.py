@@ -27,10 +27,6 @@ package_data = {
     'twisted':  ['plugins/*']
 }
 
-with open("/tmp/jj", 'w') as OFH:
-    import json
-    OFH.write(json.dumps(package_data, indent=4))
-
 data_files = []
 scripts = ['scripts/anchore-engine']
 packages = find_packages(exclude=['test', 'test.*'])

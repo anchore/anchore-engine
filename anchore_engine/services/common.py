@@ -9,6 +9,7 @@ import hashlib
 import traceback
 import importlib
 import threading
+import base64
 
 #import simplejson as json
 from collections import OrderedDict
@@ -40,6 +41,7 @@ resource_types = ['registries', 'users', 'images', 'policies', 'evaluations', 's
 bucket_types = ["analysis_data", "policy_bundles", "policy_evaluations", "query_data", "vulnerability_scan", "image_content_data", "manifest_data"]
 super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
+image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
 
 def update_image_record_with_analysis_data(image_record, image_data):
@@ -79,8 +81,9 @@ def update_image_record_with_analysis_data(image_record, image_data):
     if dockerfile_content and dockerfile_mode:
         image_record['dockerfile_mode'] = dockerfile_mode
         for image_detail in image_record['image_detail']:
-            image_detail['dockerfile'] = dockerfile_content.encode('base64')
             logger.debug("setting image_detail: ")
+            #image_detail['dockerfile'] = dockerfile_content.encode('base64')
+            image_detail['dockerfile'] = base64.b64encode(dockerfile_content)
 
     return(True)
 
@@ -820,7 +823,7 @@ def extract_dockerfile_content(image_data):
 
     return(dockerfile_content, dockerfile_mode)
 
-def extract_analyzer_content(image_data, content_type):
+def extract_analyzer_content(image_data, content_type, manifest=None):
     ret = {}
     try:
         idata = image_data[0]['image']
@@ -895,7 +898,27 @@ def extract_analyzer_content(image_data, content_type):
                     ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
             except Exception as err:
                 raise Exception("could not extract/parse content info - exception: " + str(err))
-            
+        elif content_type == 'manifest':
+            ret = {}
+            try:
+                if manifest:
+                    ret = json.loads(manifest)
+            except:
+                ret = {}
+        elif content_type == 'docker_history':
+            ret = []
+            try:
+                ret = idata.get('imagedata', {}).get('image_report', {}).get('docker_history', [])
+            except:
+                ret = []
+        elif content_type == 'dockerfile':
+            ret = ""
+            try:
+                if idata.get('imagedata', {}).get('image_report', {}).get('dockerfile_mode', "").lower() == 'actual':
+                    ret = idata.get('imagedata', {}).get('image_report', {}).get('dockerfile_contents', "")
+            except:
+                ret = ""
+
     except Exception as err:
         logger.warn("exception: " + str(err))
         raise err

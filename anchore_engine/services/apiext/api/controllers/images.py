@@ -1,6 +1,7 @@
 import json
 import stat
 import datetime
+import base64
 
 from flask import request
 
@@ -16,7 +17,7 @@ from anchore_engine.subsys.metrics import flask_metrics
 def make_response_content(content_type, content_data):
     ret = []
 
-    if content_type not in anchore_engine.services.common.image_content_types:
+    if content_type not in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
         logger.warn("input content_type ("+str(content_type)+") not supported ("+str(anchore_engine.services.common.image_content_types)+")")
         return(ret)
 
@@ -96,7 +97,6 @@ def make_response_content(content_type, content_data):
                 el['specification-version'] = content_data[package]['specification-version']
                 el['implementation-version'] = content_data[package]['implementation-version']
                 el['origin'] = content_data[package]['origin'] or 'Unknown'
-                #el['license'] = content_data[package]['license'] or 'Unknown'
             except:
                 el = {}
             if el:
@@ -120,7 +120,6 @@ def make_response_content(content_type, content_data):
                     try:
                         el[elmap[elkey]] = content_data[filename][elkey]
                     except:
-                        #el.pop(elmap[elkey], None)
                         el[elmap[elkey]] = None
 
                 # special formatting
@@ -128,18 +127,22 @@ def make_response_content(content_type, content_data):
                 if el['sha256'] == 'DIRECTORY_OR_OTHER':
                     el['sha256'] = None
 
-                #el['mode'] = oct(stat.S_IMODE(content_data[filename]['mode']))
-                #el['linkdest'] = content_data[filename]['linkdst']
-                #el['sha256'] = content_data[filename]['sha256']
-                #el['size'] = content_data[filename]['size']
-                #el['type'] = content_data[filename]['type']
-                #el['uid'] = content_data[filesname]['uid']
-                #el['gid'] = content_data[filesname]['gid']
-
             except Exception as err:
                 el = {}
             if el:
                 ret.append(el)        
+    elif content_type in ['manifest', 'docker_history']:
+        try:
+            ret = base64.b64encode(json.dumps(content_data))
+        except Exception as err:
+            logger.warn("could not convert content to json/base64 encode - exception: {}".format(err))
+            ret = ""
+    elif content_type in ['dockerfile']:
+        try:
+            ret = base64.b64encode(content_data)
+        except Exception as err:
+            logger.warn("could not base64 encode content - exception: {}".format(err))
+            ret = ""
     else:
         ret = content_data
 
@@ -567,7 +570,7 @@ def get_content(request_inputs, content_type, doformat=False):
     httpcode = 500
     userId, pw = user_auth
     try:
-        if content_type not in anchore_engine.services.common.image_content_types:
+        if content_type not in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
             httpcode = 404
             raise Exception("content type ("+str(content_type)+") not available")
 
@@ -785,6 +788,36 @@ def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=N
         httpcode = 500
         return_object = str(err)
 
+    return return_object, httpcode
+
+
+def list_image_metadata(imageDigest):
+    try:
+        return_object = anchore_engine.services.common.image_metadata_types
+        httpcode = 200
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return return_object, httpcode
+
+@flask_metrics.do_not_track()
+def get_image_metadata_by_type(imageDigest, mtype):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'imageDigest':imageDigest})
+
+        return_object, httpcode = get_content(request_inputs, mtype, doformat=True)
+        if httpcode == 200:
+            return_object = {
+                'imageDigest': imageDigest,
+                'metadata_type': mtype,
+                'metadata': return_object.values()[0]
+            }
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+    
     return return_object, httpcode
 
 
