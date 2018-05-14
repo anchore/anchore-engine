@@ -131,13 +131,13 @@ def make_response_content(content_type, content_data):
                 el = {}
             if el:
                 ret.append(el)        
-    elif content_type in ['manifest', 'docker_history']:
+    elif content_type in ['docker_history']:
         try:
             ret = base64.b64encode(json.dumps(content_data))
         except Exception as err:
             logger.warn("could not convert content to json/base64 encode - exception: {}".format(err))
             ret = ""
-    elif content_type in ['dockerfile']:
+    elif content_type in ['manifest', 'dockerfile']:
         try:
             ret = base64.b64encode(content_data)
         except Exception as err:
@@ -220,141 +220,11 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             for k in keymap.keys():
                 el[k] = vuln[keymap[k]]
 
-            #el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
-            #try:
-            #    pkgs = []
-            #    toks = el['package_path'].split(":")
-            #    for tok in toks:
-            #        pkg = tok.split("/")[-1]
-            #        pkgs.append(pkg)
-            #    el['package'] = '->'.join(pkgs)
-            #except:
-            #    el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
             el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
 
-            #el['fix'] = 'None'
             ret.append(el)
     else:
         ret = vulnerability_data
-
-    return (ret)
-
-def make_response_query_orig(queryType, query_data):
-    ret = []
-
-    if not query_data:
-        logger.warn("empty query data given to format - returning empty result")
-        return (ret)
-
-    if queryType == 'cve-scan':
-        keymap = {
-            'vuln': 'CVE_ID',
-            'severity': 'Severity',
-            'package': 'Vulnerable_Package',
-            'fix': 'Fix_Available',
-            'url': 'URL'
-        }
-        scan_result = query_data['legacy_report']
-        try:
-            for imageId in scan_result.keys():
-                header = scan_result[imageId]['result']['header']
-                rows = scan_result[imageId]['result']['rows']
-                for row in rows:
-                    el = {}
-                    for k in keymap.keys():
-                        try:
-                            el[k] = row[header.index(keymap[k])]
-                        except:
-                            el[k] = None
-
-                        # conversions
-                        if el[k] == 'N/A':
-                            el[k] = None
-
-                    ret.append(el)
-        except Exception as err:
-            logger.warn("could not prepare query response - exception: " + str(err))
-            ret = []
-
-    elif queryType in ['list-package-detail', 'list-npm-detail', 'list-gem-detail']:
-        keymap = {
-            'package': 'Package_Name',
-            'type': 'Type',
-            'size': 'Size',
-            'version': 'Version',
-            'origin': 'Origin',
-            'license': 'License',
-            'location': 'Location'
-        }
-
-        try:
-            for imageId in query_data.keys():
-                header = query_data[imageId]['result']['header']
-                rows = query_data[imageId]['result']['rows']
-                for row in rows:
-                    el = {}
-                    for k in keymap.keys():
-                        try:
-                            el[k] = row[header.index(keymap[k])]
-                        except:
-                            el[k] = None
-
-                        # conversions
-                        if el[k] == 'N/A':
-                            el[k] = None
-                        elif k == 'size':
-                            try:
-                                el[k] = int(el[k])
-                            except:
-                                el[k] = None
-                        elif k == 'type' and not el[k]:
-                            if queryType == 'list-npm-detail':
-                                el[k] = 'NPM'
-                            elif queryType == 'list-gem-detail':
-                                el[k] = 'GEM'
-                    if queryType == 'list-package-detail' and 'location' in el:
-                        el.pop('location', None)
-                    ret.append(el)
-        except Exception as err:
-            logger.warn("could not prepare query response - exception: " + str(err))
-            ret = []
-
-    elif queryType == 'list-files-detail':
-        keymap = {
-            'filename': 'Filename',
-            'type': 'Type',
-            'size': 'Size',
-            'mode': 'Mode',
-            'sha256': 'Checksum',
-            'linkdest': 'Link_Dest'
-        }
-
-        try:
-            for imageId in query_data.keys():
-                header = query_data[imageId]['result']['header']
-                rows = query_data[imageId]['result']['rows']
-                for row in rows:
-                    el = {}
-                    for k in keymap.keys():
-                        try:
-                            el[k] = row[header.index(keymap[k])]
-                        except:
-                            el[k] = None
-
-                        # conversions
-                        if el[k] == 'N/A':
-                            el[k] = None
-                        elif el[k] == 'DIRECTORY_OR_OTHER':
-                            el[k] = None
-                        elif k == 'size':
-                            el[k] = int(el[k])
-
-                    ret.append(el)
-        except Exception as err:
-            logger.warn("could not prepare query response - exception: " + str(err))
-            ret = []
-    else:
-        ret = query_data
 
     return (ret)
 
@@ -444,14 +314,6 @@ def make_response_image(user_auth, image_record, params={}):
             image_record[datekey] = datetime.datetime.utcfromtimestamp(image_record[datekey]).isoformat() +'Z'
         except:
             pass
-
-    #image_content_metadata = {}
-    #try:
-    #    image_content_metadata = get_image_summary(user_auth, image_record)
-    #except:
-    #    image_content_metadata = {}
-    #ret['image_content'] = {}
-    #ret['image_content']['metadata'] = image_content_metadata
 
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
@@ -586,14 +448,24 @@ def get_content(request_inputs, content_type, doformat=False):
 
             imageDigest = image_report['imageDigest']
 
-            try:
-                image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
-            except Exception as err:
-                raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
+            if content_type == 'manifest':
+                try:
+                    image_manifest_data = catalog.get_document(user_auth, 'manifest_data', imageDigest)
+                except Exception as err:
+                    raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch content data {} from archive".format(content_type), input_httpcode=500)
 
-            if content_type not in image_content_data:
-                httpcode = 404
-                raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
+                image_content_data = {
+                    'manifest': image_manifest_data
+                }
+            else:
+                try:
+                    image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
+                except Exception as err:
+                    raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
+
+                if content_type not in image_content_data:
+                    httpcode = 404
+                    raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
 
             return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
 
