@@ -132,10 +132,9 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
                             logger.info('Skipping removal of documents on source because source and dest drivers are the same')
                     else:
                         logger.info('Skipping removal of document on source driver because configured to leave source data.')
-
+                    counter = counter + 1
                 except Exception as e:
                     logger.exception('Error migrating content url: {} to {}'.format(content_url, context.from_archive.primary_client.__config_name__, context.to_archive.primary_client.__config_name__,))
-                    break
             else:
                 result_state = 'complete'
 
@@ -146,6 +145,7 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
                 task_record.last_state = task_record.state
                 task_record.state = result_state
                 task_record.ended_at = datetime.datetime.utcnow()
+                task_record.archive_documents_migrated = counter
                 logger.info('Migration result summary: {}'.format(json.dumps(task_record.to_json())))
 
 
