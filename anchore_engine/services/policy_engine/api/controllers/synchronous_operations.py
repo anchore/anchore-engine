@@ -32,7 +32,7 @@ from anchore_engine.subsys import logger as log
 import anchore_engine.subsys.metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
-TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group']
+TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version']
 
 # Toggle of lock usage, primarily for testing and debugging usage
 feed_sync_locking_enabled = True
@@ -371,6 +371,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 vuln.pkg_type,
                 'vulnerabilities',
                 vuln.vulnerability.namespace_name,
+                vuln.pkg_name,
+                vuln.package.fullversion,
                 ]
             )
 

@@ -1755,6 +1755,12 @@ definitions:
       feed_group:
         type: string
         description: The name of the feed group where vulnerability match was made
+      package_name:
+        type: string
+        description: The name of the vulnerable package artifact
+      package_version:
+        type: string
+        description: The version of the vulnerable package artifact
       package_type:
         type: string
         description: The type of vulnerable package

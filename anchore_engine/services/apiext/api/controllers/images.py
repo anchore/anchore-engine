@@ -161,6 +161,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'url': 'None',
         'fix': 'None',
         'package': 'None',
+        'package_name': 'None',
+        'package_version': 'None',
         'package_type': 'None',
         'package_cpe': 'None',
         'package_path': 'None',
@@ -178,6 +180,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             'package_type': 'Package_Type',
             'feed': 'Feed',
             'feed_group': 'Feed_Group',
+            'package_name': 'Package_Name',
+            'package_version': 'Package_Version',
         }
         scan_result = vulnerability_data['legacy_report']
         try:
@@ -205,6 +209,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         keymap = {
             'vuln': 'vulnerability_id',
             'severity': 'severity',
+            'package_name': 'name',
+            'package_version': 'version',
             'package_path': 'pkg_path',
             'package_type': 'pkg_type',
             'package_cpe': 'cpe',
