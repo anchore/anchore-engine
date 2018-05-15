@@ -7,6 +7,7 @@ import hashlib
 import yaml
 import traceback
 import random
+import json
 from stat import *
 
 def init_analyzer_cmdline(argv, name):
