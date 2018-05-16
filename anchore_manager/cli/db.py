@@ -33,13 +33,14 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries):
                 log_level = 'DEBUG'
             logger.set_log_level(log_level, log_to_stdout=True)
 
-            db_params = anchore_manager.cli.utils.connect_database(config, db_connect, db_use_ssl, db_retries=db_retries)
+            db_params = anchore_manager.cli.utils.make_db_params(db_connect=db_connect, db_use_ssl=db_use_ssl)
+            db_params = anchore_manager.cli.utils.connect_database(config, db_params, db_retries=db_retries)
 
         except Exception as err:
             raise err
 
     except Exception as err:
-        print anchore_manager.cli.utils.format_error_output(config, 'db', {}, err)
+        logger.error(anchore_manager.cli.utils.format_error_output(config, 'db', {}, err))
         sys.exit(2)
 
 
@@ -62,7 +63,7 @@ def upgrade(anchore_module, dontask):
 
     try:
         try:
-            print "Loading DB upgrade routines from module."
+            logger.info("Loading DB upgrade routines from module.")
             module = importlib.import_module(module_name + ".db.entities.upgrade")
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
@@ -75,10 +76,10 @@ def upgrade(anchore_module, dontask):
         if not code_db_version or not running_db_version:
             raise Exception("cannot get version information (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
         elif code_db_version == running_db_version:
-            print "Code and DB versions are in sync."
+            logger.info("Code and DB versions are in sync.")
             ecode = 0
         else:
-            print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
+            logger.info("Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version))
 
             do_upgrade = False
             if dontask:
@@ -92,20 +93,20 @@ def upgrade(anchore_module, dontask):
                     do_upgrade = True
 
             if do_upgrade:
-                print "Performing upgrade."
+                logger.info("Performing upgrade.")
                 try:
                     # perform the upgrade logic here
                     rc = module.run_upgrade()
                     if rc:
-                        print "Upgrade completed"
+                        logger.info("Upgrade completed")
                     else:
-                        print "No upgrade necessary. Completed."
+                        logger.info("No upgrade necessary. Completed.")
                 except Exception as err:
                     raise err
             else:
-                print "Skipping upgrade."
+                logger.info("Skipping upgrade.")
     except Exception as err:
-        print anchore_manager.cli.utils.format_error_output(config, 'dbupgrade', {}, err)
+        logger.error(anchore_manager.cli.utils.format_error_output(config, 'dbupgrade', {}, err))
         if not ecode:
             ecode = 2
 

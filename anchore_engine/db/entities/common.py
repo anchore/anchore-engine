@@ -117,14 +117,16 @@ def do_connect(db_params):
     db_connect_args = db_params.get('db_connect_args', None)
     db_pool_size = db_params.get('db_pool_size', None)
     db_pool_max_overflow = db_params.get('db_pool_max_overflow', None)
+    db_echo = db_params.get('db_echo', False)
 
     if db_connect:
         try:
             if db_connect.startswith('sqlite://'):
                 # Special case for testing with sqlite. Not for production use, unit tests only
-                engine = sqlalchemy.create_engine(db_connect, echo=False)
+                engine = sqlalchemy.create_engine(db_connect, echo=db_echo)
             else:
-                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=False,
+                logger.debug("database connection args {} db_echo={}".format(db_connect_args, db_echo))
+                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=db_echo,
                                                   pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
 
         except Exception as err:
@@ -157,8 +159,10 @@ def get_params(localconfig):
         # connect to DB using db_connect from configuration
         db_connect = None
         db_connect_args = {}
-        db_pool_size = 10
-        db_pool_max_overflow = 20
+        db_pool_size = 30
+        db_pool_max_overflow = 75
+        db_echo = False
+
         if 'db_connect' in db_auth and db_auth['db_connect']:
             db_connect = db_auth['db_connect']
         if 'db_connect_args' in db_auth and db_auth['db_connect_args']:
@@ -167,6 +171,8 @@ def get_params(localconfig):
             db_pool_size = int(db_auth['db_pool_size'])
         if 'db_pool_max_overflow' in db_auth:
             db_pool_max_overflow = int(db_auth['db_pool_max_overflow'])
+        if 'db_echo' in db_auth:
+            db_echo = db_auth['db_echo'] in [True, 'True', 'true']
     except:
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
@@ -175,7 +181,8 @@ def get_params(localconfig):
         'db_connect': db_connect,
         'db_connect_args': db_connect_args,
         'db_pool_size': db_pool_size,
-        'db_pool_max_overflow': db_pool_max_overflow
+        'db_pool_max_overflow': db_pool_max_overflow,
+        'db_echo': db_echo
     }
     return(ret)
 
