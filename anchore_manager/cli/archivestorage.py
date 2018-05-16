@@ -22,9 +22,11 @@ module = None
 @click.option('--configfile', type=click.Path(exists=True))
 @click.option("--db-connect", nargs=1, required=True, help="DB connection string override.")
 @click.option("--db-use-ssl", is_flag=True, help="Set if DB connection is using SSL.")
-@click.option("--db-retries", nargs=1, default=1, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
+@click.option("--db-retries", nargs=1, default=1, type=int, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
+@click.option("--db-timeout", nargs=1, default=30, type=int, help="Number of seconds to wait for DB call to complete before timing out.")
+@click.option("--db-connect-timeout", nargs=1, default=120, type=int, help="Number of seconds to wait for initial DB connection before timing out.")
 @click.pass_obj
-def archivestorage(ctx_config , configfile, db_connect, db_use_ssl, db_retries):
+def archivestorage(ctx_config , configfile, db_connect, db_use_ssl, db_retries, db_timeout, db_connect_timeout):
     global config, localconfig
     config = ctx_config
 
@@ -47,7 +49,7 @@ def archivestorage(ctx_config , configfile, db_connect, db_use_ssl, db_retries):
             logger.set_log_level(log_level, log_to_stdout=True)
 
             # Use db connection from the config file
-            db_params = utils.make_db_params(db_connect=db_connect, db_use_ssl=db_use_ssl)
+            db_params = utils.make_db_params(db_connect=db_connect, db_use_ssl=db_use_ssl, db_timeout=db_timeout, db_connect_timeout=db_connect_timeout)
             db_params = utils.connect_database(config, db_params, db_retries=db_retries)
         except Exception as err:
             raise err

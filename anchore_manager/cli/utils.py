@@ -105,7 +105,7 @@ def doexit(ecode):
         pass
     sys.exit(ecode)
 
-def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=120, db_connect_timeout=30, db_pool_size=30, db_pool_max_overflow=100):
+def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_timeout=120, db_pool_size=30, db_pool_max_overflow=100):
     db_connect_args = {
         'timeout': db_timeout,
         'ssl': db_use_ssl,
