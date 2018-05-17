@@ -55,8 +55,6 @@ def get_versions():
         with session_scope() as dbsession:
             db_versions = db_anchore.get(session=dbsession)
     except Exception as err:
-        logger.info("DB Exception: {}".format(str(err)))
-
         if is_table_not_found(err):
             logger.info("anchore table not found")
             #raise TableNotFoundError('anchore table not found')
