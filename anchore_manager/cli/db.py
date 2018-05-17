@@ -49,7 +49,8 @@ def db(ctx_config, db_connect, db_use_ssl, db_retries, db_timeout, db_connect_ti
 @db.command(name='upgrade', short_help="Upgrade DB to version compatible with installed anchore-engine code.")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB upgrade routines from (default=anchore_engine)")
 @click.option("--dontask", is_flag=True, help="Perform upgrade (if necessary) without prompting.")
-def upgrade(anchore_module, dontask):
+@click.option("--skip-db-compat-check", is_flag=True, help="Skip the database compatibility check.")
+def upgrade(anchore_module, dontask, skip_db_compat_check):
 
     """
     Run a Database Upgrade idempotently. If database is not initialized yet, but can be connected, then exit cleanly with status = 0, if no connection available then return error.
@@ -70,7 +71,7 @@ def upgrade(anchore_module, dontask):
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 
-        code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module)
+        code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, do_db_compatibility_check=(not skip_db_compat_check))
 
         code_db_version = code_versions.get('db_version', None)
         running_db_version = db_versions.get('db_version', None)

@@ -174,7 +174,8 @@ def service(ctx_config):
 @click.option("--auto-upgrade", is_flag=True, help="Perform automatic upgrade on startup")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB routines from (default=anchore_engine)")
 @click.option("--skip-config-validate", nargs=1, help="Comma-separated list of configuration file sections to skip specific validation processing (e.g. services,credentials,webhooks)")
-def start(auto_upgrade, anchore_module, skip_config_validate):
+@click.option("--skip-db-compat-check", is_flag=True, help="Skip the database compatibility check.")
+def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check):
     global config
     """
     """
@@ -271,7 +272,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate):
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
             db_params = anchore_manager.cli.utils.connect_database(config, db_params, db_retries=300)
 
-            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=True)
+            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=(not skip_db_compat_check))
 
             in_sync = False
             timed_out = False

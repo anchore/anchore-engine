@@ -168,7 +168,8 @@ def registerService(sname, config, enforce_unique=True):
         'short_description': ''
     }
 
-    if 'ssl_enable' in myconfig and myconfig['ssl_enable']:
+    #if 'ssl_enable' in myconfig and myconfig['ssl_enable']:
+    if myconfig.get('ssl_enable', False) or myconfig.get('external_tls', False):
         hstring = "https"
     else:
         hstring = "http"

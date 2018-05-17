@@ -121,19 +121,6 @@ def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_
     return(ret)
 
 def connect_database(config, db_params, db_retries=1):
-    # allow override of db connect string on CLI, otherwise get DB params from anchore-engine config.yaml
-
-    #db_connect_args = {'ssl': False}
-    #if db_use_ssl:
-    #    db_connect_args['ssl'] = True
-
-    #db_params = {
-    #    'db_connect': db_connect,
-    #    'db_connect_args': db_connect_args,
-    #    'db_pool_size': 10,
-    #    'db_pool_max_overflow': 20
-    #}
-
     logger.info("DB Params: {}".format(json.dumps(db_params)))
     rc = anchore_engine.db.entities.common.do_connect(db_params)
     logger.info("DB connection configured: {}".format(str(rc)))
@@ -165,7 +152,7 @@ def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_che
                 upgrade_module.do_db_compatibility_check()
                 logger.info("DB compatibility check success")
             else:
-                logger.info("DB compatibility check routine not present, skipping...")
+                logger.info("DB compatibility check routine not enabled, skipping...")
         except Exception as err:
             raise err
 
