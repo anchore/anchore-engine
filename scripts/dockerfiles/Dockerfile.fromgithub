@@ -1,0 +1,18 @@
+FROM centos:7
+
+ARG ANCHORE_COMMIT=master
+ARG CLI_COMMIT=master
+
+ENV LANG=en_US.UTF-8
+EXPOSE 8228 8338 8087 8082
+
+RUN yum -y update && yum -y install epel-release && yum -y install git skopeo python-pip dpkg gcc python-devel openssl-devel psmisc && yum clean all -y
+RUN pip install --upgrade pip && pip install --upgrade setuptools
+
+RUN pip install -e git+git://github.com/anchore/anchore.git@$ANCHORE_COMMIT\#egg=anchore
+RUN pip install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli
+
+COPY . /root/anchore-engine
+RUN pip install --upgrade /root/anchore-engine
+
+CMD /usr/bin/anchore-engine

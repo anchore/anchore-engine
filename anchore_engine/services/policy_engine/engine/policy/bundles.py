@@ -220,7 +220,7 @@ class BundleDecision(object):
         self.whitelisted_image = whitelist_match if whitelist_match else None
         self.blacklisted_image = blacklist_match if blacklist_match else None
 
-        self.final_policy_decision = max([d.final_decision for d in self.policy_decisions])
+        self.final_policy_decision = min([d.final_decision for d in self.policy_decisions])
 
         if self.blacklisted_image:
             self.final_decision = GateAction.stop
