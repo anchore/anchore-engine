@@ -1,18 +1,42 @@
-FROM centos:7
+# Build pip wheels for all dependencies
+FROM centos:7 as wheelbuilder
 
-ARG ANCHORE_COMMIT=master
 ARG CLI_COMMIT=master
+
+LABEL anchore_cli_commit=$ANCHORE_COMMIT
 
 ENV LANG=en_US.UTF-8
 EXPOSE 8228 8338 8087 8082
 
-RUN yum -y update && yum -y install epel-release && yum -y install git skopeo python-pip dpkg gcc python-devel openssl-devel psmisc && yum clean all -y
-RUN pip install --upgrade pip && pip install --upgrade setuptools
+RUN yum -y update && yum -y install epel-release && yum -y install git skopeo python-pip dpkg psmisc gcc python-devel && yum clean all -y
+RUN pip install --upgrade pip && pip install --upgrade setuptools wheel
 
-RUN pip install -e git+git://github.com/anchore/anchore.git@$ANCHORE_COMMIT\#egg=anchore
 RUN pip install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli
 
-COPY . /root/anchore-engine
-RUN pip install --upgrade /root/anchore-engine
+COPY . /anchore-engine
+WORKDIR /anchore-engine
+RUN pip wheel --wheel-dir=/wheels -r requirements.txt
 
-CMD /usr/bin/anchore-engine
+# Do the final build
+FROM centos:7
+
+ARG CLI_COMMIT=master
+
+LABEL anchore_cli_commit=$ANCHORE_COMMIT
+
+ENV LANG=en_US.UTF-8
+EXPOSE 8228 8338 8087 8082
+
+RUN yum -y update && yum -y install epel-release && yum -y install git skopeo python-pip dpkg psmisc && yum clean all -y
+RUN pip install --upgrade pip && pip install --upgrade setuptools wheel
+
+RUN pip install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli
+
+
+COPY --from=wheelbuilder /wheels /wheels
+COPY . /anchore-engine
+
+WORKDIR /anchore-engine
+RUN pip install --no-index --find-links=/wheels -r requirements.txt && pip install .
+
+CMD /usr/bin/anchore-manager service start
