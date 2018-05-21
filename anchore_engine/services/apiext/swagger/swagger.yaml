@@ -1538,6 +1538,7 @@ definitions:
         - not_analyzed
         - analyzing
         - analyzed
+        - analysis_failed
   AnchoreImageList:
     description: A list of Anchore Images
     type: array
@@ -1719,6 +1720,9 @@ definitions:
       registry_user:
         type: string
         description: Username portion of credential to use for this registry
+      registry_pass:
+        type: string
+        description: Password portion of credential to use for this registry
       registry_type:
         type: string
         description: Type of registry
