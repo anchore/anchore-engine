@@ -110,6 +110,9 @@ class OAuth2TokenHandler(GenericTokenHandler):
         self._tokens = {}
 
     def _add_token(self, path, url, params, raw_token):
+        if 'token' not in raw_token and 'access_token' in raw_token:
+            raw_token['token'] = raw_token['access_token']
+
         now = datetime.datetime.utcnow()
         expiration = now + datetime.timedelta(seconds=int(raw_token.get('expires_in', 300)))
         self._tokens[path] = {'urls': [url], 'params': params, 'raw_token': raw_token, 'timestamp': now, 'expiration': expiration}
@@ -230,6 +233,11 @@ class OAuth2TokenHandler(GenericTokenHandler):
                 response = get(auth_url, params=req_params, auth=(self.username, self.password))
             else:
                 response = get(auth_url, params=req_params)
+
+            if not response.ok:
+                logger.debug("Error response requesting token: %r", response.text)
+                response.raise_for_status()
+
             self._add_token(path=path, url=req_url, params=req_params, raw_token=response.json())
             logger.debug('Added new token to cache and returning to caller')
             return self._tokens[path]['raw_token']
