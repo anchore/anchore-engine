@@ -675,6 +675,42 @@ paths:
       summary: "Get event records from DB"
       description: ""
       operationId: "events_get"
+      parameters:
+      - name: 'source_servicename'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'source_hostid'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'resource_type'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'level'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'since'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'before'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'next'
+        in: query
+        type: string
+        description: ""
+        required: false
       produces:
       - "application/json"
       responses:
@@ -686,16 +722,20 @@ paths:
     delete:
       tags:
       - "catalog"
-      summary: "Delete event record from DB"
+      summary: "Delete events from DB "
       description: ""
       operationId: "events_delete"
       parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "event object to delete"
-        required: true
+      - name: 'since'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'before'
+        in: query
+        type: string
+        description: ""
+        required: false
       produces:
       - "application/json"
       responses:
@@ -715,7 +755,7 @@ paths:
         in: body
         schema:
           type: object
-        description: "event record to update"
+        description: "event record to be created"
         required: true
       produces:
       - "application/json"
@@ -724,6 +764,46 @@ paths:
           description: "success"
           schema:
             type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+
+  /events/{eventId}:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get an event record from DB"
+      description: ""
+      operationId: "events_eventId_get"
+      parameters:
+      - name: eventId
+        in: path
+        type: string
+        description: "uuid of the event to describe"
+        required: true
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+    delete:
+      tags:
+      - "catalog"
+      summary: "Delete event record from DB"
+      description: ""
+      operationId: "events_eventId_delete"
+      parameters:
+      - name: 'eventId'
+        in: path
+        type: string
+        description: "uuid of the event to delete"
+        required: true
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
 
   /users:

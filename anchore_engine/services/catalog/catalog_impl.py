@@ -4,6 +4,8 @@ import hashlib
 import time
 import base64
 
+from dateutil import parser as dateparser
+
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.anchore_resources
@@ -14,7 +16,7 @@ from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import localanchore, simplequeue
-from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_eventlog, \
+from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events, \
     db_registries, db_services, db_archivedocument
 import anchore_engine.clients.policy_engine
 
@@ -586,7 +588,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
 
     return(return_object, httpcode)
 
-def events(dbsession, request_inputs, bodycontent={}):
+def events(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
@@ -604,41 +606,114 @@ def events(dbsession, request_inputs, bodycontent={}):
                 raise err
         
         if method == 'GET':
-            records = db_eventlog.get_byfilter(session=dbsession, **jsondata)
-            if not records:
+            dbfilter = dict()
+
+            if params.get('source_servicename', None):
+                dbfilter['source_servicename'] = params.get('source_servicename')
+
+            if params.get('source_hostid', None):
+                dbfilter['source_hostid'] = params.get('source_hostid')
+
+            if params.get('resource_type', None):
+                dbfilter['resource_type'] = params.get('resource_type')
+
+            if params.get('level', None):
+                dbfilter['level'] = params.get('level')
+
+            since = None
+            if params.get('since', None):
+                try:
+                    since = dateparser.parse(params.get('since'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value for since query parameter, must be valid datetime string')
+
+            before = None
+            if params.get('before', None):
+                try:
+                    before = dateparser.parse(params.get('before'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value before query parameter, must be valid datetime string')
+
+            next = None
+            if params.get('next', None):
+                try:
+                    next = dateparser.parse(params.get('next'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value for next query parameter')
+
+            ret = db_events.get_byfilter(userId=userId, session=dbsession, since=since, before=before, next=next, **dbfilter)
+            if not ret:
                 httpcode = 404
                 raise Exception("events not found in DB")
             else:
-                return_object = records
+                return_object = ret
                 httpcode = 200
 
         elif method == 'DELETE':
-            rc = db_eventlog.delete_byfilter(session=dbsession, **jsondata)
-            if not rc:
-                raise Exception("DB delete failed")
-            else:
+            since = None
+            if params.get('since', None):
+                try:
+                    since = dateparser.parse(params.get('since'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value for since query parameter, must be valid datetime string')
+
+            before = None
+            if params.get('before', None):
+                try:
+                    before = dateparser.parse(params.get('before'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value before query parameter, must be valid datetime string')
+
+            ret = db_events.delete_byfilter(userId=userId, session=dbsession, since=since, before=before)
+
+            httpcode = 200
+            return_object = ret
+
+        elif method == 'POST':
+            record = db_events.add(session=dbsession, msg=jsondata)
+
+            if record:
                 httpcode = 200
-                return_object = True
-
-        elif method == 'POST' or method == 'PUT':
-            hostId = jsondata['hostId']
-            service_name = jsondata['service_name']
-            message = jsondata['message']
-            level = jsondata['level']
-            
-            record = db_eventlog.get(hostId, service_name, message, level, session=dbsession)
-
-            if method == 'PUT' and not record:
-                httpcode = 404
-                raise Exception("existing event not found to update")
+                return_object = record
             else:
-                record.update(jsondata)
-                rc = db_eventlog.update(hostId, service_name, message, level, jsondata, session=dbsession)
-                if not rc:
-                    raise Exception("DB update failed")
-                else:
-                    httpcode = 200
-                    return_object = record
+                httpcode = 500
+                raise Exception('Cannot create event')
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def events_eventId(dbsession, request_inputs, eventId):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = {}
+    httpcode = 500
+
+    try:
+        if method == 'GET':
+            ret = db_events.get_byevent_id(userId=userId, eventId=eventId, session=dbsession)
+            if not ret:
+                httpcode = 404
+                raise Exception("Event not found")
+            else:
+                return_object = ret
+                httpcode = 200
+        elif method == 'DELETE':
+            ret = db_events.delete_byevent_id(userId=userId, eventId=eventId, session=dbsession)
+            if not ret:
+                httpcode = 404
+                raise Exception("Event not found")
+            else:
+                return_object = None
+                httpcode = 200
 
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)

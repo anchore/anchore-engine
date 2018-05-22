@@ -114,8 +114,8 @@ def _msg(msg_string, msg_log_level='INFO'):
 
                         # call the catalog via client to log the error
 
-                        rc = anchore_engine.clients.catalog.add_event(system_user_auth, hostId, ','.join(myservices),
-                                                                      'FATAL', str(themsg))
+                        # rc = anchore_engine.clients.catalog.add_event(system_user_auth, hostId, ','.join(myservices),
+                        #                                               'FATAL', str(themsg))
                     else:
                         import anchore_engine.services.common
                         import anchore_engine.db.db_eventlog
