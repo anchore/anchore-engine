@@ -32,7 +32,7 @@ import anchore_engine.configuration.localconfig
 from anchore_engine import db
 from anchore_engine.auth.anchore_service import AnchorePasswordChecker
 from anchore_engine.db import db_services, db_users, session_scope
-from anchore_engine.subsys import logger, taskstate
+from anchore_engine.subsys import logger, taskstate, servicestatus
 from anchore_engine.services.policy_engine.api.models import ImageIngressRequest
 
 
@@ -204,16 +204,18 @@ def registerService(sname, config, enforce_unique=True):
                     if service_record and (service_record['hostid'] != config['host_id']):
                         raise Exception("service type ("+str(sname)+") already exists in system with different host_id - detail: my_host_id=" + str(config['host_id']) + " db_host_id=" + str(service_record['hostid']))
 
-            # in any case, check if another host is registered that has the same endpoint
-            #for service_record in service_records:
-            #    if service_record['base_url'] and service_record['base_url'] != 'N/A':
-            #        service_hostport = re.sub("^http.//", "", service_record['base_url'])
-            #        # if a different host_id has the same endpoint, fail
-            #        if (service_hostport == endpoint_hostport) and (config['host_id'] != service_record['hostid']):
-            #            raise Exception("trying to add new host but found conflicting endpoint from another host in DB - detail: my_host_id=" + str(config['host_id']) + " db_host_id="+str(service_record['hostid'])+" my_host_endpoint="+str(endpoint_hostport)+" db_host_endpoint="+str(service_hostport))
-
             # if all checks out, then add/update the registration
             ret = db_services.add(config['host_id'], sname, service_template, session=dbsession)
+
+            try:
+                my_service_record = {
+                    'hostid': config['host_id'],
+                    'servicename': sname,
+                }
+                my_service_record.update(service_template)
+                servicestatus.set_my_service_record(my_service_record)
+            except Exception as err:
+                logger.warn("could not set local service information - exception: {}".format(str(err)))
 
     except Exception as err:
         raise err

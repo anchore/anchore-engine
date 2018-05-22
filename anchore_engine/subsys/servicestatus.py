@@ -8,6 +8,16 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.version
 
 service_statuses = {}
+my_service_record = None
+
+def get_my_service_record():
+    global my_service_record
+    return(my_service_record)
+
+def set_my_service_record(service_record):
+    global my_service_record
+    my_service_record = service_record
+    return(True)
 
 def set_status(service_record, up=True, available=True, busy=False, message="all good", detail={}, update_db=False):
     global service_statuses
@@ -33,7 +43,7 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
         update_status(service_record)
 
 def update_status(service_record):
-    global service_statuses
+    global service_statuses, my_service_record
     hostid = service_record['hostid']
     servicename = service_record['servicename']
     service = '__'.join([service_record['hostid'], service_record['servicename']])
@@ -92,9 +102,10 @@ def handle_service_heartbeat(*args, **kwargs):
     while(True):
         logger.debug("storing service status: " + str(servicename))
         try:
+            logger.debug("local service record: {}".format(anchore_engine.subsys.servicestatus.get_my_service_record()))
             service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
             update_status(service_record)
-            logger.debug("service status stored: next in "+str(cycle_timer))
+            logger.debug("service status update stored: next in "+str(cycle_timer))
         except Exception as err:
             logger.error(str(err))
 
