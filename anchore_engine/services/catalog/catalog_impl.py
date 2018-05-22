@@ -848,11 +848,14 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             httpcode = 200
         elif method == 'POST':
             registrydata = bodycontent
+            validate = params.get('validate', True)
+
             if 'registry' in registrydata:
                 registry=registrydata['registry']
             else:
                 httpcode = 500
                 raise Exception("body does not contain registry key")
+
             registry_records = db_registries.get(registry, userId, session=dbsession)
             if registry_records:
                 httpcode = 500
@@ -862,6 +865,13 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             if (registrydata['registry_user'] == 'awsauto' or registrydata['registry_pass'] == 'awsauto') and not localconfig['allow_awsecr_iam_auto']:
                 httpcode = 406
                 raise Exception("'awsauto' is not enabled in service configuration")
+
+            if validate:
+                try:
+                    registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
+                except Exception as err:
+                    httpcode = 406
+                    raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
 
             rc = db_registries.add(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)
@@ -934,6 +944,8 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             httpcode = 200
         elif method == 'PUT':
             registrydata = bodycontent
+            validate = params.get('validate', True)
+
             registry_record = db_registries.get(registry, userId, session=dbsession)
             if not registry_record:
                 httpcode = 404
@@ -943,6 +955,13 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             if (registrydata['registry_user'] == 'awsauto' or registrydata['registry_pass'] == 'awsauto') and not localconfig['allow_awsecr_iam_auto']:
                 httpcode = 406
                 raise Exception("'awsauto' is not enabled in service configuration")
+
+            if validate:
+                try:
+                    registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
+                except Exception as err:
+                    httpcode = 406
+                    raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
 
             rc = db_registries.update(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)

@@ -7,7 +7,11 @@ def get_docker_registry_userpw(registry_record):
 
     try:
         if 'registry_type' in registry_record and registry_record['registry_type'] == 'awsecr':
-            ecr_creds = json.loads(registry_record['registry_meta'])
+            try:
+                ecr_creds = json.loads(registry_record['registry_meta'])
+            except Exception as err:
+                raise Exception("cannot access/parse registry metadata for awsecr registry type - exception: {}".format(str(err)))
+
             docker_auth_token = ecr_creds['authorizationToken']
             user, pw = docker_auth_token.split(":", 1)
         else:

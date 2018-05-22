@@ -806,6 +806,11 @@ paths:
       description: ""
       operationId: "system_registries_post"
       parameters:
+      - name: 'validate'
+        in: query
+        type: boolean
+        description: "flag to determine whether or not to validate registry/credential at registry add time"
+        required: false
       - name: 'bodycontent'
         in: body
         schema:
@@ -874,6 +879,11 @@ paths:
         type: string
         description: "registry Id of object to update"
         required: true
+      - name: 'validate'
+        in: query
+        type: boolean
+        description: "flag to determine whether or not to validate registry/credential at registry update time"
+        required: false
       - name: 'bodycontent'
         in: body
         schema:

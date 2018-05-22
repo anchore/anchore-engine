@@ -474,10 +474,9 @@ def handle_image_watcher(*args, **kwargs):
         for registry_record in registry_creds:
             try:
                 registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
-                if not registry_status:
-                    registry_record['record_state_key'] = 'auth_failure'
-                    registry_record['record_state_val'] = str(int(time.time()))
             except Exception as err:
+                registry_record['record_state_key'] = 'auth_failure'
+                registry_record['record_state_val'] = str(int(time.time()))
                 logger.warn("registry ping failed - exception: " + str(err))
 
         logger.debug("checking tags for update: " + str(userId) + " : " + str(alltags))

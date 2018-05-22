@@ -162,7 +162,8 @@ def ping_docker_registry(registry_record):
         ret = True
     except Exception as err:
         logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
-        ret = False
+        raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
+        #ret = False
     return(ret)
 
 def get_repo_tags(userId, image_info, registry_creds=None):

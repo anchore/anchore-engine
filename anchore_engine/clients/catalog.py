@@ -687,7 +687,7 @@ def get_registry(userId, registry=None):
 
     return(ret)
 
-def add_registry(userId, registrydata):
+def add_registry(userId, registrydata, validate=True):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -701,7 +701,7 @@ def add_registry(userId, registrydata):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/system/registries"
+    url = "{}/system/registries?validate={}".format(base_url, validate)
 
     payload = registrydata
 
@@ -709,7 +709,7 @@ def add_registry(userId, registrydata):
 
     return(ret)
 
-def update_registry(userId, registry, registrydata):
+def update_registry(userId, registry, registrydata, validate=True):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -723,7 +723,7 @@ def update_registry(userId, registry, registrydata):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/system/registries/" + registry
+    url = "{}/system/registries/{}?validate={}".format(base_url, registry, validate)
 
     payload = registrydata
 

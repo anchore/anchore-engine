@@ -87,14 +87,14 @@ def get_registry(registry):
     return (return_object, httpcode)
 
 
-def create_registry(registrydata):
+def create_registry(registrydata, validate=True):
     """
     POST /registries
 
     :param registry:
     :return:
     """
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'validate':validate})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -118,7 +118,7 @@ def create_registry(registrydata):
             httpcode = 409
             raise err
 
-        registry_records = catalog.add_registry(user_auth, registrydata)
+        registry_records = catalog.add_registry(user_auth, registrydata, validate=validate)
         for registry_record in registry_records:
             return_object.append(make_response_registry(user_auth, registry_record, params))
         httpcode = 200
@@ -129,14 +129,14 @@ def create_registry(registrydata):
     return (return_object, httpcode)
 
 
-def update_registry(registry, registrydata):
+def update_registry(registry, registrydata, validate=True):
     """
     PUT /registries/<id>
 
     :param registry:
     :return:
     """
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'validate':validate})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -158,7 +158,7 @@ def update_registry(registry, registrydata):
             httpcode = 409
             raise err
 
-        registry_records = catalog.update_registry(user_auth, registry, registrydata)
+        registry_records = catalog.update_registry(user_auth, registry, registrydata, validate=validate)
         for registry_record in registry_records:
             return_object.append(make_response_registry(user_auth, registry_record, params))
         httpcode = 200

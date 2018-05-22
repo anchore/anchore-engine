@@ -418,9 +418,9 @@ def system_registries_get():
     return (return_object, httpcode)
 
 
-def system_registries_post(bodycontent):
+def system_registries_post(bodycontent, validate=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'validate':validate})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries(session, request_inputs, bodycontent=bodycontent)
 
@@ -459,9 +459,9 @@ def system_registries_registry_delete(registry):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
-def system_registries_registry_put(registry, bodycontent):
+def system_registries_registry_put(registry, bodycontent, validate=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'validate':validate})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries_registry(session, request_inputs, registry, bodycontent=bodycontent)
 
