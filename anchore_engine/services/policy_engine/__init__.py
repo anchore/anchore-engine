@@ -114,14 +114,6 @@ def createService(sname, config):
 
 
 def initializeService(sname, config):
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
-    try:
-        if not anchore_engine.subsys.servicestatus.has_status(service_record):
-            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        raise Exception("could not initialize service status - exception: " + str(err))
 
     return anchore_engine.services.common.initializeService(sname, config)
 
@@ -133,8 +125,8 @@ def registerService(sname, config):
     if reg_return:
         process_preflight()
 
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'service_state': anchore_engine.subsys.taskstate.complete_state('policy_engine_state')}, update_db=True)
+    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
+    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
 
     return reg_return
 

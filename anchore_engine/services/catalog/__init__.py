@@ -66,15 +66,6 @@ def createService(sname, config):
     return(anchore_engine.services.common.createServiceAPI(root, sname, config))
 
 def initializeService(sname, config):
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
-    try:
-        if not anchore_engine.subsys.servicestatus.has_status(service_record):
-            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        raise Exception("could not initialize service status - exception: " + str(err))
-
     try:
         archive.initialize(config['services'][sname])
     except Exception as err:
@@ -129,14 +120,13 @@ def initializeService(sname, config):
 
     lc = LoopingCall(monitor, **kwargs)
     lc.start(1)
-    #catalog._v1.monitor(**kwargs)
 
     return(anchore_engine.services.common.initializeService(sname, config))
 
 def registerService(sname, config):
     rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
 
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
 
     return (rc)

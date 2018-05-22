@@ -59,13 +59,13 @@ def get_all(session=None):
 
     return(ret)
 
-def get(hostid, servicename, session=None):
+def get(hostid, servicename, base_url, session=None):
     if not session:
         session = db.Session
 
     ret = {}
 
-    result = session.query(Service).filter_by(hostid=hostid).filter_by(servicename=servicename).first()
+    result = session.query(Service).filter_by(hostid=hostid).filter_by(servicename=servicename).filter_by(base_url=base_url).first()
     if result:
         ret.update(dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_')))
 

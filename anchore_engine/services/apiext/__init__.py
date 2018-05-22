@@ -19,27 +19,6 @@ from anchore_engine.subsys import logger
 _default_api_version = "v1"
 servicename = 'apiext'
 
-if False:
-    @flask_app.before_request
-    def preflight():
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        try:
-            service_record = {'hostid': localconfig['host_id'], 'servicename': 'apiext'}
-            if not anchore_engine.subsys.servicestatus.has_status(service_record):
-                anchore_engine.subsys.servicestatus.initialize_status(service_record)
-        except Exception as err:
-            import traceback
-            traceback.print_exc()
-
-if False:
-    @flask_app.before_request
-    def preflight():
-        logger.debug("BEFORE")
-
-    @flask_app.teardown_request
-    def teardown_session(exception=None):
-        logger.debug("AFTER")
-
 def default_version_rewrite(request):
     global _default_api_version
     try:
@@ -112,23 +91,13 @@ def createService(sname, config):
     return (ret_svc)
 
 def initializeService(sname, config):
-
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
-    try:
-        if not anchore_engine.subsys.servicestatus.has_status(service_record):
-            anchore_engine.subsys.servicestatus.initialize_status(service_record, up=True, available=False, message='initializing')
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        raise Exception("could not initialize service status - exception: " + str(err))
-
     return (anchore_engine.services.common.initializeService(sname, config))
 
 
 def registerService(sname, config):
     rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
 
-    service_record = {'hostid': config['host_id'], 'servicename': sname}
+    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
 
     return (rc)

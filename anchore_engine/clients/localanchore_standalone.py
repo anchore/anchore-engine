@@ -26,7 +26,7 @@ except:
 
 def get_layertarfile(unpackdir, cachedir, layer):
 
-    layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
+    layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', layer), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
     if cachedir:
         layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
         
@@ -71,12 +71,12 @@ def get_tar_filenames(layertar):
     ret = []
     layertarfile = None
     try:
-        logger.debug("using tarfile library to get file names")
+        logger.debug("using tarfile library to get file names from tarfile={}".format(layertarfile))
         layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
         ret = layertarfile.getnames()
     except:
         # python tarfile fils to unpack some docker image layers due to PAX header issue, try another method
-        logger.debug("using tar command to get file names")
+        logger.debug("using tar command to get file names from tarfile={}".format(layertarfile))
         tarcmd = "tar tf {}".format(layertar)
         try:
             ret = []
