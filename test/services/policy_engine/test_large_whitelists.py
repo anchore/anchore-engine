@@ -39,7 +39,7 @@ class TestLargeBundlesEval(unittest.TestCase):
         test_tag = 'docker.io/library/node:latest'
         built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         db = get_session()
         img_obj = db.query(Image).get((self.test_env.get_images_named('node')[0][0], '0'))
@@ -51,18 +51,18 @@ class TestLargeBundlesEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print(json.dumps(evaluation.json(), indent=2))
-        print(json.dumps(evaluation.as_table_json(), indent=2))
+        print((json.dumps(evaluation.json(), indent=2)))
+        print((json.dumps(evaluation.as_table_json(), indent=2)))
 
     @unittest.skip('b')
     def testWhitelists(self):
         print('Building executable bundle from default bundle')
         test_tag = 'docker.io/library/node:latest'
 
-        filter(lambda x: x['id'] == 'wl_jessie', self.default_bundle['whitelists'])[0]['items'].append({'gate': 'ANCHORESEC', 'trigger_id': '*binutils*', 'id': 'testinserted123'})
+        [x for x in self.default_bundle['whitelists'] if x['id'] == 'wl_jessie'][0]['items'].append({'gate': 'ANCHORESEC', 'trigger_id': '*binutils*', 'id': 'testinserted123'})
         built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         db = get_session()
         img_obj = db.query(Image).get((self.test_env.get_images_named('node')[0][0], '0'))
@@ -75,8 +75,8 @@ class TestLargeBundlesEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print('Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2)))
-        print('Took: {}'.format(time.time() - t))
+        print(('Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2))))
+        print(('Took: {}'.format(time.time() - t)))
 
 
         # Run without index handlers
@@ -84,7 +84,7 @@ class TestLargeBundlesEval(unittest.TestCase):
         ExecutableWhitelist._use_indexes = False
         no_index_built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(no_index_built.init_errors)
-        print('Got: {}'.format(no_index_built))
+        print(('Got: {}'.format(no_index_built)))
 
         t = time.time()
         no_index_evaluation = no_index_built.execute(img_obj, tag=test_tag,
@@ -94,8 +94,8 @@ class TestLargeBundlesEval(unittest.TestCase):
 
         self.assertDictEqual(evaluation.json(), no_index_evaluation.json(), 'Index vs non-indexed returned different results')
         self.assertIsNotNone(no_index_evaluation, 'Got None eval')
-        print('Non-indexed Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2)))
-        print('Non-indexed Evaluation Took: {}'.format(time.time() - t))
+        print(('Non-indexed Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2))))
+        print(('Non-indexed Evaluation Took: {}'.format(time.time() - t)))
 
     def testRegexes(self):
         """
@@ -106,8 +106,8 @@ class TestLargeBundlesEval(unittest.TestCase):
         test_tag = 'docker.io/library/node:latest'
 
         bundle = copy.deepcopy(self.default_bundle)
-        node_whitelist = filter(lambda x: x['id'] == 'wl_jessie', bundle['whitelists'])[0]
-        node_whitelist['items'] = filter(lambda x: 'binutils' in x['trigger_id'], node_whitelist['items'])
+        node_whitelist = [x for x in bundle['whitelists'] if x['id'] == 'wl_jessie'][0]
+        node_whitelist['items'] = [x for x in node_whitelist['items'] if 'binutils' in x['trigger_id']]
         node_whitelist['items'].append(
             {'gate': 'ANCHORESEC', 'trigger_id': 'CVE-2016-6515+openssh-client', 'id': 'testinserted3'})
         node_whitelist['items'].append(
@@ -133,7 +133,7 @@ class TestLargeBundlesEval(unittest.TestCase):
         evaluation = built.execute(img_obj, tag=test_tag,
                                    context=ExecutionContext(db_session=db, configuration={}))
         t1 = time.time() - t
-        print('Took: {}'.format(t1))
+        print(('Took: {}'.format(t1)))
         self.assertIsNotNone(evaluation, 'Got None eval')
 
         ExecutableWhitelist._use_indexes = False
@@ -144,12 +144,12 @@ class TestLargeBundlesEval(unittest.TestCase):
         evaluation2 = non_index_built.execute(img_obj, tag=test_tag,
                                    context=ExecutionContext(db_session=db, configuration={}))
         t2 = time.time() - t2
-        print('Took: {}'.format(t2))
+        print(('Took: {}'.format(t2)))
         self.assertIsNotNone(evaluation2, 'Got None eval')
         ExecutableWhitelist._use_indexes = True
 
         self.assertListEqual(evaluation.json()['bundle_decision']['policy_decision']['decisions'], evaluation2.json()['bundle_decision']['policy_decision']['decisions'])
-        print('Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2)))
+        print(('Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2))))
         open_ssl_wl_match = {
             "action": "go",
             "rule": {
@@ -170,4 +170,4 @@ class TestLargeBundlesEval(unittest.TestCase):
             }
         }
         self.assertIn(open_ssl_wl_match, evaluation.json()['bundle_decision']['policy_decision']['decisions'])
-        self.assertGreaterEqual(len(filter(lambda x: x['match'].get('whitelisted',{}).get('matched_rule_id', '') in ['testinserted1', 'testinserted2', 'testinserted3'], evaluation.json()['bundle_decision']['policy_decision']['decisions'])), 1)
+        self.assertGreaterEqual(len([x for x in evaluation.json()['bundle_decision']['policy_decision']['decisions'] if x['match'].get('whitelisted',{}).get('matched_rule_id', '') in ['testinserted1', 'testinserted2', 'testinserted3']]), 1)

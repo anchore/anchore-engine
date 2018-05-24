@@ -1,6 +1,6 @@
 import json
 import hashlib
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 from anchore_engine.clients import http
 import anchore_engine.configuration.localconfig
@@ -14,7 +14,7 @@ headers = {'Content-Type': 'application/json'}
 
 def lookup_registry_image(userId, tag=None, digest=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -27,9 +27,9 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     if digest:
-        url = base_url + "/registry_lookup?{}".format(urllib.urlencode({'digest': digest}))
+        url = base_url + "/registry_lookup?{}".format(urllib.parse.urlencode({'digest': digest}))
     elif tag:
-        url = base_url + "/registry_lookup?{}".format(urllib.urlencode({'tag': tag}))
+        url = base_url + "/registry_lookup?{}".format(urllib.parse.urlencode({'tag': tag}))
     else:
         logger.error("no input (tag=, digest=)")
         raise Exception("bad input")
@@ -44,7 +44,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
     if not regrepo:
         raise Exception("no regrepo supplied as input")
 
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -65,7 +65,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
         params['lookuptag'] = str(lookuptag)
 
     if params:
-        url = url + "?{}".format(urllib.urlencode(params))
+        url = url + "?{}".format(urllib.parse.urlencode(params))
 
     ret = http.anchy_post(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -73,7 +73,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
 
 def add_image(userId, tag=None, digest=None, dockerfile=None, annotations={}):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -90,9 +90,9 @@ def add_image(userId, tag=None, digest=None, dockerfile=None, annotations={}):
 
     payload = {}
     if tag:
-        url = url + "?{}".format(urllib.urlencode({'tag': tag}))
+        url = url + "?{}".format(urllib.parse.urlencode({'tag': tag}))
         if digest:
-            url = url + "&{}".format(urllib.urlencode({'digest': digest}))
+            url = url + "&{}".format(urllib.parse.urlencode({'digest': digest}))
 
         if dockerfile:
             payload['dockerfile'] = dockerfile
@@ -106,7 +106,7 @@ def add_image(userId, tag=None, digest=None, dockerfile=None, annotations={}):
 
 def get_imagetags(userId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -126,7 +126,7 @@ def get_imagetags(userId):
 
 def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, registry_lookup=False, history=False):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -143,11 +143,11 @@ def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, reg
     if imageDigest:
         url = base_url + "/image/" + imageDigest
     elif tag:
-        url = url + "?{}".format(urllib.urlencode({'tag': tag, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
+        url = url + "?{}".format(urllib.parse.urlencode({'tag': tag, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
     elif digest:
-        url = url + "?{}".format(urllib.urlencode({'digest': digest, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
+        url = url + "?{}".format(urllib.parse.urlencode({'digest': digest, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
     elif imageId:
-        url = url + "?{}".format(urllib.urlencode({'imageId': imageId, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
+        url = url + "?{}".format(urllib.parse.urlencode({'imageId': imageId, 'history': str(history), 'registry_lookup': str(registry_lookup)}))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -155,7 +155,7 @@ def get_image(userId, tag=None, digest=None, imageId=None, imageDigest=None, reg
 
 def update_image(userId, imageDigest, image_record={}):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -179,7 +179,7 @@ def update_image(userId, imageDigest, image_record={}):
 
 def delete_image(userId, imageDigest, force=False):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -194,7 +194,7 @@ def delete_image(userId, imageDigest, force=False):
     url = base_url + "/image/" + imageDigest
 
     if force:
-        url = url+"?{}".format(urllib.urlencode({'force': True}))
+        url = url+"?{}".format(urllib.parse.urlencode({'force': True}))
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -202,7 +202,7 @@ def delete_image(userId, imageDigest, force=False):
 
 def import_image(userId, anchore_data):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -224,7 +224,7 @@ def import_image(userId, anchore_data):
 
 def add_policy(userId, bundle):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -250,7 +250,7 @@ def add_policy(userId, bundle):
 
 def get_active_policy(userId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     policy_records = list_policies(userId, active=True)
@@ -262,7 +262,7 @@ def get_active_policy(userId):
 
 def get_policy(userId, policyId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -283,7 +283,7 @@ def get_policy(userId, policyId):
 
 def list_policies(userId, active=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -303,12 +303,12 @@ def list_policies(userId, active=None):
     url = base_url + "/policies"
 
     ret = http.anchy_get(url, auth=auth, params=params, headers=headers, verify=localconfig['internal_ssl_verify'])
-
+    logger.info('Policy listing from catalog: {}'.format(ret))
     return (ret)
 
 def update_policy(userId, policyId, policy_record={}):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -330,7 +330,7 @@ def update_policy(userId, policyId, policy_record={}):
 
 def delete_policy(userId, policyId=None, cleanup_evals=True):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -342,7 +342,7 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/policies/{}?{}".format(policyId, urllib.urlencode({'cleanup_evals': str(cleanup_evals)}))
+    url = base_url + "/policies/{}?{}".format(policyId, urllib.parse.urlencode({'cleanup_evals': str(cleanup_evals)}))
 
     ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -351,7 +351,7 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
 
 def get_evals(userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -383,7 +383,7 @@ def get_evals(userId, policyId=None, imageDigest=None, tag=None, evalId=None, ne
 
 def get_eval_latest(userId, policyId=None, imageDigest=None, tag=None, evalId=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     eval_records = get_evals(userId, policyId=policyId, imageDigest=imageDigest, tag=tag, evalId=evalId, newest_only=True)
@@ -394,7 +394,7 @@ def get_eval_latest(userId, policyId=None, imageDigest=None, tag=None, evalId=No
 
 def add_eval(userId, evalId, policyId, imageDigest, tag, final_action, eval_url):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -420,7 +420,7 @@ def add_eval(userId, evalId, policyId, imageDigest, tag, final_action, eval_url)
 
 def get_subscription(userId, subscription_id=None, subscription_key=None, subscription_type=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -442,7 +442,7 @@ def get_subscription(userId, subscription_id=None, subscription_key=None, subscr
         if subscription_type:
             params['subscription_type'] = subscription_type
         if params:
-            url = url + "?{}".format(urllib.urlencode(params))
+            url = url + "?{}".format(urllib.parse.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -450,7 +450,7 @@ def get_subscription(userId, subscription_id=None, subscription_key=None, subscr
 
 def delete_subscription(userId, subscription_key=None, subscription_type=None, subscription_id=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -462,7 +462,7 @@ def delete_subscription(userId, subscription_key=None, subscription_type=None, s
     auth = (userId, pw)
     
     if subscription_key and subscription_type:
-        subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type])).hexdigest()
+        subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type]).encode('utf8')).hexdigest()
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions/" + subscription_id
@@ -473,7 +473,7 @@ def delete_subscription(userId, subscription_key=None, subscription_type=None, s
 
 def update_subscription(userId, subscriptiondata, subscription_type=None, subscription_key=None, subscription_id=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -485,7 +485,7 @@ def update_subscription(userId, subscriptiondata, subscription_type=None, subscr
     auth = (userId, pw)
     
     if subscription_key and subscription_type:
-        subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type])).hexdigest()
+        subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type]).encode('utf8')).hexdigest()
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/subscriptions/" + subscription_id
@@ -496,7 +496,7 @@ def update_subscription(userId, subscriptiondata, subscription_type=None, subscr
 
 def add_subscription(userId, payload):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -516,7 +516,7 @@ def add_subscription(userId, payload):
 
 def get_subscription_types(userId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -534,17 +534,17 @@ def get_subscription_types(userId):
 
 def get_users(auth):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
 
     if type(auth) == tuple:
-        ruserId, rpw = auth
+        userId, pw = auth
     else:
-        ruserId = auth
-        rpw = ""
-    auth = (ruserId, rpw)
+        userId = auth
+        pw = ""
+    auth = (userId, pw)
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/users"
@@ -555,7 +555,7 @@ def get_users(auth):
 
 def get_user(auth, userId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -576,7 +576,7 @@ def get_user(auth, userId):
 
 def get_document(userId, bucket, name):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = ""
@@ -597,7 +597,7 @@ def get_document(userId, bucket, name):
 
 def put_document(userId, bucket, name, inobj):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -620,7 +620,7 @@ def put_document(userId, bucket, name, inobj):
 
 def get_service(userId, servicename=None, hostid=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -644,7 +644,7 @@ def get_service(userId, servicename=None, hostid=None):
 
 def delete_service(userId, servicename=None, hostid=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -667,7 +667,7 @@ def delete_service(userId, servicename=None, hostid=None):
 
 def get_registry(userId, registry=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -689,7 +689,7 @@ def get_registry(userId, registry=None):
 
 def add_registry(userId, registrydata, validate=True):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -711,7 +711,7 @@ def add_registry(userId, registrydata, validate=True):
 
 def update_registry(userId, registry, registrydata, validate=True):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -733,7 +733,7 @@ def update_registry(userId, registry, registrydata, validate=True):
 
 def delete_registry(userId, registry=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = {}
@@ -759,7 +759,7 @@ def add_event(userId, event):
         raise TypeError('Invalid event definition')
 
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -779,7 +779,7 @@ def add_event(userId, event):
 
 def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -831,7 +831,7 @@ def get_events(userId, source_servicename=None, source_hostid=None, resource_typ
 
 def delete_events(userId, since=None, before=None, level=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -865,7 +865,7 @@ def delete_events(userId, since=None, before=None, level=None):
 
 def get_event(userId, eventId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -885,7 +885,7 @@ def get_event(userId, eventId):
 
 def delete_event(userId, eventId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -905,7 +905,7 @@ def delete_event(userId, eventId):
 
 def get_prune_resourcetypes(userId):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -925,7 +925,7 @@ def get_prune_resourcetypes(userId):
 
 def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False
@@ -943,7 +943,7 @@ def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
     if olderthan:
         params['olderthan'] = str(int(olderthan))
     if params:
-        url = url + "?{}".format(urllib.urlencode(params))
+        url = url + "?{}".format(urllib.parse.urlencode(params))
         
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -951,7 +951,7 @@ def get_prune_candidates(userId, resourcetype, dangling=True, olderthan=None):
 
 def perform_prune(userId, resourcetype, prune_candidates):
     global localconfig, headers
-    if localconfig == None:
+    if localconfig is None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
 
     ret = False

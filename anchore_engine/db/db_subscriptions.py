@@ -13,23 +13,27 @@ def add(userId, subscription_key, subscription_type, inobj, session=None):
     if not inobj:
         inobj = {}
 
-    subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type])).hexdigest()
+    subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type]).encode('utf-8')).hexdigest()
     inobj['subscription_id'] = subscription_id
 
     inobj.pop('userId', None)
     inobj.pop('last_updated', None)
     inobj.pop('created_at', None)
 
-    our_result = session.query(Subscription).filter_by(subscription_id=subscription_id, userId=userId, subscription_key=subscription_key, subscription_type=subscription_type).first()
+    our_result = session.query(Subscription).filter_by(subscription_id=subscription_id, userId=userId,
+                                                       subscription_key=subscription_key,
+                                                       subscription_type=subscription_type).first()
     if not our_result:
-        our_result = Subscription(subscription_id=subscription_id, userId=userId, subscription_key=subscription_key, subscription_type=subscription_type)
+        our_result = Subscription(subscription_id=subscription_id, userId=userId, subscription_key=subscription_key,
+                                  subscription_type=subscription_type)
 
         our_result.update(inobj)
         session.add(our_result)
     else:
         our_result.update(inobj)
 
-    return(True)
+    return (True)
+
 
 def get_all_byuserId(userId, session=None):
     if not session:
@@ -39,10 +43,10 @@ def get_all_byuserId(userId, session=None):
 
     our_results = session.query(Subscription).filter_by(userId=userId)
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-        ret.append(obj)
+        ret.append(result.to_dict())
 
-    return(ret)
+    return (ret)
+
 
 def get_all(session=None):
     if not session:
@@ -52,10 +56,10 @@ def get_all(session=None):
 
     our_results = session.query(Subscription)
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-        ret.append(obj)
+        ret.append(result.to_dict())
 
-    return(ret)
+    return (ret)
+
 
 def get(userId, subscription_id, session=None):
     if not session:
@@ -66,10 +70,10 @@ def get(userId, subscription_id, session=None):
     result = session.query(Subscription).filter_by(userId=userId, subscription_id=subscription_id).first()
 
     if result:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-        ret = obj
+        ret = result.to_dict()
 
-    return(ret)
+    return (ret)
+
 
 def get_byfilter(userId, session=None, **dbfilter):
     if not session:
@@ -78,15 +82,13 @@ def get_byfilter(userId, session=None, **dbfilter):
     ret = []
 
     dbfilter['userId'] = userId
-    
+
     results = session.query(Subscription).filter_by(**dbfilter)
-    #results = session.query(Subscription).filter_by(userId=userId, subscription_key=subscription_key)
     if results:
         for result in results:
-            obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
-            ret.append(obj)
+            ret.append(result.to_dict())
 
-    return(ret)
+    return (ret)
 
 
 def get_bysubscription_key(userId, subscription_key, session=None):
@@ -99,21 +101,23 @@ def get_bysubscription_key(userId, subscription_key, session=None):
 
     if results:
         for result in results:
-            obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return(ret)
+    return (ret)
+
 
 def update(userId, subscription_key, subscription_type, inobj, session=None):
-    return(add(userId, subscription_key, subscription_type, inobj, session=session))
+    return (add(userId, subscription_key, subscription_type, inobj, session=session))
+
 
 def delete(userId, subscriptionId, remove=False, session=None):
     if not session:
         session = db.Session
 
     ret = False
-    
-    dbfilter = {'userId':userId, 'subscription_id':subscriptionId}
+
+    dbfilter = {'userId': userId, 'subscription_id': subscriptionId}
     results = session.query(Subscription).filter_by(**dbfilter)
     if results:
         for result in results:
@@ -124,7 +128,7 @@ def delete(userId, subscriptionId, remove=False, session=None):
 
             ret = True
 
-    return(ret)
+    return (ret)
 
 
 def delete_bysubscription_key(userId, subscription_key, remove=False, session=None):
@@ -132,7 +136,7 @@ def delete_bysubscription_key(userId, subscription_key, remove=False, session=No
         session = db.Session
 
     ret = False
-    
+
     results = session.query(Subscription).filter_by(userId=userId, subscription_key=subscription_key)
     if results:
         for result in results:
@@ -143,7 +147,8 @@ def delete_bysubscription_key(userId, subscription_key, remove=False, session=No
 
             ret = True
 
-    return(ret)
+    return (ret)
+
 
 def delete_byfilter(userId, remove=False, session=None, **dbfilter):
     if not session:
@@ -160,6 +165,6 @@ def delete_byfilter(userId, remove=False, session=None, **dbfilter):
                 session.delete(result)
             else:
                 result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
-            ret = True    
+            ret = True
 
-    return(ret)
+    return (ret)

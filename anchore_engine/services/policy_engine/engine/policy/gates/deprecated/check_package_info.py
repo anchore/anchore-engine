@@ -179,10 +179,10 @@ class PkgNotPresentTrigger(BaseTrigger):
                 vermatch.pop(img_pkg.name)
 
         # Any remaining
-        for pkg, version in fullmatch.items():
+        for pkg, version in list(fullmatch.items()):
             self._fire(msg="PKGNOTPRESENT input package (" + str(pkg) + "-" + str(version) + ") is not present in container image")
 
-        for pkg, version in vermatch.items():
+        for pkg, version in list(vermatch.items()):
             self._fire(msg="PKGNOTPRESENT input package (" + str(pkg) + "-" + str(
                 version) + ") is not present in container image")
 

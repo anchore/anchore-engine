@@ -21,7 +21,7 @@ def _to_dict(obj):
     if obj is None:
         return None
     else:
-        return dict((key, value) for key, value in vars(obj).iteritems() if not key.startswith('_'))
+        return dict((key, value) for key, value in vars(obj).items() if not key.startswith('_'))
 
 
 def create(queueName, userId, session=None, max_outstanding_msgs=-1, visibility_timeout=0):
@@ -46,7 +46,7 @@ def create(queueName, userId, session=None, max_outstanding_msgs=-1, visibility_
 
 def generate_dataId(inobj):
     datajson = json.dumps(inobj)
-    dataId = hashlib.md5(datajson).hexdigest()
+    dataId = hashlib.md5(datajson.encode('utf-8')).hexdigest()
     return(dataId, datajson)
 
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # flake8: noqa
-from __future__ import absolute_import
+
 # import models into model package
 from anchore_engine.services.policy_engine.api.models.distro_mapping import DistroMapping
 from anchore_engine.services.policy_engine.api.models.error_response import ErrorResponse

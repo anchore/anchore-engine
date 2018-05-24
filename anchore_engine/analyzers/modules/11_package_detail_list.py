@@ -1,12 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
 import subprocess
 
 import anchore_engine.analyzers.utils
@@ -55,7 +52,7 @@ def dpkg_get_all_packages_detail(unpackdir):
                     lic = "Unknown"
                 else:
                     lics = deb_copyright_getlics(licfile)
-                    if len(lics.keys()) > 0:
+                    if len(list(lics.keys())) > 0:
                         lic = ' '.join(lics)
                     else:
                         lic = "Unknown"
@@ -66,8 +63,8 @@ def dpkg_get_all_packages_detail(unpackdir):
     except Exception as err:
         import traceback
         traceback.print_exc()
-        print "Could not run command: " + str(cmd)
-        print "Exception: " + str(err)
+        print("Could not run command: " + str(cmd))
+        print("Exception: " + str(err))
         raise ValueError("Please ensure the command 'dpkg' is available and try again: " + str(err))
 
     return(all_packages)
@@ -95,7 +92,7 @@ analyzer_name = "package_list"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -116,23 +113,23 @@ if distrodict['flavor'] == "RHEL":
     try:
         pkgs = rpm_get_all_packages_detail(unpackdir)
     except Exception as err:
-        print "WARN: failed to generate RPM package list: " + str(err)
+        print("WARN: failed to generate RPM package list: " + str(err))
 
 elif distrodict['flavor'] == "DEB":
     try:
         pkgs = dpkg_get_all_packages_detail(unpackdir)
     except Exception as err:
-        print "WARN: failed to generate DPKG package list: " + str(err)
+        print("WARN: failed to generate DPKG package list: " + str(err))
 elif distrodict['flavor'] == "ALPINE":
     try:
         pkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles(unpackdir)
     except Exception as err:
-        print "WARN: failed to generate APKG package list: " + str(err)
+        print("WARN: failed to generate APKG package list: " + str(err))
 else:
     pass
 
 if pkgs:
-    for p in pkgs.keys():
+    for p in list(pkgs.keys()):
         pkglist[p] = json.dumps(pkgs[p])
 
 if pkglist:

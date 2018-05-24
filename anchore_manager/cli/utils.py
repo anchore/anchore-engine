@@ -5,7 +5,7 @@ import copy
 import json
 import time
 import yaml
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import logging
 import dateutil.parser
 
@@ -85,7 +85,7 @@ def format_error_output(config, op, params, payload):
         if 'detail' in errdata and errdata['detail']:
             outdict['Detail'] = str(errdata['detail'])
 
-        for k in outdict.keys():
+        for k in list(outdict.keys()):
             obuf = obuf + k + ": " + outdict[k] + "\n"
 
     except Exception as err:

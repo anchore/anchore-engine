@@ -19,7 +19,7 @@ def set_my_service_record(service_record):
     my_service_record = service_record
     return(True)
 
-def set_status(service_record, up=True, available=True, busy=False, message="all good", detail={}, update_db=False):
+def set_status(service_record, up=True, available=True, busy=False, message="all good", detail=None, update_db=False):
     global service_statuses
     hostid = service_record['hostid']
     servicename = service_record['servicename']
@@ -36,7 +36,7 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     service_statuses[service]['available'] = available
     service_statuses[service]['busy'] = busy 
     service_statuses[service]['message'] = message
-    service_statuses[service]['detail'] = detail
+    service_statuses[service]['detail'] = detail if detail is not None else {}
     service_statuses[service]['version'] = code_version
     service_statuses[service]['db_version'] = db_version
 

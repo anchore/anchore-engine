@@ -30,10 +30,10 @@ class TestDpkgVersionHandling(unittest.TestCase):
 
 
         for i in test_no_epoch:
-            print('Testing: {}'.format(i))
+            print(('Testing: {}'.format(i)))
             if not i[3] == compare_versions(i[0], i[2], i[1]):
                 print('Mismatch!')
             else:
                 print('Match!')
 
-        print(compare_versions('1.900.1-debian1-2.4+deb8u3', 'lt', '1.900.1-5.1'))
+        print((compare_versions('1.900.1-debian1-2.4+deb8u3', 'lt', '1.900.1-5.1')))

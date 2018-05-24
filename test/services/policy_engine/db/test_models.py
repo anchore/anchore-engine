@@ -32,7 +32,7 @@ class TestImagePackageVulnerabilityHashing(unittest.TestCase):
         self.assertNotEqual(c1, c3)
         self.assertListEqual(list({c1, c2, c3}), list({c1, c3}))
 
-        print('Set: {}'.format({c1, c2, c3}))
+        print(('Set: {}'.format({c1, c2, c3})))
 
 if __name__ == '__main__':
     t = TestImagePackageVulnerabilityHashing()

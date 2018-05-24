@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
-import json
 import os
 import re
+import json
 import sys
 import zipfile
 from io import BytesIO
@@ -177,7 +176,7 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    for f in allfiles.keys():
+    for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'file':
             prefix = '/'.join([unpackdir, 'rootfs'])
             els = process_java_archive(prefix, f.encode('utf8'))

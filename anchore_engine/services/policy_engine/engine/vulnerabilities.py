@@ -160,11 +160,11 @@ def vulnerabilities_for_package(package_obj):
 
     for candidate in fix_candidates:
         # De-dup evaluations based on the underlying vulnerability_id. For packages where src has many binary builds, once we have a match we have a match.
-        if candidate.vulnerability_id not in map(lambda x: x.vulnerability_id, matches) and match_but_not_fixed(candidate, package_obj):
+        if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and match_but_not_fixed(candidate, package_obj):
             matches.append(candidate)
 
     for candidate in vulnerable_candidates:
-        if candidate.vulnerability_id not in map(lambda x: x.vulnerability_id, matches) and match_and_vulnerable(candidate, package_obj):
+        if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and match_and_vulnerable(candidate, package_obj):
             matches.append(candidate)
 
     return matches
@@ -217,7 +217,7 @@ def get_vulnerable_packages(vulnerability_list):
         vulnerability_events_by_namespace[event['namespace']].append(event)
 
     db = get_thread_scoped_session()
-    for namespace, vulns in vulnerability_events_by_namespace.items():
+    for namespace, vulns in list(vulnerability_events_by_namespace.items()):
         for vuln in vulns:
             packages = find_vulnerable_image_packages(vuln)
             for pkg in packages:
@@ -257,7 +257,7 @@ def find_vulnerable_image_packages(vulnerability_obj):
     if related_names != [distro]:
         # Ensure we don't include any names that actually have a feed (can happen when new feeds arrive before the mapped_names() source
         # is updated to break the 'like' relation between the distros.
-        related_names = filter(lambda x: namespace_has_no_feed(x, version), related_names)
+        related_names = [x for x in related_names if namespace_has_no_feed(x, version)]
 
         # This is a weird case because it basically means that this distro doesn't map to itself as far as mapped_names() is
         # concerned, but since that could be code lagging data (e.g. new feed group added for a new distro), add the name itself

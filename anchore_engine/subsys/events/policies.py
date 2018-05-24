@@ -1,4 +1,4 @@
-from common import Event
+from .common import Event
 
 _policy_resource_type = 'policy_bundle'
 

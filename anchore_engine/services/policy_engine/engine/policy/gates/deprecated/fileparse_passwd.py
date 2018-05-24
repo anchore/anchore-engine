@@ -27,7 +27,7 @@ class PentryBlacklistMixin(object):
         :return: list of match tuples where each tuple is (<matched candidate>, <entire matching pentry>)
         """
         matches = []
-        for user, pentry in pentries_dict.items():
+        for user, pentry in list(pentries_dict.items()):
             if pentry_index is not None:
                 candidate = pentry[pentry_index] if pentry_index > 0 else user
             else:
@@ -163,7 +163,7 @@ class FileparsePasswordGate(Gate):
         if content_matches:
             try:
                 pentries = {}
-                for line in unicode(content_matches.binary_value).splitlines():
+                for line in str(content_matches.binary_value).splitlines():
                     line = line.strip()
                     pentry = line.split(':')
                     pentries[pentry[0]] = pentry[1:]

@@ -122,7 +122,7 @@ def get(imageDigest, userId, session=None):
 
     result = session.query(CatalogImage).filter_by(imageDigest=imageDigest, userId=userId).order_by(desc(CatalogImage.created_at)).first()
     if result:
-        dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = dbobj
         if dbobj['image_type'] == 'docker':
             imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
@@ -190,7 +190,7 @@ def get_all_tagsummary(userId, session=None):
     results = session.query(CatalogImage.imageDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImageDocker.created_at, CatalogImageDocker.imageId, CatalogImage.analyzed_at, CatalogImageDocker.tag_detected_at).filter(and_(CatalogImage.userId == userId, CatalogImage.imageDigest == CatalogImageDocker.imageDigest))
     def mymap(x):
         return({'imageDigest': x[0], 'fulltag': x[1]+"/"+x[2]+":"+x[3], 'analysis_status': x[4], 'created_at': x[5], 'imageId': x[6], 'analyzed_at': x[7], 'tag_detected_at': x[8]})
-    ret = map(mymap, list(results))
+    ret = list(map(mymap, list(results)))
 
     return(ret)
 
@@ -206,7 +206,7 @@ if False:
 
         acols = ['imageDigest']
         avcols = ['"imageDigest"']
-        cols = CatalogImage.__table__.columns.keys()
+        cols = list(CatalogImage.__table__.columns.keys())
         for col in cols:
             if col != 'imageDigest' and col in colfilter:
                 acols.append(col)
@@ -214,7 +214,7 @@ if False:
 
         bcols = ['imageDigest']
         bvcols = ['"imageDigest"']
-        cols = CatalogImageDocker.__table__.columns.keys()
+        cols = list(CatalogImageDocker.__table__.columns.keys())
         for col in cols:
             if col != 'imageDigest' and col in colfilter:
                 bcols.append(col)
@@ -225,18 +225,18 @@ if False:
         if acols:
             results = session.query(CatalogImage).options(load_only(*acols)).filter_by(userId=userId).values(*avcols)
             for result in list(results):
-                hmap[result[0]] = dict(zip(acols, result))
+                hmap[result[0]] = dict(list(zip(acols, result)))
 
 
         if bcols:
             results = session.query(CatalogImageDocker).options(load_only(*bcols)).filter_by(userId=userId).values(*bvcols)
             for result in list(results):
                 if hmap[result[0]]:
-                    hmap[result[0]].update(dict(zip(bcols, result)))
+                    hmap[result[0]].update(dict(list(zip(bcols, result))))
                 else:
-                    hmap[result[0]] = dict(zip(bcols, result))
+                    hmap[result[0]] = dict(list(zip(bcols, result)))
 
-        ret = hmap.values()
+        ret = list(hmap.values())
 
         return(ret)
 
@@ -257,7 +257,7 @@ def get_all_byuserId(userId, session=None):
             tagdata[tag['imageDigest']].append(tag)
 
         for result in results:
-            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             #dbobj = result.__dict__
             #dbobj.pop('_sa_instance_state', None)
 
@@ -279,7 +279,7 @@ def get_all_iter(session=None):
 
     for top_result in session.query(CatalogImage.imageDigest, CatalogImage.userId).order_by(desc(CatalogImage.created_at)):
         result = session.query(CatalogImage).filter_by(imageDigest=top_result.imageDigest, userId=top_result.userId).first()
-        dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         imageDigest = dbobj['imageDigest']
         userId = dbobj['userId']
         if dbobj['image_type'] == 'docker':
@@ -299,7 +299,7 @@ def get_all(session=None):
     results = session.query(CatalogImage).order_by(desc(CatalogImage.created_at))
     if results:
         for result in results:
-            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             imageDigest = dbobj['imageDigest']
             userId = dbobj['userId']
             if dbobj['image_type'] == 'docker':
@@ -320,7 +320,7 @@ def get_byfilter(userId, session=None, **kwargs):
     results = session.query(CatalogImage).filter_by(**kwargs).order_by(desc(CatalogImage.created_at))
     if results:
         for result in results:
-            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             imageDigest = dbobj['imageDigest']
             userId = dbobj['userId']
             if dbobj['image_type'] == 'docker':

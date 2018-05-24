@@ -12,7 +12,7 @@ PG_COULD_NOT_GET_ROWLOCK_CODE = '55P03'
 PG_RELATION_NOT_FOUND_CODE = '42P01'
 
 
-class AnchoreDbError(StandardError):
+class AnchoreDbError(Exception):
     pass
 
 

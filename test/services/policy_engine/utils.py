@@ -43,8 +43,8 @@ def get_policy_tables():
     from anchore_engine.db.entities import policy_engine
     from anchore_engine.db.entities.common import Base
 
-    entity_names = [x[1].__tablename__ for x in filter(lambda x: inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base, inspect.getmembers(policy_engine))]
-    tables = filter(lambda x: x.name in entity_names, Base.metadata.sorted_tables)
+    entity_names = [x[1].__tablename__ for x in [x for x in inspect.getmembers(policy_engine) if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base]]
+    tables = [x for x in Base.metadata.sorted_tables if x.name in entity_names]
 
     return tables
 
@@ -74,7 +74,7 @@ def init_distro_mappings():
             distro_mappings = dbsession.query(DistroMapping).all()
 
             for i in initial_mappings:
-                if not filter(lambda x: x.from_distro == i.from_distro, distro_mappings):
+                if not [x for x in distro_mappings if x.from_distro == i.from_distro]:
                     dbsession.add(i)
     except Exception as err:
         raise Exception("unable to initialize default distro mappings - exception: " + str(err))
@@ -157,7 +157,7 @@ class LocalTestDataEnvironment(object):
         Returns a list of id, filepath tuples
         :return:
         """
-        return [(x, os.path.join(self.images_dir, self.image_map[x]['path'])) for x in self.image_map.keys()]
+        return [(x, os.path.join(self.images_dir, self.image_map[x]['path'])) for x in list(self.image_map.keys())]
 
     def init_feeds(self, up_to=None):
         LocalPackagesFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
@@ -176,7 +176,7 @@ class LocalTestDataEnvironment(object):
         return self.image_map.get(img_id)
 
     def get_images_named(self, name):
-        return filter(lambda x: x[1]['name'] == name, self.image_map.items())
+        return [x for x in list(self.image_map.items()) if x[1]['name'] == name]
 
     def set_max_feed_time(self, max_datetime):
         LocalPackagesFeed.__source_cls__.limit_to_older_than(max_datetime)
@@ -195,4 +195,4 @@ class LocalTestDataEnvironment(object):
         return self.bundles.get(bundle_id)
 
     def get_bundle_by_name(self, bundle_name):
-        return filter(lambda x: self.bundles[x]['name'] == bundle_name, self.bundles.keys())
+        return [x for x in list(self.bundles.keys()) if self.bundles[x]['name'] == bundle_name]

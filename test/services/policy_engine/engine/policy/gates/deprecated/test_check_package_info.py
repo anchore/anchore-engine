@@ -26,25 +26,25 @@ class PackageCheckGateTest(GateUnitTest):
             t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgfullmatch='binutils|2.25-5+deb8u1,libssl|123')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
-            print('Fired: {}'.format(t.fired))
+            print(('Fired: {}'.format(t.fired)))
             self.assertEqual(len(t.fired), 1)
 
             t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgnamematch='binutilityrepo,binutils')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
-            print('Fired: {}'.format(t.fired))
+            print(('Fired: {}'.format(t.fired)))
             self.assertEqual(len(t.fired), 1)
 
             t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgversmatch='binutils|2.25-5+deb8u1,randopackage|123,binutils|3.25-5+deb8u1')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
-            print('Fired: {}'.format(t.fired))
+            print(('Fired: {}'.format(t.fired)))
             self.assertEqual(len(t.fired), 2)
 
             t, gate, test_context = self.get_initialized_trigger(PkgNotPresentTrigger.__trigger_name__, pkgfullmatch='binutils|2.25-5+deb8u1,libssl|123', pkgnamematch='binutils,foobar', pkgversmatch='binutils|2.25-5+deb8u1,libssl|10.2,blamo|123.123')
             test_context = gate.prepare_context(image, test_context)
             t.evaluate(image, test_context)
-            print('Fired: {}'.format(t.fired))
+            print(('Fired: {}'.format(t.fired)))
             self.assertEqual(len(t.fired), 4)
         finally:
             db.rollback()
@@ -63,7 +63,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 2)
         self.assertTrue(('missing' in t.fired[0].msg and 'changed' in t.fired[1].msg) or ('missing' in t.fired[1].msg and 'changed' in t.fired[0].msg))
 
@@ -73,7 +73,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)
         self.assertTrue('changed' in t.fired[0].msg)
 
@@ -83,7 +83,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)
         self.assertTrue('missing' in t.fired[0].msg)
 
@@ -93,7 +93,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 2)
         self.assertTrue(('missing' in t.fired[0].msg and 'changed' in t.fired[1].msg) or ('missing' in t.fired[1].msg and 'changed' in t.fired[0].msg))
 
@@ -103,7 +103,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)
         self.assertTrue('missing' in t.fired[0].msg)
 
@@ -113,7 +113,7 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)
         self.assertTrue('changed' in t.fired[0].msg)
 
@@ -123,22 +123,22 @@ class PackageCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 0)
 
         print('Trying default params on all loaded images')
         t, gate, test_context = self.get_initialized_trigger(VerifyTrigger.__trigger_name__)
-        for img_id, meta in self.test_env.image_map.items():
+        for img_id, meta in list(self.test_env.image_map.items()):
             if img_id == self.test_image.id:
                 continue
             t.reset()
 
             img_obj = db.query(Image).get((img_id, '0'))
-            print('Default params check on img: {}'.format(img_id))
+            print(('Default params check on img: {}'.format(img_id)))
 
             test_context = gate.prepare_context(img_obj, test_context)
             t.evaluate(img_obj, test_context)
-            print('Image name: {}, id: {}, Fired count: {}\nFired: {}'.format(meta.get('name'), img_id, len(t.fired), t.fired))
+            print(('Image name: {}, id: {}, Fired count: {}\nFired: {}'.format(meta.get('name'), img_id, len(t.fired), t.fired)))
             #self.assertEqual(len(t.fired), 0, 'Found failed verfications on: {}'.format(img_obj.id))
 
     def test_db_pkg_compare(self):

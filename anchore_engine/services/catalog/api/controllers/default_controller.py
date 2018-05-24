@@ -64,6 +64,7 @@ def image_post(bodycontent={}, tag=None, digest=None):
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
 
     except Exception as err:
+        logger.exception('Error processing image add')
         httpcode = 500
         return_object = str(err)
 
@@ -512,6 +513,7 @@ def system_subscriptions_get():
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_subscriptions(session, request_inputs)
 
     except Exception as err:
+        logger.exception('Error fetching subscriptions')
         httpcode = 500
         return_object = str(err)
 

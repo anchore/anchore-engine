@@ -98,6 +98,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
         cmdstr = ' '.join(cmd)
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
+            sout = str(sout, 'utf-8') if sout else None
             if rc != 0:
                 raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
             else:
@@ -155,6 +156,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                 logger.error("command failed with exception - " + str(err))
                 raise err
 
+            sout = str(sout, 'utf-8') if sout else None
             digest = manifest_to_digest(sout)
             manifest = json.loads(sout)
 

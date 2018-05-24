@@ -15,7 +15,7 @@ class ValidatorTestMixin(object):
 
     def run_matrix_test(self, value_matrix, validator):
         for input, expected in value_matrix:
-            print('Testing value: {} with expected output: {}'.format(input, expected))
+            print(('Testing value: {} with expected output: {}'.format(input, expected)))
             if expected:
                 self.assertTrue(validator.validate(input), msg='Expected true for input: {}'.format(input))
             else:
@@ -306,7 +306,7 @@ class FakeTrigger(gate.BaseTrigger):
     param1 = params.TriggerParameter(name='param_test', example_str='somevalue', description='Test parameter', validator=TypeValidator("string"), is_required=False)
 
     def test1(self):
-        print(type(self.param1))
+        print((type(self.param1)))
 
 class FakeGate(gate.Gate):
     __gate_name__ = 'Somegate'
@@ -320,23 +320,23 @@ class TestTriggerParams(unittest.TestCase):
         print('Trying string that should pass validation')
 
         # Should pass validation
-        print(p.set_value('somestring'))
-        print('Got value: {}'.format(p.value()))
+        print((p.set_value('somestring')))
+        print(('Got value: {}'.format(p.value())))
 
         print('Trying an int that should fail validation')
 
         # Should fail validation
         with self.assertRaises(ValidationError) as ex:
-            print(p.set_value(10))
+            print((p.set_value(10)))
 
-        print('Correctly got exception {}'.format(ex.exception))
+        print(('Correctly got exception {}'.format(ex.exception)))
 
 
     def test_param_integration(self):
         t = FakeTrigger(parent_gate_cls=FakeGate, param_test='blah')
         # print('Inst value: {}'.format(t.eval_params.get(t.param1.name)))
-        print('Inst value: {}'.format(t.param1.value()))
-        print('Class value: {}'.format(t.__class__.param1.value()))
+        print(('Inst value: {}'.format(t.param1.value())))
+        print(('Class value: {}'.format(t.__class__.param1.value())))
         t.test1()
 
 
@@ -347,7 +347,7 @@ class ValidatedParameterTestMixin(object):
 
     def run_matrix_test(self, value_matrix, parameter):
         for input, expected in value_matrix:
-            print('Testing value: {} with expected output: {}'.format(input, expected))
+            print(('Testing value: {} with expected output: {}'.format(input, expected)))
             if expected:
                 parameter.set_value(input)
                 output = parameter.value()

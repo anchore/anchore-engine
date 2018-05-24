@@ -1,17 +1,11 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
+import base64
+import binascii
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
 import subprocess
-import stat
-import tarfile
-import time
-import hashlib
 import copy
 
 import anchore_engine.analyzers.utils
@@ -35,12 +29,12 @@ def apk_get_file_package_metadata(unpackdir, record_template):
 
             except Exception as err:
                 buf = None
-                print "WARN: cannot read apk DB file - exception: " + str(err)
+                print("WARN: cannot read apk DB file - exception: " + str(err))
 
             if buf:
                 fmode = raw_csum = uid = gid = sha1sum = fname = therealfile_apk = therealfile_fs = None
                 for line in buf.splitlines():
-                    line = line.strip().decode('utf8')
+                    line = str(line.strip(), 'utf8')
                     patt = re.match("(.):(.*)", line)
                     if patt:
                         atype = patt.group(1)
@@ -73,7 +67,8 @@ def apk_get_file_package_metadata(unpackdir, record_template):
                             therealfile_fs = os.path.realpath(therealfile_apk)
                             if therealfile_apk == therealfile_fs:
                                 try:
-                                    sha1sum = raw_csum[2:].decode('base64').encode('hex')
+                                    #sha1sum = raw_csum[2:].decode('base64').encode('hex')
+                                    sha1sum = str(binascii.hexlify(base64.decodebytes(raw_csum[2:])), 'utf-8')
                                 except:
                                     sha1sum = None
                             else:
@@ -111,11 +106,11 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                     buf = FH.read()
             except Exception as err:
                 buf = None
-                print "WARN: cannot read status file - exception: " + str(err)
+                print("WARN: cannot read status file - exception: " + str(err))
 
             if buf:
                 for line in buf.splitlines():
-                    line = line.strip().decode('utf8')
+                    line = str(line.strip(), 'utf8')
                     if re.match("^Conffiles:.*", line):
                         fmode = True
                     elif re.match("^.*:.*", line):
@@ -126,7 +121,7 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                                 (fname, csum) = line.split()
                                 conffile_csums[fname] = csum
                             except Exception as err:
-                                print "WARN: bad line in status for conffile line - exception: " + str(err)
+                                print("WARN: bad line in status for conffile line - exception: " + str(err))
 
     except Exception as err:
         raise Exception("WARN: could not parse dpkg status file, looking for conffiles checksums - exception: " + str(err))
@@ -161,17 +156,17 @@ def deb_get_file_package_metadata(unpackdir, record_template):
         else:
             raise Exception("no dpkg info path found in image: " + str(metapath))
 
-        for pkg in metafiles.keys():
+        for pkg in list(metafiles.keys()):
             dinfo = None
             try:
                 with open(metafiles[pkg], 'r') as FH:
                     dinfo = FH.read()
             except Exception as err:
-                print "WARN: could not open/read metafile - exception: " + str(err)
+                print("WARN: could not open/read metafile - exception: " + str(err))
 
             if dinfo:
                 for line in dinfo.splitlines():
-                    line = line.strip().decode('utf8')
+                    line = str(line.strip(), 'utf8')
                     try:
                         (csum, fname) = line.split()
                         fname = '/' + fname
@@ -184,20 +179,20 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                         el.update({"package": pkg or None, "digest": csum or None, "digestalgo": "md5", "conffile": False})
                         result[fname].append(el)
                     except Exception as err:
-                        print "WARN: problem parsing line from dpkg info file - exception: " + str(err)
+                        print("WARN: problem parsing line from dpkg info file - exception: " + str(err))
 
-        for pkg in conffiles.keys():
+        for pkg in list(conffiles.keys()):
             cinfo = None
             try:
                 with open(conffiles[pkg], 'r') as FH:
                     cinfo = FH.read()
             except Exception as err:
                 cinfo = None
-                print "WARN: could not open/read conffile - exception: " + str(err)
+                print("WARN: could not open/read conffile - exception: " + str(err))
 
             if cinfo:
                 for line in cinfo.splitlines():
-                    line = line.strip().decode('utf8')
+                    line = str(line.strip(), 'utf8')
                     try:
                         fname = line
                         if fname in conffile_csums:
@@ -208,7 +203,7 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                             el.update({"package": pkg or None, "digest": csum or None, "digestalgo": "md5", "conffile": True})
                             result[fname].append(el)
                     except Exception as err:
-                        print "WARN: problem parsing line from dpkg conffile file - exception: " + str(err)
+                        print("WARN: problem parsing line from dpkg conffile file - exception: " + str(err))
 
     except Exception as err:
         raise Exception("WARN: could not find/parse dpkg info metadata files - exception: " + str(err))
@@ -239,7 +234,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
 
     cmdstr = 'rpm --dbpath='+rpmdbdir+' -qa --queryformat "[%{FILENAMES}|ANCHORETOK|%{FILEDIGESTS}|ANCHORETOK|%{FILEMODES:octal}|ANCHORETOK|%{FILEGROUPNAME}|ANCHORETOK|%{FILEUSERNAME}|ANCHORETOK|%{FILESIZES}|ANCHORETOK|%{=NAME}|ANCHORETOK|%{FILEFLAGS:fflags}|ANCHORETOK|%{=FILEDIGESTALGO}\\n]"'
     cmd = cmdstr.split()
-    print cmdstr
+    print(cmdstr)
     try:
         pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         o, e = pipes.communicate()
@@ -249,7 +244,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
 
         if exitcode == 0:
             for l in soutput.splitlines():
-                l = l.strip().decode('utf8')
+                l = str(l.strip(), 'utf8')
                 if l:
                     try:
                         (fname, fdigest, fmode, fgroup, fuser, fsize, fpackage, fflags, fdigestalgonum)= l.split("|ANCHORETOK|")
@@ -270,7 +265,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
                         el.update({'digest': fdigest or None, 'digestalgo': fdigestalgo or None, 'mode': fmode or None, 'group': fgroup or None, 'user': fuser or None, 'size': fsize or None, 'package': fpackage or None, 'conffile': cfile})
                         result[fname].append(el)
                     except Exception as err:
-                        print "WARN: unparsable output line - exception: " + str(err)
+                        print("WARN: unparsable output line - exception: " + str(err))
         else:
             raise Exception("rpm file metadata command failed with exitcode ("+str(exitcode)+") - stdoutput: " + str(soutput) + " : stderr: " + str(serror))
 
@@ -284,7 +279,7 @@ analyzer_name = "file_package_verify"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -325,16 +320,16 @@ try:
         # do nothing, flavor not supported for getting metadata about files from pkg manager
         pass
 except Exception as err:
-    print "WARN: analyzer unable to complete - exception: " + str(err)
+    print("WARN: analyzer unable to complete - exception: " + str(err))
     result = {}
     resultline = {}
 
 if result:
-    for f in result.keys():
+    for f in list(result.keys()):
         try:
             resultlist[f] = json.dumps(result[f], sort_keys=True)
         except Exception as err:
-            print "WARN: " + str(err)
+            print("WARN: " + str(err))
             resultlist[f] = ""
 
 if resultlist:
@@ -355,7 +350,7 @@ try:
         }
     
 except Exception as err:
-    print "WARN: could not run distro package verifier - exception: " + str(err)
+    print("WARN: could not run distro package verifier - exception: " + str(err))
     verify_result = {}
 
 if verify_result:

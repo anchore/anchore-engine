@@ -32,7 +32,7 @@ def enable_bootstrap_logging(service_name=None):
     global bootstrap_logger_enabled, bootstrap_logger, log_level
 
     if log_level:
-        level = filter(lambda x: x[1] == log_level, log_level_map.items())
+        level = [x for x in list(log_level_map.items()) if x[1] == log_level]
         # now select the right element of the tuple
         if level:
             level = level[0][0]

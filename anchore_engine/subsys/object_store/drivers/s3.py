@@ -1,6 +1,6 @@
 import boto3
 #import botocore.config
-import urlparse
+import urllib.parse
 
 from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
@@ -93,7 +93,7 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         return self.get_by_uri(uri)
 
     def _parse_uri(self, uri):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         bucket = parsed.hostname
         key = parsed.path[1:]
         return bucket, key
@@ -102,7 +102,9 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         bucket, key = self._parse_uri(uri)
         try:
             resp = self.s3_client.get_object(Bucket=bucket, Key=key)
-            return resp['Body'].read()
+            content = resp['Body'].read()
+
+            return content.decode('utf8')
         except Exception as e:
             raise e
 

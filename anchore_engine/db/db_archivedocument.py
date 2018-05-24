@@ -33,7 +33,7 @@ def get_all_iter(session=None):
 
     for top_result in session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId):
         result = session.query(ArchiveDocument).filter_by(userId=top_result.userId, bucket=top_result.bucket, archiveId=top_result.archiveId).first()
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         yield obj
 
 def get_all(session=None):
@@ -44,7 +44,7 @@ def get_all(session=None):
 
     our_results = session.query(ArchiveDocument)
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
     return(ret)
@@ -54,7 +54,7 @@ def get(userId, bucket, archiveId, session=None):
 
     result = session.query(ArchiveDocument).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.update(obj)
 
     return(ret)
@@ -64,8 +64,8 @@ def get_onlymeta(userId, bucket, archiveId, session=None):
 
     result = session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val, ArchiveDocument.created_at, ArchiveDocument.last_updated).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             ret[k] = result[i]
 
     return(ret)
@@ -79,7 +79,7 @@ def get_byname(userId, documentName, session=None):
     result = session.query(ArchiveDocument).filter_by(userId=userId, documentName=documentName).first()
 
     if result:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
     return(ret)
@@ -93,8 +93,8 @@ def exists(userId, bucket, archiveId, session=None):
     result = session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
 
     if result:
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             ret[k] = result[i]
 
     return(ret)
@@ -105,8 +105,8 @@ def list_all_notempty(session=None):
     results = session.query(ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.userId).filter(ArchiveDocument.jsondata != '{}')
     for result in results:
         obj = {}
-        for i in range(0,len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0,len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
@@ -122,8 +122,8 @@ def list_all(session=None, **dbfilter):
 
     for result in results:
         obj = {}
-        for i in range(0,len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0,len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
@@ -142,8 +142,8 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     for result in results:
         obj = {}
-        for i in range(0,len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0,len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)

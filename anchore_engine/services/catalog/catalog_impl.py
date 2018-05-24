@@ -1,5 +1,4 @@
 import json
-import uuid
 import hashlib
 import time
 import base64
@@ -8,15 +7,15 @@ from dateutil import parser as dateparser
 
 import anchore_engine.services.common
 import anchore_engine.configuration.localconfig
-import anchore_engine.auth.anchore_resources
-import anchore_engine.auth.aws_ecr
+from anchore_engine.auth import anchore_resources, aws_ecr
 import anchore_engine.services.catalog
+import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 import anchore_engine.subsys.metrics
-from anchore_engine.clients import localanchore, simplequeue
-from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events, \
+from anchore_engine.clients import simplequeue, docker_registry
+from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
     db_registries, db_services, db_archivedocument
 import anchore_engine.clients.policy_engine
 
@@ -100,7 +99,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
             repotags = []
             try:
-                repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                repotags = docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
             except Exception as err:
                 httpcode = 404
                 logger.warn("no tags could be added from input regrepo ("+str(regrepo)+") - exception: " + str(err))
@@ -339,6 +338,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                         image_record = image_records[0]
 
             except Exception as err:
+                logger.exception('Error adding image')
                 httpcode = 404
                 raise err
 
@@ -350,6 +350,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                 raise Exception("could not add input image")
 
     except Exception as err:
+        logger.exception('Error processing image request')
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
@@ -382,7 +383,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
                 if image_record:
                     
                     return_object, httpcode = do_image_delete(userId, image_record, dbsession, force=params['force'])
-                    if httpcode not in range(200,299):
+                    if httpcode not in list(range(200,299)):
                         raise Exception(return_object)
 
                 else:
@@ -453,7 +454,7 @@ def image_import(dbsession, request_inputs, bodycontent={}):
 
             tags = []
             for tag in docker_data['RepoTags']:
-                image_info = localanchore.parse_dockerimage_string(tag)
+                image_info = anchore_engine.utils.parse_dockerimage_string(tag)
                 if islocal:
                     image_info['registry'] = 'localbuild'
                     digests.append(image_info['registry'] + "/" + image_info['repo'] + "@local:" + imageId)
@@ -491,7 +492,7 @@ def image_import(dbsession, request_inputs, bodycontent={}):
 
     return(return_object, httpcode)
 
-def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}):
+def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
@@ -537,11 +538,11 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
             subscription_record = db_subscriptions.get(userId, subscriptionId, session=dbsession)
             if subscription_record:
                 rc, httpcode = do_subscription_delete(userId, subscription_record, dbsession, force=True)
-                if httpcode not in range(200,299):
+                if httpcode not in list(range(200,299)):
                     raise Exception(str(rc))
-            
+
         elif method == 'POST':
-            subscriptiondata = bodycontent
+            subscriptiondata = bodycontent if bodycontent is not None else {}
 
             subscription_key = subscription_type = None
             if 'subscription_key' in subscriptiondata:
@@ -565,7 +566,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
             httpcode = 200
 
         elif method == 'PUT':
-            subscriptiondata = bodycontent
+            subscriptiondata = bodycontent if bodycontent is not None else {}
 
             subscription_key = subscription_type = None
             if 'subscription_key' in subscriptiondata:
@@ -589,6 +590,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
             httpcode = 200
 
     except Exception as err:
+        logger.exception('Error handling subscriptions')
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
@@ -726,6 +728,7 @@ def events(dbsession, request_inputs, bodycontent=None):
                 httpcode = 500
                 raise Exception('Cannot create event')
     except Exception as err:
+        logger.exception('Error in events handler')
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
@@ -986,7 +989,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             # attempt to validate on registry add before any DB / cred refresh is done - only support docker_v2 registry validation presently at this point
             if validate and registrydata.get('registry_type', False) in ['docker_v2']:
                 try:
-                    registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
+                    registry_status = docker_registry.ping_docker_registry(registrydata)
                 except Exception as err:
                     httpcode = 406
                     raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
@@ -1001,7 +1004,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                 if validate:
                     for registry_record in registry_records:
                         try:
-                            registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_records[0])
+                            registry_status = docker_registry.ping_docker_registry(registry_records[0])
                         except Exception as err:
                             httpcode = 406
                             raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
@@ -1036,7 +1039,7 @@ def refresh_registry_creds(registry_records, dbsession):
 
                 if dorefresh:
                     logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
-                    ecr_data = anchore_engine.auth.aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
+                    ecr_data = aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
                     registry_record['registry_meta'] = json.dumps(ecr_data)
                     db_registries.update_record(registry_record, session=dbsession)
 
@@ -1082,7 +1085,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
 
             if validate:
                 try:
-                    registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
+                    registry_status = docker_registry.ping_docker_registry(registrydata)
                 except Exception as err:
                     httpcode = 406
                     raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
@@ -1106,7 +1109,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             registry_records = db_registries.get(registry, userId, session=dbsession)
             for registry_record in registry_records:
                 rc, httpcode = do_registry_delete(userId, registry_record, dbsession, force=True)
-                if httpcode not in range(200,299):
+                if httpcode not in list(range(200,299)):
                     raise Exception(str(rc))
                     
     except Exception as err:
@@ -1137,7 +1140,7 @@ def system_prune_listresources(dbsession, request_inputs):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    allowed = anchore_engine.auth.anchore_resources.operation_access(userId, "system_prune_listresources", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    allowed = anchore_resources.operation_access(userId, "system_prune_listresources", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
     if not allowed:
         httpcode = 401
         return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
@@ -1160,7 +1163,7 @@ def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    allowed = anchore_engine.auth.anchore_resources.operation_access(userId, "system_prune", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    allowed = anchore_resources.operation_access(userId, "system_prune", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
     if not allowed:
         httpcode = 401
         return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
@@ -1349,7 +1352,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
         curr_final_action = resp.final_action.upper()
         
         # set up the newest evaluation
-        evalId = hashlib.md5(':'.join([policyId, userId, imageDigest, fulltag, str(curr_final_action)])).hexdigest()
+        evalId = hashlib.md5(':'.join([policyId, userId, imageDigest, fulltag, str(curr_final_action)]).encode('utf8')).hexdigest()
         curr_evaluation_record = anchore_engine.services.common.make_eval_record(userId, evalId, policyId, imageDigest, fulltag, curr_final_action, "policy_evaluations/"+evalId)
         curr_evaluation_result = resp.to_dict()
 
@@ -1404,7 +1407,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
     # input to this section is imageId, list of digests and list of tags (full dig/tag strings with reg/repo[:@]bleh)
     image_ids = {}
     for d in digests:
-        image_info = localanchore.parse_dockerimage_string(d)
+        image_info = anchore_engine.utils.parse_dockerimage_string(d)
         registry = image_info['registry']
         repo = image_info['repo']
         digest = image_info['digest']
@@ -1417,7 +1420,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
             image_ids[registry][repo]['digests'].append(digest)
 
     for d in tags:
-        image_info = localanchore.parse_dockerimage_string(d)
+        image_info = anchore_engine.utils.parse_dockerimage_string(d)
         registry = image_info['registry']
         repo = image_info['repo']
         digest = image_info['tag']
@@ -1442,8 +1445,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
     #logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
     addlist = {}
-    for registry in image_ids.keys():
-        for repo in image_ids[registry].keys():
+    for registry in list(image_ids.keys()):
+        for repo in list(image_ids[registry].keys()):
             imageId = image_ids[registry][repo]['imageId']
             digests = image_ids[registry][repo]['digests']
             tags = image_ids[registry][repo]['tags']
@@ -1520,7 +1523,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             try:
                                 annotation_data.update(annotations)
                                 final_annotation_data = {}
-                                for k,v in annotation_data.items():
+                                for k,v in list(annotation_data.items()):
                                     if v != 'null':
                                         final_annotation_data[k] = v
                                 image_record['annotations'] = json.dumps(final_annotation_data)
@@ -1540,7 +1543,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                     addlist[imageDigest] = image_record
 
     #logger.debug("final dict of image(s) to add: " + json.dumps(addlist, indent=4))
-    for imageDigest in addlist.keys():
+    for imageDigest in list(addlist.keys()):
         ret.append(addlist[imageDigest])
 
     #logger.debug("returning: " + json.dumps(ret, indent=4))
@@ -1672,7 +1675,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
         records = db_users.get_all(session=dbsession)
         for record in records:
             user_records[record['userId']] = record
-        user_ids = user_records.keys()
+        user_ids = list(user_records.keys())
 
         fulltags = []
         image_digests = []
@@ -1687,13 +1690,13 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
         records = db_policybundle.get_all(session=dbsession)
         for record in records:
             policy_records[record['policyId']] = record
-        policy_ids = policy_records.keys()
+        policy_ids = list(policy_records.keys())
 
         eval_records = {}
         records = db_policyeval.get_all(session=dbsession)
         for record in records:
             eval_records[record['evalId']] = record
-        eval_ids = eval_records.keys()
+        eval_ids = list(eval_records.keys())
 
     except Exception as err:
         httpcode = 500
@@ -1715,7 +1718,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
                 raise Exception("input resource_type ("+str(resourcetype)+") is not in list of available resource_types ("+str(resource_types)+")")
 
             if resourcetype == 'users':
-                records = user_records.values()
+                records = list(user_records.values())
                 for record in records:
                     dangling_candidate = False
                     prune_candidate = True
@@ -1813,7 +1816,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
                         prune_candidates.append(el)                        
 
             elif resourcetype == 'policies':
-                records = policy_records.values()
+                records = list(policy_records.values())
                 for record in records:
                     # dangling_candidate is set if the resource is determined to have no supporting references.  
                     # prune_candidate is unset if the resource should be held, even if supporting resources cannot 
@@ -1955,7 +1958,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
 
             elif resourcetype == 'evaluations':
                 #records = db_subscriptions.get_all(session=dbsession)
-                records = eval_records.values()
+                records = list(eval_records.values())
                 for record in records:
                     dangling_candidate = False
                     dangling_reason = "not_set"

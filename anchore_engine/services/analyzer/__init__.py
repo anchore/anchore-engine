@@ -1,22 +1,13 @@
 import copy
 import os
-import re
 import threading
 import time
 import json
-import traceback
 import operator
 
-import connexion
-from twisted.application import internet
-from twisted.internet import reactor
-from twisted.internet.task import LoopingCall
-from twisted.web.wsgi import WSGIResource
-from twisted.web.resource import Resource
-from twisted.web import rewrite
-
 # anchore modules
-from anchore_engine.clients import catalog, localanchore, simplequeue, localanchore_standalone
+import anchore_engine.clients.localanchore_standalone
+from anchore_engine.clients import catalog, simplequeue, localanchore_standalone
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
@@ -29,94 +20,7 @@ import anchore_engine.clients.policy_engine
 from anchore_engine.clients.policy_engine.generated.models import ImageIngressRequest
 from anchore_engine.utils import AnchoreException
 import anchore_engine.subsys.events as events
-
-servicename = 'analyzer'
-_default_api_version = "v1"
-
-# service funcs (must be here)
-def default_version_rewrite(request):
-    global _default_api_version
-    try:
-        if request.postpath:
-            if request.postpath[0] != 'health' and request.postpath[0] != _default_api_version:
-                request.postpath.insert(0, _default_api_version)
-                request.path = '/'+_default_api_version+request.path
-    except Exception as err:
-        logger.error("rewrite exception: " +str(err))
-        raise err
-
-def createService(sname, config):
-    global monitor_threads, monitors, servicename
-
-    try:
-        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-        flask_app = application.app
-        flask_app.url_map.strict_slashes = False
-        anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
-        application.add_api('swagger.yaml')
-    except Exception as err:
-        traceback.print_exc()
-        raise err
-
-    try:
-        myconfig = config['services'][sname]
-        servicename = sname
-    except Exception as err:
-        raise err
-
-    try:
-        kick_timer = int(myconfig['cycle_timer_seconds'])
-    except:
-        kick_timer = 1
-
-    doapi = False
-    try:
-        if myconfig['listen'] and myconfig['port'] and myconfig['endpoint_hostname']:
-            doapi = True
-    except:
-        doapi = False
-
-    kwargs = {}
-    kwargs['kick_timer'] = kick_timer
-    kwargs['monitors'] = monitors
-    kwargs['monitor_threads'] = monitor_threads
-    kwargs['servicename'] = servicename
-
-    if doapi:
-        # start up flask service
-
-        flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
-        realroot = Resource()
-        realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
-        realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
-        # this will rewrite any calls that do not have an explicit version to the base path before being processed by flask
-        root = rewrite.RewriterResource(realroot, default_version_rewrite)
-        #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-        ret_svc = anchore_engine.services.common.createServiceAPI(root, sname, config)
-
-        # start up the monitor as a looping call
-        lc = LoopingCall(anchore_engine.services.common.monitor, **kwargs)
-        lc.start(1)
-    else:
-        # start up the monitor as a timer service
-        svc = internet.TimerService(1, anchore_engine.services.common.monitor, **kwargs)
-        svc.setName(sname)
-        ret_svc = svc
-
-    return (ret_svc)
-
-def initializeService(sname, config):
-    return (anchore_engine.services.common.initializeService(sname, config))
-
-def registerService(sname, config):
-    rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
-
-    #service_record = {'hostid': config['host_id'], 'servicename': sname}
-    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
-
-    return (rc)
-
+from anchore_engine.service import ApiService
 
 ############################################
 
@@ -125,25 +29,10 @@ system_user_auth = ('anchore-system', '')
 #current_avg = 0.0
 #current_avg_count = 0.0
 
+
 def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
-    global servicename
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    try:
-        myconfig = localconfig['services'][servicename]
-    except:
-        myconfig = {}
-
-    driver = 'localanchore'
-    if 'analyzer_driver' in myconfig:
-        driver = myconfig['analyzer_driver']
-
-    if driver == 'nodocker':
-        return(perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
-    else:
-        if not os.path.exists("/usr/bin/anchore"):
-            raise Exception("this build of anchore-engine does not include the local 'anchore' tool which is required for the 'localanchore' analyzer driver.  Please switch your analyzer driver to 'nodocker' mode and restart the service to proceed")
-        return(perform_analyze_localanchore(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable))
+    return perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
 
 def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
     ret_analyze = {}
@@ -176,7 +65,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
     logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
 
     logger.debug("obtaining anchorelock..." + str(pullstring))
-    with localanchore.get_anchorelock(lockId=pullstring, driver='nodocker'):
+    with anchore_engine.clients.localanchore_standalone.get_anchorelock(lockId=pullstring, driver='nodocker'):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
         analyzed_image_report = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, localconfig, registry_creds=registry_creds, use_cache_dir=use_cache_dir)
         ret_analyze = analyzed_image_report
@@ -185,83 +74,6 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
 
     return (ret_analyze)
 
-def perform_analyze_localanchore(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
-    ret_analyze = {}
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    do_docker_cleanup = localconfig['cleanup_images']
-
-    try:
-        image_detail = image_record['image_detail'][0]
-        registry_manifest = manifest
-        pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']
-        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-        logger.debug("using pullstring ("+str(pullstring)+") and fulltag ("+str(fulltag)+") to pull image data")
-    except Exception as err:
-        image_detail = pullstring = fulltag = None
-        raise Exception("failed to extract requisite information from image_record - exception: " + str(err))
-
-
-    timer = int(time.time())
-    logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
-    logger.debug("obtaining anchorelock..." + str(pullstring))
-    with localanchore.get_anchorelock(lockId=pullstring):
-        logger.debug("obtaining anchorelock successful: " + str(pullstring))
-
-        logger.spew("TIMING MARK1: " + str(int(time.time()) - timer))
-        logger.info("performing analysis on image: " + str(pullstring))
-
-        # pull the digest, but also any tags associated with the image (that we know of) in order to populate the local docker image
-        try:
-            rc = localanchore.pull(userId, pullstring, image_detail, pulltags=True,
-                                                          registry_creds=registry_creds)
-            if not rc:
-                raise Exception("anchore analyze failed:")
-            pullstring = re.sub("sha256:", "", rc['Id'])
-            image_detail['imageId'] = pullstring
-        except Exception as err:
-            logger.error("error on pull: " + str(err))
-            raise err
-
-        logger.spew("TIMING MARK2: " + str(int(time.time()) - timer))
-
-        # analyze!
-        try:
-            rc = localanchore.analyze(pullstring, image_detail)
-            if not rc:
-                raise Exception("anchore analyze failed:")
-        except Exception as err:
-            logger.error("error on analyze: " + str(err))
-            raise err
-
-        logger.spew("TIMING MARK3: " + str(int(time.time()) - timer))
-
-        # get the result from anchore
-        logger.debug("retrieving image data from anchore")
-        try:
-            image_data = localanchore.get_image_export(pullstring, image_detail)
-            if not image_data:
-                raise Exception("anchore image data export failed:")
-        except Exception as err:
-            logger.error("error on image export: " + str(err))
-            raise err
-
-        logger.spew("TIMING MARK5: " + str(int(time.time()) - timer))
-
-        try:
-            logger.debug("removing image: " + str(pullstring))
-            rc = localanchore.remove_image(pullstring, docker_remove=do_docker_cleanup,
-                                                                  anchore_remove=True)
-            logger.debug("removing image complete: " + str(pullstring))
-        except Exception as err:
-            raise err
-
-        logger.spew("TIMING MARK6: " + str(int(time.time()) - timer))
-
-    ret_analyze = image_data
-
-    logger.info("performing analysis on image complete: " + str(pullstring))
-    return (ret_analyze)
 
 def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     global servicename #current_avg, current_avg_count
@@ -384,8 +196,6 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     logger.debug("policy engine image add response: " + str(resp))
 
                 except Exception as err:
-                    import traceback
-                    traceback.print_exc()
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
                     event = events.LoadAnalysisFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
                     raise newerr
@@ -467,7 +277,6 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
     return (True)
 
-
 # TODO should probably be defined in and raised by the clients
 class CatalogClientError(AnchoreException):
     def __init__(self, cause, msg='Failed to execute out catalog API'):
@@ -493,8 +302,7 @@ class PolicyEngineClientError(AnchoreException):
         return '{} - exception: {}'.format(self.msg, self.cause)
 
 
-def handle_layer_cache():
-
+def handle_layer_cache(**kwargs):
     try:
         localconfig = anchore_engine.configuration.localconfig.get_config()
         myconfig = localconfig['services']['analyzer']
@@ -523,7 +331,7 @@ def handle_layer_cache():
                 if totalsize > cachemax:
                     logger.debug("layer cache total size ("+str(totalsize)+") exceeds configured cache max ("+str(cachemax)+") - performing cleanup")
                     currsize = totalsize
-                    sorted_layers = sorted(layertimes.items(), key=operator.itemgetter(1))
+                    sorted_layers = sorted(list(layertimes.items()), key=operator.itemgetter(1))
                     while(currsize > cachemax):
                         rmlayer = sorted_layers.pop(0)
                         logger.debug("removing cached layer: " + str(rmlayer))
@@ -543,6 +351,8 @@ def handle_image_analyzer(*args, **kwargs):
     global system_user_auth, queuename, servicename
 
     cycle_timer = kwargs['mythread']['cycle_timer']
+
+    logger.info('Config: {}'.format(anchore_engine.configuration.localconfig.get_config()))
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     system_user_auth = localconfig['system_user_auth']
@@ -565,7 +375,7 @@ def handle_image_analyzer(*args, **kwargs):
                     logger.debug("got work from queue task Id: {}".format(qobj.get('queueId', 'unknown')))
                     myqobj = copy.deepcopy(qobj)
                     logger.spew("incoming queue object: " + str(myqobj))
-                    logger.debug("incoming queue task: " + str(myqobj.keys()))
+                    logger.debug("incoming queue task: " + str(list(myqobj.keys())))
                     logger.debug("starting thread")
                     athread = threading.Thread(target=process_analyzer_job, args=(system_user_auth, myqobj,layer_cache_enable))
                     athread.start()
@@ -600,9 +410,7 @@ def handle_image_analyzer(*args, **kwargs):
                     logger.warn("layer cache management failed - exception: " + str(err))
 
         except Exception as err:
-            import traceback
-            traceback.print_exc()
-            logger.error(str(err))
+            logger.exception('Failure in image analysis loop')
 
         logger.debug("analyzer thread cycle complete: next in "+str(cycle_timer))
         time.sleep(cycle_timer)
@@ -611,6 +419,7 @@ def handle_image_analyzer(*args, **kwargs):
 def handle_metrics(*args, **kwargs):
 
     cycle_timer = kwargs['mythread']['cycle_timer']
+
     while(True):
         try:
             localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -630,9 +439,20 @@ def handle_metrics(*args, **kwargs):
 
 # monitor infrastructure
 
-monitors = {
-    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [servicename], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
-}
-monitor_threads = {}
+# monitors = {
+#     'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [AnalyzerService.__service_name__], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+#     'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+#     'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [servicename], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
+# }
+# monitor_threads = {}
+
+
+class AnalyzerService(ApiService):
+    __service_name__ = 'analyzer'
+    __spec_dir__ = 'services/analyzer/swagger'
+    __service_api_version__ = 'v1'
+    __monitors__ = {
+        'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [__service_name__], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+        'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+        'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [__service_name__], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    }

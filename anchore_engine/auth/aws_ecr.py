@@ -9,7 +9,7 @@ import datetime
 
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 def parse_registry_url(registry_url):

@@ -137,14 +137,14 @@ class ImageMetadataGateTest(GateUnitTest):
             'image_size': False,
             'layer_size': False
         }
-        for val, result in test.items():
+        for val, result in list(test.items()):
             try:
                 t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute=val, check='=', value='test1')
                 if not result and t:
                     self.assertEqual(result, bool(t))
             except:
                 if not result:
-                    print('Caught expected exception on invalid attr name: {}'.format(val))
+                    print(('Caught expected exception on invalid attr name: {}'.format(val)))
                 else:
                     raise
 
@@ -158,13 +158,13 @@ class ImageMetadataGateTest(GateUnitTest):
             'like_distro': test_image.like_distro,
             'layer_count': str(len(test_image.layers_json)),
         }
-        for val, check in test.items():
-            print('Testing attr {} against {}'.format(val, check))
+        for val, check in list(test.items()):
+            print(('Testing attr {} against {}'.format(val, check)))
             t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute=val, check='=', value=check)
             test_context = gate.prepare_context(test_image, test_context)
             t.evaluate(test_image, test_context)
             self.assertEqual(len(t.fired), 1)
-            print('Fired: {}'.format([x.json() for x in t.fired]))
+            print(('Fired: {}'.format([x.json() for x in t.fired])))
 
     def test_imagemetadatatrigger_distro_name(self):
         print('Testing =')
@@ -172,71 +172,71 @@ class ImageMetadataGateTest(GateUnitTest):
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='=', value='mandriva')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing !=')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='!=', value='mandriva')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='!=', value='debian')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing like')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='like', value='.*ebia.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='like', value='.*entos.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing not_like')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='not_like', value='.*entos.*')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing "in"')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='in', value=' centos , debian ')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing "in" --fail')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='in', value=' centos , rhel ')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing "not_in"')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='not_in', value=' centos , mandriva ')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 1)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))
 
         print('Testing "not_in" --fail')
         t, gate, test_context = self.get_initialized_trigger(ImageMetadataAttributeCheckTrigger.__trigger_name__, attribute='distro', check='not_in', value=' debian , rhel ')
         test_context = gate.prepare_context(test_image, test_context)
         t.evaluate(test_image, test_context)
         self.assertEqual(len(t.fired), 0)
-        print('Fired: {}'.format([x.json() for x in t.fired]))
+        print(('Fired: {}'.format([x.json() for x in t.fired])))

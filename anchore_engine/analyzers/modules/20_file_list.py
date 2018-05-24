@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import rpm
 import subprocess
 import stat
 
@@ -27,10 +25,11 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
             # get a list of all files from RPM
             try:
                 sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '-qal'])
-                sout = sout.decode('utf8')
+                #sout = sout.decode('utf8')
             except subprocess.CalledProcessError as err:
                 sout = ""
-                errmsg = err.output.decode('utf8')
+                #errmsg = err.output.decode('utf8')
+                errmsg = err.output
 
             for l in sout.splitlines():
                 l = l.strip()
@@ -39,7 +38,7 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
             raise err
 
         # find any rpm files that are not in the filesystem (first past)
-        for rfile in allfiles.keys():
+        for rfile in list(allfiles.keys()):
             if rfile not in rpmfiles:
                 nonmatchfiles.append(rfile)
 
@@ -53,9 +52,10 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
             else:
                 try:
                     sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '-qf'] + cmdlist, stderr=subprocess.STDOUT)
-                    sout = sout.decode('utf8')
+                    #sout = sout.decode('utf8')
                 except subprocess.CalledProcessError as err:
-                    sout = err.output.decode('utf8')
+                    sout = err.output
+                    #sout = err.output.decode('utf8')
 
                 for l in sout.splitlines():
                     l = l.strip()
@@ -69,7 +69,7 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
         raise err
     
     # for all files, if not unmatched, consider them matched to a package
-    for rfile in allfiles.keys():
+    for rfile in list(allfiles.keys()):
         if rfile not in realnonmatchfiles:
             matchfiles.append(rfile)
 
@@ -87,12 +87,13 @@ def dpkg_check_file_membership_from_path(unpackdir, allfiles=None):
     try:
         try:
 
-            for flist in anchore_engine.analyzers.utils.grouper(allfiles.keys(), 256):
+            for flist in anchore_engine.analyzers.utils.grouper(list(allfiles.keys()), 256):
                 try:
                     sout = subprocess.check_output(['dpkg', "--admindir="+unpackdir+"/rootfs/var/lib/dpkg", '-S'] + flist, stderr=subprocess.STDOUT)
-                    sout = sout.decode('utf8')
+                    #sout = sout.decode('utf8')
                 except subprocess.CalledProcessError as err:
-                    sout = err.output.decode('utf8')
+                    sout = err.output
+                    #sout = err.output.decode('utf8')
 
                 for l in sout.splitlines():
                     l = l.strip()
@@ -103,7 +104,7 @@ def dpkg_check_file_membership_from_path(unpackdir, allfiles=None):
                         pass
 
         except Exception as err:
-            print str(err)
+            print(str(err))
 
     except Exception as err:
         raise err
@@ -119,7 +120,7 @@ analyzer_name = "file_list"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -145,7 +146,7 @@ try:
             OFH.write(json.dumps(allfiles))
 
     # fileinfo
-    for name in allfiles.keys():
+    for name in list(allfiles.keys()):
         outfiles[name] = json.dumps(allfiles[name])
         simplefiles[name] = oct(stat.S_IMODE(allfiles[name]['mode']))
 

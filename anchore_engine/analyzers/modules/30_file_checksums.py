@@ -1,15 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
-import json
-import time
-import rpm
-import subprocess
-import stat
-import tarfile
 import time
 import hashlib
 
@@ -20,16 +13,13 @@ analyzer_name = "file_checksums"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
 imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
-
-#if not os.path.exists(outputdir):
-#    os.makedirs(outputdir)
 
 domd5 = True
 dosha1 = False
@@ -46,7 +36,7 @@ if distrodict['flavor'] == "ALPINE":
 try:
     timer = time.time()
     (tmp, allfiles) = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
-    for name in allfiles.keys():
+    for name in list(allfiles.keys()):
         name = re.sub("^\.", "", name)
         thefile = '/'.join([unpackdir, "rootfs", name])
 
@@ -86,7 +76,7 @@ try:
 except Exception as err:
     import traceback
     traceback.print_exc()
-    print "ERROR: " + str(err)
+    print("ERROR: " + str(err))
     raise err
 
 if outfiles_sha1:

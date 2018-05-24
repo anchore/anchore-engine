@@ -39,8 +39,8 @@ def get_metadata(userId, bucket, key, session=None):
 
     result = session.query(ObjectStorageRecord.userId, ObjectStorageRecord.bucket, ObjectStorageRecord.key, ObjectStorageRecord.object_metadata, ObjectStorageRecord.created_at, ObjectStorageRecord.last_updated).filter_by(userId=userId, bucket=bucket, key=key).first()
     if result:
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             if i == 'object_metadata':
                 ret[k] = json.loads(result[i])
             else:
@@ -66,8 +66,8 @@ def list_all(session=None, **dbfilter):
 
     for result in results:
         obj = {}
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)

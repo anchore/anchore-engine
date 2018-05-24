@@ -22,11 +22,11 @@ class ContentMatchTrigger(BaseTrigger):
         else:
             return
 
-        for thefile, regexps in context.data.get('content_regexp', {}).items():
+        for thefile, regexps in list(context.data.get('content_regexp', {}).items()):
             thefile = thefile.encode('ascii', errors='replace')
             if not regexps:
                 continue
-            for regexp in regexps.keys():
+            for regexp in list(regexps.keys()):
                 try:
                     regexp_name, theregexp = regexp.decode('base64').split("=", 1)
                 except:
@@ -73,7 +73,7 @@ class SuidCheckTrigger(BaseTrigger):
         if not files:
             return
 
-        found = filter(lambda x: (int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID)), files.items())
+        found = [x for x in list(files.items()) if (int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID))]
         for path, entry in found:
             self._fire(msg='SUID or SGID found set on file {}. Mode: {}'.format(path, oct(entry.get('mode'))))
 
@@ -101,7 +101,7 @@ class FileCheckGate(Gate):
             extracted_files_json = image_obj.fs.files
 
             if extracted_files_json:
-                context.data['filenames'] = extracted_files_json.keys()
+                context.data['filenames'] = list(extracted_files_json.keys())
 
         content_matches = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'content_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base').all()
         matches = {}

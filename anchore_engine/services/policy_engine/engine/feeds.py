@@ -17,7 +17,7 @@ from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
 from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.clients.feeds.feed_service.feeds import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
+from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 
 log = get_logger()
 
@@ -46,7 +46,7 @@ def get_selected_feeds_to_sync(config):
         return []
 
     if feed_config.get('selective_sync', {}).get('enabled', False):
-        return map(lambda x: x[0], filter(lambda x: x[1], feed_config.get('selective_sync', {}).get('feeds', {}).items()))
+        return [x[0] for x in [x for x in list(feed_config.get('selective_sync', {}).get('feeds', {}).items()) if x[1]]]
     else:
         return None
 
@@ -100,8 +100,8 @@ class KeyIDFeedDataMapper(FeedDataMapper):
     """
 
     def map(self, record_json):
-        if len(record_json.keys()) == 1:
-            key, value = record_json.items()[0]
+        if len(list(record_json.keys())) == 1:
+            key, value = list(record_json.items())[0]
             return self.map_inner(key, value)
 
     def map_inner(self, key, data):
@@ -304,7 +304,7 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
             return None
 
         # Handle a 'Vulnerability' wrapper around the specific record. If not present, assume a direct record
-        if len(record_json.keys()) == 1 and record_json.get('Vulnerability'):
+        if len(list(record_json.keys())) == 1 and record_json.get('Vulnerability'):
             vuln = record_json['Vulnerability']
         else:
             vuln = record_json
@@ -569,9 +569,9 @@ class AnchoreServiceFeed(DataFeed):
             if meta_record:
                 self.metadata = meta_record
 
-        my_feed = filter(lambda x: x.name == self.__feed_name__, self.source.list_feeds())
+        my_feed = [x for x in self.source.list_feeds() if x.name == self.__feed_name__]
         if not my_feed:
-            raise StandardError('No feed with name {} found on feed source'.format(self.__feed_name__))
+            raise Exception('No feed with name {} found on feed source'.format(self.__feed_name__))
         else:
             my_feed = my_feed[0]
 
@@ -617,7 +617,7 @@ class AnchoreServiceFeed(DataFeed):
             mapper = self.__class__.__group_data_mappers__.get(group_obj.name)
 
         if not mapper:
-            raise StandardError('No mapper class found for group: {}'.format(group_obj.name))
+            raise Exception('No mapper class found for group: {}'.format(group_obj.name))
 
             # If it's a class, instantiate it
         if type(mapper) == type:
@@ -701,7 +701,7 @@ class AnchoreServiceFeed(DataFeed):
             new_data = None
             log.debug('Page = {}, new_data = {}, next_token = {}'.format(pages, bool(new_data), bool(next_token), max_pages))
 
-        data = new_data_deduped.values()
+        data = list(new_data_deduped.values())
         new_data_deduped = None
         return data, next_token
 
@@ -927,7 +927,7 @@ class AnchoreServiceFeed(DataFeed):
         return updated_records
 
     def group_by_name(self, group_name):
-        return filter(lambda x: x.name == group_name, self.metadata.groups) if self.metadata else []
+        return [x for x in self.metadata.groups if x.name == group_name] if self.metadata else []
 
     def refresh_groups(self):
         group_list = self.source.list_feed_groups(self.__feed_name__)

@@ -183,7 +183,7 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
             do_migrate = True
         else:
             try:
-                answer = raw_input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
+                answer = input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
             except:
                 answer = "n"
             if 'y' == answer.lower():
@@ -195,7 +195,7 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
             if 'archive_data_dir' in to_config:
                 logger.info("\tNOTE: for archive_data_dir, the value must be set to the location that is accessible within your anchore-engine container")
 
-            print (yaml.dump(to_config, default_flow_style=False))
+            print((yaml.dump(to_config, default_flow_style=False)))
         else:
             logger.info("Skipping conversion.")
     except Exception as err:
@@ -240,4 +240,4 @@ def list_migrations():
     for t in tasks:
         tbl.add_row([t[x] for x in fields])
 
-    print(tbl.get_string(sortby='id'))
+    print((tbl.get_string(sortby='id')))

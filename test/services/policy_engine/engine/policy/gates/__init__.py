@@ -13,7 +13,7 @@ class GateUnitTest(unittest.TestCase):
     @classmethod
     def load_images_from_env(cls):
         for image_id, path in cls.test_env.image_exports():
-            print('Ensuring loaded: image id: {} from file: {}'.format(image_id, path))
+            print(('Ensuring loaded: image id: {} from file: {}'.format(image_id, path)))
             t = ImageLoadTask(image_id=image_id, user_id='0', url='file://' + path)
             t.execute()
 

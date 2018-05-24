@@ -23,7 +23,7 @@ class PackageBlacklistGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)
 
     def test_namematch(self):
@@ -33,5 +33,5 @@ class PackageBlacklistGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 1)

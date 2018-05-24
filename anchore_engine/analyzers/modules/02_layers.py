@@ -1,13 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
-import subprocess
 
 import anchore_engine.analyzers.utils
 
@@ -16,15 +12,12 @@ analyzer_name = "layer_info"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
-
-#if not os.path.exists(outputdir):
-#    os.makedirs(outputdir)
 
 output = list()
 

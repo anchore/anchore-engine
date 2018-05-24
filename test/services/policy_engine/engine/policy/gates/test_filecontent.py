@@ -14,7 +14,7 @@ class FileCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreater(len(t.fired), 0)
 
     def test_contentmatch(self):
@@ -23,13 +23,13 @@ class FileCheckGateTest(GateUnitTest):
         content_test_image = db.query(Image).get((self.test_env.get_images_named('alpine_3.5')[0][0], '0'))
         test_context = gate.prepare_context(content_test_image, test_context)
         t.evaluate(content_test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(0, len(t.fired))
 
         t.reset()
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(0, len(t.fired))
 
     def test_suidchecktrigger(self):
@@ -38,7 +38,7 @@ class FileCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreater(len(t.fired), 0)
 
 

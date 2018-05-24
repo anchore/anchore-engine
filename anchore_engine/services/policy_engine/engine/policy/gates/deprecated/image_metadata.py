@@ -39,8 +39,8 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
 
     __value_validator__ = lambda x: True
 
-    attribute = EnumStringParameter(name='attributes', example_str='size', description='Attribute name to apply as rvalue to the check operation', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
-    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation', enum_values=__ops__.keys(), is_required=True, sort_order=2)
+    attribute = EnumStringParameter(name='attributes', example_str='size', description='Attribute name to apply as rvalue to the check operation', enum_values=list(__valid_attributes__.keys()), is_required=True, sort_order=1)
+    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation', enum_values=list(__ops__.keys()), is_required=True, sort_order=2)
     check_value = TriggerParameter(name='check_value', example_str='100000000', description='The lvalue in the check operation.', validator=TypeValidator('string'), sort_order=3)
 
     def evaluate(self, image_obj, context):
@@ -59,7 +59,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
 
         img_val = self.__valid_attributes__[attr](image_obj)
         # Make consistent types (specifically for int/float/str)
-        if type(img_val) in [str, int, float, unicode]:
+        if type(img_val) in [str, int, float, str]:
             rval = type(img_val)(rval)
 
         if self.__ops__.get(check).eval_function(img_val, rval):

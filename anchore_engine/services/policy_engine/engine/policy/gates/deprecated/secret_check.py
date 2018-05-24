@@ -22,11 +22,11 @@ class SecretContentMatchTrigger(BaseTrigger):
             matches = []
             matches_decoded = []
 
-        for thefile, regexps in context.data.get('secret_content_regexp', {}).items():
+        for thefile, regexps in list(context.data.get('secret_content_regexp', {}).items()):
             thefile = thefile.encode('ascii', errors='replace')
             if not regexps:
                 continue
-            for regexp in regexps.keys():
+            for regexp in list(regexps.keys()):
                 try:
                     regexp_name, theregexp = regexp.decode('base64').split("=", 1)
                 except:
@@ -57,7 +57,7 @@ class SecretFilenameMatchTrigger(BaseTrigger):
         if context.data.get('filenames'):
             files = context.data.get('filenames')
         else:
-            files = image_obj.fs.files().keys()  # returns a map of path -> entry
+            files = list(image_obj.fs.files().keys())  # returns a map of path -> entry
 
         for thefile in files:
             thefile = thefile.encode('ascii', errors='replace')
@@ -91,7 +91,7 @@ class SecretCheckGate(Gate):
             extracted_files_json = image_obj.fs.files
 
             if extracted_files_json:
-                context.data['filenames'] = extracted_files_json.keys()
+                context.data['filenames'] = list(extracted_files_json.keys())
 
         content_matches = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'secret_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base').all()
         matches = {}

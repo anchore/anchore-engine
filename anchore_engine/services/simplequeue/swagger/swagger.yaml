@@ -370,7 +370,7 @@ paths:
         in: query
         required: true
       - name: epoch
-        type: string
+        type: integer
         in: query
         required: true
       description: Release the lease for the id with my_id as holder and the epoch value from the lease acquisition response

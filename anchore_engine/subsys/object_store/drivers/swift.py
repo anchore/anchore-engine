@@ -1,7 +1,7 @@
 import copy
 import json
-import urlparse
-from StringIO import StringIO
+import urllib.parse
+import io
 from swiftclient.service import SwiftService, SwiftUploadObject, SwiftError
 
 
@@ -88,7 +88,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         return self._key_format.format(prefix=self.prefix, userid=userId, container=usrBucket, key=key)
 
     def _parse_uri(self, uri):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         container = parsed.hostname
         key = parsed.path[1:] # Strip leading '/'
         return container, key
@@ -102,7 +102,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             resp = self.client.download(container=container, objects=[key], options={'out_file': '-'})
             for obj in resp:
                 if 'contents' in obj and obj['action'] == 'download_object':
-                    content = ''.join(obj['contents'])
+                    content = ''.join([x.decode('utf8') for x in obj['contents']])
                     return content
                 elif obj['action'] == 'download_object' and not obj['success']:
                     raise ObjectKeyNotFoundError(bucket='', key='', userId='', caused_by=None)
@@ -146,7 +146,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         try:
             uri = self.uri_for(userId, bucket, key)
             swift_bucket, swift_key = self._parse_uri(uri)
-            obj = SwiftUploadObject(object_name=swift_key, source=StringIO(data))
+            obj = SwiftUploadObject(object_name=swift_key, source=io.BytesIO(data.encode('utf8')))
             resp = self.client.upload(container=swift_bucket, objects=[obj])
             for upload in resp:
                 if upload['action'] == 'upload_object' and upload['success']:

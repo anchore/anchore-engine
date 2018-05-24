@@ -47,7 +47,7 @@ def get_driver_list():
 
     :return: list of strings from driver names
     """
-    return object_store.ObjectStorageDriver.registry.keys()
+    return list(object_store.ObjectStorageDriver.registry.keys())
 
 
 @delegate_to_callable(get_archive, 'Must call initialize() before archive operations are available')

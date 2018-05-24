@@ -89,7 +89,7 @@ def upgrade(anchore_module, dontask, skip_db_compat_check):
                 do_upgrade = True
             else:
                 try:
-                    answer = raw_input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
+                    answer = input("Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)")
                 except:
                     answer = "n"
                 if 'y' == answer.lower():

@@ -27,13 +27,13 @@ class SecretContentChecksTrigger(BaseTrigger):
             matches = []
             matches_decoded = []
 
-        for thefile, regexps in context.data.get('secret_content_regexp', {}).items():
+        for thefile, regexps in list(context.data.get('secret_content_regexp', {}).items()):
             thefile = thefile.encode('ascii', errors='replace')
             if not regexps:
                 continue
 
             if regexps and (not name_re or name_re.match(thefile)):
-                for regexp in regexps.keys():
+                for regexp in list(regexps.keys()):
                     try:
                         regexp_name, theregexp = regexp.decode('base64').split("=", 1)
                     except:
@@ -70,7 +70,7 @@ class SecretCheckGate(Gate):
             extracted_files_json = image_obj.fs.files
 
             if extracted_files_json:
-                context.data['filenames'] = extracted_files_json.keys()
+                context.data['filenames'] = list(extracted_files_json.keys())
 
         content_matches = image_obj.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'secret_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base').all()
         matches = {}

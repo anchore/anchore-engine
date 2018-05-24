@@ -191,7 +191,7 @@ def compare_versions(v1, op, v2):
     """
 
     if op not in compare_operators:
-        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, compare_operators.keys()))
+        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, list(compare_operators.keys())))
     else:
         eval_fn = compare_operators[op]
 

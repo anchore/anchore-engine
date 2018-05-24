@@ -67,7 +67,7 @@ def get_byfilter(userId, session=None, **kwargs):
     
     results = session.query(CatalogImageDocker).filter_by(**kwargs).order_by(desc(CatalogImageDocker.created_at))
     for result in results:
-        dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(dbobj)
 
     return(ret)
@@ -81,7 +81,7 @@ def get_alltags(imageDigest, userId, session=None):
     results = session.query(CatalogImageDocker).filter_by(imageDigest=imageDigest, userId=userId)
     if results:
         for result in results:
-            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             #dbobj = result.__dict__
             #dbobj.pop('_sa_instance_state', None)
             ret.append(dbobj)
@@ -96,7 +96,7 @@ def get(imageDigest, userId, tag, session=None):
 
     result = session.query(CatalogImageDocker).filter_by(imageDigest=imageDigest, userId=userId, tag=tag).first()
     if result:
-        dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = dbobj
 
     return(ret)
@@ -110,7 +110,7 @@ def get_all(userId, session=None):
     results = session.query(CatalogImageDocker).filter_by(userId=userId)
     if results:
         for result in results:
-            dbobj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+            dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(dbobj)
             
     return(ret)

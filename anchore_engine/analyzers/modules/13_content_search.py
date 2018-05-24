@@ -1,14 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
-import subprocess
-import tarfile
 
 import anchore_engine.analyzers.utils
 
@@ -17,7 +12,7 @@ analyzer_name = "content_search"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -35,7 +30,7 @@ if 'analyzer_config' in config and config['analyzer_config']:
         matchparams = config['analyzer_config']['match_params']
 
 if len(regexps) <= 0:
-    print "No regexp configuration found in analyzer_config.yaml for analyzer '"+analyzer_name+", skipping"
+    print("No regexp configuration found in analyzer_config.yaml for analyzer '"+analyzer_name+", skipping")
     sys.exit(0)
 
 params = {'maxfilesize':False, 'storeonmatch':False, 'mimetypefilter': None}
@@ -57,7 +52,7 @@ if matchparams:
                     params['mimetypefilter'] = mtypes
 
         except:
-            print "WARN: could not parse parameter (should be 'key=value'), ignoring: " + str(param)
+            print("WARN: could not parse parameter (should be 'key=value'), ignoring: " + str(param))
 
 outputdata = {}
 allfiles = {}
@@ -72,7 +67,7 @@ else:
 results = {}
 pathmap = {}
 # fileinfo                                                                                                                         
-for name in allfiles.keys():
+for name in list(allfiles.keys()):
     thefile = '/'.join([rootfsdir, name])
     if os.path.isfile(thefile):
 
@@ -111,7 +106,7 @@ for name in allfiles.keys():
                         except Exception as err:
                             import traceback
                             traceback.print_exc()
-                            print "ERROR: configured regexp not valid or regexp cannot be applied - exception: " + str(err)
+                            print("ERROR: configured regexp not valid or regexp cannot be applied - exception: " + str(err))
                             sys.exit(1)
                     lineno += 1
         else:
@@ -119,7 +114,7 @@ for name in allfiles.keys():
             pass
 
 storefiles = list()
-for name in results.keys():
+for name in list(results.keys()):
     buf = json.dumps(results[name])
     outputdata[name] = buf
     if params['storeonmatch']:

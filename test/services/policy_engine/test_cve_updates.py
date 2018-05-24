@@ -95,7 +95,7 @@ except:
 finally:
     db = get_session()
     i = db.query(Image).get((test_img_id, test_user_id))
-    print('Vulns: {}'.format(i.vulnerabilities()))
+    print(('Vulns: {}'.format(i.vulnerabilities())))
     db.commit()
 
 test_cve2 = Vulnerability(id='CVE123', namespace_name='centos:7')
@@ -122,7 +122,7 @@ except:
 finally:
     db = get_session()
     i = db.query(Image).get((test_img_id, test_user_id))
-    print('Vulns: {}'.format(i.vulnerabilities()))
+    print(('Vulns: {}'.format(i.vulnerabilities())))
     db.commit()
 
 

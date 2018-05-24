@@ -88,7 +88,7 @@ def _parse_legacy_config(config):
         }
     }
 
-    if 'archive_driver' in config and type(config['archive_driver']) in [str, unicode]:
+    if 'archive_driver' in config and type(config['archive_driver']) in [str, str]:
         mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = config['archive_driver']
     else:
         return config

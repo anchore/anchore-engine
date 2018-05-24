@@ -34,7 +34,7 @@ class UtilMixin(object):
     """
 
     def update(self, inobj):
-        for a in inobj.keys():
+        for a in list(inobj.keys()):
             if hasattr(self, a):
                 setattr(self, a, inobj[a])
 
@@ -47,7 +47,7 @@ class UtilMixin(object):
 
         :return: string
         """
-        return dict((key, value if type(value) != datetime.datetime else value.isoformat()) for key, value in vars(self).iteritems() if not key.startswith('_'))
+        return dict((key, value if type(value) != datetime.datetime else value.isoformat()) for key, value in vars(self).items() if not key.startswith('_'))
 
     def to_dict(self):
         """
@@ -57,7 +57,7 @@ class UtilMixin(object):
         :return:
         """
 
-        return dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
+        return dict((key, value) for key, value in vars(self).items() if not key.startswith('_'))
 
     def to_detached(self):
         """
@@ -67,7 +67,7 @@ class UtilMixin(object):
         """
 
         obj = self.__class__()
-        for name, attr in vars(self).iteritems():
+        for name, attr in vars(self).items():
             if not name.startswith('_'):
                 setattr(obj, name, attr)
 
@@ -88,7 +88,7 @@ def anchore_now_datetime():
 
 
 def anchore_uuid():
-    return uuid.uuid4().get_hex()
+    return uuid.uuid4().hex
 
 
 def get_entity_tables(entity):
@@ -96,8 +96,8 @@ def get_entity_tables(entity):
 
     import inspect
             
-    entity_names = [x[1].__tablename__ for x in filter(lambda x: inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base, inspect.getmembers(entity))]
-    ftables = filter(lambda x: x.name in entity_names, Base.metadata.sorted_tables)
+    entity_names = [x[1].__tablename__ for x in [x for x in inspect.getmembers(entity) if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base]]
+    ftables = [x for x in Base.metadata.sorted_tables if x.name in entity_names]
 
     return(ftables)
 
@@ -211,11 +211,10 @@ def do_create(specific_tables):
 
 def initialize(localconfig=None, versions=None):
     """
-    Initialize the db for use. Optionally bootstrap it and optionally only for specific entities.
+    Initialize the db for use
 
+    :param localconfig: the global configuration
     :param versions:
-    :param bootstrap_db:
-    :param specific_entities: a list of entity classes to initialize if a subset is desired. Expects a list of classes.
     :return:
     """
     global engine, Session, SerializableSession

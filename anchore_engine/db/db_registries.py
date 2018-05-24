@@ -54,7 +54,7 @@ def get_all(session=None):
 
     our_results = session.query(Registry)
     for result in our_results:
-        ret.append(dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_')))
+        ret.append(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
     return(ret)
 
@@ -66,7 +66,7 @@ def get_byuserId(userId, session=None):
 
     our_results = session.query(Registry).filter_by(userId=userId)
     for result in our_results:
-        ret.append(dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_')))
+        ret.append(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
     return(ret)
     
@@ -79,7 +79,7 @@ def get(registry, userId, session=None):
     record = {}
     result = session.query(Registry).filter_by(registry=registry, userId=userId).first()
     if result:
-        record.update(dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_')))
+        record.update(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
     if record:
         ret.append(record)

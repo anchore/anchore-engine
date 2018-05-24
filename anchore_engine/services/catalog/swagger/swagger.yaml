@@ -151,7 +151,7 @@ paths:
       - name: 'bodycontent'
         in: body
         schema:
-          type: object
+          $ref: "#/definitions/ImageAddMetadata"
         description: "object describing image to add"
         required: true
       produces:
@@ -1196,3 +1196,14 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+definitions:
+  ImageAddMetadata:
+    description: Additional data to add to an image record when an image is ingressed, such as dockerfile and annotations
+    type: object
+    properties:
+      dockerfile:
+        type: string
+        description: base64 encoded content of the dockerfile used to build the image, if available
+      annotations:
+        type: object
+        description: Key-Value metadata to add to the record

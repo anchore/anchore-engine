@@ -7,7 +7,7 @@ import datetime
 import dateutil.parser
 import requests
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
@@ -57,7 +57,7 @@ class AsyncTaskMeta(type):
             cls.tasks[dct['__task_name__']] = cls
 
 
-class IAsyncTask(object):
+class IAsyncTask(object, metaclass=AsyncTaskMeta):
     """
     Base type for async tasks to ensure they are in the task registry and implement the basic interface.
 
@@ -65,7 +65,6 @@ class IAsyncTask(object):
     complete control over the db session.
 
     """
-    __metaclass__ = AsyncTaskMeta
 
     __task_name__ = None
 
@@ -213,7 +212,7 @@ class FeedsUpdateTask(IAsyncTask):
             # Response is dict with feed name and dict for each group mapped to list of images updated
             log.info('Updated: {}'.format(updated_dict))
             for feed in updated_dict:
-                for updated_imgs in updated_dict[feed].values():
+                for updated_imgs in list(updated_dict[feed].values()):
                     updated += updated_imgs
 
             log.info('Feed sync complete')
@@ -520,7 +519,7 @@ class ImageLoadTask(IAsyncTask):
         :return: 
         """
 
-        split_url = urllib.splittype(url)
+        split_url = urllib.parse.splittype(url)
         if split_url[0] == 'file':
             return self._get_file(split_url[1])
         elif split_url[0] == 'catalog':

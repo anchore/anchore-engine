@@ -34,7 +34,7 @@ def get_all(session=None):
     our_results = session.query(User).filter_by()
     for result in our_results:
         obj = {}
-        obj.update(dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_')))
+        obj.update(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
         ret.append(obj)
 
     return(ret)
@@ -48,7 +48,7 @@ def get(userId, session=None):
     result = session.query(User).filter_by(userId=userId).first()
 
     if result:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
     return(ret)

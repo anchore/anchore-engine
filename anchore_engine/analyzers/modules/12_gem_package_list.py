@@ -1,13 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
-import subprocess
 
 import anchore_engine.analyzers.utils
 
@@ -16,16 +12,13 @@ analyzer_name = "package_list"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
 imgid = imgname
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
-
-#if not os.path.exists(outputdir):
-#    os.makedirs(outputdir)
 
 pkglist = {}
 
@@ -39,19 +32,19 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    for tfile in allfiles.keys():
+    for tfile in list(allfiles.keys()):
         patt = re.match(".*specifications.*\.gemspec$", tfile)
         if patt:
             thefile = '/'.join([unpackdir, 'rootfs', tfile])
             try:
                 with open(thefile, 'r') as FH:
-                    pdata = FH.read().decode('utf8')
+                    pdata = str(FH.read(), 'utf8')
                     precord = anchore_engine.analyzers.utils.gem_parse_meta(pdata)
-                    for k in precord.keys():
+                    for k in list(precord.keys()):
                         record = precord[k]
                         pkglist[tfile] = json.dumps(record)
             except Exception as err:
-                print "WARN: found gemspec but cannot parse (" + str(tfile) +") - exception: " + str(err)
+                print("WARN: found gemspec but cannot parse (" + str(tfile) +") - exception: " + str(err))
 
 except Exception as err:
     import traceback

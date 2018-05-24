@@ -13,7 +13,7 @@ def get(session=None):
     result = session.query(Anchore).first()
 
     if result:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
     return(ret)
