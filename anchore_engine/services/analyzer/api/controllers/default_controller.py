@@ -9,13 +9,8 @@ from anchore_engine.subsys import logger
 def status():
     httpcode = 500
     try:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        return_object = anchore_engine.subsys.servicestatus.get_status({'hostid': localconfig['host_id'], 'servicename': 'analyzer'})
-        #return_object = {
-        #    'busy':False,
-        #    'up':True,
-        #    'message': 'all good'
-        #}
+        service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
+        return_object = anchore_engine.subsys.servicestatus.get_status(service_record)
         httpcode = 200
     except Exception as err:
         return_object = str(err)
