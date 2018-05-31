@@ -22,10 +22,14 @@ import anchore_engine.subsys.metrics
 import anchore_engine.services.common
 import anchore_engine.clients.common
 from anchore_engine import db
-from anchore_engine.db import db_catalog_image, db_eventlog, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users, db_anchore, db_services
+from anchore_engine.db import db_catalog_image, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users, db_anchore, db_services, db_events
 from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.auth.anchore_io
+import anchore_engine.subsys.events as events
+from anchore_engine.utils import AnchoreException
+from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError
+
 
 servicename = 'catalog'
 _default_api_version = "v1"
@@ -337,6 +341,8 @@ def handle_repo_watcher(*args, **kwargs):
             if not subscription_record['active']:
                 continue
 
+            event = None
+
             try:
                 regrepo = subscription_record['subscription_key']
                 if subscription_record['subscription_value']:
@@ -353,7 +359,12 @@ def handle_repo_watcher(*args, **kwargs):
 
                 fulltag = regrepo + ":" + subscription_value.get('lookuptag', 'latest')
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
-                curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                # List tags
+                try:
+                    curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                except AnchoreException as e:
+                    event = events.ListTagsFail(user_id=userId, registry=image_info.get('registry', None), repository=image_info.get('repo', None), error=e.to_dict())
+                    raise e
 
                 autosubscribes = ['analysis_update']
                 if subscription_value['autosubscribe']:
@@ -372,11 +383,15 @@ def handle_repo_watcher(*args, **kwargs):
                             manifest = None
                             try:
                                 if 'manifest' in new_image_info:
-                                    manifest = json.dumps(new_image_info['manifest'])
+                                    try:
+                                        manifest = json.dumps(new_image_info['manifest'])
+                                    except Exception as err:
+                                        raise TagManifestParseError(cause=err, tag=fulltag, manifest=new_image_info['manifest'],msg='Failed to serialize manifest into JSON formatted string')
                                 else:
-                                    raise Exception("no manifest from get_image_info")
-                            except Exception as err:
-                                raise Exception("could not fetch/parse manifest - exception: " + str(err))
+                                    raise TagManifestNotFoundError(tag=fulltag, msg='No manifest from get_image_info')
+                            except AnchoreException as e:
+                                event = events.TagManifestParseFail(user_id=userId, tag=fulltag, error=e.to_dict())
+                                raise
 
                             with db.session_scope() as dbsession:
                                 logger.debug("adding/updating image from repo scan " + str(new_image_info['fulltag']))
@@ -407,6 +422,13 @@ def handle_repo_watcher(*args, **kwargs):
                     logger.debug("no new images in watched repo ("+str(regrepo)+"): skipping")
             except Exception as err:
                 logger.warn("failed to process repo_update subscription - exception: " + str(err))
+            finally:
+                if event:
+                    try:
+                        with db.session_scope() as dbsession:
+                            db_events.add(event.to_dict(), dbsession)
+                    except:
+                        logger.exception('Ignoring error creating event in handle_repo_watcher: {}'.format(event))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -471,6 +493,7 @@ def handle_image_watcher(*args, **kwargs):
 
         logger.debug("checking tags for update: " + str(userId) + " : " + str(alltags))
         for fulltag in alltags:
+            event = None
             try:
                 logger.debug("checking image latest info from registry: " + fulltag)
 
@@ -480,12 +503,15 @@ def handle_image_watcher(*args, **kwargs):
                 manifest = None
                 try:
                     if 'manifest' in image_info:
-                        manifest = json.dumps(image_info['manifest'])
+                        try:
+                            manifest = json.dumps(image_info['manifest'])
+                        except Exception as err:
+                            raise TagManifestParseError(cause=err, tag=fulltag, manifest=image_info['manifest'], msg='Failed to serialize manifest into JSON formatted string')
                     else:
-                        raise Exception("no manifest from get_image_info")
-                except Exception as err:
-                    manifest=None
-                    raise Exception("could not fetch/parse manifest - exception: " + str(err))
+                        raise TagManifestNotFoundError(tag=fulltag, msg='No manifest from get_image_info')
+                except AnchoreException as e:
+                    event = events.TagManifestParseFail(user_id=userId, tag=fulltag, error=e.to_dict())
+                    raise
 
                 try:
                     dbfilter = {
@@ -585,6 +611,13 @@ def handle_image_watcher(*args, **kwargs):
 
             except Exception as err:
                 logger.error("failed to check/update image - exception: " + str(err))
+            finally:
+                if event:
+                    try:
+                        with db.session_scope() as dbsession:
+                            db_events.add(event.to_dict(), dbsession)
+                    except:
+                        logger.exception('Ignoring error creating event in handle_image_watcher: {}'.format(event))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -993,18 +1026,18 @@ def handle_notifications(*args, **kwargs):
             except:
                 logger.debug("error_event webhook is not configured, skipping webhook for error_event")
 
-            if do_erreventhooks:
-                system_user_record = db_users.get('admin', session=dbsession)
-                errevent_records = db_eventlog.get_all(session=dbsession)
-                for errevent in errevent_records:
-                    notification = errevent
-                    userId = system_user_record['userId']
-                    notificationId = str(uuid.uuid4())
-                    subscription_type = 'error_event'
-                    notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
-                    logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
-                    db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
-                    db_eventlog.delete_record(errevent, session=dbsession)
+            # if do_erreventhooks:
+            #     system_user_record = db_users.get('admin', session=dbsession)
+            #     errevent_records = db_eventlog.get_all(session=dbsession)
+            #     for errevent in errevent_records:
+            #         notification = errevent
+            #         userId = system_user_record['userId']
+            #         notificationId = str(uuid.uuid4())
+            #         subscription_type = 'error_event'
+            #         notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
+            #         logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
+            #         db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
+            #         db_eventlog.delete_record(errevent, session=dbsession)
         except Exception as err:
             logger.warn("failed to queue error eventlog for notification - exception: " + str(err))
 

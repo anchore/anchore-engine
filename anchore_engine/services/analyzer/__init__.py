@@ -27,6 +27,8 @@ from anchore_engine.subsys import logger
 
 import anchore_engine.clients.policy_engine
 from anchore_engine.clients.policy_engine.generated.models import ImageIngressRequest
+from anchore_engine.utils import AnchoreException
+import anchore_engine.subsys.events as events
 
 servicename = 'analyzer'
 _default_api_version = "v1"
@@ -265,6 +267,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     global servicename #current_avg, current_avg_count
 
     timer = int(time.time())
+    event = None
     try:
         logger.debug('dequeued object: {}'.format(qobj))
 
@@ -314,7 +317,11 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             # actually do analysis
             registry_creds = catalog.get_registry(user_auth)
-            image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
+            try:
+                image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
+            except AnchoreException as e:
+                event = events.AnalyzeImageFail(user_id=userId, image_digest=imageDigest, error=e.to_dict())
+                raise
 
             imageId = None
             try:
@@ -322,8 +329,13 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             except Exception as err:
                 logger.warn("could not get imageId after analysis or from image record - exception: " + str(err))
 
-            logger.debug("archiving analysis data")
-            rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+            try:
+                logger.debug("archiving analysis data")
+                rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+            except Exception as e:
+                err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
+                event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                raise err
 
             if rc:
                 try:
@@ -374,7 +386,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 except Exception as err:
                     import traceback
                     traceback.print_exc()
-                    raise Exception("adding image to policy-engine failed - exception: " + str(err))
+                    newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
+                    event = events.PolicyEngineLoadFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
+                    raise newerr
 
                 logger.debug("updating image catalog record analysis_status")
                 
@@ -407,7 +421,9 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
             else:
-                raise Exception("analysis archive failed to store")
+                err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause='Invalid response from catalog API - {}'.format(str(rc)))
+                event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                raise err
 
             logger.info("analysis complete: " + str(userId) + " : " + str(imageDigest))
 
@@ -437,12 +453,45 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.fault_state('analyze')
             image_record['image_status'] = anchore_engine.subsys.taskstate.fault_state('image_status')
             rc = catalog.update_image(user_auth, imageDigest, image_record)
+        finally:
+            if event:
+                try:
+                    catalog.add_event(user_auth, event)
+                except:
+                    logger.error('Ignoring error creating analysis failure event')
+
 
     except Exception as err:
         logger.warn("job processing bailed - exception: " + str(err))
         raise err
 
     return (True)
+
+
+# TODO should probably be defined in and raised by the clients
+class CatalogClientError(AnchoreException):
+    def __init__(self, cause, msg='Failed to execute out catalog API'):
+        self.cause = str(cause)
+        self.msg = msg
+
+    def __repr__(self):
+        return '{} - exception: {}'.format(self.msg, self.cause)
+
+    def __str__(self):
+        return '{} - exception: {}'.format(self.msg, self.cause)
+
+
+class PolicyEngineClientError(AnchoreException):
+    def __init__(self, cause, msg='Failed to execute out policy engine API'):
+        self.cause = str(cause)
+        self.msg = msg
+
+    def __repr__(self):
+        return '{} - exception: {}'.format(self.msg, self.cause)
+
+    def __str__(self):
+        return '{} - exception: {}'.format(self.msg, self.cause)
+
 
 def handle_layer_cache():
 

@@ -11,8 +11,10 @@ import anchore_engine.auth.common
 import anchore_engine.auth.skopeo_wrapper
 #from anchore.anchore_utils import read_kvfile_todict
 from anchore_engine.analyzers.utils import read_kvfile_todict
+from anchore_engine.utils import AnchoreException
 
 from anchore_engine import utils
+import anchore_engine.subsys.events as events
 
 try:
     from anchore_engine.subsys import logger
@@ -676,6 +678,9 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
     staging_dirs = None
     manifest_schema_version = 0
     dest_type = 'oci'
+    event = None
+    pullstring = None
+    fulltag = None
 
     try:
         imageDigest = image_record['imageDigest']
@@ -713,7 +718,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         try:
             rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, dest_type=dest_type)
         except Exception as err:
-            raise Exception("failed to pull image ("+str(pullstring)+") - exception: " + str(err))
+            raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
         try:
             if manifest_data['schemaVersion'] == 1:
@@ -721,28 +726,94 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
             elif manifest_data['schemaVersion'] == 2:
                 docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch = get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents, dockerfile_mode=dockerfile_mode)
             else:
-                raise Exception("unknown manifest schemaVersion")
-            
+                raise ManifestSchemaVersionError(schema_version=manifest_data['schemaVersion'], pull_string=pullstring, tag=fulltag)
+        except ManifestSchemaVersionError:
+            raise
         except Exception as err:
-            raise Exception("failed to parse out manifest ("+str(pullstring)+") - exception: " + str(err))
+            raise ManifestParseError(cause=err, pull_string=pullstring, tag=fulltag)
 
         familytree = layers
 
-        imageSize = unpack(staging_dirs, layers)
+        try:
+            imageSize = unpack(staging_dirs, layers)
+        except Exception as err:
+            raise ImageUnpackError(cause=err, pull_string=pullstring, tag=fulltag)
 
         familytree = layers
-        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
 
-        image_report = generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, pullstring, analyzer_manifest)
+        try:
+            analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
+        except Exception as err:
+            raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
 
+        try:
+            image_report = generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, pullstring, analyzer_manifest)
+        except Exception as err:
+            raise AnalysisReportGenerationError(cause=err, pull_string=pullstring, tag=fulltag)
+
+    except AnchoreException:
+        raise
     except Exception as err:
-        raise Exception("failed to download, unpack, analyze, and generate image export - exception: " + str(err))
+        raise AnalysisError(cause=err, pull_string=pullstring, tag=fulltag, msg='failed to download, unpack, analyze, and generate image export')
     finally:
         if staging_dirs:
             rc = delete_staging_dirs(staging_dirs)
+
 
     #if not imageDigest or not imageId or not manifest or not image_report:
     if not image_report:
         raise Exception("failed to analyze")
 
     return(image_report)
+
+
+class AnalysisError(AnchoreException):
+
+    def __init__(self, cause, pull_string, tag, msg):
+        self.cause = str(cause)
+        self.msg = msg
+        self.pull_string = str(pull_string)
+        self.tag = str(tag)
+
+    def __repr__(self):
+        return '{} ({}) - exception: {}'.format(self.msg, self.pull_string, self.cause)
+
+    def __str__(self):
+        return '{} ({}) - exception: {}'.format(self.msg, self.pull_string, self.cause)
+
+    def to_dict(self):
+        return {self.__class__.__name__: dict((key, '{}...(truncated)'.format(value[:256]) if key == 'cause' and isinstance(value, str) and len(value) > 256 else value)
+                                              for key, value in vars(self).iteritems() if not key.startswith('_'))}
+
+
+class ImagePullError(AnalysisError):
+
+    def __init__(self, cause, pull_string, tag, msg='Failed to pull image'):
+        super(ImagePullError, self).__init__(cause, pull_string, tag, msg)
+
+
+class ManifestSchemaVersionError(AnalysisError):
+
+    def __init__(self, schema_version, pull_string, tag, msg='Manifest schema version unsupported'):
+        super(ManifestSchemaVersionError, self).__init__('No handlers for schemaVersion {}'.format(schema_version), pull_string, tag, msg)
+
+
+class ManifestParseError(AnalysisError):
+
+    def __init__(self, cause, pull_string, tag, msg='Failed to parse image manifest'):
+        super(ManifestParseError, self).__init__(cause, pull_string, tag, msg)
+
+
+class ImageUnpackError(AnalysisError):
+    def __init__(self, cause, pull_string, tag, msg='Failed to unpack image'):
+        super(ImageUnpackError, self).__init__(cause, pull_string, tag, msg)
+
+
+class AnalyzerError(AnalysisError):
+    def __init__(self, cause, pull_string, tag, msg='Failed to run image through analyzers'):
+        super(AnalyzerError, self).__init__(cause, pull_string, tag, msg)
+
+
+class AnalysisReportGenerationError(AnalysisError):
+    def __init__(self, cause, pull_string, tag, msg='Failed to generate image report'):
+        super(AnalysisReportGenerationError, self).__init__(cause, pull_string, tag, msg)

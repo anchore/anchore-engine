@@ -21,7 +21,7 @@ from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_se
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.common import get_system_user_auth
 from anchore_engine.clients.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
-from anchore_engine.subsys.events import FeedSyncBegin, FeedSyncComplete, FeedSyncFail
+from anchore_engine.subsys.events import FeedSyncStart, FeedSyncComplete, FeedSyncFail
 
 # A hack to get admin credentials for executing api ops
 #from anchore_engine.services.catalog import db_users
@@ -152,7 +152,7 @@ class FeedsUpdateTask(IAsyncTask):
 
             # Create feed task begin event
             try:
-                catalog.add_event(system_user, FeedSyncBegin(groups=feeds if feeds else 'all'))
+                catalog.add_event(system_user, FeedSyncStart(groups=feeds if feeds else 'all'))
             except:
                 log.exception('Ignoring event generation error before feed sync')
 

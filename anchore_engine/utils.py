@@ -223,3 +223,9 @@ def get_threadbased_id(guarantee_uniq=False):
     """
 
     return '{}:{}:{}:{}'.format(platform.node(), os.getpid(), str(thread.get_ident()), uuid.uuid4().hex if guarantee_uniq else '')
+
+
+class AnchoreException(Exception):
+
+    def to_dict(self):
+        return {self.__class__.__name__: dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))}

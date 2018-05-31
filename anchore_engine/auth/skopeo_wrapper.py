@@ -3,7 +3,7 @@ import os
 import re
 import tempfile
 
-from anchore_engine.utils import run_command, run_command_list, manifest_to_digest
+from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 
 def manifest_to_digest_shellout(rawmanifest):
@@ -20,7 +20,7 @@ def manifest_to_digest_shellout(rawmanifest):
             ret = sout.strip()
         else:
             logger.warn("failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(cmd, rc, sout, serr))
-            raise Exception("failed to calculate digest from schema v1 manifest")
+            raise SkopeoError(cmd=cmd, rc=rc, err=serr, out=sout, msg='Failed to calculate digest from schema v1 manifest', )
     except Exception as err:
         raise err
     finally:
@@ -61,7 +61,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
             if rc != 0:
-                raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
             else:
                 logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
 
@@ -99,7 +99,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
             if rc != 0:
-                raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
             else:
                 logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
         except Exception as err:
@@ -148,12 +148,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             try:
                 rc, sout, serr = run_command_list(cmd, env=proc_env)
                 if rc != 0:
-                    err = Exception("command failed")
-                    err.cmd = "{}".format(cmdstr)
-                    err.exitcode = "{}".format(rc)
-                    err.sout = "{}".format(sout)
-                    err.serr = "{}".format(serr)
-                    raise err
+                    raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             except Exception as err:
@@ -175,21 +170,28 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                 return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify)
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
-            errmsg = str(err)
-            for k in ['sout', 'serr']:
-                if k in err.__dict__:
-                    errmsg = errmsg + " ({})".format(err.__dict__[k])
-
-            raise Exception(errmsg)
-            digest = None
-            manifest = {}
+            raise err
 
     except Exception as err:
         raise err
 
     if not manifest or not digest:
-        raise Exception("no digest/manifest from skopeo")
+        raise SkopeoError(msg="No digest/manifest from skopeo")
 
     return(manifest, digest)
 
 
+class SkopeoError(AnchoreException):
+
+    def __init__(self, cmd=None, rc=None, err=None, out=None, msg='Error encountered in skopeo operation'):
+        self.cmd = ' '.join(cmd) if isinstance(cmd, list) else cmd
+        self.exitcode = rc
+        self.stderr = str(err).replace('\r', ' ').replace('\n', ' ').strip() if err else None
+        self.stdout = str(out).replace('\r', ' ').replace('\n', ' ').strip() if out else None
+        self.msg = msg
+
+    def __repr__(self):
+        return '{}. cmd={}, rc={}, stdout={}, stderr={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr)
+
+    def __str__(self):
+        return '{}. cmd={}, rc={}, stdout={}, stderr={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr)
