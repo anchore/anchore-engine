@@ -167,4 +167,11 @@ def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_che
         except Exception as err:
             raise err
 
+        try:
+            if localconfig and "do_db_post_actions" in dir(upgrade_module):
+                logger.info("DB post actions running")
+                upgrade_module.do_db_post_actions(localconfig=localconfig)
+        except Exception as err:
+            raise err
+
     return(code_versions, db_versions)

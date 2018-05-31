@@ -39,7 +39,43 @@ def do_db_compatibility_check():
         raise err
 
     raise Exception("database compatibility could not be performed")
-        
+
+def do_db_post_actions(localconfig=None):
+    do_user_update(localconfig=localconfig)
+
+def do_user_update(localconfig=None):
+    # configure users into the system from configuration, once connected to the DB and boostrapped
+    from anchore_engine.db import db_users, session_scope
+    if localconfig:
+        with session_scope() as dbsession:
+            try:
+                for userId in localconfig['credentials']['users']:
+                    if not localconfig['credentials']['users'][userId]:
+                        localconfig['credentials']['users'][userId] = {}
+
+                    cuser = localconfig['credentials']['users'][userId]
+
+                    password = cuser.pop('password', None)
+                    email = cuser.pop('email', None)
+                    if password and email:
+                        db_users.add(userId, password, {'email': email, 'active': True}, session=dbsession)
+                    else:
+                        raise Exception("user defined but has empty password/email: " + str(userId))
+
+                user_records = db_users.get_all(session=dbsession)
+                for user_record in user_records:
+                    if user_record['userId'] == 'anchore-system':
+                        continue
+                    if user_record['userId'] not in localconfig['credentials']['users']:
+                        logger.info("flagging user '"+str(user_record['userId']) + "' as inactive (in DB, not in configuration)")
+                        db_users.update(user_record['userId'], user_record['password'], {'active': False}, session=dbsession)
+
+            except Exception as err:
+                raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
+
+
+
+
 
 def get_versions():
     code_versions = {}
@@ -115,7 +151,7 @@ def do_db_bootstrap(localconfig=None):
             except Exception as err:
                 raise Exception("Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(err))
 
-            if localconfig:
+            if False and localconfig:
                 try:
                     for userId in localconfig['credentials']['users']:
                         if not localconfig['credentials']['users'][userId]:
