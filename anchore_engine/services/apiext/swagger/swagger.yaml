@@ -30,6 +30,8 @@ tags:
   description: System Management
 - name: Services
   description: Service Management
+- name: Events
+  description: View and delete events
 basePath: "/"
 schemes:
 - "http"
@@ -1232,6 +1234,122 @@ paths:
             items:
               $ref: "#/definitions/GateSpec"
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+  /events:
+    get:
+      tags:
+      - Events
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.events
+      operationId: list_events
+      summary: List Events
+      description: Returns a paginated list of recorded events in the descending order of the event timestamp. Optional query parameters may be used for filtering results
+      parameters:
+      - name: 'source_servicename'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'source_hostid'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'resource_type'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'level'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'since'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'before'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'next'
+        in: query
+        type: string
+        description: ""
+        required: false
+      responses:
+        200:
+          description: Paginated list of event records and the next token
+          schema:
+            $ref: "#/definitions/EventsList"
+    delete:
+      tags:
+      - Events
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.events
+      operationId: delete_events
+      summary: Delete Events
+      description: Delete all or a subset of events filtered using the optional query parameters
+      parameters:
+      - name: 'before'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: 'since'
+        in: query
+        type: string
+        description: ""
+        required: false
+      responses:
+        200:
+          description: List of deleted event IDs
+          schema:
+            type: object
+            properties:
+              deleted:
+                type: array
+                items:
+                  type: string
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /events/{eventId}:
+    get:
+      tags:
+      - Events
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.events
+      operationId: get_event
+      summary: Get Event
+      description: Lookup an event by its event ID
+      parameters:
+      - name: eventId
+        in: path
+        type: string
+        description: "Event ID of the event for lookup"
+        required: true
+      responses:
+        200:
+          description: Single event record
+          schema:
+            $ref: "#/definitions/EventResponse"
+    delete:
+      tags:
+      - Events
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.events
+      operationId: delete_event
+      summary: Delete Event
+      description: Delete an event by its event ID
+      parameters:
+      - name: eventId
+        in: path
+        type: string
+        description: "Event ID of the event to be deleted"
+        required: true
+      responses:
+        200:
+          description: Delete success
 definitions:
   ImageAnalysisRequest:
     type: object
@@ -1913,4 +2031,55 @@ definitions:
         format: date-time
       record_count:
         type: integer
-
+  EventResponse:
+    type: object
+    description: A record of occurance of a change in the system triggered by user or system activity
+    properties:
+      generated_uuid:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      event:
+        type: object
+        properties:
+          source:
+            type: object
+            properties:
+              servicename:
+                type: string
+              hostid:
+                type: string
+              base_url:
+                type: string
+              request_id:
+                type: string
+          resource:
+            type: object
+            properties:
+              user_id:
+                type: string
+              id:
+                type: string
+              type:
+                type: string
+          type:
+            type: string
+          level:
+            type: string
+          message:
+            type: string
+          details:
+            type: object
+          timestamp:
+            type: string
+            format: date-time
+  EventsList:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          $ref: "#/definitions/EventResponse"
+      next:
+        type: string

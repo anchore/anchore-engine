@@ -21,6 +21,7 @@ from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_se
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.common import get_system_user_auth
 from anchore_engine.clients.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
+from anchore_engine.subsys.events import FeedSyncBegin, FeedSyncComplete, FeedSyncFail
 
 # A hack to get admin credentials for executing api ops
 #from anchore_engine.services.catalog import db_users
@@ -135,8 +136,11 @@ class FeedsUpdateTask(IAsyncTask):
 
         :return:
         """
+        error = None
+        feeds = None
 
         try:
+            system_user = get_system_user_auth()
             feeds = get_selected_feeds_to_sync(localconfig.get_config())
             if json_obj:
                 task = cls.from_json(json_obj)
@@ -146,9 +150,15 @@ class FeedsUpdateTask(IAsyncTask):
             else:
                 task = FeedsUpdateTask(feeds_to_sync=feeds, flush=force_flush)
 
+            # Create feed task begin event
+            try:
+                catalog.add_event(system_user, FeedSyncBegin(groups=feeds if feeds else 'all'))
+            except:
+                log.exception('Ignoring event generation error before feed sync')
+
             result = []
             if cls.locking_enabled:
-                system_user = get_system_user_auth()
+                # system_user = get_system_user_auth()
                 run_target_with_lease(user_auth=system_user, lease_id='feed_sync', ttl=90, target=lambda: result.append(task.execute()))
                 # A bit of work-around for the lambda def to get result from thread execution
                 if result:
@@ -158,11 +168,22 @@ class FeedsUpdateTask(IAsyncTask):
 
             return result
         except LeaseAcquisitionFailedError as ex:
+            error = ex
             log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
             raise Exception('Cannot execute feed sync, lock is held by another feed sync in progress')
         except Exception as e:
+            error = e
             log.exception('Error executing feeds update')
             raise e
+        finally:
+            # log feed sync event
+            try:
+                if error:
+                    catalog.add_event(system_user, FeedSyncFail(groups=feeds if feeds else 'all', error=error))
+                else:
+                    catalog.add_event(system_user, FeedSyncComplete(groups=feeds if feeds else 'all'))
+            except:
+                log.exception('Ignoring event generation error after feed sync')
 
     def __init__(self, feeds_to_sync=None, flush=False):
         self.feeds = feeds_to_sync

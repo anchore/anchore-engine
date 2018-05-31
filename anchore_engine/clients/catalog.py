@@ -7,6 +7,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.services.common
 import anchore_engine.clients.common
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.events import Event
 
 localconfig = None
 headers = {'Content-Type': 'application/json'}
@@ -754,7 +755,10 @@ def delete_registry(userId, registry=None):
 
     return(ret)
 
-def add_event(userId, hostId, service_name, level, message, detail=None):
+def add_event(userId, event):
+    if not isinstance(event, Event):
+        raise TypeError('Invalid event definition')
+
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -769,20 +773,12 @@ def add_event(userId, hostId, service_name, level, message, detail=None):
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/events"
-    
-    payload = {
-        'hostId':hostId,
-        'service_name':service_name,
-        'level':level,
-        'message':message,
-        'detail':detail
-    }
 
-    ret = http.anchy_post(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    ret = http.anchy_post(url, data=event.to_json(), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
 
-def get_event(userId, hostId=None, level=None, message=None):
+def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, next=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -797,14 +793,105 @@ def get_event(userId, hostId=None, level=None, message=None):
 
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
     url = base_url + "/events"
-    
-    payload = {
-        'hostId':hostId,
-        'level':level,
-        'message':message
-    }
 
-    ret = http.anchy_get(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    path_params = []
+
+    if source_servicename:
+        path_params.append('source_servicename={}'.format(source_servicename))
+
+    if source_hostid:
+        path_params.append('source_hostid={}'.format(source_hostid))
+
+    if resource_type:
+        path_params.append('resource_type={}'.format(resource_type))
+
+    if level:
+        path_params.append('level={}'.format(level))
+
+    if since:
+        path_params.append('since={}'.format(since))
+
+    if before:
+        path_params.append('before={}'.format(before))
+
+    if next:
+        path_params.append('next={}'.format(since))
+
+    if path_params:
+        url = url + '?' + '&'.join(path_params)
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def delete_events(userId, since=None, before=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+    url = base_url + "/events"
+
+    path_params = []
+
+    if since:
+        path_params.append('since={}'.format(since))
+
+    if before:
+        path_params.append('before={}'.format(before))
+
+    if path_params:
+        url = url + '?' + '&'.join(path_params)
+
+    ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def get_event(userId, eventId):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+    url = base_url + "/events/" + eventId
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def delete_event(userId, eventId):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = False
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+    url = base_url + "/events/" + eventId
+
+    ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
 

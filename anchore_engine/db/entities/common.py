@@ -9,6 +9,7 @@ import traceback
 from contextlib import contextmanager
 
 import sqlalchemy
+from sqlalchemy import types
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 import datetime
@@ -80,6 +81,15 @@ def anchore_now():
     :return: integer unix epoch time
     """
     return (int(time.time()))
+
+
+def anchore_now_datetime():
+    return datetime.datetime.utcnow()
+
+
+def anchore_uuid():
+    return uuid.uuid4().get_hex()
+
 
 def get_entity_tables(entity):
     global Base
@@ -297,3 +307,21 @@ def init_thread_session():
         ThreadLocalSession = scoped_session(sessionmaker(bind=engine))
 
 
+class StringJSON(types.TypeDecorator):
+    """
+    A generic json text type for serialization and deserialization of json to text columns.
+    Note: will not detect modification of the content of the dict as an update. To update must change and re-assign the
+    value to the column rather than in-place updates.
+
+    """
+    impl = types.TEXT
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            value = json.dumps(value)
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            value = json.loads(value)
+        return value
