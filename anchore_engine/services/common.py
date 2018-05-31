@@ -176,17 +176,25 @@ def registerService(sname, config, enforce_unique=True):
 
     endpoint_hostname = endpoint_port = endpoint_hostport = None
 
-    if 'endpoint_hostname' in myconfig:
+    if myconfig.get('external_hostname', False):
+        endpoint_hostname = myconfig['external_hostname']
+    elif myconfig.get('endpoint_hostname', False):
         endpoint_hostname = myconfig['endpoint_hostname']
-        service_template['base_url'] = hstring + "://"+myconfig['endpoint_hostname']
-    if 'port' in myconfig:
-        endpoint_port = int(myconfig['port'])
-        service_template['base_url'] += ":"+ str(endpoint_port)
 
+    if myconfig.get('external_port', False):
+        endpoint_port = int(myconfig['external_port'])
+    elif myconfig.get('port', False):
+        endpoint_port = int(myconfig['port'])        
+    
     if endpoint_hostname:
         endpoint_hostport = endpoint_hostname
         if endpoint_port:
             endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
+    
+    if endpoint_hostport:
+        service_template['base_url'] = "{}://{}".format(hstring, endpoint_hostport)
+    else:
+        raise Exception("could not construct service base_url - please check service configuration for hostname/port settings")
 
     try:
         service_template['status'] = False
