@@ -26,8 +26,6 @@ my_module_upgrade_id = 1
 
 def do_db_compatibility_check():
     required_pg_version = (9,6)
-    # TODO enable when more example DB response strings are verified
-    return(True)
 
     try:
         engine = anchore_engine.db.entities.common.get_engine()

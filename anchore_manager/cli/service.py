@@ -188,6 +188,11 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
     else:
         module_name = str(anchore_module)
 
+    if os.environ.get('ANCHORE_ENGINE_SKIP_DB_COMPAT_CHECK', str(skip_db_compat_check)).lower() in ['true', 't', 'y', 'yes']:
+        skip_db_compat_check = True
+    else:
+        skip_db_compat_check = False
+
     try:
         service_map = {
             'analyzer': 'anchore-worker',

@@ -121,14 +121,14 @@ def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_
     return(ret)
 
 def connect_database(config, db_params, db_retries=1):
-    logger.info("DB Params: {}".format(json.dumps(db_params)))
+    logger.info("DB params: {}".format(json.dumps(db_params)))
     rc = anchore_engine.db.entities.common.do_connect(db_params)
     logger.info("DB connection configured: {}".format(str(rc)))
 
     db_connected = False
     last_db_connect_err = ""
     for i in range(0, int(db_retries)):
-        logger.info("Attempting to connect to DB...")
+        logger.info("DB attempting to connect...")
         try:
             rc = anchore_engine.db.entities.common.test_connection()
             logger.info("DB connected: {}".format(str(rc)))
@@ -148,18 +148,18 @@ def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_che
     if upgrade_module:
         try:
             if do_db_compatibility_check and "do_db_compatibility_check" in dir(upgrade_module):
-                logger.info("DB compatibility check running...")
+                logger.info("DB compatibility check: running...")
                 upgrade_module.do_db_compatibility_check()
                 logger.info("DB compatibility check success")
             else:
-                logger.info("DB compatibility check routine not enabled, skipping...")
+                logger.info("DB compatibility check: skipping...")
         except Exception as err:
             raise err
 
         try:
             code_versions, db_versions = upgrade_module.get_versions()
             if code_versions and not db_versions:
-                logger.info("DB not initialized - initializing tables")
+                logger.info("DB not initialized: initializing tables...")
                 upgrade_module.do_create_tables()
                 upgrade_module.do_db_bootstrap(localconfig=localconfig)
                 upgrade_module.do_version_update(db_versions, code_versions)
@@ -169,7 +169,7 @@ def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_che
 
         try:
             if localconfig and "do_db_post_actions" in dir(upgrade_module):
-                logger.info("DB post actions running")
+                logger.info("DB post actions: running...")
                 upgrade_module.do_db_post_actions(localconfig=localconfig)
         except Exception as err:
             raise err
