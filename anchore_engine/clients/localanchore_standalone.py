@@ -45,13 +45,42 @@ def get_layertarfile(unpackdir, cachedir, layer):
 
     return(None)
 
-def handle_tar_error(tarcmd, rc, sout, serr, unpackdir, rootfsdir, layer, layertar):
+def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata={}):
+
+    if not unpackdir or not rootfsdir or not handled_post_metadata:
+        # nothing to do
+        return(True)
+
+    logger.debug("handling post with metadata: {}".format(handled_post_metadata))
+    if handled_post_metadata.get('temporary_file_adds', []):
+        for tfile in handled_post_metadata.get('temporary_file_adds', []):
+            rmfile = os.path.join(rootfsdir, tfile)
+            if os.path.exists(rmfile):
+                logger.debug("removing temporary image file: {}".format(rmfile))
+                if os.path.isfile(rmfile):
+                    os.remove(rmfile)
+        
+    if handled_post_metadata.get('temporary_dir_adds', []):
+        for tfile in handled_post_metadata.get('temporary_dir_adds', []):
+            rmfile = os.path.join(rootfsdir, tfile)
+            if os.path.exists(rmfile):
+                logger.debug("removing temporary image dir: {}".format(rmfile))
+                if os.path.isdir(rmfile):
+                    os.rmdir(rmfile)
+
+    return(True)
+
+def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, layer=None, layertar=None, layers=[]):
     handled = False
+    handled_post_metadata = {}
 
     try:
         slinkre = "tar: (.*): Cannot open: File exists"
+        hlinkre = "tar: (.*): Cannot hard link to `(.*)': No such file or directory"
+
         for errline in serr.splitlines():
             patt = re.match(slinkre, errline)
+            patt1 = re.match(hlinkre, errline)
             if patt:
                 matchfile = patt.group(1)
                 logger.debug("found 'file exists' error on name: " + str(matchfile))
@@ -61,11 +90,37 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir, rootfsdir, layer, layert
                         logger.debug("removing hierarchy: " + str(badfile))
                         shutil.rmtree(badfile)
                         handled = True
+            elif patt1:
+                missingfile = patt1.group(2)
+                basedir = os.path.dirname(missingfile)
+                logger.debug("found 'hard link' error on name: {}".format(missingfile))
+                if not os.path.exists(os.path.join(rootfsdir, missingfile)):
+                    for l in layers[layers.index("sha256:"+layer)::-1]:
+
+                        missingdir = None
+                        if not os.path.exists(os.path.join(rootfsdir, basedir)):
+                            missingdir = basedir
+
+                        tarcmd = "tar -C {} -x -f {} {}".format(rootfsdir, layertar, missingfile)
+                        rc, sout, serr = utils.run_command(tarcmd)
+                        if rc == 0:
+                            if not handled_post_metadata.get('temporary_file_adds', False):
+                                handled_post_metadata['temporary_file_adds'] = []
+                            handled_post_metadata['temporary_file_adds'].append(missingfile)
+
+                            if missingdir:
+                                if not handled_post_metadata.get('temporary_dir_adds', False):
+                                    handled_post_metadata['temporary_dir_adds'] = []
+                                handled_post_metadata['temporary_dir_adds'].append(missingdir)
+
+                            handled = True
+                            break
 
     except Exception as err:
         raise err
 
-    return(handled)
+    logger.debug("tar error handled: {}".format(handled))
+    return(handled, handled_post_metadata)
 
 def get_tar_filenames(layertar):
     ret = []
@@ -193,6 +248,8 @@ def squash(unpackdir, cachedir, layers):
         last_err = None
         max_retries = 10
         retries = 0
+        handled_post_metadata = {}
+
         while (not success) and (retry):
             tarcmd = "tar -C " + rootfsdir + " -x -X " + unpackdir+"/efile -f " + layertar
             logger.debug("untarring squashed tarball: " + str(tarcmd))
@@ -200,7 +257,7 @@ def squash(unpackdir, cachedir, layers):
                 rc, sout, serr = utils.run_command(tarcmd)
                 if rc != 0:
                     logger.debug("tar error encountered, attempting to handle")
-                    handled = handle_tar_error(tarcmd, rc, sout, serr, unpackdir=unpackdir, rootfsdir=rootfsdir, layer=layer, layertar=layertar)
+                    handled, handled_post_metadata = handle_tar_error(tarcmd, rc, sout, serr, unpackdir=unpackdir, rootfsdir=rootfsdir, layer=layer, layertar=layertar, layers=layers)
                     if not handled:
                         raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                     else:
@@ -224,6 +281,11 @@ def squash(unpackdir, cachedir, layers):
                 raise last_err
             else:
                 raise Exception("unknown exception in untar")
+        else:
+            try:
+                handle_tar_error_post(unpackdir=unpackdir, rootfsdir=rootfsdir, handled_post_metadata=handled_post_metadata)
+            except Exception as err:
+                raise err
 
     return ("done", imageSize)
 
