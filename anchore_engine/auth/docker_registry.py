@@ -154,7 +154,11 @@ def ping_docker_registry(registry_record):
     try:
         registry = registry_record['registry']
         verify = registry_record['registry_verify']
-        url = "https://" + registry
+        if registry in ['docker.io']:
+            url = "https://index.docker.io"
+        else:
+            url = "https://" + registry
+
         user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
 
         drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify)
