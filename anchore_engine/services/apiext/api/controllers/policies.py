@@ -9,6 +9,7 @@ from connexion import request
 from anchore_engine.clients import catalog, policy_engine
 from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.services.common
+import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 
 
@@ -114,7 +115,10 @@ def add_policy(bundle):
 
         # schema check
         try:
-            p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+            localconfig = anchore_engine.configuration.localconfig.get_config()
+            verify = localconfig.get('internal_ssl_verify', True)
+
+            p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
             response = p_client.validate_bundle(policy_bundle=jsondata)
 
             if not response.valid:
@@ -230,7 +234,10 @@ def update_policy(bundle, policyId, active=False):
 
             # schema check
             try:
-                p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+                localconfig = anchore_engine.configuration.localconfig.get_config()
+                verify = localconfig.get('internal_ssl_verify', True)
+
+                p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
                 response = p_client.validate_bundle(policy_bundle=jsondata['policybundle'])
 
                 if not response.valid:

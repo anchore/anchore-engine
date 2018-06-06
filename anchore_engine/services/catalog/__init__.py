@@ -870,7 +870,10 @@ def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
 
     # schema check
     try:
-        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify = localconfig.get('internal_ssl_verify', True)
+
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
         response = p_client.validate_bundle(policy_bundle=bundledata)
         if not response.valid:
             raise Exception("validation failed")

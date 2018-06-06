@@ -4,10 +4,11 @@ import anchore_engine.clients.common
 from anchore_engine.subsys.discovery import get_endpoints
 from .generated import DefaultApi, configuration, ApiClient
 from anchore_engine.subsys import logger
+import anchore_engine.configuration.localconfig
 
 SERVICE_NAME = 'policy_engine'
 
-def get_client(host=None, user=None, password=None, verify_ssl=True):
+def get_client(host=None, user=None, password=None, verify_ssl=None):
     """
     Returns an initialize client withe credentials and endpoint set properly
 
@@ -34,6 +35,11 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
         config.username = user
     if password:
         config.password = password
+
+    if verify_ssl == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify_ssl = localconfig.get('internal_ssl_verify', True)
+        
     config.verify_ssl = verify_ssl
     
     a = ApiClient(configuration=config)

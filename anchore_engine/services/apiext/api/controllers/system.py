@@ -254,7 +254,10 @@ def get_system_feeds():
     return_object = []
     httpcode = 500
     try:
-        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify = localconfig.get('internal_ssl_verify', True)
+
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
         # do the p.e. feed get call
         response = p_client.list_feeds(include_counts=True)
         return_object = [x.to_dict() for x in response]
@@ -273,7 +276,10 @@ def post_system_feeds(flush=False):
     return_object = []
     httpcode = 500
     try:
-        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify = localconfig.get('internal_ssl_verify', True)
+
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
         # do the p.e. feed post call
         return_object = p_client.sync_feeds(force_flush=flush)
         if return_object:
@@ -342,7 +348,10 @@ def describe_policy():
     return_object = []
     httpcode = 500
     try:
-        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1])
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        verify = localconfig.get('internal_ssl_verify', True)
+
+        p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
         return_object = p_client.describe_policy()
         if return_object:
             httpcode = 200
