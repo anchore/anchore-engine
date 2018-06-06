@@ -2,7 +2,7 @@ import random
 
 import anchore_engine.clients.common
 from anchore_engine.subsys.discovery import get_endpoints
-from .generated import DefaultApi, configuration
+from .generated import DefaultApi, configuration, ApiClient
 from anchore_engine.subsys import logger
 
 SERVICE_NAME = 'policy_engine'
@@ -27,15 +27,18 @@ def get_client(host=None, user=None, password=None, verify_ssl=True):
         except Exception as err:
             raise err
 
-    configuration.api_client = None
-    c = DefaultApi()
+    config = configuration.Configuration()
     if host:
-        c.api_client.configuration.host = host
+        config.host = host
     if user:
-        c.api_client.configuration.username = user
+        config.username = user
     if password:
-        c.api_client.configuration.password = password
+        config.password = password
+    config.verify_ssl = verify_ssl
+    
+    a = ApiClient(configuration=config)
+    c = DefaultApi(api_client=a)
 
-    c.api_client.configuration.verify_ssl = verify_ssl
+    #configuration.api_client = None    
 
     return c
