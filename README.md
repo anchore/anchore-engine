@@ -20,7 +20,7 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 
 1. Create a directory to expose as a volume containing Anchore Engine configuration files (we use /root/aevolume here but you can use non-root paths and adjust the samepl config/docker-compose configuration files accordingly)
 
-`mkdir -p /root/aevolume/config`
+`mkdir -p ~/aevolume/config`
 
 2. Download the sample configuration file [config.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/config.yaml) from the scripts/docker-compose directory of the github project and save into the directory created in step #1
 
@@ -44,7 +44,7 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 
 5. Create a directory to expose as a volume for PostgreSQL data
 
-`mkdir -p /root/aevolume/db/`
+`mkdir -p ~/aevolume/db/`
 
 ## Running Anchore Engine using Docker Compose  
 To run Anchore Engine using Docker Compose the following additional steps must be performed:
