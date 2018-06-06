@@ -24,6 +24,8 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 
 2. Download the sample configuration file [config.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/config.yaml) from the scripts/docker-compose directory of the github project and save into the directory created in step #1
 
+`cd ~/aevolume/config && curl -O https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/config.yaml && cd -`
+
 3. Edit the config.yaml file to specify your email and password for the admin user.
 
 ```
@@ -49,13 +51,19 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 ## Running Anchore Engine using Docker Compose  
 To run Anchore Engine using Docker Compose the following additional steps must be performed:
 
-1. Download the [docker-compose.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
+1. Change to the directory in which you have created the config and db subdirectories.
 
-2. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
+`cd ~/aevolume`
 
-3. To start Anchore Engine run `docker-compose up -d`
+2. Download the [docker-compose.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
 
-4. To stop the Anchore Engine run `docker-compose down`
+`curl -O https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/docker-compose.yaml`
+
+3. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
+
+4. To start Anchore Engine run `docker-compose up -d`
+
+5. To stop the Anchore Engine run `docker-compose down`
 
 ## Getting Started
 
