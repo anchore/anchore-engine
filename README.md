@@ -78,7 +78,7 @@ Edit docker-compose.yaml to remove the comment (#) from the `privileged: true` c
 
 Anchore Engine is using the [Anchore CLI](https://github.com/anchore/anchore-cli).
 
-The Anchore CLI can be installed using the Python pip command. See [Anchore CLI installation ](https://github.com/anchore/anchore-engine/wiki/Installing-Anchore-CLI) instructions.
+The Anchore CLI can be installed using the Python pip command. See [Anchore CLI](https://github.com/anchore/anchore-cli) for instructions.
 
 
 By default the Anchore CLI will try to connect to the Anchore Engine at http://localhost/v1 with no authentication.
