@@ -24,6 +24,8 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 
 2. Download the sample configuration file [config.yaml](https://github.com/anchore/anchore-engine/blob/master/scripts/docker-compose/config.yaml) from the scripts/docker-compose directory of the github project and save into the directory created in step #1
 
+`cd ~/aevolume/config && curl -O https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/config.yaml && cd -`
+
 3. Edit the config.yaml file to specify your email and password for the admin user.
 If you have a login for the [Anchore Navigator](https://anchore.io) uncomment the configuration options in the external_service_auths section and add your username and password to the auth parameter. This will configure the Anchore Engine to automatically synchronize policy bundles containing policies, whitelists and mappings from the Anchore Navigator.
 
@@ -50,17 +52,25 @@ If you have a login for the [Anchore Navigator](https://anchore.io) uncomment th
 ## Running Anchore Engine using Docker Compose  
 To run Anchore Engine using Docker Compose the following additional steps must be performed:
 
-1. Download the [docker-compose.yaml](https://github.com/anchore/anchore-engine/blob/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
+1. Change to the directory in which you have created the config and db subdirectories.
 
-2. [Optional] If running on Red Hat Enterprise Linux or CentOS with SELinux enabled:
+`cd ~/aevolume`
+
+2. Download the [docker-compose.yaml](https://github.com/anchore/anchore-engine/blob/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
+
+`curl -O https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/docker-compose.yaml`
+
+3. [Optional] If running on Red Hat Enterprise Linux or CentOS with SELinux enabled:
 The anchore-engine container needs to be run in in privileged mode to allow access to the Docker Socket.
 Edit docker-compose.yaml to remove the comment (#) from the `privileged: true` configuration parameter.
 
-3. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
+`sed -i '/^ *#privileged: true/ s/#//' docker-compose.yaml`
 
-4. To start Anchore Engine run `docker-compose up -d`
+4. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
 
-5. To stop the Anchore Engine run `docker-compose down`
+5. To start Anchore Engine run `docker-compose up -d`
+
+6. To stop the Anchore Engine run `docker-compose down`
 
 
 ## Getting Started
