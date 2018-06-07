@@ -573,10 +573,10 @@ def list_images(history=None, image_to_get=None, fulltag=None):
     return return_object, httpcode
 
 
-def add_image(image, force=None):
+def add_image(image, force=False):
 
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': False})
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': force})
         return_object, httpcode = images(request_inputs)
     except Exception as err:
         httpcode = 500
@@ -585,9 +585,9 @@ def add_image(image, force=None):
     return return_object, httpcode
 
 
-def delete_image(imageDigest):
+def delete_image(imageDigest, force=False):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': False})
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': force})
         return_object, httpcode = images_imageDigest(request_inputs, imageDigest)
     except Exception as err:
         httpcode = 500
@@ -624,9 +624,9 @@ def get_image_by_imageId(imageId, history=None):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-def delete_image_by_imageId(imageId):
+def delete_image_by_imageId(imageId, force=False):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+        request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'force': force})
         try:
             imageDigest = lookup_imageDigest_from_imageId(request_inputs, imageId)
         except:
