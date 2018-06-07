@@ -52,9 +52,10 @@ auto_restart_services: True
 #    enabled: True
 #    feeds:
 #      vulnerabilities: True
-#      # Warning: enabling the package sync causes the service to require much
+#      # Warning: enabling the packages and nvd sync causes the service to require much
 #      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
 #      packages: False
+#      nvd: False
 #  anonymous_user_username: anon@ancho.re
 #  anonymous_user_password: pbiU2RYZ2XrmYQ
 #  url: 'https://ancho.re/v1/service/feeds'
@@ -102,6 +103,12 @@ services:
     endpoint_hostname: '${ANCHORE_HOST_ID}'
     listen: '0.0.0.0'
     port: 8082
+# NOTE: use the below external_* parameters to define the port/tls
+# setting that will allow other internal services to access this
+# service - if left unset services will use the above,
+# e.g. http://<endpoint_hostname>:<port>
+#    external_port: 8082
+#    external_tls: False
     archive:
       compression:
         enabled: False
@@ -125,6 +132,8 @@ services:
     endpoint_hostname: '${ANCHORE_HOST_ID}'
     listen: '0.0.0.0'
     port: 8083
+#    external_port: 8083
+#    external_tls: False
   analyzer:
     enabled: True
     require_auth: True
@@ -134,12 +143,16 @@ services:
     endpoint_hostname: '${ANCHORE_HOST_ID}'
     listen: '0.0.0.0'
     port: 8084
+#    external_port: 8084
+#    external_tls: False
   policy_engine:
     enabled: True
     require_auth: True
     endpoint_hostname: '${ANCHORE_HOST_ID}'
     listen: '0.0.0.0'
     port: 8087
+#    external_port: 8087
+#    external_tls: False
     cycle_timer_seconds: 1
     cycle_timers:
       feed_sync: 21600 # 6 hours between feed syncs

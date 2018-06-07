@@ -180,8 +180,10 @@ def squash(unpackdir, cachedir, layers):
 
         logger.debug("\tPass 1: " + str(layertar))
 
-        whpatt = re.compile(".*/\.wh\..*")
-        whopqpatt = re.compile(".*/\.wh\.\.wh\.\.opq")
+        #whpatt = re.compile(".*/\.wh\..*")
+        #whopqpatt = re.compile(".*/\.wh\.\.wh\.\.opq")
+        whpatt = re.compile("\.wh\..*")
+        whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
 
         l_opqexcludes[layer] = {}
 
@@ -191,7 +193,8 @@ def squash(unpackdir, cachedir, layers):
         tarfilenames = get_tar_filenames(layertar)
         for fname in tarfilenames:
             # checks for whiteout conditions
-            if whopqpatt.match(fname):
+            if whopqpatt.match(os.path.basename(fname)):
+                #if whopqpatt.match(fname):
                 # found an opq entry, which means that this files in the next layer down (only) should not be included
                 fsub = re.sub(r"\.wh\.\.wh\.\.opq", "", fname, 1)
 
@@ -199,7 +202,8 @@ def squash(unpackdir, cachedir, layers):
                 myexcludes[fname] = True
                 opqexcludes[fsub] = True
 
-            elif whpatt.match(fname):
+            elif whpatt.match(os.path.basename(fname)):
+                #elif whpatt.match(fname):
                 # found a normal whiteout, which means that this file in any lower layer should be excluded
                 fsub = re.sub(r"\.wh\.", "", fname, 1)
 
