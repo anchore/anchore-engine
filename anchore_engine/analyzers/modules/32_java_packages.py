@@ -22,6 +22,8 @@ import anchore_engine.analyzers.utils
 
 analyzer_name = "package_list"
 
+java_library_file = ".*\.([jwe]ar|[jh]pi)"
+
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
@@ -40,7 +42,7 @@ def process_java_archive(prefix, filename, inZFH):
     fullpath = '/'.join([prefix, filename])
 
     jtype = None
-    patt = re.match(".*\.(jar|war|ear)", fullpath)
+    patt = re.match(java_library_file, fullpath)
     if patt:
         jtype = patt.group(1)
     else:
@@ -119,7 +121,7 @@ def process_java_archive(prefix, filename, inZFH):
 
         for zfname in ZFH.namelist():
             sub_jtype = None
-            patt = re.match(".*\.(jar|war|ear)", zfname)
+            patt = re.match(java_library_file, zfname)
             if patt:
                 sub_jtype = patt.group(1)
 
