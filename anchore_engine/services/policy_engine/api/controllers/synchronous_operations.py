@@ -7,6 +7,7 @@ Async operations are handled by teh async_operations controller.
 
 import json
 import time
+import hashlib
 
 import connexion
 from flask import abort, Response
@@ -390,6 +391,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             if not all_cpe_matches:
                 all_cpe_matches = []
 
+            cpe_hashes = {}
             for image_cpe, vulnerability_cpe in all_cpe_matches:
                 cpe_vuln_el = {
                     'vulnerability_id': vulnerability_cpe.vulnerability_id,
@@ -403,7 +405,10 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     'feed_name': vulnerability_cpe.feed_name,
                     'feed_namespace': vulnerability_cpe.namespace_name,
                 }
-                cpe_vuln_listing.append(cpe_vuln_el)
+                cpe_hash = hashlib.sha256(json.dumps(cpe_vuln_el)).hexdigest()
+                if not cpe_hashes.get(cpe_hash, False):
+                    cpe_vuln_listing.append(cpe_vuln_el)
+                    cpe_hashes[cpe_hash] = True
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 

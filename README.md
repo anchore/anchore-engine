@@ -18,15 +18,13 @@ Anchore Engine can be run manually, using Docker Compose, Kubernetes or any cont
 
 ## Configuration 
 
-1. Create a directory to expose as a volume containing Anchore Engine configuration files
+1. Create a directory to expose as a volume containing Anchore Engine configuration files (we use /root/aevolume here but you can use non-root paths and adjust the samepl config/docker-compose configuration files accordingly)
 
 `mkdir -p /root/aevolume/config`
 
-2. Download the sample configuration file [config.yaml](https://github.com/anchore/anchore-engine/blob/master/scripts/docker-compose/config.yaml) from the scripts/docker-compose directory of the github project and save into the directory created in step #1
+2. Download the sample configuration file [config.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/config.yaml) from the scripts/docker-compose directory of the github project and save into the directory created in step #1
 
 3. Edit the config.yaml file to specify your email and password for the admin user.
-If you have a login for the [Anchore Navigator](https://anchore.io) uncomment the configuration options in the external_service_auths section and add your username and password to the auth parameter. This will configure the Anchore Engine to automatically synchronize policy bundles containing policies, whitelists and mappings from the Anchore Navigator.
-
 
 ```
     credentials:
@@ -42,29 +40,24 @@ If you have a login for the [Anchore Navigator](https://anchore.io) uncomment th
            #auto_policy_sync: True
 ```
 
-4. Create a directory to expose as a volume for PostgreSQL data
+4. Make other changes to config.yaml to enable additional features or tune to your environment (not required for basic usage)
+
+5. Create a directory to expose as a volume for PostgreSQL data
 
 `mkdir -p /root/aevolume/db/`
-
 
 ## Running Anchore Engine using Docker Compose  
 To run Anchore Engine using Docker Compose the following additional steps must be performed:
 
-1. Download the [docker-compose.yaml](https://github.com/anchore/anchore-engine/blob/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
+1. Download the [docker-compose.yaml](https://raw.githubusercontent.com/anchore/anchore-engine/master/scripts/docker-compose/docker-compose.yaml) file from the scripts/docker-compose directory of the github project.
 
-2. [Optional] If running on Red Hat Enterprise Linux or CentOS with SELinux enabled:
-The anchore-engine container needs to be run in in privileged mode to allow access to the Docker Socket.
-Edit docker-compose.yaml to remove the comment (#) from the `privileged: true` configuration parameter.
+2. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
 
-3. Run `docker-compose pull` to instruct Docker to download the required container images from DockerHub.
+3. To start Anchore Engine run `docker-compose up -d`
 
-4. To start Anchore Engine run `docker-compose up -d`
-
-5. To stop the Anchore Engine run `docker-compose down`
-
+4. To stop the Anchore Engine run `docker-compose down`
 
 ## Getting Started
-
 
 Anchore Engine is using the [Anchore CLI](https://github.com/anchore/anchore-cli).
 
@@ -78,7 +71,7 @@ The username, password and URL for the server can be passed to the Anchore CLI a
     --p   TEXT   Password     eg. foobar
     --url TEXT   Service URL  eg. http://localhost:8228/v1
    
-Rather than passing these parameters for every call to the cli they can be stores as environment variables.
+Rather than passing these parameters for every call to the cli they can be set as environment variables.
 
     ANCHORE_CLI_URL=http://myserver.example.com:8228/v1
     ANCHORE_CLI_USER=admin
@@ -112,7 +105,7 @@ Subscribe to receive webhook notifications when new CVEs are added to an update
 ## API
 Each service implements its own API, and all APIs are defined in Swagger/OpenAPI spec. You can find each in the _anchore_engine/services/\<servicename\>/api/swagger_ directory.
 
-For the exteranal API definition (the user-facing service), see: [External API Spec](https://github.com/anchore/anchore-engine/blob/master/anchore_engine/services/apiext/swagger/swagger.yaml).
+For the external API definition (the user-facing service), see: [External API Spec](https://github.com/anchore/anchore-engine/blob/master/anchore_engine/services/apiext/swagger/swagger.yaml).
 
 
 

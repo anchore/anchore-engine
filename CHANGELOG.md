@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.2 (2018-06-08)
+
++ New feature: support for multiple policies in mapping rules of policy bundles
++ New feature: add image 'metadata' content, accessible using 'anchore-cli image metadata <image>' to review dockerfile, docker hisory, and manifest content
++ New feature: support for non-os package vulnerability scanning and access to new data feed (NVD)
++ Improved DB bootstrap process significantly, including DB compatability checks
++ Improved GET routes to remove the need for a body (equiv. key=values can now also be supplied as querystring parameters)
++ Improved vulnerability record format including separation of package and version for effected packaged into their own fields
++ Add registry validation when adding a registry credential (can be optionally skipped)
++ Add options for 'external URL' broadcast for each service, in LB cases where the TLS/port state of the actual service differs from how the services intercommunicate. Fixes #49
++ Add better tolerance of archive document migration (contributed by Armstrong Li <jianqli@ebay.com>)
++ Remove dependency on external 'anchore' installation, bringing all analyzer/sync code from deprecated original anchore project into engine natively
++ Fix tar hardlink error largely noticed on RHEL/Centos based images, causing some images to fail analysis
++ Fix to return RFC3339 ISO datetime strings (contributed by Patrik Cyvoct <patrik@ptrk.io>)
++ Fix that adds force kwarg parameter to by_id function defs.  Fixes #55.
++ Fix that updates the ping_docker_registry() routine to handle translating docker.io to the actual dockerhub registry url. Fixes #52.
++ Many more minor bug fixes and improvements
+
 ## 0.2.1 (2018-04-29)
 
 + Security fix for github issue #36: anchore-engine allows authenticated user to issue malformed input on image/repo adds, allowing command execution on the engine host.  Many thanks to Cameron Lonsdale (https://github.com/CameronLonsdale) for discovering and reporting the issue.
