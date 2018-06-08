@@ -97,7 +97,7 @@ def get_policy(policyId):
         return str(err), 500
 
 
-def update_policy(policyId, bodycontent, active=True):
+def update_policy(policyId, bodycontent):
     """
     PUT /policies/{policyId}
 
@@ -111,8 +111,8 @@ def update_policy(policyId, bodycontent, active=True):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
-
         bundle_policyId = bodycontent.get('policyId')
+        active = bodycontent.get('active', False)
 
         if not bundle_policyId:
             raise Exception("must include 'policyId' in the json payload for this operation")
@@ -133,7 +133,7 @@ def update_policy(policyId, bodycontent, active=True):
         return str(err), 500
 
 
-def add_policy(bodycontent, active=True):
+def add_policy(bodycontent):
     """
     POST /policies
 
@@ -150,6 +150,7 @@ def add_policy(bodycontent, active=True):
 
         policyId = bodycontent.get('policyId')
         policybundle = bodycontent.get('policybundle')
+        active = bodycontent.get('active', False)
 
         if not policyId:
             raise Exception("must include 'policyId' in the json payload for this operation")
