@@ -32,7 +32,8 @@ default_queue_config = {
 # Replaces the above with configuration options for each queue
 queues_to_bootstrap = {
     'images_to_analyze': default_queue_config,
-    'error_events': default_queue_config,
+    # 'error_events': default_queue_config,
+    'event_log': default_queue_config,
     'watcher_tasks': default_queue_config,
     'feed_sync_tasks': {
         'max_outstanding_messages': 1,

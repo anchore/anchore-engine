@@ -424,11 +424,7 @@ def handle_repo_watcher(*args, **kwargs):
                 logger.warn("failed to process repo_update subscription - exception: " + str(err))
             finally:
                 if event:
-                    try:
-                        with db.session_scope() as dbsession:
-                            db_events.add(event.to_dict(), dbsession)
-                    except:
-                        logger.exception('Ignoring error creating event in handle_repo_watcher: {}'.format(event))
+                    _add_event(event)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -613,11 +609,7 @@ def handle_image_watcher(*args, **kwargs):
                 logger.error("failed to check/update image - exception: " + str(err))
             finally:
                 if event:
-                    try:
-                        with db.session_scope() as dbsession:
-                            db_events.add(event.to_dict(), dbsession)
-                    except:
-                        logger.exception('Ignoring error creating event in handle_image_watcher: {}'.format(event))
+                    _add_event(event)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -631,6 +623,21 @@ def handle_image_watcher(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer, function=watcher, status="fail")
 
     return(True)
+
+
+def _add_event(event, quiet=True):
+    try:
+        with db.session_scope() as dbsession:
+            db_events.add(event.to_dict(), dbsession)
+
+        logger.debug("queueing event creation notification")
+        npayload = {'event': event.to_dict()}
+        rc = notifications.queue_notification(event.user_id, subscription_key=event.level, subscription_type='event_log', payload=npayload)
+    except:
+        if quiet:
+            logger.exception('Ignoring error creating/notifying event: {}'.format(event))
+        else:
+            raise
 
 def check_feedmeta_update(dbsession):
     global feed_sync_updated
@@ -1012,40 +1019,52 @@ def handle_notifications(*args, **kwargs):
     logger.debug("FIRING: " + str(watcher))
 
     with db.session_scope() as dbsession:
-        # special handling of the error event queue, if configured as a webhook
+        localconfig = anchore_engine.configuration.localconfig.get_config()
         try:
-            localconfig = anchore_engine.configuration.localconfig.get_config()
-            try:
-                notification_timeout = int(localconfig['webhooks']['notification_retry_timeout'])
-            except:
-                notification_timeout = 30
+            notification_timeout = int(localconfig['webhooks']['notification_retry_timeout'])
+        except:
+            notification_timeout = 30
 
-            logger.debug("notification timeout: " + str(notification_timeout))
+        logger.debug("notification timeout: " + str(notification_timeout))
 
-            do_erreventhooks = False
-            try:
-                if localconfig['webhooks']['error_event']:
-                    do_erreventhooks = True
-            except:
-                logger.debug("error_event webhook is not configured, skipping webhook for error_event")
+        # get the event log notification config
+        try:
+            event_log_config = localconfig.get('event_log', {})
+            if event_log_config.get('notification', {}).get('enabled', True):
+                notify_events = event_log_config.get('notification', {}).get('level', {'error': True, 'info': True})
+            else:
+                notify_events = {'error': False, 'info': False}
+        except:
+            logger.exception('Ignoring errors parsing for event_log configuration')
+            notify_events = {'error': False, 'info': False}
 
-            # if do_erreventhooks:
-            #     system_user_record = db_users.get('admin', session=dbsession)
-            #     errevent_records = db_eventlog.get_all(session=dbsession)
-            #     for errevent in errevent_records:
-            #         notification = errevent
-            #         userId = system_user_record['userId']
-            #         notificationId = str(uuid.uuid4())
-            #         subscription_type = 'error_event'
-            #         notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
-            #         logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
-            #         db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
-            #         db_eventlog.delete_record(errevent, session=dbsession)
-        except Exception as err:
-            logger.warn("failed to queue error eventlog for notification - exception: " + str(err))
+        # # special handling of the error event queue, if configured as a webhook
+        # try:
+        #     do_erreventhooks = False
+        #     try:
+        #         if localconfig['webhooks']['error_event']:
+        #             do_erreventhooks = True
+        #     except:
+        #         logger.debug("error_event webhook is not configured, skipping webhook for error_event")
+        #
+        #     if do_erreventhooks:
+        #         system_user_record = db_users.get('admin', session=dbsession)
+        #         errevent_records = db_eventlog.get_all(session=dbsession)
+        #         for errevent in errevent_records:
+        #             notification = errevent
+        #             userId = system_user_record['userId']
+        #             notificationId = str(uuid.uuid4())
+        #             subscription_type = 'error_event'
+        #             notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
+        #             logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
+        #             db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
+        #             db_eventlog.delete_record(errevent, session=dbsession)
+        # except Exception as err:
+        #     logger.warn("failed to queue error eventlog for notification - exception: " + str(err))
 
-        # regular event queue notifications
-        for subscription_type in anchore_engine.services.common.subscription_types + ['error_event']:
+        # regular event queue notifications + event log notification
+        event_log_type = 'event_log'
+        for subscription_type in anchore_engine.services.common.subscription_types + [event_log_type]:
             logger.debug("notifier: " + subscription_type)
             users = db_users.get_all(session=dbsession)
 
@@ -1066,15 +1085,22 @@ def handle_notifications(*args, **kwargs):
                     for user in users:
                         try:
                             if userId == user['userId']:
-                                dbfilter = {'subscription_type': subscription_type, 'subscription_key': subscription_key}
-                                subscription_records = db_subscriptions.get_byfilter(user['userId'], session=dbsession, **dbfilter)
-                                if subscription_records:
-                                    subscription = subscription_records[0]
-                                    if subscription and subscription['active']:
+                                notification_record = None
+                                if subscription_type in anchore_engine.services.common.subscription_types:
+                                    dbfilter = {'subscription_type': subscription_type, 'subscription_key': subscription_key}
+                                    subscription_records = db_subscriptions.get_byfilter(user['userId'], session=dbsession, **dbfilter)
+                                    if subscription_records:
+                                        subscription = subscription_records[0]
+                                        if subscription and subscription['active']:
+                                            notification_record = notifications.make_notification(user, subscription_type, notification)
+                                elif subscription_type == event_log_type: # handle event_log differently since its not a type of subscriptions
+                                    if notify_events.get(subscription_key.lower(), False):
+                                        notification.pop('subscription_key', None) # remove subscription_key property from notification
                                         notification_record = notifications.make_notification(user, subscription_type, notification)
-                                        logger.spew("Storing NOTIFICATION: " + str(user) + str(notification_record))
-                                        db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
 
+                                if notification_record:
+                                    logger.spew("Storing NOTIFICATION: " + str(user) + str(notification_record))
+                                    db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
                         except Exception as err:
                             import traceback
                             traceback.print_exc()

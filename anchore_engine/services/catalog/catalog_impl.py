@@ -680,6 +680,15 @@ def events(dbsession, request_inputs, bodycontent=None):
             if record:
                 httpcode = 200
                 return_object = record
+
+                # Notification for the new event
+                try:
+                    logger.debug("queueing event creation notification")
+                    npayload = {'event': return_object['event']}
+                    rc = notifications.queue_notification(userId, subscription_key=return_object['event']['level'], subscription_type='event_log', payload=npayload)
+                except Exception as err:
+                    logger.warn("failed to enqueue notification for event creation - exception: " + str(err))
+
             else:
                 httpcode = 500
                 raise Exception('Cannot create event')
