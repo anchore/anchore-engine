@@ -30,10 +30,11 @@ def get_byfilter(userId, session=None, since=None, before=None, next=None, limit
     query = query.order_by(Event.timestamp.desc()).limit(limit + 1)
 
     for db_event in query:
-        if len(ret) < limit:
+        if len(ret['results']) < limit:
             ret['results'].append(_db_to_dict(db_event))
         else:
             ret['next'] = db_event.timestamp.isoformat()
+            break
 
     return ret
 
