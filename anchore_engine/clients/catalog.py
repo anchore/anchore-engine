@@ -815,7 +815,7 @@ def get_events(userId, source_servicename=None, source_hostid=None, resource_typ
         path_params.append('before={}'.format(before))
 
     if next:
-        path_params.append('next={}'.format(since))
+        path_params.append('next={}'.format(next))
 
     if path_params:
         url = url + '?' + '&'.join(path_params)
