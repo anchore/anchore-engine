@@ -264,15 +264,14 @@ def validate_config(config, validate_params={}):
                         k) + ") defined, but no values are specified (need at least 'enabled: <True|False>')")
                 else:
                     service_config = config['services'][k]
-                    found_key = 0
+
+                    # check to ensure the listen/port/endpoint_hostname params are set for all services
                     check_keys = ['endpoint_hostname', 'listen', 'port']
                     for check_key in check_keys:
-                        if check_key in service_config:
-                            found_key = found_key + 1
-                    if found_key != 0 and found_key != 3:
-                        raise Exception("if any one of (" + ','.join(
-                            check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
+                        if check_key not in service_config:
+                            raise Exception("the following values '{}' must be set for all services, but service '{}' does not have them set (missing '{}')".format(check_keys, k, check_key))
 
+                    # check to ensure that if any TLS params are set, then they all must be set
                     found_key = 0
                     check_keys = ['ssl_enable', 'ssl_cert', 'ssl_key']
                     for check_key in check_keys:
