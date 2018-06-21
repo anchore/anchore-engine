@@ -778,7 +778,7 @@ def add_event(userId, event):
 
     return(ret)
 
-def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, next=None):
+def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, page=None, limit=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -814,8 +814,11 @@ def get_events(userId, source_servicename=None, source_hostid=None, resource_typ
     if before:
         path_params.append('before={}'.format(before))
 
-    if next:
-        path_params.append('next={}'.format(next))
+    if page is not None:
+        path_params.append('page={}'.format(page))
+
+    if limit is not None:
+        path_params.append('limit={}'.format(limit))
 
     if path_params:
         url = url + '?' + '&'.join(path_params)

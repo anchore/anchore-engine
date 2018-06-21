@@ -6,35 +6,70 @@ from anchore_engine import db
 from anchore_engine.db import Event
 from anchore_engine.subsys import logger
 
+import sqlalchemy
+from sqlalchemy import func
 
-def get_byfilter(userId, session=None, since=None, before=None, next=None, limit=100, **dbfilter):
+
+def get_byfilter(userId, session=None, since=None, before=None, page=1, limit=100, **dbfilter):
     if not session:
         session = db.Session
 
-    ret = {'results': [], 'next': None}
+    ret = {'results': [], 'next_page': False, 'item_count': 0, 'page': page}
 
-    query = session.query(Event).filter(Event.resource_user_id == userId)
+    if page > 1:
+        # inner query: execute row_number() on the timestamp column over the results of query
+        resq = session.query(Event, func.row_number().over(order_by=Event.timestamp.desc()).label('rownum')).filter(Event.resource_user_id == userId)
 
-    if dbfilter:
-        query = query.filter_by(**dbfilter)
+        if dbfilter:
+            resq = resq.filter_by(**dbfilter)
+        if before:
+            resq = resq.filter(Event.timestamp < before)
+        if since:
+            resq = resq.filter(Event.timestamp > since)
 
-    if before:
-        query = query.filter(Event.timestamp < before)
+        start = (page-1) * limit
+        end = start + limit + 1  # get one more result than requested, required to indicate next token
 
-    if since:
-        query = query.filter(Event.timestamp > since)
+        # outer query: filter range of results that match the attached row numbers from the inner query
+        resq = resq.from_self(Event)
+        resq = resq.filter(sqlalchemy.text('rownum > {} and rownum <= {}'.format(start, end))).order_by(sqlalchemy.text('rownum'))
 
-    if next:
-        query = query.filter(Event.timestamp < next)
+    else:
+        # Query the first limit+1 results and call it a day
+        resq = session.query(Event).filter(Event.resource_user_id == userId)
 
-    query = query.order_by(Event.timestamp.desc()).limit(limit + 1)
+        if dbfilter:
+            resq = resq.filter_by(**dbfilter)
+        if before:
+            resq = resq.filter(Event.timestamp < before)
+        if since:
+            resq = resq.filter(Event.timestamp > since)
 
-    for db_event in query:
+        # sqlalchemy does not like it if limit is applied before filter
+        resq = resq.order_by(Event.timestamp.desc()).limit(limit + 1)
+
+    # # Query for counting total number of results matching the filters
+    # countq = session.query(func.count(Event.generated_uuid)).filter(Event.resource_user_id == userId).order_by(None)
+    # if dbfilter:
+    #     countq = resq.filter_by(**dbfilter)
+    # if before:
+    #     countq = resq.filter(Event.timestamp < before)
+    # if since:
+    #     countq = resq.filter(Event.timestamp > since)
+    #
+    # # Execute count query
+    # ret['total_count'] = countq.scalar()
+
+    # Execute limit bound query
+    logger.info('get events query: {}'.format(resq))
+    for db_event in resq.all():
         if len(ret['results']) < limit:
             ret['results'].append(_db_to_dict(db_event))
         else:
-            ret['next'] = db_event.timestamp.isoformat()
+            ret['next_page'] = True
             break
+
+    ret['item_count'] = len(ret['results'])
 
     return ret
 

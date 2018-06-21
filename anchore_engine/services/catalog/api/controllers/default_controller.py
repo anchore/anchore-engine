@@ -216,7 +216,7 @@ def subscriptions_subscriptionId_delete(subscriptionId):
 
 # eventlog calls
 # @api.route('/events', methods=['GET', 'POST', 'DELETE'])
-def events_get(source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, next=None):
+def events_get(source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, page=None, limit=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request,
                                                                         default_params={'source_servicename': source_servicename,
@@ -225,7 +225,8 @@ def events_get(source_servicename=None, source_hostid=None, resource_type=None, 
                                                                                         'level': level,
                                                                                         'since': since,
                                                                                         'before': before,
-                                                                                        'next': next})
+                                                                                        'page': page,
+                                                                                        'limit': limit})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.events(session, request_inputs)
 

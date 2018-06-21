@@ -636,15 +636,35 @@ def events(dbsession, request_inputs, bodycontent=None):
                     httpcode = 400
                     raise Exception('Invalid value before query parameter, must be valid datetime string')
 
-            next = None
-            if params.get('next', None):
+                if since and since >= before:
+                    httpcode = 400
+                    raise Exception('Invalid values for since and before query parameters. since must be smaller than before timestamp')
+
+            page = 0
+            if params.get('page', None) is not None:
                 try:
-                    next = dateparser.parse(params.get('next'))
+                    page = int(params.get('page'))
                 except:
                     httpcode = 400
-                    raise Exception('Invalid value for next query parameter')
+                    raise Exception('Invalid value for page query parameter, must be valid integer greater than 0')
 
-            ret = db_events.get_byfilter(userId=userId, session=dbsession, since=since, before=before, next=next, **dbfilter)
+            if page < 1:
+                httpcode = 400
+                raise Exception('page must be a valid integer greater than 0')
+
+            limit = 0
+            if params.get('limit', None) is not None:
+                try:
+                    limit = int(params.get('limit'))
+                except:
+                    httpcode = 400
+                    raise Exception('Invalid value limit query parameter, must be valid integer between 1 and 1000')
+
+            if limit < 1 or limit > 1000:
+                httpcode = 400
+                raise Exception('limit must be valid integer between 1 and 1000')
+
+            ret = db_events.get_byfilter(userId=userId, session=dbsession, since=since, before=before, page=page, limit=limit, **dbfilter)
             if not ret:
                 httpcode = 404
                 raise Exception("events not found in DB")

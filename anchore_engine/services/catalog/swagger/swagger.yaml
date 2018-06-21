@@ -676,41 +676,48 @@ paths:
       description: ""
       operationId: "events_get"
       parameters:
-      - name: 'source_servicename'
+      - name: source_servicename
         in: query
         type: string
         description: ""
         required: false
-      - name: 'source_hostid'
+      - name: source_hostid
         in: query
         type: string
         description: ""
         required: false
-      - name: 'resource_type'
+      - name: resource_type
         in: query
         type: string
         description: ""
         required: false
-      - name: 'level'
+      - name: level
         in: query
         type: string
         description: ""
         required: false
-      - name: 'since'
+      - name: since
         in: query
         type: string
         description: ""
         required: false
-      - name: 'before'
+      - name: before
         in: query
         type: string
         description: ""
         required: false
-      - name: 'next'
+      - name: page
         in: query
-        type: string
+        type: integer
         description: ""
         required: false
+        default: 1
+      - name: limit
+        in: query
+        type: integer
+        description: ""
+        required: false
+        default: 100
       produces:
       - "application/json"
       responses:
