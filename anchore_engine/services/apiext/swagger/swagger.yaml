@@ -1258,10 +1258,15 @@ paths:
         type: string
         description: Filter events by the type of resource - tag, imageDigest, repository etc
         required: false
+      - name: resource_id
+        in: query
+        type: string
+        description: Filter events by the id of the resource
+        required: false
       - name: level
         in: query
         type: string
-        description: Filter events by the level - info, error
+        description: Filter events by the level - INFO or ERROR
         required: false
       - name: since
         in: query
@@ -1298,26 +1303,28 @@ paths:
       summary: Delete Events
       description: Delete all or a subset of events filtered using the optional query parameters
       parameters:
-      - name: 'before'
+      - name: before
         in: query
         type: string
-        description: ""
+        description: Delete events that occurred before the timestamp
         required: false
-      - name: 'since'
+      - name: since
         in: query
         type: string
-        description: ""
+        description: Delete events that occurred after the timestamp
+        required: false
+      - name: level
+        in: query
+        type: string
+        description: Delete events that match the level - INFO or ERROR
         required: false
       responses:
         200:
           description: List of deleted event IDs
           schema:
-            type: object
-            properties:
-              deleted:
-                type: array
-                items:
-                  type: string
+            type: array
+            items:
+              type: string
         500:
           description: Internal Error
           schema:

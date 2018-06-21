@@ -617,6 +617,9 @@ def events(dbsession, request_inputs, bodycontent=None):
             if params.get('resource_type', None):
                 dbfilter['resource_type'] = params.get('resource_type')
 
+            if params.get('resource_id', None):
+                dbfilter['resource_id'] = params.get('resource_id')
+
             if params.get('level', None):
                 dbfilter['level'] = params.get('level')
 
@@ -673,6 +676,11 @@ def events(dbsession, request_inputs, bodycontent=None):
                 httpcode = 200
 
         elif method == 'DELETE':
+            dbfilter = dict()
+
+            if params.get('level', None):
+                dbfilter['level'] = params.get('level')
+
             since = None
             if params.get('since', None):
                 try:
@@ -689,7 +697,7 @@ def events(dbsession, request_inputs, bodycontent=None):
                     httpcode = 400
                     raise Exception('Invalid value before query parameter, must be valid datetime string')
 
-            ret = db_events.delete_byfilter(userId=userId, session=dbsession, since=since, before=before)
+            ret = db_events.delete_byfilter(userId=userId, session=dbsession, since=since, before=before, **dbfilter)
 
             httpcode = 200
             return_object = ret
@@ -741,7 +749,7 @@ def events_eventId(dbsession, request_inputs, eventId):
                 httpcode = 404
                 raise Exception("Event not found")
             else:
-                return_object = None
+                return_object = True
                 httpcode = 200
 
     except Exception as err:

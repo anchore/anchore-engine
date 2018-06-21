@@ -691,6 +691,11 @@ paths:
         type: string
         description: ""
         required: false
+      - name: resource_id
+        in: query
+        type: string
+        description: ""
+        required: false
       - name: level
         in: query
         type: string
@@ -739,6 +744,11 @@ paths:
         description: ""
         required: false
       - name: 'before'
+        in: query
+        type: string
+        description: ""
+        required: false
+      - name: level
         in: query
         type: string
         description: ""

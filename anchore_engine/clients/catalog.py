@@ -778,7 +778,7 @@ def add_event(userId, event):
 
     return(ret)
 
-def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, level=None, since=None, before=None, page=None, limit=None):
+def get_events(userId, source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -805,6 +805,9 @@ def get_events(userId, source_servicename=None, source_hostid=None, resource_typ
     if resource_type:
         path_params.append('resource_type={}'.format(resource_type))
 
+    if resource_id:
+        path_params.append('resource_id={}'.format(resource_id))
+
     if level:
         path_params.append('level={}'.format(level))
 
@@ -827,7 +830,7 @@ def get_events(userId, source_servicename=None, source_hostid=None, resource_typ
 
     return(ret)
 
-def delete_events(userId, since=None, before=None):
+def delete_events(userId, since=None, before=None, level=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -850,6 +853,9 @@ def delete_events(userId, since=None, before=None):
 
     if before:
         path_params.append('before={}'.format(before))
+
+    if level:
+        path_params.append('level={}'.format(level))
 
     if path_params:
         url = url + '?' + '&'.join(path_params)

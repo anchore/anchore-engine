@@ -96,11 +96,11 @@ def add(msg, session=None):
     return _db_to_dict(res)
 
 
-def delete_byfilter(userId, session=None, since=None, before=None):
+def delete_byfilter(userId, session=None, since=None, before=None, **dbfilter):
     if not session:
         session = db.Session
 
-    ret = {'deleted': []}
+    ret = []
 
     query = session.query(Event).filter(Event.resource_user_id == userId)
 
@@ -110,8 +110,11 @@ def delete_byfilter(userId, session=None, since=None, before=None):
     if since:
         query = query.filter(Event.timestamp > since)
 
+    if dbfilter:
+        query = query.filter_by(**dbfilter)
+
     for db_event in query:
-        ret['deleted'].append(db_event.generated_uuid)
+        ret.append(db_event.generated_uuid)
         session.delete(db_event)
 
     return ret
@@ -121,11 +124,11 @@ def delete_byevent_id(userId, eventId, session=None):
     if not session:
         session = db.Session
 
-    ret = None
+    ret = False
 
     db_event = session.query(Event).filter(Event.resource_user_id == userId, Event.generated_uuid == eventId).one_or_none()
     if db_event:
-        ret = db_event.generated_uuid
+        ret = True
         session.delete(db_event)
 
     return ret

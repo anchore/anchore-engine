@@ -134,6 +134,7 @@ class Event(Base, UtilMixin):
     __table_args__ = (Index('ix_timestamp', timestamp.desc()),
                       Index('ix_resource_user_id', resource_user_id),
                       Index('ix_resource_type', resource_type),
+                      Index('ix_resource_id', resource_id),
                       Index('ix_source_servicename', source_servicename),
                       Index('ix_source_hostid', source_hostid),
                       Index('ix_level', level))
