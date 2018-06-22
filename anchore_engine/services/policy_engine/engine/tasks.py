@@ -529,11 +529,11 @@ class ImageLoadTask(IAsyncTask):
             # Add auth if necessary
             try:
                 with session_scope() as dbsession:
-                    usr_record = db_users.get('admin', session=dbsession)
+                    usr_record = db_users.get(userId, session=dbsession)
                 if not usr_record:
-                    raise Exception('User {} not found, cannot fetch analysis data'.format('admin'))
+                    raise Exception('User {} not found, cannot fetch analysis data'.format(userId))
             except:
-                log.exception('Cannot get admin credentials for fetching the analysis content to load')
+                log.exception('Cannot get credentials for user {} fetching the analysis content to load'.format(userId))
                 raise
             try:
                 doc = catalog.get_document((usr_record['userId'], usr_record['password']), bucket, name)
