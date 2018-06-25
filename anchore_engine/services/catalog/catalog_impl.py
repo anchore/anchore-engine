@@ -978,7 +978,8 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                 httpcode = 406
                 raise Exception("'awsauto' is not enabled in service configuration")
 
-            if validate:
+            # attempt to validate on registry add - only support docker_v2 registry validation presently
+            if validate and registrydata.get('registry_type', False) in ['docker_v2']:
                 try:
                     registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
                 except Exception as err:
@@ -987,6 +988,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
 
             rc = db_registries.add(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)
+
             try:
                 refresh_registry_creds(registry_records, dbsession)
             except Exception as err:
@@ -1002,15 +1004,6 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
 def refresh_registry_creds(registry_records, dbsession):
 
     for registry_record in registry_records:
-
-        #if registry_record['record_state_key'] in ['auth_failure'] and (int(time.time()) - int(registry_record['record_state_val']) < 30):
-        #    logger.debug("SKIPPING "+str(registry_record['registry']) + " auth check: " + str(time.time()) + " : " + str(registry_record['record_state_val']))
-        #    continue
-        #else:
-        #    try:
-        #        logger.debug("PERFORMING "+str(registry_record['registry']) + " auth check: " + str(registry_record['record_state_val']) + " : " + str(int(time.time()) - int(registry_record['record_state_val'])))
-        #    except:
-        #        pass
 
         logger.debug("checking registry for up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
         if 'registry_type' in registry_record and registry_record['registry_type'] in ['awsecr']:
