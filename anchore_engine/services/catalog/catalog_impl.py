@@ -978,7 +978,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                 httpcode = 406
                 raise Exception("'awsauto' is not enabled in service configuration")
 
-            # attempt to validate on registry add - only support docker_v2 registry validation presently
+            # attempt to validate on registry add before any DB / cred refresh is done - only support docker_v2 registry validation presently at this point
             if validate and registrydata.get('registry_type', False) in ['docker_v2']:
                 try:
                     registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registrydata)
@@ -991,8 +991,22 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
 
             try:
                 refresh_registry_creds(registry_records, dbsession)
+
+                # perform validation if the refresh/setup is successful
+                if validate:
+                    for registry_record in registry_records:
+                        try:
+                            registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_records[0])
+                        except Exception as err:
+                            httpcode = 406
+                            raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
             except Exception as err:
                 logger.warn("failed to refresh registry credentials - exception: " + str(err))
+                # if refresh fails for any reason (and validation is requested), remove the registry from the DB and raise a fault
+                if validate:
+                    db_registries.delete(registry, userId, session=dbsession)
+                    httpcode = 406
+                    raise Exception("cannot refresh credentials for supplied registry, with supplied credentials - exception: {}".format(str(err)))
 
             return_object = registry_records
             httpcode = 200
