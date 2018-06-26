@@ -506,8 +506,9 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
 
             records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             if not records:
-                httpcode = 404
-                raise Exception("subscriptions not found in DB")
+                httpcode = 200
+                return_object = []
+                #raise Exception("subscriptions not found in DB")
             else:
                 return_object = records
                 httpcode = 200
@@ -525,16 +526,6 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent={}
                 if httpcode not in range(200,299):
                     raise Exception(str(rc))
             
-            #dbfilter = {}
-            #if subscriptionId:
-            #    dbfilter['subscription_id'] = subscriptionId
-            #rc = db_subscriptions.delete_byfilter(userId, session=dbsession, **dbfilter)
-            #if not rc:
-            #    raise Exception("DB delete failed")
-            #else:
-            #    httpcode = 200
-            #    return_object = True
-
         elif method == 'POST':
             subscriptiondata = bodycontent
 

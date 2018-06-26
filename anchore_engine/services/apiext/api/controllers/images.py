@@ -468,6 +468,19 @@ def get_content(request_inputs, content_type, doformat=False):
                     image_content_data = catalog.get_document(user_auth, 'image_content_data', imageDigest)
                 except Exception as err:
                     raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
+                    
+                # special handler for dockerfile contents from old method to new
+                if content_type == 'dockerfile' and not image_content_data.get('dockerfile', None):
+                    try:
+                        if image_report.get('dockerfile_mode', None) == 'Actual':
+                            for image_detail in image_report.get('image_detail', []):
+                                if image_detail.get('dockerfile', None):
+                                    logger.debug("migrating old dockerfile content form into new")
+                                    image_content_data['dockerfile'] = image_detail.get('dockerfile', "").decode('base64')
+                                    catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
+                                    break
+                    except Exception as err:
+                        logger.warn("cannot fetch/decode dockerfile contents from image_detail - {}".format(err))
 
                 if content_type not in image_content_data:
                     httpcode = 404

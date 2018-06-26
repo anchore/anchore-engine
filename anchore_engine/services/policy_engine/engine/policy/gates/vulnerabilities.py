@@ -105,8 +105,13 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                             if is_fix_available == (fix_available_in is not None):
                                 # explicit fix state check matches fix availability
-                                message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
-                                          pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                                if is_fix_available:
+                                    message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                              pkg_vuln.pkg_name + " (fixed in: {}".format(fix_available_in) + ") - (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+                                else:
+                                    message = pkg_vuln.vulnerability.severity.upper() + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                              pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
+
                                 self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
                         else:
                             # No fix status check since not specified by user
