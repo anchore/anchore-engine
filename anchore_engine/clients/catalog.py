@@ -339,13 +339,9 @@ def delete_policy(userId, policyId=None, cleanup_evals=True):
     auth = (userId, pw)
     
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
-    url = base_url + "/policies?{}".format(urllib.urlencode({'cleanup_evals': str(cleanup_evals)}))
+    url = base_url + "/policies/{}?{}".format(policyId, urllib.urlencode({'cleanup_evals': str(cleanup_evals)}))
 
-    payload = {}
-    if policyId:
-        payload["policyId"] = policyId
-
-    ret = http.anchy_delete(url, data=json.dumps(payload), auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+    ret = http.anchy_delete(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
     return(ret)
 

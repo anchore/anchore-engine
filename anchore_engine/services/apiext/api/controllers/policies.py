@@ -273,7 +273,7 @@ def delete_policy(policyId):
     userId, pw = user_auth
 
     try:
-        logger.debug("Delete policy")
+        logger.debug("Delete policy {}".format(policyId))
 
         try:
             try:
