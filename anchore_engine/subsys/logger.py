@@ -101,34 +101,8 @@ def _msg(msg_string, msg_log_level='INFO'):
         if _log_to_db:
             # only store logs of higher severity than WARN
             if log_level_map[msg_log_level] < log_level_map['ERROR']:
-                try:
-                    import anchore_engine.configuration.localconfig
-
-                    localconfig = anchore_engine.configuration.localconfig.get_config()
-                    myservices = localconfig['myservices']
-                    system_user_auth = localconfig['system_user_auth']
-                    hostId = localconfig['host_id']
-
-                    if 'catalog' not in myservices:
-                        import anchore_engine.clients.catalog
-
-                        # call the catalog via client to log the error
-
-                        # rc = anchore_engine.clients.catalog.add_event(system_user_auth, hostId, ','.join(myservices),
-                        #                                               'FATAL', str(themsg))
-                    else:
-                        import anchore_engine.services.common
-                        import anchore_engine.db.db_eventlog
-
-                        # log directly to DB if we're the catalog
-                        with anchore_engine.services.common.session_scope() as dbsession:
-                            anchore_engine.db.db_eventlog.add(hostId, ','.join(myservices), str(themsg), 'FATAL', {},
-                                                              session=dbsession)
-
-                except Exception as err:
-                    # we're in the logger
-                    log.msg("exception in logger: " + str(err))
-
+                # removing old event log stuff since there are no fatal messages in the system
+                pass
 
 #@bootstrap_logger_intercept(logging.DEBUG)
 def spew(msg_string):

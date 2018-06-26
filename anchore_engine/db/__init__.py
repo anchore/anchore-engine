@@ -7,7 +7,6 @@ from .entities.catalog import CatalogImage
 from .entities.catalog import CatalogImageDocker
 #from .entities.catalog import CatalogRepoTag
 from .entities.catalog import Event
-from .entities.catalog import EventLog
 from .entities.catalog import PolicyBundle
 from .entities.catalog import PolicyEval
 from .entities.catalog import QueueItem

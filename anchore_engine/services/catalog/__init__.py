@@ -1050,30 +1050,6 @@ def handle_notifications(*args, **kwargs):
             logger.exception('Ignoring errors parsing for event_log configuration')
             notify_events = {'error': False, 'info': False}
 
-        # # special handling of the error event queue, if configured as a webhook
-        # try:
-        #     do_erreventhooks = False
-        #     try:
-        #         if localconfig['webhooks']['error_event']:
-        #             do_erreventhooks = True
-        #     except:
-        #         logger.debug("error_event webhook is not configured, skipping webhook for error_event")
-        #
-        #     if do_erreventhooks:
-        #         system_user_record = db_users.get('admin', session=dbsession)
-        #         errevent_records = db_eventlog.get_all(session=dbsession)
-        #         for errevent in errevent_records:
-        #             notification = errevent
-        #             userId = system_user_record['userId']
-        #             notificationId = str(uuid.uuid4())
-        #             subscription_type = 'error_event'
-        #             notification_record = notifications.make_notification(system_user_record, 'error_event', notification)
-        #             logger.spew("Storing NOTIFICATION: " + str(system_user_record) + str(notification_record))
-        #             db_queues.add(subscription_type, userId, notificationId, notification_record, 0, int(time.time() + notification_timeout), session=dbsession)
-        #             db_eventlog.delete_record(errevent, session=dbsession)
-        # except Exception as err:
-        #     logger.warn("failed to queue error eventlog for notification - exception: " + str(err))
-
         # regular event queue notifications + event log notification
         event_log_type = 'event_log'
         for subscription_type in anchore_engine.services.common.subscription_types + [event_log_type]:

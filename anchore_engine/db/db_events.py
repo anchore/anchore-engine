@@ -61,7 +61,6 @@ def get_byfilter(userId, session=None, since=None, before=None, page=1, limit=10
     # ret['total_count'] = countq.scalar()
 
     # Execute limit bound query
-    logger.info('get events query: {}'.format(resq))
     for db_event in resq.all():
         if len(ret['results']) < limit:
             ret['results'].append(_db_to_dict(db_event))

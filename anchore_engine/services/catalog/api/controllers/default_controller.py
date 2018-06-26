@@ -214,8 +214,7 @@ def subscriptions_subscriptionId_delete(subscriptionId):
     return (return_object, httpcode)
 
 
-# eventlog calls
-# @api.route('/events', methods=['GET', 'POST', 'DELETE'])
+@flask_metrics.do_not_track()
 def events_get(source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request,
@@ -238,6 +237,7 @@ def events_get(source_servicename=None, source_hostid=None, resource_type=None, 
     return (return_object, httpcode)
 
 
+@flask_metrics.do_not_track()
 def events_post(bodycontent):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -251,6 +251,7 @@ def events_post(bodycontent):
     return (return_object, httpcode)
 
 
+@flask_metrics.do_not_track()
 def events_delete(since=None, before=None, level=None):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'since': since, 'before': before, 'level': level})
@@ -264,6 +265,7 @@ def events_delete(since=None, before=None, level=None):
     return (return_object, httpcode)
 
 
+@flask_metrics.do_not_track()
 def events_eventId_get(eventId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
@@ -277,6 +279,7 @@ def events_eventId_get(eventId):
     return (return_object, httpcode)
 
 
+@flask_metrics.do_not_track()
 def events_eventId_delete(eventId):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
