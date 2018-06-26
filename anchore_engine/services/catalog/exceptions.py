@@ -25,3 +25,42 @@ class TagManifestNotFoundError(AnchoreException):
 
     def __str__(self):
         return '{} ({})'.format(self.msg, self.tag)
+
+
+class PolicySyncUrlNotFound(AnchoreException):
+    def __init__(self, msg='policy_sync_url not found in config'):
+        self.msg = msg
+
+    def __repr__(self):
+        return self.msg
+
+    def __str__(self):
+        return self.msg
+
+
+class PolicyBundleDownloadError(AnchoreException):
+    def __init__(self, url, status, cause, msg='Failed to download policy bundle'):
+        self.url = url
+        self.status = status
+        self.cause = cause
+        self.msg = msg
+
+    def __repr__(self):
+        return '{} ({}) - exception: {}'.format(self.msg, self.url, self.cause)
+
+    def __str__(self):
+        return '{} ({}) - exception: {}'.format(self.msg, self.url, self.cause)
+
+
+class PolicyBundleValidationError(AnchoreException):
+    def __init__(self, cause, msg='Policy bundle validation failed'):
+        self.cause = cause
+        self.msg = msg
+
+    def __repr__(self):
+        return '{} - cause: {}'.format(self.msg, self.cause)
+
+    def __str__(self):
+        return '{} - cause: {}'.format(self.msg, self.cause)
+
+

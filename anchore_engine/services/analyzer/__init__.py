@@ -387,7 +387,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     import traceback
                     traceback.print_exc()
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
-                    event = events.PolicyEngineLoadFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
+                    event = events.LoadAnalysisFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
                     raise newerr
 
                 logger.debug("updating image catalog record analysis_status")

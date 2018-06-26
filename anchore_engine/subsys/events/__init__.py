@@ -8,6 +8,8 @@ from .feeds import FeedSyncComplete
 from .feeds import FeedSyncFail
 from .images import AnalyzeImageFail
 from .images import ArchiveAnalysisFail
-from .images import PolicyEngineLoadFail
+from .images import LoadAnalysisFail
 from .repositories import ListTagsFail
 from .tags import TagManifestParseFail
+from .policies import PolicyBundleSyncFail
+from .services import ServiceOrphanedEvent

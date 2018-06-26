@@ -28,7 +28,7 @@ from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.auth.anchore_io
 import anchore_engine.subsys.events as events
 from anchore_engine.utils import AnchoreException
-from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError
+from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError, PolicyBundleDownloadError, PolicyBundleValidationError, PolicySyncUrlNotFound
 
 
 servicename = 'catalog'
@@ -246,6 +246,7 @@ def handle_service_watcher(*args, **kwargs):
             #
 
             for service in anchore_services:
+                event = None
                 service_update_record = {}
                 if service['servicename'] == 'catalog' and service['hostid'] == localconfig['host_id']:
                     status = anchore_engine.subsys.servicestatus.get_status(service)
@@ -281,6 +282,9 @@ def handle_service_watcher(*args, **kwargs):
                                     service_update_record['status'] = False
                                     service_update_record['status_message'] = taskstate.orphaned_state('service_status')
                                     service_update_record['short_description'] = "no heartbeat from service in ({}) seconds".format(max_service_orphaned_timer)
+                                    # Trigger an event to log the orphaned service
+                                    event = events.ServiceOrphanedEvent(user_id=userId, name=service['servicename'], host=service['hostid'],
+                                                                        url=service['base_url'], cause='no heartbeat from service in ({}) seconds'.format(max_service_orphaned_timer))
 
                         except Exception as err:
                             logger.warn("could not get/parse service status record for service: - exception: " + str(err))
@@ -290,6 +294,9 @@ def handle_service_watcher(*args, **kwargs):
                         service_update_record['status'] = False
                         service_update_record['status_message'] = taskstate.fault_state('service_status')
                         service_update_record['short_description'] = "could not get service status"
+                    finally:
+                        if event:
+                            _add_event(event)
 
                 if service_update_record:
                     service.update(service_update_record)
@@ -862,7 +869,7 @@ def handle_analyzer_queue(*args, **kwargs):
 def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
     url = localconfig.get('policy_sync_url', None)
     if not url:
-        raise Exception("cannot read policy_sync_url from loaded configuration")
+        raise PolicySyncUrlNotFound(msg="cannot read policy_sync_url from loaded configuration")
 
     client = anchore_engine.auth.anchore_io.get_anchoreio_client(anchoreio_user, anchoreio_pw)
 
@@ -873,7 +880,7 @@ def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
         if bundledataraw:
             bundledata = json.loads(bundledataraw).get('bundle')
     else:
-        raise Exception("httpcode={} success={} text={}".format(r.get('status_code'), r.get('success', False), r.get('text', "")))
+        raise PolicyBundleDownloadError(url=url, status=r.get('status_code'), cause=r.get('text', ""))
 
     # schema check
     try:
@@ -883,9 +890,9 @@ def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
         p_client = policy_engine.get_client(user=user_auth[0], password=user_auth[1], verify_ssl=verify)
         response = p_client.validate_bundle(policy_bundle=bundledata)
         if not response.valid:
-            raise Exception("validation failed")
+            raise PolicyBundleValidationError(cause='Invalid policy bundle')
     except ApiException as err:
-        raise Exception('Error response from policy service during bundle validation. Validation could not be performed: {}'.format(err))
+        raise PolicyBundleValidationError(cause='Error response from policy service during bundle validation: {}'.format(err))
 
     return(bundledata)
 
@@ -915,6 +922,7 @@ def handle_policy_bundle_sync(*args, **kwargs):
     localconfig = anchore_engine.configuration.localconfig.get_config()
 
     with db.session_scope() as dbsession:
+        event = None
         users = db_users.get_all(session=dbsession)
         for user in users:
             userId = user['userId']
@@ -939,9 +947,10 @@ def handle_policy_bundle_sync(*args, **kwargs):
 
                 try:
                     anchore_user_bundle = sync_policy_bundle((user['userId'], user['password']), anchore_user, anchore_pw, localconfig)
-                except Exception as err:
-                    raise Exception("anchore.io bundle sync failed - exception: " + str(err))
-                    
+                except AnchoreException as err:
+                    event = events.PolicyBundleSyncFail(user_id=user['userId'], error=err.to_dict())
+                    raise err
+
                 #with localanchore.get_anchorelock():
                 #    anchore_user_bundle = localanchore.get_bundle(anchore_user, anchore_pw)
                 #try:
@@ -995,6 +1004,9 @@ def handle_policy_bundle_sync(*args, **kwargs):
                         bundle_user_last_updated[userId] = 0
             except Exception as err:
                 logger.warn("no valid bundle available for user ("+str(userId)+") - exception: " + str(err))
+            finally:
+                if event:
+                    _add_event(event)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
