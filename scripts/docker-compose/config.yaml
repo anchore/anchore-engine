@@ -43,20 +43,6 @@ auto_restart_services: True
 #    # Uncomment the event_log section in addition to configuring this webhook to receive event log notifications
 #    url: 'http://localhost:9090/event_log/<userId>'
 
-# Uncomment if you would like to receive notifications for events
-# triggered by asynchronous operations in the system.
-# In addition, uncomment the webhooks section and supply the configuration for
-# either a 'general' or an 'event_log' webhook to receive event log notifications.
-#
-#event_log:
-#  notification:
-#    enabled: True
-#    level:
-#      # Set value to True to turn on the notification for ERROR level events
-#      error: True
-#      # Set value to True to turn on the notification for INFO level events. Turned off by default
-#      info: False
-
 # A feeds section is available for override, but shouldn't be
 # needed. By default, the 'admin' credentials are used if present,
 # otherwise anonymous access for feed sync is used
@@ -141,6 +127,14 @@ services:
       service_watcher: 15
       policy_bundle_sync: 300
       repo_watcher: 60
+# Uncomment if you would like to receive notifications for events triggered by asynchronous operations in the system.
+# In addition, uncomment the webhooks section and supply the configuration for either a 'general' or an 'event_log' webhook
+#    event_log:
+#      notification:
+#        enabled: True
+#        # (optional) notify events that match these levels. If this section is commented, notifications for all events are sent
+#        level:
+#        - error
   simplequeue:
     enabled: True
     require_auth: True

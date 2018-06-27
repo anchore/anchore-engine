@@ -1041,14 +1041,21 @@ def handle_notifications(*args, **kwargs):
 
         # get the event log notification config
         try:
-            event_log_config = localconfig.get('event_log', {})
-            if event_log_config.get('notification', {}).get('enabled', True):
-                notify_events = event_log_config.get('notification', {}).get('level', {'error': True, 'info': True})
+            event_log_config = localconfig.get('services', {}).get('catalog', {}).get('event_log', None)
+            if event_log_config and 'notification' in event_log_config:
+                notify_events = event_log_config.get('notification').get('enabled', False)
+                if notify_events and 'level' in event_log_config.get('notification'):
+                    event_levels = event_log_config.get('notification').get('level')
+                    event_levels = [level.lower() for level in event_levels]
+                else:
+                    event_levels = None
             else:
-                notify_events = {'error': False, 'info': False}
+                notify_events = False
+                event_levels = None
         except:
             logger.exception('Ignoring errors parsing for event_log configuration')
-            notify_events = {'error': False, 'info': False}
+            notify_events = False
+            event_levels = None
 
         # regular event queue notifications + event log notification
         event_log_type = 'event_log'
@@ -1082,7 +1089,7 @@ def handle_notifications(*args, **kwargs):
                                         if subscription and subscription['active']:
                                             notification_record = notifications.make_notification(user, subscription_type, notification)
                                 elif subscription_type == event_log_type: # handle event_log differently since its not a type of subscriptions
-                                    if notify_events.get(subscription_key.lower(), False):
+                                    if notify_events and (event_levels is None or subscription_key.lower() in event_levels):
                                         notification.pop('subscription_key', None) # remove subscription_key property from notification
                                         notification_record = notifications.make_notification(user, subscription_type, notification)
 

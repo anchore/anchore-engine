@@ -22,7 +22,6 @@ DEFAULT_CONFIG = {
     'services': {},
     'credentials': {},
     'webhooks': {},
-    'event_log': {},
     'default_bundle_file': None,
     'docker_conn': 'unix://var/run/docker.sock',
     'docker_conn_timeout': 600,
