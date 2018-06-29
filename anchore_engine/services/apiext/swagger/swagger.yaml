@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.6"
+  version: "0.1.7"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"

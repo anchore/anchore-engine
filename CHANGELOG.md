@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.3 (2018-06-29)
+
++ New feature: add 'eventlog' API and notification subsystem, that allows users to query an engine (and/or be notified via a webhook notification) for important engine events, including:
+  + Details on reasons for image analysis failures
+  + Information about internal processes like vulnerability feed sync start and end events
+  + Troubleshooting information on image and repository watcher failures
+  + Troubleshooting information about distributed anchore-engine services orphaned due to network connectivity or other issues
+  + Details about policy sync failures from anchore.io if the automatic policy sync is turned on in the config
+  + Troubleshooting information that presents details when other asynchronous engine operations experience failures
++ Improved java artifact analysis - Add support for scanning Jenkins plugins. This adds the file extension ".hpi" and ".jpi" to the list of recognized Java library filenames. (contributed by Matt Sicker <boards@gmail.com>)
++ Improved 'metadata' content implementation for handling the addition of dockerfile contents after an image has already been added
++ Improved install/readme content. (contributed by Lorens Kockum <LorensK@users.noreply.github.com>)
++ Fix to allow registry credential validation for ECR registries, on registry add
++ Fix that adds better checking for condition where endpoint_hostname/listen/port are not set for a given service in its config.yaml.  Fixes #67.
++ Fix that adds missing prettytable requirement. Fixes #64
++ Minor bug fixes and improvements
+
 ## 0.2.2 (2018-06-08)
 
 + New feature: support for multiple policies in mapping rules of policy bundles
