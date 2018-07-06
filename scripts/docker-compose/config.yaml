@@ -48,6 +48,7 @@ auto_restart_services: True
 # otherwise anonymous access for feed sync is used
 #
 #feeds:
+#  sync_enabled: True
 #  selective_sync:
 #    # If enabled only sync specific feeds instead of all.
 #    enabled: True
