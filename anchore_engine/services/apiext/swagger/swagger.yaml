@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.7"
+  version: "0.1.8"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -879,7 +879,7 @@ paths:
         in: body
         required: true
         schema:
-          $ref: "#/definitions/RegistryConfiguration"
+          $ref: "#/definitions/RegistryConfigurationRequest"
       responses:
         200:
           description: Saved registry configuration
@@ -928,7 +928,7 @@ paths:
         in: body
         required: true
         schema:
-          $ref: "#/definitions/RegistryConfiguration"
+          $ref: "#/definitions/RegistryConfigurationRequest"
       responses:
         200:
           description: Updated registry configuration
@@ -1853,6 +1853,25 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/RegistryConfiguration"
+  RegistryConfigurationRequest:
+    description: A registry record describing the endpoint and credentials for a registry
+    type: object
+    properties:
+      registry_user:
+        type: string
+        description: Username portion of credential to use for this registry
+      registry_pass:
+        type: string
+        description: Password portion of credential to use for this registry
+      registry_type:
+        type: string
+        description: Type of registry
+      registry:
+        type: string
+        description: hostname:port string for accessing the registry, as would be used in a docker pull operation
+      registry_verify:
+        type: boolean
+        description: Use TLS/SSL verification for the registry URL
   RegistryConfiguration:
     description: A registry entry describing the endpoint and credentials for a registry to pull images from
     type: object
@@ -1866,9 +1885,6 @@ definitions:
       registry_user:
         type: string
         description: Username portion of credential to use for this registry
-      registry_pass:
-        type: string
-        description: Password portion of credential to use for this registry
       registry_type:
         type: string
         description: Type of registry
