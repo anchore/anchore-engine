@@ -96,6 +96,7 @@ def make_response_content(content_type, content_data):
                 el['location'] = content_data[package]['location']
                 el['specification-version'] = content_data[package]['specification-version']
                 el['implementation-version'] = content_data[package]['implementation-version']
+                el['maven-version'] = content_data[package]['maven-version']
                 el['origin'] = content_data[package]['origin'] or 'Unknown'
             except:
                 el = {}
