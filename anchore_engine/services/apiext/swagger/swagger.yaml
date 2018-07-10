@@ -262,7 +262,7 @@ paths:
         200:
           description: Subscription add success
           schema:
-            $ref: "#/definitions/Subscription"
+            $ref: "#/definitions/SubscriptionList"
     delete:
       tags:
       - Subscriptions
@@ -582,6 +582,10 @@ paths:
             type: array
             items:
               type: string
+              enum:
+              - all
+              - os
+              - non-os
         500:
           description: Internal Error
           schema:
@@ -640,6 +644,10 @@ paths:
             type: array
             items:
               type: string
+              enum:
+              - all
+              - os
+              - non-os
         500:
           description: Internal Error
           schema:
@@ -739,7 +747,51 @@ paths:
         200:
           description: Content of specified type from the image
           schema:
-            $ref: "#/definitions/ContentResponse"
+            $ref: "#/definitions/ContentPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/files:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_files
+      summary: Get the content of an image by type files
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentFilesResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/java:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_javapackage
+      summary: Get the content of an image by type java
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentJAVAPackageResponse"
         500:
           description: Internal error
           schema:
@@ -765,7 +817,51 @@ paths:
         200:
           description: Content of specified type from the image
           schema:
-            $ref: "#/definitions/ContentResponse"
+            $ref: "#/definitions/ContentPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/by_id/{imageId}/content/files:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_imageId_files
+      summary: Get the content of an image by type files
+      parameters:
+      - name: imageId
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentFilesResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/by_id/{imageId}/content/java:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_imageId_javapackage
+      summary: Get the content of an image by type java
+      parameters:
+      - name: imageId
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentJAVAPackageResponse"
         500:
           description: Internal error
           schema:
@@ -884,7 +980,7 @@ paths:
         200:
           description: Saved registry configuration
           schema:
-            $ref: "#/definitions/RegistryConfiguration"
+            $ref: "#/definitions/RegistryConfigurationList"
         500:
           description: Internal Error
           schema:
@@ -933,7 +1029,7 @@ paths:
         200:
           description: Updated registry configuration
           schema:
-            $ref: "#/definitions/RegistryConfiguration"
+            $ref: "#/definitions/RegistryConfigurationList"
         500:
           description: Internal Error
           schema:
@@ -1631,7 +1727,7 @@ definitions:
       repo:
         type: string
       dockerfile:
-        type: string
+        type: ['string', 'null']
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
@@ -1648,6 +1744,10 @@ definitions:
       fulltag:
         type: string
       created_at:
+        type: integer
+      analyzed_at:
+        type: integer
+      tag_detected_at:
         type: integer
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
@@ -1694,24 +1794,26 @@ definitions:
     type: object
     description: System status response
     properties:
-      busy:
-        type: boolean
-      up:
-        type: boolean
-      message:
-        type: string
-      detail:
-        type: object
+      service_states:
+          $ref: "#/definitions/ServiceList"
   StatusResponse:
     type: object
     description: System status response
     properties:
+      available:
+        type: boolean
       busy:
         type: boolean
       up:
         type: boolean
       message:
         type: string
+      version:
+        type: string
+      db_version:
+        type: string
+      detail:
+        type: object
   ImageAnalysisReport:
     description: "Analysis report json to be imported"
     type: object
@@ -1733,10 +1835,10 @@ definitions:
     description: "A service status record"
     type: object
     properties:
-      host_id:
+      hostid:
         type: string
         description: The unique id of the host on which the service is executing
-      service_name:
+      servicename:
         type: string
         description: Registered service name
       base_url:
@@ -1745,6 +1847,10 @@ definitions:
       status_message:
         type: string
         description: A state indicating the condition of the service. Normal operation is 'registered'
+      service_detail:
+        $ref: "#/definitions/StatusResponse"
+      status:
+        type: boolean
       version:
         type: string
         description: The version of the service as reported by the service implementation on registration
@@ -1773,6 +1879,87 @@ definitions:
         type: array
         items:
           type: object
+  ContentFilesResponse:
+    type: object
+    description: "File content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            filename:
+              type: string
+            gid:
+              type: integer
+            linkdest:
+              type: ['string', 'null']
+            mode:
+              type: string
+            sha256:
+              type: ['string', 'null']
+            size:
+              type: integer
+            type:
+              type: string
+            uid:
+              type: integer
+  ContentPackageResponse:
+    type: object
+    description: "Package content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            package:
+              type: string
+            version:
+              type: string
+            size:
+              type: string
+            type:
+              type: string
+            origin:
+              type: string
+            license:
+              type: string
+            location:
+              type: string
+  ContentJAVAPackageResponse:
+    type: object
+    description: "Java package content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            package:
+              type: string
+            implementation-version:
+              type: string
+            specification-version:
+              type: string
+            location:
+              type: string
+            type:
+              type: string
+            origin:
+              type: string
   MetadataResponse:
     type: object
     description: "Generic wrapper for metadata listings from images"
@@ -1781,8 +1968,7 @@ definitions:
         type: string
       metadata_type:
         type: string
-      metadata:
-        type: object
+      metadata: {}
   PolicyEvaluation:
     description: Evaluation response object
     type: object
@@ -1811,6 +1997,7 @@ definitions:
         - tag_update
         - vuln_update
         - repo_update
+        - analysis_update
   Subscription:
     description: Subscription entry
     type: object
@@ -1826,8 +2013,9 @@ definitions:
         - tag_update
         - vuln_update
         - repo_update
+        - analysis_update
       subscription_value:
-        type: string
+        type: ['string', 'null']
         description: The value of the subscription target
       userId:
         type: string
@@ -1967,7 +2155,7 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: string
+        type: ['string', 'null']
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       triggers:
         type: array
@@ -1992,7 +2180,7 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: string
+        type: ['string', 'null']
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       parameters:
         type: array
@@ -2008,7 +2196,7 @@ definitions:
       description:
         type: string
       example:
-        type: string
+        type: ['string', 'null']
         description: An example value for the parameter (encoded as a string if the parameter is an object or list type)
       state:
         type: string
@@ -2018,7 +2206,7 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: string
+        type: ['string', 'null']
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       required:
         description: Is this a required parameter or optional
