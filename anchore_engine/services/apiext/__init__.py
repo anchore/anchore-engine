@@ -39,7 +39,7 @@ def createService(sname, config):
         flask_app = application.app
         flask_app.url_map.strict_slashes = False
         anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
-        application.add_api('swagger.yaml', validate_responses=True)
+        application.add_api('swagger.yaml', validate_responses=False)
     except Exception as err:
         traceback.print_exc()
         raise err

@@ -220,7 +220,7 @@ paths:
         200:
           description: Subscription add success
           schema:
-            $ref: "#/definitions/Subscription"
+            $ref: "#/definitions/SubscriptionList"
   /subscriptions/{subscriptionId}:
     get:
       tags:
@@ -298,9 +298,7 @@ paths:
         200:
           description: Import task accepted
           schema:
-            type: array
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -317,10 +315,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: array
-            description: "List of AnchoreImageTagSummary objects"
-            items:
-              $ref: "#/definitions/AnchoreImageTagSummary"
+            $ref: "#/definitions/AnchoreImageTagSummaryList"
         500:
           description: Internal Error
           schema:
@@ -353,10 +348,7 @@ paths:
         200:
           description: Successfully added image to analysis queue
           schema:
-            type: array
-            description: "List of AnchoreImage objects, should be of length 1"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal Error
           schema:
@@ -389,10 +381,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: array
-            description: "List of AnchoreImage objects"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal Error
           schema:
@@ -413,10 +402,7 @@ paths:
         200:
           description: Image lookup success
           schema:
-            type: array
-            description: "List of length 1 of AnchoreImage"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -455,9 +441,7 @@ paths:
         200:
           description: Image lookup success
           schema:
-            type: array
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -518,7 +502,7 @@ paths:
         200:
           description: Policy evaluation success
           schema:
-            $ref: "#/definitions/PolicyEvaluation"
+            $ref: "#/definitions/PolicyEvaluationList"
         500:
           description: Internal Error
           schema:
@@ -557,7 +541,7 @@ paths:
         200:
           description: Policy evaluation success
           schema:
-            $ref: "#/definitions/PolicyEvaluation"
+            $ref: "#/definitions/PolicyEvaluationList"
         500:
           description: Internal Error
           schema:
@@ -619,7 +603,7 @@ paths:
         200:
           description: Vulnerability listing for the image
           schema:
-            $ref: "#/definitions/VulnerabilityList"
+            $ref: "#/definitions/VulnerabilityResponse"
         500:
           description: Internal Error
           schema:
@@ -673,7 +657,7 @@ paths:
         200:
           description: Vulnerability listing for the image
           schema:
-            $ref: "#/definitions/VulnerabilityList"
+            $ref: "#/definitions/VulnerabilityResponse"
         500:
           description: Internal Error
           schema:
@@ -943,7 +927,7 @@ paths:
         200:
           description: Repository and discovered tags added
           schema:
-            $ref: "#/definitions/RepositoryTagList"
+            $ref: "#/definitions/SubscriptionList"
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
   /registries:
     get:
@@ -1731,6 +1715,11 @@ definitions:
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
+  AnchoreImageTagSummaryList:
+    description: a list of AnchoreImageTagSummary objects
+    type: array
+    items:
+      $ref: "#/definitions/AnchoreImageTagSummary"
   AnchoreImageTagSummary:
     description: A unique image in the engine. 
     type: object
@@ -1954,6 +1943,8 @@ definitions:
               type: string
             specification-version:
               type: string
+            maven-version:
+              type: string
             location:
               type: string
             type:
@@ -1972,12 +1963,17 @@ definitions:
   PolicyEvaluation:
     description: Evaluation response object
     type: object
+  PolicyEvaluationList:
+    description: Evaluation response object
+    type: array
+    items:
+      $ref: "#/definitions/PolicyEvaluation"
   SubscriptionUpdate:
     description: A modification to a subscription entry to change its status or value
     type: object
     properties:
       subscription_value:
-        type: string
+        type: ['string', 'null']
         description: The new subscription value, e.g. the new tag to be subscribed to
       active:
         type: boolean
@@ -1989,7 +1985,7 @@ definitions:
       subscription_key:
         type: string
       subscription_value:
-        type: string
+        type: ['string', 'null']
       subscription_type:
         type: string
         enum:
@@ -2129,6 +2125,16 @@ definitions:
     description: List of Vulnerability objects
     items:
       $ref: "#/definitions/Vulnerability"
+  VulnerabilityResponse:
+    description: envelope containing list of vulnerabilities
+    type: object
+    properties:
+      imageDigest:
+        type: string
+      vulnerability_type:
+        type: string
+      vulnerabilities:
+        $ref: "#/definitions/VulnerabilityList"
   ImageFilter:
     type: object
     description: Filter for an image list by id, tag, or digest, but not both
