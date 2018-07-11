@@ -44,8 +44,13 @@ image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
 
-def do_simple_pagination(input_items, page=1, limit=100, dosort=True, route_inputs={}):
+def do_simple_pagination(input_items, page=1, limit=None, dosort=True, route_inputs={}):
     page = int(page)
+    next_page = None
+
+    if not limit:
+        return(1, None, input_items)
+
     limit = int(limit)
     if dosort:
         input_items.sort()
@@ -53,13 +58,13 @@ def do_simple_pagination(input_items, page=1, limit=100, dosort=True, route_inpu
     start = (page-1)*limit
     end = start + limit
     paginated_items = input_items[start:end]
-    next_page = None
+
     if len(paginated_items) == limit and (paginated_items[-1] != input_items[-1]):
         next_page = page + 1
 
     return(page, next_page, paginated_items)
 
-def make_response_paginated_envelope(input_items, envelope_key='result', page=1, limit=100, dosort=True, pagination_func=do_simple_pagination, route_inputs={}):
+def make_response_paginated_envelope(input_items, envelope_key='result', page=1, limit=None, dosort=True, pagination_func=do_simple_pagination, route_inputs={}):
     page, next_page, paginated_items = pagination_func(input_items, page=page, limit=limit, dosort=dosort)
     return_object = {
         envelope_key: paginated_items,

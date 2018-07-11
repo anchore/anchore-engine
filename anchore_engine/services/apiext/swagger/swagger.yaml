@@ -1392,7 +1392,6 @@ paths:
         type: integer
         description: ""
         required: false
-        default: 100
       - name: vendor_only
         in: query
         type: boolean

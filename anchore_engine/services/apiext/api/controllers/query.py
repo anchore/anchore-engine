@@ -8,7 +8,7 @@ from flask import request
 
 import anchore_engine.services.common
 
-def query_images_by_vulnerability(id=None, severity=None, page=1, limit=100, vendor_only=True):
+def query_images_by_vulnerability(id=None, severity=None, page=1, limit=None, vendor_only=True):
     request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={'id': id, 'severity': severity, 'page': page, 'limit': limit, 'vendor_only': vendor_only})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
