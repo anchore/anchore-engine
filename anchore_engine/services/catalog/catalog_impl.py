@@ -17,7 +17,7 @@ from anchore_engine.subsys import taskstate, logger, archive as archive_sys, not
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events, \
-    db_registries, db_services, db_archivedocument
+    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability
 import anchore_engine.clients.policy_engine
 
 def registry_lookup(dbsession, request_inputs):
@@ -59,6 +59,88 @@ def registry_lookup(dbsession, request_inputs):
             except Exception as err:
                 httpcode = 404
                 raise Exception("cannot lookup image in registry - detail: " + str(err))
+    except Exception as err:
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def query_images_by_vulnerability(dbsession, request_inputs):
+    return_object = {}
+    httpcode = 500
+
+    id = request_inputs.get('params', {}).get('id', None)
+    severity = request_inputs.get('params', {}).get('severity', None)
+    vendor_only = request_inputs.get('params', {}).get('vendor_only', True)
+
+    ret_hash = {}
+    pkg_hash = {}
+    try:
+        image_package_matches = None
+        image_cpe_matches = None
+        if id:
+            image_package_matches = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
+            image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+        elif severity:
+            results = dbsession.query(ImagePackageVulnerability, Vulnerability).filter(Vulnerability.severity==severity).filter(ImagePackageVulnerability.vulnerability_id==Vulnerability.id).filter(ImagePackageVulnerability.vulnerability_namespace_name==Vulnerability.namespace_name)
+            image_package_matches = [x[0] for x in results]
+            image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.severity==severity).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+
+        if image_package_matches or image_cpe_matches:
+            imageId_to_imageDigest = dict(dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.imageDigest))
+
+            #def fulltagify(x):
+            #    return( (x[0], "{}/{}:{}".format(x[1], x[2], x[3]) ) )
+            #imageId_to_fulltag = dict([fulltagify(x) for x in dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag)])
+
+            for image in image_package_matches:
+                if vendor_only and image.fix_has_no_advisory():
+                    continue
+
+                imageId = image.pkg_image_id
+                if imageId not in ret_hash:
+                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'fulltag': imageId_to_fulltag.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    'vulnerability_id': image.vulnerability_id,
+                    'package_name': image.pkg_name,
+                    'package_version': image.pkg_version,
+                    'package_type': image.pkg_type,
+                    'vulnerable_package_namespace': image.vulnerability_namespace_name,
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+
+            for image_cpe, vulnerability_cpe in image_cpe_matches:
+                imageId = image_cpe.image_id
+                if imageId not in ret_hash:
+                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'fulltag': imageId_to_fulltag.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    pkg_hash[imageId] = {}
+                pkg_el = {
+                    'vulnerability_id': vulnerability_cpe.vulnerability_id,
+                    'package_name': image_cpe.name,
+                    'package_version': image_cpe.version,
+                    'package_type': image_cpe.pkg_type,
+                    'vulnerable_package_namespace': "{}".format(vulnerability_cpe.namespace_name),
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+
+        vulnerable_images = ret_hash.values()
+
+        # now, paginate
+        #return_object = anchore_engine.services.common.make_response_paginated_envelope(vulnerable_images, envelope_key='vulnerable_images', page=page, limit=limit, dosort=True, pagination_func=anchore_engine.services.common.do_simple_pagination)
+        return_object = {
+            'vulnerable_images': vulnerable_images
+        }
+        httpcode = 200
+
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 

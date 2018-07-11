@@ -44,6 +44,33 @@ image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
 
+def do_simple_pagination(input_items, page=1, limit=100, dosort=True, route_inputs={}):
+    page = int(page)
+    limit = int(limit)
+    if dosort:
+        input_items.sort()
+
+    start = (page-1)*limit
+    end = start + limit
+    paginated_items = input_items[start:end]
+    next_page = None
+    if len(paginated_items) == limit and (paginated_items[-1] != input_items[-1]):
+        next_page = page + 1
+
+    return(page, next_page, paginated_items)
+
+def make_response_paginated_envelope(input_items, envelope_key='result', page=1, limit=100, dosort=True, pagination_func=do_simple_pagination, route_inputs={}):
+    page, next_page, paginated_items = pagination_func(input_items, page=page, limit=limit, dosort=dosort)
+    return_object = {
+        envelope_key: paginated_items,
+        'page': "{}".format(page),
+    }
+    if next_page:
+        return_object['next_page'] = "{}".format(next_page)
+
+    return(return_object)
+
+
 def update_image_record_with_analysis_data(image_record, image_data):
 
     image_summary_data = extract_analyzer_content(image_data, 'metadata')
@@ -86,73 +113,6 @@ def update_image_record_with_analysis_data(image_record, image_data):
             image_detail['dockerfile'] = base64.b64encode(dockerfile_content)
 
     return(True)
-
-if False:
-    def format_image_summary(image_summary_data):
-        ret = {}
-
-        # augment with image summary data, if available
-        try:
-            #if not input_image_summary_data:
-            #    try:
-            #        image_summary_data = catalog.get_document(user_auth, 'image_summary_data', image_record['imageDigest'])
-            #    except:
-            #        image_summary_data = {}
-            #else:
-            #    image_summary_data = input_image_summary_data
-
-            #if not image_summary_data:
-            #    # (re)generate image_content_data document
-            #    logger.debug("generating image summary data from analysis data")
-            #    image_data = catalog.get_document(user_auth, 'analysis_data', image_record['imageDigest'])
-
-            #    image_content_data = {}
-            #    for content_type in anchore_engine.services.common.image_content_types:
-            #        try:
-            #            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type)
-            #        except:
-            #            image_content_data[content_type] = {}
-            #    if image_content_data:
-            #        logger.debug("adding image content data to archive")
-            #        rc = catalog.put_document(user_auth, 'image_content_data', image_record['imageDigest'], image_content_data)
-
-            #    image_summary_data = {}
-            #    try:
-            #        image_summary_data = anchore_engine.services.common.extract_analyzer_content(image_data, 'metadata')
-            #    except:
-            #        image_summary_data = {}
-
-            #    #if image_summary_data:
-            #    #    logger.debug("adding image summary data to archive")
-            #    #    rc = catalog.put_document(user_auth, 'image_summary_data', image_record['imageDigest'], image_summary_data)
-
-            image_summary_metadata = copy.deepcopy(image_summary_data)
-            if image_summary_metadata:
-                logger.debug("getting image summary data")
-
-                summary_record = {}
-
-                adm = image_summary_metadata['anchore_distro_meta']
-
-                summary_record['distro'] = adm.pop('DISTRO', 'N/A')
-                summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
-
-                air = image_summary_metadata['anchore_image_report']
-                airm = air.pop('meta', {})
-                al = air.pop('layers', [])
-                ddata = air.pop('docker_data', {})
-
-                summary_record['layer_count'] = str(len(al))
-                summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A') 
-                summary_record['arch'] = ddata.pop('Architecture', 'N/A')            
-                summary_record['image_size'] = str(int(airm.pop('sizebytes', 0))) 
-
-                ret = summary_record
-
-        except Exception as err:
-            logger.warn("cannot format image summary data for image - exception: " + str(err))
-
-        return(ret)
 
 def registerService(sname, config, enforce_unique=True):
     ret = False

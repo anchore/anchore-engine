@@ -21,6 +21,18 @@ def status():
 
     return (return_object, httpcode)
 
+def query_images_by_vulnerability_get(id=None, severity=None, vendor_only=True):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'severity': severity, 'vendor_only': vendor_only})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
+
 def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})

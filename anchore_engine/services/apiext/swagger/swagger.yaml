@@ -1364,6 +1364,46 @@ paths:
       responses:
         200:
           description: Delete success
+  /query/images/by_vulnerability:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
+      operationId: query_images_by_vulnerability
+      summary: "Return image info for specified vulnerability"
+      description: "Return image info for specified vulnerability"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "query"
+        type: string
+        required: false
+      - name: "severity"
+        in: "query"
+        type: string
+        required: false
+      - name: page
+        in: query
+        type: string
+        description: ""
+        required: false
+        default: "1"
+      - name: limit
+        in: query
+        type: integer
+        description: ""
+        required: false
+        default: 100
+      - name: vendor_only
+        in: query
+        type: boolean
+        description: ""
+        required: false
+        default: true
+      responses:
+        200:
+          description: "Vulnerable image listing"
+          schema:
+            type: object
 definitions:
   ImageAnalysisRequest:
     type: object
