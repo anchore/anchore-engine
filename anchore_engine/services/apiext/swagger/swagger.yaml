@@ -1458,6 +1458,7 @@ definitions:
       tag:
         type: string
         description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest"
+	required: true
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
