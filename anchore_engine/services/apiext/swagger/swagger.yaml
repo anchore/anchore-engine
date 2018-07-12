@@ -1448,6 +1448,8 @@ definitions:
   ImageAnalysisRequest:
     type: object
     description: A request to add an image to be watched and analyzed by the engine. Optionally include the dockerfile content. Either digest or tag must be present
+    required:
+    - tag
     properties:
       dockerfile:
         type: string
@@ -1458,7 +1460,6 @@ definitions:
       tag:
         type: string
         description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest"
-	required: true
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
