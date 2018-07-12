@@ -57,9 +57,9 @@ def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, histor
     return (return_object, httpcode)
 
 
-def image_post(bodycontent={}, tag=None):
+def image_post(bodycontent={}, tag=None, digest=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'tag': tag})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
 

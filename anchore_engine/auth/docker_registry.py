@@ -200,7 +200,6 @@ def get_repo_tags(userId, image_info, registry_creds=None):
 
 def get_image_manifest(userId, image_info, registry_creds):
     logger.debug("get_image_manifest input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
-
     user = pw = None
     repo = url = None
     registry_verify=True
@@ -222,17 +221,25 @@ def get_image_manifest(userId, image_info, registry_creds):
         repo = image_info['repo']
 
     if image_info['digest']:
-        tag = image_info['digest']
+        tag = None
+        input_digest = image_info['digest']
+        fulltag = "{}/{}@{}".format(registry, repo, input_digest)
     else:
+        input_digest = None
         tag = image_info['tag']
+        fulltag = "{}/{}:{}".format(registry, repo, tag)
 
     manifest = digest = None
-    fulltag = "{}/{}:{}".format(registry, repo, tag)
 
     logger.debug("trying to get manifest/digest for image ("+str(fulltag)+")")
     err = None
     try:
-        manifest, digest = get_image_manifest_skopeo(url, registry, repo, intag=tag, user=user, pw=pw, verify=registry_verify)
+        if tag:
+            manifest, digest = get_image_manifest_skopeo(url, registry, repo, intag=tag, user=user, pw=pw, verify=registry_verify)
+        elif input_digest:
+            manifest, digest = get_image_manifest_skopeo(url, registry, repo, indigest=input_digest, user=user, pw=pw, verify=registry_verify)
+        else:
+            raise Exception("neither tag nor digest was given as input")
     except Exception as err:
         logger.error("could not fetch manifest/digest: " + str(err))
         manifest = digest = None
