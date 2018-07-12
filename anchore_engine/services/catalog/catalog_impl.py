@@ -136,8 +136,12 @@ def query_images_by_vulnerability(dbsession, request_inputs):
             image_package_matches = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
             image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
         elif severity:
-            results = dbsession.query(ImagePackageVulnerability, Vulnerability).filter(Vulnerability.severity==severity).filter(ImagePackageVulnerability.vulnerability_id==Vulnerability.id).filter(ImagePackageVulnerability.vulnerability_namespace_name==Vulnerability.namespace_name)
+            results = dbsession.query(ImagePackageVulnerability, Vulnerability.severity, Vulnerability.id, Vulnerability.namespace_name).filter(Vulnerability.severity==severity).filter(ImagePackageVulnerability.vulnerability_id==Vulnerability.id).filter(ImagePackageVulnerability.vulnerability_namespace_name==Vulnerability.namespace_name)
             image_package_matches = [x[0] for x in results]
+            #from sqlalchemy.orm import joinedload
+            #image_package_matches = dbsession.query(ImagePackageVulnerability, Vulnerability).options(joinedload(ImagePackageVulnerability.vulnerability, innerjoin=True)).filter(ImagePackageVulnerability.vulnerability.severity==severity)
+            #for i in image_package_matches:
+            #    logger.info("MEH: {}".format(i))
             image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.severity==severity).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
 
         if image_package_matches or image_cpe_matches:
