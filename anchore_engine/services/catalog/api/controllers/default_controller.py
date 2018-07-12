@@ -21,6 +21,17 @@ def status():
 
     return (return_object, httpcode)
 
+def query_images_by_package_get(pkg_name=None, pkg_version=None, pkg_type=None, distro=None, distro_version=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'pkg_name': pkg_name, 'pkg_version': pkg_version, 'pkg_type': pkg_type, 'distro': distro, 'distro_version': distro_version})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)    
+
 def query_images_by_vulnerability_get(id=None, severity=None, vendor_only=True):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'severity': severity, 'vendor_only': vendor_only})

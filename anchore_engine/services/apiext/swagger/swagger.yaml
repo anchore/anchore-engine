@@ -1403,6 +1403,51 @@ paths:
           description: "Vulnerable image listing"
           schema:
             type: object
+  /query/images/by_package:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
+      operationId: query_images_by_package
+      summary: "Return image info for images that have specified package installed"
+      description: "Return image info for images that have specified package installed"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "pkg_name"
+        in: "query"
+        type: string
+        required: true
+      - name: "pkg_version"
+        in: "query"
+        type: string
+        required: false
+      - name: "pkg_type"
+        in: "query"
+        type: string
+        required: false
+      - name: "distro"
+        in: "query"
+        type: string
+        required: false
+      - name: "distro_version"
+        in: "query"
+        type: string
+        required: false
+      - name: page
+        in: query
+        type: string
+        description: ""
+        required: false
+        default: "1"
+      - name: limit
+        in: query
+        type: integer
+        description: ""
+        required: false
+      responses:
+        200:
+          description: "Matched image listing"
+          schema:
+            type: object
 definitions:
   ImageAnalysisRequest:
     type: object

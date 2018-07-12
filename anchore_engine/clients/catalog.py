@@ -38,7 +38,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
-def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=100, vendor_only=True):
+def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=None, vendor_only=True):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -64,6 +64,35 @@ def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=
         params['severity'] = severity
 
     url = base_url + "/query/images/by_vulnerability?{}".format(urllib.urlencode(params))
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def query_images_by_package(userId, pkg_name=None, pkg_version=None, pkg_type=None, distro=None, distro_version=None, page=1, limit=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+
+    params = {
+        'pkg_name': pkg_name,
+        'pkg_version': pkg_version,
+        'pkg_type': pkg_type,
+        'distro': distro,
+        'distro_version': distro_version,
+    }
+
+    url = base_url + "/query/images/by_package?{}".format(urllib.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

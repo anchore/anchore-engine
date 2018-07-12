@@ -17,7 +17,7 @@ from anchore_engine.subsys import taskstate, logger, archive as archive_sys, not
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events, \
-    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability
+    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage
 import anchore_engine.clients.policy_engine
 
 def registry_lookup(dbsession, request_inputs):
@@ -61,6 +61,61 @@ def registry_lookup(dbsession, request_inputs):
                 raise Exception("cannot lookup image in registry - detail: " + str(err))
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def query_images_by_package(dbsession, request_inputs):
+    return_object = {}
+    httpcode = 500
+
+    pkg_name = request_inputs.get('params', {}).get('pkg_name', None)
+    pkg_version = request_inputs.get('params', {}).get('pkg_version', None)
+    pkg_type = request_inputs.get('params', {}).get('pkg_type', None)
+    distro = request_inputs.get('params', {}).get('distro', None)
+    distro_version = request_inputs.get('params', {}).get('distro_version', None)
+
+    ret_hash = {}
+    pkg_hash = {}
+    try:
+        dbfilter = {'name': pkg_name}
+        if pkg_version and pkg_version != 'None':
+            dbfilter['version'] = pkg_version
+        if pkg_type and pkg_type != 'None':
+            dbfilter['pkg_type'] = pkg_type
+        if distro and distro != 'None':
+            dbfilter['distro_name'] = distro
+        if distro_version and distro_version != 'None':
+            dbfilter['distro_version'] = distro_version
+
+        image_package_matches = dbsession.query(ImagePackage).filter_by(**dbfilter)
+        if image_package_matches:
+            imageId_to_imageDigest = dict(dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.imageDigest))
+
+            for image in image_package_matches:
+                imageId = image.image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'installed_packages': []}
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    'package_name': image.name,
+                    'package_version': image.version,
+                    'package_type': image.pkg_type,
+                    'distro': image.distro_name,
+                    'distro_version': image.distro_version,
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['installed_packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+        matched_images = ret_hash.values()
+        return_object = {
+            'matched_images': matched_images
+        }            
+        httpcode = 200
+    except Exception as err:
+        logger.error("{}".format(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)        
 
     return(return_object, httpcode)
 
@@ -133,15 +188,13 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                 pkg_hash[imageId][phash] = True
 
         vulnerable_images = ret_hash.values()
-
-        # now, paginate
-        #return_object = anchore_engine.services.common.make_response_paginated_envelope(vulnerable_images, envelope_key='vulnerable_images', page=page, limit=limit, dosort=True, pagination_func=anchore_engine.services.common.do_simple_pagination)
         return_object = {
             'vulnerable_images': vulnerable_images
         }
         httpcode = 200
 
     except Exception as err:
+        logger.error("{}".format(err))
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
