@@ -333,7 +333,6 @@ def image(dbsession, request_inputs, bodycontent={}):
     if params and 'history' in params:
         history = params['history']
 
-
     httpcode = 500
     try:
         for t in ['tag', 'digest', 'imageId']:
@@ -432,18 +431,33 @@ def image(dbsession, request_inputs, bodycontent={}):
 
                 logger.debug("MARK2: " + str(time.time() - timer))
 
+                image_info_overrides = {}
+
+                input_tag = params.get('tag', None)
+                input_digest = params.get('digest', None)
+                if input_tag and input_digest:
+                    input_fulldigest = "{}/{}@{}".format(image_info['registry'], image_info['repo'], input_digest)
+                    image_info_overrides['fulltag'] = input_tag
+                    image_info_overrides['tag'] = image_info['tag']
+                    input_string = input_fulldigest
+
                 input_strings = []
-                if input_type == 'repo':
-                    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=False, registry_creds=(None, None))
-                    repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
-                    for repotag in repotags:
-                        input_strings.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
-                else:
-                    input_strings = [input_string]
+                #if input_type == 'repo':
+                #    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=False, registry_creds=(None, None))
+                #    repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                #    for repotag in repotags:
+                #        input_strings.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
+                #else:
+                #    input_strings = [input_string]
+                input_strings = [input_string]
 
                 for input_string in input_strings:
                     logger.debug("INPUT_STRING: " + input_string)
                     image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+
+                    if image_info_overrides:
+                        image_info.update(image_info_overrides)
+
                     logger.debug("MARK3: " + str(time.time() - timer))
 
                     manifest = None

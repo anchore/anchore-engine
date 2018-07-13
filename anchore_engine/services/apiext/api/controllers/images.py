@@ -910,12 +910,13 @@ def images(request_inputs):
 
         if 'digest' in jsondata:
             digest = jsondata['digest']
-        elif 'tag' in jsondata:
+
+        if 'tag' in jsondata:
             tag = jsondata['tag']
-        elif 'imageDigest' in jsondata:
-            imageDigest = jsondata['imageDigest']
-        elif 'imageId' in jsondata:
-            imageId = jsondata['imageId']
+        #elif 'imageDigest' in jsondata:
+        #    imageDigest = jsondata['imageDigest']
+        #elif 'imageId' in jsondata:
+        #    imageId = jsondata['imageId']
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
@@ -947,15 +948,26 @@ def images(request_inputs):
                 raise err
 
         elif method == 'POST':
-            logger.debug("handling POST: ")
+            logger.debug("handling POST: input_tag={} input_digest={} input_force={}".format(tag, digest, force))
             # if not, add it and set it up to be analyzed
             if not tag:
                 # dont support digest add, yet
-                httpcode = 500
-                raise Exception("digest add unsupported")
+                httpcode = 400
+                raise Exception("tag is required for image add")
+
+            if digest and tag:
+                if not force:
+                    httpcode = 400
+                    raise Exception("force is required to add digest+tag")
+                else:
+                    try:
+                        image_check = catalog.get_image(user_auth, digest=digest, tag=tag, imageId=None, imageDigest=digest, history=False)
+                    except Exception as err:
+                        httpcode = 400
+                        raise Exception("image digest must already exist to force re-analyze using tag+digest")
 
             # add the image to the catalog
-            image_record = catalog.add_image(user_auth, tag=tag, dockerfile=dockerfile, annotations=annotations)
+            image_record = catalog.add_image(user_auth, tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return

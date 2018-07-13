@@ -131,7 +131,7 @@ def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
 
     return(ret)    
 
-def add_image(userId, tag=None, dockerfile=None, annotations={}):
+def add_image(userId, tag=None, digest=None, dockerfile=None, annotations={}):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -151,6 +151,9 @@ def add_image(userId, tag=None, dockerfile=None, annotations={}):
     payload = {}
     if tag:
         url = url + "?{}".format(urllib.urlencode({'tag': tag}))
+        if digest:
+            url = url + "&{}".format(urllib.urlencode({'digest': digest}))
+
         if dockerfile:
             payload['dockerfile'] = dockerfile
 

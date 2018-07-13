@@ -205,6 +205,11 @@ paths:
         type: string
         description: "tag of image to add"
         required: false
+      - name: 'digest'
+        in: query
+        type: string
+        description: "digest of image to add"
+        required: false
       - name: 'bodycontent'
         in: body
         schema:
