@@ -3,6 +3,7 @@ import uuid
 import hashlib
 import time
 import base64
+import re
 
 from dateutil import parser as dateparser
 
@@ -120,6 +121,11 @@ def query_images_by_package(dbsession, request_inputs):
     return(return_object, httpcode)
 
 def query_images_by_vulnerability(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
     return_object = {}
     httpcode = 500
 
@@ -127,38 +133,66 @@ def query_images_by_vulnerability(dbsession, request_inputs):
     severity = request_inputs.get('params', {}).get('severity', None)
     vendor_only = request_inputs.get('params', {}).get('vendor_only', True)
 
+    tag_re = re.compile("([^/]+)/([^:]+):(.*)")
+
     ret_hash = {}
     pkg_hash = {}
     try:
+        start = time.time()
         image_package_matches = None
         image_cpe_matches = None
         if id:
             image_package_matches = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
             image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
         elif severity:
-            results = dbsession.query(ImagePackageVulnerability, Vulnerability.severity, Vulnerability.id, Vulnerability.namespace_name).filter(Vulnerability.severity==severity).filter(ImagePackageVulnerability.vulnerability_id==Vulnerability.id).filter(ImagePackageVulnerability.vulnerability_namespace_name==Vulnerability.namespace_name)
-            image_package_matches = [x[0] for x in results]
-            #from sqlalchemy.orm import joinedload
-            #image_package_matches = dbsession.query(ImagePackageVulnerability, Vulnerability).options(joinedload(ImagePackageVulnerability.vulnerability, innerjoin=True)).filter(ImagePackageVulnerability.vulnerability.severity==severity)
-            #for i in image_package_matches:
-            #    logger.info("MEH: {}".format(i))
+            #results = dbsession.query(ImagePackageVulnerability, Vulnerability.severity, Vulnerability.id, Vulnerability.namespace_name).filter(Vulnerability.severity==severity).filter(ImagePackageVulnerability.vulnerability_id==Vulnerability.id).filter(ImagePackageVulnerability.vulnerability_namespace_name==Vulnerability.namespace_name)
+            #image_package_matches = [x[0] for x in results]
+            image_package_matches = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability.has(severity=severity))
             image_cpe_matches = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.severity==severity).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+        logger.debug("QUERY TIME: {}".format(time.time() - start))
 
+        start = time.time()
         if image_package_matches or image_cpe_matches:
-            imageId_to_imageDigest = dict(dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.imageDigest))
+            #imageId_to_imageDigest = dict(dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.imageDigest))
+            imagetags = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
 
-            #def fulltagify(x):
-            #    return( (x[0], "{}/{}:{}".format(x[1], x[2], x[3]) ) )
-            #imageId_to_fulltag = dict([fulltagify(x) for x in dbsession.query(CatalogImageDocker.imageId, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag)])
+            fulltags = {}
+            tag_history = {}
+            imageId_to_record = {}
+            for x in imagetags:
+                if x['imageId'] not in tag_history:
+                    tag_history[x['imageId']] = []
 
+                registry, repo, tag = tag_re.match(x['fulltag']).groups()
+                tag_el = {
+                    'registry': registry,
+                    'repo': repo,
+                    'tag': tag,
+                    'fulltag': x['fulltag'],
+                    'tag_detected_at': x['tag_detected_at'],
+                }
+                tag_history[x['imageId']].append(tag_el)
+                    
+                if x['imageId'] not in imageId_to_record:
+                    imageId_to_record[x['imageId']] = {
+                        'imageDigest': x['imageDigest'],
+                        'imageId': x['imageId'],
+                        'analyzed_at': x['analyzed_at'],
+                        'tag_history': tag_history[x['imageId']]
+                    }
+
+            logger.debug("IMAGEPROC TIME: {}".format(time.time() - start))
+        
+            start = time.time()
             for image in image_package_matches:
+                continue
                 if vendor_only and image.fix_has_no_advisory():
                     continue
 
                 imageId = image.pkg_image_id
                 if imageId not in ret_hash:
-                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'fulltag': imageId_to_fulltag.get(imageId, "N/A"), 'vulnerable_packages': []}
-                    ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
                     pkg_hash[imageId] = {}
 
                 pkg_el = {
@@ -168,16 +202,19 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                     'package_type': image.pkg_type,
                     'vulnerable_package_namespace': image.vulnerability_namespace_name,
                 }
-                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
-                if not pkg_hash[imageId].get(phash, False):
-                    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
-                pkg_hash[imageId][phash] = True
+                #phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                #if not pkg_hash[imageId].get(phash, False):
+                #    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+                #pkg_hash[imageId][phash] = True
+                ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+            logger.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
 
+            start = time.time()
             for image_cpe, vulnerability_cpe in image_cpe_matches:
                 imageId = image_cpe.image_id
                 if imageId not in ret_hash:
-                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'fulltag': imageId_to_fulltag.get(imageId, "N/A"), 'vulnerable_packages': []}
-                    ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
                     pkg_hash[imageId] = {}
                 pkg_el = {
                     'vulnerability_id': vulnerability_cpe.vulnerability_id,
@@ -191,10 +228,14 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                     ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
                 pkg_hash[imageId][phash] = True
 
+        logger.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
+
+        start = time.time()
         vulnerable_images = ret_hash.values()
         return_object = {
             'vulnerable_images': vulnerable_images
         }
+        logger.debug("RESP TIME: {}".format(time.time() - start))
         httpcode = 200
 
     except Exception as err:

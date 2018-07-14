@@ -2,7 +2,7 @@ import json
 import hashlib
 import uuid
 import zlib
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text, Enum
 
 import anchore_engine.db.entities.common
 from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
