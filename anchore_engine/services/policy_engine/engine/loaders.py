@@ -604,6 +604,10 @@ class ImageLoader(object):
             if sversion not in ret_versions:
                 ret_versions.append(sversion)
 
+        mversion = input_el.get('maven-version', "N/A")
+        if mversion != 'N/A' and mversion not in ret_versions:
+            ret_versions.append(mversion)
+
         # do some heuristic tokenizing
         try:
             toks = re.findall("[^-]+", input_el['name'])

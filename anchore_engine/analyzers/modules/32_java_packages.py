@@ -1,20 +1,10 @@
 #!/usr/bin/env python
 
-import sys
-import os
-import shutil
-import re
+from __future__ import print_function
 import json
-import time
-import rpm
-import subprocess
-import stat
-import tarfile
-import time
-import hashlib
-import copy
-import traceback
-import pkg_resources
+import os
+import re
+import sys
 import zipfile
 from io import BytesIO
 
@@ -27,7 +17,7 @@ java_library_file = ".*\.([jwe]ar|[jh]pi)"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -35,10 +25,27 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-def process_java_archive(prefix, filename, inZFH):
+
+def parse_properties(file):
+    """
+    Parses the given file using the Java properties file format.
+    Lines beginning with # are ignored.
+    :param file: an open iterator into the file
+    :return: the properties in the file as a dictionary
+    """
+    props = {}
+    for line in file:
+        if not re.match("\s*(#.*)?$", line):
+            kv = line.split('=')
+            key = kv[0].strip()
+            value = '='.join(kv[1:]).strip()
+            props[key] = value
+    return props
+
+
+def process_java_archive(prefix, filename, inZFH=None):
     ret = []
 
-    
     fullpath = '/'.join([prefix, filename])
 
     jtype = None
@@ -46,8 +53,8 @@ def process_java_archive(prefix, filename, inZFH):
     if patt:
         jtype = patt.group(1)
     else:
-        return([])
-    name = re.sub("\."+jtype+"$", "", fullpath.split("/")[-1])
+        return []
+    name = re.sub("\." + jtype + "$", "", fullpath.split("/")[-1])
 
     top_el = {}
     sub_els = []
@@ -60,82 +67,89 @@ def process_java_archive(prefix, filename, inZFH):
                     ZFH = zipfile.ZipFile(fullpath, 'r')
                     location = filename
                 else:
-                    return([])
+                    return []
             else:
-                zdata = BytesIO( inZFH.read() )
+                zdata = BytesIO(inZFH.read())
                 ZFH = zipfile.ZipFile(zdata, 'r')
                 location = prefix + ":" + filename
-    
+
         except Exception as err:
             raise err
 
         top_el = {
-            'metadata':{},
+            'metadata': {},
             'specification-version': "N/A",
             'implementation-version': "N/A",
+            'maven-version': "N/A",
             'origin': "N/A",
-            'location': "N/A",
-            'type': "N/A"
+            'location': location,
+            'type': "java-" + str(jtype),
+            'name': name
         }
-        top_el['location'] = location 
-        top_el['type'] = "java-"+str(jtype)
-        top_el['name'] = name
 
-        sname = sversion = svendor = iname = iversion = ivendor = mname = None
-    
-        try:
-            with ZFH.open('META-INF/MANIFEST.MF', 'r') as MFH:
-                top_el['metadata']['MANIFEST.MF'] = MFH.read()
+        sname = sversion = svendor = iname = iversion = ivendor = None
 
-            for line in top_el['metadata']['MANIFEST.MF'].splitlines():
-                try:
-                    (k,v) = line.split(": ", 1)
-                    if k == 'Specification-Title':
-                        sname = v
-                    elif k == 'Specification-Version':
-                        sversion = v
-                    elif k == 'Specification-Vendor':
-                        svendor = v
-                    elif k == 'Implementation-Title':
-                        iname = v
-                    elif k == 'Implementation-Version':
-                        iversion = v
-                    elif k == 'Implementation-Vendor':
-                        ivendor = v
-                except:
-                    pass
+        filenames = ZFH.namelist()
 
-            if sversion:
-                top_el['specification-version'] = sversion
-            if iversion:
-                top_el['implementation-version'] = iversion
+        if 'META-INF/MANIFEST.MF' in filenames:
+            try:
+                with ZFH.open('META-INF/MANIFEST.MF', 'r') as MFH:
+                    top_el['metadata']['MANIFEST.MF'] = MFH.read()
 
-            if svendor:
-                top_el['origin'] = svendor
-            elif ivendor:
-                top_el['origin'] = ivendor
+                for line in (top_el['metadata']['MANIFEST.MF'].splitlines()):
+                    try:
+                        (k, v) = line.split(": ", 1)
+                        if k == 'Specification-Title':
+                            sname = v
+                        elif k == 'Specification-Version':
+                            sversion = v
+                        elif k == 'Specification-Vendor':
+                            svendor = v
+                        elif k == 'Implementation-Title':
+                            iname = v
+                        elif k == 'Implementation-Version':
+                            iversion = v
+                        elif k == 'Implementation-Vendor':
+                            ivendor = v
+                    except:
+                        pass
 
-        except:
-            # no manifest could be parsed out, leave the el values unset
-            pass
+                if sversion:
+                    top_el['specification-version'] = sversion
+                if iversion:
+                    top_el['implementation-version'] = iversion
 
-        for zfname in ZFH.namelist():
-            sub_jtype = None
-            patt = re.match(java_library_file, zfname)
-            if patt:
-                sub_jtype = patt.group(1)
+                if svendor:
+                    top_el['origin'] = svendor
+                elif ivendor:
+                    top_el['origin'] = ivendor
 
-            if sub_jtype:
-                ZZFH = None
-                try:
-                    ZZFH = ZFH.open(zfname, 'r')
-                    sub_els = sub_els + process_java_archive(location, zfname, ZZFH)
-                except Exception as err:
-                    pass
-                finally:
-                    if ZZFH:
-                        ZZFH.close()
-            
+            except:
+                # no manifest could be parsed out, leave the el values unset
+                pass
+        else:
+            print('WARN: no META-INF/MANIFEST.MF found in ' + fullpath)
+
+        archives = [fname for fname in filenames if re.match(java_library_file, fname)]
+        pomprops = [fname for fname in filenames if fname.endswith('/pom.properties')]
+
+        for archive in archives:
+            with ZFH.open(archive, 'r') as ZZFH:
+                sub_els += process_java_archive(location, archive, ZZFH)
+
+        for pomprop in pomprops:
+            with ZFH.open(pomprop) as pomfile:
+                props = parse_properties(pomfile)
+                group = props.get('groupId')
+                if group:
+                    top_el['origin'] = group
+                artifact = props.get('artifactId')
+                if artifact:
+                    top_el['name'] = artifact
+                mversion = props.get('version')
+                if mversion:
+                    top_el['maven-version'] = mversion
+
     except Exception as err:
         raise err
     finally:
@@ -147,9 +161,10 @@ def process_java_archive(prefix, filename, inZFH):
 
     ret = [top_el]
     if sub_els:
-        ret = ret + sub_els
+        ret += sub_els
 
-    return(ret)
+    return ret
+
 
 resultlist = {}
 try:
@@ -165,13 +180,13 @@ try:
     for f in allfiles.keys():
         if allfiles[f]['type'] == 'file':
             prefix = '/'.join([unpackdir, 'rootfs'])
-            els = process_java_archive(prefix, f.encode('utf8'), None)
+            els = process_java_archive(prefix, f.encode('utf8'))
             if els:
                 for el in els:
                     resultlist[el['location']] = json.dumps(el)
 
 except Exception as err:
-    print "WARN: analyzer unable to complete - exception: " + str(err)
+    print("WARN: analyzer unable to complete - exception: " + str(err))
 
 if resultlist:
     ofile = os.path.join(outputdir, 'pkgs.java')
