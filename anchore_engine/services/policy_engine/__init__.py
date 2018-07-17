@@ -339,7 +339,7 @@ def handle_feed_sync_trigger(*args, **kwargs):
             except Exception as e:
                 logger.exception('Error caught in feed sync trigger handler. Will continue. Exception: {}'.format(e))
         else:
-            logger.debug("sync_enabled is set to false in config - skipping feed sync")
+            logger.debug("sync_enabled is set to false in config - skipping feed sync trigger")
                 
         time.sleep(cycle_time)
 
