@@ -150,6 +150,24 @@ paths:
           description: "Matched image listing"
           schema:
             type: object
+  /query/vulnerabilities:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+      operationId: query_vulnerabilities_get
+      summary: "Return vulnerability information for specified vulnerability ID"
+      description: "Return vulnerability information for specified vulnerability ID" 
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "query"
+        type: string
+        required: true
+      responses:
+        200:
+          description: "Matched vulnerability record"
+          schema:
+            type: object
   /image:
     get:
       tags:

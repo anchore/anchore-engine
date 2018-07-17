@@ -38,6 +38,31 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
+def query_vulnerabilities(userId, id=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+
+    params = {
+        'id': id,
+    }
+
+    url = base_url + "/query/vulnerabilities?{}".format(urllib.urlencode(params))
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
 def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=None, vendor_only=True):
     global localconfig, headers
     if localconfig == None:

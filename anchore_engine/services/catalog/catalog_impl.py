@@ -18,7 +18,7 @@ from anchore_engine.subsys import taskstate, logger, archive as archive_sys, not
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import localanchore, simplequeue
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events, \
-    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage
+    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata
 import anchore_engine.clients.policy_engine
 
 def registry_lookup(dbsession, request_inputs):
@@ -238,6 +238,71 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         logger.debug("RESP TIME: {}".format(time.time() - start))
         httpcode = 200
 
+    except Exception as err:
+        logger.error("{}".format(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def query_vulnerabilities(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = []
+    httpcode = 500
+
+    id = request_inputs.get('params', {}).get('id', None)
+
+    try:
+        return_el_template = {
+            'id': None,
+            'namespace': None,
+            'severity': None,
+            'link': None,
+            'metadata': {},
+            'fixed_in': {},
+        }
+
+        vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
+        if vulnerabilities:
+            for vulnerability in vulnerabilities:
+                return_el = {}
+                return_el.update(return_el_template)
+
+                return_el['id'] = vulnerability.id
+                return_el['namespace'] = vulnerability.namespace_name
+                return_el['severity'] = vulnerability.severity
+                return_el['link'] = vulnerability.link
+                return_el['metadata'] = json.loads(vulnerability.metadata_json)
+
+                return_object.append(return_el)
+            
+        vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).all()
+        if vulnerabilities:
+            for vulnerability in vulnerabilities:
+                return_el = {}
+                return_el.update(return_el_template)
+
+                return_el['id'] = vulnerability.name
+                return_el['namespace'] = vulnerability.namespace_name
+                return_el['severity'] = vulnerability.severity
+                return_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
+                return_el['metadata'] = {
+                    'NVD': {
+                        'CVSSv2': vulnerability.cvss
+                    }
+                }
+
+                return_object.append(return_el)
+                
+        if not return_object:
+            httpcode = 404
+            raise Exception("no vulnerability with id {} found loaded in anchore-engine".format(id))
+
+        httpcode = 200
+            
     except Exception as err:
         logger.error("{}".format(err))
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
