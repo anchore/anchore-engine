@@ -8,7 +8,6 @@ import requests
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
 from anchore_engine.subsys import logger
-from anchore_engine.vendored.docker_registry_client import docker_registry_client
 from .skopeo_wrapper import get_image_manifest_skopeo, get_repo_tags_skopeo
 
 docker_clis = {}
@@ -78,22 +77,6 @@ def get_authenticated_cli(userId, registry, registry_creds=[]):
 
     return(None)
 
-def get_image_manifest_oauth2(url, registry, repo, tag, user=None, pw=None, verify=True):
-    manifest = {}
-    digest = ""
-    
-    try:
-        drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify, api_version=2)
-        r = drc.repository(namespace=None, repository=repo)
-        manifest, digest = r.manifest(tag, accept_version=2)
-
-        if manifest['schemaVersion'] == 1:
-            raise Exception("cannot infer digest from response with manifest schemaVersion 1")
-    except Exception as err:
-        raise err
-
-    return(manifest, digest)
-
 def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=None, verify=True):
     manifest = {}
     digest = ""
@@ -146,6 +129,75 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
 
     return(manifest, digest)
 
+def ping_docker_registry_v2(base_url, u, p, verify=True):
+    httpcode = 500
+    message = "unknown failure"
+
+    try:
+        # base_url is of the form 'https://index.docker.io' or 'https://mydocker.com:5000' <-- note: https only, no trailing slash, etc
+        index_url = "{}/v2".format(base_url)
+        try:
+            r = requests.get(index_url, verify=verify, allow_redirects=True)
+        except Exception as err:
+            httpcode = 500
+            raise err
+        try:
+            if r.status_code in [404]:
+                r = requests.get(index_url+'/', verify=verify, allow_redirects=True)
+            if r.status_code not in [200, 401]:
+                httpcode = 400
+                raise Exception("cannot access registry using registry version 2 {}".format(index_url))
+        except Exception as err:
+            raise err
+
+        if u and p:
+            auth_url = None
+            try:
+                for hkey in r.headers.keys():
+                    if hkey.lower() == "www-authenticate":
+                        www_auth = r.headers.get(hkey)
+                        (www_auth_type, www_auth_raw) = re.match("(.*?) +(.*)", www_auth).groups()
+                        if www_auth_type == 'Bearer':
+                            raw_keyvals = www_auth_raw.split(",")
+                            for keyval in raw_keyvals:
+                                key, val = keyval.split('=', 2)
+                                if key.lower() == 'realm':
+                                    auth_url = val.replace('"', '')
+                        elif www_auth_type == 'Basic':
+                            auth_url = index_url
+                        else:
+                            auth_url = index_url
+                if not auth_url:
+                    httpcode = 400
+                    raise Exception("could not retrieve an auth URL from response")
+            except Exception as err:
+                raise err
+
+            try:
+                r = requests.get(auth_url, auth=(u, p), verify=verify)
+            except Exception as err:
+                httpcode = 500
+                raise err
+
+            try:
+                if r.status_code in [404]:
+                    r = requests.get(auth_url+'/', auth=(u, p), verify=verify)
+                if r.status_code not in [200]:
+                    httpcode = 401
+                    raise Exception("cannot login to registry user={} registry={} - invalid username/password".format(u, base_url))
+            except Exception as err:
+                raise err
+
+            httpcode = 200
+            message = "login successful"
+        else:
+            httpcode = 200
+            message = "no credentials supplied - assuming anonymous"
+    except Exception as err:
+        message = "{}".format(err)
+
+    return(httpcode, message)
+
 def ping_docker_registry(registry_record):
     ret = False
     user = ''
@@ -160,15 +212,19 @@ def ping_docker_registry(registry_record):
             url = "https://" + registry
 
         user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
+    
+        httpcode, message = ping_docker_registry_v2(url, user, pw, verify=verify)
+        if httpcode != 200:
+            raise Exception("{}".format(message))
 
-        drc = docker_registry_client.DockerRegistryClient(url, username=user, password=pw, verify_ssl=verify)
-        logger.debug("registry access check success ("+str(url)+","+str(user)+")")
+        logger.debug("registry check successful: registry={} user={} code={} message={}".format(registry, user, httpcode, message))
         ret = True
     except Exception as err:
         logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
-        raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
-        #ret = False
+        raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))        
+
     return(ret)
+
 
 def get_repo_tags(userId, image_info, registry_creds=None):
     user = pw = None
@@ -252,295 +308,3 @@ def get_image_manifest(userId, image_info, registry_creds):
 
     return({}, "")
 
-#####################################################    
-
-def get_image_manifest_dockerhub_orig(repo, tag, user=None, pw=None):
-    manifest = {}
-    digest = ""
-    
-    try:
-        if not user or not pw:
-            authy = None
-        else:
-            authy = (user, pw)
-
-        #TODO externalize URLs
-        auth_url = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:{repository}:pull"
-        url = auth_url.format(repository=repo)
-        
-        token = ""
-        try:
-            r = requests.get(url, json=True, auth=authy)
-            if r.status_code == 200:
-                #token = requests.get(url, json=True, auth=authy).json()["token"]
-                token = r.json()["token"]
-            elif r.status_code == 402:
-                raise Exception("not authorized (401) returned from registry: auth_url=("+str(url)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-        except Exception as err:
-            logger.error("could not get auth token: " + str(err))
-            raise err
-        
-        get_manifest_template = "https://registry.hub.docker.com/v2/{repository}/manifests/{tag}"
-        url = get_manifest_template.format(repository=repo, tag=tag)
-
-        try:
-            headers = {
-                "Authorization": "Bearer {}".format(token),
-                "Accept": "application/vnd.docker.distribution.manifest.v2+json"
-            }
-
-            r = requests.get(url, headers=headers,json=True)
-            if r.status_code == 200:
-                manifest = r.json()
-                digest = r.headers['Docker-Content-Digest']
-            elif r.status_code == 401:
-                raise Exception("not authorized (401) returned from registry: registry=(https://registry.hub.docker.com) repo=("+str(repo)+") tag=("+str(tag)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-
-        except Exception as err:
-            logger.warn("could not get manifest: " + str(err))
-            raise err
-            
-    except Exception as err:
-        raise err
-
-    return(manifest, digest)
-
-def get_image_manifest_orig(userId, image_info):
-    # first see if registry is DH or not...
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    logger.debug("get_image_manifest input: " + userId + " : " + str(image_info) + " : " + str(time.time()))
-
-    user = pw = None
-    
-    registry = image_info['registry']
-
-    try:
-        creds = localconfig['credentials']['users'][userId]['registry_service_auths']['docker'][registry]['auth']
-        user,pw = creds.split(":")
-    except:
-        pass
-            
-    if registry in ['docker.io', 'container-registry.oracle.com', 'registry.connect.redhat.com']:
-        if registry == 'docker.io':
-            url = "https://index.docker.io"
-
-            if not re.match(".*/.*", image_info['repo']):
-                repo = "library/"+image_info['repo']
-            else:
-                repo = image_info['repo']
-        elif registry == "container-registry.oracle.com":
-            url = "https://container-registry.oracle.com"
-            repo = image_info['repo']
-        elif registry == "registry.connect.redhat.com":
-            url = "https://registry.connect.redhat.com"
-            repo = image_info['repo']
-
-        if image_info['digest']:
-            manifest, digest = get_image_manifest_oauth2(url, repo, image_info['digest'], user=user, pw=pw)
-        else:
-            manifest, digest = get_image_manifest_oauth2(url, repo, image_info['tag'], user=user, pw=pw)
-        
-        return(manifest, digest)
-    else:
-        if image_info['digest']:
-            manifest, digest = get_image_manifest_docker_registry(registry, image_info['repo'], image_info['digest'], user=user, pw=pw)
-        else:
-            manifest, digest = get_image_manifest_docker_registry(registry, image_info['repo'], image_info['tag'], user=user, pw=pw)
-        return(manifest, digest)
-        
-    return({}, "")
-    
-
-def get_registry_catalog_docker_orig(registry, user=None, pw=None):
-    ret = {}
-    
-    try:
-        if not user or not pw:
-            authy = None
-        else:
-            authy = (user, pw)
-
-        get_manifest_template = "https://"+registry+"/v2/_catalog"
-        url = get_manifest_template
-        #url = get_manifest_template.format(repository=repo, tag=tag)
-
-        try:
-            #headers = {
-            #    "Accept": "application/vnd.docker.distribution.manifest.v2+json"
-            #}
-            headers = {}
-
-            r = requests.get(url, headers=headers,json=True, auth=authy, verify=False)
-            if r.status_code == 200:
-                ret = r.json()
-                #manifest = r.json()
-                #digest = r.headers['Docker-Content-Digest']
-            elif r.status_code == 401:
-                raise Exception("not authorized (401) returned from registry: registry=("+str(registry)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-
-        except Exception as err:
-            logger.warn("could not get manifest: " + str(err))
-            raise err
-            
-    except Exception as err:
-        raise err
-
-    return(ret)
-
-def get_dockerhub_token_orig(user=None, pw=None):
-    #export TOKEN=`curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${UNAME}'", "password": "'${UPASS}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token`
-    if user and pw:
-        headers = {
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            'username': user,
-            'password': pw
-        }
-        url = "https://hub.docker.com/v2/users/login/"
-        #url = "https://registry.hub.docker.com/v2/users/login/"
-        
-        try:
-            r = requests.post(url, data=json.dumps(payload), headers=headers, json=True)
-            if r.status_code == 200:
-                jsondata = r.json()
-                ret = jsondata['token']
-            elif r.status_code == 401:
-                raise Exception("not authorized (401) returned from registry: registry=("+str(url)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-
-        except Exception as err:
-            logger.error("could not get token from dockerhub: " + str(err))
-            raise err
-            
-    else:
-        # anonymous
-        ret = None
-
-    return(ret)
-
-def get_repo_tags_dockerhub_orig(registry, repo, user=None, pw=None):
-    ret = {'name':repo, 'tags':[]}
-
-    try:
-        if not user or not pw:
-            authy = None
-        else:
-            authy = (user, pw)
-
-        token = get_dockerhub_token_orig(user=user, pw=pw)
-        get_manifest_template = "https://registry.hub.docker.com/v2/repositories/{repository}/tags/"
-        url = get_manifest_template.format(repository=repo)
-
-        try:
-            if token:
-                headers = {
-                    "Authorization": "JWT " + token
-                    #"Authorization": "Bearer {}".format(token),
-                    #"Accept": "application/vnd.docker.distribution.manifest.v2+json"
-                }
-            else:
-                headers = {}
-
-            r = requests.get(url, headers=headers,json=True)
-            if r.status_code == 200:
-                jsondata = r.json()
-                for tag in jsondata['results']:
-                    if 'name' in tag:
-                        ret['tags'].append(tag['name'])
-            elif r.status_code == 401:
-                raise Exception("not authorized (401) returned from registry: registry=(https://registry.hub.docker.com) repo=("+str(repo)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-
-        except Exception as err:
-            logger.error("could not get manifest: " + str(err))
-            raise err
-            
-    except Exception as err:
-        raise err
-
-    return(ret)
-
-def get_repo_tags_docker_orig(registry, repo, user=None, pw=None):
-    ret = {}
-    
-    try:
-        if not user or not pw:
-            authy = None
-        else:
-            authy = (user, pw)
-
-        get_manifest_template = "https://"+registry+"/v2/{repository}/tags/list"
-        url = get_manifest_template.format(repository=repo)
-
-        try:
-            headers = {}
-
-            r = requests.get(url, headers=headers,json=True, auth=authy, verify=False)
-            if r.status_code == 200:
-                ret = r.json()
-            elif r.status_code == 401:
-                raise Exception("not authorized (401) returned from registry: registry=("+str(registry)+") user=("+str(user)+")")
-            else:
-                raise Exception("got bad code ("+str(r.status_code)+") from manifest request: " + str(r.text))
-
-        except Exception as err:
-            logger.error("could not get manifest: " + str(err))
-            raise err
-            
-    except Exception as err:
-        raise err
-
-    return(ret)
-
-def get_registry_catalog_orig(userId, registry):
-    ret = {}
-    user = pw = None
-    
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    try:
-        creds = localconfig['credentials']['users'][userId]['registry_service_auths']['docker'][registry]['auth']
-        user,pw = creds.split(":")
-    except:
-        pass
-
-    if registry == 'docker.io':
-        logger.warn("cannot currently get catalog repo list from dockerhub")
-    else:
-        ret = get_registry_catalog_docker_orig(registry, user=user, pw=pw)
-
-    return(ret)
-
-def get_repo_tags_orig(userId, registry, repo):
-    ret = {}
-    user = pw = None
-    
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    try:
-        creds = localconfig['credentials']['users'][userId]['registry_service_auths']['docker'][registry]['auth']
-        user,pw = creds.split(":")
-    except:
-        pass
-
-    if registry == 'docker.io':
-        if not re.match(".*/.*", repo):
-            repo = "library/"+repo
-        else:
-            repo = repo
-
-        ret = get_repo_tags_dockerhub_orig(registry, repo, user=user, pw=pw)
-    else:
-        ret = get_repo_tags_docker_orig(registry, repo, user=user, pw=pw)
-
-    return(ret)
