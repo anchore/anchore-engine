@@ -265,37 +265,89 @@ def query_vulnerabilities(dbsession, request_inputs):
             'fixed_in': {},
         }
 
-        vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
-        if vulnerabilities:
-            for vulnerability in vulnerabilities:
-                return_el = {}
-                return_el.update(return_el_template)
-
-                return_el['id'] = vulnerability.id
-                return_el['namespace'] = vulnerability.namespace_name
-                return_el['severity'] = vulnerability.severity
-                return_el['link'] = vulnerability.link
-                return_el['metadata'] = json.loads(vulnerability.metadata_json)
-
-                return_object.append(return_el)
-            
         vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).all()
         if vulnerabilities:
             for vulnerability in vulnerabilities:
-                return_el = {}
-                return_el.update(return_el_template)
-
-                return_el['id'] = vulnerability.name
-                return_el['namespace'] = vulnerability.namespace_name
-                return_el['severity'] = vulnerability.severity
-                return_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
-                return_el['metadata'] = {
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el['id'] = vulnerability.name
+                namespace_el['namespace'] = vulnerability.namespace_name
+                namespace_el['severity'] = vulnerability.severity
+                namespace_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
+                namespace_el['metadata'] = {
                     'NVD': {
                         'CVSSv2': vulnerability.cvss
                     }
                 }
 
-                return_object.append(return_el)
+                return_object.append(namespace_el)
+
+        vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
+        if vulnerabilities:
+            for vulnerability in vulnerabilities:
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el['id'] = vulnerability.id
+                namespace_el['namespace'] = vulnerability.namespace_name
+                namespace_el['severity'] = vulnerability.severity
+                namespace_el['link'] = vulnerability.link
+                namespace_el['metadata'] = json.loads(vulnerability.metadata_json)
+
+                return_object.append(namespace_el)
+        
+        if False:
+            return_el_template = {
+                'id': None,
+                'vulnerable_namespaces': []
+            }
+            namespace_el_template = {
+                'namespace': None,
+                'severity': None,
+                'link': None,
+                'metadata': {},
+                'fixed_in': {}
+            }
+
+            return_hash = {}
+            vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).all()
+            if vulnerabilities:
+                for vulnerability in vulnerabilities:
+                    if id not in return_hash:
+                        return_hash[id] = {}
+                        return_hash[id].update(return_el_template)
+
+                    return_hash[id]['id'] = id
+
+                    namespace_el = {}
+                    namespace_el.update(namespace_el_template)
+                    namespace_el['namespace'] = vulnerability.namespace_name
+                    namespace_el['severity'] = vulnerability.severity
+                    namespace_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
+                    namespace_el['metadata'] = {
+                        'NVD': {
+                            'CVSSv2': vulnerability.cvss
+                        }
+                    }
+                    return_hash[id]['vulnerable_namespaces'].append(namespace_el)
+
+            vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
+            if vulnerabilities:
+                for vulnerability in vulnerabilities:
+                    if id not in return_hash:
+                        return_hash[id] = {}
+                        return_hash[id].update(return_el_template)
+
+                    return_hash[id]['id'] = id
+
+                    namespace_el = {}
+                    namespace_el.update(namespace_el_template)
+                    namespace_el['namespace'] = vulnerability.namespace_name
+                    namespace_el['severity'] = vulnerability.severity
+                    namespace_el['link'] = vulnerability.link
+                    namespace_el['metadata'] = json.loads(vulnerability.metadata_json)
+                    return_hash[id]['vulnerable_namespaces'].append(namespace_el)
+
+            return_object = return_hash.values()
                 
         if not return_object:
             httpcode = 404
