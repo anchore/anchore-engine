@@ -149,7 +149,6 @@ def load_config(configdir=None, configfile=None, validate_params={}):
         
     # copy the src installed files unless they already exist in the service dir conf
     for key, fname in [('default_bundle_file', 'anchore_default_bundle.json'),
-                       ('config_example_file', 'config.yaml.example'),
                        ('anchore_scanner_analyzer_config_file', 'analyzer_config.yaml')]:
         try:
             default_file = os.path.join(localconfig['service_dir'], fname)
