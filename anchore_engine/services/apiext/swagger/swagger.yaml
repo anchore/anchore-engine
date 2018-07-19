@@ -1469,6 +1469,17 @@ paths:
         in: "query"
         type: string
         required: false
+      - name: page
+        in: query
+        type: string
+        description: ""
+        required: false
+        default: "1"
+      - name: limit
+        in: query
+        type: integer
+        description: ""
+        required: false
       responses:
         200:
           description: "Matched vulnerability record"
