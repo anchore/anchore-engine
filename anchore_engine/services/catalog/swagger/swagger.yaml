@@ -97,11 +97,19 @@ paths:
       produces:
       - "application/json"
       parameters:
-      - name: "id"
+      - name: "vulnerability_id"
+        in: "query"
+        type: string
+        required: true
+      - name: "severity"
         in: "query"
         type: string
         required: false
-      - name: "severity"
+      - name: "namespace"
+        in: "query"
+        type: string
+        required: false
+      - name: "affected_package"
         in: "query"
         type: string
         required: false
@@ -125,23 +133,15 @@ paths:
       produces:
       - "application/json"
       parameters:
-      - name: "pkg_name"
+      - name: "name"
         in: "query"
         type: string
         required: true
-      - name: "pkg_version"
+      - name: "version"
         in: "query"
         type: string
         required: false
-      - name: "pkg_type"
-        in: "query"
-        type: string
-        required: false
-      - name: "distro"
-        in: "query"
-        type: string
-        required: false
-      - name: "distro_version"
+      - name: "package_type"
         in: "query"
         type: string
         required: false
@@ -163,6 +163,14 @@ paths:
         in: "query"
         type: string
         required: true
+      - name: "affected_package"
+        in: "query"
+        type: string
+        required: false
+      - name: "affected_package_version"
+        in: "query"
+        type: string
+        required: false
       responses:
         200:
           description: "Matched vulnerability record"

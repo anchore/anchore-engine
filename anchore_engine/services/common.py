@@ -69,6 +69,7 @@ def make_response_paginated_envelope(input_items, envelope_key='result', page=1,
     return_object = {
         envelope_key: paginated_items,
         'page': "{}".format(page),
+        'returned_count': len(paginated_items),
     }
     if next_page:
         return_object['next_page'] = "{}".format(next_page)

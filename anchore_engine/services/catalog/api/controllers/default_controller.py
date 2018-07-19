@@ -21,9 +21,9 @@ def status():
 
     return (return_object, httpcode)
 
-def query_vulnerabilities_get(id=None):
+def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_vulnerabilities(session, request_inputs)
     except Exception as err:
@@ -32,9 +32,9 @@ def query_vulnerabilities_get(id=None):
 
     return (return_object, httpcode)    
 
-def query_images_by_package_get(pkg_name=None, pkg_version=None, pkg_type=None, distro=None, distro_version=None):
+def query_images_by_package_get(name=None, version=None, package_type=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'pkg_name': pkg_name, 'pkg_version': pkg_version, 'pkg_type': pkg_type, 'distro': distro, 'distro_version': distro_version})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
     except Exception as err:
@@ -43,9 +43,9 @@ def query_images_by_package_get(pkg_name=None, pkg_version=None, pkg_type=None, 
 
     return (return_object, httpcode)    
 
-def query_images_by_vulnerability_get(id=None, severity=None, vendor_only=True):
+def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'severity': severity, 'vendor_only': vendor_only})
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
     except Exception as err:

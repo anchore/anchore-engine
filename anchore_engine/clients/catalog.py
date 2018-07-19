@@ -38,7 +38,7 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
-def query_vulnerabilities(userId, id=None):
+def query_vulnerabilities(userId, id=None, affected_package=None, affected_package_version=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -56,6 +56,10 @@ def query_vulnerabilities(userId, id=None):
     params = {
         'id': id,
     }
+    if affected_package:
+        params['affected_package'] = affected_package
+        if affected_package_version:
+            params['affected_package_version'] = affected_package_version
 
     url = base_url + "/query/vulnerabilities?{}".format(urllib.urlencode(params))
 
@@ -63,7 +67,7 @@ def query_vulnerabilities(userId, id=None):
 
     return(ret)
 
-def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=None, vendor_only=True):
+def query_images_by_vulnerability(userId, vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -79,14 +83,17 @@ def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     params = {
-#        'page': page,
-#        'limit': limit,
         'vendor_only': vendor_only,
     }
-    if id:
-        params['id'] = id
-    elif severity:
+    if vulnerability_id:
+        params['vulnerability_id'] = vulnerability_id
+    if severity:
         params['severity'] = severity
+    if namespace:
+        params['namespace'] = namespace
+    if affected_package:
+        params['affected_package'] = affected_package
+        
 
     url = base_url + "/query/images/by_vulnerability?{}".format(urllib.urlencode(params))
 
@@ -94,7 +101,7 @@ def query_images_by_vulnerability(userId, id=None, severity=None, page=1, limit=
 
     return(ret)
 
-def query_images_by_package(userId, pkg_name=None, pkg_version=None, pkg_type=None, distro=None, distro_version=None, page=1, limit=None):
+def query_images_by_package(userId, name=None, version=None, package_type=None, page=1, limit=None):
     global localconfig, headers
     if localconfig == None:
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -110,11 +117,9 @@ def query_images_by_package(userId, pkg_name=None, pkg_version=None, pkg_type=No
     base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
 
     params = {
-        'pkg_name': pkg_name,
-        'pkg_version': pkg_version,
-        'pkg_type': pkg_type,
-        'distro': distro,
-        'distro_version': distro_version,
+        'name': name,
+        'version': version,
+        'package_type': package_type,
     }
 
     url = base_url + "/query/images/by_package?{}".format(urllib.urlencode(params))
