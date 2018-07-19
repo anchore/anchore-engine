@@ -1392,12 +1392,12 @@ paths:
         required: false
         type: string
         enum:
-        - unknown
-        - negligible
-        - low
-        - medium
-        - high
-        - critical
+        - Unknown
+        - Negligible
+        - Low
+        - Medium
+        - High
+        - Critical
       - name: vendor_only
         in: query
         type: boolean
@@ -1551,12 +1551,12 @@ definitions:
         type: string
         description: Severity label specific to the namepsace
         enum:
-        - unknown
-        - negligible
-        - low
-        - medium
-        - high
-        - critical
+        - Unknown
+        - Negligible
+        - Low
+        - Medium
+        - High
+        - Critical
       link:
         type: string
         description: URL for the upstream CVE record in the reporting source (e.g. ubuntu security tracker)
