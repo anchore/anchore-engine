@@ -123,7 +123,27 @@ def registerService(sname, config):
     logger.info('Registration complete.')
 
     if reg_return:
-        process_preflight()
+
+        # read the global feed disable parameter
+        feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
+
+        # get the list of feeds if they have been explicitly configured in config.yaml
+        feed_enabled_status = config.get('feeds', {}).get('selective_sync', {}).get('feeds', {})
+
+        # check to see if the engine is configured to sync at least one data feed
+        at_least_one = False
+        for feed in feed_enabled_status.keys():
+            if feed_enabled_status[feed]:
+                at_least_one = True
+                break
+
+        # toggle credential validation based on whether or not any feeds are configured to sync
+        skip_credential_validate = False
+        if not feed_sync_enabled or not at_least_one:
+            logger.info("Engine is configured to skip data feed syncs - skipping feed sync client check")
+            skip_credential_validate = True
+
+        process_preflight(skip_credential_validate=skip_credential_validate)
 
     service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
     anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
@@ -149,16 +169,23 @@ def _system_creds():
     return system_user_auth
 
 
-def process_preflight():
+def process_preflight(skip_credential_validate=False):
     """
     Execute the preflight functions, aborting service startup if any throw uncaught exceptions or return False return value
 
     :return:
     """
-    preflight_check_functions = [
-        _check_feed_client_credentials,
-        _init_db_content
-    ]
+
+    preflight_check_functions = []
+    if not skip_credential_validate:
+        preflight_check_functions.append(_check_feed_client_credentials)
+
+    preflight_check_functions.append(_init_db_content)
+
+    #preflight_check_functions = [
+    #    _check_feed_client_credentials,
+    #    _init_db_content
+    #]
 
     for fn in preflight_check_functions:
         try:
@@ -254,17 +281,23 @@ def handle_feed_sync(*args, **kwargs):
 
     while True:
 
-        try:
-            all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
-            if not all_ready:
-                logger.info("simplequeue service not yet ready, will retry")
-            else:
-                try:
-                    simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync, max_wait_seconds=30, visibility_timeout=180)
-                except Exception as err:
-                    logger.warn("failed to process task this cycle: " + str(err))
-        except Exception as e:
-            logger.error('Caught escaped error in feed sync handler: {}'.format(e))
+        config = localconfig.get_config()
+        feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
+
+        if feed_sync_enabled:
+            try:
+                all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+                if not all_ready:
+                    logger.info("simplequeue service not yet ready, will retry")
+                else:
+                    try:
+                        simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync, max_wait_seconds=30, visibility_timeout=180)
+                    except Exception as err:
+                        logger.warn("failed to process task this cycle: " + str(err))
+            except Exception as e:
+                logger.error('Caught escaped error in feed sync handler: {}'.format(e))
+        else:
+            logger.debug("sync_enabled is set to false in config - skipping feed sync")
 
         time.sleep(cycle_time)
 
@@ -286,21 +319,28 @@ def handle_feed_sync_trigger(*args, **kwargs):
     cycle_time = kwargs['mythread']['cycle_timer']
 
     while True:
-        try:
-            all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
-            if not all_ready:
-                logger.info("simplequeue service not yet ready, will retry")
-            else:
-                logger.info('Feed Sync Trigger activated')
-                if not simplequeue.is_inqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg):
-                    try:
-                        simplequeue.enqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg)
-                    except:
-                        logger.exception('Could not enqueue message for a feed sync')
-                logger.info('Feed Sync Trigger done, waiting for next cycle.')
-        except Exception as e:
-            logger.exception('Error caught in feed sync trigger handler. Will continue. Exception: {}'.format(e))
 
+        config = localconfig.get_config()
+        feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
+
+        if feed_sync_enabled:
+            try:
+                all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+                if not all_ready:
+                    logger.info("simplequeue service not yet ready, will retry")
+                else:
+                    logger.info('Feed Sync Trigger activated')
+                    if not simplequeue.is_inqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg):
+                        try:
+                            simplequeue.enqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg)
+                        except:
+                            logger.exception('Could not enqueue message for a feed sync')
+                    logger.info('Feed Sync Trigger done, waiting for next cycle.')
+            except Exception as e:
+                logger.exception('Error caught in feed sync trigger handler. Will continue. Exception: {}'.format(e))
+        else:
+            logger.debug("sync_enabled is set to false in config - skipping feed sync trigger")
+                
         time.sleep(cycle_time)
 
     return True
