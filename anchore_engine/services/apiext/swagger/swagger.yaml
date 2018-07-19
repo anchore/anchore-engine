@@ -1368,76 +1368,88 @@ paths:
     get:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_vulnerability
-      summary: "Return image info for specified vulnerability"
-      description: "Return image info for specified vulnerability"
-      produces:
-      - "application/json"
+      summary: List images vulnerable to the specific vulnerability Id.
+      description: Returns a listing of images and their respective packages vulnerable to the given vulnerability id. Vulnerability Id is typically something like CVE-XYZ
       parameters:
-      - name: "vulnerability_id"
-        in: "query"
-        type: string
+      - name: vulnerability_id
+        in: query
+        description: The vuln Id to query images based on.
         required: true
-      - name: "severity"
-        in: "query"
         type: string
-        required: false
-      - name: "namespace"
-        in: "query"
-        type: string
-        required: false
-      - name: "affected_package"
-        in: "query"
-        type: string
-        required: false
-      - name: page
+      - name: namespace
         in: query
+        description: The vulnerability namespace to limit results to (e.g. debian:8, ubuntu:14.04)
+        required: false
         type: string
-        description: ""
-        required: false
-        default: "1"
-      - name: limit
+      - name: affected_package
         in: query
-        type: integer
-        description: ""
+        description: If the vulnerability affects multiple packages/packages, only show images vulnerable for this particular name (e.g libssl)
         required: false
+        type: string
+      - name: severity
+        in: query
+        description: Filter images by the severity of impacting vulnerabilities
+        required: false
+        type: string
+        enum:
+        - unknown
+        - negligible
+        - low
+        - medium
+        - high
+        - critical
       - name: vendor_only
         in: query
         type: boolean
         description: ""
         required: false
         default: true
+      - name: page
+        in: query
+        description: The page of results to fetch. Pages start at 1
+        required: false
+        type: integer
+      - name: limit
+        in: query
+        type: integer
+        description: ""
+        required: false
       responses:
         200:
-          description: "Vulnerable image listing"
+          description: Image lookup success
           schema:
-            type: object
+            $ref: '#/definitions/PaginatedVulnerableImageList'
+        400:
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/ApiErrorResponse'
   /query/images/by_package:
     get:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_package
-      summary: "Return image info for images that have specified package installed"
-      description: "Return image info for images that have specified package installed"
-      produces:
-      - "application/json"
+      summary: List images filtered based on content or metadata
+      description: Filterable query interface for images
       parameters:
-      - name: "name"
-        in: "query"
-        type: string
+      - name: name
+        in: query
+        description: Name of package to filter on
         required: true
-      - name: "version"
-        in: "query"
         type: string
+      - name: package_type
+        in: query
+        description: Type of package to filter on (e.g. rpm, deb, etc)
         required: false
-      - name: "package_type"
-        in: "query"
         type: string
+      - name: version
+        in: query
+        description: package version to select for specifically
         required: false
+        type: string
       - name: page
         in: query
-        type: string
-        description: ""
+        description: The page of results to fetch. Pages start at 1
         required: false
-        default: "1"
+        type: string
       - name: limit
         in: query
         type: integer
@@ -1445,30 +1457,34 @@ paths:
         required: false
       responses:
         200:
-          description: "Matched image listing"
+          description: Image listing
           schema:
-            type: object
+            $ref: '#/definitions/PaginatedImageList'
+        400:
+          description: Bad filter parameters
+          schema:
+            $ref: '#/definitions/ApiErrorResponse'
   /query/vulnerabilities:
     get:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_vulnerabilities
-      summary: "Return vulnerability information for specified vulnerability ID"
-      description: "Return vulnerability information for specified vulnerability ID" 
-      produces:
-      - "application/json"
+      summary: Listing vulnerabilities with filters
+      description: List (w/filters) vulnerability records known by the system
       parameters:
-      - name: "id"
-        in: "query"
-        type: string
+      - name: id
+        in: query
         required: true
-      - name: "affected_package"
-        in: "query"
         type: string
+      - name: affected_package
+        in: query
+        description: The name of the affected package, application, etc (depends on the type of vulnerability)
         required: false
-      - name: "affected_package_version"
-        in: "query"
         type: string
+      - name: affected_package_version
+        in: query
+        description: The exact version of the affecting package to also filter on. Requires that the package name is also specified for this to be processed.
         required: false
+        type: string
       - name: page
         in: query
         type: string
@@ -1482,10 +1498,157 @@ paths:
         required: false
       responses:
         200:
-          description: "Matched vulnerability record"
+          description: Vulnerability listing paginated
           schema:
-            type: object
+            $ref: '#/definitions/PaginatedVulnerabilityList'
+        400:
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/ApiErrorResponse'
 definitions:
+  PaginationProperties:
+    type: object
+    properties:
+      page:
+        type: string
+        description: The page number returned (should match the requested page query string param)
+      next_page:
+        type: string
+        description: True if additional pages exist (page + 1) or False if this is the last page
+      returned_count:
+        type: integer
+        description: The number of items sent in this response
+    description: Properties for common pagination handling to be included in any wrapping object that needs pagination elements
+  PackageReference:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Package name
+      version:
+        type: string
+        description: A version for the package. If null, then references all versions
+        x-nullable: true
+      type:
+        type: string
+        description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
+    description: A record of a software item which is vulnerable or carries a fix for a vulnerability
+  StandaloneVulnerability:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Vulnerability identifier. May be CVE-X, RHSA-X, etc. Not necessarily unique across namespaces
+      namespace:
+        type: string
+        description: The namespace for the vulnerability record to avoid conflicts for the same id in different distros or sources (e.g. deb vs ubuntu for same CVE)
+      affected_packages:
+        type: array
+        description: The array of packages (typically packages) that are vulnerable-to or provide fixes-for this vulnerability
+        items:
+          $ref: '#/definitions/PackageReference'
+      severity:
+        type: string
+        description: Severity label specific to the namepsace
+        enum:
+        - unknown
+        - negligible
+        - low
+        - medium
+        - high
+        - critical
+      link:
+        type: string
+        description: URL for the upstream CVE record in the reporting source (e.g. ubuntu security tracker)
+    description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
+  ImageReference:
+    type: object
+    properties:
+      digest:
+        type: string
+        description: The image digest
+      id:
+        type: string
+        description: The image id if available
+      analyzed_at:
+        type: string
+        description: Timestamp, in rfc3339 format, indicating when the image state became 'analyzed' in Anchore Engine.
+      tag_history:
+        type: array
+        items:
+          $ref: '#/definitions/TagEntry'
+    description: A summary of an image identity, including digest, id (if available), and any tags known to have ever been mapped to the digest
+  TagEntry:
+    type: object
+    properties:
+      pullstring:
+        type: string
+        description: The pullable string for the tag. E.g. "docker.io/library/node:latest"
+      registry:
+        type: string
+        description: The registry hostname:port section of the pull string
+      repository:
+        type: string
+        description: The repository section of the pull string
+      tag:
+        type: string
+        description: The tag-only section of the pull string
+      detected_at:
+        type: string
+        format: date-time
+        description: The timestamp at which the Anchore Engine detected this tag was mapped to the image digest. Does not necessarily indicate when the tag was actually pushed to the registry.
+    description: A docker-pullable tag value as well as deconstructed components
+  VulnerableImage:
+    type: object
+    properties:
+      image:
+        $ref: '#/definitions/ImageReference'
+      affected_packages:
+        type: array
+        items:
+          $ref: '#/definitions/PackageReference'
+    description: A record of an image vulnerable to some known vulnerability. Includes vulnerable package information
+  ImageWithPackages:
+    type: object
+    properties:
+      image:
+        $ref: '#/definitions/ImageReference'
+      packages:
+        type: array
+        items:
+          $ref: '#/definitions/PackageReference'
+    description: An image record that contains packages
+  PaginatedVulnerableImageList:
+    allOf:
+    - $ref: '#/definitions/PaginationProperties'
+    - type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/definitions/VulnerableImage'
+    description: Pagination wrapped list of images with vulnerabilties that match some filter
+  PaginatedVulnerabilityList:
+    allOf:
+    - $ref: '#/definitions/PaginationProperties'
+    - type: object
+      properties:
+        vulnerabilities:
+          type: array
+          description: The listing of matching vulnerabilities for the query subject to pagination
+          items:
+            $ref: '#/definitions/StandaloneVulnerability'
+    description: A paginated listing of vulnerability records sorted by ID in descending order
+  PaginatedImageList:
+    allOf:
+    - $ref: '#/definitions/PaginationProperties'
+    - type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/definitions/ImageWithPackages'
+    description: Pagination wrapped list of images that match some filter
   ImageAnalysisRequest:
     type: object
     description: A request to add an image to be watched and analyzed by the engine. Optionally include the dockerfile content. Either digest or tag must be present
