@@ -807,10 +807,8 @@ def do_request_prep(request, default_params={}):
 
             ret['params'][param] = val
 
-        query_signature = {
-            'path': request.path,
-        }
-        query_signature.update(ret)
+        query_signature = copy.deepcopy(ret)
+        query_signature['path'] = request.path
         query_signature.get('params', {}).pop('page', None)
         query_signature.get('params', {}).pop('limit', None)
         ret['pagination_query_digest'] = hashlib.sha256(json.dumps(query_signature, sort_keys=True)).hexdigest()
