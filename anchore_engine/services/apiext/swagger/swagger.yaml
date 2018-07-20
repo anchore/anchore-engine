@@ -26,10 +26,14 @@ tags:
   description: Evaluate images against policies
 - name: Registries
   description: Registry Management
+- name: Repository Credentials
+  description: Repository Credential Management
 - name: System
   description: System Management
 - name: Services
   description: Service Management
+- name: Summaries
+  description: Resource Summaries
 - name: Events
   description: View and delete events
 basePath: "/"
@@ -306,7 +310,7 @@ paths:
   /summaries/imagetags:
     get:
       tags:
-      - ImageTags
+      - Summaries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_imagetags
       summary: List all visible image digests and tags
@@ -854,7 +858,6 @@ paths:
     get:
       tags:
       - Images
-      - Image Metadata
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_image_metadata
       summary: List image metadata types
@@ -878,7 +881,6 @@ paths:
     get:
       tags:
       - Images
-      - Image Metadata
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_metadata_by_type
       summary: Get the metadata of an image by type
@@ -903,7 +905,7 @@ paths:
   /repositories:
     post:
       tags:
-      - "catalog"
+      - Repository Credentials
       summary: "Add repository to watch"
       description: ""
       operationId: add_repository
@@ -1074,7 +1076,7 @@ paths:
   /system/feeds:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "list feeds operations and information"
       description: ""
       operationId: "get_system_feeds"
@@ -1094,7 +1096,7 @@ paths:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
     post:
       tags:
-      - "catalog"
+      - System
       summary: "trigger feeds operations"
       description: ""
       operationId: "post_system_feeds"
@@ -1122,7 +1124,7 @@ paths:
   /system/prune:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "Get list of resources that can be pruned"
       description: ""
       operationId: "get_system_prune_resourcetypes"
@@ -1144,7 +1146,7 @@ paths:
   /system/prune/{resourcetype}:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "Get list of candidates for pruning"
       description: ""
       operationId: "get_system_prune_candidates"
@@ -1178,7 +1180,7 @@ paths:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
     post:
       tags:
-      - "catalog"
+      - System
       summary: "Perform pruning on input resource name"
       description: ""
       operationId: "post_system_prune_candidates"
@@ -1302,7 +1304,6 @@ paths:
       operationId: describe_policy
       tags:
       - System
-      - Policy
       produces:
       - application/json
       responses:
@@ -1701,7 +1702,7 @@ definitions:
       fulltag:
         description: "Full docker-pullalbe tag string referencing the image"
         type: string
-      fullDigest:
+      fulldigest:
         description: "Full docker-pullable digest string including the registry url and repository necessary get the image"
         type: string
       userId:
@@ -1713,7 +1714,8 @@ definitions:
       repo:
         type: string
       dockerfile:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
@@ -1888,11 +1890,13 @@ definitions:
             gid:
               type: integer
             linkdest:
-              type: ['string', 'null']
+              type: string
+              x-nullable: True
             mode:
               type: string
             sha256:
-              type: ['string', 'null']
+              type: string
+              x-nullable: True
             size:
               type: integer
             type:
@@ -1975,7 +1979,8 @@ definitions:
     type: object
     properties:
       subscription_value:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: The new subscription value, e.g. the new tag to be subscribed to
       active:
         type: boolean
@@ -1987,7 +1992,8 @@ definitions:
       subscription_key:
         type: string
       subscription_value:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
       subscription_type:
         type: string
         enum:
@@ -2013,7 +2019,8 @@ definitions:
         - repo_update
         - analysis_update
       subscription_value:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: The value of the subscription target
       userId:
         type: string
@@ -2163,7 +2170,8 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       triggers:
         type: array
@@ -2188,7 +2196,8 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       parameters:
         type: array
@@ -2204,7 +2213,8 @@ definitions:
       description:
         type: string
       example:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: An example value for the parameter (encoded as a string if the parameter is an object or list type)
       state:
         type: string
@@ -2214,7 +2224,8 @@ definitions:
         - deprecated
         - eol
       superceded_by:
-        type: ['string', 'null']
+        type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       required:
         description: Is this a required parameter or optional
