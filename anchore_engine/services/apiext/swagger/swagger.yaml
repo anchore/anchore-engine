@@ -36,6 +36,8 @@ tags:
   description: Resource Summaries
 - name: Events
   description: View and delete events
+- name: Queries
+  description: Resource Queries
 basePath: "/"
 schemes:
 - "http"
@@ -555,6 +557,7 @@ paths:
       tags:
       - Images
       - Vulnerabilities
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_vulnerability_types
       summary: Get vulnerability types
@@ -583,6 +586,7 @@ paths:
       tags:
       - Images
       - Vulnerabilities
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_vulnerabilities_by_type
       summary: Get vulnerabilities by type
@@ -617,6 +621,7 @@ paths:
       tags:
       - Images
       - Vulnerabilities
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_vulnerability_types_by_imageId
       summary: Get vulnerability types
@@ -645,6 +650,7 @@ paths:
       tags:
       - Images
       - Vulnerabilities
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_vulnerabilities_by_type_imageId
       summary: Get vulnerabilities by type
@@ -671,6 +677,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_image_content
       summary: List image content types
@@ -695,6 +702,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_image_content_by_imageid
       summary: List image content types
@@ -719,6 +727,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type
       summary: Get the content of an image by type
@@ -745,6 +754,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type_files
       summary: Get the content of an image by type files
@@ -767,6 +777,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type_javapackage
       summary: Get the content of an image by type java
@@ -789,6 +800,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type_imageId
       summary: Get the content of an image by type
@@ -815,6 +827,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type_imageId_files
       summary: Get the content of an image by type files
@@ -837,6 +850,7 @@ paths:
       tags:
       - Images
       - Image Content
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_content_by_type_imageId_javapackage
       summary: Get the content of an image by type java
@@ -858,6 +872,7 @@ paths:
     get:
       tags:
       - Images
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_image_metadata
       summary: List image metadata types
@@ -881,6 +896,7 @@ paths:
     get:
       tags:
       - Images
+      - Queries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_metadata_by_type
       summary: Get the metadata of an image by type
@@ -1447,6 +1463,9 @@ paths:
           description: Delete success
   /query/images/by_vulnerability:
     get:
+      tags:
+      - Vulnerabilities
+      - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_vulnerability
       summary: List images vulnerable to the specific vulnerability Id.
@@ -1506,6 +1525,8 @@ paths:
             $ref: '#/definitions/ApiErrorResponse'
   /query/images/by_package:
     get:
+      tags:
+      - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_package
       summary: List images filtered based on content or metadata
@@ -1547,6 +1568,9 @@ paths:
             $ref: '#/definitions/ApiErrorResponse'
   /query/vulnerabilities:
     get:
+      tags:
+      - Vulnerabilities
+      - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_vulnerabilities
       summary: Listing vulnerabilities with filters
