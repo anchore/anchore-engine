@@ -104,6 +104,8 @@ def add_subscription(subscription):
 
     try:
         subscriptiondata = json.loads(bodycontent)
+        if 'active' not in subscriptiondata:
+            subscriptiondata['active'] = False
         subscription_records = catalog.add_subscription(user_auth, subscriptiondata)
         for subscription_record in subscription_records:
             return_object.append(make_response_subscription(user_auth, subscription_record, params))

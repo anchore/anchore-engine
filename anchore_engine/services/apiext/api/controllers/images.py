@@ -754,6 +754,14 @@ def get_image_content_by_type(imageDigest, ctype):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
+def get_image_content_by_type_files(imageDigest):
+    return(get_image_content_by_type(imageDigest, 'files'))
+
+@flask_metrics.do_not_track()
+def get_image_content_by_type_javapackage(imageDigest):
+    return(get_image_content_by_type(imageDigest, 'java'))
+
+@flask_metrics.do_not_track()
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
@@ -769,6 +777,15 @@ def get_image_content_by_type_imageId(imageId, ctype):
         return_object = str(err)
 
     return return_object, httpcode
+
+@flask_metrics.do_not_track()
+def get_image_content_by_type_imageId_files(imageId):
+    return(get_image_content_by_type_imageId(imageId, 'files'))
+
+@flask_metrics.do_not_track()
+def get_image_content_by_type_imageId_javapackage(imageId):
+    return(get_image_content_by_type_imageId(imageId, 'java'))
+
 
 @flask_metrics.do_not_track()
 def get_image_vulnerability_types(imageDigest):

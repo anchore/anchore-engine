@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.7"
+  version: "0.1.8"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -26,10 +26,14 @@ tags:
   description: Evaluate images against policies
 - name: Registries
   description: Registry Management
+- name: Repository Credentials
+  description: Repository Credential Management
 - name: System
   description: System Management
 - name: Services
   description: Service Management
+- name: Summaries
+  description: Resource Summaries
 - name: Events
   description: View and delete events
 basePath: "/"
@@ -220,7 +224,7 @@ paths:
         200:
           description: Subscription add success
           schema:
-            $ref: "#/definitions/Subscription"
+            $ref: "#/definitions/SubscriptionList"
   /subscriptions/{subscriptionId}:
     get:
       tags:
@@ -262,7 +266,7 @@ paths:
         200:
           description: Subscription add success
           schema:
-            $ref: "#/definitions/Subscription"
+            $ref: "#/definitions/SubscriptionList"
     delete:
       tags:
       - Subscriptions
@@ -298,9 +302,7 @@ paths:
         200:
           description: Import task accepted
           schema:
-            type: array
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -308,7 +310,7 @@ paths:
   /summaries/imagetags:
     get:
       tags:
-      - ImageTags
+      - Summaries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_imagetags
       summary: List all visible image digests and tags
@@ -317,10 +319,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: array
-            description: "List of AnchoreImageTagSummary objects"
-            items:
-              $ref: "#/definitions/AnchoreImageTagSummary"
+            $ref: "#/definitions/AnchoreImageTagSummaryList"
         500:
           description: Internal Error
           schema:
@@ -353,10 +352,7 @@ paths:
         200:
           description: Successfully added image to analysis queue
           schema:
-            type: array
-            description: "List of AnchoreImage objects, should be of length 1"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal Error
           schema:
@@ -389,10 +385,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: array
-            description: "List of AnchoreImage objects"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal Error
           schema:
@@ -413,10 +406,7 @@ paths:
         200:
           description: Image lookup success
           schema:
-            type: array
-            description: "List of length 1 of AnchoreImage"
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -455,9 +445,7 @@ paths:
         200:
           description: Image lookup success
           schema:
-            type: array
-            items:
-              $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal error
           schema:
@@ -518,7 +506,7 @@ paths:
         200:
           description: Policy evaluation success
           schema:
-            $ref: "#/definitions/PolicyEvaluation"
+            $ref: "#/definitions/PolicyEvaluationList"
         500:
           description: Internal Error
           schema:
@@ -557,7 +545,7 @@ paths:
         200:
           description: Policy evaluation success
           schema:
-            $ref: "#/definitions/PolicyEvaluation"
+            $ref: "#/definitions/PolicyEvaluationList"
         500:
           description: Internal Error
           schema:
@@ -582,6 +570,10 @@ paths:
             type: array
             items:
               type: string
+              enum:
+              - all
+              - os
+              - non-os
         500:
           description: Internal Error
           schema:
@@ -615,7 +607,7 @@ paths:
         200:
           description: Vulnerability listing for the image
           schema:
-            $ref: "#/definitions/VulnerabilityList"
+            $ref: "#/definitions/VulnerabilityResponse"
         500:
           description: Internal Error
           schema:
@@ -640,6 +632,10 @@ paths:
             type: array
             items:
               type: string
+              enum:
+              - all
+              - os
+              - non-os
         500:
           description: Internal Error
           schema:
@@ -665,7 +661,7 @@ paths:
         200:
           description: Vulnerability listing for the image
           schema:
-            $ref: "#/definitions/VulnerabilityList"
+            $ref: "#/definitions/VulnerabilityResponse"
         500:
           description: Internal Error
           schema:
@@ -739,7 +735,51 @@ paths:
         200:
           description: Content of specified type from the image
           schema:
-            $ref: "#/definitions/ContentResponse"
+            $ref: "#/definitions/ContentPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/files:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_files
+      summary: Get the content of an image by type files
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentFilesResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/java:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_javapackage
+      summary: Get the content of an image by type java
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentJAVAPackageResponse"
         500:
           description: Internal error
           schema:
@@ -765,7 +805,51 @@ paths:
         200:
           description: Content of specified type from the image
           schema:
-            $ref: "#/definitions/ContentResponse"
+            $ref: "#/definitions/ContentPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/by_id/{imageId}/content/files:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_imageId_files
+      summary: Get the content of an image by type files
+      parameters:
+      - name: imageId
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentFilesResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/by_id/{imageId}/content/java:
+    get:
+      tags:
+      - Images
+      - Image Content
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_imageId_javapackage
+      summary: Get the content of an image by type java
+      parameters:
+      - name: imageId
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentJAVAPackageResponse"
         500:
           description: Internal error
           schema:
@@ -774,7 +858,6 @@ paths:
     get:
       tags:
       - Images
-      - Image Metadata
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: list_image_metadata
       summary: List image metadata types
@@ -798,7 +881,6 @@ paths:
     get:
       tags:
       - Images
-      - Image Metadata
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: get_image_metadata_by_type
       summary: Get the metadata of an image by type
@@ -823,7 +905,7 @@ paths:
   /repositories:
     post:
       tags:
-      - "catalog"
+      - Repository Credentials
       summary: "Add repository to watch"
       description: ""
       operationId: add_repository
@@ -847,7 +929,7 @@ paths:
         200:
           description: Repository and discovered tags added
           schema:
-            $ref: "#/definitions/RepositoryTagList"
+            $ref: "#/definitions/SubscriptionList"
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
   /registries:
     get:
@@ -879,12 +961,12 @@ paths:
         in: body
         required: true
         schema:
-          $ref: "#/definitions/RegistryConfiguration"
+          $ref: "#/definitions/RegistryConfigurationRequest"
       responses:
         200:
           description: Saved registry configuration
           schema:
-            $ref: "#/definitions/RegistryConfiguration"
+            $ref: "#/definitions/RegistryConfigurationList"
         500:
           description: Internal Error
           schema:
@@ -928,12 +1010,12 @@ paths:
         in: body
         required: true
         schema:
-          $ref: "#/definitions/RegistryConfiguration"
+          $ref: "#/definitions/RegistryConfigurationRequest"
       responses:
         200:
           description: Updated registry configuration
           schema:
-            $ref: "#/definitions/RegistryConfiguration"
+            $ref: "#/definitions/RegistryConfigurationList"
         500:
           description: Internal Error
           schema:
@@ -994,7 +1076,7 @@ paths:
   /system/feeds:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "list feeds operations and information"
       description: ""
       operationId: "get_system_feeds"
@@ -1014,7 +1096,7 @@ paths:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
     post:
       tags:
-      - "catalog"
+      - System
       summary: "trigger feeds operations"
       description: ""
       operationId: "post_system_feeds"
@@ -1042,7 +1124,7 @@ paths:
   /system/prune:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "Get list of resources that can be pruned"
       description: ""
       operationId: "get_system_prune_resourcetypes"
@@ -1064,7 +1146,7 @@ paths:
   /system/prune/{resourcetype}:
     get:
       tags:
-      - "catalog"
+      - System
       summary: "Get list of candidates for pruning"
       description: ""
       operationId: "get_system_prune_candidates"
@@ -1098,7 +1180,7 @@ paths:
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
     post:
       tags:
-      - "catalog"
+      - System
       summary: "Perform pruning on input resource name"
       description: ""
       operationId: "post_system_prune_candidates"
@@ -1222,7 +1304,6 @@ paths:
       operationId: describe_policy
       tags:
       - System
-      - Policy
       produces:
       - application/json
       responses:
@@ -1652,6 +1733,8 @@ definitions:
   ImageAnalysisRequest:
     type: object
     description: A request to add an image to be watched and analyzed by the engine. Optionally include the dockerfile content. Either digest or tag must be present
+    required:
+    - tag
     properties:
       dockerfile:
         type: string
@@ -1903,7 +1986,7 @@ definitions:
       fulltag:
         description: "Full docker-pullalbe tag string referencing the image"
         type: string
-      fullDigest:
+      fulldigest:
         description: "Full docker-pullable digest string including the registry url and repository necessary get the image"
         type: string
       userId:
@@ -1916,9 +1999,15 @@ definitions:
         type: string
       dockerfile:
         type: string
+        x-nullable: True
       imageDigest:
         type: string
         description: The parent Anchore Image record to which this detail maps
+  AnchoreImageTagSummaryList:
+    description: a list of AnchoreImageTagSummary objects
+    type: array
+    items:
+      $ref: "#/definitions/AnchoreImageTagSummary"
   AnchoreImageTagSummary:
     description: A unique image in the engine. 
     type: object
@@ -1932,6 +2021,10 @@ definitions:
       fulltag:
         type: string
       created_at:
+        type: integer
+      analyzed_at:
+        type: integer
+      tag_detected_at:
         type: integer
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
@@ -1978,24 +2071,26 @@ definitions:
     type: object
     description: System status response
     properties:
-      busy:
-        type: boolean
-      up:
-        type: boolean
-      message:
-        type: string
-      detail:
-        type: object
+      service_states:
+          $ref: "#/definitions/ServiceList"
   StatusResponse:
     type: object
     description: System status response
     properties:
+      available:
+        type: boolean
       busy:
         type: boolean
       up:
         type: boolean
       message:
         type: string
+      version:
+        type: string
+      db_version:
+        type: string
+      detail:
+        type: object
   ImageAnalysisReport:
     description: "Analysis report json to be imported"
     type: object
@@ -2017,10 +2112,10 @@ definitions:
     description: "A service status record"
     type: object
     properties:
-      host_id:
+      hostid:
         type: string
         description: The unique id of the host on which the service is executing
-      service_name:
+      servicename:
         type: string
         description: Registered service name
       base_url:
@@ -2029,6 +2124,10 @@ definitions:
       status_message:
         type: string
         description: A state indicating the condition of the service. Normal operation is 'registered'
+      service_detail:
+        $ref: "#/definitions/StatusResponse"
+      status:
+        type: boolean
       version:
         type: string
         description: The version of the service as reported by the service implementation on registration
@@ -2057,6 +2156,91 @@ definitions:
         type: array
         items:
           type: object
+  ContentFilesResponse:
+    type: object
+    description: "File content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            filename:
+              type: string
+            gid:
+              type: integer
+            linkdest:
+              type: string
+              x-nullable: True
+            mode:
+              type: string
+            sha256:
+              type: string
+              x-nullable: True
+            size:
+              type: integer
+            type:
+              type: string
+            uid:
+              type: integer
+  ContentPackageResponse:
+    type: object
+    description: "Package content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            package:
+              type: string
+            version:
+              type: string
+            size:
+              type: string
+            type:
+              type: string
+            origin:
+              type: string
+            license:
+              type: string
+            location:
+              type: string
+  ContentJAVAPackageResponse:
+    type: object
+    description: "Java package content listings from images"
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            package:
+              type: string
+            implementation-version:
+              type: string
+            specification-version:
+              type: string
+            maven-version:
+              type: string
+            location:
+              type: string
+            type:
+              type: string
+            origin:
+              type: string
   MetadataResponse:
     type: object
     description: "Generic wrapper for metadata listings from images"
@@ -2065,17 +2249,22 @@ definitions:
         type: string
       metadata_type:
         type: string
-      metadata:
-        type: object
+      metadata: {}
   PolicyEvaluation:
     description: Evaluation response object
     type: object
+  PolicyEvaluationList:
+    description: Evaluation response object
+    type: array
+    items:
+      $ref: "#/definitions/PolicyEvaluation"
   SubscriptionUpdate:
     description: A modification to a subscription entry to change its status or value
     type: object
     properties:
       subscription_value:
         type: string
+        x-nullable: True
         description: The new subscription value, e.g. the new tag to be subscribed to
       active:
         type: boolean
@@ -2088,6 +2277,7 @@ definitions:
         type: string
       subscription_value:
         type: string
+        x-nullable: True
       subscription_type:
         type: string
         enum:
@@ -2095,6 +2285,7 @@ definitions:
         - tag_update
         - vuln_update
         - repo_update
+        - analysis_update
   Subscription:
     description: Subscription entry
     type: object
@@ -2110,8 +2301,10 @@ definitions:
         - tag_update
         - vuln_update
         - repo_update
+        - analysis_update
       subscription_value:
         type: string
+        x-nullable: True
         description: The value of the subscription target
       userId:
         type: string
@@ -2137,6 +2330,25 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/RegistryConfiguration"
+  RegistryConfigurationRequest:
+    description: A registry record describing the endpoint and credentials for a registry
+    type: object
+    properties:
+      registry_user:
+        type: string
+        description: Username portion of credential to use for this registry
+      registry_pass:
+        type: string
+        description: Password portion of credential to use for this registry
+      registry_type:
+        type: string
+        description: Type of registry
+      registry:
+        type: string
+        description: hostname:port string for accessing the registry, as would be used in a docker pull operation
+      registry_verify:
+        type: boolean
+        description: Use TLS/SSL verification for the registry URL
   RegistryConfiguration:
     description: A registry entry describing the endpoint and credentials for a registry to pull images from
     type: object
@@ -2150,9 +2362,6 @@ definitions:
       registry_user:
         type: string
         description: Username portion of credential to use for this registry
-      registry_pass:
-        type: string
-        description: Password portion of credential to use for this registry
       registry_type:
         type: string
         description: Type of registry
@@ -2209,6 +2418,16 @@ definitions:
     description: List of Vulnerability objects
     items:
       $ref: "#/definitions/Vulnerability"
+  VulnerabilityResponse:
+    description: envelope containing list of vulnerabilities
+    type: object
+    properties:
+      imageDigest:
+        type: string
+      vulnerability_type:
+        type: string
+      vulnerabilities:
+        $ref: "#/definitions/VulnerabilityList"
   ImageFilter:
     type: object
     description: Filter for an image list by id, tag, or digest, but not both
@@ -2236,6 +2455,7 @@ definitions:
         - eol
       superceded_by:
         type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       triggers:
         type: array
@@ -2261,6 +2481,7 @@ definitions:
         - eol
       superceded_by:
         type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       parameters:
         type: array
@@ -2277,6 +2498,7 @@ definitions:
         type: string
       example:
         type: string
+        x-nullable: True
         description: An example value for the parameter (encoded as a string if the parameter is an object or list type)
       state:
         type: string
@@ -2287,6 +2509,7 @@ definitions:
         - eol
       superceded_by:
         type: string
+        x-nullable: True
         description: The name of another trigger that supercedes this on functionally if this is deprecated
       required:
         description: Is this a required parameter or optional
