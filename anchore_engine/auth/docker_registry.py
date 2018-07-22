@@ -81,6 +81,7 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
     manifest = {}
     digest = ""
 
+    timeout = 30.0
     try:
         if not user or not pw:
             authy = None
@@ -97,7 +98,7 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
                 "Accept": "application/vnd.docker.distribution.manifest.v2+json"
             }
 
-            r = requests.get(url, headers=headers,json=True, auth=authy, verify=verify)
+            r = requests.get(url, headers=headers,json=True, auth=authy, verify=verify, timeout=timeout)
             if r.status_code == 200:
                 try:
                     manifest = r.json()
@@ -133,17 +134,18 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
     httpcode = 500
     message = "unknown failure"
 
+    timeout = 30.0
     try:
         # base_url is of the form 'https://index.docker.io' or 'https://mydocker.com:5000' <-- note: https only, no trailing slash, etc
         index_url = "{}/v2".format(base_url)
         try:
-            r = requests.get(index_url, verify=verify, allow_redirects=True)
+            r = requests.get(index_url, verify=verify, allow_redirects=True, timeout=timeout)
         except Exception as err:
             httpcode = 500
             raise err
         try:
             if r.status_code in [404]:
-                r = requests.get(index_url+'/', verify=verify, allow_redirects=True)
+                r = requests.get(index_url+'/', verify=verify, allow_redirects=True, timeout=timeout)
             if r.status_code not in [200, 401]:
                 httpcode = 400
                 raise Exception("cannot access registry using registry version 2 {}".format(index_url))
@@ -174,14 +176,14 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
                 raise err
 
             try:
-                r = requests.get(auth_url, auth=(u, p), verify=verify)
+                r = requests.get(auth_url, auth=(u, p), verify=verify, timeout=timeout)
             except Exception as err:
                 httpcode = 500
                 raise err
 
             try:
                 if r.status_code in [404]:
-                    r = requests.get(auth_url+'/', auth=(u, p), verify=verify)
+                    r = requests.get(auth_url+'/', auth=(u, p), verify=verify, timeout=timeout)
                 if r.status_code not in [200]:
                     httpcode = 401
                     raise Exception("cannot login to registry user={} registry={} - invalid username/password".format(u, base_url))
