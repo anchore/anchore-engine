@@ -35,6 +35,7 @@ Werkzeug==0.12.2
 passlib==1.7.1
 prometheus_client==0.1.1
 prometheus-flask-exporter==0.1.2
+psutil==5.4.6
 python-swiftclient==3.5.0
 python-keystoneclient==3.15.0
 pytz==2013.6
