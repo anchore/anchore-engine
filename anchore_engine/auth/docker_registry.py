@@ -175,20 +175,29 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
             except Exception as err:
                 raise err
 
-            try:
-                r = requests.get(auth_url, auth=(u, p), verify=verify, timeout=timeout)
-            except Exception as err:
-                httpcode = 500
-                raise err
+            auth_tries = [auth_url, index_url]
+            logged_in = False
+            for auth_url in auth_tries:
+                try:
+                    r = requests.get(auth_url, auth=(u, p), verify=verify)
+                except Exception as err:
+                    httpcode = 500
+                    raise err
 
-            try:
-                if r.status_code in [404]:
-                    r = requests.get(auth_url+'/', auth=(u, p), verify=verify, timeout=timeout)
-                if r.status_code not in [200]:
-                    httpcode = 401
-                    raise Exception("cannot login to registry user={} registry={} - invalid username/password".format(u, base_url))
-            except Exception as err:
-                raise err
+                try:
+                    if r.status_code in [404]:
+                        r = requests.get(auth_url+'/', auth=(u, p), verify=verify)
+                    if r.status_code not in [200]:
+                        httpcode = 401
+                    else:
+                        logged_in = True
+                        break
+                except Exception as err:
+                    raise err
+
+            if not logged_in:
+                httpcode = 401
+                raise Exception("cannot login to registry user={} registry={} - invalid username/password".format(u, base_url))
 
             httpcode = 200
             message = "login successful"
