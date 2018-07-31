@@ -4,13 +4,13 @@ import sys
 import json
 import time
 import click
+import psutil
 import importlib
 import traceback
 import threading
 import subprocess
 import watchdog
 import anchore_engine.configuration.localconfig
-#import anchore_engine.db.entities.upgrade
 
 from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
@@ -94,24 +94,42 @@ class ServiceThread():
 def terminate_service(service, flush_pidfile=False):
     pidfile = "/var/run/" + service + ".pid"
     try:
+        logger.info("Looking for pre-existing service ({}) pid from pidfile ({})".format(service, pidfile))
         thepid = None
         if os.path.exists(pidfile):
             with open(pidfile, 'r') as FH:
                 thepid = int(FH.read())
 
         if thepid:
-            logger.info("Found old pid for service: {}. Terminating it".format(service))
+            # get some additional information about the pid to determine whether or not to run the kill operations
+            thepid_is_theservice = False
             try:
-                os.kill(thepid, 0)
-            except OSError:
-                pass
-            else:
-                logger.info("killing old twistd pid: {}".format(str(thepid)))
-                os.kill(thepid, 9)
+                running_pid = psutil.Process(thepid)
+                cmdline = running_pid.cmdline()
+                if pidfile in cmdline:
+                    thepid_is_theservice = True
+                    logger.info("Found existing service ({}) running with pid ({})".format(service, thepid))
+                else:
+                    logger.info("Found pid running but belongs to unrelated process - skipping terminate")
+            except Exception as err:
+                thepid_is_theservice = False
+                
+            if thepid_is_theservice:
+                try:
+                    logger.info("Terminating existing service ({}) with pid ({}) using signal 0".format(service, thepid))
+                    os.kill(thepid, 0)
+                except OSError:
+                    pass
+                else:
+                    logger.info("Terminating existing service ({}) with pid ({}) using signal 9".format(service, thepid))
+                    os.kill(thepid, 9)
+
+
             if flush_pidfile:
+                logger.info("Removing stale pidfile ({}) for service ({})".format(pidfile, service))
                 os.remove(pidfile)
     except Exception as err:
-        logger.info("could not shut down running twistd - exception: {}".format(str(err)))
+        logger.info("Could not detect/shut down running service ({}) - exception: {}".format(service, str(err)))
 
 
 def startup_service(service, configdir):
