@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.4 (2018-08-XX)
+
++ New ability to disable feed syncs and skip feed client bootstrap checks in the policy engine (see latest scripts/docker-compose/config.yaml example for 'sync_enabled: <True|False>')
++ Add capability to force re-analyze an image if provided a digest and tag that matches an existing image in anchore-engine
++ Add pom.properties metadata to Java analyzer (contributed by Matt Sicker <boards@gmail.com>)
++ Improved registry verify check when adding new registry credentials, including a validation timeout for firewalled/blocked registry endpoints
++ Improved anchore API swagger document with a refresh to more accurately specify request and response objects and route category/tags, for better swagger codegen client support
++ Fix update to service terminate handling in anchore_manager to avoid possible condition where service could terminate a different anchore service than intended on restart. Fixes #74
++ Minor bug fixes and improvements
+
 ## 0.2.3 (2018-06-29)
 
 + New feature: add 'eventlog' API and notification subsystem, that allows users to query an engine (and/or be notified via a webhook notification) for important engine events, including:
