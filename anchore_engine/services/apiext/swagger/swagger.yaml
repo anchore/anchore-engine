@@ -119,9 +119,9 @@ paths:
         description: Include policy bundle detail in the form of the full bundle content for each entry
       responses:
         200:
-          description: A policy bundle
+          description: A list with a single fetched policy bundle record
           schema:
-            $ref: "#/definitions/PolicyBundleRecord"
+            $ref: "#/definitions/PolicyBundleList"
         500:
           description: Internal Error
           schema:
@@ -150,9 +150,9 @@ paths:
         description: Mark policy as active
       responses:
         200:
-          description: A policy bundle
+          description: A list with a single updated policy bundle record
           schema:
-            $ref: "#/definitions/PolicyBundleRecord"
+            $ref: "#/definitions/PolicyBundleList"
         500:
           description: Internal Error
           schema:
