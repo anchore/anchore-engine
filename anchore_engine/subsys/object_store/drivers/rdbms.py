@@ -30,7 +30,7 @@ class LegacyDbDriver(ObjectStorageDriver):
 
     def _parse_uri(self, uri):
         parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
-        userId = parsed.hostname
+        userId = parsed.netloc
         empty, bucket, key = parsed.path.split('/', 2)
         return userId, bucket, key
 
@@ -104,7 +104,7 @@ class DbDriver(ObjectStorageDriver):
 
     def _parse_uri(self, uri):
         parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
-        userId = parsed.hostname
+        userId = parsed.netloc
         bucket, key = parsed.path[1:].split('/', 1)
 
         return userId, bucket, key
