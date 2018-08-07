@@ -38,6 +38,96 @@ def lookup_registry_image(userId, tag=None, digest=None):
 
     return(ret)
 
+def query_vulnerabilities(userId, id=None, affected_package=None, affected_package_version=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+
+    params = {
+        'id': id,
+    }
+    if affected_package:
+        params['affected_package'] = affected_package
+        if affected_package_version:
+            params['affected_package_version'] = affected_package_version
+
+    url = base_url + "/query/vulnerabilities?{}".format(urllib.urlencode(params))
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def query_images_by_vulnerability(userId, vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+
+    params = {
+        'vendor_only': vendor_only,
+    }
+    if vulnerability_id:
+        params['vulnerability_id'] = vulnerability_id
+    if severity:
+        params['severity'] = severity
+    if namespace:
+        params['namespace'] = namespace
+    if affected_package:
+        params['affected_package'] = affected_package
+        
+
+    url = base_url + "/query/images/by_vulnerability?{}".format(urllib.urlencode(params))
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
+def query_images_by_package(userId, name=None, version=None, package_type=None, page=1, limit=None):
+    global localconfig, headers
+    if localconfig == None:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    ret = {}
+
+    if type(userId) == tuple:
+        userId, pw = userId
+    else:
+        pw = ""
+    auth = (userId, pw)
+
+    base_url = anchore_engine.clients.common.get_service_endpoint(userId, 'catalog')
+
+    params = {
+        'name': name,
+        'version': version,
+        'package_type': package_type,
+    }
+
+    url = base_url + "/query/images/by_package?{}".format(urllib.urlencode(params))
+
+    ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
+
+    return(ret)
+
 def add_repo(userId, regrepo=None, autosubscribe=False, lookuptag=None):
     global localconfig, headers
 

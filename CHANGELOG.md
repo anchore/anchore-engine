@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.4 (2018-08-XX)
+## 0.2.4 (2018-08-06)
 
 + New ability to disable feed syncs and skip feed client bootstrap checks in the policy engine (see latest scripts/docker-compose/config.yaml example for 'sync_enabled: <True|False>')
 + Add capability to force re-analyze an image if provided a digest and tag that matches an existing image in anchore-engine
