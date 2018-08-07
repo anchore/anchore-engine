@@ -119,7 +119,7 @@ paths:
         default: false
       - name: 'history'
         in: query
-        type: string
+        type: boolean
         description: "get all matching records for given tag"
         required: false
         default: false
