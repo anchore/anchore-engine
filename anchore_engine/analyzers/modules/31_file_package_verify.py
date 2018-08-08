@@ -34,7 +34,8 @@ def apk_get_file_package_metadata(unpackdir, record_template):
             if buf:
                 fmode = raw_csum = uid = gid = sha1sum = fname = therealfile_apk = therealfile_fs = None
                 for line in buf.splitlines():
-                    line = str(line.strip(), 'utf8')
+                    #line = str(line.strip(), 'utf8')
+                    line = line.strip()
                     patt = re.match("(.):(.*)", line)
                     if patt:
                         atype = patt.group(1)
@@ -110,7 +111,8 @@ def deb_get_file_package_metadata(unpackdir, record_template):
 
             if buf:
                 for line in buf.splitlines():
-                    line = str(line.strip(), 'utf8')
+                    #line = str(line.strip(), 'utf8')
+                    line = line.strip()
                     if re.match("^Conffiles:.*", line):
                         fmode = True
                     elif re.match("^.*:.*", line):
@@ -124,6 +126,8 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                                 print("WARN: bad line in status for conffile line - exception: " + str(err))
 
     except Exception as err:
+        import traceback
+        traceback.print_exc()
         raise Exception("WARN: could not parse dpkg status file, looking for conffiles checksums - exception: " + str(err))
 
     metafiles = {}
@@ -166,7 +170,8 @@ def deb_get_file_package_metadata(unpackdir, record_template):
 
             if dinfo:
                 for line in dinfo.splitlines():
-                    line = str(line.strip(), 'utf8')
+                    #line = str(line.strip(), 'utf8')
+                    line = line.strip()
                     try:
                         (csum, fname) = line.split()
                         fname = '/' + fname
@@ -192,7 +197,8 @@ def deb_get_file_package_metadata(unpackdir, record_template):
 
             if cinfo:
                 for line in cinfo.splitlines():
-                    line = str(line.strip(), 'utf8')
+                    #line = str(line.strip(), 'utf8')
+                    line = line.strip()
                     try:
                         fname = line
                         if fname in conffile_csums:
@@ -206,6 +212,8 @@ def deb_get_file_package_metadata(unpackdir, record_template):
                         print("WARN: problem parsing line from dpkg conffile file - exception: " + str(err))
 
     except Exception as err:
+        import traceback
+        traceback.print_exc()
         raise Exception("WARN: could not find/parse dpkg info metadata files - exception: " + str(err))
 
     return(result)

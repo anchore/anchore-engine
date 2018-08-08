@@ -172,7 +172,7 @@ def query_images_by_package(dbsession, request_inputs):
                     ret_hash[imageId]['packages'].append(pkg_el)
                 pkg_hash[imageId][phash] = True
 
-        matched_images = ret_hash.values()
+        matched_images = list(ret_hash.values())
         return_object = {
             'matched_images': matched_images
         }            
@@ -269,7 +269,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         logger.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
 
         start = time.time()
-        vulnerable_images = ret_hash.values()
+        vulnerable_images = list(ret_hash.values())
         return_object = {
             'vulnerable_images': vulnerable_images
         }
@@ -579,7 +579,8 @@ def image(dbsession, request_inputs, bodycontent={}):
             if 'dockerfile' in jsondata:
                 dockerfile = jsondata['dockerfile']
                 try:
-                    dockerfile.decode('base64')
+                    # this is a check to ensure the input is b64 encoded
+                    base64.decodebytes(dockerfile.encode('utf-8'))
                     dockerfile_mode = "Actual"
                 except Exception as err:
                     raise Exception("input dockerfile data must be base64 encoded - exception on decode: " + str(err))

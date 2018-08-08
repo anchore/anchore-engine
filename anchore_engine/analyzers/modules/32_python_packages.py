@@ -35,7 +35,8 @@ try:
 
     for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'dir':
-            candidate = '/'.join([unpackdir, 'rootfs', f.encode('utf8')])
+            #candidate = '/'.join([unpackdir, 'rootfs', f.encode('utf8')])
+            candidate = '/'.join([unpackdir, 'rootfs', f])
             distributions = pkg_resources.find_distributions(candidate)
             for distribution in distributions:
                 el = {}
@@ -92,6 +93,8 @@ try:
                     resultlist[el['location'] + "/" + el['name']] = json.dumps(el)
 
 except Exception as err:
+    import traceback
+    traceback.print_exc()
     print("WARN: analyzer unable to complete - exception: " + str(err))
 
 if resultlist:

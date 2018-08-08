@@ -3,6 +3,7 @@ import re
 import copy
 import time
 import base64
+import hashlib
 
 # anchore modules
 import anchore_engine.configuration.localconfig
@@ -122,8 +123,7 @@ def update_image_record_with_analysis_data(image_record, image_data):
         image_record['dockerfile_mode'] = dockerfile_mode
         for image_detail in image_record['image_detail']:
             logger.debug("setting image_detail: ")
-            #image_detail['dockerfile'] = dockerfile_content.encode('base64')
-            image_detail['dockerfile'] = base64.b64encode(dockerfile_content)
+            image_detail['dockerfile'] = str(base64.b64encode(dockerfile_content.encode('utf-8')), 'utf-8')
 
     return(True)
 
@@ -413,7 +413,6 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
                 image_info['digest'] = digest
         
     if 'digest' in image_info:
-        #imageDigest = urllib.base64.urlsafe_b64encode(str(image_info['digest']))
         imageDigest = str(image_info['digest'])
     else:
         raise Exception("input image_info needs to have a digest")
@@ -518,7 +517,7 @@ def do_request_prep(request, default_params={}):
         query_signature['path'] = request.path
         query_signature.get('params', {}).pop('page', None)
         query_signature.get('params', {}).pop('limit', None)
-        ret['pagination_query_digest'] = hashlib.sha256(json.dumps(query_signature, sort_keys=True)).hexdigest()
+        ret['pagination_query_digest'] = hashlib.sha256(json.dumps(query_signature, sort_keys=True).encode('utf8')).hexdigest()
 
     except Exception as err:
         logger.error("error processing request parameters - exception: " + str(err))

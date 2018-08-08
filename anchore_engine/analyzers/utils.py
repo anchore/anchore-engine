@@ -377,7 +377,7 @@ def dpkg_get_all_packages(unpackdir):
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
-            #l = l.decode('utf8')
+            l = str(l, 'utf-8')
             (p, v, sp, sv, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4, 5)
             if p and v:
                 if p not in actual_packages:
@@ -409,6 +409,7 @@ def dpkg_get_all_pkgfiles(unpackdir):
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines():
             l = l.strip()
+            l = str(l, 'utf-8')
             #l = l.decode('utf8')
             allfiles[l] = True
             

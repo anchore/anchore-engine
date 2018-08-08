@@ -20,6 +20,7 @@ def rpm_get_all_packages_detail(unpackdir):
         sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '--queryformat', '%{NAME}|ANCHORETOK|%{VERSION}|ANCHORETOK|%{RELEASE}|ANCHORETOK|%{ARCH}|ANCHORETOK|%{SIZE}|ANCHORETOK|%{LICENSE}|ANCHORETOK|%{SOURCERPM}|ANCHORETOK|%{VENDOR}\n', '-qa'])
         for l in sout.splitlines():
             l = l.strip()
+            l = str(l, 'utf-8')
             (name, vers, rel, arch, size, lic, source, vendor) = l.split("|ANCHORETOK|")
             vendor = vendor + " (vendor)"
             rpms[name] = {'version':vers, 'release':rel, 'arch':arch, 'size':size, 'license':lic, 'sourcepkg':source, 'origin':vendor, 'type':'rpm'}
@@ -35,6 +36,7 @@ def dpkg_get_all_packages_detail(unpackdir):
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
+            l = str(l, 'utf-8')
             (p, v, arch, size, source, vendor) = l.split("|ANCHORETOK|")
 
             vendor = str(vendor) + " (maintainer)"

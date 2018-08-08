@@ -740,7 +740,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
         imageId = image_detail['imageId']
         if image_detail['dockerfile']:
-            dockerfile_contents = base64.decodebytes(image_detail['dockerfile'].encode('utf-8'))
+            dockerfile_contents = str(base64.decodebytes(image_detail['dockerfile'].encode('utf-8')), 'utf-8')
         else:
             dockerfile_contents = None
 

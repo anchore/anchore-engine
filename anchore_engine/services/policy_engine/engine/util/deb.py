@@ -39,6 +39,7 @@ class DpkgVersion(object):
                 i = int(epoch)
                 if i < 0:
                     raise ValueError('Epoch is less than zero as an unsigned int')
+                epoch = int(epoch)
             except:
                 raise ValueError('Epoch must be an integer')
             if not pieces[0]:

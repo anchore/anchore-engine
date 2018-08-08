@@ -37,8 +37,8 @@ try:
         if patt:
             thefile = '/'.join([unpackdir, 'rootfs', tfile])
             try:
-                with open(thefile, 'r') as FH:
-                    pbuf = FH.read()
+                with open(thefile, 'rb') as FH:
+                    pbuf = str(FH.read(), 'utf-8')
                     pdata = json.loads(pbuf)
                     precord = anchore_engine.analyzers.utils.npm_parse_meta(pdata)
                     for k in list(precord.keys()):

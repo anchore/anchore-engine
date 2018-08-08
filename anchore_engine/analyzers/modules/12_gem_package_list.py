@@ -37,13 +37,15 @@ try:
         if patt:
             thefile = '/'.join([unpackdir, 'rootfs', tfile])
             try:
-                with open(thefile, 'r') as FH:
-                    pdata = str(FH.read(), 'utf8')
+                with open(thefile, 'rb') as FH:
+                    pdata = str(FH.read(), 'utf-8')
                     precord = anchore_engine.analyzers.utils.gem_parse_meta(pdata)
                     for k in list(precord.keys()):
                         record = precord[k]
                         pkglist[tfile] = json.dumps(record)
             except Exception as err:
+                import traceback
+                traceback.print_exc()
                 print("WARN: found gemspec but cannot parse (" + str(tfile) +") - exception: " + str(err))
 
 except Exception as err:

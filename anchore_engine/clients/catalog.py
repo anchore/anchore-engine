@@ -61,7 +61,7 @@ def query_vulnerabilities(userId, id=None, affected_package=None, affected_packa
         if affected_package_version:
             params['affected_package_version'] = affected_package_version
 
-    url = base_url + "/query/vulnerabilities?{}".format(urllib.urlencode(params))
+    url = base_url + "/query/vulnerabilities?{}".format(urllib.parse.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -95,7 +95,7 @@ def query_images_by_vulnerability(userId, vulnerability_id=None, severity=None, 
         params['affected_package'] = affected_package
         
 
-    url = base_url + "/query/images/by_vulnerability?{}".format(urllib.urlencode(params))
+    url = base_url + "/query/images/by_vulnerability?{}".format(urllib.parse.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 
@@ -122,7 +122,7 @@ def query_images_by_package(userId, name=None, version=None, package_type=None, 
         'package_type': package_type,
     }
 
-    url = base_url + "/query/images/by_package?{}".format(urllib.urlencode(params))
+    url = base_url + "/query/images/by_package?{}".format(urllib.parse.urlencode(params))
 
     ret = http.anchy_get(url, auth=auth, headers=headers, verify=localconfig['internal_ssl_verify'])
 

@@ -171,6 +171,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         raise err
 
                 except Exception as err:
+                    import traceback
+                    traceback.print_exc()
                     logger.warn("could not store image content metadata to archive - exception: " + str(err))
 
                 logger.debug("adding image record to policy-engine service (" + str(userId) + " : " + str(imageId) + ")")
