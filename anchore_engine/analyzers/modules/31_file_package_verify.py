@@ -240,7 +240,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
     except:
         rpmdbdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
 
-    cmdstr = 'rpm --dbpath='+rpmdbdir+' -qa --queryformat "[%{FILENAMES}|ANCHORETOK|%{FILEDIGESTS}|ANCHORETOK|%{FILEMODES:octal}|ANCHORETOK|%{FILEGROUPNAME}|ANCHORETOK|%{FILEUSERNAME}|ANCHORETOK|%{FILESIZES}|ANCHORETOK|%{=NAME}|ANCHORETOK|%{FILEFLAGS:fflags}|ANCHORETOK|%{=FILEDIGESTALGO}\\n]"'
+    cmdstr = 'rpm --dbpath='+rpmdbdir+' -qa --queryformat [%{FILENAMES}|ANCHORETOK|%{FILEDIGESTS}|ANCHORETOK|%{FILEMODES:octal}|ANCHORETOK|%{FILEGROUPNAME}|ANCHORETOK|%{FILEUSERNAME}|ANCHORETOK|%{FILESIZES}|ANCHORETOK|%{=NAME}|ANCHORETOK|%{FILEFLAGS:fflags}|ANCHORETOK|%{=FILEDIGESTALGO}\\n]'
     cmd = cmdstr.split()
     print(cmdstr)
     try:
@@ -274,6 +274,7 @@ def rpm_get_file_package_metadata(unpackdir, record_template):
                         result[fname].append(el)
                     except Exception as err:
                         print("WARN: unparsable output line - exception: " + str(err))
+                        raise err
         else:
             raise Exception("rpm file metadata command failed with exitcode ("+str(exitcode)+") - stdoutput: " + str(soutput) + " : stderr: " + str(serror))
 

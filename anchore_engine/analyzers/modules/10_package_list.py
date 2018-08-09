@@ -35,6 +35,8 @@ if distrodict['flavor'] == "RHEL":
         for pkg in list(rpms.keys()):
             pkgsall[pkg] = rpms[pkg]['version'] + "-" + rpms[pkg]['release']
     except Exception as err:
+        import traceback
+        traceback.print_exc()
         print("WARN: failed to generate RPM package list: " + str(err))
 
     try:

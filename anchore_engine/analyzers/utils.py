@@ -135,7 +135,7 @@ def get_distro_from_path(inpath):
         meta['DISTRO'] = "busybox"
         try:
             sout = subprocess.check_output(['/'.join([inpath, "/bin/busybox"])])
-            fline = sout.splitlines(True)[0]
+            fline = str(sout.splitlines(True)[0], 'utf-8')
             slist = fline.split()
             meta['DISTROVERS'] = slist[1]
         except:
@@ -321,6 +321,7 @@ def rpm_get_all_packages(unpackdir):
         sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '--queryformat', '%{NAME} %{VERSION} %{RELEASE} %{ARCH}\n', '-qa'], stderr=subprocess.STDOUT)
         for l in sout.splitlines():
             l = l.strip()
+            l = str(l, 'utf-8')
             #l = l.decode('utf8')
             (name, vers, rel, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4)
             rpms[name] = {'version':vers, 'release':rel, 'arch':arch}
@@ -337,6 +338,7 @@ def rpm_get_all_pkgfiles(unpackdir):
         sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '-qal'])
         for l in sout.splitlines():
             l = l.strip()
+            l = str(l, 'utf-8')
             #l = l.decode('utf8')
             rpmfiles[l] = True
     except Exception as err:
@@ -743,8 +745,8 @@ def rpm_verify_file_packages(unpackdir):
         pipes = subprocess.Popen(verify_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         o, e = pipes.communicate()
         verify_exitcode = pipes.returncode
-        verify_output = o
-        verify_error = e
+        verify_output = str(o, 'utf-8')
+        verify_error = str(e, 'utf-8')
     except Exception as err:
         raise ValueError("could not perform verify against RPM database: " + str(err))
     finally:

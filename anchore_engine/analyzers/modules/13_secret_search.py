@@ -79,7 +79,7 @@ for name in list(allfiles.keys()):
                         try:
                             patt = re.match(theregexp.encode('utf-8'), line)
                             if patt:
-                                b64regexp = base64.encodebytes(regexp.encode('utf-8'))
+                                b64regexp = str(base64.encodebytes(regexp.encode('utf-8')), 'utf-8')
                                 if name not in results:
                                     results[name] = {}
                                 if b64regexp not in results[name]:

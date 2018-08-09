@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 import sys
 import os
 import re
@@ -84,7 +85,7 @@ for name in list(allfiles.keys()):
                 dochecks = False
 
         if dochecks:
-            with open(thefile, 'r') as FH:
+            with open(thefile, 'rb') as FH:
                 lineno = 0
                 for line in FH.readlines():
                     for regexp in regexps:
@@ -94,9 +95,9 @@ for name in list(allfiles.keys()):
                             theregexp = regexp
 
                         try:
-                            patt = re.match(theregexp, line)
+                            patt = re.match(theregexp.encode('utf-8'), line)
                             if patt:
-                                b64regexp = regexp.encode('base64')
+                                b64regexp = str(base64.encodebytes(regexp.encode('utf-8')), 'utf-8')
                                 if name not in results:
                                     results[name] = {}
                                 if b64regexp not in results[name]:
