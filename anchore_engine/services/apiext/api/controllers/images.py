@@ -124,7 +124,8 @@ def make_response_content(content_type, content_data):
                         el[elmap[elkey]] = None
 
                 # special formatting
-                el['mode'] = oct(stat.S_IMODE(el['mode']))
+                #el['mode'] = oct(stat.S_IMODE(el['mode']))
+                el['mode'] = format(stat.S_IMODE(el['mode']), '05o')
                 if el['sha256'] == 'DIRECTORY_OR_OTHER':
                     el['sha256'] = None
 
