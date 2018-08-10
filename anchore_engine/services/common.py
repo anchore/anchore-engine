@@ -28,13 +28,13 @@ image_vulnerability_types = ['os', 'non-os']
 def do_simple_pagination(input_items, page=1, limit=None, dosort=True, query_digest="", ttl=0.0):
     page = int(page)
     next_page = None
-
     if not limit:
         return(1, None, input_items)
 
     limit = int(limit)
     if dosort:
-        input_items.sort()
+        #input_items.sort()
+        input_items.sort(key=lambda x: x['image']['imageDigest'])
 
     start = (page-1)*limit
     end = start + limit
@@ -70,7 +70,6 @@ def do_cached_pagination(input_items, page=None, limit=None, dosort=True, query_
             'ttl': current_time + float(ttl),
             'content': list(input_items),
         }
-
     return(do_simple_pagination(input_items, page=page, limit=limit, dosort=dosort, query_digest=query_digest, ttl=ttl))
 
 def make_response_paginated_envelope(input_items, envelope_key='result', page="1", limit=None, dosort=True, pagination_func=do_simple_pagination, query_digest="", ttl=0.0):
@@ -79,6 +78,7 @@ def make_response_paginated_envelope(input_items, envelope_key='result', page="1
         envelope_key: paginated_items,
         'page': "{}".format(page),
         'returned_count': len(paginated_items),
+        'total_count': len(input_items),
     }
     if next_page:
         return_object['next_page'] = "{}".format(next_page)
