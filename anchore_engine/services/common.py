@@ -25,7 +25,7 @@ image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
 
-def do_simple_pagination(input_items, page=1, limit=None, dosort=True, query_digest="", ttl=0.0):
+def do_simple_pagination(input_items, page=1, limit=None, dosort=True, sortfunc=lambda x: x, query_digest="", ttl=0.0):
     page = int(page)
     next_page = None
     if not limit:
@@ -34,7 +34,8 @@ def do_simple_pagination(input_items, page=1, limit=None, dosort=True, query_dig
     limit = int(limit)
     if dosort:
         #input_items.sort()
-        input_items.sort(key=lambda x: x['image']['imageDigest'])
+        #input_items.sort(key=lambda x: x['image']['imageDigest'])
+        input_items.sort(key=sortfunc)
 
     start = (page-1)*limit
     end = start + limit
@@ -59,7 +60,7 @@ def get_cached_pagination(query_digest=""):
 
     return(pagination_cache[query_digest]['content'])
 
-def do_cached_pagination(input_items, page=None, limit=None, dosort=True, query_digest="", ttl=0.0):
+def do_cached_pagination(input_items, page=None, limit=None, dosort=True, sortfunc=lambda x: x, query_digest="", ttl=0.0):
     current_time = time.time()
 
     if ttl <= 0.0:
@@ -70,10 +71,10 @@ def do_cached_pagination(input_items, page=None, limit=None, dosort=True, query_
             'ttl': current_time + float(ttl),
             'content': list(input_items),
         }
-    return(do_simple_pagination(input_items, page=page, limit=limit, dosort=dosort, query_digest=query_digest, ttl=ttl))
+    return(do_simple_pagination(input_items, page=page, limit=limit, dosort=dosort, sortfunc=sortfunc, query_digest=query_digest, ttl=ttl))
 
-def make_response_paginated_envelope(input_items, envelope_key='result', page="1", limit=None, dosort=True, pagination_func=do_simple_pagination, query_digest="", ttl=0.0):
-    page, next_page, paginated_items = pagination_func(input_items, page=page, limit=limit, dosort=dosort, query_digest=query_digest, ttl=ttl)
+def make_response_paginated_envelope(input_items, envelope_key='result', page="1", limit=None, dosort=True, sortfunc=lambda x: x, pagination_func=do_simple_pagination, query_digest="", ttl=0.0):
+    page, next_page, paginated_items = pagination_func(input_items, page=page, limit=limit, dosort=dosort, sortfunc=sortfunc, query_digest=query_digest, ttl=ttl)
     return_object = {
         envelope_key: paginated_items,
         'page': "{}".format(page),

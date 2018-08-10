@@ -151,7 +151,7 @@ def query_images_by_package(dbsession, request_inputs):
                     'version': image.version,
                     'type': image.pkg_type,
                 }
-                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
                 if not pkg_hash[imageId].get(phash, False):
                     ret_hash[imageId]['packages'].append(pkg_el)
                 pkg_hash[imageId][phash] = True
@@ -167,7 +167,7 @@ def query_images_by_package(dbsession, request_inputs):
                     'version': image.version,
                     'type': image.pkg_type,
                 }
-                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
                 if not pkg_hash[imageId].get(phash, False):
                     ret_hash[imageId]['packages'].append(pkg_el)
                 pkg_hash[imageId][phash] = True
@@ -261,7 +261,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                     'package_type': image_cpe.pkg_type,
                     #'vulnerable_package_namespace': "{}".format(vulnerability_cpe.namespace_name),
                 }
-                phash = hashlib.sha256(json.dumps(pkg_el)).hexdigest()
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
                 if not pkg_hash[imageId].get(phash, False):
                     ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
                 pkg_hash[imageId][phash] = True

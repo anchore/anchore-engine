@@ -33,7 +33,7 @@ def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, af
             result = catalog.query_vulnerabilities(user_auth, id=id, affected_package=affected_package, affected_package_version=affected_package_version)
             catalog_call_time = time.time() - timer
 
-        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='vulnerabilities', page=page, limit=limit, dosort=True, pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
+        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='vulnerabilities', page=page, limit=limit, dosort=True, sortfunc=lambda x: json.dumps(x), pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
         httpcode = 200
     except Exception as err:
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
@@ -62,7 +62,7 @@ def query_images_by_vulnerability(vulnerability_id=None, severity=None, namespac
             catalog_call_time = time.time() - timer
             result = catalog_result.get('vulnerable_images', [])
 
-        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='images', page=page, limit=limit, dosort=True, pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
+        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='images', page=page, limit=limit, dosort=True, sortfunc=lambda x: x['image']['imageDigest'], pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
 
         httpcode = 200
     except Exception as err:
@@ -93,7 +93,7 @@ def query_images_by_package(name=None, version=None, package_type=None, page=1, 
             catalog_call_time = time.time() - timer
             result = catalog_result.get('matched_images', [])
 
-        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='images', page=page, limit=limit, dosort=True, pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
+        return_object = anchore_engine.services.common.make_response_paginated_envelope(result, envelope_key='images', page=page, limit=limit, dosort=True, sortfunc=lambda x: x['image']['imageDigest'], pagination_func=anchore_engine.services.common.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))
 
         httpcode = 200
     except Exception as err:
