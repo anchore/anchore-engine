@@ -2,12 +2,13 @@
 #
 # Pre-requisites
 # - recommend that anchore-cli is installed
-# 
+#
 # Set up persistent volume for anchore-engine (do this once)
 # - create a directory ~/aevolume
 # - create a directory ~/aevolume/db
 # - create a directory ~/aevolume/config
 # - copy the example (./scripts/docker-compose/config.yaml) to ~/aevolume/config/config.yaml
+# - copy the example (./scripts/docker-compose/anchore-promethesus.yaml) to ~/aevolume/config/anchore-promethesus.yaml
 # - edit ~/aevolume/config/config.yaml and save (only if you need to make changes - not required)
 # - review ./docker-compose.yaml
 #
@@ -32,7 +33,7 @@
 # - if you enable SSL for any services, make sure to do so across the board in your config.yaml, and change the ANCHORE_CLI_URL to use https instead of http
 # - if you change the admin password in config.yaml, make sure to update your ANCHORE_CLI_PASS export as well
 # - if you change the DB password in this file, make sure to also change it in your config.yaml 'db_connect' setting
-# 
+#
 
 version: '2'
 services:
@@ -45,7 +46,7 @@ services:
      - "8228:8228"
      - "8338:8338"
     volumes:
-     - ${PWD}/config:/config/:Z
+     - ${PWD}/aevolume/config:/config/
      #- /var/run/docker.sock:/var/run/docker.sock
     logging:
      driver: "json-file"
@@ -57,7 +58,7 @@ services:
   anchore-db:
     image: "postgres:9"
     volumes:
-     - ${PWD}/db:/var/lib/postgresql/data/pgdata/:Z
+     - ${PWD}/aevolume/db:/var/lib/postgresql/data/pgdata/
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
@@ -66,15 +67,15 @@ services:
      options:
       max-size: 100m
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
-    #ports:
-    # - "2345:5432"
+    ports:
+     - "2345:5432"
 #### uncomment this section to enable a prometheus service running alongside anchore-engine for metrics gathering/display
 #  anchore-prometheus:
 #    image: docker.io/prom/prometheus:latest
 #    depends_on:
 #     - anchore-engine
 #    volumes:
-#     - ${PWD}/anchore-prometheus.yml:/etc/prometheus/prometheus.yml:Z
+#     - ${PWD}/aevolume/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml
 #    logging:
 #     driver: "json-file"
 #     options:
