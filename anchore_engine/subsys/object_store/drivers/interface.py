@@ -87,7 +87,7 @@ class ObjectStorageDriver(object, metaclass=ObjectStorageDriverMeta):
 
     def get(self, userId, bucket, key):
         """
-        Return a read-able object wth content for the specified key
+        Return a read-able object wth content for the specified key, as bytes
 
         :param userId:
         :param bucket:
@@ -98,7 +98,7 @@ class ObjectStorageDriver(object, metaclass=ObjectStorageDriverMeta):
 
     def get_by_uri(self, uri):
         """
-        Reutrn a read-able object associated with the URI for the content of the object
+        Reutrn a read-able object associated with the URI for the content of the object, as bytes
 
         :param uri:
         :return:

@@ -3,6 +3,7 @@ import json
 import urllib.parse
 import zlib
 
+from anchore_engine import utils
 from anchore_engine.db import session_scope, db_archivemetadata
 from anchore_engine.subsys import object_store, logger
 from anchore_engine.subsys.archive.config import DRIVER_SECTION_KEY, DRIVER_NAME_KEY, COMPRESSION_SECTION_KEY, COMPRESSION_ENABLED_KEY, COMPRESSION_LEVEL, COMPRESSION_MIN_SIZE_KEY
@@ -47,10 +48,10 @@ class ArchiveManager(object):
         if self.config[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True and self.primary_client.__supports_compressed_data__ and len(data) > \
                 self.config[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024:
             is_compressed = True
-            final_payload = zlib.compress(data, COMPRESSION_LEVEL)
+            final_payload = utils.ensure_bytes(zlib.compress(data.encode('utf-8'), COMPRESSION_LEVEL))
         else:
             is_compressed = False
-            final_payload = data
+            final_payload = utils.ensure_bytes(data)
 
         return final_payload, is_compressed
 
@@ -132,13 +133,13 @@ class ArchiveManager(object):
 
         try:
             final_payload, is_compressed = self._do_compress(data)
+
             size = len(final_payload)
-            digest = hashlib.md5(final_payload.encode('utf8')).hexdigest()
+            digest = hashlib.md5(final_payload).hexdigest()
 
             url = self.primary_client.put(userId, bucket, archiveid, final_payload)
             with session_scope() as dbsession:
                 db_archivemetadata.add(userId, bucket, archiveid, archiveid + ".json", url, is_compressed=is_compressed, content_digest=digest, size=size, session=dbsession)
-
         except Exception as err:
             logger.debug("cannot put data: exception - " + str(err))
             raise err
@@ -157,11 +158,12 @@ class ArchiveManager(object):
             is_compressed = result.get('is_compressed', False)
             expected = result.get('digest')
 
+            # get the raw data from driver, note content is bytes (not str)
             content = self._client_for(url).get_by_uri(url)
             found_size = len(content)
 
             if expected:
-                found = hashlib.md5(content.encode('utf8')).hexdigest()
+                found = hashlib.md5(content).hexdigest()
             else:
                 found = None
 

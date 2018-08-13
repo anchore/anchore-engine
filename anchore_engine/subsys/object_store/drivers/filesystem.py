@@ -4,6 +4,7 @@ import hashlib
 import re
 import urllib.parse
 
+from anchore_engine import utils
 from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError
@@ -122,7 +123,8 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
         try:
             path = self._parse_uri(uri)
             content = self._load_content(path)
-            return content
+            ret = utils.ensure_bytes(content)
+            return (ret)
         except Exception as e:
             raise ObjectKeyNotFoundError(userId='', bucket='', key='', caused_by=e)
 

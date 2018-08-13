@@ -3,7 +3,7 @@ import json
 from .interface import ObjectStorageDriver
 
 import urllib.parse
-from anchore_engine import db
+from anchore_engine import db, utils
 from anchore_engine.db import db_archivedocument, db_objectstorage
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError, DriverNotInitializedError
@@ -41,7 +41,9 @@ class LegacyDbDriver(ObjectStorageDriver):
             with db.session_scope() as dbsession:
                 result = db_archivedocument.get(userId, bucket, key, session=dbsession)
             if result:
-                return result.get('jsondata')
+                content = result.get('jsondata')
+                ret = utils.ensure_bytes(content)
+                return(ret)
             else:
                 raise ObjectKeyNotFoundError(userId, bucket, key, caused_by=None)
         except Exception as err:

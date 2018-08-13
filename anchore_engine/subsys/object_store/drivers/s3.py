@@ -2,6 +2,7 @@ import boto3
 #import botocore.config
 import urllib.parse
 
+from anchore_engine import utils
 from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import DriverConfigurationError, ObjectKeyNotFoundError, BadCredentialsError
@@ -103,8 +104,9 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         try:
             resp = self.s3_client.get_object(Bucket=bucket, Key=key)
             content = resp['Body'].read()
-
-            return content.decode('utf8')
+            ret = utils.ensure_bytes(content)
+            return(ret)
+            
         except Exception as e:
             raise e
 

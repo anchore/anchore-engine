@@ -4,7 +4,7 @@ import urllib.parse
 import io
 from swiftclient.service import SwiftService, SwiftUploadObject, SwiftError
 
-
+from anchore_engine import utils
 from anchore_engine.subsys.object_store.drivers.interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import DriverBackendError, DriverConfigurationError, ObjectKeyNotFoundError, ObjectStorageDriverError, BadCredentialsError
 from anchore_engine.subsys import logger
@@ -103,7 +103,8 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             for obj in resp:
                 if 'contents' in obj and obj['action'] == 'download_object':
                     content = ''.join([x.decode('utf8') for x in obj['contents']])
-                    return content
+                    ret = utils.ensure_bytes(content)     
+                    return (ret)
                 elif obj['action'] == 'download_object' and not obj['success']:
                     raise ObjectKeyNotFoundError(bucket='', key='', userId='', caused_by=None)
                 raise Exception('Unexpected operation/action from swift: {}'.format(obj['action']))

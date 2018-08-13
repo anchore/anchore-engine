@@ -109,7 +109,7 @@ def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_
     db_connect_args = {
         'timeout': db_timeout,
         'ssl': db_use_ssl,
-        'connect_timeout': db_connect_timeout,
+        #'connect_timeout': db_connect_timeout,
     }
 
     ret = {
