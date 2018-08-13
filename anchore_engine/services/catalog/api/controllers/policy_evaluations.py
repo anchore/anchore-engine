@@ -27,11 +27,8 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
         user_id = request_inputs['userId']
 
         with db.session_scope() as session:
-            if newest_only:
-                evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag,
-                                        evalId=evalId)
-            else:
-                evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag, evalId=evalId)
+            evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag,
+                                    evalId=evalId, newest_only=newest_only)
 
             if not evals:
                 httpcode = 404
@@ -141,6 +138,10 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
     if evalId is not None:
         dbfilter['evalId'] = evalId
 
+    if newest_only:
+        records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+        if len(records) > 0:
+            return records
 
     # perform an interactive eval to get/install the latest
     try:
