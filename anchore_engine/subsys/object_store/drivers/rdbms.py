@@ -56,7 +56,7 @@ class LegacyDbDriver(ObjectStorageDriver):
 
         try:
             with db.session_scope() as dbsession:
-                dbdata = {'jsondata': data}
+                dbdata = {'jsondata': str(data, 'utf-8')}
                 db_archivedocument.add(userId, bucket, key, key + ".json", inobj=dbdata, session=dbsession)
                 return self.uri_for(userId, bucket, key)
         except Exception as err:

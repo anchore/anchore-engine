@@ -718,6 +718,7 @@ def handle_analyzer_queue(*args, **kwargs):
                     try:
                         manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
                     except Exception as err:
+                        logger.debug("failed to get manifest - {}".format(str(err)))
                         manifest = {}
 
                     qobj = {}
