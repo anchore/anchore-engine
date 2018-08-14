@@ -58,7 +58,7 @@ services:
   anchore-db:
     image: "postgres:9"
     volumes:
-     - ${PWD}/aevolume/db:/var/lib/postgresql/data/pgdata/
+     - ${PWD}/aevolume/db:/var/lib/postgresql/data/pgdata/:Z
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
@@ -67,7 +67,7 @@ services:
      options:
       max-size: 100m
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
-    # ports:
+    #ports:
     # - "2345:5432"
 #### uncomment this section to enable a prometheus service running alongside anchore-engine for metrics gathering/display
 #  anchore-prometheus:
@@ -75,7 +75,7 @@ services:
 #    depends_on:
 #     - anchore-engine
 #    volumes:
-#     - ${PWD}/aevolume/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml
+#     - ${PWD}/aevolume/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml:Z
 #    logging:
 #     driver: "json-file"
 #     options:
