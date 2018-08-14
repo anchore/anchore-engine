@@ -67,8 +67,8 @@ services:
      options:
       max-size: 100m
     #uncomment to expose a port to allow direct/external access to the DB, for debugging
-    ports:
-     - "2345:5432"
+    # ports:
+    # - "2345:5432"
 #### uncomment this section to enable a prometheus service running alongside anchore-engine for metrics gathering/display
 #  anchore-prometheus:
 #    image: docker.io/prom/prometheus:latest
