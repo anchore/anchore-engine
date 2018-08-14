@@ -229,7 +229,7 @@ def anchy_get(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fget(url, **kwargs)
-    logger.debug('GET {} result: {}'.format(url, (httpcode, jsondata, rawdata)))
+    logger.debug('GET url={} httpcode={}'.format(url, httpcode))
 
     if httpcode == 200:
         if raw:
@@ -252,6 +252,7 @@ def anchy_post(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fpost(url, **kwargs)
+    logger.debug('POST url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata
@@ -274,6 +275,7 @@ def anchy_put(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fput(url, **kwargs)
+    logger.debug('PUT url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata
@@ -296,6 +298,7 @@ def anchy_delete(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fdelete(url, **kwargs)
+    logger.debug('DELETE url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata
