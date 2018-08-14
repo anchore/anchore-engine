@@ -122,7 +122,7 @@ def check(configfile):
         logger.warn('Warning: Got empty response form archive PUT operation: {}'.format(result))
 
     logger.info('Checking document fetch')
-    loaded = archive.get(test_user_id, test_bucket, test_archive_id)
+    loaded = str(archive.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
     if not loaded:
         logger.error('Failed retrieving the written document. Got: {}'.format(loaded))
         utils.doexit(5)

@@ -48,7 +48,7 @@ class ArchiveManager(object):
         if self.config[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True and self.primary_client.__supports_compressed_data__ and len(data) > \
                 self.config[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024:
             is_compressed = True
-            final_payload = utils.ensure_bytes(zlib.compress(data.encode('utf-8'), COMPRESSION_LEVEL))
+            final_payload = utils.ensure_bytes(zlib.compress(utils.ensure_bytes(data), COMPRESSION_LEVEL))
         else:
             is_compressed = False
             final_payload = utils.ensure_bytes(data)
