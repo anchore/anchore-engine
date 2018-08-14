@@ -46,7 +46,7 @@ services:
      - "8228:8228"
      - "8338:8338"
     volumes:
-     - ${PWD}/aevolume/config:/config/
+     - ${PWD}/aevolume/config:/config/:Z
      #- /var/run/docker.sock:/var/run/docker.sock
     logging:
      driver: "json-file"
