@@ -209,7 +209,8 @@ def manifest_to_digest(rawmanifest):
     else:
         #ret = anchore_engine.auth.skopeo_wrapper.manifest_to_digest_shellout(rawmanifest)
         ret = manifest_to_digest_shellout(rawmanifest)
-        
+
+    ret = ensure_str(ret)
     return(ret)
 
 

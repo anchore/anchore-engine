@@ -7,7 +7,7 @@ import uuid
 
 # anchore modules
 import anchore_engine.clients.anchoreio
-from anchore_engine.clients import http, simplequeue, policy_engine
+from anchore_engine.clients import http, simplequeue, policy_engine, docker_registry
 from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
@@ -256,7 +256,7 @@ def handle_repo_watcher(*args, **kwargs):
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 # List tags
                 try:
-                    curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                    curr_repotags = docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
                 except AnchoreException as e:
                     event = events.ListTagsFail(user_id=userId, registry=image_info.get('registry', None), repository=image_info.get('repo', None), error=e.to_dict())
                     raise e
@@ -376,7 +376,7 @@ def handle_image_watcher(*args, **kwargs):
 
         for registry_record in registry_creds:
             try:
-                registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+                registry_status = docker_registry.ping_docker_registry(registry_record)
             except Exception as err:
                 registry_record['record_state_key'] = 'auth_failure'
                 registry_record['record_state_val'] = str(int(time.time()))

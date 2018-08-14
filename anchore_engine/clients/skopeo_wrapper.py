@@ -11,12 +11,12 @@ def manifest_to_digest_shellout(rawmanifest):
     tmpmanifest = None
     try:
         fd,tmpmanifest = tempfile.mkstemp()
-        os.write(fd, rawmanifest)
+        os.write(fd, rawmanifest.encode('utf-8'))
         os.close(fd)
 
         cmd = "skopeo manifest-digest {}".format(tmpmanifest)
         rc, sout, serr = run_command(cmd)
-        if rc == 0 and re.match("^sha256:.*", sout):
+        if rc == 0 and re.match("^sha256:.*", str(sout, 'utf-8')):
             ret = sout.strip()
         else:
             logger.warn("failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(cmd, rc, sout, serr))
@@ -175,6 +175,8 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             raise err
 
     except Exception as err:
+        import traceback
+        traceback.print_exc()
         raise err
 
     if not manifest or not digest:
