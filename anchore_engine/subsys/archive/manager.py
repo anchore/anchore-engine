@@ -177,7 +177,8 @@ class ArchiveManager(object):
             return content
 
         except Exception as err:
-
+            import traceback
+            traceback.print_exc()
             logger.debug("cannot get data: exception - " + str(err))
             raise err
 

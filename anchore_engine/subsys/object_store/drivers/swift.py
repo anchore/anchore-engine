@@ -102,7 +102,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             resp = self.client.download(container=container, objects=[key], options={'out_file': '-'})
             for obj in resp:
                 if 'contents' in obj and obj['action'] == 'download_object':
-                    content = ''.join([x.decode('utf8') for x in obj['contents']])
+                    content = b''.join([x for x in obj['contents']])
                     ret = utils.ensure_bytes(content)     
                     return (ret)
                 elif obj['action'] == 'download_object' and not obj['success']:
@@ -147,7 +147,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         try:
             uri = self.uri_for(userId, bucket, key)
             swift_bucket, swift_key = self._parse_uri(uri)
-            obj = SwiftUploadObject(object_name=swift_key, source=io.BytesIO(data.encode('utf8')))
+            obj = SwiftUploadObject(object_name=swift_key, source=io.BytesIO(data))
             resp = self.client.upload(container=swift_bucket, objects=[obj])
             for upload in resp:
                 if upload['action'] == 'upload_object' and upload['success']:
