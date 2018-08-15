@@ -5,6 +5,7 @@ import base64
 
 from flask import request
 
+from anchore_engine import utils
 from anchore_engine.clients import catalog
 import anchore_engine.services.common
 from anchore_engine.subsys import taskstate, logger
@@ -135,13 +136,13 @@ def make_response_content(content_type, content_data):
                 ret.append(el)        
     elif content_type in ['docker_history']:
         try:
-            ret = str(base64.encodebytes(json.dumps(content_data).encode('utf-8')), 'utf-8')
+            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(json.dumps(content_data))))
         except Exception as err:
             logger.warn("could not convert content to json/base64 encode - exception: {}".format(err))
             ret = ""
     elif content_type in ['manifest', 'dockerfile']:
         try:
-            ret = str(base64.encodebytes(content_data.encode('utf-8')), 'utf-8')
+            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(content_data)))
         except Exception as err:
             logger.warn("could not base64 encode content - exception: {}".format(err))
             ret = ""
@@ -478,7 +479,7 @@ def get_content(request_inputs, content_type, doformat=False):
                             for image_detail in image_report.get('image_detail', []):
                                 if image_detail.get('dockerfile', None):
                                     logger.debug("migrating old dockerfile content form into new")
-                                    image_content_data['dockerfile'] = image_detail.get('dockerfile', "").decode('base64')
+                                    image_content_data['dockerfile'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(image_detail.get('dockerfile', ""))))
                                     catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
                                     break
                     except Exception as err:
