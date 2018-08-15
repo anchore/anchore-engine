@@ -93,12 +93,12 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             logger.error("cannot create archive data directory - exception: " + str(err))
             raise err
 
-        with open(archive_file, 'w') as OFH:
+        with open(archive_file, 'wb') as OFH:
             OFH.write(data)
             return True
 
     def _load_content(self, path):
-        with open(path, 'r') as f:
+        with open(path, 'rb') as f:
             return f.read()
 
     def get(self, userId, bucket, key):
