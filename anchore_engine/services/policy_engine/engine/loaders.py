@@ -1,7 +1,9 @@
+import base64
 import hashlib
 import json
 import re
 
+from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.db import DistroNamespace
 from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry, ImageCpe
 from .logs import get_logger
@@ -259,7 +261,7 @@ class ImageLoader(object):
             match.analyzer_artifact = 'file_content.all'
             match.artifact_key = filename
             try:
-                match.binary_value = bytearray(match_string.decode('base64'))
+                match.binary_value = base64.b64decode(ensure_bytes(match_string))
             except:
                 log.exception('Could not b64 decode the file content for {}'.format(filename))
                 raise
@@ -508,7 +510,7 @@ class ImageLoader(object):
         for path, npm_str in list(npms_json.items()):
             npm_json = json.loads(npm_str)
             n = ImageNpm()
-            n.path_hash = hashlib.sha256(path.encode('utf8')).hexdigest()
+            n.path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
             n.path = path
             n.name = npm_json.get('name')
             n.src_pkg = npm_json.get('src_pkg')
@@ -531,7 +533,7 @@ class ImageLoader(object):
         for path, gem_str in list(gems_json.items()):
             gem_json = json.loads(gem_str)
             n = ImageGem()
-            n.path_hash = hashlib.sha256(path.encode('utf8')).hexdigest()
+            n.path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
             n.path = path
             n.name = gem_json.get('name')
             n.src_pkg = gem_json.get('src_pkg')

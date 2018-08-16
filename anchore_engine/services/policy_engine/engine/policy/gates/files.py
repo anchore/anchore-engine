@@ -1,5 +1,7 @@
 import re
 import stat
+import base64
+from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListParameter, TriggerParameter, TypeValidator
@@ -18,27 +20,28 @@ class ContentMatchTrigger(BaseTrigger):
         match_filter = self.regex_name.value()
 
         if match_filter:
-            match_decoded = match_filter.encode('base64')
+            match_decoded = ensure_str(base64.b64encode(ensure_bytes(match_filter)))
         else:
             return
 
         for thefile, regexps in list(context.data.get('content_regexp', {}).items()):
-            thefile = thefile.encode('ascii', errors='replace')
+            thefile = ensure_str(thefile)
             if not regexps:
                 continue
-            for regexp in list(regexps.keys()):
+            for regexp in regexps.keys():
+                decoded_regexp = ensure_str(base64.b64decode(ensure_bytes(regexp)))
                 try:
-                    regexp_name, theregexp = regexp.decode('base64').split("=", 1)
+                    regexp_name, theregexp = decoded_regexp.split("=", 1)
                 except:
                     regexp_name = None
-                    theregexp = regexp.decode('base64')
+                    theregexp = decoded_regexp
 
                 if not match_filter:
-                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
                 elif regexp == match_filter or theregexp == match_decoded:
-                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
                 elif regexp_name and regexp_name == match_decoded:
-                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='File content analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
 
 
 class FilenameMatchTrigger(BaseTrigger):
@@ -56,7 +59,7 @@ class FilenameMatchTrigger(BaseTrigger):
             files = context.data.get('filenames')
 
         for thefile in files:
-            thefile = thefile.encode('ascii', errors='replace')
+            thefile = ensure_str(thefile)
             if re.match(regex_param, thefile):
                 self._fire(msg='Application of regex matched file found in container: file={} regexp={}'.format(thefile, regex_param))
 

@@ -1,4 +1,6 @@
+import base64
 import re
+from anchore_engine.utils import ensure_bytes, ensure_str
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger, LifecycleStates
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListValidator, PipeDelimitedStringListParameter
@@ -16,29 +18,30 @@ class SecretContentMatchTrigger(BaseTrigger):
     def evaluate(self, image_obj, context):
         match_filter = self.secret_contentregexp.value(default_if_none=[])
         if match_filter:
-            matches = [x.encode('base64') for x in match_filter]
+            matches = [ensure_str(base64.b64encode(ensure_bytes(x))) for x in match_filter]
             matches_decoded = match_filter
         else:
             matches = []
             matches_decoded = []
 
         for thefile, regexps in list(context.data.get('secret_content_regexp', {}).items()):
-            thefile = thefile.encode('ascii', errors='replace')
+            thefile = ensure_str(thefile)
             if not regexps:
                 continue
-            for regexp in list(regexps.keys()):
+            for regexp in regexps.keys():
+                decoded_regexp = ensure_str(base64.b64decode(ensure_bytes(regexp)))
                 try:
-                    regexp_name, theregexp = regexp.decode('base64').split("=", 1)
+                    regexp_name, theregexp = decoded_regexp.split("=", 1)
                 except:
                     regexp_name = None
-                    theregexp = regexp.decode('base64')
+                    theregexp = decoded_regexp
 
                 if not matches:
-                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
                 elif regexp in matches or theregexp in matches_decoded:
-                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
                 elif regexp_name and regexp_name in matches_decoded:
-                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, regexp.decode('base64')))
+                    self._fire(msg='Secret search analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
 
 
 class SecretFilenameMatchTrigger(BaseTrigger):
@@ -60,7 +63,7 @@ class SecretFilenameMatchTrigger(BaseTrigger):
             files = list(image_obj.fs.files().keys())  # returns a map of path -> entry
 
         for thefile in files:
-            thefile = thefile.encode('ascii', errors='replace')
+            thefile = ensure_str(thefile)
             for regexp in fname_regexps:
                 if re.match(regexp, thefile):
                     self._fire(msg='Application of regexp matched file found in container: file={} regexp={}'.format(thefile, regexp))

@@ -110,8 +110,8 @@ class VerifyTrigger(BaseTrigger):
             fs_mode = fs_entry.get('mode')
             if meta_db_entry.mode and fs_mode:
                 # Convert to octal for consistent checks
-                oct_fs_mode = oct(fs_mode)
-                oct_db_mode = oct(meta_db_entry.mode)
+                oct_fs_mode = oct(fs_mode)[2:]
+                oct_db_mode = oct(meta_db_entry.mode)[2:]
 
                 # Trim mismatched lengths in octal mode
                 if len(oct_db_mode) < len(oct_fs_mode):

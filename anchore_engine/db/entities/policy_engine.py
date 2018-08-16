@@ -9,6 +9,7 @@ from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean,
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON
 from sqlalchemy.orm import relationship
 
+from anchore_engine.utils import ensure_str, ensure_bytes
 try:
     from anchore_engine.subsys import logger as log
 except:
@@ -597,7 +598,7 @@ class FilesystemAnalysis(Base):
 
     def _files_json(self):
         if self.compression_algorithm == 'gzip':
-            return json.loads(zlib.decompress(self.compressed_file_json.encode('utf-8')))
+            return json.loads(ensure_str(zlib.decompress(ensure_bytes(self.compressed_file_json))))
         else:
             raise ValueError('Got unexpected compresssion algorithm value: {}. Expected {}'.format(self.compression_algorithm, self.supported_algorithms))
 
