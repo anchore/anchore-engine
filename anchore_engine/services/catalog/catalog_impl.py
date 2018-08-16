@@ -240,10 +240,11 @@ def query_images_by_vulnerability(dbsession, request_inputs):
 
                 pkg_el = {
                     #'vulnerability_id': image.vulnerability_id,
-                    'package_name': image.pkg_name,
-                    'package_version': image.pkg_version,
-                    'package_type': image.pkg_type,
-                    #'vulnerable_package_namespace': image.vulnerability_namespace_name,
+                    'name': image.pkg_name,
+                    'version': image.pkg_version,
+                    'type': image.pkg_type,
+                    'namespace': image.vulnerability_namespace_name,
+                    'severity': image.vulnerability.severity,
                 }
                 ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
             logger.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
@@ -256,10 +257,11 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                     pkg_hash[imageId] = {}
                 pkg_el = {
                     #'vulnerability_id': vulnerability_cpe.vulnerability_id,
-                    'package_name': image_cpe.name,
-                    'package_version': image_cpe.version,
-                    'package_type': image_cpe.pkg_type,
-                    #'vulnerable_package_namespace': "{}".format(vulnerability_cpe.namespace_name),
+                    'name': image_cpe.name,
+                    'version': image_cpe.version,
+                    'type': image_cpe.pkg_type,
+                    'namespace': "{}".format(vulnerability_cpe.namespace_name),
+                    'severity': "{}".format(vulnerability_cpe.severity),
                 }
                 phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
                 if not pkg_hash[imageId].get(phash, False):

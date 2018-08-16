@@ -39,7 +39,8 @@ class CommonOptions(usage.Options):
     """
 
     optParameters = [
-        ["config", "c", None, "Configuration directory location."]
+        ["config", "c", None, "Configuration directory location."],
+        ["validate-responses", "r", False, "Enable response validation."]
     ]
 
 

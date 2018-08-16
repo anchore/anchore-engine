@@ -14,6 +14,7 @@ from flask import abort, Response
 from werkzeug.exceptions import HTTPException
 
 import anchore_engine.subsys.servicestatus
+from anchore_engine import utils
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
@@ -405,7 +406,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     'feed_name': vulnerability_cpe.feed_name,
                     'feed_namespace': vulnerability_cpe.namespace_name,
                 }
-                cpe_hash = hashlib.sha256(json.dumps(cpe_vuln_el)).hexdigest()
+                cpe_hash = hashlib.sha256(utils.ensure_bytes(json.dumps(cpe_vuln_el))).hexdigest()
                 if not cpe_hashes.get(cpe_hash, False):
                     cpe_vuln_listing.append(cpe_vuln_el)
                     cpe_hashes[cpe_hash] = True

@@ -414,6 +414,7 @@ class ApiService(BaseService):
         Return an initialized service with common api resource and auth config
         :return:
         """
+
         try:
             application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir)
             flask_app = application.app

@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.8"
+  version: "0.1.9"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -1468,27 +1468,27 @@ paths:
       - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_vulnerability
-      summary: List images vulnerable to the specific vulnerability Id.
-      description: Returns a listing of images and their respective packages vulnerable to the given vulnerability id. Vulnerability Id is typically something like CVE-XYZ
+      summary: List images vulnerable to the specific vulnerability ID.
+      description: Returns a listing of images and their respective packages vulnerable to the given vulnerability ID
       parameters:
       - name: vulnerability_id
         in: query
-        description: The vuln Id to query images based on.
         required: true
         type: string
+        description: The ID of the vulnerability to search for within all images stored in anchore-engine (e.g. CVE-1999-0001)
       - name: namespace
         in: query
-        description: The vulnerability namespace to limit results to (e.g. debian:8, ubuntu:14.04)
+        description: Filter results to images within the given vulnerability namespace (e.g. debian:8, ubuntu:14.04)
         required: false
         type: string
       - name: affected_package
         in: query
-        description: If the vulnerability affects multiple packages/packages, only show images vulnerable for this particular name (e.g libssl)
+        description: Filter results to images with vulnable packages with the given package name (e.g. libssl)
         required: false
         type: string
       - name: severity
         in: query
-        description: Filter images by the severity of impacting vulnerabilities
+        description: Filter results to vulnerable package/vulnerability with the given severity
         required: false
         type: string
         enum:
@@ -1501,7 +1501,7 @@ paths:
       - name: vendor_only
         in: query
         type: boolean
-        description: ""
+        description: Filter results to include only vulnerabilities that are not marked as invalid by upstream OS vendor data
         required: false
         default: true
       - name: page
@@ -1512,7 +1512,7 @@ paths:
       - name: limit
         in: query
         type: integer
-        description: ""
+        description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
         required: false
       responses:
         200:
@@ -1529,22 +1529,22 @@ paths:
       - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_images_by_package
-      summary: List images filtered based on content or metadata
-      description: Filterable query interface for images
+      summary: List of images containing given package
+      description: Filterable query interface to search for images containing specified package
       parameters:
       - name: name
         in: query
-        description: Name of package to filter on
+        description: Name of package to search for (e.g. sed)
         required: true
         type: string
       - name: package_type
         in: query
-        description: Type of package to filter on (e.g. rpm, deb, etc)
+        description: Type of package to filter on (e.g. dpkg)
         required: false
         type: string
       - name: version
         in: query
-        description: package version to select for specifically
+        description: Version of named package to filter on (e.g. 4.4-1)
         required: false
         type: string
       - name: page
@@ -1555,7 +1555,7 @@ paths:
       - name: limit
         in: query
         type: integer
-        description: ""
+        description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
         required: false
       responses:
         200:
@@ -1573,33 +1573,34 @@ paths:
       - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_vulnerabilities
-      summary: Listing vulnerabilities with filters
-      description: List (w/filters) vulnerability records known by the system
+      summary: Listing information about given vulnerability
+      description: List (w/filters) vulnerability records known by the system, with affected packages information if present
       parameters:
       - name: id
         in: query
         required: true
         type: string
+        description: The ID of the vulnerability (e.g. CVE-1999-0001)
       - name: affected_package
         in: query
-        description: The name of the affected package, application, etc (depends on the type of vulnerability)
+        description: Filter results by specified package name (e.g. sed)
         required: false
         type: string
       - name: affected_package_version
         in: query
-        description: The exact version of the affecting package to also filter on. Requires that the package name is also specified for this to be processed.
+        description: Filter results by specified package version (e.g. 4.4-1)
         required: false
         type: string
       - name: page
         in: query
         type: string
-        description: ""
+        description: The page of results to fetch. Pages start at 1
         required: false
         default: "1"
       - name: limit
         in: query
         type: integer
-        description: ""
+        description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
         required: false
       responses:
         200:
@@ -1637,6 +1638,26 @@ definitions:
       type:
         type: string
         description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
+    description: A record of a software item which is vulnerable or carries a fix for a vulnerability
+  VulnerablePackageReference:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Package name
+      version:
+        type: string
+        description: A version for the package. If null, then references all versions
+        x-nullable: true
+      type:
+        type: string
+        description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
+      severity:
+        type: string
+        description: Severity of vulnerability affecting package
+      namespace:
+        type: string
+        description: Vulnerability namespace of affected package
     description: A record of a software item which is vulnerable or carries a fix for a vulnerability
   StandaloneVulnerability:
     type: object
@@ -1711,7 +1732,7 @@ definitions:
       affected_packages:
         type: array
         items:
-          $ref: '#/definitions/PackageReference'
+          $ref: '#/definitions/VulnerablePackageReference'
     description: A record of an image vulnerable to some known vulnerability. Includes vulnerable package information
   ImageWithPackages:
     type: object
