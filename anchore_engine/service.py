@@ -85,8 +85,9 @@ class BaseService(object):
     __service_api_version__ = 'v1'
     __lifecycle_handlers__ = {}
 
-    def __init__(self):
+    def __init__(self, options={}):
         self.name = self.__service_name__
+        self.options = options
         self.global_configuration = None
         self.requires_db = None
         self.require_system_user = None
@@ -400,8 +401,8 @@ class ApiService(BaseService):
     __spec_file__ = 'swagger.yaml'
     __service_api_version__ = 'v1'
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, options={}):
+        super().__init__(options=options)
         self._api_application = None
 
     def _register_instance_handlers(self):
@@ -421,7 +422,7 @@ class ApiService(BaseService):
             flask_app.url_map.strict_slashes = False
 
             metrics.init_flask_metrics(flask_app, servicename=service_name)
-            application.add_api(Path(api_spec_file))
+            application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
             return application
         except Exception as err:
             traceback.print_exc()

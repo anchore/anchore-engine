@@ -40,7 +40,7 @@ class CommonOptions(usage.Options):
 
     optParameters = [
         ["config", "c", None, "Configuration directory location."],
-        ["validate-responses", "r", False, "Enable response validation."]
+        ["validate-responses", "r", False, "Enable response validation.", lambda x: x in ['True', 'true', 't', True]]
     ]
 
 
@@ -189,7 +189,7 @@ class WsgiApiServiceMaker(object):
             #logger.enable_bootstrap_logging(self.tapname)
 
             assert (issubclass(self.service_cls, ApiService))
-            self.anchore_service = self.service_cls()
+            self.anchore_service = self.service_cls(options=options)
             self.anchore_service.initialize(self.configuration)
 
             # application object
