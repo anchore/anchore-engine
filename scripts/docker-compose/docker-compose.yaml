@@ -7,10 +7,16 @@
 # - create a directory ~/aevolume
 # - create a directory ~/aevolume/db
 # - create a directory ~/aevolume/config
+# - place this file as ~/aevolume/docker-compose.yaml
 # - copy the example (./scripts/docker-compose/config.yaml) to ~/aevolume/config/config.yaml
-# - copy the example (./scripts/docker-compose/anchore-promethesus.yaml) to ~/aevolume/config/anchore-promethesus.yaml
 # - edit ~/aevolume/config/config.yaml and save (only if you need to make changes - not required)
-# - review ./docker-compose.yaml
+# - review ~/aevolume/docker-compose.yaml
+#
+# - OPTIONAL: to enable prometheus metrics
+# - copy the example (./scripts/docker-compose/anchore-promethesus.yaml) to ~/aevolume/config/anchore-promethesus.yaml
+# - edit ~/aevolume/docker-compose.yaml and uncomment the anchore-prometheus service section
+# - edit ~/aevolume/config.yaml and uncomment the 'metrics' section
+#
 #
 # Run, use, stop, restart the anchore-engine with docker-compose
 # - run: docker-compose up -d
@@ -47,14 +53,14 @@ services:
      - "8338:8338"
     volumes:
      - ${PWD}/config:/config/:Z
-     #- /var/run/docker.sock:/var/run/docker.sock
     logging:
      driver: "json-file"
      options:
       max-size: 100m
     environment:
      # NOTE: this should be set to the same name as this service (e.g. anchore-engine)
-     - ANCHORE_HOST_ID=anchore-engine
+     - ANCHORE_HOST_ID=dockerhostid-anchore-engine
+     - ANCHORE_ENDPOINT_HOSTNAME=anchore-engine
   anchore-db:
     image: "postgres:9"
     volumes:
@@ -75,7 +81,7 @@ services:
 #    depends_on:
 #     - anchore-engine
 #    volumes:
-#     - ${PWD}/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml:Z
+#     - ${PWD}/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yml:z
 #    logging:
 #     driver: "json-file"
 #     options:

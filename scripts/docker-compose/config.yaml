@@ -12,10 +12,10 @@ cleanup_images: True
 # allow_awsecr_iam_auto: False
 # docker_conn: 'unix://var/run/docker.sock'
 # docker_conn_timeout: 600
-host_id: 'dockerhostid-${ANCHORE_HOST_ID}'
+host_id: '${ANCHORE_HOST_ID}'
 internal_ssl_verify: False
 auto_restart_services: True
-#catalog_endpoint: 'http://${ANCHORE_HOST_ID}:8082/v1'
+#catalog_endpoint: 'http://${ANCHORE_ENDPOINT_HOSTNAME}:8082/v1'
 #
 
 # Uncomment if you would like to enable prometheus metrics routes in
@@ -91,19 +91,19 @@ services:
   apiext:
     enabled: True
     require_auth: True
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8228
   kubernetes_webhook:
     enabled: True
     require_auth: False
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8338
   catalog:
     enabled: True
     require_auth: True
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8082
 # NOTE: use the below external_* parameters to define the port/tls
@@ -140,7 +140,7 @@ services:
   simplequeue:
     enabled: True
     require_auth: True
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8083
 #    external_port: 8083
@@ -151,7 +151,7 @@ services:
     cycle_timer_seconds: 1
     max_threads: 1
     analyzer_driver: 'nodocker'
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8084
 #    external_port: 8084
@@ -159,7 +159,7 @@ services:
   policy_engine:
     enabled: True
     require_auth: True
-    endpoint_hostname: '${ANCHORE_HOST_ID}'
+    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8087
 #    external_port: 8087
