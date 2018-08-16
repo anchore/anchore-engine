@@ -10,7 +10,8 @@ def matcher_for_tag(registry='*', repository='*', tag='*'):
         'image': {
             'type': 'tag',
             'value': tag
-        }
+        },
+        'policy_ids': ['x']
     }
 
 
@@ -21,7 +22,8 @@ def matcher_for_id(registry='*', repository='*', id='*'):
         'image': {
             'type': 'id',
             'value': id
-        }
+        },
+        'policy_ids': ['x']
     }
 
 
@@ -32,7 +34,8 @@ def matcher_for_digest(registry='*', repository='*', digest='*'):
         'image': {
             'type': 'digest',
             'value': digest
-        }
+        },
+        'policy_ids': ['x']
     }
 
 

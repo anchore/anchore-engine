@@ -148,7 +148,7 @@ class TestLargeBundlesEval(unittest.TestCase):
         self.assertIsNotNone(evaluation2, 'Got None eval')
         ExecutableWhitelist._use_indexes = True
 
-        self.assertListEqual(evaluation.json()['bundle_decision']['policy_decision']['decisions'], evaluation2.json()['bundle_decision']['policy_decision']['decisions'])
+        self.assertListEqual(evaluation.json()['bundle_decision']['policy_decisions'][0]['decisions'], evaluation2.json()['bundle_decision']['policy_decisions'][0]['decisions'])
         print(('Evaluation: {}'.format(json.dumps(evaluation.json(), indent=2))))
         open_ssl_wl_match = {
             "action": "go",
@@ -169,5 +169,5 @@ class TestLargeBundlesEval(unittest.TestCase):
                 "trigger_id": "CVE-2016-6515+openssh-client"
             }
         }
-        self.assertIn(open_ssl_wl_match, evaluation.json()['bundle_decision']['policy_decision']['decisions'])
-        self.assertGreaterEqual(len([x for x in evaluation.json()['bundle_decision']['policy_decision']['decisions'] if x['match'].get('whitelisted',{}).get('matched_rule_id', '') in ['testinserted1', 'testinserted2', 'testinserted3']]), 1)
+        self.assertIn(open_ssl_wl_match, evaluation.json()['bundle_decision']['policy_decisions'][0]['decisions'])
+        self.assertGreaterEqual(len([x for x in evaluation.json()['bundle_decision']['policy_decisions'][0]['decisions'] if x['match'].get('whitelisted',{}).get('matched_rule_id', '') in ['testinserted1', 'testinserted2', 'testinserted3']]), 1)
