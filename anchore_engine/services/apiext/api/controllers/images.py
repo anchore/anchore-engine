@@ -5,6 +5,7 @@ import base64
 
 from flask import request
 
+from anchore_engine import utils
 from anchore_engine.clients import catalog
 import anchore_engine.services.common
 from anchore_engine.subsys import taskstate, logger
@@ -28,7 +29,7 @@ def make_response_content(content_type, content_data):
     # type-specific formatting of content data
     if content_type == 'os':
         elkeys = ['license', 'origin', 'size', 'type', 'version']
-        for package in content_data.keys():
+        for package in list(content_data.keys()):
             el = {}
             try:
                 el['package'] = package
@@ -43,7 +44,7 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'npm':
-        for package in content_data.keys():        
+        for package in list(content_data.keys()):        
             el = {}
             try:
                 el['package'] = content_data[package]['name']
@@ -58,7 +59,7 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'gem':
-        for package in content_data.keys():
+        for package in list(content_data.keys()):
             el = {}
             try:
                 el['package'] = content_data[package]['name']
@@ -73,7 +74,7 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'python':
-        for package in content_data.keys():
+        for package in list(content_data.keys()):
             el = {}
             try:
                 el['package'] = content_data[package]['name']
@@ -88,7 +89,7 @@ def make_response_content(content_type, content_data):
                 ret.append(el)
 
     elif content_type == 'java':
-        for package in content_data.keys():
+        for package in list(content_data.keys()):
             el = {}
             try:
                 el['package'] = content_data[package]['name']
@@ -113,18 +114,19 @@ def make_response_content(content_type, content_data):
             'uid': 'uid',
             'gid': 'gid'
         }
-        for filename in content_data.keys():
+        for filename in list(content_data.keys()):
             el = {}
             try:
                 el['filename'] = filename
-                for elkey in elmap.keys():
+                for elkey in list(elmap.keys()):
                     try:
                         el[elmap[elkey]] = content_data[filename][elkey]
                     except:
                         el[elmap[elkey]] = None
 
                 # special formatting
-                el['mode'] = oct(stat.S_IMODE(el['mode']))
+                #el['mode'] = oct(stat.S_IMODE(el['mode']))
+                el['mode'] = format(stat.S_IMODE(el['mode']), '05o')
                 if el['sha256'] == 'DIRECTORY_OR_OTHER':
                     el['sha256'] = None
 
@@ -134,13 +136,13 @@ def make_response_content(content_type, content_data):
                 ret.append(el)        
     elif content_type in ['docker_history']:
         try:
-            ret = base64.b64encode(json.dumps(content_data))
+            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(json.dumps(content_data))))
         except Exception as err:
             logger.warn("could not convert content to json/base64 encode - exception: {}".format(err))
             ret = ""
     elif content_type in ['manifest', 'dockerfile']:
         try:
-            ret = base64.b64encode(content_data)
+            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(content_data)))
         except Exception as err:
             logger.warn("could not base64 encode content - exception: {}".format(err))
             ret = ""
@@ -186,13 +188,13 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         }
         scan_result = vulnerability_data['legacy_report']
         try:
-            for imageId in scan_result.keys():
+            for imageId in list(scan_result.keys()):
                 header = scan_result[imageId]['result']['header']
                 rows = scan_result[imageId]['result']['rows']
                 for row in rows:
                     el = {}
                     el.update(eltemplate)
-                    for k in keymap.keys():
+                    for k in list(keymap.keys()):
                         try:
                             el[k] = row[header.index(keymap[k])]
                         except:
@@ -224,7 +226,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             el = {}
             el.update(eltemplate)
 
-            for k in keymap.keys():
+            for k in list(keymap.keys()):
                 el[k] = vuln[keymap[k]]
 
             el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
@@ -477,7 +479,7 @@ def get_content(request_inputs, content_type, doformat=False):
                             for image_detail in image_report.get('image_detail', []):
                                 if image_detail.get('dockerfile', None):
                                     logger.debug("migrating old dockerfile content form into new")
-                                    image_content_data['dockerfile'] = image_detail.get('dockerfile', "").decode('base64')
+                                    image_content_data['dockerfile'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(image_detail.get('dockerfile', ""))))
                                     catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
                                     break
                     except Exception as err:
@@ -703,7 +705,7 @@ def get_image_metadata_by_type(imageDigest, mtype):
             return_object = {
                 'imageDigest': imageDigest,
                 'metadata_type': mtype,
-                'metadata': return_object.values()[0]
+                'metadata': list(return_object.values())[0]
             }
 
     except Exception as err:
@@ -744,7 +746,7 @@ def get_image_content_by_type(imageDigest, ctype):
             return_object = {
                 'imageDigest': imageDigest,
                 'content_type': ctype,
-                'content': return_object.values()[0]
+                'content': list(return_object.values())[0]
             }
 
     except Exception as err:
@@ -827,7 +829,7 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, v
             return_object = {
                 'imageDigest': imageDigest,
                 'vulnerability_type': vulnerability_type,
-                'vulnerabilities': return_object.values()[0]
+                'vulnerabilities': list(return_object.values())[0]
             }
 
     except Exception as err:

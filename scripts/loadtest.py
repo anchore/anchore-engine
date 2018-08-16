@@ -11,7 +11,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 def count_http_get(url):
     global count
-    print url
+    print(url)
     r = requests.get(url, auth=('admin', 'foobar'), verify=False)
     count = count + 1
     return(r)
@@ -47,8 +47,8 @@ while(True):
         url = '/'.join([base_url, 'policies', policyId])
         r = count_http_get(url)
        
-    print "COUNT: " + str(count)
+    print("COUNT: " + str(count))
     if count > 1024:
         timer_stop = time.time()
-        print "PROCESSED " + str(count) + " URLS IN " + str(timer_stop - timer_start) + " SECONDS: " + str(count / (timer_stop - timer_start))
+        print("PROCESSED " + str(count) + " URLS IN " + str(timer_stop - timer_start) + " SECONDS: " + str(count / (timer_stop - timer_start)))
         exit(0)

@@ -8,4 +8,4 @@ fi
 
 REST="${@:2}"
 
-/usr/bin/anchore-manager --configdir ${CONFIGDIR} service start $REST
+anchore-manager --configdir ${CONFIGDIR} service start $REST

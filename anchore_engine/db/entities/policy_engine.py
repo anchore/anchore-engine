@@ -9,6 +9,7 @@ from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean,
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON
 from sqlalchemy.orm import relationship
 
+from anchore_engine.utils import ensure_str, ensure_bytes
 try:
     from anchore_engine.subsys import logger as log
 except:
@@ -597,7 +598,7 @@ class FilesystemAnalysis(Base):
 
     def _files_json(self):
         if self.compression_algorithm == 'gzip':
-            return json.loads(zlib.decompress(self.compressed_file_json))
+            return json.loads(ensure_str(zlib.decompress(ensure_bytes(self.compressed_file_json))))
         else:
             raise ValueError('Got unexpected compresssion algorithm value: {}. Expected {}'.format(self.compression_algorithm, self.supported_algorithms))
 
@@ -607,7 +608,7 @@ class FilesystemAnalysis(Base):
         :param file_json:
         :return:
         """
-        self.compressed_file_json = zlib.compress(json.dumps(file_json))
+        self.compressed_file_json = zlib.compress(json.dumps(file_json).encode('utf-8'))
         self.compression_algorithm = 'gzip'
         self.compressed_content_hash = hashlib.sha256(self.compressed_file_json).hexdigest()
 
@@ -749,7 +750,7 @@ class ImagePackageVulnerability(Base):
         """
         if self.vulnerability.fixed_in:
             name_matches = [self.pkg_name, self.package.normalized_src_pkg]
-            fixed_artifacts = filter(lambda x: x.name in name_matches, self.vulnerability.fixed_in)
+            fixed_artifacts = [x for x in self.vulnerability.fixed_in if x.name in name_matches]
             if fixed_artifacts and len(fixed_artifacts) == 1:
                 fixed_in = fixed_artifacts[0]
             elif fixed_artifacts and len(fixed_artifacts) > 1:

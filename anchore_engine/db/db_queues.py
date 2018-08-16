@@ -34,7 +34,7 @@ def get_all(queueId, userId, session=None):
 
     our_results = session.query(QueueItem).filter_by(queueId=queueId, userId=userId).order_by(asc(QueueItem.created_at))
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         obj['data'] = json.loads(obj['data'])
         ret.append(obj)
         #session.delete(result)
@@ -49,7 +49,7 @@ def drain_all(queueId, userId, session=None):
 
     our_results = session.query(QueueItem).filter_by(queueId=queueId, userId=userId).order_by(asc(QueueItem.created_at))
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         obj['data'] = json.loads(obj['data'])
         ret.append(obj)
         session.delete(result)

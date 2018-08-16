@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
-import json
 import os
 import re
+import json
 import sys
 import zipfile
 from io import BytesIO
@@ -35,6 +34,7 @@ def parse_properties(file):
     """
     props = {}
     for line in file:
+        line = str(line, 'utf-8')
         if not re.match("\s*(#.*)?$", line):
             kv = line.split('=')
             key = kv[0].strip()
@@ -94,7 +94,7 @@ def process_java_archive(prefix, filename, inZFH=None):
         if 'META-INF/MANIFEST.MF' in filenames:
             try:
                 with ZFH.open('META-INF/MANIFEST.MF', 'r') as MFH:
-                    top_el['metadata']['MANIFEST.MF'] = MFH.read()
+                    top_el['metadata']['MANIFEST.MF'] = str(MFH.read(), 'utf-8')
 
                 for line in (top_el['metadata']['MANIFEST.MF'].splitlines()):
                     try:
@@ -177,15 +177,18 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    for f in allfiles.keys():
+    for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'file':
             prefix = '/'.join([unpackdir, 'rootfs'])
-            els = process_java_archive(prefix, f.encode('utf8'))
+            #els = process_java_archive(prefix, f.encode('utf8'))
+            els = process_java_archive(prefix, f)
             if els:
                 for el in els:
                     resultlist[el['location']] = json.dumps(el)
 
 except Exception as err:
+    import traceback
+    traceback.print_exc()
     print("WARN: analyzer unable to complete - exception: " + str(err))
 
 if resultlist:

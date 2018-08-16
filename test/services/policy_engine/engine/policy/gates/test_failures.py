@@ -28,7 +28,7 @@ class FailTrigger(BaseTrigger):
     }
 
     def evaluate(self, image_obj, context):
-        raise StandardError('Failing as intended')
+        raise Exception('Failing as intended')
 
 
 class FailGate(Gate):
@@ -78,7 +78,7 @@ class PolicyFailureTest(unittest.TestCase):
         image_obj = Image(id='fakeid1')
 
         r = b.execute(image_object=image_obj, tag='dockerhub/library/alpine:latest', context=object())
-        print(json.dumps((r.json()), indent=2))
+        print((json.dumps((r.json()), indent=2)))
 
 
 if __name__ == '__main__':

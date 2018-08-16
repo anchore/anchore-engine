@@ -5,7 +5,7 @@ Operations for CRUD on document references and metadata. Actual document content
 """
 
 import time
-import urlparse
+import urllib.parse
 from anchore_engine import db
 from anchore_engine.db import ArchiveMetadata
 from anchore_engine.subsys import logger
@@ -28,7 +28,7 @@ def get_all(session=None):
 
     our_results = session.query(ArchiveMetadata)
     for result in our_results:
-        obj = dict((key, value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
     return (ret)
@@ -39,7 +39,7 @@ def get(userId, bucket, archiveId, session=None):
 
     result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
-        obj = dict((key, value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.update(obj)
 
     return (ret)
@@ -64,7 +64,7 @@ def get_byname(userId, documentName, session=None):
     result = session.query(ArchiveMetadata).filter_by(userId=userId, documentName=documentName).first()
 
     if result:
-        obj = dict((key, value) for key, value in vars(result).iteritems() if not key.startswith('_'))
+        obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
     return (ret)
@@ -97,7 +97,7 @@ def list_schemas(session=None):
 
     for record in session.query(ArchiveMetadata.content_url):
         logger.info('Got record: {}'.format(record))
-        parsed = urlparse.urlparse(record[0])
+        parsed = urllib.parse.urlparse(record[0])
         found_schemas.append(parsed.scheme)
 
     return set(found_schemas)
@@ -109,8 +109,8 @@ def list_all_notempty(session=None):
     results = session.query(ArchiveMetadata).filter(ArchiveMetadata.content_url != None)
     for result in results:
         obj = {}
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
@@ -127,8 +127,8 @@ def list_all(session=None, **dbfilter):
 
     for result in results:
         obj = {}
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
@@ -148,8 +148,8 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     for result in results:
         obj = {}
-        for i in range(0, len(result.keys())):
-            k = result.keys()[i]
+        for i in range(0, len(list(result.keys()))):
+            k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)

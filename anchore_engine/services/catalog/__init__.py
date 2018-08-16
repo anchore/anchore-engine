@@ -3,18 +3,11 @@ import os
 import copy
 import threading
 import time
-import traceback
 import uuid
 
-import connexion
-from twisted.internet import reactor
-from twisted.web.wsgi import WSGIResource
-from twisted.web.resource import Resource
-from twisted.web import rewrite
-from twisted.internet.task import LoopingCall
-
 # anchore modules
-from anchore_engine.clients import http, simplequeue, policy_engine
+import anchore_engine.clients.anchoreio
+from anchore_engine.clients import http, simplequeue, policy_engine, docker_registry
 from anchore_engine.clients.policy_engine.generated.rest import ApiException
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
@@ -25,115 +18,10 @@ from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_policybundle, db_policyeval, db_queues, db_registries, db_subscriptions, db_users, db_anchore, db_services, db_events
 from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
-import anchore_engine.auth.anchore_io
 import anchore_engine.subsys.events as events
 from anchore_engine.utils import AnchoreException
 from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError, PolicyBundleDownloadError, PolicyBundleValidationError, PolicySyncUrlNotFound
-
-
-servicename = 'catalog'
-_default_api_version = "v1"
-
-# service funcs (must be here)
-
-def default_version_rewrite(request):
-    global _default_api_version
-    try:
-        if request.postpath:
-            if request.postpath[0] != 'health' and request.postpath[0] != _default_api_version:
-                request.postpath.insert(0, _default_api_version)
-                request.path = '/'+_default_api_version+request.path
-    except Exception as err:
-        logger.error("rewrite exception: " +str(err))
-        raise err
-
-def createService(sname, config):
-    global servicename
-
-    try:
-        application = connexion.FlaskApp(__name__, specification_dir='swagger/')
-        flask_app = application.app
-        flask_app.url_map.strict_slashes = False
-        anchore_engine.subsys.metrics.init_flask_metrics(flask_app, servicename=servicename)
-        application.add_api('swagger.yaml')
-    except Exception as err:
-        traceback.print_exc()
-        raise err
-
-    flask_site = WSGIResource(reactor, reactor.getThreadPool(), application=flask_app)
-    realroot = Resource()
-    realroot.putChild(b"v1", anchore_engine.services.common.getAuthResource(flask_site, sname, config))
-    realroot.putChild(b"health", anchore_engine.services.common.HealthResource())
-    # this will rewrite any calls that do not have an explicit version to the base path before being processed by flask
-    root = rewrite.RewriterResource(realroot, default_version_rewrite)
-    #root = anchore_engine.services.common.getAuthResource(flask_site, sname, config)
-    return(anchore_engine.services.common.createServiceAPI(root, sname, config))
-
-def initializeService(sname, config):
-    try:
-        archive.initialize(config['services'][sname])
-    except Exception as err:
-        logger.exception("Error initializing archive: check catalog configuration")
-        raise err
-
-    # set up defaults for users if not yet set up
-    try:
-        with db.session_scope() as dbsession:
-            user_records = db_users.get_all(session=dbsession)
-            for user_record in user_records:
-                userId = user_record['userId']
-                if userId == 'anchore-system':
-                    continue
-
-                bundle_records = db_policybundle.get_all_byuserId(userId, session=dbsession)
-                if not bundle_records:
-                    logger.debug("user has no policy bundle - installing default: " +str(userId))
-                    localconfig = anchore_engine.configuration.localconfig.get_config()
-                    if 'default_bundle_file' in localconfig and os.path.exists(localconfig['default_bundle_file']):
-                        logger.info("loading def bundle: " + str(localconfig['default_bundle_file']))
-                        try:
-                            default_bundle = {}
-                            with open(localconfig['default_bundle_file'], 'r') as FH:
-                                default_bundle = json.loads(FH.read())
-                            if default_bundle:
-                                bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'], default_bundle)
-                                policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle, active=True)
-                                rc = db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
-                                if not rc:
-                                    raise Exception("policy bundle DB add failed")
-                        except Exception as err:
-                            logger.error("could not load up default bundle for user - exception: " + str(err))
-    except Exception as err:
-        raise Exception ("unable to initialize default user data - exception: " + str(err))
-
-    # set up monitor
-    try:
-        kick_timer = int(config['services'][sname]['cycle_timer_seconds'])
-    except:
-        kick_timer = 1
-    try:
-        cycle_timers = {}
-        cycle_timers.update(config['services'][sname]['cycle_timers'])
-    except:
-        cycle_timers = {}
-
-    kwargs = {
-        'kick_timer':kick_timer,
-        'cycle_timers': cycle_timers
-    }
-
-    lc = LoopingCall(monitor, **kwargs)
-    lc.start(1)
-
-    return(anchore_engine.services.common.initializeService(sname, config))
-
-def registerService(sname, config):
-    rc = anchore_engine.services.common.registerService(sname, config, enforce_unique=False)
-
-    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
-    anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, update_db=True)
-
-    return (rc)
+from anchore_engine.service import ApiService, LifeCycleStages
 
 ##########################################################
 
@@ -368,7 +256,7 @@ def handle_repo_watcher(*args, **kwargs):
                 image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
                 # List tags
                 try:
-                    curr_repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
+                    curr_repotags = docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
                 except AnchoreException as e:
                     event = events.ListTagsFail(user_id=userId, registry=image_info.get('registry', None), repository=image_info.get('repo', None), error=e.to_dict())
                     raise e
@@ -488,7 +376,7 @@ def handle_image_watcher(*args, **kwargs):
 
         for registry_record in registry_creds:
             try:
-                registry_status = anchore_engine.auth.docker_registry.ping_docker_registry(registry_record)
+                registry_status = docker_registry.ping_docker_registry(registry_record)
             except Exception as err:
                 registry_record['record_state_key'] = 'auth_failure'
                 registry_record['record_state_val'] = str(int(time.time()))
@@ -830,6 +718,7 @@ def handle_analyzer_queue(*args, **kwargs):
                     try:
                         manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
                     except Exception as err:
+                        logger.debug("failed to get manifest - {}".format(str(err)))
                         manifest = {}
 
                     qobj = {}
@@ -871,7 +760,7 @@ def sync_policy_bundle(user_auth, anchoreio_user, anchoreio_pw, localconfig):
     if not url:
         raise PolicySyncUrlNotFound(msg="cannot read policy_sync_url from loaded configuration")
 
-    client = anchore_engine.auth.anchore_io.get_anchoreio_client(anchoreio_user, anchoreio_pw)
+    client = anchore_engine.clients.anchoreio.get_anchoreio_client(anchoreio_user, anchoreio_pw)
 
     bundledata = None
     r = client.authenticated_get(url)
@@ -1191,25 +1080,6 @@ feed_sync_updated = False
 bundle_user_last_updated = {}
 bundle_user_is_updated = {}
 
-watchers = {
-    'image_watcher': {'handler': handle_image_watcher, 'task_lease_id': 'image_watcher', 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'repo_watcher': {'handler': handle_repo_watcher, 'task_lease_id': 'repo_watcher', 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_eval': {'handler':handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'task_lease_id': 'policy_bundle_sync','taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'analyzer_queue': {'handler':handle_analyzer_queue, 'task_lease_id': 'analyzer_queue','taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'notifications': {'handler':handle_notifications, 'task_lease_id': 'notifications','taskType': 'handle_notifications', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'vulnerability_scan': {'handler':handle_vulnerability_scan, 'task_lease_id': 'vulnerability_scan', 'taskType': 'handle_vulnerability_scan', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'service_watcher': {'handler':handle_service_watcher, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'task_lease_id': False, 'taskType': None, 'args': [servicename], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-    'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-}
-
-watcher_task_template = {
-    'taskType': None,
-    'watcher': None,
-}
-watcher_threads = {}
-
 default_lease_ttl = 60 # 1 hour ttl, should be more than enough in most cases
 
 
@@ -1255,7 +1125,7 @@ def schedule_watcher(watcher):
     global watchers, watcher_task_template, system_user_auth
 
     if watcher not in watchers:
-        logger.warn("input watcher {} not in list of available watchers {}".format(watcher, watchers.keys()))
+        logger.warn("input watcher {} not in list of available watchers {}".format(watcher, list(watchers.keys())))
         return(False)
 
     if watchers[watcher]['taskType']:
@@ -1292,7 +1162,7 @@ def monitor_func(**kwargs):
         localconfig = anchore_engine.configuration.localconfig.get_config()
         system_user_auth = localconfig['system_user_auth']
 
-        for watcher in watchers.keys():
+        for watcher in list(watchers.keys()):
             if not watchers[watcher]['initialized']:
                 # first time
                 if 'cycle_timers' in kwargs and watcher in kwargs['cycle_timers']:
@@ -1360,8 +1230,11 @@ def monitor_func(**kwargs):
 
     logger.debug("exiting monitor thread")
 
+
 monitor_thread = None
-def monitor(**kwargs):
+
+
+def monitor(*args, **kwargs):
     global monitor_thread
     try:
         donew = False
@@ -1388,3 +1261,71 @@ def monitor(**kwargs):
         logger.warn("MON thread start exception: " + str(err))
 
 
+class CatalogService(ApiService):
+    __service_name__ = 'catalog'
+    __spec_dir__ = 'services/catalog/swagger'
+    __monitor_fn__ = monitor
+
+    def _register_instance_handlers(self):
+        super()._register_instance_handlers()
+
+        self.register_handler(LifeCycleStages.post_db, self._init_archive, {})
+        self.register_handler(LifeCycleStages.post_db, self._init_users, {})
+
+    def _init_archive(self):
+        try:
+            archive.initialize(self.configuration)
+        except Exception as err:
+            logger.exception("Error initializing archive: check catalog configuration")
+            raise err
+
+    def _init_users(self):
+        # set up defaults for users if not yet set up
+        try:
+            with db.session_scope() as dbsession:
+                user_records = db_users.get_all(session=dbsession)
+                for user_record in user_records:
+                    userId = user_record['userId']
+                    if userId == 'anchore-system':
+                        continue
+
+                    bundle_records = db_policybundle.get_all_byuserId(userId, session=dbsession)
+                    if not bundle_records:
+                        logger.debug("user has no policy bundle - installing default: " +str(userId))
+                        localconfig = anchore_engine.configuration.localconfig.get_config()
+                        if 'default_bundle_file' in localconfig and os.path.exists(localconfig['default_bundle_file']):
+                            logger.info("loading def bundle: " + str(localconfig['default_bundle_file']))
+                            try:
+                                default_bundle = {}
+                                with open(localconfig['default_bundle_file'], 'r') as FH:
+                                    default_bundle = json.loads(FH.read())
+                                if default_bundle:
+                                    bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'], default_bundle)
+                                    policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle, active=True)
+                                    rc = db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
+                                    if not rc:
+                                        raise Exception("policy bundle DB add failed")
+                            except Exception as err:
+                                logger.error("could not load up default bundle for user - exception: " + str(err))
+        except Exception as err:
+            raise Exception ("unable to initialize default user data - exception: " + str(err))
+
+
+watchers = {
+    'image_watcher': {'handler': handle_image_watcher, 'task_lease_id': 'image_watcher', 'taskType': 'handle_image_watcher', 'args': [], 'cycle_timer': 600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'repo_watcher': {'handler': handle_repo_watcher, 'task_lease_id': 'repo_watcher', 'taskType': 'handle_repo_watcher', 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*7, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_eval': {'handler':handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'policy_bundle_sync': {'handler':handle_policy_bundle_sync, 'task_lease_id': 'policy_bundle_sync','taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600, 'min_cycle_timer': 300, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'analyzer_queue': {'handler':handle_analyzer_queue, 'task_lease_id': 'analyzer_queue','taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'notifications': {'handler':handle_notifications, 'task_lease_id': 'notifications','taskType': 'handle_notifications', 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 10, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'vulnerability_scan': {'handler':handle_vulnerability_scan, 'task_lease_id': 'vulnerability_scan', 'taskType': 'handle_vulnerability_scan', 'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400*2, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_watcher': {'handler':handle_service_watcher, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'task_lease_id': False, 'taskType': None, 'args': [CatalogService.__service_name__], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+    'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
+}
+
+watcher_task_template = {
+    'taskType': None,
+    'watcher': None,
+}
+watcher_threads = {}

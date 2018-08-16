@@ -61,7 +61,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         test_bundle = self.test_env.get_bundle('multitest')
         built = build_bundle(test_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -70,22 +70,22 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print('Native json: {}\n'.format(json.dumps(evaluation.json(), indent=2)))
-        print('Table json: {}\n'.format(json.dumps(evaluation.as_table_json(), indent=2)))
+        print(('Native json: {}\n'.format(json.dumps(evaluation.json(), indent=2))))
+        print(('Table json: {}\n'.format(json.dumps(evaluation.as_table_json(), indent=2))))
 
 
         # Diff old an new defaults
         multi_bundle = self.test_env.get_bundle('multi_default')
         multi_default = build_bundle(multi_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(multi_default))
+        print(('Got: {}'.format(multi_default)))
         self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
         multi_default_evaluation = multi_default.execute(img_obj, tag=test_tag,
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         default_built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(default_built))
+        print(('Got: {}'.format(default_built)))
         self.assertIsNotNone(img_obj, 'Failed to get an image object to test')
         default_evaluation = default_built.execute(img_obj, tag=test_tag,
                                           context=ExecutionContext(db_session=db, configuration={}))
@@ -98,7 +98,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         test_tag = 'docker.io/library/ruby:latest'
         built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -107,15 +107,15 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print(json.dumps(evaluation.json(), indent=2))
-        print(json.dumps(evaluation.as_table_json(), indent=2))
+        print((json.dumps(evaluation.json(), indent=2)))
+        print((json.dumps(evaluation.as_table_json(), indent=2)))
 
 
         print('Building executable bundle from old default bundle')
         test_tag = 'docker.io/library/ruby:latest'
         built = build_bundle(self.old_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -124,8 +124,8 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print(json.dumps(evaluation.json(), indent=2))
-        print(json.dumps(evaluation.as_table_json(), indent=2))
+        print((json.dumps(evaluation.json(), indent=2)))
+        print((json.dumps(evaluation.as_table_json(), indent=2)))
 
 
 
@@ -212,7 +212,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         }
         built = build_bundle(multi_gate_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         db = get_session()
         img_obj = self.get_image_named(db, 'ruby')
@@ -222,8 +222,8 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print(json.dumps(evaluation.json(), indent=2))
-        print(json.dumps(evaluation.as_table_json(), indent=2))
+        print((json.dumps(evaluation.json(), indent=2)))
+        print((json.dumps(evaluation.as_table_json(), indent=2)))
 
     def test_image_whitelist(self):
         bundle = {
@@ -403,7 +403,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         test_tag = 'docker.io/library/ruby:latest'
         built = build_bundle(self.default_bundle, for_tag=test_tag)
         self.assertFalse(built.init_errors)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
         db = get_session()
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -412,8 +412,8 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print(json.dumps(evaluation.json(), indent=2))
-        print(json.dumps(evaluation.as_table_json(), indent=2))
+        print((json.dumps(evaluation.json(), indent=2)))
+        print((json.dumps(evaluation.as_table_json(), indent=2)))
 
         to_whitelist = evaluation.bundle_decision.policy_decisions[0].decisions[0]
         whitelist_bundle = copy.deepcopy(self.default_bundle)
@@ -433,7 +433,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         whitelist_bundle['mappings'][0]['whitelist_ids'] = ['generated_whitelist1']
         built = build_bundle(whitelist_bundle, for_tag=test_tag)
 
-        print('Got updated: {}'.format(built))
+        print(('Got updated: {}'.format(built)))
 
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -445,7 +445,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         #print(json.dumps(evaluation.json(), indent=2))
         #print(json.dumps(evaluation.as_table_json(), indent=2))
 
-        self.assertNotIn(to_whitelist.match.id, map(lambda x: x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None, evaluation.bundle_decision.policy_decisions[0].decisions))
+        self.assertNotIn(to_whitelist.match.id, [x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None for x in evaluation.bundle_decision.policy_decisions[0].decisions])
 
     def testErrorEvaluation(self):
         bundle = {
@@ -459,7 +459,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         print('Building executable bundle from default bundle')
         test_tag = 'docker.io/library/ruby:latest'
         built = build_bundle(bundle, for_tag=test_tag)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         db = get_session()
         img_obj = self.get_image_named(db, 'ruby')
@@ -468,7 +468,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         evaluation = built.execute(img_obj, tag=test_tag,
                                    context=ExecutionContext(db_session=db, configuration={}))
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print('Result: {}'.format(json.dumps(evaluation.as_table_json(), indent=2)))
+        print(('Result: {}'.format(json.dumps(evaluation.as_table_json(), indent=2))))
 
         with self.assertRaises(BundleTargetTagMismatchError) as f:
             evaluation = built.execute(img_obj, tag='docker.io/library/ubuntu:vivid-2015',
@@ -515,7 +515,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         db = get_session()
         with self.assertRaises(InitializationError) as ex:
             built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=False)
-            print('Got: {}'.format(built))
+            print(('Got: {}'.format(built)))
 
             img_obj = self.get_image_named(db, 'ruby')
 
@@ -524,7 +524,7 @@ class TestPolicyBundleEval(unittest.TestCase):
                                        context=ExecutionContext(db_session=db, configuration={}))
 
         built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=True)
-        print('Got: {}'.format(built))
+        print(('Got: {}'.format(built)))
 
         img_obj = self.get_image_named(db, 'ruby')
 
@@ -533,7 +533,7 @@ class TestPolicyBundleEval(unittest.TestCase):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
         self.assertIsNotNone(evaluation, 'Got None eval')
-        print('Result: {}'.format(json.dumps(evaluation.json(), indent=2)))
+        print(('Result: {}'.format(json.dumps(evaluation.json(), indent=2))))
         self.assertIsNotNone(evaluation.warnings)
 
 
@@ -914,7 +914,7 @@ class TestPolicyBundleEval(unittest.TestCase):
         with self.assertRaises(InitializationError) as f:
             built = build_bundle(self.test_env.get_bundle('bad_policy_id'))
             built.execute(image_object=img_obj, context=None, tag='dockerhub/library/ruby:latest')
-            print('Expected Initialization error: {}'.format(f.exception))
+            print(('Expected Initialization error: {}'.format(f.exception)))
 
     def testInvalidActions(self):
         db = get_session()

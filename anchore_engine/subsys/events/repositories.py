@@ -1,4 +1,4 @@
-from common import Event
+from .common import Event
 
 _repo_resource_type = 'repository'
 

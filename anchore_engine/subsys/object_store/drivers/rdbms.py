@@ -2,8 +2,8 @@ import json
 
 from .interface import ObjectStorageDriver
 
-import urlparse
-from anchore_engine import db
+import urllib.parse
+from anchore_engine import db, utils
 from anchore_engine.db import db_archivedocument, db_objectstorage
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError, DriverNotInitializedError
@@ -29,7 +29,7 @@ class LegacyDbDriver(ObjectStorageDriver):
         return self.get_by_uri(self.uri_for(userId, bucket, key))
 
     def _parse_uri(self, uri):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         userId = parsed.netloc
         empty, bucket, key = parsed.path.split('/', 2)
         return userId, bucket, key
@@ -41,7 +41,9 @@ class LegacyDbDriver(ObjectStorageDriver):
             with db.session_scope() as dbsession:
                 result = db_archivedocument.get(userId, bucket, key, session=dbsession)
             if result:
-                return result.get('jsondata')
+                content = result.get('jsondata')
+                ret = utils.ensure_bytes(content)
+                return(ret)
             else:
                 raise ObjectKeyNotFoundError(userId, bucket, key, caused_by=None)
         except Exception as err:
@@ -54,7 +56,7 @@ class LegacyDbDriver(ObjectStorageDriver):
 
         try:
             with db.session_scope() as dbsession:
-                dbdata = {'jsondata': data}
+                dbdata = {'jsondata': str(data, 'utf-8')}
                 db_archivedocument.add(userId, bucket, key, key + ".json", inobj=dbdata, session=dbsession)
                 return self.uri_for(userId, bucket, key)
         except Exception as err:
@@ -103,7 +105,7 @@ class DbDriver(ObjectStorageDriver):
         return '/'.join([userId, bucket, key])
 
     def _parse_uri(self, uri):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         userId = parsed.netloc
         bucket, key = parsed.path[1:].split('/', 1)
 
@@ -126,7 +128,11 @@ class DbDriver(ObjectStorageDriver):
             with db.session_scope() as dbsession:
                 result = db_objectstorage.get(userId, bucket, key, session=dbsession)
                 if result and 'content' in result:
-                    return result.get('content')
+                    data = result.get('content')
+                    if data is not None:
+                        return result.get('content').decode('utf8')
+                    else:
+                        return None
                 else:
                     raise ObjectKeyNotFoundError(userId, bucket, key, caused_by=None)
         except Exception as err:
@@ -139,7 +145,7 @@ class DbDriver(ObjectStorageDriver):
 
         try:
             with db.session_scope() as dbsession:
-                if db_objectstorage.put(userId, bucket, key, data, metadata=metadata, session=dbsession):
+                if db_objectstorage.put(userId, bucket, key, bytearray(data.encode('utf8')), metadata=metadata, session=dbsession):
                     return self.uri_for(userId, bucket, key)
                 else:
                     raise Exception('Db operation to save object returned failure')

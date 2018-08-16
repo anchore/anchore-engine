@@ -1,13 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
-import re
 import json
-import time
-import rpm
-import subprocess
 import stat
 
 import anchore_engine.analyzers.utils
@@ -17,7 +12,7 @@ analyzer_name = "file_suids"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -41,12 +36,12 @@ try:
             OFH.write(json.dumps(allfiles))
 
     # fileinfo
-    for name in allfiles.keys():
+    for name in list(allfiles.keys()):
         if allfiles[name]['mode'] & stat.S_ISUID:
             outfiles[name] = oct(stat.S_IMODE(allfiles[name]['mode']))
 
 except Exception as err:
-    print "ERROR: " + str(err)
+    print("ERROR: " + str(err))
 
 if outfiles:
     ofile = os.path.join(outputdir, 'files.suids')

@@ -110,8 +110,8 @@ class VerifyTrigger(BaseTrigger):
             fs_mode = fs_entry.get('mode')
             if meta_db_entry.mode and fs_mode:
                 # Convert to octal for consistent checks
-                oct_fs_mode = oct(fs_mode)
-                oct_db_mode = oct(meta_db_entry.mode)
+                oct_fs_mode = oct(fs_mode)[2:]
+                oct_db_mode = oct(meta_db_entry.mode)[2:]
 
                 # Trim mismatched lengths in octal mode
                 if len(oct_db_mode) < len(oct_fs_mode):
@@ -179,10 +179,10 @@ class PkgNotPresentTrigger(BaseTrigger):
                 vermatch.pop(img_pkg.name)
 
         # Any remaining
-        for pkg, version in fullmatch.items():
+        for pkg, version in list(fullmatch.items()):
             self._fire(msg="PKGNOTPRESENT input package (" + str(pkg) + "-" + str(version) + ") is not present in container image")
 
-        for pkg, version in vermatch.items():
+        for pkg, version in list(vermatch.items()):
             self._fire(msg="PKGNOTPRESENT input package (" + str(pkg) + "-" + str(
                 version) + ") is not present in container image")
 

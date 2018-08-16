@@ -46,14 +46,19 @@ DEFAULT_CONFIG = {
     }
 }
 
+DEFAULT_CONFIG_FILENAME = 'config.yaml'
 localconfig = {}
+
+
+# Top-level config keys required to be present
+default_required_config_params = ['services', 'webhooks', 'credentials']
 
 
 def update_merge(base, override):
     if not isinstance(base, dict) or not isinstance(override, dict):
         return
 
-    for k, v in override.iteritems():
+    for k, v in override.items():
         if k in base and type(base[k]) != type(v):
             base[k] = v
         else:
@@ -105,20 +110,19 @@ def load_defaults(configdir=None):
     return (localconfig)
 
 
-def load_config(configdir=None, configfile=None, validate_params={}):
+def load_config(configdir=None, configfile=None, validate_params=None):
     global localconfig
 
     load_defaults(configdir=configdir)
 
     if not configfile:
-        configfile = os.path.join(localconfig['service_dir'], "config.yaml")
+        configfile = os.path.join(localconfig['service_dir'], DEFAULT_CONFIG_FILENAME)
 
     if not os.path.exists(configfile):
         raise Exception("config file (" + str(configfile) + ") not found")
     else:
         try:
             confdata = read_config(configfile=configfile, validate_params=validate_params)
-            #localconfig.update(confdata)
             update_merge(localconfig, confdata)
         except Exception as err:
             raise err
@@ -177,7 +181,7 @@ def load_config(configdir=None, configfile=None, validate_params={}):
     return (localconfig)
 
 
-def read_config(configfile=None, validate_params={}):
+def read_config(configfile=None, validate_params=None):
     ret = {}
 
     if not configfile or not os.path.exists(configfile):
@@ -207,14 +211,14 @@ def read_config(configfile=None, validate_params={}):
                 except Exception as err:
                     raise err
 
-            for e in os.environ.keys():
+            for e in list(os.environ.keys()):
                 if re.match("^ANCHORE.*", e):
                     anchore_envs[e] = str(os.environ[e])
 
             if anchore_envs:
                 confbufcopy = confbuf
                 try:
-                    for e in anchore_envs.keys():
+                    for e in list(anchore_envs.keys()):
                         confbufcopy = confbufcopy.replace("${"+str(e)+"}", anchore_envs[e])
                 except Exception as err:
                     logger.warn("problem replacing configuration variable values with overrides - exception: " + str(err))
@@ -235,15 +239,18 @@ def read_config(configfile=None, validate_params={}):
     return (ret)
 
 
-def validate_config(config, validate_params={}):
+def validate_config(config, validate_params=None):
+    """
+    Validate the configuration with required keys and values
+
+    :param config: the config dict to validate
+    :param validate_params: list of strings that are properties that must be found at top level in config
+    :return: true if passes validation, false otherwise
+    """
     ret = True
 
-    if not validate_params:
-        validate_params = {
-            'services': True,
-            'credentials': True,
-            'webhooks': True
-        }
+    if validate_params is None:
+        validate_params = default_required_config_params
 
     try:
         # ensure there aren't any left over unset variables
@@ -253,79 +260,70 @@ def validate_config(config, validate_params={}):
             raise Exception("variable overrides found in configuration file that are unset ("+str(patt.group(1))+")")
 
         # top level checks
-        if validate_params['services'] and ('services' not in config or not config['services']):
-            raise Exception("no 'services' definition in configuration file")
-        elif validate_params['services']:
-            for k in config['services'].keys():
-                if not config['services'][k] or 'enabled' not in config['services'][k]:
-                    raise Exception("service (" + str(
-                        k) + ") defined, but no values are specified (need at least 'enabled: <True|False>')")
-                else:
-                    service_config = config['services'][k]
-
-                    # check to ensure the listen/port/endpoint_hostname params are set for all services
-                    check_keys = ['endpoint_hostname', 'listen', 'port']
-                    for check_key in check_keys:
-                        if check_key not in service_config:
-                            raise Exception("the following values '{}' must be set for all services, but service '{}' does not have them set (missing '{}')".format(check_keys, k, check_key))
-
-                    # check to ensure that if any TLS params are set, then they all must be set
-                    found_key = 0
-                    check_keys = ['ssl_enable', 'ssl_cert', 'ssl_key']
-                    for check_key in check_keys:
-                        if check_key in service_config:
-                            found_key = found_key + 1
-                    if found_key != 0 and found_key != 3:
-                        raise Exception("if any one of (" + ','.join(
-                            check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
-
-        if validate_params['credentials'] and ('credentials' not in config or not config['credentials']):
-            raise Exception("no 'credentials' definition in configuration file")
-        elif validate_params['credentials']:
-            credentials = config['credentials']
-            for check_key in ['database', 'users']:
-                if check_key not in credentials:
-                    raise Exception(
-                        "no '" + str(check_key) + "' definition in 'credentials' section of configuration file")
-                elif not credentials[check_key]:
-                    raise Exception("'"+str(check_key) + "' is in configuration file, but is empty (has no records)")
-                    
-            # database checks
-            for check_key in ['db_connect', 'db_connect_args']:
-                if check_key not in credentials['database']:
-                    raise Exception("no '" + str(
-                        check_key) + "' definition in 'credentials'/'database' section of configuration file")
-
-            # users checks
-            if 'admin' not in credentials['users']:
-                raise Exception("no 'admin' user defined in 'credentials'/'users' section of configuration file")
+        if 'services' in validate_params:
+            if'services' not in config or not config['services']:
+                raise Exception("no 'services' definition in configuration file")
             else:
-                for username in credentials['users'].keys():
-                    if not credentials['users'][username]:
-                        raise Exception("missing details for user '"+str(username)+"' in configuration file")
-                    user = credentials['users'][username]
-                    # for check_key in ['password', 'email', 'external_service_auths', 'registry_service_auths']:
-                    for check_key in ['password', 'email', 'external_service_auths']:
-                        if check_key not in user:
-                            raise Exception(
-                                "required key '" + str(check_key) + "' missing from 'credentials'/'users'/'" + str(
-                                    username) + "' section of configuration file")
+                for k in list(config['services'].keys()):
+                    if not config['services'][k] or 'enabled' not in config['services'][k]:
+                        raise Exception("service (" + str(
+                            k) + ") defined, but no values are specified (need at least 'enabled: <True|False>')")
+                    else:
+                        service_config = config['services'][k]
 
-                            # for reg_type in credentials['users'][username]['registry_service_auths']:
-                            #    registries = credentials['users'][username]['registry_service_auths'][reg_type]
-                            #    if not registries or (len(registries.keys()) <= 0):
-                            #        raise Exception("no registry config in 'credentials'/'users'/'"+str(username)+"'/'registry_service_auths'/'"+str(reg_type)+"'")
-                            #    else:
-                            #        for registry_name in registries.keys():
-                            #            registry = registries[registry_name]
-                            #            if not registry or 'auth' not in registry:
-                            #                raise Exception("no 'auth' defined in 'credentials'/'users'/'"+str(username)+"'/'registry_service_auths'/'"+str(reg_type)+"'/'"+registry_name+"'")
+                        # check to ensure the listen/port/endpoint_hostname params are set for all services
+                        check_keys = ['endpoint_hostname', 'listen', 'port']
+                        for check_key in check_keys:
+                            if check_key not in service_config:
+                                raise Exception("the following values '{}' must be set for all services, but service '{}' does not have them set (missing '{}')".format(check_keys, k, check_key))
+
+                        # check to ensure that if any TLS params are set, then they all must be set
+                        found_key = 0
+                        check_keys = ['ssl_enable', 'ssl_cert', 'ssl_key']
+                        for check_key in check_keys:
+                            if check_key in service_config:
+                                found_key = found_key + 1
+                        if found_key != 0 and found_key != 3:
+                            raise Exception("if any one of (" + ','.join(
+                                check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
+
+        if 'credentials' in validate_params:
+            if 'credentials' not in config or not config['credentials']:
+                raise Exception("no 'credentials' definition in configuration file")
+            else:
+                credentials = config['credentials']
+                for check_key in ['database', 'users']:
+                    if check_key not in credentials:
+                        raise Exception(
+                            "no '" + str(check_key) + "' definition in 'credentials' section of configuration file")
+                    elif not credentials[check_key]:
+                        raise Exception("'"+str(check_key) + "' is in configuration file, but is empty (has no records)")
+
+                # database checks
+                for check_key in ['db_connect', 'db_connect_args']:
+                    if check_key not in credentials['database']:
+                        raise Exception("no '" + str(
+                            check_key) + "' definition in 'credentials'/'database' section of configuration file")
+
+                # users checks
+                if 'admin' not in credentials['users']:
+                    raise Exception("no 'admin' user defined in 'credentials'/'users' section of configuration file")
+                else:
+                    for username in list(credentials['users'].keys()):
+                        if not credentials['users'][username]:
+                            raise Exception("missing details for user '"+str(username)+"' in configuration file")
+                        user = credentials['users'][username]
+                        # for check_key in ['password', 'email', 'external_service_auths', 'registry_service_auths']:
+                        for check_key in ['password', 'email', 'external_service_auths']:
+                            if check_key not in user:
+                                raise Exception(
+                                    "required key '" + str(check_key) + "' missing from 'credentials'/'users'/'" + str(
+                                        username) + "' section of configuration file")
 
             # webhook checks
-            if validate_params['webhooks'] and ('webhooks' not in config or not config['webhooks']):
-                logger.warn("no webhooks defined in configuration file - notifications will be disabled")
-            elif validate_params['webhooks']:
-                pass
+            if 'webhooks' in validate_params:
+                if 'webhooks' not in config or not config['webhooks']:
+                    logger.warn("no webhooks defined in configuration file - notifications will be disabled")
 
     except Exception as err:
         logger.error(str(err))

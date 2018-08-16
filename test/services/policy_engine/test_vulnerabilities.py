@@ -148,8 +148,7 @@ def check_fix_version():
     vulns = img.vulnerabilities()
     for vuln in vulns:
         if vuln.vulnerability.fixed_in:
-            fixes_in = filter(lambda x: x.name == vuln.pkg_name or x.name == vuln.package.normalized_src_pkg,
-                              vuln.vulnerability.fixed_in)
+            fixes_in = [x for x in vuln.vulnerability.fixed_in if x.name == vuln.pkg_name or x.name == vuln.package.normalized_src_pkg]
             fix_available_in = fixes_in[0].version if fixes_in else 'None'
         else:
             fix_available_in = 'None'
@@ -160,13 +159,13 @@ def rescan_cve(img_id):
 
 def run_vuln_test():
     init_db_persisted()
-    sync_feeds(up_to=datetime.datetime(2017, 06, 01))
+    sync_feeds(up_to=datetime.datetime(2017, 0o6, 0o1))
     load_images()
     check_vuln()
 
     db = get_thread_scoped_session()
     try:
-        f = reset_feed_sync_time(db, datetime.datetime(2017, 06, 01), feed_name='vulnerabilities')
+        f = reset_feed_sync_time(db, datetime.datetime(2017, 0o6, 0o1), feed_name='vulnerabilities')
         db.add(f)
         db.commit()
     except:
@@ -175,9 +174,9 @@ def run_vuln_test():
 
     sync_feeds(up_to=datetime.datetime.utcnow())
     check_fix_version()
-    rescan_img_id = test_env.image_map.keys()[0]
+    rescan_img_id = list(test_env.image_map.keys())[0]
     import json
-    print(json.dumps(get_image_vulnerabilities(user_id='0', image_id='7b3dce19c46b752708da38a602decbb1cc4906c8c1f1a19b620158926c199930'), indent=2))
+    print((json.dumps(get_image_vulnerabilities(user_id='0', image_id='7b3dce19c46b752708da38a602decbb1cc4906c8c1f1a19b620158926c199930'), indent=2)))
     rescan_cve('7b3dce19c46b752708da38a602decbb1cc4906c8c1f1a19b620158926c199930')
 
 if __name__ == '__main__':

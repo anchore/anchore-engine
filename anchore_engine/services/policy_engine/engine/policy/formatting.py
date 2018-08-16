@@ -94,12 +94,10 @@ def whitelist_txt_to_json(whitelist_txt):
 conversion_map = {
     'whitelist': {
         str: whitelist_txt_to_json,
-        unicode: whitelist_txt_to_json,
         dict: whitelist_json_to_txt
     },
     'policy': {
         str: policy_txt_to_json,
-        unicode: policy_txt_to_json,
         dict: policy_json_to_txt
     }
 }

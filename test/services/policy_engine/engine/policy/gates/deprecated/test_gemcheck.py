@@ -26,7 +26,7 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreaterEqual(len(t.fired), 0)
 
     def test_notlatest(self):
@@ -35,7 +35,7 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreaterEqual(len(t.fired), 0)
 
     def test_nofeed(self):
@@ -44,7 +44,7 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertEqual(len(t.fired), 0)
 
 
@@ -54,7 +54,7 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreaterEqual(len(t.fired), 0)
 
     def test_pkgfullmatch(self):
@@ -63,7 +63,7 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreaterEqual(len(t.fired), 2)
 
     def test_pkgnamematch(self):
@@ -72,5 +72,5 @@ class GemCheckGateTest(GateUnitTest):
         db.refresh(self.test_image)
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        print('Fired: {}'.format(t.fired))
+        print(('Fired: {}'.format(t.fired)))
         self.assertGreaterEqual(len(t.fired), 3)

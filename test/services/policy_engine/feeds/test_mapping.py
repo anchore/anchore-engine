@@ -37,7 +37,7 @@ class TestVulnerabilityMapping(unittest.TestCase):
                 'NVD': {
                     'CVSSv2': {
                         'Score': 4.3,
-                        'Vectors': u'AV:N/AC:M/Au:N/C:N/I:P'
+                        'Vectors': 'AV:N/AC:M/Au:N/C:N/I:P'
                     }
                 }
             },
@@ -116,8 +116,8 @@ class TestVulnerabilityMapping(unittest.TestCase):
 
     def test_overflow(self):
         r = self.mapper.map(self.long_cve)
-        print('Truncated description length: {} from {}'.format(len(r.description),
-                                                                len(self.long_cve['Vulnerability']['Description'])))
+        print(('Truncated description length: {} from {}'.format(len(r.description),
+                                                                len(self.long_cve['Vulnerability']['Description']))))
         self.assertEqual(r.id, self.test_cve['Vulnerability']['Name'])
         self.assertEqual(r.namespace_name, self.test_cve['Vulnerability']['NamespaceName'])
         self.assertEqual(len(r.fixed_in), 0)
@@ -128,7 +128,7 @@ class TestVulnerabilityMapping(unittest.TestCase):
     def test_full_data(self):
         c = DataFeeds.instance().vulnerabilities.source
         for g in c.list_feed_groups('vulnerabilities'):
-            print('Group: {}'.format(g.name))
+            print(('Group: {}'.format(g.name)))
             for v in c.get_feed_group_data('vulnerabilities', g.name):
                 r = self.mapper.map(v)
                 self.assertTrue(TestVulnerabilityMapping._vuln_validator(r), 'Failed validation on: {}'.format(v))

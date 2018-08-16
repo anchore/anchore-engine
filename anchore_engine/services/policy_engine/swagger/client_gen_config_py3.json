@@ -1,0 +1,7 @@
+{
+	"packageName": "policy_engine_client",
+	"packageVersion": "0.1",
+	"controllerPackage": "controllers",
+	"defaultController": "main",
+	"supportPython2": false
+}

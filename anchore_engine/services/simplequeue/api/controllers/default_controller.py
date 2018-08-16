@@ -4,25 +4,42 @@ from anchore_engine.services import common
 from anchore_engine.subsys import simplequeue, locking
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+from anchore_engine.subsys import logger
 import time
 
 
+def normalize_errors(f):
+    def decorator(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as err:
+            logger.exception('API Error for {}'.format(f.__name__))
+            resp = anchore_engine.services.common.make_response_error(err, in_httpcode=500)
+            return resp, resp['httpcode']
+    return decorator
+
+@normalize_errors
 def status():
+    logger.info('Hitting status!')
     request_inputs = common.do_request_prep(connexion.request, default_params={})
 
     return_object = {}
     httpcode = 500
-    try:
-        service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
-        return_object = anchore_engine.subsys.servicestatus.get_status(service_record)
-        httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    #try:
 
+    service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
+    return_object = anchore_engine.subsys.servicestatus.get_status(service_record)
+    httpcode = 200
 
+    # except Exception as err:
+    #     return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+    #     httpcode = return_object['httpcode']
+
+    logger.info('Exiting: {} {}'.format(return_object, httpcode))
+    return return_object, httpcode
+
+@normalize_errors
 def is_inqueue(queuename, bodycontent):
     request_inputs = common.do_request_prep(connexion.request, default_params={})
     try:

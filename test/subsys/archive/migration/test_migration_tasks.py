@@ -59,7 +59,7 @@ class TestArchiveMigrations(unittest.TestCase):
         from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord, ArchiveMetadata, ArchiveMigrationTask, Task
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
-        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf, bootstrap_db=do_bootstrap)
+        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf) #, bootstrap_db=do_bootstrap)
         do_create(specific_tables=[ArchiveDocument.__table__, ArchiveMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__, Task.__table__, ArchiveMigrationTask.__table__])
 
     @classmethod
@@ -70,14 +70,14 @@ class TestArchiveMigrations(unittest.TestCase):
         print('Adding data')
         for i in range(0, 100):
             archiveId = 'doc-{}'.format(i)
-            print('Adding document: {}'.format(archiveId))
+            print(('Adding document: {}'.format(archiveId)))
             archive.put_document(userId='test1', bucket='testing', archiveId=archiveId, data='TESTINGBUCKETDATASMALL'.join([str(x) for x in range(100)]))
 
     def flush_data(self):
         print('Flushing data')
         for i in range(0, 100):
             archiveId = 'doc-{}'.format(i)
-            print('Deleting document: {}'.format(archiveId))
+            print(('Deleting document: {}'.format(archiveId)))
             archive.delete_document(userId='test1', bucket='testing', archiveid=archiveId)
 
     def run_test(self, src_client_config, dest_client_config):
@@ -86,7 +86,7 @@ class TestArchiveMigrations(unittest.TestCase):
         :return:
         """
 
-        print('Running migration test from {} to {}'.format(src_client_config['name'], dest_client_config['name']))
+        print(('Running migration test from {} to {}'.format(src_client_config['name'], dest_client_config['name'])))
         archive.initialize({'services': {'catalog': {'archive': {'compression': {'enabled': False}, 'storage_driver': src_client_config}}}})
         self.add_data()
 

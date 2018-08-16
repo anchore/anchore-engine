@@ -31,7 +31,7 @@ class NotLatestTrigger(BaseTrigger):
 
         feed_names = {p.name: p.latest for p in feed_gems}
 
-        for gem, versions in img_gems.items():
+        for gem, versions in list(img_gems.items()):
             if gem not in feed_names:
                 continue # Not an official
 
@@ -63,7 +63,7 @@ class NotOfficialTrigger(BaseTrigger):
 
         feed_names = {p.name: p.versions_json for p in feed_gems}
 
-        for gem in img_gems.keys():
+        for gem in list(img_gems.keys()):
             if gem not in feed_names:
                 self._fire(msg="GEMNOTOFFICIAL Package ("+str(gem)+") in container but not in official GEM feed.")
 
@@ -90,7 +90,7 @@ class BadVersionTrigger(BaseTrigger):
 
         feed_names = {p.name: p.versions_json for p in feed_gems}
 
-        for gem, versions in img_gems.items():
+        for gem, versions in list(img_gems.items()):
             if gem not in feed_names:
                 continue
 
@@ -173,10 +173,10 @@ class GemCheckGate(Gate):
 
             context.data[GEM_LIST_KEY] = {p.name: p.versions_json for p in image_obj.gems}
             context.data[GEM_MATCH_KEY] = []
-            gems = context.data[GEM_LIST_KEY].keys()
+            gems = list(context.data[GEM_LIST_KEY].keys())
 
             # Use a chunked fetch approach to avoid a single large in() statement with 1000+ keys
-            chunks = [gems[i: i+100] for i in xrange(0, len(gems), 100)]
+            chunks = [gems[i: i+100] for i in range(0, len(gems), 100)]
             for key_range in chunks:
                 context.data[GEM_MATCH_KEY] += context.db.query(GemMetadata).filter(GemMetadata.name.in_(key_range)).all()
 

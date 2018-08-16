@@ -65,9 +65,9 @@ class GateIntegrationTests(unittest.TestCase):
         eval_context = ExecutionContext(session, configuration={}, params={'ALLOWEDPORTS':'80,443'})
         img = session.query(Image).filter_by(id=self.img_id).scalar()
         t = DockerfileGate().get_trigger_named('ALLOWEDPORTS')
-        print('Start: {}'.format(json.dumps(g.json(), indent=2)))
+        print(('Start: {}'.format(json.dumps(g.json(), indent=2))))
         t.run(img, eval_context)
-        print('Result: {}'.format(json.dumps(g.json(), indent=2)))
+        print(('Result: {}'.format(json.dumps(g.json(), indent=2))))
 
 
 

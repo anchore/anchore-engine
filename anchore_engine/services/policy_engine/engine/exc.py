@@ -3,7 +3,7 @@ Exceptions for the engine
 """
 
 
-class EngineException(StandardError):
+class EngineException(Exception):
     pass
 
 class ImageLoadError(EngineException):

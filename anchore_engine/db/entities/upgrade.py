@@ -2,7 +2,7 @@ import json
 import hashlib
 import uuid
 import zlib
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text, Enum
 
 import anchore_engine.db.entities.common
 from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
@@ -164,17 +164,17 @@ def run_upgrade():
         if not code_db_version:
             raise Exception("cannot get code version (code_db_version={} running_db_version={})".format(code_db_version, running_db_version))
         elif code_db_version and running_db_version is None:
-            print "Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally."
+            print("Detected no running db version, indicating db is not initialized but is connected. No upgrade necessary. Exiting normally.")
             ecode = 0
         elif code_db_version == running_db_version:
-            print "Detected anchore-engine version {} and running DB version {} match, nothing to do.".format(code_db_version, running_db_version)
+            print("Detected anchore-engine version {} and running DB version {} match, nothing to do.".format(code_db_version, running_db_version))
         else:
-            print "Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version)
-            print "Performing upgrade."
+            print("Detected anchore-engine version {}, running DB version {}.".format(code_db_version, running_db_version))
+            print("Performing upgrade.")
             try:
                 rc = do_create_tables()
                 if rc:
-                    print "Table create success."
+                    print("Table create success.")
                 else:
                     raise Exception("Failure while creating tables.")
 
@@ -183,7 +183,7 @@ def run_upgrade():
                 if rc:
                     # if successful upgrade, set the DB values to the incode values
                     rc = do_version_update(db_versions, code_versions)
-                    print "Upgrade success."
+                    print("Upgrade success.")
                     return rc
                 else:
                     raise Exception("Upgrade routine from module returned false, please check your DB/environment and try again")
@@ -197,7 +197,7 @@ def do_upgrade(inplace, incode):
         raise Exception("DB downgrade not supported")
 
     if inplace['db_version'] != incode['db_version']:
-        print ("Upgrading DB: from=" + str(inplace['db_version']) + " to=" + str(incode['db_version']))
+        print(("Upgrading DB: from=" + str(inplace['db_version']) + " to=" + str(incode['db_version'])))
 
         if upgrade_enabled:
             db_current = inplace['db_version']
@@ -215,10 +215,10 @@ def do_upgrade(inplace, incode):
                     # Upgrade code is for older version, skip it.
                     continue
                 else:
-                    print("Executing upgrade functions for version {} to {}".format(db_from, db_to))
+                    print(("Executing upgrade functions for version {} to {}".format(db_from, db_to)))
                     for fn in functions_to_run:
                         try:
-                            print("Executing upgrade function: {}".format(fn.__name__))
+                            print(("Executing upgrade function: {}".format(fn.__name__)))
                             fn()
                         except Exception as e:
                             log.err('Upgrade function {} raised an error. Failing upgrade.'.format(fn.__name__))
@@ -227,7 +227,7 @@ def do_upgrade(inplace, incode):
                     db_current = db_to
 
     if inplace['service_version'] != incode['service_version']:
-        print ("upgrading service: from=" + str(inplace['service_version']) + " to=" + str(incode['service_version']))
+        print(("upgrading service: from=" + str(inplace['service_version']) + " to=" + str(incode['service_version'])))
 
     ret = True
     return (ret)

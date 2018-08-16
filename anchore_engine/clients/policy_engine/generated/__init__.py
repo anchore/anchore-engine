@@ -13,7 +13,7 @@
 """
 
 
-from __future__ import absolute_import
+
 
 # import apis into sdk package
 from anchore_engine.clients.policy_engine.generated.api.default_api import DefaultApi

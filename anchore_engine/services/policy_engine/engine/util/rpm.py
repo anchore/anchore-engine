@@ -133,7 +133,7 @@ def rpm_ver_cmp(a, b):
         # the first string has a non-null segment
         # if (one == str1) return -1;     # arbitrary
         if l_a == a_seg:
-            raise StandardError('Encountered null segment in str. Unexpected')
+            raise Exception('Encountered null segment in str. Unexpected')
             # return -1 # Arbitrary per C impl
 
         # take care of the case where the two version segments are
@@ -205,7 +205,7 @@ def greedy_find_block(list_str, expected_digit=None):
 
 if __name__ == '__main__':
     import sys
-    print(compare_versions('pkg1', sys.argv[1],'pkg1', sys.argv[2]))
+    print((compare_versions('pkg1', sys.argv[1],'pkg1', sys.argv[2])))
 
 
 

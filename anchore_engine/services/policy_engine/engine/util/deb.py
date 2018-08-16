@@ -39,6 +39,7 @@ class DpkgVersion(object):
                 i = int(epoch)
                 if i < 0:
                     raise ValueError('Epoch is less than zero as an unsigned int')
+                epoch = int(epoch)
             except:
                 raise ValueError('Epoch must be an integer')
             if not pieces[0]:
@@ -191,7 +192,7 @@ def compare_versions(v1, op, v2):
     """
 
     if op not in compare_operators:
-        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, compare_operators.keys()))
+        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, list(compare_operators.keys())))
     else:
         eval_fn = compare_operators[op]
 

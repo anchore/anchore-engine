@@ -21,6 +21,39 @@ def status():
 
     return (return_object, httpcode)
 
+def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_vulnerabilities(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)    
+
+def query_images_by_package_get(name=None, version=None, package_type=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)    
+
+def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
 def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
     try:
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
@@ -64,6 +97,7 @@ def image_post(bodycontent={}, tag=None, digest=None):
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
 
     except Exception as err:
+        logger.exception('Error processing image add')
         httpcode = 500
         return_object = str(err)
 
@@ -512,6 +546,7 @@ def system_subscriptions_get():
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_subscriptions(session, request_inputs)
 
     except Exception as err:
+        logger.exception('Error fetching subscriptions')
         httpcode = 500
         return_object = str(err)
 

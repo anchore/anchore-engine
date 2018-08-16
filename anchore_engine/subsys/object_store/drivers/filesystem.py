@@ -2,8 +2,9 @@ import json
 import os
 import hashlib
 import re
-import urlparse
+import urllib.parse
 
+from anchore_engine import utils
 from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError
@@ -81,7 +82,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             raise err
 
     def _save_content(self, uri, data):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         archive_file = parsed.path
 
         try:
@@ -92,12 +93,12 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             logger.error("cannot create archive data directory - exception: " + str(err))
             raise err
 
-        with open(archive_file, 'w') as OFH:
+        with open(archive_file, 'wb') as OFH:
             OFH.write(data)
             return True
 
     def _load_content(self, path):
-        with open(path, 'r') as f:
+        with open(path, 'rb') as f:
             return f.read()
 
     def get(self, userId, bucket, key):
@@ -112,7 +113,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             raise err
 
     def _parse_uri(self, uri):
-        parsed = urlparse.urlparse(uri, scheme=self.__uri_scheme__)
+        parsed = urllib.parse.urlparse(uri, scheme=self.__uri_scheme__)
         return parsed.path
 
     def get_by_uri(self, uri):
@@ -122,7 +123,8 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
         try:
             path = self._parse_uri(uri)
             content = self._load_content(path)
-            return content
+            ret = utils.ensure_bytes(content)
+            return (ret)
         except Exception as e:
             raise ObjectKeyNotFoundError(userId='', bucket='', key='', caused_by=e)
 
@@ -152,7 +154,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             raise err
 
     def _get_archive_filepath(self, userId, bucket, key):
-        filehash = hashlib.md5(key).hexdigest()
+        filehash = hashlib.md5(key.encode('utf8')).hexdigest()
         fkey = filehash[0:2]
-        archive_path = os.path.join(self.data_volume, hashlib.md5(userId).hexdigest(), bucket, fkey)
+        archive_path = os.path.join(self.data_volume, hashlib.md5(userId.encode('utf8')).hexdigest(), bucket, fkey)
         return os.path.join(archive_path, filehash + ".json")

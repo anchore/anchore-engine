@@ -524,7 +524,7 @@ def describe_policy():
 
                 params = t._parameters()
                 if params:
-                    param_list = sorted(params.values(), key=lambda x: x.sort_order)
+                    param_list = sorted(list(params.values()), key=lambda x: x.sort_order)
                     for param in param_list:
                         tps = TriggerParamSpec()
                         tps.name = param.name

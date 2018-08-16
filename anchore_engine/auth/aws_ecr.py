@@ -3,13 +3,14 @@ import os
 import pytz
 import json
 import time
+import base64
 import boto3
 import datetime
 
-
+from anchore_engine import utils
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 def parse_registry_url(registry_url):
@@ -77,7 +78,7 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
         raise err
 
     ret = {}
-    ret['authorizationToken'] = ecr_data['authorizationToken'].decode('base64')
+    ret['authorizationToken'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(ecr_data['authorizationToken'])))
     ret['expiresAt'] = int(ecr_data['expiresAt'].strftime('%s'))
 
     return(ret)

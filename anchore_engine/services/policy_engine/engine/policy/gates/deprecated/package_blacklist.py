@@ -15,7 +15,7 @@ class FullMatchTrigger(BaseTrigger):
     def evaluate(self, image_obj, context):
         pkgs = self.fullmatch_blacklist.value() if self.fullmatch_blacklist.value() else []
 
-        for pkg, vers in pkgs.items():
+        for pkg, vers in list(pkgs.items()):
             try:
                 matches = image_obj.packages.filter(ImagePackage.name == pkg, ImagePackage.version == vers)
                 for m in matches:

@@ -1,6 +1,7 @@
 import json
 import urllib3
 import requests
+from anchore_engine.subsys import logger
 
 http = urllib3.PoolManager()
 
@@ -19,7 +20,7 @@ def fdelete(url, **kwargs):
 def fpost_urllib(url, **kwargs):
     global http
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         try:
@@ -41,7 +42,7 @@ def fpost_urllib(url, **kwargs):
         rawdata = r.data
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -51,17 +52,17 @@ def fpost_urllib(url, **kwargs):
 
 def fpost_req(url, **kwargs):
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         r = requests.post(url, stream=True, **kwargs)
         httpcode = r.status_code
-        rawdata = ""
+        rawdata = b''
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -71,7 +72,6 @@ def fpost_req(url, **kwargs):
 def fput_urllib(url, **kwargs):
     global http
     httpcode = 500
-    rawdata = ""
     jsondata = {}
     try:
         try:
@@ -93,7 +93,7 @@ def fput_urllib(url, **kwargs):
         rawdata = r.data
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -103,17 +103,17 @@ def fput_urllib(url, **kwargs):
 
 def fput_req(url, **kwargs):
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         r = requests.put(url, stream=True, **kwargs)
         httpcode = r.status_code
-        rawdata = ""
+        rawdata = b''
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -123,7 +123,7 @@ def fput_req(url, **kwargs):
 def fget_urllib(url, **kwargs):
     global http
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         try:
@@ -145,7 +145,7 @@ def fget_urllib(url, **kwargs):
         rawdata = r.data
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -155,17 +155,17 @@ def fget_urllib(url, **kwargs):
 
 def fget_req(url, **kwargs):
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         r = requests.get(url, stream=True, **kwargs)
         httpcode = r.status_code
-        rawdata = ""
+        rawdata = b''
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -176,7 +176,7 @@ def fget_req(url, **kwargs):
 def fdelete_urllib(url, **kwargs):
     global http
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         try:
@@ -198,7 +198,7 @@ def fdelete_urllib(url, **kwargs):
         rawdata = r.data
 
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -208,17 +208,17 @@ def fdelete_urllib(url, **kwargs):
 
 def fdelete_req(url, **kwargs):
     httpcode = 500
-    rawdata = ""
+    rawdata = b''
     jsondata = {}
     try:
         r = requests.delete(url, stream=True, **kwargs)
         httpcode = r.status_code
-        rawdata = ""
+        rawdata = b''
         for rchunk in r.iter_content(8192*100):
             rawdata = rawdata + rchunk
         #rawdata = r.text
         try:
-            jsondata = json.loads(rawdata)
+            jsondata = json.loads(str(rawdata, 'utf-8'))
         except:
             jsondata = {}
     except Exception as err:
@@ -229,6 +229,7 @@ def anchy_get(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fget(url, **kwargs)
+    logger.debug('GET url={} httpcode={}'.format(url, httpcode))
 
     if httpcode == 200:
         if raw:
@@ -251,6 +252,7 @@ def anchy_post(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fpost(url, **kwargs)
+    logger.debug('POST url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata
@@ -273,6 +275,7 @@ def anchy_put(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fput(url, **kwargs)
+    logger.debug('PUT url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata
@@ -295,6 +298,7 @@ def anchy_delete(url, raw=False, **kwargs):
     ret = True
 
     (httpcode, jsondata, rawdata) = fdelete(url, **kwargs)
+    logger.debug('DELETE url={} httpcode={}'.format(url, httpcode))
     if httpcode == 200:
         if raw:
             ret = rawdata

@@ -184,7 +184,7 @@ def delete_policy(policyId, cleanup_evals=False):
         if policy_record:
             rc, httpcode = do_policy_delete(user_id, policy_record, dbsession, force=True,
                                             cleanup_evals=cleanup_evals)
-            if httpcode not in range(200, 299):
+            if httpcode not in list(range(200, 299)):
                 raise Exception(str(rc))
 
         return return_object, httpcode

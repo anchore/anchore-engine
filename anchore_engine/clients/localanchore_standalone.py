@@ -1,20 +1,31 @@
+import base64
+import filecmp
 import os
 import re
 import json
+import threading
 import uuid
 import shutil
 import tarfile
+
+import yaml
 from pkg_resources import resource_filename
 
+import anchore_engine.configuration
 import anchore_engine.services.common
 import anchore_engine.auth.common
-import anchore_engine.auth.skopeo_wrapper
+import anchore_engine.clients.skopeo_wrapper
 #from anchore.anchore_utils import read_kvfile_todict
 from anchore_engine.analyzers.utils import read_kvfile_todict
 from anchore_engine.utils import AnchoreException
 
+
 from anchore_engine import utils
 import anchore_engine.subsys.events as events
+
+anchorelock = threading.Lock()
+anchorelocks = {}
+
 
 try:
     from anchore_engine.subsys import logger
@@ -223,7 +234,7 @@ def squash(unpackdir, cachedir, layers):
                             break
 
         # build up the list of excludes as we move down the layers
-        for l in l_excludes.keys():
+        for l in list(l_excludes.keys()):
             myexcludes.update(l_excludes[l])
 
         l_excludes[layer] = myexcludes
@@ -309,7 +320,7 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
         'cachedir': use_cache_dir
     }
 
-    for k in ret.keys():
+    for k in list(ret.keys()):
         if not ret[k]:
             continue
 
@@ -323,7 +334,7 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
     return(ret)
 
 def delete_staging_dirs(staging_dirs):
-    for k in staging_dirs.keys():
+    for k in list(staging_dirs.keys()):
         if k == 'cachedir':
             continue
 
@@ -355,7 +366,7 @@ def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, dest_
 
     # download
     try:
-        rc = anchore_engine.auth.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, use_cache_dir=cachedir, dest_type=dest_type)
+        rc = anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, use_cache_dir=cachedir, dest_type=dest_type)
     except Exception as err:
         raise err
 
@@ -579,6 +590,24 @@ def unpack(staging_dirs, layers):
     return(imageSize)
 
 
+def list_analyzers():
+    """
+    Return a list of the analyzer files
+
+    :return: list of str that are the names of the analyzer modules
+    """
+
+    anchore_module_root = resource_filename("anchore_engine", "analyzers")
+    analyzer_root = os.path.join(anchore_module_root, "modules")
+    result = []
+    for f in os.listdir(analyzer_root):
+        thecmd = os.path.join(analyzer_root, f)
+        if re.match(".*\.py$", thecmd):
+            result.append(thecmd)
+
+    result.sort()
+    return result
+
 def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
@@ -589,20 +618,21 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     #anchore_module_root = resource_filename("anchore", "anchore-modules")
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
-    for f in os.listdir(analyzer_root):
-        thecmd = os.path.join(analyzer_root, f)
-        if re.match(".*\.py$", thecmd):
-            cmdstr = " ".join([thecmd, configdir, imageId, unpackdir, outputdir, unpackdir])
-            if True:
-                try:
-                    rc, sout, serr = utils.run_command(cmdstr)
-                    if rc != 0:
-                        raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    else:
-                        logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                except Exception as err:
-                    logger.error("command failed with exception - " + str(err))
-                    #raise err
+    for f in list_analyzers():
+    #for f in os.listdir(analyzer_root):
+    #    thecmd = os.path.join(analyzer_root, f)
+    #    if re.match(".*\.py$", thecmd):
+        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
+        if True:
+            try:
+                rc, sout, serr = utils.run_command(cmdstr)
+                if rc != 0:
+                    raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                else:
+                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+            except Exception as err:
+                logger.error("command failed with exception - " + str(err))
+                #raise err
 
     analyzer_report = {}
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
@@ -663,7 +693,7 @@ def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, i
         }
     )
     return(image_report)
-    
+
 def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None):
     # need all this
 
@@ -710,7 +740,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
         imageId = image_detail['imageId']
         if image_detail['dockerfile']:
-            dockerfile_contents = image_detail['dockerfile'].decode('base64')
+            dockerfile_contents = str(base64.decodebytes(image_detail['dockerfile'].encode('utf-8')), 'utf-8')
         else:
             dockerfile_contents = None
 
@@ -821,3 +851,78 @@ class AnalyzerError(AnalysisError):
 class AnalysisReportGenerationError(AnalysisError):
     def __init__(self, cause, pull_string, tag, msg='Failed to generate image report'):
         super(AnalysisReportGenerationError, self).__init__(cause, pull_string, tag, msg)
+
+def get_anchorelock(lockId=None, driver=None):
+    global anchorelock, anchorelocks
+    ret = anchorelock
+
+    # first, check if we need to update the anchore configs
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    if not driver or driver in ['localanchore']:
+        if 'anchore_scanner_config' not in localconfig:
+            localconfig['anchore_scanner_config'] = get_config()
+            anchore_config = localconfig['anchore_scanner_config']
+        anchore_config = localconfig['anchore_scanner_config']
+        anchore_data_dir = anchore_config['anchore_data_dir']
+    else:
+        anchore_data_dir = "/root/.anchore"
+        if not os.path.exists(os.path.join(anchore_data_dir, 'conf')):
+            try:
+                os.makedirs(os.path.join(anchore_data_dir, 'conf'))
+            except:
+                pass
+
+    try:
+        for src,dst in [(localconfig['anchore_scanner_analyzer_config_file'], os.path.join(anchore_data_dir, 'conf', 'analyzer_config.yaml')), (os.path.join(localconfig['service_dir'], 'anchore_config.yaml'), os.path.join(anchore_data_dir, 'conf', 'config.yaml'))]:
+            logger.debug("checking defaults against installed: " + src + " : " + dst)
+            if os.path.exists(src):
+                default_file = src
+                installed_file = dst
+
+                do_copy = False
+                try:
+                    same = filecmp.cmp(default_file, installed_file)
+                    if not same:
+                        do_copy = True
+                except:
+                    do_copy = True
+
+                #if not filecmp.cmp(default_file, installed_file):
+                if do_copy:
+                    logger.debug("checking source yaml ("+str(default_file)+")")
+                    # check that it is at least valid yaml before copying in place
+                    with open(default_file, 'r') as FH:
+                        yaml.safe_load(FH)
+
+                    logger.info("copying new config into place: " + str(src) + " -> " + str(dst))
+                    shutil.copy(default_file, installed_file)
+
+    except Exception as err:
+        logger.warn("could not check/install analyzer anchore configurations (please check yaml format of your configuration files), continuing with default - exception: " + str(err))
+
+    if lockId:
+        lockId = base64.encodebytes(lockId.encode('utf-8'))
+        if lockId not in anchorelocks:
+            anchorelocks[lockId] = threading.Lock()
+        ret = anchorelocks[lockId]
+        logger.spew("all locks: " + str(anchorelocks))
+    else:
+        ret = anchorelock
+
+    return(ret)
+
+
+def get_config():
+    ret = {}
+    logger.debug("fetching local anchore anchore_engine.configuration")
+    if True:
+        cmd = ['anchore', '--json', 'system', 'status', '--conf']
+        try:
+            rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+            ret = json.loads(sout)
+        except Exception as err:
+            logger.error(str(err))
+
+    return(ret)
+

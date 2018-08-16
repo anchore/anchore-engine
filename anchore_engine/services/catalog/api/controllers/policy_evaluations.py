@@ -1,17 +1,14 @@
 import connexion
-import time
 
 from anchore_engine import db
 from anchore_engine.db import db_policyeval
 #import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
-from anchore_engine.api_utils import pass_user_context
 import anchore_engine.services.common
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 
-from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
 
 def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
     """

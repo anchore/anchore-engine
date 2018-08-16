@@ -8,7 +8,7 @@ from connexion.mock import MockResolver
 import os
 import signal
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 
 class TestServiceApiSpecs(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestServiceApiSpecs(unittest.TestCase):
             pid = os.fork()
             if not pid:
                 name = swagger.split('/')[2]
-                print('Starting server for: {} at: {}'.format(name, swagger))
+                print(('Starting server for: {} at: {}'.format(name, swagger)))
                 resolver = MockResolver(mock_all='all')
                 api_extra_args ={'resolver': resolver}
 
@@ -57,10 +57,10 @@ class TestServiceApiSpecs(unittest.TestCase):
                     # Let the api initialize
                     time.sleep(2)
                     try:
-                        t = urllib.urlopen('http://localhost:{}/'.format(port))
+                        t = urllib.request.urlopen('http://localhost:{}/'.format(port))
                         t.close()
                     except Exception as e:
-                        print('Fetch error: {}'.format(e))
+                        print(('Fetch error: {}'.format(e)))
 
                     print('Killing child pid')
                     os.kill(pid, signal.SIGKILL)

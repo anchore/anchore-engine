@@ -104,7 +104,7 @@ class TestLocking(unittest.TestCase):
         with db_locks.least_with_ttl(lockid, 'myid123', ttl=10) as lt:
             print(lt)
             with session_scope() as db:
-                print('{}'.format('\n'.join([str(x) for x in db.query(Lease).all()])))
+                print(('{}'.format('\n'.join([str(x) for x in db.query(Lease).all()]))))
 
         print(lt)
 
@@ -118,7 +118,7 @@ class TestLocking(unittest.TestCase):
         for thread in th:
             # Wait for completion
             r = thread.result()
-            print('Thread result {}'.format(r))
+            print(('Thread result {}'.format(r)))
 
 
 if __name__ == '__main__':

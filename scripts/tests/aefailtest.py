@@ -25,11 +25,11 @@ def aecmd(cmd):
     global precmd
     cmdstr = precmd + cmd
     try:
-        print "COMMAND: " + str(cmdstr)
+        print("COMMAND: " + str(cmdstr))
         result = json.loads(subprocess.check_output(cmdstr.split()))
     except Exception as err:
         try:
-            print "err response: " + str(err.output)
+            print("err response: " + str(err.output))
             result = json.loads(err.output)
         except:
             pass
@@ -42,38 +42,38 @@ result = aecmd("image list")
 badimage = "foobarbarfoo"
 regimage = "container-registry.oracle.com/os/oraclelinux:latest"
 
-print "adding "+badimage+""
+print("adding "+badimage+"")
 try:
     result = aecmd("image add "+badimage+"")
-    print "success adding bad image (incorrect)"
+    print("success adding bad image (incorrect)")
     sys.exit(1)
 except:
-    print "failed to add bad image (correct)"
+    print("failed to add bad image (correct)")
 
-print "checking "+badimage+""
+print("checking "+badimage+"")
 try:
     result = aecmd("evaluate check "+badimage)
-    print "success evaling bad image (incorrect)"
+    print("success evaling bad image (incorrect)")
     sys.exit(1)
 except:
-    print "failed to eval bad image (correct)"
+    print("failed to eval bad image (correct)")
 
-print "subscribing "+badimage+""
+print("subscribing "+badimage+"")
 
 try:
     result = aecmd("subscription activate tag_update "+badimage)
-    print "success subscribing bad image (incorrect)"
+    print("success subscribing bad image (incorrect)")
     sys.exit(1)
 except:
-    print "failed to subscribe bad image (correct)"
+    print("failed to subscribe bad image (correct)")
 
-print "adding unauth registry image " + regimage
+print("adding unauth registry image " + regimage)
 try:
     result = aecmd("image add container-registry.oracle.com/os/oraclelinux:latest")
-    print "success adding oracle registry image as anon (incorrect)"
+    print("success adding oracle registry image as anon (incorrect)")
     sys.exit(1)
 except:
-    print "failed adding oracle registry image as anon (correct)"
+    print("failed adding oracle registry image as anon (correct)")
     
-print "all failure cases passed"
+print("all failure cases passed")
 sys.exit(0)

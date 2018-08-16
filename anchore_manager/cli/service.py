@@ -267,11 +267,11 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
                 logger.warn('could not find any services to execute in the config file')
                 sys.exit(1)
 
-            input_services = [ name for name, srv_conf in config_services.items() if srv_conf.get('enabled')]
+            input_services = [ name for name, srv_conf in list(config_services.items()) if srv_conf.get('enabled')]
 
         services = []
         for service_conf_name in input_services:
-            if service_conf_name in service_map.values():
+            if service_conf_name in list(service_map.values()):
                 service = service_conf_name
             else:
                 service = service_map.get(service_conf_name)
@@ -279,7 +279,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
             if service:
                 services.append(service)
             else:
-                logger.warn('specified service {} not found in list of available services {} - removing from list of services to start'.format(service_conf_name, service_map.keys()))
+                logger.warn('specified service {} not found in list of available services {} - removing from list of services to start'.format(service_conf_name, list(service_map.keys())))
 
         if 'anchore-catalog' in services:
             services.remove('anchore-catalog')
@@ -346,7 +346,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
         logger.info('Starting services: {}'.format(services))
         try:
             if not os.path.exists("/var/log/anchore"):
-                os.makedirs("/var/log/anchore/", 0755)
+                os.makedirs("/var/log/anchore/", 0o755)
         except Exception as err:
             logger.error("cannot create log directory /var/log/anchore - exception: {}".format(str(err)))
             raise err

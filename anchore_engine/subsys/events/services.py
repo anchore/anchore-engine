@@ -1,4 +1,4 @@
-from common import Event
+from .common import Event
 
 _service_resource_type = 'service'
 

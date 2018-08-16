@@ -38,21 +38,21 @@ class TestSimpleQueue(unittest.TestCase):
         simplequeue.enqueue(self.std_queue, {'key1': 'value1'})
 
         msg = simplequeue.dequeue(self.std_queue)
-        print('Got msg: {}'.format(msg))
+        print(('Got msg: {}'.format(msg)))
 
         while msg:
-            print('Deleting msg {}'.format(msg))
+            print(('Deleting msg {}'.format(msg)))
             simplequeue.delete_msg(self.std_queue, msg.get('receipt_handle'))
             msg = simplequeue.dequeue(self.std_queue)
-            print('Got msg: {}'.format(msg))
+            print(('Got msg: {}'.format(msg)))
 
 
         simplequeue.enqueue(self.std_queue, {'key1': 'value1'})
         msg = simplequeue.dequeue(self.std_queue)
-        print('Got msg: {}'.format(msg))
+        print(('Got msg: {}'.format(msg)))
         self.assertIsNotNone(msg)
         msg = simplequeue.dequeue(self.std_queue)
-        print('Got msg: {}'.format(msg))
+        print(('Got msg: {}'.format(msg)))
         self.assertEqual(msg, {})
 
 
@@ -66,13 +66,13 @@ class TestSimpleQueue(unittest.TestCase):
         print('Reading back')
 
         msg = simplequeue.dequeue(self.singleton_queue)
-        print('Got msg: {}'.format(msg))
+        print(('Got msg: {}'.format(msg)))
 
         while msg:
-            print('Deleting msg {}'.format(msg))
+            print(('Deleting msg {}'.format(msg)))
             simplequeue.delete_msg(self.singleton_queue, msg.get('receipt_handle'))
             msg = simplequeue.dequeue(self.singleton_queue)
-            print('Got msg: {}'.format(msg))
+            print(('Got msg: {}'.format(msg)))
 
     def test_multi_queues(self):
         print('Inserting')
@@ -87,14 +87,14 @@ class TestSimpleQueue(unittest.TestCase):
         msgs = []
         msg = True
         while msg:
-            print('Got msg: {}'.format(msg))
+            print(('Got msg: {}'.format(msg)))
             msg = simplequeue.dequeue(self.multi_queue)
             if not msg:
                 print('No msg received')
-                print('Counter = {}'.format(counter))
+                print(('Counter = {}'.format(counter)))
                 if counter > 0 and len(msgs) > 0:
                     for m in msgs:
-                        print('Deleting msg {}'.format(m))
+                        print(('Deleting msg {}'.format(m)))
                         simplequeue.delete_msg(self.multi_queue, m.get('receipt_handle'))
                     msgs = []
                     counter = 0
@@ -116,9 +116,9 @@ class TestSimpleQueue(unittest.TestCase):
         self.assertLessEqual(msg['visible_at'], approx_timeout)
         self.assertGreaterEqual(msg['visible_at'], approx_timeout + datetime.timedelta(seconds=-1))
 
-        print('Updating timeout: {}'.format(msg['visible_at'].isoformat()))
+        print(('Updating timeout: {}'.format(msg['visible_at'].isoformat())))
         ts = simplequeue.update_visibility_timeout(self.multi_queue, receipt_handle=msg['receipt_handle'], visibility_timeout=20)
-        print('Updated timeout: {}'.format(ts))
+        print(('Updated timeout: {}'.format(ts)))
         self.assertIsNotNone(ts)
         simplequeue.delete_msg(self.multi_queue, receipt_handle=msg['receipt_handle'])
 

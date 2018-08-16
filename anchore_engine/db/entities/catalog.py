@@ -242,31 +242,31 @@ class Subscription(Base, UtilMixin):
         return "userId='%s' subscription_type='%s' subscription_key='%s'" % (
         self.userId, self.subscription_type, self.subscription_key)
 
-if False:
-    class CatalogRepoTag(Base, UtilMixin):
-        __tablename__ = "catalog_repotag"
-
-        regrepo = Column(String, primary_key=True)
-        tag = Column(String, primary_key=True)
-        userId = Column(String, primary_key=True)
-        created_at = Column(Integer, default=anchore_now)
-        last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
-        record_state_key = Column(String, default="active")
-        record_state_val = Column(String)
-
-        image_type = Column(String)
-
-        def make(self):
-            ret = {}
-
-            m = inspect(self)
-            for c in m.attrs:
-                ret[c.key] = None
-
-            return (ret)
-
-        def __repr__(self):
-            return "registry='%s'" % (self.registry)
+# if False:
+#     class CatalogRepoTag(Base, UtilMixin):
+#         __tablename__ = "catalog_repotag"
+#
+#         regrepo = Column(String, primary_key=True)
+#         tag = Column(String, primary_key=True)
+#         userId = Column(String, primary_key=True)
+#         created_at = Column(Integer, default=anchore_now)
+#         last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+#         record_state_key = Column(String, default="active")
+#         record_state_val = Column(String)
+#
+#         image_type = Column(String)
+#
+#         def make(self):
+#             ret = {}
+#
+#             m = inspect(self)
+#             for c in m.attrs:
+#                 ret[c.key] = None
+#
+#             return (ret)
+#
+#         def __repr__(self):
+#             return "registry='%s'" % (self.registry)
 
 
 class CatalogImage(Base, UtilMixin):
@@ -378,8 +378,8 @@ class PolicyEval(Base, UtilMixin):
         return (ret)
 
     def content_compare(self, other):
-        selfdata = dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))
-        otherdata = dict((key, value) for key, value in vars(other).iteritems() if not key.startswith('_'))
+        selfdata = dict((key, value) for key, value in vars(self).items() if not key.startswith('_'))
+        otherdata = dict((key, value) for key, value in vars(other).items() if not key.startswith('_'))
         for k in ['userId', 'imageDigest', 'tag', 'policyId', 'final_action']:
             try:
                 if selfdata[k] != otherdata[k]:

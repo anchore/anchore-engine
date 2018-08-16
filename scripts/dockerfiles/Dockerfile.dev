@@ -1,17 +1,17 @@
-FROM centos:7
+FROM docker.io/library/ubuntu:18.04
 
-ENV LANG=en_US.UTF-8
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV GOPATH=/go
+
 EXPOSE 8228 8338
-
-RUN yum clean all -y && yum -y update && yum -y install epel-release && yum -y install skopeo python-pip dpkg psmisc && yum clean all -y
-RUN pip install --upgrade pip && pip install --upgrade setuptools 
+RUN mkdir -p /go && apt-get -y update && apt-get -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev && git clone https://github.com/projectatomic/skopeo $GOPATH/src/github.com/projectatomic/skopeo && cd $GOPATH/src/github.com/projectatomic/skopeo && make binary-local && make install 
 
 COPY ./anchore-engine /root/anchore-engine
 COPY ./anchore-cli /root/anchore-cli
-#COPY ./anchore /root/anchore
 
-RUN cd /root/anchore-engine/ && /root/anchore-engine/scripts/do-build.sh && rm -rf .git && yum clean all -y
-RUN cd /root/anchore-cli/ && /root/anchore-engine/scripts/do-build.sh && rm -rf .git && yum clean all -y
-#RUN cd /root/anchore/ && /root/anchore-engine/scripts/do-build.sh && rm -rf .git && yum clean all -y
+RUN cd /root/anchore-engine/ && /root/anchore-engine/scripts/do-build.sh && rm -rf .git
+RUN cd /root/anchore-cli/ && /root/anchore-engine/scripts/do-build.sh && rm -rf .git
 
-CMD /usr/bin/anchore-engine
+CMD anchore-engine
+

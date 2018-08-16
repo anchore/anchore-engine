@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 import re
 import subprocess
 import hashlib
@@ -14,7 +13,7 @@ def init_analyzer_cmdline(argv, name):
     ret = {}
 
     if len(argv) < 5:
-        print "ERROR: invalid input"
+        print("ERROR: invalid input")
         raise Exception
 
     configdir = argv[1]
@@ -30,7 +29,7 @@ def init_analyzer_cmdline(argv, name):
             with open(anchore_analyzer_configfile, 'r') as FH:
                 anchore_analyzer_config = yaml.safe_load(FH.read())
         except Exception as err:
-            print "ERROR: could not parse the analyzer_config.yaml - exception: " + str(err)
+            print("ERROR: could not parse the analyzer_config.yaml - exception: " + str(err))
             raise err
 
         if anchore_analyzer_config and name in anchore_analyzer_config:
@@ -41,30 +40,32 @@ def init_analyzer_cmdline(argv, name):
     ret['name'] = name
     
     with open(argv[0], 'r') as FH:
-        ret['selfcsum'] = hashlib.md5(FH.read()).hexdigest()
+        ret['selfcsum'] = hashlib.md5(FH.read().encode('utf-8')).hexdigest()
 
     ret['imgid'] = argv[2]
 
-    try:
-        fullid = discover_imageId(argv[2])
-    except:
-        fullid = None
-    if fullid:
-        ret['imgid_full'] = fullid
-    else:
-        ret['imgid_full'] = ret['imgid']
+    # Removed by zhill since discover_imageId not migrated from anchore repo
+    # try:
+    #     fullid = discover_imageId(argv[2])
+    # except:
+    #fullid = None
+
+    #if fullid:
+    #    ret['imgid_full'] = fullid
+    #else:
+    ret['imgid_full'] = ret['imgid']
 
     ret['dirs'] = {}
     ret['dirs']['datadir'] = argv[3]
     ret['dirs']['outputdir'] = '/'.join([argv[4], "analyzer_output", name])
     ret['dirs']['unpackdir'] = argv[5]
 
-    for d in ret['dirs'].keys():
+    for d in list(ret['dirs'].keys()):
         if not os.path.isdir(ret['dirs'][d]):
             try:
                 os.makedirs(ret['dirs'][d])
             except Exception as err:
-                print "ERROR: cannot find/create input dir '"+ret['dirs'][d]+"'"
+                print("ERROR: cannot find/create input dir '"+ret['dirs'][d]+"'")
                 raise err
 
     return(ret)
@@ -81,7 +82,7 @@ def get_distro_from_path(inpath):
         with open('/'.join([inpath,"/etc/os-release"]), 'r') as FH:
             for l in FH.readlines():
                 l = l.strip()
-                l = l.decode('utf8')
+                #l = l.decode('utf8')
                 try:
                     (key, val) = l.split("=")
                     val = re.sub(r'"', '', val)
@@ -99,7 +100,7 @@ def get_distro_from_path(inpath):
         with open('/'.join([inpath, "/etc/system-release-cpe"]), 'r') as FH:
             for l in FH.readlines():
                 l = l.strip()
-                l = l.decode('utf8')
+                #l = l.decode('utf8')
                 try:
                     distro = l.split(':')[2]
                     vers = l.split(':')[4]
@@ -112,7 +113,7 @@ def get_distro_from_path(inpath):
         with open('/'.join([inpath, "/etc/redhat-release"]), 'r') as FH:
             for l in FH.readlines():
                 l = l.strip()
-                l = l.decode('utf8')
+                #l = l.decode('utf8')
                 try:
                     distro = vers = None
                     patt = re.match(".*CentOS.*", l)
@@ -134,7 +135,7 @@ def get_distro_from_path(inpath):
         meta['DISTRO'] = "busybox"
         try:
             sout = subprocess.check_output(['/'.join([inpath, "/bin/busybox"])])
-            fline = sout.splitlines(True)[0]
+            fline = str(sout.splitlines(True)[0], 'utf-8')
             slist = fline.split()
             meta['DISTROVERS'] = slist[1]
         except:
@@ -161,7 +162,7 @@ def get_distro_from_path(inpath):
     return(meta)
 
 def grouper(inlist, chunksize):
-    return (inlist[pos:pos + chunksize] for pos in xrange(0, len(inlist), chunksize))
+    return (inlist[pos:pos + chunksize] for pos in range(0, len(inlist), chunksize))
 
 
 ### Metadata helpers
@@ -234,7 +235,7 @@ def get_files_from_path(inpath):
         #for root, dirs, files in os.walk('/', followlinks=True):
         for root, dirs, files in os.walk('/', followlinks=False):
             for name in dirs + files:
-                filename = os.path.join(root, name).decode('utf8')
+                filename = os.path.join(root, name) #.decode('utf8')
                 osfilename = os.path.join(root, name)
 
                 fstat = os.lstat(osfilename)
@@ -282,7 +283,7 @@ def get_files_from_path(inpath):
                 allfiles[finfo['name']] = finfo
 
         # first pass, set up the basic file map
-        for name in allfiles.keys():
+        for name in list(allfiles.keys()):
             finfo = allfiles[name]
             finfo['othernames'][name] = True
 
@@ -297,13 +298,13 @@ def get_files_from_path(inpath):
             count += 1
             filemap.update(newfmap)
             newfmap.update(filemap)
-            for mname in newfmap.keys():
-                for oname in newfmap[mname].keys():
+            for mname in list(newfmap.keys()):
+                for oname in list(newfmap[mname].keys()):
                     newfmap[oname].update(newfmap[mname])
 
     except Exception as err:
         traceback.print_exc()
-        print str(err)
+        print(str(err))
         pass
     finally:
         os.fchdir(real_root)
@@ -320,11 +321,12 @@ def rpm_get_all_packages(unpackdir):
         sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '--queryformat', '%{NAME} %{VERSION} %{RELEASE} %{ARCH}\n', '-qa'], stderr=subprocess.STDOUT)
         for l in sout.splitlines():
             l = l.strip()
-            l = l.decode('utf8')
+            l = str(l, 'utf-8')
+            #l = l.decode('utf8')
             (name, vers, rel, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4)
             rpms[name] = {'version':vers, 'release':rel, 'arch':arch}
     except Exception as err:
-        print err.output
+        print(err.output)
         raise ValueError("could not get package list from RPM database: " + str(err))
 
     return(rpms)
@@ -336,7 +338,8 @@ def rpm_get_all_pkgfiles(unpackdir):
         sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '-qal'])
         for l in sout.splitlines():
             l = l.strip()
-            l = l.decode('utf8')
+            l = str(l, 'utf-8')
+            #l = l.decode('utf8')
             rpmfiles[l] = True
     except Exception as err:
         raise ValueError("could not get file list from RPM database: " + str(err))
@@ -376,7 +379,7 @@ def dpkg_get_all_packages(unpackdir):
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
-            l = l.decode('utf8')
+            l = str(l, 'utf-8')
             (p, v, sp, sv, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4, 5)
             if p and v:
                 if p not in actual_packages:
@@ -391,9 +394,9 @@ def dpkg_get_all_packages(unpackdir):
                     other_packages[p] = [{'version':sv, 'arch':arch}]
 
     except Exception as err:
-        print "Could not run command: " + str(cmd)
-        print "Exception: " + str(err)
-        print "Please ensure the command 'dpkg' is available and try again"
+        print("Could not run command: " + str(cmd))
+        print("Exception: " + str(err))
+        print("Please ensure the command 'dpkg' is available and try again")
         raise err
 
     ret = (all_packages, actual_packages, other_packages)
@@ -404,17 +407,18 @@ def dpkg_get_all_pkgfiles(unpackdir):
 
     try:
         (allpkgs, actpkgs, othpkgs) = dpkg_get_all_packages(unpackdir)    
-        cmd = ["dpkg-query", "--admindir="+unpackdir+"/rootfs/var/lib/dpkg", "-L"] + actpkgs.keys()
+        cmd = ["dpkg-query", "--admindir="+unpackdir+"/rootfs/var/lib/dpkg", "-L"] + list(actpkgs.keys())
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines():
             l = l.strip()
-            l = l.decode('utf8')
+            l = str(l, 'utf-8')
+            #l = l.decode('utf8')
             allfiles[l] = True
             
     except Exception as err:
-        print "Could not run command: " + str(' '.join(cmd))
-        print "Exception: " + str(err)
-        print "Please ensure the command 'dpkg' is available and try again"
+        print("Could not run command: " + str(' '.join(cmd)))
+        print("Exception: " + str(err))
+        print("Please ensure the command 'dpkg' is available and try again")
         raise err
 
     return(allfiles)
@@ -440,7 +444,8 @@ def apkg_parse_apkdb(apkdb):
 
     with open(apkdb, 'r') as FH:
         for l in FH.readlines():
-            l = l.strip().decode('utf8')
+            l = l.strip()
+            #l = l.strip().decode('utf8')
 
             if not l:
                 apkgs[thename] = apkg
@@ -529,15 +534,15 @@ def gem_parse_meta(gem):
             # look for the unicode \u{} format and try to convert to something python can use
             try:
                 replline = line
-                mat = "\\\u{.*?}"
+                mat = "\\\\u{.*?}"
                 patt = re.match(r".*("+mat+").*", replline)
                 while(patt):
                     replstr = ""
-                    subpatt = re.match("\\\u{(.*)}", patt.group(1))
+                    subpatt = re.match("\\\\u{(.*)}", patt.group(1))
                     if subpatt:
                         chars = subpatt.group(1).split()
                         for char in chars:
-                            replstr += unichr(int(char, 16))
+                            replstr += chr(int(char, 16))
 
                     if replstr:
                         replline = re.sub(re.escape(patt.group(1)), replstr, replline, 1)
@@ -583,7 +588,7 @@ def gem_parse_meta(gem):
                     rfiles.append(thestr)
 
     except Exception as err:
-        print "WARN could not fully parse gemspec file: " + str(name) + ": exception: " + str(err)
+        print("WARN could not fully parse gemspec file: " + str(name) + ": exception: " + str(err))
         return({})
 
     if name:
@@ -620,7 +625,7 @@ def npm_parse_meta(npm):
     npmhomepage= npm.pop('homepage', None)
 
     if npmlicense:
-        if isinstance(npmlicense, basestring):
+        if isinstance(npmlicense, str):
             lics.append(npmlicense)
         elif isinstance(npmlicense, dict):
             for ktype in ['type', 'name', 'license', 'sourceType']:
@@ -629,7 +634,7 @@ def npm_parse_meta(npm):
                     lics.append(lic)
         elif isinstance(npmlicense, list):
             for lentry in npmlicense:
-                if isinstance(lentry, basestring):
+                if isinstance(lentry, str):
                     lics.append(lentry)
                 elif isinstance(lentry, dict):
                     for ktype in ['type', 'name', 'license', 'sourceType']:
@@ -637,12 +642,12 @@ def npm_parse_meta(npm):
                         if lic:
                             lics.append(lic)
         else:
-            print "unknown type (" + str(name) + "): " + str(type(npmlicense))
+            print("unknown type (" + str(name) + "): " + str(type(npmlicense)))
 
 
     if npmversions:
         if isinstance(npmversions, dict):
-            versions = npmversions.keys()
+            versions = list(npmversions.keys())
             for v in npmversions:
                 if npmversions[v] == 'latest':
                     latest = v
@@ -653,7 +658,7 @@ def npm_parse_meta(npm):
 
     astring = None
     if npmauthor:
-        if isinstance(npmauthor, basestring):
+        if isinstance(npmauthor, str):
             astring = npmauthor
         elif isinstance(npmauthor, dict):
             aname = npmauthor.pop('name', None)
@@ -663,7 +668,7 @@ def npm_parse_meta(npm):
                 if aurl:
                     astring += " ("+aurl+")"
         else:
-            print "unknown type (" + str(name) + "): "+ str(type(npmauthor))
+            print("unknown type (" + str(name) + "): "+ str(type(npmauthor)))
 
     elif npmmaintainers:
         for m in npmmaintainers:
@@ -680,23 +685,23 @@ def npm_parse_meta(npm):
     if npmrepository:
         if isinstance(npmrepository, dict):
             sourcepkg = npmrepository.pop('url', None)
-        elif isinstance(npmrepository, basestring):
+        elif isinstance(npmrepository, str):
             sourcepkg = npmrepository
         else:
-            print "unknown type (" + str(name) + "): " + str(type(npmrepository))
+            print("unknown type (" + str(name) + "): " + str(type(npmrepository)))
 
     elif npmhomepage:
-        if isinstance(npmhomepage, basestring):
+        if isinstance(npmhomepage, str):
             sourcepkg = npmhomepage
 
     if not lics:
-        print "WARN: ("+name+") no lics: " + str(npm)
+        print("WARN: ("+name+") no lics: " + str(npm))
     if not versions:
-        print "WARN: ("+name+") no versions: " + str(npm)
+        print("WARN: ("+name+") no versions: " + str(npm))
     if not origins:
-        print "WARN: ("+name+") no origins: " + str(npm)
+        print("WARN: ("+name+") no origins: " + str(npm))
     if not sourcepkg:
-        print "WARN: ("+name+") no sourcepkg: " + str(npm)
+        print("WARN: ("+name+") no sourcepkg: " + str(npm))
 
     if name:
         record[name] = {'name':name, 'lics':lics, 'versions':versions, 'latest':latest, 'origins':origins, 'sourcepkg':sourcepkg}
@@ -740,8 +745,8 @@ def rpm_verify_file_packages(unpackdir):
         pipes = subprocess.Popen(verify_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         o, e = pipes.communicate()
         verify_exitcode = pipes.returncode
-        verify_output = o
-        verify_error = e
+        verify_output = str(o, 'utf-8')
+        verify_error = str(e, 'utf-8')
     except Exception as err:
         raise ValueError("could not perform verify against RPM database: " + str(err))
     finally:
@@ -767,7 +772,8 @@ def read_kvfile_todict(file):
     ret = {}
     with open(file, 'r') as FH:
         for l in FH.readlines():
-            l = l.strip().decode('utf8')
+            l = l.strip()
+            #l = l.strip().decode('utf8')
             if l:
                 (k, v) = re.match('(\S*)\s*(.*)', l).group(1, 2)
                 k = re.sub("____", " ", k)
@@ -780,14 +786,15 @@ def read_plainfile_tostr(file):
         return ("")
 
     with open(file, 'r') as FH:
-        ret = FH.read().decode('utf8')
+        ret = FH.read()
+        #ret = FH.read().decode('utf8')
 
     return (ret)
 
 def write_plainfile_fromstr(file, instr):
     with open(file, 'w') as FH:
-        thestr = instr.encode('utf8')
-        FH.write(thestr)
+        #thestr = instr.encode('utf8')
+        FH.write(instr)
 
 def write_kvfile_fromlist(file, list, delim=' '):
     with open(file, 'w') as OFH:
@@ -795,17 +802,17 @@ def write_kvfile_fromlist(file, list, delim=' '):
             for i in range(0,len(l)):
                 l[i] = re.sub("\s", "____", l[i])
             thestr = delim.join(l) + "\n"
-            thestr = thestr.encode('utf8')
+            #thestr = thestr.encode('utf8')
             OFH.write(thestr)
 
 def write_kvfile_fromdict(file, indict):
     dict = indict.copy()
 
     with open(file, 'w') as OFH:
-        for k in dict.keys():
+        for k in list(dict.keys()):
             if not dict[k]:
                 dict[k] = "none"
             cleank = re.sub("\s+", "____", k)
             thestr = ' '.join([cleank, dict[k], '\n'])
-            thestr = thestr.encode('utf8')
+            #thestr = thestr.encode('utf8')
             OFH.write(thestr)

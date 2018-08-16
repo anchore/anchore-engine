@@ -164,7 +164,7 @@ class TestDistroNamespace(BaseDBUnitTest):
                 'flavor': ns.flavor,
                 'namespace_names': ns.like_namespace_names
             }
-            print(ns.namespace_name + ' ->' + json.dumps(r, indent=2))
+            print((ns.namespace_name + ' ->' + json.dumps(r, indent=2)))
             self.assertIsNotNone(ns)
             self.assertEqual(ns.name, d[0])
             self.assertEqual(ns.version, d[1])

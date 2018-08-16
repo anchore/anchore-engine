@@ -106,7 +106,7 @@ def get_summary_obj(name, description="", **kwargs):
     ret = None
     try:
         if name not in metrics:
-            metrics[name] = Summary(name, description, kwargs.keys())
+            metrics[name] = Summary(name, description, list(kwargs.keys()))
         ret = metrics[name]
     except:
         logger.warn("could not create/get named metric ("+str(name)+")")
@@ -121,7 +121,7 @@ def summary_observe(name, observation, description="", **kwargs):
 
     try:
         if name not in metrics:
-            metrics[name] = Summary(name, description, kwargs.keys())
+            metrics[name] = Summary(name, description, list(kwargs.keys()))
 
         if kwargs:
             metrics[name].labels(**kwargs).observe(observation)
@@ -143,9 +143,9 @@ def histogram_observe(name, observation, description="", buckets=None, **kwargs)
         if name not in metrics:
             if buckets:
                 buckets.append(float("inf"))
-                metrics[name] = Histogram(name, description, kwargs.keys(), buckets=buckets)
+                metrics[name] = Histogram(name, description, list(kwargs.keys()), buckets=buckets)
             else:
-                metrics[name] = Histogram(name, description, kwargs.keys())
+                metrics[name] = Histogram(name, description, list(kwargs.keys()))
 
         if kwargs:
             metrics[name].labels(**kwargs).observe(observation)
@@ -164,7 +164,7 @@ def gauge_set(name, observation, description="", **kwargs):
 
     try:
         if name not in metrics:
-            metrics[name] = Gauge(name, description, kwargs.keys())
+            metrics[name] = Gauge(name, description, list(kwargs.keys()))
 
         if kwargs:
             metrics[name].labels(**kwargs).set(observation)
@@ -184,7 +184,7 @@ def counter_inc(name, step=1, description="", **kwargs):
 
     try:
         if name not in metrics:
-            metrics[name] = Counter(name, description, kwargs.keys())
+            metrics[name] = Counter(name, description, list(kwargs.keys()))
 
         if kwargs:
             metrics[name].labels(**kwargs).inc(step)

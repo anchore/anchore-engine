@@ -1,12 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
 import shutil
-import re
-import json
-import time
-import subprocess
 import anchore_engine.analyzers.utils
 
 analyzer_name = "analyzer_meta"
@@ -16,7 +12,7 @@ try:
 except Exception as err:
     import traceback
     traceback.print_exc()
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']

@@ -87,9 +87,9 @@ def list_policies(detail=None):
             for policy_record in policy_records:
                 ret.append(make_response_policy(user_auth, policy_record, params))
             return_object = ret
-        else:
-            httpcode = 404
-            raise Exception('no policies found for user')
+        # else:
+        #     httpcode = 404
+        #     raise Exception('no policies found for user')
     except Exception as err:
         logger.debug("operation exception: " + str(err))
         return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
@@ -132,7 +132,7 @@ def add_policy(bundle):
         if 'id' in jsondata and jsondata['id']:
             policyId = jsondata['id']
         else:
-            policyId = hashlib.md5(str(userId + ":" + jsondata['name'])).hexdigest()
+            policyId = hashlib.md5(str(userId + ":" + jsondata['name']).encode('utf8')).hexdigest()
             jsondata['id'] = policyId
 
         try:

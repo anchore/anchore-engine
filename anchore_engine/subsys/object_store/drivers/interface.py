@@ -2,7 +2,7 @@
 Common base type interfaces for object storage driver providers
 """
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 class ObjectStorageDriverMeta(type):
@@ -32,14 +32,14 @@ class ObjectStorageDriverMeta(type):
         """
 
         parsed = urlparse(url)
-        for d in cls.registry.values():
+        for d in list(cls.registry.values()):
             if d.__uri_scheme__ == parsed.scheme:
                 return d
 
         return None
 
 
-class ObjectStorageDriver(object):
+class ObjectStorageDriver(object, metaclass=ObjectStorageDriverMeta):
     """
     Interface spec for an object storage driver for simple key/value storage of content.
 
@@ -59,7 +59,6 @@ class ObjectStorageDriver(object):
 
 
     """
-    __metaclass__ = ObjectStorageDriverMeta
 
     __config_name__ = None
     __uri_scheme__ = None
@@ -88,7 +87,7 @@ class ObjectStorageDriver(object):
 
     def get(self, userId, bucket, key):
         """
-        Return a read-able object wth content for the specified key
+        Return a read-able object wth content for the specified key, as bytes
 
         :param userId:
         :param bucket:
@@ -99,7 +98,7 @@ class ObjectStorageDriver(object):
 
     def get_by_uri(self, uri):
         """
-        Reutrn a read-able object associated with the URI for the content of the object
+        Reutrn a read-able object associated with the URI for the content of the object, as bytes
 
         :param uri:
         :return:

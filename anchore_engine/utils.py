@@ -5,9 +5,8 @@ import hashlib
 import json
 import platform
 import subprocess
-import thread
 import uuid
-import tempfile
+import threading
 from collections import OrderedDict
 
 import os
@@ -96,7 +95,7 @@ def item_diffs(old_items=None, new_items=None):
     added = [new_items[x] for x in new_ids.difference(old_ids)]
     removed = [old_items[x] for x in old_ids.difference(new_ids)]
     intersected_ids = new_ids.intersection(old_ids)
-    updated = [new_items[x] for x in filter(lambda x: new_items[x] != old_items[x], intersected_ids)]
+    updated = [new_items[x] for x in [x for x in intersected_ids if new_items[x] != old_items[x]]]
 
     return {
         'added': added,
@@ -139,9 +138,9 @@ def pivot_rows_to_keys(header_list, row_list, key_name, whitelist_headers=None):
     :return:
     """
     header_map = {v: header_list.index(v) for v in
-                  filter(lambda x: not whitelist_headers or x in whitelist_headers or x == key_name, header_list)}
+                  [x for x in header_list if not whitelist_headers or x in whitelist_headers or x == key_name]}
     key_idx = header_map[key_name]
-    return {x[key_idx]: {k: x[v] for k, v in header_map.items()} for x in row_list}
+    return {x[key_idx]: {k: x[v] for k, v in list(header_map.items())} for x in row_list}
 
 
 def filter_record_keys(record_list, whitelist_keys):
@@ -152,7 +151,7 @@ def filter_record_keys(record_list, whitelist_keys):
     :return: a new list with dicts that only contain the whitelisted elements
     """
 
-    filtered = map(lambda x: {k: v for k, v in filter(lambda y: y[0] in whitelist_keys, x.items())}, record_list)
+    filtered = [{k: v for k, v in [y for y in list(x.items()) if y[0] in whitelist_keys]} for x in record_list]
     return filtered
 
 def run_sanitize(cmd_list):
@@ -193,7 +192,7 @@ def run_command(cmdstr, env=None):
 
 
 def manifest_to_digest(rawmanifest):
-    from anchore_engine.auth.skopeo_wrapper import manifest_to_digest_shellout
+    from anchore_engine.clients.skopeo_wrapper import manifest_to_digest_shellout
 
     ret = None
     d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
@@ -206,11 +205,12 @@ def manifest_to_digest(rawmanifest):
         # this if using simplejson
         #dmanifest = json.dumps(d, indent=3)
 
-        ret = "sha256:" + str(hashlib.sha256(dmanifest).hexdigest())
+        ret = "sha256:" + str(hashlib.sha256(dmanifest.encode('utf-8')).hexdigest())
     else:
         #ret = anchore_engine.auth.skopeo_wrapper.manifest_to_digest_shellout(rawmanifest)
         ret = manifest_to_digest_shellout(rawmanifest)
-        
+
+    ret = ensure_str(ret)
     return(ret)
 
 
@@ -222,10 +222,129 @@ def get_threadbased_id(guarantee_uniq=False):
     :return: string
     """
 
-    return '{}:{}:{}:{}'.format(platform.node(), os.getpid(), str(thread.get_ident()), uuid.uuid4().hex if guarantee_uniq else '')
-
+    return '{}:{}:{}:{}'.format(platform.node(), os.getpid(), str(threading.get_ident()),uuid.uuid4().hex if guarantee_uniq else '')
 
 class AnchoreException(Exception):
 
     def to_dict(self):
-        return {self.__class__.__name__: dict((key, value) for key, value in vars(self).iteritems() if not key.startswith('_'))}
+        return {self.__class__.__name__: dict((key, value) for key, value in vars(self).items() if not key.startswith('_'))}
+
+def parse_dockerimage_string(instr):
+    host = None
+    port = None
+    repo = None
+    tag = None
+    registry = None
+    repotag = None
+    fulltag = None
+    fulldigest = None
+    digest = None
+    imageId = None
+
+    logger.debug("input string to parse: {}".format(instr))
+    instr = instr.strip()
+    if re.match(r".*[^a-zA-Z0-9@:/_\.\-]", instr):
+        raise Exception("bad character in dockerimage string input ({})".format(instr))
+
+    if re.match("^sha256:.*", instr):
+        registry = 'docker.io'
+        digest = instr
+
+    elif len(instr) == 64 and not re.findall("[^0-9a-fA-F]+",instr):
+        imageId = instr
+    else:
+
+        # get the host/port
+        patt = re.match("(.*?)/(.*)", instr)
+        if patt:
+            a = patt.group(1)
+            remain = patt.group(2)
+            patt = re.match("(.*?):(.*)", a)
+            if patt:
+                host = patt.group(1)
+                port = patt.group(2)
+            elif a == 'docker.io':
+                host = 'docker.io'
+                port = None
+            elif a in ['localhost', 'localhost.localdomain', 'localbuild']:
+                host = a
+                port = None
+            else:
+                patt = re.match(".*\..*", a)
+                if patt:
+                    host = a
+                else:
+                    host = 'docker.io'
+                    remain = instr
+                port = None
+
+        else:
+            host = 'docker.io'
+            port = None
+            remain = instr
+
+        # get the repo/tag
+        patt = re.match("(.*)@(.*)", remain)
+        if patt:
+            repo = patt.group(1)
+            digest = patt.group(2)
+        else:
+            patt = re.match("(.*):(.*)", remain)
+            if patt:
+                repo = patt.group(1)
+                tag = patt.group(2)
+            else:
+                repo = remain
+                tag = "latest"
+
+        if not tag:
+            tag = "latest"
+
+        if port:
+            registry = ':'.join([host, port])
+        else:
+            registry = host
+
+        if digest:
+            repotag = '@'.join([repo, digest])
+        else:
+            repotag = ':'.join([repo, tag])
+
+        fulltag = '/'.join([registry, repotag])
+
+        if not digest:
+            digest = None
+        else:
+            fulldigest = registry + '/' + repo + '@' + digest
+            tag = None
+            fulltag = None
+            repotag = None
+
+    ret = {}
+    ret['host'] = host
+    ret['port'] = port
+    ret['repo'] = repo
+    ret['tag'] = tag
+    ret['registry'] = registry
+    ret['repotag'] = repotag
+    ret['fulltag'] = fulltag
+    ret['digest'] = digest
+    ret['fulldigest'] = fulldigest
+    ret['imageId'] = imageId
+
+    if ret['fulldigest']:
+        ret['pullstring'] = ret['fulldigest']
+    elif ret['fulltag']:
+        ret['pullstring'] = ret['fulltag']
+    else:
+        ret['pullstring'] = None
+
+    return(ret)
+
+
+def ensure_bytes(obj):
+    return obj.encode('utf-8') if type(obj) != bytes else obj
+
+
+def ensure_str(obj):
+    return str(obj, 'utf-8') if type(obj) != str else obj

@@ -2,80 +2,13 @@ import json
 import re
 import time
 
-import docker
 import requests
 
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
 from anchore_engine.subsys import logger
-from .skopeo_wrapper import get_image_manifest_skopeo, get_repo_tags_skopeo
+from anchore_engine.clients.skopeo_wrapper import get_image_manifest_skopeo, get_repo_tags_skopeo
 
-docker_clis = {}
-docker_cli_unauth = None
-
-def get_authenticated_cli(userId, registry, registry_creds=[]):
-    global docker_cli_unauth, docker_clis
-
-    logger.debug("DOCKER CLI: entering auth cli create/fetch for input user/registry: " + str(userId) + " / " + str(registry))
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    if not userId:
-        if not docker_cli_unauth:
-            docker_cli_unauth = docker.Client(base_url=localconfig['docker_conn'], version='auto', timeout=int(localconfig['docker_conn_timeout']))
-        logger.debug("DOCKER CLI: returning unauth client")
-        return(docker_cli_unauth)
-        
-    if userId in docker_clis and registry in docker_clis[userId]:
-        if 'registry_creds' in docker_clis[userId][registry] and registry_creds == docker_clis[userId][registry]['registry_creds']:
-            logger.debug("DOCKER CLI: found existing authenticated CLI")
-            return(docker_clis[userId][registry]['cli'])
-
-        else:
-            logger.debug("DOCKER CLI: detected cred change, will refresh CLI")
-
-    logger.debug("DOCKER CLI: making new auth CLI for user/registry: " + str(userId) + " / " + str(registry))
-    try:
-
-        if userId not in docker_clis:
-            docker_clis[userId] = {}
-
-        if registry not in docker_clis[userId]:
-            docker_clis[userId][registry] = {}
-
-        user = pw = None
-        for registry_record in registry_creds:
-            if registry_record['registry'] == registry:
-                user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
-
-        if not user or not pw:
-            logger.debug("DOCKER CLI: making unauth CLI")
-            docker_clis[userId][registry]['cli'] = docker.Client(base_url=localconfig['docker_conn'], version='auto', timeout=int(localconfig['docker_conn_timeout']))
-            docker_clis[userId][registry]['registry_creds'] = []
-        else:
-            logger.debug("DOCKER CLI: making auth CLI")
-            try:
-                cli = docker.Client(base_url=localconfig['docker_conn'], version='auto', timeout=int(localconfig['docker_conn_timeout']))
-                rc = cli.login(user, password=pw, registry=registry, reauth=False)
-                docker_clis[userId][registry]['cli'] = cli
-                docker_clis[userId][registry]['registry_creds'] = registry_creds
-
-            except Exception as err:
-                logger.error("DOCKER CLI auth err: " + str(err))
-                raise err
-
-    except Exception as err:
-        logger.error("DOCKER CLI: unable to get docker cli - exception: " + str(err))
-        raise err
-    
-    if userId in docker_clis and registry in docker_clis[userId]:
-        logger.debug("DOCKER CLI: returning auth client")
-        return(docker_clis[userId][registry]['cli'])
-
-    logger.error("DOCKER CLI: unable to complete authenticated client create/fetch")
-    raise Exception("DOCKER CLI: unable to complete authenticated client create/fetch")
-
-    return(None)
 
 def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=None, verify=True):
     manifest = {}
@@ -223,7 +156,7 @@ def ping_docker_registry(registry_record):
             url = "https://" + registry
 
         user, pw = anchore_engine.auth.common.get_docker_registry_userpw(registry_record)
-    
+
         httpcode, message = ping_docker_registry_v2(url, user, pw, verify=verify)
         if httpcode != 200:
             raise Exception("{}".format(message))
@@ -232,7 +165,7 @@ def ping_docker_registry(registry_record):
         ret = True
     except Exception as err:
         logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
-        raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))        
+        raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
 
     return(ret)
 
@@ -307,13 +240,14 @@ def get_image_manifest(userId, image_info, registry_creds):
             manifest, digest = get_image_manifest_skopeo(url, registry, repo, indigest=input_digest, user=user, pw=pw, verify=registry_verify)
         else:
             raise Exception("neither tag nor digest was given as input")
-    except Exception as err:
-        logger.error("could not fetch manifest/digest: " + str(err))
+    except Exception as ex:
+        logger.error("could not fetch manifest/digest: " + str(ex))
         manifest = digest = None
+        err = ex
 
     if manifest and digest:
         return(manifest, digest)
-    
+
     logger.error("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
     raise Exception("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
 

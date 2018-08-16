@@ -98,6 +98,7 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
                     data = context.from_archive.get(userId, bucket, archiveId)
                     context.to_archive.put(userId, bucket, archiveId, data)
 
+
                 #     with session_scope() as db:
                 #         record = db.query(ArchiveMetadata).filter(ArchiveMetadata.userId == rec_tuple[0], ArchiveMetadata.bucket == rec_tuple[1], ArchiveMetadata.archiveId == rec_tuple[2]).first()
                 #         if not record:

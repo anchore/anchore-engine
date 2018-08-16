@@ -60,7 +60,7 @@ class TestArchiveSubsys(unittest.TestCase):
         from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord, ArchiveMetadata
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
-        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf, bootstrap_db=do_bootstrap)
+        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf) #, bootstrap_db=do_bootstrap)
         do_create(specific_tables=[ArchiveDocument.__table__, ArchiveMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__])
 
 
@@ -83,7 +83,7 @@ class TestArchiveSubsys(unittest.TestCase):
         print('Basic string operations using get/put/delete')
         resp = archive.put(userId=self.test_user_id, bucket=self.test_bucket_id, archiveid='document_1',
                            data=self.document_1)
-        print('Document 1 PUT: {}'.format(resp))
+        print(('Document 1 PUT: {}'.format(resp)))
 
         resp = archive.get(userId=self.test_user_id,    bucket=self.test_bucket_id, archiveid='document_1')
         self.assertEqual(self.document_1, resp)
@@ -94,19 +94,19 @@ class TestArchiveSubsys(unittest.TestCase):
         print('Document operations')
         resp = archive.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
                                     data=self.document_json)
-        print('Document JSON PUT Doc: {}'.format(resp))
+        print(('Document JSON PUT Doc: {}'.format(resp)))
 
         resp = archive.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
-        print('Document JSON GET Dock: {}'.format(resp))
+        print(('Document JSON GET Dock: {}'.format(resp)))
         self.assertEqual(self.document_json, resp)
 
         print('Document operations')
         resp = archive.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
                                     data=self.document_1)
-        print('Document string PUT Doc: {}'.format(resp))
+        print(('Document string PUT Doc: {}'.format(resp)))
 
         resp = archive.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
-        print('Document string GET Dock: {}'.format(resp))
+        print(('Document string GET Dock: {}'.format(resp)))
         self.assertEqual(self.document_1, resp)
 
     def test_fs(self):
@@ -189,7 +189,7 @@ class TestArchiveSubsys(unittest.TestCase):
 
         with self.assertRaises(BadCredentialsError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_swift_bad_container(self):
         config = {
@@ -211,7 +211,7 @@ class TestArchiveSubsys(unittest.TestCase):
 
         with self.assertRaises(DriverConfigurationError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_db(self):
         config = {
@@ -308,7 +308,7 @@ class TestArchiveSubsys(unittest.TestCase):
         }
         with self.assertRaises(BadCredentialsError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))
 
         config = {
             'archive': {
@@ -329,7 +329,7 @@ class TestArchiveSubsys(unittest.TestCase):
         }
         with self.assertRaises(BadCredentialsError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_s3_bad_bucket(self):
         config = {
@@ -351,7 +351,7 @@ class TestArchiveSubsys(unittest.TestCase):
         }
         with self.assertRaises(DriverConfigurationError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_s3_auto(self):
         config = {
@@ -370,4 +370,4 @@ class TestArchiveSubsys(unittest.TestCase):
         }
         with self.assertRaises(DriverConfigurationError) as err:
             archive.initialize(config, force=True)
-        print('Got expected error: {}'.format(err.exception.message))
+        print(('Got expected error: {}'.format(err.exception.message)))

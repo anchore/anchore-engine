@@ -36,8 +36,8 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         'layer_count': lambda x: len(x.layers_json) if x.layers_json else 0
     }
 
-    attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked.', enum_values=__valid_attributes__.keys(), is_required=True, sort_order=1)
-    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation.', enum_values=__ops__.keys(), is_required=True, sort_order=2)
+    attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked.', enum_values=list(__valid_attributes__.keys()), is_required=True, sort_order=1)
+    check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation.', enum_values=list(__ops__.keys()), is_required=True, sort_order=2)
     check_value = TriggerParameter(name='value', example_str='1073741824', description='Value used in comparison.', validator=TypeValidator('string'), is_required=False, sort_order=3)
 
     def evaluate(self, image_obj, context):
@@ -55,7 +55,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
 
         img_val = self.__valid_attributes__[attr](image_obj)
         # Make consistent types (specifically for int/float/str)
-        if type(img_val) in [str, int, float, unicode]:
+        if type(img_val) in [str, int, float, str]:
             rval = type(img_val)(rval)
 
         if op.eval_function(img_val, rval):

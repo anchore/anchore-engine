@@ -1,4 +1,4 @@
-from common import Event
+from .common import Event
 
 _feeds_resource_type = 'feeds'
 

@@ -42,7 +42,7 @@ def run_test():
     for l in locks:
         print('Initializing lock')
         result = DbLock.init_lock(l)
-        print('Did create new for lock {}: {}'.format(l, result))
+        print(('Did create new for lock {}: {}'.format(l, result)))
 
     iter_count = 10
     cycle(locks[0])
@@ -73,15 +73,15 @@ def cycle(lock_id):
     my_id = uuid.uuid4().hex
     my_other_id = uuid.uuid4().hex
 
-    print('{} - Created id: {}'.format(time.time(), my_id))
+    print(('{} - Created id: {}'.format(time.time(), my_id)))
 
     lock = DbLock.acquire(my_id, lock_id=lock_id)
 
     if lock:
         if lock['held_by'] == my_id:
-            print('{} - {} Got lock {}'.format(time.time(), my_id, lock['lock_id']))
+            print(('{} - {} Got lock {}'.format(time.time(), my_id, lock['lock_id'])))
         else:
-            print('{} - ERROR! Returned a lock object held by someone else: {}. Expected: {}'.format(time.time(), lock['held_by'], my_id))
+            print(('{} - ERROR! Returned a lock object held by someone else: {}. Expected: {}'.format(time.time(), lock['held_by'], my_id)))
     else:
         print('Should have gotten the lock')
         return

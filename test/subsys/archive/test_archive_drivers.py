@@ -101,7 +101,7 @@ class TestRDBMSArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
         from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
-        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf, specific_tables=[ArchiveDocument.__table__, Anchore.__table__, ObjectStorageRecord.__table__], bootstrap_db=do_bootstrap)
+        initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf)
         do_create(specific_tables=[ArchiveDocument.__table__,  Anchore.__table__, ObjectStorageRecord.__table__])
 
     @classmethod

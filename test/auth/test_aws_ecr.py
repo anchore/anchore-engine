@@ -18,7 +18,7 @@ class AWSECRTestCase(unittest.TestCase):
         expected = ('1234567890', 'us-west-2')
         
         for url in urls:
-            self.assertEquals(expected, parse_registry_url(url))
+            self.assertEqual(expected, parse_registry_url(url))
             
 if __name__ == '__main__':
     unittest.main()

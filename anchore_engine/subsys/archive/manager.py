@@ -1,8 +1,9 @@
 import hashlib
 import json
-import urlparse
+import urllib.parse
 import zlib
 
+from anchore_engine import utils
 from anchore_engine.db import session_scope, db_archivemetadata
 from anchore_engine.subsys import object_store, logger
 from anchore_engine.subsys.archive.config import DRIVER_SECTION_KEY, DRIVER_NAME_KEY, COMPRESSION_SECTION_KEY, COMPRESSION_ENABLED_KEY, COMPRESSION_LEVEL, COMPRESSION_MIN_SIZE_KEY
@@ -31,7 +32,7 @@ class ArchiveManager(object):
             self.primary_client = driver
 
             if not self.archive_clients:
-                raise Exception("Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(str(self.config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]), str(object_store.ObjectStorageDriver.registry.keys())))
+                raise Exception("Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(str(self.config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]), str(list(object_store.ObjectStorageDriver.registry.keys()))))
 
         except Exception as err:
             raise err
@@ -47,10 +48,10 @@ class ArchiveManager(object):
         if self.config[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True and self.primary_client.__supports_compressed_data__ and len(data) > \
                 self.config[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024:
             is_compressed = True
-            final_payload = zlib.compress(data, COMPRESSION_LEVEL)
+            final_payload = utils.ensure_bytes(zlib.compress(utils.ensure_bytes(data), COMPRESSION_LEVEL))
         else:
             is_compressed = False
-            final_payload = data
+            final_payload = utils.ensure_bytes(data)
 
         return final_payload, is_compressed
 
@@ -68,7 +69,7 @@ class ArchiveManager(object):
         with session_scope() as session:
             schemas = db_archivemetadata.list_schemas(session)
 
-        my_schemas = [x.__uri_scheme__ for x in self.archive_clients.values()]
+        my_schemas = [x.__uri_scheme__ for x in list(self.archive_clients.values())]
         my_schemas.append(self.primary_client.__uri_scheme__)
         my_schemas = set(my_schemas)
         supported = schemas.intersection(my_schemas)
@@ -132,13 +133,13 @@ class ArchiveManager(object):
 
         try:
             final_payload, is_compressed = self._do_compress(data)
+
             size = len(final_payload)
             digest = hashlib.md5(final_payload).hexdigest()
 
             url = self.primary_client.put(userId, bucket, archiveid, final_payload)
             with session_scope() as dbsession:
                 db_archivemetadata.add(userId, bucket, archiveid, archiveid + ".json", url, is_compressed=is_compressed, content_digest=digest, size=size, session=dbsession)
-
         except Exception as err:
             logger.debug("cannot put data: exception - " + str(err))
             raise err
@@ -157,6 +158,7 @@ class ArchiveManager(object):
             is_compressed = result.get('is_compressed', False)
             expected = result.get('digest')
 
+            # get the raw data from driver, note content is bytes (not str)
             content = self._client_for(url).get_by_uri(url)
             found_size = len(content)
 
@@ -175,7 +177,8 @@ class ArchiveManager(object):
             return content
 
         except Exception as err:
-
+            import traceback
+            traceback.print_exc()
             logger.debug("cannot get data: exception - " + str(err))
             raise err
 
@@ -204,7 +207,7 @@ class ArchiveManager(object):
 
             # Remove the data itself. Can result in orphaned data if system fails here but better than deleting the content but not the meta, leaving a confused state.
             if url:
-                scheme = urlparse.urlparse(url).scheme
+                scheme = urllib.parse.urlparse(url).scheme
                 if scheme in self.archive_clients:
                     return self.archive_clients[scheme].delete(userId, bucket, archiveid)
                 else:
@@ -222,5 +225,5 @@ class ArchiveManager(object):
         :return: configured ObjectStorage driver if available, else raise exception
         """
 
-        parsed = urlparse.urlparse(content_uri)
+        parsed = urllib.parse.urlparse(content_uri)
         return self.archive_clients[parsed.scheme]

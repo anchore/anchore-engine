@@ -39,26 +39,26 @@ class TestDistroMappers(unittest.TestCase):
         found.to_distro = 'centos'
         found.flavor = 'RHEL'
         mapper = VersionPreservingDistroMapper('centos', '7', None, found)
-        print('Mapped centos to: {}'.format(mapper.mapping))
+        print(('Mapped centos to: {}'.format(mapper.mapping)))
 
         found.from_distro = 'fedora'
         found.to_distro = 'centos'
         found.flavor = 'RHEL'
         mapper = VersionPreservingDistroMapper('fedora', '27', 'centos', found)
-        print('Mapped fedora to: {}'.format(mapper.mapping))
+        print(('Mapped fedora to: {}'.format(mapper.mapping)))
 
         mapper = VersionPreservingDistroMapper('fedora', '27', 'centos', None)
-        print('Mapped fedora to: {} on empty input'.format(mapper.mapping))
+        print(('Mapped fedora to: {} on empty input'.format(mapper.mapping)))
 
     def test_distro_from(self):
-        print(DistroMapping.distros_for('centos', '7', 'rhel'))
-        print(DistroMapping.distros_for('centos', '7.4.1', 'rhel'))
-        print(DistroMapping.distros_for('debian', '9'))
-        print(DistroMapping.distros_for('ubuntu', '16.04'))
-        print(DistroMapping.distros_for('busybox', '3'))
-        print(DistroMapping.distros_for('raspbian', '5'))
-        print(DistroMapping.distros_for('magaiea', '3'))
-        print(DistroMapping.distros_for('magaiea', '5', 'fedora,mandriva'))
+        print((DistroMapping.distros_for('centos', '7', 'rhel')))
+        print((DistroMapping.distros_for('centos', '7.4.1', 'rhel')))
+        print((DistroMapping.distros_for('debian', '9')))
+        print((DistroMapping.distros_for('ubuntu', '16.04')))
+        print((DistroMapping.distros_for('busybox', '3')))
+        print((DistroMapping.distros_for('raspbian', '5')))
+        print((DistroMapping.distros_for('magaiea', '3')))
+        print((DistroMapping.distros_for('magaiea', '5', 'fedora,mandriva')))
 
 
 

@@ -35,7 +35,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
 
     package_type = EnumStringParameter(name='package_type', example_str='all', enum_values=['all', 'os', 'non-os'], description='Only trigger for specific package type.', is_required=True, sort_order=1)
-    severity_comparison = EnumStringParameter(name='severity_comparison', example_str='>', description='The type of comparison to perform for severity evaluation.', enum_values=SEVERITY_COMPARISONS.keys(), is_required=True, sort_order=2)
+    severity_comparison = EnumStringParameter(name='severity_comparison', example_str='>', description='The type of comparison to perform for severity evaluation.', enum_values=list(SEVERITY_COMPARISONS.keys()), is_required=True, sort_order=2)
     severity = EnumStringParameter(name='severity', example_str='high', description='Severity to compare against.', enum_values=SEVERITY_ORDERING, is_required=True, sort_order=3)
     fix_available = BooleanStringParameter(name='fix_available', example_str='true', description='If present, the fix availability for the vulnerability record must match the value of this parameter.', is_required=False, sort_order=4)
     vendor_only = BooleanStringParameter(name='vendor_only', example_str='true', description='If True, an available fix for this CVE must not be explicitly marked as wont be addressed by the vendor', is_required=False, sort_order=5)
@@ -52,7 +52,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             cpevulns = context.data.get('loaded_cpe_vulnerabilities')
             if cpevulns:
                 try:
-                    for sev in cpevulns.keys():
+                    for sev in list(cpevulns.keys()):
                         found_severity_idx = SEVERITY_ORDERING.index(sev.lower()) if sev else 0
                         if comparison_fn(found_severity_idx, comparison_idx):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:

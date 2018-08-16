@@ -136,7 +136,7 @@ def delete_byevent_id(userId, eventId, session=None):
 def _db_to_dict(db_event):
     msg = {'event': {}, 'generated_uuid': None, 'created_at': None}
 
-    for key, value in vars(db_event).iteritems():
+    for key, value in vars(db_event).items():
         if key.startswith('_'):
             continue
 

@@ -52,8 +52,8 @@ class TestApkVersionHandling(unittest.TestCase):
 
     def test_version_comparison(self):
         for lval, rval, tests in self.versions:
-            for op, result in tests.items():
-                print('{} {} {}, Expected: {}'.format(lval, op, rval, result))
+            for op, result in list(tests.items()):
+                print(('{} {} {}, Expected: {}'.format(lval, op, rval, result)))
                 self.assertEqual(result, compare_versions(lval, op, rval))
 
     @classmethod
@@ -67,12 +67,12 @@ class TestApkVersionHandling(unittest.TestCase):
                 for lval, rval, tests in cls.versions:
                     out = subprocess.check_output(['docker', 'exec', container_id, 'apk', 'version', lval, rval, '-t'])
                     out_op = out.strip()
-                    print('From apk test, got {} {} = {}'.format(lval, rval, out_op))
-                    for op, result in tests.items():
+                    print(('From apk test, got {} {} = {}'.format(lval, rval, out_op)))
+                    for op, result in list(tests.items()):
                         if op == cls.ops[out_op]:
                             tests[op] = True
                         else:
                             tests[op] = False
-                print('Detected truth values for comparison are: {}'.format(cls.versions))
+                print(('Detected truth values for comparison are: {}'.format(cls.versions)))
             finally:
                 subprocess.check_call(['docker', 'rm', '-f', container_id])

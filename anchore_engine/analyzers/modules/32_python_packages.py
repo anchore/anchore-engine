@@ -1,18 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
-import shutil
 import re
 import json
-import time
-import rpm
-import subprocess
-import stat
-import tarfile
-import time
-import hashlib
-import copy
 import traceback
 import pkg_resources
 
@@ -23,7 +14,7 @@ analyzer_name = "package_list"
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
-    print str(err)
+    print(str(err))
     sys.exit(1)
 
 imgname = config['imgid']
@@ -42,9 +33,10 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    for f in allfiles.keys():
+    for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'dir':
-            candidate = '/'.join([unpackdir, 'rootfs', f.encode('utf8')])
+            #candidate = '/'.join([unpackdir, 'rootfs', f.encode('utf8')])
+            candidate = '/'.join([unpackdir, 'rootfs', f])
             distributions = pkg_resources.find_distributions(candidate)
             for distribution in distributions:
                 el = {}
@@ -94,14 +86,16 @@ try:
 
                 except Exception as err:
                     traceback.print_exc()
-                    print "WARN: could not extract information about python module from distribution - exception: " + str(err)
+                    print("WARN: could not extract information about python module from distribution - exception: " + str(err))
                     el = {}
 
                 if el:
                     resultlist[el['location'] + "/" + el['name']] = json.dumps(el)
 
 except Exception as err:
-    print "WARN: analyzer unable to complete - exception: " + str(err)
+    import traceback
+    traceback.print_exc()
+    print("WARN: analyzer unable to complete - exception: " + str(err))
 
 if resultlist:
     ofile = os.path.join(outputdir, 'pkgs.python')
