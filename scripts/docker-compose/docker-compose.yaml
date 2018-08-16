@@ -46,7 +46,7 @@ services:
      - "8228:8228"
      - "8338:8338"
     volumes:
-     - ${PWD}/aevolume/config:/config/:Z
+     - ${PWD}/config:/config/:Z
      #- /var/run/docker.sock:/var/run/docker.sock
     logging:
      driver: "json-file"
@@ -58,7 +58,7 @@ services:
   anchore-db:
     image: "postgres:9"
     volumes:
-     - ${PWD}/aevolume/db:/var/lib/postgresql/data/pgdata/:Z
+     - ${PWD}/db:/var/lib/postgresql/data/pgdata/:Z
     environment:
       - POSTGRES_PASSWORD=mysecretpassword
       - PGDATA=/var/lib/postgresql/data/pgdata/
@@ -75,7 +75,7 @@ services:
 #    depends_on:
 #     - anchore-engine
 #    volumes:
-#     - ${PWD}/aevolume/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml:Z
+#     - ${PWD}/config/anchore-prometheus.yaml:/etc/prometheus/prometheus.yaml:Z
 #    logging:
 #     driver: "json-file"
 #     options:
