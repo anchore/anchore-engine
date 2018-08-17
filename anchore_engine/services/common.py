@@ -330,10 +330,13 @@ def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
     resp = None
 
     try:
-        request = ImageIngressRequest()
-        request.user_id = imageUserId
-        request.image_id = imageId
-        request.fetch_url='catalog://'+str(imageUserId)+'/analysis_data/'+str(imageDigest)
+        request = ImageIngressRequest(user_id=imageUserId, image_id=imageId, fetch_url='catalog://'+str(imageUserId)+'/analysis_data/'+str(imageDigest))
+
+        #request = ImageIngressRequest()
+        #request.user_id = imageUserId
+        #request.image_id = imageId
+        #request.fetch_url='catalog://'+str(imageUserId)+'/analysis_data/'+str(imageDigest)
+
         logger.debug("policy engine request (image add): " + str(request))
         resp = client.ingress_image(request)
         logger.spew("policy engine response (image add): " + str(resp))

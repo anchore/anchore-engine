@@ -105,7 +105,7 @@ def monitor(*args, **kwargs):
                 logger.spew("MON: thread stopped running")
                 donew = True
                 monitor_thread.join()
-                logger.spew("MON: thread joined: " + str(monitor_thread.isAlive()))
+                logger.spew("MON: thread joined: isAlive=" + str(monitor_thread.isAlive()))
         else:
             logger.spew("MON: no thread")
             donew = True

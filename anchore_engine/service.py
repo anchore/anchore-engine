@@ -190,7 +190,14 @@ class BaseService(object):
         except:
             kick_timer = 1
 
+        try:
+            cycle_timers = {}
+            cycle_timers.update(self.configuration['cycle_timers'])
+        except:
+            cycle_timers = {}
+
         self.monitor_kwargs['kick_timer'] = kick_timer
+        self.monitor_kwargs['cycle_timers'] = cycle_timers
         self.monitor_kwargs['monitors'] = copy.deepcopy(self.__monitors__)
         self.monitor_kwargs['monitor_threads'] = self.monitor_threads
         self.monitor_kwargs['servicename'] = self.name

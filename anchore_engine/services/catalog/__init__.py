@@ -1206,21 +1206,6 @@ def monitor_func(**kwargs):
             elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
                 rc = schedule_watcher(watcher)
 
-                #if watchers[watcher]['taskType']:
-                #    logger.debug("should queue job: " + watcher)
-                #    watcher_task = copy.deepcopy(watcher_task_template)
-                #    watcher_task['watcher'] = watcher
-                #    watcher_task['taskType'] = watchers[watcher]['taskType']
-                #    try:
-                #        if not simplequeue.is_inqueue(system_user_auth, 'watcher_tasks', watcher_task):
-                #            qobj = simplequeue.enqueue(system_user_auth, 'watcher_tasks', watcher_task)
-                #            logger.debug(str(watcher_task)+": init task queued: " + str(qobj))
-                #        else:
-                #            logger.debug(str(watcher_task)+": init task already queued")
-                #        watchers[watcher]['last_queued'] = time.time()
-                #    except Exception as err:
-                #        logger.warn("failed to enqueue watcher task: " + str(err))
-
     except Exception as err:
         logger.error(str(err))
     finally:
