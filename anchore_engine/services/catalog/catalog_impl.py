@@ -21,6 +21,8 @@ from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_p
     db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata
 import anchore_engine.clients.policy_engine
 
+from sqlalchemy.orm import joinedload
+
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -183,6 +185,16 @@ def query_images_by_package(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
+
+advisory_cache={}
+def check_no_advisory(image):
+    phash = hashlib.sha256(json.dumps([image.pkg_name, image.pkg_version, image.vulnerability_namespace_name]).encode('utf-8')).hexdigest()
+    if phash not in advisory_cache:
+        advisory_cache[phash] = image.fix_has_no_advisory()
+
+    return(advisory_cache.get(phash))
+
+
 def query_images_by_vulnerability(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -202,8 +214,11 @@ def query_images_by_vulnerability(dbsession, request_inputs):
     pkg_hash = {}
     try:
         start = time.time()
-        image_package_matches = None
-        image_cpe_matches = None
+        image_package_matches = []
+        image_cpe_matches = []
+
+        #    rawquery = "select img_vulns.pkg_image_id, img_vulns.pkg_name, img_vulns.pkg_version, img_vulns.vulnerability_namespace_name, img_vulns.pkg_type, vulns.severity, pkgs.normalized_src_pkg, fixes.name as fix_pkg_name, fixes.version as fix_pkg_version, fixes.vendor_no_advisory as no_advisory from image_package_vulnerabilities as img_vulns inner join image_packages as pkgs on img_vulns.pkg_user_id = pkgs.image_user_id and img_vulns.pkg_image_id = pkgs.image_id and img_vulns.pkg_name = pkgs.name inner join (feed_data_vulnerabilities as vulns left outer join feed_data_vulnerabilities_fixed_artifacts as fixes on vulns.id = fixes.vulnerability_id ) on img_vulns.vulnerability_id = vulns.id and img_vulns.vulnerability_namespace_name = vulns.namespace_name where img_vulns.vulnerability_id = 'CVE-2017-10684'"
+        #    image_package_matches = dbsession.execute(rawquery)
 
         ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
         icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
@@ -218,8 +233,8 @@ def query_images_by_vulnerability(dbsession, request_inputs):
             ipm_query = ipm_query.filter(ImagePackageVulnerability.pkg_name==affected_package_filter)
             icm_query = icm_query.filter(ImageCpe.name==affected_package_filter)
 
-        image_package_matches = ipm_query.all()
-        image_cpe_matches = icm_query.all()
+        image_package_matches = ipm_query#.all()
+        image_cpe_matches = icm_query#.all()
 
         logger.debug("QUERY TIME: {}".format(time.time() - start))
 
@@ -229,12 +244,11 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         
             start = time.time()
             for image in image_package_matches:
-                if vendor_only and image.fix_has_no_advisory():
+                if vendor_only and check_no_advisory(image):
                     continue
 
                 imageId = image.pkg_image_id
                 if imageId not in ret_hash:
-                    #ret_hash[imageId] = {'imageDigest': imageId_to_imageDigest.get(imageId, "N/A"), 'vulnerable_packages': []}
                     ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
                     pkg_hash[imageId] = {}
 
@@ -246,6 +260,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                     'namespace': image.vulnerability_namespace_name,
                     'severity': image.vulnerability.severity,
                 }
+
                 ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
             logger.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
 
