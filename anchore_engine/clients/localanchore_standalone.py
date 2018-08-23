@@ -116,6 +116,8 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, lay
 
                         tarcmd = "tar -C {} -x -f {} {}".format(rootfsdir, layertar, missingfile)
                         rc, sout, serr = utils.run_command(tarcmd)
+                        sout = utils.ensure_str(sout)
+                        serr = utils.ensure_str(serr)
                         if rc == 0:
                             if not handled_post_metadata.get('temporary_file_adds', False):
                                 handled_post_metadata['temporary_file_adds'] = []
@@ -149,6 +151,8 @@ def get_tar_filenames(layertar):
         try:
             ret = []
             rc, sout, serr = utils.run_command(tarcmd)
+            sout = utils.ensure_str(sout)
+            serr = utils.ensure_str(serr)
             if rc == 0 and sout:
                 for line in sout.splitlines():
                     re.sub("/+$", "", line)
@@ -272,6 +276,9 @@ def squash(unpackdir, cachedir, layers):
             logger.debug("untarring squashed tarball: " + str(tarcmd))
             try:
                 rc, sout, serr = utils.run_command(tarcmd)
+                sout = utils.ensure_str(sout)
+                serr = utils.ensure_str(serr)
+
                 if rc != 0:
                     logger.debug("tar error encountered, attempting to handle")
                     handled, handled_post_metadata = handle_tar_error(tarcmd, rc, sout, serr, unpackdir=unpackdir, rootfsdir=rootfsdir, layer=layer, layertar=layertar, layers=layers)
@@ -626,6 +633,8 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
         if True:
             try:
                 rc, sout, serr = utils.run_command(cmdstr)
+                sout = utils.ensure_str(sout)
+                serr = utils.ensure_str(serr)
                 if rc != 0:
                     raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
                 else:
@@ -817,7 +826,7 @@ class AnalysisError(AnchoreException):
 
     def to_dict(self):
         return {self.__class__.__name__: dict((key, '{}...(truncated)'.format(value[:256]) if key == 'cause' and isinstance(value, str) and len(value) > 256 else value)
-                                              for key, value in vars(self).iteritems() if not key.startswith('_'))}
+                                              for key, value in vars(self).items() if not key.startswith('_'))}
 
 
 class ImagePullError(AnalysisError):
@@ -920,6 +929,8 @@ def get_config():
         cmd = ['anchore', '--json', 'system', 'status', '--conf']
         try:
             rc, sout, serr = anchore_engine.utils.run_command_list(cmd)
+            sout = utils.ensure_str(sout)
+            serr = utils.ensure_str(serr)
             ret = json.loads(sout)
         except Exception as err:
             logger.error(str(err))

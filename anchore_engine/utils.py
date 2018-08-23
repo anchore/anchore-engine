@@ -184,6 +184,9 @@ def run_command_list(cmd_list, env=None):
     except Exception as err:
         raise err
 
+    #sout = ensure_str(sout)
+    #serr = ensure_str(serr)
+
     return(rc, sout, serr)
 
 
