@@ -22,6 +22,7 @@ from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_p
 import anchore_engine.clients.policy_engine
 
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
 
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -126,18 +127,31 @@ def query_images_by_package(dbsession, request_inputs):
     ret_hash = {}
     pkg_hash = {}
     try:
-        ipm_dbfilter = {'name': pkg_name}
-        cpm_dbfilter = {'name': pkg_name}
+        ipm_query = dbsession.query(ImagePackage).filter(ImagePackage.name==pkg_name)
+        cpm_query = dbsession.query(ImageCpe).filter(ImageCpe.name==pkg_name)
 
         if pkg_version and pkg_version != 'None':
-            ipm_dbfilter['version'] = pkg_version
-            cpm_dbfilter['version'] = pkg_version
+            ipm_query = ipm_query.filter(or_(ImagePackage.version==pkg_version, ImagePackage.fullversion==pkg_version))
+            cpm_query = cpm_query.filter(ImageCpe.version==pkg_version)
         if pkg_type and pkg_type != 'None':
-            ipm_dbfilter['pkg_type'] = pkg_type
-            cpm_dbfilter['pkg_type'] = pkg_type
+            ipm_query = ipm_query.filter(ImagePackage.pkg_type==pkg_type)
+            cpm_query = cpm_query.filter(ImageCpe.pkg_type==pkg_type)
 
-        image_package_matches = dbsession.query(ImagePackage).filter_by(**ipm_dbfilter).all()
-        cpe_package_matches = dbsession.query(ImageCpe).filter_by(**cpm_dbfilter).all()
+        image_package_matches = ipm_query
+        cpe_package_matches = cpm_query
+
+        #ipm_dbfilter = {'name': pkg_name}
+        #cpm_dbfilter = {'name': pkg_name}
+
+        #if pkg_version and pkg_version != 'None':
+        #    ipm_dbfilter['version'] = pkg_version
+        #    cpm_dbfilter['version'] = pkg_version
+        #if pkg_type and pkg_type != 'None':
+        #    ipm_dbfilter['pkg_type'] = pkg_type
+        #    cpm_dbfilter['pkg_type'] = pkg_type
+
+        #image_package_matches = dbsession.query(ImagePackage).filter_by(**ipm_dbfilter).all()
+        #cpe_package_matches = dbsession.query(ImageCpe).filter_by(**cpm_dbfilter).all()
 
         if image_package_matches or cpe_package_matches:
             imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
@@ -150,7 +164,7 @@ def query_images_by_package(dbsession, request_inputs):
 
                 pkg_el = {
                     'name': image.name,
-                    'version': image.version,
+                    'version': image.fullversion,
                     'type': image.pkg_type,
                 }
                 phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
