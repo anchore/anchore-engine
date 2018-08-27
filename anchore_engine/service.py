@@ -298,25 +298,34 @@ class BaseService(object):
             'short_description': ''
         }
 
-        # if 'ssl_enable' in self.configuration and self.configuration['ssl_enable']:
-        if self.configuration.get('ssl_enable', False) or self.configuration.get('external_tls', False):
-            hstring = 'https'
-        else:
-            hstring = 'http'
+        hstring = 'http'
+        if 'external_tls' in self.configuration:
+            if self.configuration.get('external_tls', False):
+                hstring = 'https'
+        elif 'ssl_enable' in self.configuration:
+            if self.configuration.get('ssl_enable', False):
+                hstring = 'https'
 
         endpoint_hostname = endpoint_port = endpoint_hostport = None
+        if self.configuration.get('external_hostname', False):
+            endpoint_hostname = self.configuration.get('external_hostname')
+        elif self.configuration.get('endpoint_hostname', False):
+            endpoint_hostname = self.configuration.get('endpoint_hostname')
 
-        if 'endpoint_hostname' in self.configuration:
-            endpoint_hostname = self.configuration['endpoint_hostname']
-            service_template['base_url'] = hstring + '://' + self.configuration['endpoint_hostname']
-        if 'port' in self.configuration:
-            endpoint_port = int(self.configuration['port'])
-            service_template['base_url'] += ':' + str(endpoint_port)
+        if self.configuration.get('external_port', False):
+            endpoint_port = int(self.configuration.get('external_port'))
+        elif self.configuration.get('port', False):
+            endpoint_port = int(self.configuration.get('port'))
 
         if endpoint_hostname:
             endpoint_hostport = endpoint_hostname
             if endpoint_port:
-                endpoint_hostport = endpoint_hostport + ':' + str(endpoint_port)
+                endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
+
+        if endpoint_hostport:
+            service_template['base_url'] = "{}://{}".format(hstring, endpoint_hostport)
+        else:
+            raise Exception("could not construct service base_url - please check service configuration for hostname/port settings")
 
         try:
             service_template['status'] = False
