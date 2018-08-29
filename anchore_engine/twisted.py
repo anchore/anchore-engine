@@ -32,6 +32,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
 from anchore_engine.apis.auth.basic import AnchorePasswordChecker
+from anchore_engine import utils
 
 class CommonOptions(usage.Options):
     """
@@ -53,6 +54,38 @@ class EmptyResource(Resource):
 
     def render_GET(self, request):
         return b''
+
+
+# simple twisted resource for version check route
+class VersionResource(Resource):
+    """
+    A simple resource to return version information if rendered
+    """
+    isLeaf = True
+
+    def render_GET(self, request):
+        try:
+            versions = localconfig.get_versions()
+        except:
+            versions = {}
+
+        ret = {
+            'service': {
+                'version': versions.get('service_version', None),
+            },
+            'api': {
+            },
+            'db': {
+                'schema_version': versions.get('db_version', None),
+            }
+        }
+
+        try:
+            response = utils.ensure_bytes(json.dumps(ret))
+        except:
+            response = utils.ensure_bytes(json.dumps({}))
+
+        return response
 
 
 @implementer(IRealm)
@@ -131,7 +164,8 @@ class WsgiApiServiceMaker(object):
 
     # The base child paths served by this service (e.g. /health, /v1/...). A list of web.resource.Resource() objects
     _default_resource_nodes = {
-        b'health': EmptyResource()
+        b'health': EmptyResource(),
+        b'version': VersionResource(),
     }
 
     def __init__(self, *args, **kwargs):
@@ -294,7 +328,8 @@ class WsgiApiServiceMaker(object):
     def _default_version_rewrite(self, request):
         try:
             if request.postpath:
-                if request.postpath[0] != b'health' and request.postpath[0] != self._api_version_bytes:
+                #if request.postpath[0] != b'health' and request.postpath[0] != self._api_version_bytes:
+                if request.postpath[0] not in [b'health', b'version'] and request.postpath[0] != self._api_version_bytes:
                     request.postpath.insert(0, self._api_version_bytes)
                     request.path = b'/' + self._api_version_bytes + request.path
         except Exception as err:
