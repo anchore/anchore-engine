@@ -128,7 +128,7 @@ def getAuthResource(in_resource, sname, config, password_checker=AnchorePassword
     return resource
 
 
-def _load_config(config_option):
+def _load_config(config_option, validate_params=None):
     try:
         # config and init
         configfile = configdir = None
@@ -136,7 +136,7 @@ def _load_config(config_option):
             configdir = config_option
             configfile = os.path.join(config_option, 'config.yaml')
 
-        localconfig.load_config(configdir=configdir, configfile=configfile)
+        localconfig.load_config(configdir=configdir, configfile=configfile, validate_params=validate_params)
         my_config = localconfig.get_config()
         my_config['myservices'] = []
         logger.spew("localconfig=" + json.dumps(my_config, indent=4, sort_keys=True))

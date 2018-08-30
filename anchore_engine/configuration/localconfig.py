@@ -51,7 +51,7 @@ localconfig = {}
 
 
 # Top-level config keys required to be present
-default_required_config_params = ['services', 'webhooks', 'credentials']
+default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
 
 
 def update_merge(base, override):
@@ -244,7 +244,7 @@ def validate_config(config, validate_params=None):
     Validate the configuration with required keys and values
 
     :param config: the config dict to validate
-    :param validate_params: list of strings that are properties that must be found at top level in config
+    :param validate_params: dict of top level config properties and boolean flag
     :return: true if passes validation, false otherwise
     """
     ret = True
@@ -260,7 +260,7 @@ def validate_config(config, validate_params=None):
             raise Exception("variable overrides found in configuration file that are unset ("+str(patt.group(1))+")")
 
         # top level checks
-        if 'services' in validate_params:
+        if 'services' in validate_params and validate_params['services']:
             if'services' not in config or not config['services']:
                 raise Exception("no 'services' definition in configuration file")
             else:
@@ -287,7 +287,7 @@ def validate_config(config, validate_params=None):
                             raise Exception("if any one of (" + ','.join(
                                 check_keys) + ") are specified, then all must be specified for service '" + str(k) + "'")
 
-        if 'credentials' in validate_params:
+        if 'credentials' in validate_params and validate_params['credentials']:
             if 'credentials' not in config or not config['credentials']:
                 raise Exception("no 'credentials' definition in configuration file")
             else:
@@ -321,7 +321,7 @@ def validate_config(config, validate_params=None):
                                         username) + "' section of configuration file")
 
             # webhook checks
-            if 'webhooks' in validate_params:
+            if 'webhooks' in validate_params and validate_params['webhooks']:
                 if 'webhooks' not in config or not config['webhooks']:
                     logger.warn("no webhooks defined in configuration file - notifications will be disabled")
 
