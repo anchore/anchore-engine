@@ -1,0 +1,85 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+
+version: 2
+jobs:
+  unit_tests:
+    docker:
+      - image: circleci/python:3.6.6
+      - image: circleci/postgres:9.6
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            pip install .
+      #       cd test/
+      #       python -m unittest -v >> test-reports
+      # - store_artifacts:
+      #     path: test-reports
+      #     destination: test-reports
+
+  build:
+    docker:
+      - image: alpine:latest
+    steps:
+      - run:
+          name: Trigger Dockerhub automated build.
+          command: curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
+
+  functional_tests:
+    machine:
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: |
+            pip install docker-compose
+      - run:
+          name: docker compose
+          command: |
+            cd scripts/docker-compose
+            sed -i 's|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|docker.io/btodhunter/anchore-engine:dev|' docker-compose.yaml
+            mkdir config db
+            cp config.yaml config/
+            docker-compose up -d
+            docker logs docker-compose_anchore-engine_1
+      - run:
+          name: run test
+          command: |
+            docker run -td --net=host --name anchore-cli docker.io/anchore/engine-cli:latest tail -f /dev/null
+            docker ps
+            docker logs docker-compose_anchore-engine_1
+            sleep 60
+            docker exec anchore-cli anchore-cli --u admin --p foobar system status
+            cd ~/build
+            scripts/tests/aetest.py docker.io/alpine:latest anchore-cli
+
+workflows:
+  version: 2
+  default_workflow:
+    jobs:
+      - build
+      - unit_tests
+      - functional_tests:
+          requires:
+            - build
