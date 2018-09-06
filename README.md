@@ -18,7 +18,7 @@ The Anchore Engine requires a single volume used to store configuration informat
 
 ## Configuration
 
-1. Create a directory to expose as a volume containing Anchore Engine configuration files (we use /root/aevolume here but you can use non-root paths and adjust the samepl config/docker-compose configuration files accordingly)
+1. Create a directory to expose as a volume containing Anchore Engine configuration files (we use /root/aevolume here but you can use non-root paths and adjust the sample config/docker-compose configuration files accordingly)
 
 `mkdir -p ~/aevolume/config`
 
