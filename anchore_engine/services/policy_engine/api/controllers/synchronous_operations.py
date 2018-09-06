@@ -18,8 +18,8 @@ from sqlalchemy import or_, and_
 
 
 import anchore_engine.subsys.servicestatus
-from anchore_engine import utils
-import anchore_engine.services.common
+from anchore_engine import utils, apis
+from anchore_engine.common.helpers import make_response_error
 
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
 
@@ -35,6 +35,11 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vu
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
+from anchore_engine.apis.authorization import get_authorizer, Permission
+
+
+authorizer = get_authorizer()
+
 
 # Leave this here to ensure gates registry is fully loaded
 import anchore_engine.subsys.metrics
@@ -46,6 +51,7 @@ TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_
 feed_sync_locking_enabled = True
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def get_status():
     """
     Generic status return common to all services
@@ -92,6 +98,7 @@ class ImageMessageMapper(object):
 msg_mapper = ImageMessageMapper()
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def list_image_users(page=None):
     """
     Returns the list of users the system knows about, based on images from users.
@@ -111,6 +118,7 @@ def list_image_users(page=None):
     return list(img_user_set)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def list_user_images(user_id):
     """
     Given a user_id, returns a list of Image objects scoped to that user.
@@ -127,6 +135,7 @@ def list_user_images(user_id):
     return imgs
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def delete_image(user_id, image_id):
     """
     DELETE the image and all resources for it. Returns 204 - No Content on success
@@ -188,6 +197,7 @@ def problem_from_exception(eval_exception, severity=None):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def check_user_image_inline(user_id, image_id, tag, bundle):
     """
     Execute a policy evaluation using the info in the request body including the bundle content
@@ -279,6 +289,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_only=True):
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
@@ -436,6 +447,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         db.close()
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def ingress_image(ingress_request):
     """
     :param ingress_request json object specifying the identity of the image to sync
@@ -460,6 +472,7 @@ def ingress_image(ingress_request):
         abort(500, 'Internal error processing image analysis import')
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def validate_bundle(policy_bundle):
     """
     Performs a validation of the given policy bundle and either returns 200 OK with a status message in the response indicating pass/fail and any validation errors.
@@ -491,6 +504,7 @@ def validate_bundle(policy_bundle):
         abort(Response('Unexpected internal error', 500))
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def describe_policy():
     """
     Return a dictionary/json description of the set of gates available and triggers.
@@ -693,7 +707,7 @@ def query_images_by_package(dbsession, request_inputs):
         httpcode = 200
     except Exception as err:
         log.error("{}".format(err))
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)        
+        return_object = anchore_engine.apis.make_response_error(err, in_httpcode=httpcode)        
 
     return(return_object, httpcode)
 
@@ -708,7 +722,6 @@ def check_no_advisory(image):
 
 
 def query_images_by_vulnerability(dbsession, request_inputs):
-    user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
     userId = request_inputs['userId']
@@ -804,7 +817,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
 
     except Exception as err:
         log.error("{}".format(err))
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.apis.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -894,14 +907,15 @@ def query_vulnerabilities(dbsession, request_inputs):
             
     except Exception as err:
         log.error("{}".format(err))
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
         session = get_session()
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
         return_object, httpcode = query_vulnerabilities(session, request_inputs)
     except Exception as err:
         httpcode = 500
@@ -911,11 +925,12 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
 
     return (return_object, httpcode)    
 
-def query_images_by_package_get(name=None, version=None, package_type=None):
-    try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
+def query_images_by_package_get(user_id, name=None, version=None, package_type=None):
 
+    try:
         session = get_session()
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
         return_object, httpcode = query_images_by_package(session, request_inputs)
     except Exception as err:
         httpcode = 500
@@ -925,10 +940,12 @@ def query_images_by_package_get(name=None, version=None, package_type=None):
 
     return (return_object, httpcode)    
 
-def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
+def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
         session = get_session()
+        request_inputs = apis.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
         return_object, httpcode = query_images_by_vulnerability(session, request_inputs)
     except Exception as err:
         httpcode = 500

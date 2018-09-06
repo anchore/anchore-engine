@@ -28,6 +28,7 @@ ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
 
+
 class StringJSON(types.TypeDecorator):
     """
     A generic json text type for serialization and deserialization of json to text columns.
@@ -269,6 +270,11 @@ def initialize(localconfig=None, versions=None):
                 time.sleep(5)
 
     return (ret)
+
+
+def get_session():
+    global Session
+    return Session()
 
 @contextmanager
 def session_scope():

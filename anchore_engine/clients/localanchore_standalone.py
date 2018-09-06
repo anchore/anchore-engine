@@ -12,16 +12,16 @@ import yaml
 from pkg_resources import resource_filename
 
 import anchore_engine.configuration
-import anchore_engine.services.common
+import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 #from anchore.anchore_utils import read_kvfile_todict
+import anchore_engine.common.images
 from anchore_engine.analyzers.utils import read_kvfile_todict
 from anchore_engine.utils import AnchoreException
 
 
 from anchore_engine import utils
-import anchore_engine.subsys.events as events
 
 anchorelock = threading.Lock()
 anchorelocks = {}
@@ -371,7 +371,7 @@ def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, dest_
     # extract user/pw/verify from registry_creds
     try:
         if registry_creds:
-            image_info = anchore_engine.services.common.get_image_info(None, 'docker', pullstring, registry_lookup=False)
+            image_info = anchore_engine.common.images.get_image_info(None, 'docker', pullstring, registry_lookup=False)
             user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(image_info['registry'], registry_creds=registry_creds)
     except Exception as err:
         raise err

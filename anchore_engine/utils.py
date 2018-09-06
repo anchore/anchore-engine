@@ -1,6 +1,7 @@
 """
 Generic utilities
 """
+import datetime
 import hashlib
 import json
 import platform
@@ -13,6 +14,7 @@ import os
 import re
 
 from anchore_engine.subsys import logger
+
 
 def process_cve_status(old_cves_result=None, new_cves_result=None):
     """
@@ -351,3 +353,26 @@ def ensure_bytes(obj):
 
 def ensure_str(obj):
     return str(obj, 'utf-8') if type(obj) != str else obj
+
+
+rfc2339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
+
+
+def datetime_to_rfc2339(dt_obj):
+    """
+    Simple utility function. Expects a UTC input, does no tz conversion
+
+    :param dt_obj:
+    :return:
+    """
+    return dt_obj.strftime(rfc2339_date_fmt)
+
+
+def epoch_to_rfc2339(epoch_int):
+    """
+    Convert an epoch int value to a RFC2339 datetime string
+
+    :param epoch_int:
+    :return:
+    """
+    return datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(epoch_int))

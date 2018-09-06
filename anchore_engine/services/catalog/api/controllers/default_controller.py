@@ -1,16 +1,23 @@
 import connexion
-import time
 
+import anchore_engine.apis
 from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
-import anchore_engine.services.common
+import anchore_engine.common
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
-import anchore_engine.clients.policy_engine
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.context import ApiRequestContextProxy
 
-from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
+from anchore_engine.subsys.metrics import flask_metrics
 
+authorizer = get_authorizer()
+
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def status():
     httpcode = 500
     try:
@@ -22,97 +29,68 @@ def status():
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
-        (user, password) = request_inputs['auth']
-        verify = localconfig['internal_ssl_verify']
-        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
-
-        kw = {}
-        for k in request_inputs['params']:
-            if type(request_inputs['params'][k]) != type(None):
-                kw[k] = request_inputs['params'][k]
-
-        return_object = client.query_vulnerabilities_get(**kw)
-        httpcode = 200
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        resp = client.query_vulnerabilities(vuln_id=request_inputs.get('params',{}).get('id'),
+                                            affected_package=request_inputs.get('params',{}).get('affected_package'),
+                                            affected_package_version=request_inputs.get('params',{}).get('affected_package_version'))
+        code = 200
     except Exception as err:
-        httpcode = 500
-        return_object = str(err)
+        logger.exception('Error dispatching/receiving request from policy engine for vulnerability query')
+        resp = str(err)
+        code = 500
 
-#    try:
-#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
-#        with db.session_scope() as session:
-#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_vulnerabilities(session, request_inputs)
-#    except Exception as err:
-#        httpcode = 500
-#        return_object = str(err)
+    return resp, code
 
-    return (return_object, httpcode)    
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def query_images_by_package_get(name=None, version=None, package_type=None):
     try:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
-        (user, password) = request_inputs['auth']
-        verify = localconfig['internal_ssl_verify']
-        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
+        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        logger.info('Params for image by_package: {}'.format(request_inputs))
 
-        kw = {}
-        for k in request_inputs['params']:
-            if type(request_inputs['params'][k]) != type(None):
-                kw[k] = request_inputs['params'][k]
-
-        return_object = client.query_images_by_package_get(**kw)
+        return_object = client.query_images_by_package(user_id=ApiRequestContextProxy.namespace(),
+                                                       name=request_inputs.get('params',{}).get('name'),
+                                                       version=request_inputs.get('params',{}).get('version'),
+                                                       package_type=request_inputs.get('params',{}).get('package_type'))
         httpcode = 200
     except Exception as err:
+        logger.exception('Error dispatching/receiving request from policy engine for image query by package')
         httpcode = 500
         return_object = str(err)
 
-
-#    try:
-#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
-#        with db.session_scope() as session:
-#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
-#    except Exception as err:
-#        httpcode = 500
-#        return_object = str(err)
-
-    return (return_object, httpcode)    
-
-def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
-    try:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
-        (user, password) = request_inputs['auth']
-        verify = localconfig['internal_ssl_verify']
-        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
-
-        kw = {}
-        for k in request_inputs['params']:
-            if type(request_inputs['params'][k]) != type(None):
-                kw[k] = request_inputs['params'][k]
-
-        return_object = client.query_images_by_vulnerability_get(**kw)
-        httpcode = 200
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-#    try:
-#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
-#        with db.session_scope() as session:
-#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
-#    except Exception as err:
-#        httpcode = 500
-#        return_object = str(err)
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
+def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
+    try:
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
+        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        return_object = client.query_images_by_vulnerability(user_id=ApiRequestContextProxy.namespace(),
+                                                             vulnerability_id=request_inputs.get('params',{}).get('vulnerability_id'),
+                                                             severity=request_inputs.get('params',{}).get('severity'),
+                                                             namespace=request_inputs.get('params',{}).get('namespace'),
+                                                             affected_package=request_inputs.get('params',{}).get('affected_package'),
+                                                             vendor_only=request_inputs.get('params',{}).get('vendor_only'))
+        httpcode = 200
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.repo(session, request_inputs, bodycontent=bodycontent)
     except Exception as err:
@@ -121,9 +99,11 @@ def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={})
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_tags_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(session, request_inputs)
     except Exception as err:
@@ -132,10 +112,12 @@ def image_tags_get():
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request,
-                                                                        default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
+                                                             default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs)
 
@@ -146,9 +128,10 @@ def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, histor
     return (return_object, httpcode)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_post(bodycontent={}, tag=None, digest=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
 
@@ -162,9 +145,10 @@ def image_post(bodycontent={}, tag=None, digest=None):
 
 # @api.route('/image/<imageDigest>', methods=['GET', 'PUT', 'DELETE'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_imageDigest_get(imageDigest):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest)
 
@@ -175,9 +159,10 @@ def image_imageDigest_get(imageDigest):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_imageDigest_put(imageDigest, bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest, bodycontent=bodycontent)
 
@@ -188,9 +173,10 @@ def image_imageDigest_put(imageDigest, bodycontent):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_imageDigest_delete(imageDigest, force=False):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'force':False})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'force':False})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest)
 
@@ -203,9 +189,10 @@ def image_imageDigest_delete(imageDigest, force=False):
 
 # @api.route('/registry_lookup', methods=['GET'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def registry_lookup(tag=None, digest=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.registry_lookup(session, request_inputs)
 
@@ -217,9 +204,10 @@ def registry_lookup(tag=None, digest=None):
 
 
 # @api.route('/import', methods=['POST'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def image_import(bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_import(session, request_inputs, bodycontent=bodycontent)
 
@@ -237,9 +225,10 @@ def image_import(bodycontent):
 
 # subscription calls
 # @api.route('/subscriptions', methods=['GET', 'POST'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def subscriptions_get(subscription_key=None, subscription_type=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'subscription_key':subscription_key, 'subscription_type':subscription_type})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'subscription_key':subscription_key, 'subscription_type':subscription_type})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs)
 
@@ -250,9 +239,10 @@ def subscriptions_get(subscription_key=None, subscription_type=None):
     return (return_object, httpcode)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def subscriptions_post(bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs, bodycontent=bodycontent)
 
@@ -265,9 +255,10 @@ def subscriptions_post(bodycontent):
 
 # @api.route('/subscriptions/<subscriptionId>', methods=['GET', 'PUT', 'DELETE'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def subscriptions_subscriptionId_get(subscriptionId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs, subscriptionId=subscriptionId)
 
@@ -278,9 +269,10 @@ def subscriptions_subscriptionId_get(subscriptionId):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def subscriptions_subscriptionId_put(subscriptionId, bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs, subscriptionId=subscriptionId, bodycontent=bodycontent)
 
@@ -291,9 +283,10 @@ def subscriptions_subscriptionId_put(subscriptionId, bodycontent):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def subscriptions_subscriptionId_delete(subscriptionId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.subscriptions(session, request_inputs, subscriptionId=subscriptionId)
 
@@ -305,10 +298,11 @@ def subscriptions_subscriptionId_delete(subscriptionId):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def events_get(source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request,
-                                                                        default_params={'source_servicename': source_servicename,
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
+                                                             default_params={'source_servicename': source_servicename,
                                                                                         'source_hostid': source_hostid,
                                                                                         'resource_type': resource_type,
                                                                                         'resource_id': resource_id,
@@ -328,9 +322,10 @@ def events_get(source_servicename=None, source_hostid=None, resource_type=None, 
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def events_post(bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.events(session, request_inputs, bodycontent=bodycontent)
 
@@ -342,9 +337,10 @@ def events_post(bodycontent):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def events_delete(since=None, before=None, level=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'since': since, 'before': before, 'level': level})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'since': since, 'before': before, 'level': level})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.events(session, request_inputs)
 
@@ -356,9 +352,10 @@ def events_delete(since=None, before=None, level=None):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def events_eventId_get(eventId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.events_eventId(session, request_inputs, eventId)
 
@@ -370,9 +367,10 @@ def events_eventId_get(eventId):
 
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def events_eventId_delete(eventId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.events_eventId(session, request_inputs, eventId)
 
@@ -384,9 +382,10 @@ def events_eventId_delete(eventId):
 
 # user calls
 # @api.route("/users", methods=['GET'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def users_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.users(session, request_inputs)
 
@@ -399,9 +398,10 @@ def users_get():
 
 # @api.route("/users/<inuserId>", methods=['GET', 'DELETE'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def users_userId_get(inuserId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.users_userId(session, request_inputs, inuserId)
 
@@ -412,9 +412,10 @@ def users_userId_get(inuserId):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def users_userId_delete(inuserId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.users_userId(session, request_inputs, inuserId)
 
@@ -428,9 +429,10 @@ def users_userId_delete(inuserId):
 # archive calls
 # @api.route('/archive/<bucket>/<archiveid>', methods=['GET', 'POST'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def archive_get(bucket, archiveid):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid)
 
@@ -441,9 +443,10 @@ def archive_get(bucket, archiveid):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def archive_post(bucket, archiveid, bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid, bodycontent=bodycontent)
 
@@ -456,9 +459,10 @@ def archive_post(bucket, archiveid, bodycontent):
 
 # system/service calls
 # @api.route("/system", methods=['GET'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system(session, request_inputs)
 
@@ -470,9 +474,10 @@ def system_get():
 
 
 # @api.route("/system/services", methods=['GET'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_services_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_services(session, request_inputs)
 
@@ -485,9 +490,10 @@ def system_services_get():
 
 # @api.route("/system/services/<servicename>", methods=['GET'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_services_servicename_get(servicename):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_services_servicename(session, request_inputs, servicename)
 
@@ -500,9 +506,10 @@ def system_services_servicename_get(servicename):
 
 # @api.route("/system/services/<servicename>/<hostId>", methods=['GET', 'DELETE'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_services_servicename_hostId_get(servicename, hostId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_services_servicename_hostId(session, request_inputs, servicename, hostId)
 
@@ -513,9 +520,10 @@ def system_services_servicename_hostId_get(servicename, hostId):
     return (return_object, httpcode)
 
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_services_servicename_hostId_delete(servicename, hostId):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_services_servicename_hostId(session, request_inputs, servicename, hostId)
 
@@ -527,9 +535,10 @@ def system_services_servicename_hostId_delete(servicename, hostId):
 
 
 # @api.route("/system/registries", methods=['GET', 'POST'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_registries_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries(session, request_inputs)
 
@@ -539,10 +548,10 @@ def system_registries_get():
 
     return (return_object, httpcode)
 
-
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_registries_post(bodycontent, validate=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'validate':validate})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'validate':validate})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries(session, request_inputs, bodycontent=bodycontent)
 
@@ -555,9 +564,10 @@ def system_registries_post(bodycontent, validate=True):
 
 # @api.route("/system/registries/<registry>", methods=['GET', 'DELETE', 'PUT'])
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_registries_registry_get(registry):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries_registry(session, request_inputs, registry)
 
@@ -567,10 +577,12 @@ def system_registries_registry_get(registry):
 
     return (return_object, httpcode)
 
+
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_registries_registry_delete(registry):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries_registry(session, request_inputs, registry)
 
@@ -580,10 +592,12 @@ def system_registries_registry_delete(registry):
 
     return (return_object, httpcode)
 
+
 @flask_metrics.do_not_track()
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_registries_registry_put(registry, bodycontent, validate=True):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'validate':validate})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'validate':validate})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_registries_registry(session, request_inputs, registry, bodycontent=bodycontent)
 
@@ -595,9 +609,10 @@ def system_registries_registry_put(registry, bodycontent, validate=True):
 
 
 # @api.route("/system/subscriptions", methods=['GET'])
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_subscriptions_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_subscriptions(session, request_inputs)
 
@@ -608,9 +623,11 @@ def system_subscriptions_get():
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_prune_get():
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune_listresources(session, request_inputs)
 
@@ -620,9 +637,11 @@ def system_prune_get():
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_prune_resourcetype_get(resourcetype, dangling=True, olderthan=None):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'dangling': dangling, 'olderthan': olderthan})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'dangling': dangling, 'olderthan': olderthan})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune(session, request_inputs, resourcetype)
 
@@ -632,9 +651,11 @@ def system_prune_resourcetype_get(resourcetype, dangling=True, olderthan=None):
 
     return (return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def system_prune_resourcetype_post(resourcetype, bodycontent):
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.system_prune(session, request_inputs, resourcetype, bodycontent=bodycontent)
 

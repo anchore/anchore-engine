@@ -6,6 +6,7 @@ import datetime
 import threading
 from anchore_engine.subsys import logger
 
+
 class TTLCache(object):
     def __init__(self, default_ttl_sec=60):
         self.cache = {}
@@ -23,7 +24,7 @@ class TTLCache(object):
             return found[1]
         elif found:
             self.cache.pop(key)
-            logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
+            logger.spew('TTLCache {} miss due to ttl for {}'.format(self.__hash__(), key))
             return None
         else:
             logger.spew('TTLCache {} miss for {}'.format(self.__hash__(), key))
@@ -32,8 +33,15 @@ class TTLCache(object):
     def flush(self):
         self.cache.clear()
 
+    def delete(self, key):
+        try:
+            self.cache.pop(key)
+        except:
+            pass
+
 # Initialize a thread-local cache
 local_cache = None
+
 
 def thread_local_cache():
     """

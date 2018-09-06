@@ -22,6 +22,18 @@ from anchore_engine.db.entities.exceptions import is_table_not_found
 
 import anchore_manager.cli.utils
 
+service_map = {
+    'analyzer': 'anchore-worker',
+    'simplequeue': 'anchore-simplequeue',
+    'apiext': 'anchore-api',
+    'catalog': 'anchore-catalog',
+    'kubernetes_webhook': 'anchore-kubernetes-webhook',
+    'policy_engine': 'anchore-policy-engine',
+    'feeds': 'anchore-feeds',
+    'identity': 'anchore-identity'
+}
+
+
 class AnchoreLogWatcher(RegexMatchingEventHandler):
     regexes = [re.compile(".*/anchore-.*\.log$")]
     files = {}
@@ -188,15 +200,24 @@ def service(ctx_config):
         logger.error(anchore_manager.cli.utils.format_error_output(config, 'service', {}, err))
         sys.exit(2)
 
+@service.command(name='list', short_help="List valid service names")
+def do_list():
+    click.echo('\n'.join(service_map.keys()))
+    anchore_manager.cli.utils.doexit(0)
+    return
+
 @service.command(name='start', short_help="Start anchore-engine")
 @click.option("--auto-upgrade", is_flag=True, help="Perform automatic upgrade on startup")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB routines from (default=anchore_engine)")
 @click.option("--skip-config-validate", nargs=1, help="Comma-separated list of configuration file sections to skip specific validation processing (e.g. services,credentials,webhooks)")
 @click.option("--skip-db-compat-check", is_flag=True, help="Skip the database compatibility check.")
-def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check):
+@click.option("--service", multiple=True, envvar='ANCHORE_ENGINE_SERVICES')
+def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check, service=None):
+    """
+    Startup and monitor service processes. Specify a list of service names or empty for all.
+    """
+
     global config
-    """
-    """
     ecode = 0
 
     auto_upgrade = True
@@ -211,17 +232,12 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
     else:
         skip_db_compat_check = False
 
-    try:
-        service_map = {
-            'analyzer': 'anchore-worker',
-            'simplequeue': 'anchore-simplequeue',
-            'apiext': 'anchore-api',
-            'catalog': 'anchore-catalog',
-            'kubernetes_webhook': 'anchore-kubernetes-webhook',
-            'policy_engine': 'anchore-policy-engine',
-            'feeds': 'anchore-feeds'
-        }
+    if service:
+        input_services = list(service)
+    else:
+        input_services = []
 
+    try:
         validate_params = {
             'services': True,
             'webhooks': True,
@@ -259,9 +275,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
 
         # get the list of local services to start
         startFailed = False
-        if 'ANCHORE_ENGINE_SERVICES' in os.environ:
-            input_services = os.environ['ANCHORE_ENGINE_SERVICES'].split()
-        else:
+        if not input_services:
             config_services = localconfig.get('services', {})
             if not config_services:
                 logger.warn('could not find any services to execute in the config file')
@@ -272,12 +286,12 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
         services = []
         for service_conf_name in input_services:
             if service_conf_name in list(service_map.values()):
-                service = service_conf_name
+                svc = service_conf_name
             else:
-                service = service_map.get(service_conf_name)
+                svc = service_map.get(service_conf_name)
 
-            if service:
-                services.append(service)
+            if svc:
+                services.append(svc)
             else:
                 logger.warn('specified service {} not found in list of available services {} - removing from list of services to start'.format(service_conf_name, list(service_map.keys())))
 

@@ -12,11 +12,14 @@ from flask import abort
 from anchore_engine.db import get_thread_scoped_session as get_session, DistroMapping as DbDistroMapping
 from anchore_engine.services.policy_engine.api.models import DistroMapping
 from sqlalchemy.exc import IntegrityError
+from anchore_engine.apis.authorization import get_authorizer, Permission
 
 log = logging.getLogger()
 ANCHORE_PUBLIC_USER = '0'
 
+authorizer = get_authorizer()
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def list_distro_mappings():
     """
     GET /distro_mappings
@@ -33,6 +36,7 @@ def list_distro_mappings():
         abort(500)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def add_distro_mapping(distro_mapping):
     """
     POST /distro_mappings
@@ -61,7 +65,7 @@ def add_distro_mapping(distro_mapping):
 
     return list_distro_mappings()
 
-
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def delete_distro_mapping(from_distro):
     """
     DELETE /distro_mappings?from_distro=X

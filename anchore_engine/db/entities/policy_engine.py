@@ -520,7 +520,7 @@ class ImagePackage(Base):
         filebuf = self.metadata_json.get('pom.properties', "")
         props = {}
         for line in filebuf.splitlines():
-            #line = anchore_engine.utils.ensure_str(line)                                                                                                                                                                                                 
+            #line = anchore_engine.utils.ensure_str(line)
             if not re.match("\s*(#.*)?$", line):
                 kv = line.split('=')
                 key = kv[0].strip()
@@ -543,7 +543,7 @@ class ImagePackage(Base):
 
         db = get_thread_scoped_session()
         namespace_name_to_use = dist.namespace_name
-        
+
         nslang = package_obj.pkg_type
         pkgkey = pkgversion = None
         #TODO better handling of the non-os pkg_type <-> namespace_name mapping, maybe use the above existing distro mechanism?
@@ -713,18 +713,6 @@ class ImageGem(Base):
     def __repr__(self):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
-#class TestA(Base):
-#    __tablename__ = 'test_a'
-
-#    akey = Column(String, primary_key=True)
-#    aval = Column(String, primary_key=True)
-
-#class TestB(Base):
-#    __tablename__ = 'test_b'
-
-#    bkey = Column(String, primary_key=True)
-#    bval = Column(String)
-#    avalcopy = Column(String, ForeignKey(TestA.aval), nullable=False)
 
 class ImageCpe(Base):
     __tablename__ = 'image_cpes'
@@ -903,7 +891,7 @@ class Image(Base):
 
     packages = relationship('ImagePackage', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     fs = relationship('FilesystemAnalysis', uselist=False, lazy='select', cascade=['all','delete','delete-orphan'])
-    
+
     # TODO - move these to ImagePackage records instead of individual tables
     gems = relationship('ImageGem', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     npms = relationship('ImageNpm', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
@@ -922,7 +910,7 @@ class Image(Base):
         db = get_thread_scoped_session()
         typed_packages = db.query(ImagePackage).filter(ImagePackage.image_id==self.id, ImagePackage.image_user_id==self.user_id, ImagePackage.pkg_type==pkg_type).all()
         return(typed_packages)
-        
+
     def vulnerabilities(self):
         """
         Load vulnerabilties for all packages in this image

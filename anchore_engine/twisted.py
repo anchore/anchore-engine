@@ -3,7 +3,6 @@ Twisted framework specific code for base plugin functionality. Used by each plug
 
 """
 
-import attr
 import copy
 import json
 import os
@@ -11,28 +10,23 @@ import sys
 import traceback
 from twisted import web
 from twisted.application import service
-from twisted.cred.portal import IRealm, Portal
 from twisted.application.internet import TimerService, StreamServerEndpointService
 from twisted.internet.endpoints import TCP4ServerEndpoint, SSL4ServerEndpoint
 
 from twisted.internet import ssl, reactor
-from twisted.internet.defer import succeed
 from twisted.internet.task import LoopingCall
 from twisted.python import log
 from twisted.python import usage
-from twisted.web.resource import Resource, IResource
+from twisted.web.resource import Resource
 from twisted.web import wsgi, rewrite
 from twisted.web import server
-from twisted.web.guard import HTTPAuthSessionWrapper, BasicCredentialFactory
 
-from zope.interface import implementer
-
-from anchore_engine.apis.utils import _load_ssl_key, _load_ssl_cert
+from anchore_engine.apis.ssl import _load_ssl_key, _load_ssl_cert
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
-from anchore_engine.apis.auth.basic import AnchorePasswordChecker
 from anchore_engine import utils
+
 
 class CommonOptions(usage.Options):
     """
@@ -69,6 +63,8 @@ class VersionResource(Resource):
         except:
             versions = {}
 
+        request.responseHeaders.addRawHeader(b"Content-Type", b"application/json")
+
         ret = {
             'service': {
                 'version': versions.get('service_version', None),
@@ -86,46 +82,6 @@ class VersionResource(Resource):
             response = utils.ensure_bytes(json.dumps({}))
 
         return response
-
-
-@implementer(IRealm)
-@attr.s
-class HTTPAuthRealm(object):
-    resource = attr.ib()
-
-    def requestAvatar(self, avatarId, mind, *interfaces):
-        return succeed((IResource, self.resource, lambda: None))
-
-
-def getAuthResource(in_resource, sname, config, password_checker=AnchorePasswordChecker()):
-    if not password_checker:
-        # explicitly passed in null password checker obj
-        return (in_resource)
-
-    if sname in config['services']:
-        localconfig = config['services'][sname]
-    else:
-        # no auth required
-        return in_resource
-
-    do_auth = True
-    if localconfig and 'require_auth' in localconfig and not localconfig['require_auth']:
-        do_auth = False
-
-    if do_auth:
-        # if localconfig and 'require_auth' in localconfig and localconfig['require_auth']:
-        # if 'require_auth_file' not in localconfig or not os.path.exists(localconfig['require_auth_file']):
-        #    raise Exception("require_auth is set for service, but require_auth_file is not set/invalid")
-
-        realm = HTTPAuthRealm(resource=in_resource)
-        portal = Portal(realm, [password_checker])
-
-        credential_factory = BasicCredentialFactory(b'Authentication required')
-        resource = HTTPAuthSessionWrapper(portal, [credential_factory])
-    else:
-        resource = in_resource
-
-    return resource
 
 
 def _load_config(config_option, validate_params=None):
@@ -231,9 +187,12 @@ class WsgiApiServiceMaker(object):
             self.twistd_service = service.MultiService()
             self.twistd_service.setServiceParent(application)
 
-            logger.info('Starting monitor thread')
-            lc = self._get_api_monitor(self.anchore_service)
-            lc.start(1)
+            if not os.environ.get('ANCHORE_ENGINE_DISABLE_MONITORS'):
+                logger.info('Starting monitor thread')
+                lc = self._get_api_monitor(self.anchore_service)
+                lc.start(1)
+            else:
+                logger.warn('Skipped start of monitor threads due to ANCHORE_ENGINE_DISABLE_MONITORS set in environment')
 
             logger.info('Building api handlers')
             s = self._build_api_service()
@@ -259,19 +218,6 @@ class WsgiApiServiceMaker(object):
 
         self.resource_nodes[name] = resource
 
-    def _get_auth_resource(self, in_resource, password_checker=AnchorePasswordChecker()):
-        assert(self.anchore_service is not None)
-        assert(hasattr(self.anchore_service, 'configuration'))
-
-        if not password_checker or not self.anchore_service.configuration or not self.anchore_service.configuration.get('require_auth', False):
-            # no auth required
-            return in_resource
-
-        realm = HTTPAuthRealm(resource=in_resource)
-        portal = Portal(realm, [password_checker])
-
-        credential_factory = BasicCredentialFactory(b'Authentication required')
-        return HTTPAuthSessionWrapper(portal, [credential_factory])
 
     # Old module-level createService()
     def _build_api_service(self):
@@ -283,7 +229,7 @@ class WsgiApiServiceMaker(object):
         wsgi_app = self.anchore_service.get_api_application()
         wsgi_site = wsgi.WSGIResource(reactor, reactor.getThreadPool(), application=wsgi_app)
 
-        self._add_resource(self.anchore_service.__service_api_version__.encode('utf-8'), getAuthResource(wsgi_site, self.anchore_service.name, self.configuration))
+        self._add_resource(self.anchore_service.__service_api_version__.encode('utf-8'), wsgi_site)
         self.root_resource = web.resource.Resource()
 
         # Add nodes
@@ -299,6 +245,7 @@ class WsgiApiServiceMaker(object):
         # Build the main site server
         site = server.Site(root)
         listen = self.anchore_service.configuration['listen']
+
 
         if str(self.anchore_service.configuration.get('ssl_enable', '')).lower() == 'true':
             try:
