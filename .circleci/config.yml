@@ -4,6 +4,7 @@
 #
 # The following environment variables must be set in the circleci project UI
 # - $IMAGE_NAME -> name of image to push to dockerhub
+# - $IMAGE_TAG -> tag on image to push to dockerhub
 # - $DOCKER_USER -> dockerhub user with permissions to repo
 # - $DOCKER_PASS -> password for dockerhub user
 #
@@ -137,7 +138,9 @@ jobs:
             sleep 60
             docker logs docker-compose_anchore-engine_1
             docker exec anchore-cli anchore-cli --u admin --p foobar system status
-            ~/build/scripts/tests/aetest.py docker.io/alpine:latest anchore-cli
+            cd ~/build/scripts/tests/
+            python aetest.py docker.io/alpine:latest anchore-cli
+            python aefailtest.py docker.io/alpine:latest anchore-cli
 
   push_dockerhub:
     docker:
@@ -151,11 +154,11 @@ jobs:
           name: Push to Dockerhub
           command: |
             if [ "$CIRCLE_BRANCH" == "master" ]; then
-              docker tag ${IMAGE_NAME}:ci $IMAGE_NAME:dev
-              docker push ${IMAGE_NAME}:dev
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:${IMAGE_TAG}
+              docker push ${IMAGE_NAME}:${IMAGE_TAG}
             elif [ "$CIRCLE_BRANCH" == "0.2" ]; then
-              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:0.2-dev
-              docker push ${IMAGE_NAME}:0.2-dev
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:0.2-${IMAGE_TAG}
+              docker push ${IMAGE_NAME}:0.2-${IMAGE_TAG}
             else
               false
             fi
