@@ -17,12 +17,6 @@ var_1: &load_docker_image
       set +o pipefail
       docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
 
-var_2: &define_env_vars
-  run:
-    name: Define environment variables at runtime
-    command: |
-      echo 'export IMAGE_NAME="docker.io/btodhunter/anchore-engine"' >> $BASH_ENV
-
 # Start circleci configuration
 version: 2
 jobs:
@@ -73,10 +67,9 @@ jobs:
 
   build:
     docker:
-      - image: busybox
+      - image: docker:stable
     working_directory: ~/build
     steps:
-      - <<: *define_env_vars
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
@@ -109,7 +102,6 @@ jobs:
       docker_layer_caching: true
     working_directory: ~/build
     steps:
-      - <<: *define_env_vars
       - checkout
       - attach_workspace:
           at: /home/circleci/caches
@@ -139,9 +131,8 @@ jobs:
 
   push_dockerhub:
     docker:
-      - image: busybox
+      - image: docker:stable
     steps:
-      - <<: *define_env_vars
       - setup_remote_docker
       - attach_workspace:
           at: /home/circleci/caches
