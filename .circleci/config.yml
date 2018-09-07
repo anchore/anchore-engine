@@ -4,8 +4,8 @@
 #
 # The following environment variables must be set in the circleci project UI
 # - $IMAGE_NAME -> name of image to push to dockerhub
-# - $DOCKER_USER -> dockerhub user with permissions to needed repo
-# - $DOCKER_PASS -> password for dockerhub
+# - $DOCKER_USER -> dockerhub user with permissions to repo
+# - $DOCKER_PASS -> password for dockerhub user
 #
 # Note: YAML anchors allow an object to be re-used, reducing duplication.
 # The ampersand declares an alias for an object, then later the `<<: *name`
@@ -52,6 +52,7 @@ jobs:
           command: |
             . venv/bin/activate
             pip install .
+      # Tests commented out until we get them better organized for automation.
       #       cd test/
       #       python -m unittest -v >> test-reports
       # - store_artifacts:
