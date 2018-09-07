@@ -2,6 +2,11 @@
 #
 # Check https://circleci.com/docs/2.0/configuration-reference/ for more details
 #
+# The following environment variables must be set in the circleci project UI
+# - $IMAGE_NAME -> name of image to push to dockerhub
+# - $DOCKER_USER -> dockerhub user with permissions to needed repo
+# - $DOCKER_PASS -> password for dockerhub
+#
 # Note: YAML anchors allow an object to be re-used, reducing duplication.
 # The ampersand declares an alias for an object, then later the `<<: *name`
 # syntax dereferences it.
@@ -140,6 +145,7 @@ jobs:
       - run:
           name: Push to Dockerhub
           command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
             if [ "$CIRCLE_BRANCH" == "master" ]; then
               docker tag ${IMAGE_NAME}:ci $IMAGE_NAME:dev
               docker push ${IMAGE_NAME}:dev
