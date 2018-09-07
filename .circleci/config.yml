@@ -31,11 +31,11 @@ jobs:
           command: |
             . venv/bin/activate
             pip install .
-      #       cd test/
-      #       python -m unittest -v >> test-reports
-      # - store_artifacts:
-      #     path: test-reports
-      #     destination: test-reports
+#            cd test/
+#            python -m unittest -v >> test-reports
+#      - store_artifacts:
+#          path: test-reports
+#          destination: test-reports
 
   build:
     docker:
@@ -43,7 +43,8 @@ jobs:
     steps:
       - run:
           name: Trigger Dockerhub automated build.
-          command: curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
+          command: |
+            curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
 
   functional_tests:
     machine:
@@ -78,8 +79,8 @@ workflows:
   version: 2
   default_workflow:
     jobs:
-      - build
       - unit_tests
+      - build
       - functional_tests:
           requires:
             - build
