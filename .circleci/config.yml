@@ -154,9 +154,11 @@ jobs:
           name: Push to Dockerhub
           command: |
             if [ "$CIRCLE_BRANCH" == "master" ]; then
+              echo "${IMAGE_NAME}:${IMAGE_TAG}"
               docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:${IMAGE_TAG}
               docker push ${IMAGE_NAME}:${IMAGE_TAG}
             elif [ "$CIRCLE_BRANCH" == "0.2" ]; then
+              echo "${IMAGE_NAME}:0.2-${IMAGE_TAG}"
               docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:0.2-${IMAGE_TAG}
               docker push ${IMAGE_NAME}:0.2-${IMAGE_TAG}
             else
