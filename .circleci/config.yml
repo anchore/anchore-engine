@@ -82,7 +82,7 @@ jobs:
       - run:
           name: build image
           command: |
-            docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./Dockerfile .
+            docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./scripts/dockerfiles/Dockerfile.ci .
       - run:
           name: Save Docker image layer cache
           command: |
@@ -159,7 +159,7 @@ workflows:
       - functional_tests:
           requires:
             - build
-      - push_dockerhub_dev:
+      - push_dockerhub:
           requires:
             - functional_tests
           filters:
