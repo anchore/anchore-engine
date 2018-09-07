@@ -5,29 +5,23 @@
 # Note: YAML anchors allow an object to be re-used, reducing duplication.
 # The ampersand declares an alias for an object, then later the `<<: *name`
 # syntax dereferences it.
+# See http://blog.daemonl.com/2016/02/yaml.html
+# To validate changes, use an online parser, eg.
+# http://yaml-online-parser.appspot.com/
 #
 # Define YAML anchors
-var_1: &restore_image_cache
-  - run:
-    name: create cache directory
+var_1: &load_docker_image
+  run:
+    name: Load Docker image layer cache
     command: |
-      mkdir /home/circleci/caches
-  - restore_cache:
-      keys:
-        - v1-{{ .Branch }}
-      paths:
-        - /home/circleci/caches/anchore-engine-ci.tar
-  - run:
-      name: Load Docker image layer cache
-      command: |
-        set +o pipefail
-        docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
+      set +o pipefail
+      docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
 
 var_2: &define_env_vars
   run:
     name: Define environment variables at runtime
     command: |
-      echo 'export IMAGE_NAME=docker.io/btodhunter/anchore-engine' >> $BASH_ENV
+      echo 'export IMAGE_NAME="docker.io/btodhunter/anchore-engine"' >> $BASH_ENV
 
 # Start circleci configuration
 version: 2
@@ -79,36 +73,47 @@ jobs:
 
   build:
     docker:
-      - image: docker:stable-git
+      - image: busybox
     working_directory: ~/build
     steps:
+      - <<: *define_env_vars
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
-      - <<: *restore_image_cache
-      - <<: *define_env_vars
+      - restore_cache:
+          keys:
+            - v1-{{ .Branch }}
+          paths:
+            - /home/circleci/caches/anchore-engine-ci.tar
+      - <<: *load_docker_image
       - run:
           name: build image
           command: |
-            docker build --cache-from=$IMAGE_NAME:ci -t $IMAGE_NAME:ci -f ./Dockerfile .
+            docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./Dockerfile .
       - run:
           name: Save Docker image layer cache
           command: |
             mkdir /home/circleci/caches/ -p
-            docker save -o /home/circleci/caches/anchore-engine-ci.tar $IMAGE_NAME:ci
+            docker save -o /home/circleci/caches/anchore-engine-ci.tar ${IMAGE_NAME}:ci
       - save_cache:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /home/circleci/caches/anchore-engine-ci.tar
+      - persist_to_workspace:
+          root: /home/circleci/caches
+          paths:
+            - anchore-engine-ci.tar
 
   functional_tests:
     machine:
       docker_layer_caching: true
     working_directory: ~/build
     steps:
-      - checkout
-      - <<: *restore_image_cache
       - <<: *define_env_vars
+      - checkout
+      - attach_workspace:
+          at: /home/circleci/caches
+      - <<: *load_docker_image
       - run:
           name: install dependencies
           command: |
@@ -118,7 +123,7 @@ jobs:
           name: docker compose
           command: |
             cd scripts/docker-compose
-            sed -i 's|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|docker.io/btodhunter/anchore-engine:ci|' docker-compose.yaml
+            sed -i "s|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|${IMAGE_NAME}:ci|" docker-compose.yaml
             mkdir config db
             cp config.yaml config/
             docker-compose up -d
@@ -134,19 +139,22 @@ jobs:
 
   push_dockerhub:
     docker:
-      - image: docker:stable
+      - image: busybox
     steps:
-      - <<: *restore_image_cache
       - <<: *define_env_vars
+      - setup_remote_docker
+      - attach_workspace:
+          at: /home/circleci/caches
+      - <<: *load_docker_image
       - run:
           name: Push to Dockerhub
           command: |
             if [ "$CIRCLE_BRANCH" == "master" ]; then
-              docker tag $IMAGE_NAME:ci $IMAGE_NAME:dev
-              docker push $IMAGE_NAME:dev
+              docker tag ${IMAGE_NAME}:ci $IMAGE_NAME:dev
+              docker push ${IMAGE_NAME}:dev
             elif [ "$CIRCLE_BRANCH" == "add_circleci_integration" ]; then
-              docker tag $IMAGE_NAME:ci $IMAGE_NAME:ci
-              docker push $IMAGE_NAME:ci
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:ci
+              docker push ${IMAGE_NAME}:ci
             else
               false
             fi
