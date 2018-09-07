@@ -1,13 +1,40 @@
-# Python CircleCI 2.0 configuration file
+# CircleCI 2.0 configuration file
 #
-# Check https://circleci.com/docs/2.0/language-python/ for more details
+# Check https://circleci.com/docs/2.0/configuration-reference/ for more details
 #
+# Note: YAML anchors allow an object to be re-used, reducing duplication.
+# The ampersand declares an alias for an object, then later the `<<: *name`
+# syntax dereferences it.
+#
+# Define YAML anchors
+var_1: &restore_image_cache
+  - run:
+    name: create cache directory
+    command: |
+      mkdir /home/circleci/caches
+  - restore_cache:
+      keys:
+        - v1-{{ .Branch }}
+      paths:
+        - /home/circleci/caches/anchore-engine-ci.tar
+  - run:
+      name: Load Docker image layer cache
+      command: |
+        set +o pipefail
+        docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
 
+var_2: &define_env_vars
+  run:
+    name: Define environment variables at runtime
+    command: |
+      echo 'export IMAGE_NAME=docker.io/btodhunter/anchore-engine' >> $BASH_ENV
+
+# Start circleci configuration
 version: 2
 jobs:
   unit_tests:
     docker:
-      - image: circleci/python:3.6.6
+      - image: circleci/python:3.4
       - image: circleci/postgres:9.6
     steps:
       - checkout
@@ -19,6 +46,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
+            pip install --upgrade pip
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
@@ -31,35 +59,66 @@ jobs:
           command: |
             . venv/bin/activate
             pip install .
-#            cd test/
-#            python -m unittest -v >> test-reports
-#      - store_artifacts:
-#          path: test-reports
-#          destination: test-reports
+      #       cd test/
+      #       python -m unittest -v >> test-reports
+      # - store_artifacts:
+      #     path: test-reports
+      #     destination: test-reports
+
+  # Could use this job to trigger automated builds on dockerhub.
+  # $DOCKERHUB_TRIGGER needs to be defined as an environment variable in the circleci project.
+  # build:
+  #   docker:
+  #     - image: alpine:latest
+  #   steps:
+  #     - run:
+  #         name: Trigger Dockerhub automated build.
+  #         command: |
+  #           apk add curl
+  #           curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
 
   build:
     docker:
-      - image: alpine:latest
+      - image: docker:stable-git
+    working_directory: ~/build
     steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - <<: *restore_image_cache
+      - <<: *define_env_vars
       - run:
-          name: Trigger Dockerhub automated build.
+          name: build image
           command: |
-            curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
+            docker build --cache-from=$IMAGE_NAME:ci -t $IMAGE_NAME:ci -f ./Dockerfile .
+      - run:
+          name: Save Docker image layer cache
+          command: |
+            mkdir /home/circleci/caches/ -p
+            docker save -o /home/circleci/caches/anchore-engine-ci.tar $IMAGE_NAME:ci
+      - save_cache:
+          key: v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - /home/circleci/caches/anchore-engine-ci.tar
 
   functional_tests:
     machine:
       docker_layer_caching: true
+    working_directory: ~/build
     steps:
       - checkout
+      - <<: *restore_image_cache
+      - <<: *define_env_vars
       - run:
           name: install dependencies
           command: |
-            pip install docker-compose
+            pip install --upgrade pip
+            pip install --upgrade docker-compose
       - run:
           name: docker compose
           command: |
             cd scripts/docker-compose
-            sed -i 's|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|docker.io/btodhunter/anchore-engine:dev|' docker-compose.yaml
+            sed -i 's|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|docker.io/btodhunter/anchore-engine:ci|' docker-compose.yaml
             mkdir config db
             cp config.yaml config/
             docker-compose up -d
@@ -68,12 +127,29 @@ jobs:
           name: run test
           command: |
             docker run -td --net=host --name anchore-cli docker.io/anchore/engine-cli:latest tail -f /dev/null
-            docker ps
-            docker logs docker-compose_anchore-engine_1
             sleep 60
+            docker logs docker-compose_anchore-engine_1
             docker exec anchore-cli anchore-cli --u admin --p foobar system status
-            cd ~/build
-            scripts/tests/aetest.py docker.io/alpine:latest anchore-cli
+            ~/build/scripts/tests/aetest.py docker.io/alpine:latest anchore-cli
+
+  push_dockerhub:
+    docker:
+      - image: docker:stable
+    steps:
+      - <<: *restore_image_cache
+      - <<: *define_env_vars
+      - run:
+          name: Push to Dockerhub
+          command: |
+            if [ "$CIRCLE_BRANCH" == "master" ]; then
+              docker tag $IMAGE_NAME:ci $IMAGE_NAME:dev
+              docker push $IMAGE_NAME:dev
+            elif [ "$CIRCLE_BRANCH" == "add_circleci_integration" ]; then
+              docker tag $IMAGE_NAME:ci $IMAGE_NAME:ci
+              docker push $IMAGE_NAME:ci
+            else
+              false
+            fi
 
 workflows:
   version: 2
@@ -84,3 +160,11 @@ workflows:
       - functional_tests:
           requires:
             - build
+      - push_dockerhub_dev:
+          requires:
+            - functional_tests
+          filters:
+            branches:
+              only:
+                - master
+                - add_circleci_integration
