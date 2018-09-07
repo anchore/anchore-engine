@@ -22,6 +22,13 @@ var_1: &load_docker_image
       set +o pipefail
       docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
 
+var_2: &attach_workspace
+  attach_workspace:
+      at: /home/circleci/caches
+
+var_3: &dockerhub_login
+  run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+
 # Start circleci configuration
 version: 2
 jobs:
@@ -77,8 +84,7 @@ jobs:
     working_directory: ~/build
     steps:
       - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
+      - setup_remote_docker
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
@@ -86,11 +92,11 @@ jobs:
             - /home/circleci/caches/anchore-engine-ci.tar
       - <<: *load_docker_image
       - run:
-          name: build image
+          name: build Docker image
           command: |
             docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./scripts/dockerfiles/Dockerfile.ci .
       - run:
-          name: Save Docker image layer cache
+          name: Save Docker image
           command: |
             mkdir /home/circleci/caches/ -p
             docker save -o /home/circleci/caches/anchore-engine-ci.tar ${IMAGE_NAME}:ci
@@ -104,13 +110,11 @@ jobs:
             - anchore-engine-ci.tar
 
   functional_tests:
-    machine:
-      docker_layer_caching: true
+    machine: true
     working_directory: ~/build
     steps:
       - checkout
-      - attach_workspace:
-          at: /home/circleci/caches
+      - <<: *attach_workspace
       - <<: *load_docker_image
       - run:
           name: install dependencies
@@ -140,19 +144,18 @@ jobs:
       - image: docker:stable
     steps:
       - setup_remote_docker
-      - attach_workspace:
-          at: /home/circleci/caches
+      - <<: *attach_workspace
       - <<: *load_docker_image
+      - <<: *dockerhub_login
       - run:
           name: Push to Dockerhub
           command: |
-            docker login -u $DOCKER_USER -p $DOCKER_PASS
             if [ "$CIRCLE_BRANCH" == "master" ]; then
               docker tag ${IMAGE_NAME}:ci $IMAGE_NAME:dev
               docker push ${IMAGE_NAME}:dev
-            elif [ "$CIRCLE_BRANCH" == "add_circleci_integration" ]; then
-              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:ci
-              docker push ${IMAGE_NAME}:ci
+            elif [ "$CIRCLE_BRANCH" == "0.2" ]; then
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:0.2-dev
+              docker push ${IMAGE_NAME}:0.2-dev
             else
               false
             fi
@@ -173,4 +176,4 @@ workflows:
             branches:
               only:
                 - master
-                - add_circleci_integration
+                - "0.2"
