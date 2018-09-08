@@ -21,7 +21,7 @@ var_1: &load_docker_image
     name: Load Docker image layer cache
     command: |
       set +o pipefail
-      docker load -i /home/circleci/caches/anchore-engine-ci.tar || true
+      docker load -i /home/circleci/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar || true
 
 var_2: &attach_workspace
   attach_workspace:
@@ -81,7 +81,7 @@ jobs:
 
   build:
     docker:
-      - image: docker:stable
+      - image: docker:stable-git
     working_directory: ~/build
     steps:
       - checkout
@@ -90,7 +90,7 @@ jobs:
           keys:
             - v1-{{ .Branch }}
           paths:
-            - /home/circleci/caches/anchore-engine-ci.tar
+            - /home/circleci/caches/
       - <<: *load_docker_image
       - run:
           name: build Docker image
@@ -99,16 +99,17 @@ jobs:
       - run:
           name: Save Docker image
           command: |
+            rm -rf /home/circleci/caches/
             mkdir /home/circleci/caches/ -p
-            docker save -o /home/circleci/caches/anchore-engine-ci.tar ${IMAGE_NAME}:ci
+            docker save -o /home/circleci/caches/ci-${CIRCLE_PROJECT_REPONAME}.tar ${IMAGE_NAME}:ci
       - save_cache:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
-            - /home/circleci/caches/anchore-engine-ci.tar
+            - /home/circleci/caches/
       - persist_to_workspace:
           root: /home/circleci/caches
           paths:
-            - anchore-engine-ci.tar
+            - *
 
   functional_tests:
     machine: true
