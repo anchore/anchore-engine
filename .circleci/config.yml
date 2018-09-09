@@ -1,0 +1,185 @@
+# CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/configuration-reference/ for more details
+#
+# The following environment variables must be set in the circleci project UI
+# - $IMAGE_NAME -> name of image to push to dockerhub
+# - $IMAGE_TAG -> tag on image to push to dockerhub
+# - $DOCKER_USER -> dockerhub user with permissions to repo
+# - $DOCKER_PASS -> password for dockerhub user
+#
+# Note: YAML anchors allow an object to be re-used, reducing duplication.
+# The ampersand declares an alias for an object, then later the `<<: *name`
+# syntax dereferences it.
+# See http://blog.daemonl.com/2016/02/yaml.html
+# To validate changes, use an online parser, eg.
+# http://yaml-online-parser.appspot.com/
+#
+# Define YAML anchors
+var_1: &load_docker_image
+  run:
+    name: Load Docker image layer cache
+    command: |
+      set +o pipefail
+      docker load -i /home/circleci/workspace/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar || true
+
+var_2: &attach_workspace
+  attach_workspace:
+      at: /home/circleci/workspace/
+
+var_3: &dockerhub_login
+  run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+
+# Start circleci configuration
+version: 2
+jobs:
+  unit_tests:
+    docker:
+      - image: circleci/python:3.4
+      - image: circleci/postgres:9.6
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      - run:
+          name: install dependencies
+          command: |
+            pip install --upgrade pip
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            pip install .
+      # Tests commented out until we get them better organized for automation.
+      #       cd test/
+      #       python -m unittest -v >> test-reports
+      # - store_artifacts:
+      #     path: test-reports
+      #     destination: test-reports
+
+  # Could use this job to trigger automated builds on dockerhub.
+  # $DOCKERHUB_TRIGGER needs to be defined as an environment variable in the circleci project.
+  # build:
+  #   docker:
+  #     - image: alpine:latest
+  #   steps:
+  #     - run:
+  #         name: Trigger Dockerhub automated build.
+  #         command: |
+  #           apk add curl
+  #           curl -X POST -H "Content-Type: application/json" --data '{"build":"true"}' $DOCKERHUB_TRIGGER
+
+  build:
+    docker:
+      - image: docker:stable-git
+    working_directory: ~/build
+    steps:
+      - checkout
+      - setup_remote_docker
+      - restore_cache:
+          keys:
+            - v1-{{ .Branch }}
+          paths:
+            - /home/circleci/workspace/caches/
+      - <<: *load_docker_image
+      - run:
+          name: build Docker image
+          command: |
+            docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./scripts/dockerfiles/Dockerfile.ci .
+      - run:
+          name: Save Docker image
+          command: |
+            rm -rf /home/circleci/workspace/caches/
+            mkdir /home/circleci/workspace/caches/ -p
+            docker save -o /home/circleci/workspace/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar ${IMAGE_NAME}:ci
+      - save_cache:
+          key: v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - /home/circleci/workspace/caches/
+      - persist_to_workspace:
+          root: /home/circleci/workspace/
+          paths:
+            - caches/*
+
+  functional_tests:
+    machine: true
+    working_directory: ~/build
+    steps:
+      - checkout
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - run:
+          name: install dependencies
+          command: |
+            pip install --upgrade pip
+            pip install --upgrade docker-compose
+      - run:
+          name: docker compose
+          command: |
+            cd scripts/docker-compose
+            sed -i "s|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|${IMAGE_NAME}:ci|" docker-compose.yaml
+            mkdir config db
+            cp config.yaml config/
+            docker-compose up -d
+            docker logs docker-compose_anchore-engine_1
+      - run:
+          name: run test
+          command: |
+            docker run -td --net=host --name anchore-cli docker.io/anchore/engine-cli:latest tail -f /dev/null
+            sleep 60
+            docker logs docker-compose_anchore-engine_1
+            docker exec anchore-cli anchore-cli --u admin --p foobar system status
+            cd ~/build/scripts/tests/
+            python aetest.py docker.io/alpine:latest anchore-cli
+            python aefailtest.py docker.io/alpine:latest anchore-cli
+
+  push_dockerhub:
+    docker:
+      - image: docker:stable
+    steps:
+      - setup_remote_docker
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - <<: *dockerhub_login
+      - run:
+          name: Push to Dockerhub
+          command: |
+            if [ "$CIRCLE_BRANCH" == "master" ]; then
+              echo "${IMAGE_NAME}:${IMAGE_TAG}"
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:${IMAGE_TAG}
+              docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            elif [ "$CIRCLE_BRANCH" == "0.2" ]; then
+              echo "${IMAGE_NAME}:0.2-${IMAGE_TAG}"
+              docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:0.2-${IMAGE_TAG}
+              docker push ${IMAGE_NAME}:0.2-${IMAGE_TAG}
+            else
+              false
+            fi
+
+workflows:
+  version: 2
+  default_workflow:
+    jobs:
+      - unit_tests
+      - build
+      - functional_tests:
+          requires:
+            - build
+      - push_dockerhub:
+          requires:
+            - functional_tests
+          filters:
+            branches:
+              only:
+                - master
+                - "0.2"

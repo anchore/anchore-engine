@@ -72,7 +72,7 @@ for i in range(0, analysis_maxtime):
         elif result['analysis_status'] == 'analysis_failed':
             print("\timage failed to analyse (analysis_failed)")
             sys.exit(1)
-    
+
     if done:
         break
     time.sleep(1)
@@ -81,7 +81,7 @@ if not done:
     print("timed out waiting for image to analyze")
     sys.exit(1)
 
-print("image analyzed - total time: " + str(time.time() - timer))    
+print("image analyzed - total time: " + str(time.time() - timer))
 
 if reg:
     try:
@@ -140,11 +140,12 @@ for i in range(0, common_maxtime):
         sys.exit(1)
     except:
         print("could not delete latest/subscribed image (correct)")
-        
+
     try:
         result = aecmd("subscription deactivate tag_update "+image+"")
         result = aecmd("subscription deactivate policy_eval "+image+"")
         result = aecmd("subscription deactivate vuln_update "+image+"")
+        result = aecmd("subscription deactivate analysis_update "+image+"")
         result = aecmd("image del "+image+"")
 
         print("was able to delete latest/unsubscribed image (correct)")
@@ -158,8 +159,3 @@ if not done:
     sys.exit(1)
 
 sys.exit(0)
-
-    
-
-
-
