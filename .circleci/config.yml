@@ -27,15 +27,12 @@ var_2: &attach_workspace
   attach_workspace:
       at: /home/circleci/workspace/
 
-var_3: &dockerhub_login
-  run: docker login -u $DOCKER_USER -p $DOCKER_PASS
-
 # Start circleci configuration
 version: 2
 jobs:
   unit_tests:
     docker:
-      - image: circleci/python:3.4
+      - image: circleci/python:3.6
       - image: circleci/postgres:9.6
     steps:
       - checkout
@@ -150,10 +147,10 @@ jobs:
       - setup_remote_docker
       - <<: *attach_workspace
       - <<: *load_docker_image
-      - <<: *dockerhub_login
       - run:
           name: Push to Dockerhub
           command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
             if [ "$CIRCLE_BRANCH" == "master" ]; then
               echo "${IMAGE_NAME}:${IMAGE_TAG}"
               docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:${IMAGE_TAG}
