@@ -20,7 +20,6 @@ var_1: &load_docker_image
   run:
     name: Load Docker image layer cache
     command: |
-      set +o pipefail
       docker load -i /home/circleci/workspace/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar || true
 
 var_2: &attach_workspace
@@ -57,12 +56,11 @@ jobs:
           command: |
             . venv/bin/activate
             pip install .
-      # Tests commented out until we get them better organized for automation.
-      #       cd test/
-      #       python -m unittest -v >> test-reports
-      # - store_artifacts:
-      #     path: test-reports
-      #     destination: test-reports
+            cd test/
+            python -m unittest -v >> test-reports.log
+      - store_artifacts:
+          path: test-reports.log
+          destination: test-reports.log
 
   # Could use this job to trigger automated builds on dockerhub.
   # $DOCKERHUB_TRIGGER needs to be defined as an environment variable in the circleci project.
@@ -83,6 +81,7 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - *clone_anchore_engine_cli
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
@@ -92,7 +91,8 @@ jobs:
       - run:
           name: build Docker image
           command: |
-            docker build --cache-from=${IMAGE_NAME}:ci -t ${IMAGE_NAME}:ci -f ./scripts/dockerfiles/Dockerfile.ci .
+            cd ~/build
+            docker build --cache-from=${IMAGE_NAME}:ci --build-arg ANCHORE_COMMIT=$CIRCLE_SHA1 --build-arg CLI_COMMIT=$CIRCLE_BRANCH -t ${IMAGE_NAME}:ci -f ./anchore-engine/scripts/dockerfiles/Dockerfile.ci .
       - run:
           name: Save Docker image
           command: |
@@ -167,8 +167,12 @@ workflows:
   version: 2
   default_workflow:
     jobs:
-      - unit_tests
-      - build
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+                - "0.2"
       - functional_tests:
           requires:
             - build
