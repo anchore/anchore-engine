@@ -81,7 +81,6 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - *clone_anchore_engine_cli
       - restore_cache:
           keys:
             - v1-{{ .Branch }}
