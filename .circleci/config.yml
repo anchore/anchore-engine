@@ -90,8 +90,7 @@ jobs:
       - run:
           name: build Docker image
           command: |
-            cd ~/build
-            docker build --cache-from=${IMAGE_NAME}:ci --build-arg ANCHORE_COMMIT=$CIRCLE_SHA1 --build-arg CLI_COMMIT=$CIRCLE_BRANCH -t ${IMAGE_NAME}:ci -f ./anchore-engine/scripts/dockerfiles/Dockerfile.ci .
+            docker build --cache-from=${IMAGE_NAME}:ci --build-arg ANCHORE_COMMIT=$CIRCLE_SHA1 --build-arg CLI_COMMIT=$CIRCLE_BRANCH -t ${IMAGE_NAME}:ci -f ./scripts/dockerfiles/Dockerfile.ci .
       - run:
           name: Save Docker image
           command: |
