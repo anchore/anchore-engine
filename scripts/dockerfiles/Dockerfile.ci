@@ -1,4 +1,4 @@
-ROM ubuntu:18.04 as wheelbuilder
+FROM ubuntu:18.04 as wheelbuilder
 ARG CLI_COMMIT
 LABEL anchore_cli_commit=$CLI_COMMIT
 ENV LANG=C.UTF-8
