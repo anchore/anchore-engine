@@ -142,6 +142,94 @@ paths:
             $ref: "#/definitions/ImageIngressResponse"
         400:
           description: "Bad request"
+  /query/images/by_vulnerability:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
+      operationId: query_images_by_vulnerability_get
+      summary: "Return image info for specified vulnerability"
+      description: "Return image info for specified vulnerability"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "vulnerability_id"
+        in: "query"
+        type: string
+        required: true
+      - name: "severity"
+        in: "query"
+        type: string
+        required: false
+      - name: "namespace"
+        in: "query"
+        type: string
+        required: false
+      - name: "affected_package"
+        in: "query"
+        type: string
+        required: false
+      - name: vendor_only
+        in: query
+        type: boolean
+        description: ""
+        required: false
+        default: true
+      responses:
+        200:
+          description: "Vulnerable image listing"
+          schema:
+            type: object
+  /query/images/by_package:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
+      operationId: query_images_by_package_get
+      summary: "Return image info for specified package"
+      description: "Return image info for specified package"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "name"
+        in: "query"
+        type: string
+        required: true
+      - name: "version"
+        in: "query"
+        type: string
+        required: false
+      - name: "package_type"
+        in: "query"
+        type: string
+        required: false
+      responses:
+        200:
+          description: "Matched image listing"
+          schema:
+            type: object
+  /query/vulnerabilities:
+    get:
+      x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
+      operationId: query_vulnerabilities_get
+      summary: "Return vulnerability information for specified vulnerability ID"
+      description: "Return vulnerability information for specified vulnerability ID" 
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "query"
+        type: string
+        required: true
+      - name: "affected_package"
+        in: "query"
+        type: string
+        required: false
+      - name: "affected_package_version"
+        in: "query"
+        type: string
+        required: false
+      responses:
+        200:
+          description: "Matched vulnerability record"
+          schema:
+            type: object
   /users/{user_id}/images:
     get:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations

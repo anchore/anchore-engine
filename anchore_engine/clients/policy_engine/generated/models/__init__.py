@@ -12,9 +12,10 @@
 """
 
 
-
+from __future__ import absolute_import
 
 # import models into model package
+from anchore_engine.clients.policy_engine.generated.models.cpe_vulnerability_report import CpeVulnerabilityReport
 from anchore_engine.clients.policy_engine.generated.models.distro_mapping import DistroMapping
 from anchore_engine.clients.policy_engine.generated.models.error_response import ErrorResponse
 from anchore_engine.clients.policy_engine.generated.models.event_status import EventStatus

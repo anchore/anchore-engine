@@ -7,6 +7,7 @@ import anchore_engine.services.common
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+import anchore_engine.clients.policy_engine
 
 from anchore_engine.subsys.metrics import flask_metrics, flask_metric_name, enabled as flask_metrics_enabled
 
@@ -23,34 +24,89 @@ def status():
 
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_vulnerabilities(session, request_inputs)
+        (user, password) = request_inputs['auth']
+        verify = localconfig['internal_ssl_verify']
+        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
+
+        kw = {}
+        for k in request_inputs['params']:
+            if type(request_inputs['params'][k]) != type(None):
+                kw[k] = request_inputs['params'][k]
+
+        return_object = client.query_vulnerabilities_get(**kw)
+        httpcode = 200
     except Exception as err:
         httpcode = 500
         return_object = str(err)
+
+#    try:
+#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+#        with db.session_scope() as session:
+#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_vulnerabilities(session, request_inputs)
+#    except Exception as err:
+#        httpcode = 500
+#        return_object = str(err)
 
     return (return_object, httpcode)    
 
 def query_images_by_package_get(name=None, version=None, package_type=None):
     try:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
+        (user, password) = request_inputs['auth']
+        verify = localconfig['internal_ssl_verify']
+        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
+
+        kw = {}
+        for k in request_inputs['params']:
+            if type(request_inputs['params'][k]) != type(None):
+                kw[k] = request_inputs['params'][k]
+
+        return_object = client.query_images_by_package_get(**kw)
+        httpcode = 200
     except Exception as err:
         httpcode = 500
         return_object = str(err)
+
+
+#    try:
+#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
+#        with db.session_scope() as session:
+#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_package(session, request_inputs)
+#    except Exception as err:
+#        httpcode = 500
+#        return_object = str(err)
 
     return (return_object, httpcode)    
 
 def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
     try:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
         request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
+        (user, password) = request_inputs['auth']
+        verify = localconfig['internal_ssl_verify']
+        client = anchore_engine.clients.policy_engine.get_client(user=user, password=password, verify_ssl=verify)
+
+        kw = {}
+        for k in request_inputs['params']:
+            if type(request_inputs['params'][k]) != type(None):
+                kw[k] = request_inputs['params'][k]
+
+        return_object = client.query_images_by_vulnerability_get(**kw)
+        httpcode = 200
     except Exception as err:
         httpcode = 500
         return_object = str(err)
+
+#    try:
+#        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
+#        with db.session_scope() as session:
+#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.query_images_by_vulnerability(session, request_inputs)
+#    except Exception as err:
+#        httpcode = 500
+#        return_object = str(err)
 
     return (return_object, httpcode)
 

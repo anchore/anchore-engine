@@ -37,6 +37,7 @@ class MappingRule(object):
         'name': 'str',
         'whitelist_ids': 'list[str]',
         'policy_id': 'str',
+        'policy_ids': 'list[str]',
         'registry': 'str',
         'repository': 'str',
         'image': 'ImageRef'
@@ -47,18 +48,20 @@ class MappingRule(object):
         'name': 'name',
         'whitelist_ids': 'whitelist_ids',
         'policy_id': 'policy_id',
+        'policy_ids': 'policy_ids',
         'registry': 'registry',
         'repository': 'repository',
         'image': 'image'
     }
 
-    def __init__(self, id=None, name=None, whitelist_ids=None, policy_id=None, registry=None, repository=None, image=None):  # noqa: E501
+    def __init__(self, id=None, name=None, whitelist_ids=None, policy_id=None, policy_ids=None, registry=None, repository=None, image=None):  # noqa: E501
         """MappingRule - a model defined in Swagger"""  # noqa: E501
 
         self._id = None
         self._name = None
         self._whitelist_ids = None
         self._policy_id = None
+        self._policy_ids = None
         self._registry = None
         self._repository = None
         self._image = None
@@ -67,8 +70,12 @@ class MappingRule(object):
         if id is not None:
             self.id = id
         self.name = name
-        self.whitelist_ids = whitelist_ids
-        self.policy_id = policy_id
+        if whitelist_ids is not None:
+            self.whitelist_ids = whitelist_ids
+        if policy_id is not None:
+            self.policy_id = policy_id
+        if policy_ids is not None:
+            self.policy_ids = policy_ids
         self.registry = registry
         self.repository = repository
         self.image = image
@@ -135,8 +142,6 @@ class MappingRule(object):
         :param whitelist_ids: The whitelist_ids of this MappingRule.  # noqa: E501
         :type: list[str]
         """
-        if whitelist_ids is None:
-            raise ValueError("Invalid value for `whitelist_ids`, must not be `None`")  # noqa: E501
 
         self._whitelist_ids = whitelist_ids
 
@@ -144,6 +149,7 @@ class MappingRule(object):
     def policy_id(self):
         """Gets the policy_id of this MappingRule.  # noqa: E501
 
+        Optional single policy to evalute, if set will override any value in policy_ids, for backwards compatibility. Generally, policy_ids should be used even with a array of length 1.  # noqa: E501
 
         :return: The policy_id of this MappingRule.  # noqa: E501
         :rtype: str
@@ -154,14 +160,36 @@ class MappingRule(object):
     def policy_id(self, policy_id):
         """Sets the policy_id of this MappingRule.
 
+        Optional single policy to evalute, if set will override any value in policy_ids, for backwards compatibility. Generally, policy_ids should be used even with a array of length 1.  # noqa: E501
 
         :param policy_id: The policy_id of this MappingRule.  # noqa: E501
         :type: str
         """
-        if policy_id is None:
-            raise ValueError("Invalid value for `policy_id`, must not be `None`")  # noqa: E501
 
         self._policy_id = policy_id
+
+    @property
+    def policy_ids(self):
+        """Gets the policy_ids of this MappingRule.  # noqa: E501
+
+        List of policyIds to evaluate in order, to completion  # noqa: E501
+
+        :return: The policy_ids of this MappingRule.  # noqa: E501
+        :rtype: list[str]
+        """
+        return self._policy_ids
+
+    @policy_ids.setter
+    def policy_ids(self, policy_ids):
+        """Sets the policy_ids of this MappingRule.
+
+        List of policyIds to evaluate in order, to completion  # noqa: E501
+
+        :param policy_ids: The policy_ids of this MappingRule.  # noqa: E501
+        :type: list[str]
+        """
+
+        self._policy_ids = policy_ids
 
     @property
     def registry(self):
@@ -239,12 +267,18 @@ class MappingRule(object):
         for attr, _ in six.iteritems(self.swagger_types):
             value = getattr(self, attr)
             if isinstance(value, list):
-                result[attr] = list([x.to_dict() if hasattr(x, "to_dict") else x for x in value])
+                result[attr] = list(map(
+                    lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
+                    value
+                ))
             elif hasattr(value, "to_dict"):
                 result[attr] = value.to_dict()
             elif isinstance(value, dict):
-                result[attr] = dict([(item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else item for item in list(value.items())])
+                result[attr] = dict(map(
+                    lambda item: (item[0], item[1].to_dict())
+                    if hasattr(item[1], "to_dict") else item,
+                    value.items()
+                ))
             else:
                 result[attr] = value
 

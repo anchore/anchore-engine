@@ -13,7 +13,7 @@
 """
 
 
-
+from __future__ import absolute_import
 
 # import apis into sdk package
 from anchore_engine.clients.policy_engine.generated.api.default_api import DefaultApi
@@ -22,6 +22,7 @@ from anchore_engine.clients.policy_engine.generated.api.default_api import Defau
 from anchore_engine.clients.policy_engine.generated.api_client import ApiClient
 from anchore_engine.clients.policy_engine.generated.configuration import Configuration
 # import models into sdk package
+from anchore_engine.clients.policy_engine.generated.models.cpe_vulnerability_report import CpeVulnerabilityReport
 from anchore_engine.clients.policy_engine.generated.models.distro_mapping import DistroMapping
 from anchore_engine.clients.policy_engine.generated.models.error_response import ErrorResponse
 from anchore_engine.clients.policy_engine.generated.models.event_status import EventStatus

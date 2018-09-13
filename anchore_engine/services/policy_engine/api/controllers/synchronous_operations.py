@@ -8,19 +8,25 @@ Async operations are handled by teh async_operations controller.
 import json
 import time
 import hashlib
+import re
+import datetime
 
 import connexion
 from flask import abort, Response
 from werkzeug.exceptions import HTTPException
+from sqlalchemy import or_, and_
+
 
 import anchore_engine.subsys.servicestatus
 from anchore_engine import utils
+import anchore_engine.services.common
+
 from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, ImageCpe, CpeVulnerability, get_thread_scoped_session as get_session
+from anchore_engine.db import Image, ImageCpe, CpeVulnerability, get_thread_scoped_session as get_session, ImagePackageVulnerability, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata, db_catalog_image
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -556,3 +562,375 @@ def describe_policy():
     except Exception as e:
         log.exception('Error describing gate system')
         abort(500, 'Internal error describing gate configuration')
+
+def _get_imageId_to_record(userId, dbsession=None):
+    imageId_to_record = {}
+
+    tag_re = re.compile("([^/]+)/([^:]+):(.*)")
+
+    imagetags = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
+    fulltags = {}
+    tag_history = {}
+    for x in imagetags:
+        if x['imageId'] not in tag_history:
+            tag_history[x['imageId']] = []
+
+        registry, repo, tag = tag_re.match(x['fulltag']).groups()
+
+        if x['tag_detected_at']:
+            tag_detected_at = datetime.datetime.utcfromtimestamp(float(int(x['tag_detected_at']))).isoformat() +'Z'
+        else:
+            tag_detected_at = 0
+
+        tag_el = {
+            'registry': registry,
+            'repo': repo,
+            'tag': tag,
+            'fulltag': x['fulltag'],
+            'tag_detected_at': tag_detected_at,
+        }
+        tag_history[x['imageId']].append(tag_el)
+
+        if x['imageId'] not in imageId_to_record:
+            if x['analyzed_at']:
+                analyzed_at = datetime.datetime.utcfromtimestamp(float(int(x['analyzed_at']))).isoformat() +'Z'
+            else:
+                analyzed_at = 0
+
+            imageId_to_record[x['imageId']] = {
+                'imageDigest': x['imageDigest'],
+                'imageId': x['imageId'],
+                'analyzed_at': analyzed_at,
+                'tag_history': tag_history[x['imageId']],
+            }
+
+    return(imageId_to_record)
+        
+def query_images_by_package(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = {}
+    httpcode = 500
+
+    pkg_name = request_inputs.get('params', {}).get('name', None)
+    pkg_version = request_inputs.get('params', {}).get('version', None)
+    pkg_type = request_inputs.get('params', {}).get('package_type', None)
+
+    ret_hash = {}
+    pkg_hash = {}
+    try:
+        ipm_query = dbsession.query(ImagePackage).filter(ImagePackage.name==pkg_name)
+        cpm_query = dbsession.query(ImageCpe).filter(ImageCpe.name==pkg_name)
+
+        if pkg_version and pkg_version != 'None':
+            ipm_query = ipm_query.filter(or_(ImagePackage.version==pkg_version, ImagePackage.fullversion==pkg_version))
+            cpm_query = cpm_query.filter(ImageCpe.version==pkg_version)
+        if pkg_type and pkg_type != 'None':
+            ipm_query = ipm_query.filter(ImagePackage.pkg_type==pkg_type)
+            cpm_query = cpm_query.filter(ImageCpe.pkg_type==pkg_type)
+
+        image_package_matches = ipm_query
+        cpe_package_matches = cpm_query
+
+        #ipm_dbfilter = {'name': pkg_name}
+        #cpm_dbfilter = {'name': pkg_name}
+
+        #if pkg_version and pkg_version != 'None':
+        #    ipm_dbfilter['version'] = pkg_version
+        #    cpm_dbfilter['version'] = pkg_version
+        #if pkg_type and pkg_type != 'None':
+        #    ipm_dbfilter['pkg_type'] = pkg_type
+        #    cpm_dbfilter['pkg_type'] = pkg_type
+
+        #image_package_matches = dbsession.query(ImagePackage).filter_by(**ipm_dbfilter).all()
+        #cpe_package_matches = dbsession.query(ImageCpe).filter_by(**cpm_dbfilter).all()
+
+        if image_package_matches or cpe_package_matches:
+            imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
+
+            for image in image_package_matches:
+                imageId = image.image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'packages': []}
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    'name': image.name,
+                    'version': image.fullversion,
+                    'type': image.pkg_type,
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+
+            for image in cpe_package_matches:
+                imageId = image.image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'packages': []}
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    'name': image.name,
+                    'version': image.version,
+                    'type': image.pkg_type,
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+
+        matched_images = list(ret_hash.values())
+        return_object = {
+            'matched_images': matched_images
+        }            
+        httpcode = 200
+    except Exception as err:
+        log.error("{}".format(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)        
+
+    return(return_object, httpcode)
+
+
+advisory_cache={}
+def check_no_advisory(image):
+    phash = hashlib.sha256(json.dumps([image.pkg_name, image.pkg_version, image.vulnerability_namespace_name]).encode('utf-8')).hexdigest()
+    if phash not in advisory_cache:
+        advisory_cache[phash] = image.fix_has_no_advisory()
+
+    return(advisory_cache.get(phash))
+
+
+def query_images_by_vulnerability(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = {}
+    httpcode = 500
+
+    id = request_inputs.get('params', {}).get('vulnerability_id', None)
+    severity_filter = request_inputs.get('params', {}).get('severity', None)
+    namespace_filter = request_inputs.get('params', {}).get('namespace', None)
+    affected_package_filter = request_inputs.get('params', {}).get('affected_package', None)
+    vendor_only = request_inputs.get('params', {}).get('vendor_only', True)
+
+    ret_hash = {}
+    pkg_hash = {}
+    try:
+        start = time.time()
+        image_package_matches = []
+        image_cpe_matches = []
+
+        ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
+        icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+
+        if severity_filter:
+            ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability.has(severity=severity_filter))
+            icm_query = icm_query.filter(CpeVulnerability.severity==severity_filter)
+        if namespace_filter:
+            ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability_namespace_name==namespace_filter)
+            icm_query = icm_query.filter(CpeVulnerability.namespace_name==namespace_filter)
+        if affected_package_filter:
+            ipm_query = ipm_query.filter(ImagePackageVulnerability.pkg_name==affected_package_filter)
+            icm_query = icm_query.filter(ImageCpe.name==affected_package_filter)
+
+        image_package_matches = ipm_query#.all()
+        image_cpe_matches = icm_query#.all()
+
+        log.debug("QUERY TIME: {}".format(time.time() - start))
+
+        start = time.time()
+        if image_package_matches or image_cpe_matches:
+            imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
+        
+            start = time.time()
+            for image in image_package_matches:
+                if vendor_only and check_no_advisory(image):
+                    continue
+
+                imageId = image.pkg_image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    #'vulnerability_id': image.vulnerability_id,
+                    'name': image.pkg_name,
+                    'version': image.pkg_version,
+                    'type': image.pkg_type,
+                    'namespace': image.vulnerability_namespace_name,
+                    'severity': image.vulnerability.severity,
+                }
+
+                ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+            log.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
+
+            start = time.time()
+            for image_cpe, vulnerability_cpe in image_cpe_matches:
+                imageId = image_cpe.image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
+                    pkg_hash[imageId] = {}
+                pkg_el = {
+                    #'vulnerability_id': vulnerability_cpe.vulnerability_id,
+                    'name': image_cpe.name,
+                    'version': image_cpe.version,
+                    'type': image_cpe.pkg_type,
+                    'namespace': "{}".format(vulnerability_cpe.namespace_name),
+                    'severity': "{}".format(vulnerability_cpe.severity),
+                }
+                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
+                if not pkg_hash[imageId].get(phash, False):
+                    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+                pkg_hash[imageId][phash] = True
+
+        log.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
+
+        start = time.time()
+        vulnerable_images = list(ret_hash.values())
+        return_object = {
+            'vulnerable_images': vulnerable_images
+        }
+        log.debug("RESP TIME: {}".format(time.time() - start))
+        httpcode = 200
+
+    except Exception as err:
+        log.error("{}".format(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def query_vulnerabilities(dbsession, request_inputs):
+    user_auth = request_inputs['auth']
+    method = request_inputs['method']
+    params = request_inputs['params']
+    userId = request_inputs['userId']
+
+    return_object = []
+    httpcode = 500
+
+    id = request_inputs.get('params', {}).get('id', None)
+    package_name_filter = request_inputs.get('params', {}).get('affected_package', None)
+    package_version_filter = request_inputs.get('params', {}).get('affected_package_version', None)
+    vulnerability_exists = False
+
+    try:
+        return_el_template = {
+            'id': None,
+            'namespace': None,
+            'severity': None,
+            'link': None,
+            'affected_packages': None,
+        }
+
+        pn_hash = {}
+
+        vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).all()
+        if vulnerabilities:
+            vulnerability_exists = True
+            for vulnerability in vulnerabilities:
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el['id'] = vulnerability.name
+                namespace_el['namespace'] = vulnerability.namespace_name
+                namespace_el['severity'] = vulnerability.severity
+                namespace_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
+                namespace_el['affected_packages'] = []
+
+                # TODO the package info search, and filter, add to affected_packages list
+                for v_pkg in vulnerability.vulnerable_cpes:
+                    if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
+                        pkg_el = {
+                            'name': v_pkg.name,
+                            'version': v_pkg.version,
+                            'type': '*',
+                        }
+                        namespace_el['affected_packages'].append(pkg_el)
+
+                if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
+                    return_object.append(namespace_el)
+
+        vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
+        if vulnerabilities:
+            vulnerability_exists = True
+            for vulnerability in vulnerabilities:
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el['id'] = vulnerability.id
+                namespace_el['namespace'] = vulnerability.namespace_name
+                namespace_el['severity'] = vulnerability.severity
+                namespace_el['link'] = vulnerability.link
+                namespace_el['affected_packages'] = []
+                
+                # TODO the package info search, and filter, add to affected_packages list
+                for v_pkg in vulnerability.fixed_in:
+                    if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
+                        pkg_el = {
+                            'name': v_pkg.name,
+                            'version': v_pkg.version,
+                            'type': v_pkg.version_format,
+                        }
+                        if not v_pkg.version or v_pkg.version.lower() == 'none':
+                            pkg_el['version'] = '*'
+
+                        namespace_el['affected_packages'].append(pkg_el)
+
+                if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
+                    return_object.append(namespace_el)
+        
+        if not vulnerability_exists:
+            httpcode = 404
+            raise Exception("no vulnerability with id {} found loaded in anchore-engine".format(id))
+
+        httpcode = 200
+            
+    except Exception as err:
+        log.error("{}".format(err))
+        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+
+    return(return_object, httpcode)
+
+def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+        session = get_session()
+        return_object, httpcode = query_vulnerabilities(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+    finally:
+        session.close()
+
+    return (return_object, httpcode)    
+
+def query_images_by_package_get(name=None, version=None, package_type=None):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
+
+        session = get_session()
+        return_object, httpcode = query_images_by_package(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+    finally:
+        session.close()
+
+    return (return_object, httpcode)    
+
+def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
+    try:
+        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
+        session = get_session()
+        return_object, httpcode = query_images_by_vulnerability(session, request_inputs)
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+    finally:
+        session.close()
+
+    return (return_object, httpcode)

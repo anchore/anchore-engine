@@ -11,7 +11,7 @@
 """
 
 
-
+from __future__ import absolute_import
 
 import re  # noqa: F401
 
@@ -1180,6 +1180,323 @@ class DefaultApi(object):
             post_params=form_params,
             files=local_var_files,
             response_type='list[Image]',  # noqa: E501
+            auth_settings=auth_settings,
+            async=params.get('async'),
+            _return_http_data_only=params.get('_return_http_data_only'),
+            _preload_content=params.get('_preload_content', True),
+            _request_timeout=params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def query_images_by_package_get(self, name, **kwargs):  # noqa: E501
+        """Return image info for specified package  # noqa: E501
+
+        Return image info for specified package  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_images_by_package_get(name, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str name: (required)
+        :param str version:
+        :param str package_type:
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('async'):
+            return self.query_images_by_package_get_with_http_info(name, **kwargs)  # noqa: E501
+        else:
+            (data) = self.query_images_by_package_get_with_http_info(name, **kwargs)  # noqa: E501
+            return data
+
+    def query_images_by_package_get_with_http_info(self, name, **kwargs):  # noqa: E501
+        """Return image info for specified package  # noqa: E501
+
+        Return image info for specified package  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_images_by_package_get_with_http_info(name, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str name: (required)
+        :param str version:
+        :param str package_type:
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['name', 'version', 'package_type']  # noqa: E501
+        all_params.append('async')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in six.iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method query_images_by_package_get" % key
+                )
+            params[key] = val
+        del params['kwargs']
+        # verify the required parameter 'name' is set
+        if ('name' not in params or
+                params['name'] is None):
+            raise ValueError("Missing the required parameter `name` when calling `query_images_by_package_get`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'name' in params:
+            query_params.append(('name', params['name']))  # noqa: E501
+        if 'version' in params:
+            query_params.append(('version', params['version']))  # noqa: E501
+        if 'package_type' in params:
+            query_params.append(('package_type', params['package_type']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/query/images/by_package', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='object',  # noqa: E501
+            auth_settings=auth_settings,
+            async=params.get('async'),
+            _return_http_data_only=params.get('_return_http_data_only'),
+            _preload_content=params.get('_preload_content', True),
+            _request_timeout=params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def query_images_by_vulnerability_get(self, vulnerability_id, **kwargs):  # noqa: E501
+        """Return image info for specified vulnerability  # noqa: E501
+
+        Return image info for specified vulnerability  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_images_by_vulnerability_get(vulnerability_id, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str vulnerability_id: (required)
+        :param str severity:
+        :param str namespace:
+        :param str affected_package:
+        :param bool vendor_only: 
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('async'):
+            return self.query_images_by_vulnerability_get_with_http_info(vulnerability_id, **kwargs)  # noqa: E501
+        else:
+            (data) = self.query_images_by_vulnerability_get_with_http_info(vulnerability_id, **kwargs)  # noqa: E501
+            return data
+
+    def query_images_by_vulnerability_get_with_http_info(self, vulnerability_id, **kwargs):  # noqa: E501
+        """Return image info for specified vulnerability  # noqa: E501
+
+        Return image info for specified vulnerability  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_images_by_vulnerability_get_with_http_info(vulnerability_id, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str vulnerability_id: (required)
+        :param str severity:
+        :param str namespace:
+        :param str affected_package:
+        :param bool vendor_only: 
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['vulnerability_id', 'severity', 'namespace', 'affected_package', 'vendor_only']  # noqa: E501
+        all_params.append('async')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in six.iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method query_images_by_vulnerability_get" % key
+                )
+            params[key] = val
+        del params['kwargs']
+        # verify the required parameter 'vulnerability_id' is set
+        if ('vulnerability_id' not in params or
+                params['vulnerability_id'] is None):
+            raise ValueError("Missing the required parameter `vulnerability_id` when calling `query_images_by_vulnerability_get`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'vulnerability_id' in params:
+            query_params.append(('vulnerability_id', params['vulnerability_id']))  # noqa: E501
+        if 'severity' in params:
+            query_params.append(('severity', params['severity']))  # noqa: E501
+        if 'namespace' in params:
+            query_params.append(('namespace', params['namespace']))  # noqa: E501
+        if 'affected_package' in params:
+            query_params.append(('affected_package', params['affected_package']))  # noqa: E501
+        if 'vendor_only' in params:
+            query_params.append(('vendor_only', params['vendor_only']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/query/images/by_vulnerability', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='object',  # noqa: E501
+            auth_settings=auth_settings,
+            async=params.get('async'),
+            _return_http_data_only=params.get('_return_http_data_only'),
+            _preload_content=params.get('_preload_content', True),
+            _request_timeout=params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def query_vulnerabilities_get(self, id, **kwargs):  # noqa: E501
+        """Return vulnerability information for specified vulnerability ID  # noqa: E501
+
+        Return vulnerability information for specified vulnerability ID  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_vulnerabilities_get(id, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str id: (required)
+        :param str affected_package:
+        :param str affected_package_version:
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+        kwargs['_return_http_data_only'] = True
+        if kwargs.get('async'):
+            return self.query_vulnerabilities_get_with_http_info(id, **kwargs)  # noqa: E501
+        else:
+            (data) = self.query_vulnerabilities_get_with_http_info(id, **kwargs)  # noqa: E501
+            return data
+
+    def query_vulnerabilities_get_with_http_info(self, id, **kwargs):  # noqa: E501
+        """Return vulnerability information for specified vulnerability ID  # noqa: E501
+
+        Return vulnerability information for specified vulnerability ID  # noqa: E501
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async=True
+        >>> thread = api.query_vulnerabilities_get_with_http_info(id, async=True)
+        >>> result = thread.get()
+
+        :param async bool
+        :param str id: (required)
+        :param str affected_package:
+        :param str affected_package_version:
+        :return: object
+                 If the method is called asynchronously,
+                 returns the request thread.
+        """
+
+        all_params = ['id', 'affected_package', 'affected_package_version']  # noqa: E501
+        all_params.append('async')
+        all_params.append('_return_http_data_only')
+        all_params.append('_preload_content')
+        all_params.append('_request_timeout')
+
+        params = locals()
+        for key, val in six.iteritems(params['kwargs']):
+            if key not in all_params:
+                raise TypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method query_vulnerabilities_get" % key
+                )
+            params[key] = val
+        del params['kwargs']
+        # verify the required parameter 'id' is set
+        if ('id' not in params or
+                params['id'] is None):
+            raise ValueError("Missing the required parameter `id` when calling `query_vulnerabilities_get`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'id' in params:
+            query_params.append(('id', params['id']))  # noqa: E501
+        if 'affected_package' in params:
+            query_params.append(('affected_package', params['affected_package']))  # noqa: E501
+        if 'affected_package_version' in params:
+            query_params.append(('affected_package_version', params['affected_package_version']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['anchore_basic']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/query/vulnerabilities', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='object',  # noqa: E501
             auth_settings=auth_settings,
             async=params.get('async'),
             _return_http_data_only=params.get('_return_http_data_only'),
