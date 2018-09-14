@@ -178,8 +178,3 @@ workflows:
       - push_dockerhub:
           requires:
             - functional_tests
-          filters:
-            branches:
-              only:
-                - master
-                - "0.2"
