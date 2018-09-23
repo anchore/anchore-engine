@@ -28,6 +28,29 @@ ThreadLocalSession = None  # Separate thread-local session maker
 engine = None
 Base = declarative_base()
 
+class StringJSON(types.TypeDecorator):
+    """
+    A generic json text type for serialization and deserialization of json to text columns.
+    Note: will not detect modification of the content of the dict as an update. To update must change and re-assign the
+    value to the column rather than in-place updates.
+
+    """
+    impl = types.TEXT
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            value = json.dumps(value)
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            value = json.loads(value)
+        return value
+
+# A generic JSON type to allow use of native json types where possible
+#StringJSON = types.JSON().with_variant(StringJSON, 'mysql')
+
+
 class UtilMixin(object):
     """
     Common mixin class for functions that all db entities (or most) should have

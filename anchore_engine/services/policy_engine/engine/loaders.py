@@ -5,9 +5,9 @@ import re
 
 from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.db import DistroNamespace
-from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry, ImageCpe
+from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry, ImageCpe#, ImageJava, ImagePython
 from .logs import get_logger
-from .util.rpm import split_rpm_filename
+from anchore_engine.util.rpm import split_rpm_filename
 
 log = get_logger()
 
@@ -15,6 +15,7 @@ log = get_logger()
 nomatch_inclusions = {
     'java': {
         'springframework': ['spring_framework', 'springsource_spring_framework'],
+        'spring-core': ['spring_framework', 'springsource_spring_framework'],
     },
     'npm': {
         'hapi': ['hapi_server_framework'],
@@ -108,13 +109,13 @@ class ImageLoader(object):
 
         # Image content
 
-        # Packages
-        log.info('Loading image packages')
-        image.packages = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
 
-        # Package metadata
-        log.info('Loading image package db entries')
-        self.load_package_verification(analysis_report, image)
+        packages = []
+
+        # Packages        
+        log.info('Loading image packages')
+        os_packages = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
+        packages = packages + os_packages
 
         # FileSystem
         log.info('Loading image files')
@@ -122,11 +123,29 @@ class ImageLoader(object):
 
         # Npms
         log.info('Loading image npms')
-        image.npms = self.load_npms(analysis_report, image)
+        npm_image_packages = self.load_npms(analysis_report, image)
+        packages = packages + npm_image_packages
 
         # Gems
         log.info('Loading image gems')
-        image.gems = self.load_gems(analysis_report, image)
+        gem_image_packages = self.load_gems(analysis_report, image)
+        packages = packages + gem_image_packages
+
+        ## Python
+        log.info('Loading image python packages')
+        python_packages = self.load_pythons(analysis_report, image)
+        packages = packages + python_packages
+
+        ## Java
+        log.info('Loading image java packages')
+        java_packages = self.load_javas(analysis_report, image)
+        packages = packages + java_packages
+
+        image.packages = packages
+
+        # Package metadata
+        log.info('Loading image package db entries')
+        self.load_package_verification(analysis_report, image)
 
         # CPEs
         log.info('Loading image cpes')
@@ -374,9 +393,9 @@ class ImageLoader(object):
             p.image_user_id = image_obj.user_id
             p.image_id = image_obj.id
 
-            if 'files' in metadata:
-                # Handle file data
-                p.files = metadata.get('files')
+            #if 'files' in metadata:
+            #    # Handle file data
+            #    p.files = metadata.get('files')
 
             if p.release != 'N/A':
                 p.fullversion = p.version + '-' + p.release
@@ -506,7 +525,9 @@ class ImageLoader(object):
         if not npms_json:
             return []
 
+            
         npms = []
+        image_packages = []
         for path, npm_str in list(npms_json.items()):
             npm_json = json.loads(npm_str)
             n = ImageNpm()
@@ -520,9 +541,32 @@ class ImageLoader(object):
             n.versions_json = npm_json.get('versions')
             n.image_user_id = containing_image.user_id
             n.image_id = containing_image.id
-            npms.append(n)
+            #npms.append(n)
 
-        return npms
+            np = ImagePackage()
+            # primary keys
+            np.name = n.name
+            np.version = n.versions_json[0]
+            np.pkg_type = 'npm'
+            np.arch = 'N/A'
+            np.image_user_id = n.image_user_id
+            np.image_id = n.image_id
+            np.pkg_path = n.path
+            # other
+            np.pkg_path_hash = n.path_hash
+            np.distro_name = 'npm'
+            np.distro_version = 'N/A'
+            np.like_distro = 'npm'
+            np.fullversion = np.version
+            np.license = ' '.join(n.licenses_json)
+            np.origin = ' '.join(n.origins_json)
+            #np.metadata_json = pkg_json.get('metadata')
+            fullname = np.name
+            np.normalized_src_pkg = fullname
+            np.src_pkg = fullname
+            image_packages.append(np)
+
+        return image_packages
 
     def load_gems(self, analysis_json, containing_image):
         gems_json = analysis_json.get('package_list', {}).get('pkgs.gems', {}).get('base')
@@ -530,6 +574,7 @@ class ImageLoader(object):
             return []
 
         gems = []
+        image_packages = []
         for path, gem_str in list(gems_json.items()):
             gem_json = json.loads(gem_str)
             n = ImageGem()
@@ -543,9 +588,121 @@ class ImageLoader(object):
             n.latest = gem_json.get('latest')
             n.image_user_id = containing_image.user_id
             n.image_id = containing_image.id
-            gems.append(n)
+            #gems.append(n)
 
-        return gems
+            np = ImagePackage()
+            # primary keys
+            np.name = n.name
+            np.version = n.versions_json[0]
+            np.pkg_type = 'gem'
+            np.arch = 'N/A'
+            np.image_user_id = n.image_user_id
+            np.image_id = n.image_id
+            np.pkg_path = n.path
+            # other
+            np.pkg_path_hash = n.path_hash
+            np.distro_name = 'gem'
+            np.distro_version = 'N/A'
+            np.like_distro = 'gem'
+            np.fullversion = np.version
+            np.license = ' '.join(n.licenses_json)
+            np.origin = ' '.join(n.origins_json)
+            #np.metadata_json = pkg_json.get('metadata')
+            fullname = np.name
+            np.normalized_src_pkg = fullname
+            np.src_pkg = fullname
+            image_packages.append(np)
+
+        return image_packages
+
+    def load_pythons(self, analysis_json, containing_image):
+
+        pkgs_json = analysis_json.get('package_list', {}).get('pkgs.python', {}).get('base')
+        if not pkgs_json:
+            return []
+
+        pkgs = []
+        for path, pkg_str in list(pkgs_json.items()):
+            pkg_json = json.loads(pkg_str)
+            
+            n = ImagePackage()
+            # primary keys
+            n.name = pkg_json.get('name')
+            n.pkg_path = path
+            n.version = pkg_json.get('version')
+            n.pkg_type = 'python'
+            n.arch = 'N/A'
+            n.image_user_id = n.image_user_id
+            n.image_id = n.image_id
+            # other
+            n.pkg_path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
+            n.distro_name = 'python'
+            n.distro_version = 'N/A'
+            n.like_distro = 'python'
+            n.fullversion = n.version
+            n.license = pkg_json.get('license')
+            n.origin = pkg_json.get('origin')
+            n.metadata_json = {
+                'python_distribution_metadata': pkg_json.get('metadata'),
+                'files': pkg_json.get('files')
+            }
+            fullname = n.name
+            n.normalized_src_pkg = fullname
+            n.src_pkg = fullname
+            pkgs.append(n)
+            
+        return pkgs
+
+    def load_javas(self, analysis_json, containing_image):
+        pkgs_json = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
+        if not pkgs_json:
+            return []
+
+        pkgs = []
+        for path, pkg_str in list(pkgs_json.items()):
+            pkg_json = json.loads(pkg_str)
+            
+            n = ImagePackage()
+
+            # primary keys
+            # TODO - some java names have a version in it, need to clean that up
+            n.name = pkg_json.get('name')
+            n.pkg_type = 'java'
+            n.arch = 'N/A'
+            n.pkg_path = path
+            version = None
+            versions_json = {}
+            for k in ['maven-version', 'implementation-version', 'specification-version']:
+                if not version and pkg_json.get(k, 'N/A') != 'N/A':
+                    version = pkg_json.get(k)
+                versions_json[k] = pkg_json.get(k, 'N/A')
+            if version:
+                n.version = version
+            else:
+                n.version = 'N/A'
+
+            n.image_user_id = containing_image.user_id
+            n.image_id = containing_image.id
+
+            # other non-PK values
+            n.pkg_path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
+            n.distro_name = 'java'
+            n.distro_version = 'N/A'
+            n.like_distro = 'java'
+            n.fullversion = n.version
+            n.metadata_json = pkg_json.get('metadata')
+            n.metadata_json['java_versions'] = versions_json
+
+            fullname = n.name
+            pomprops = n.get_pom_properties()
+            if pomprops:
+                fullname = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
+                
+            n.normalized_src_pkg = fullname
+            n.src_pkg = fullname
+            pkgs.append(n)
+
+        return pkgs
 
     def _fuzzy_python(self, input_el):
         global nomatch_inclusions
@@ -608,7 +765,13 @@ class ImageLoader(object):
 
         mversion = input_el.get('maven-version', "N/A")
         if mversion != 'N/A' and mversion not in ret_versions:
-            ret_versions.append(mversion)
+            if mversion not in ret_versions:
+                ret_versions.append(mversion)
+
+        for rversion in ret_versions:
+            clean_version = re.sub("\.(RELEASE|GA|SEC.*)$", "", rversion)
+            if clean_version not in ret_versions:
+                ret_versions.append(clean_version)
 
         # do some heuristic tokenizing
         try:
@@ -697,6 +860,17 @@ class ImageLoader(object):
 
         except Exception as err:
             log.warn("failed to detect java package name/version guesses - exception: " + str(err))
+
+        for rname in list(ret_names):
+            underscore_name = re.sub("-", "_", rname)
+            if underscore_name not in ret_names:
+                ret_names.append(underscore_name)
+
+        for rname in list(ret_names):
+            if rname in list(known_nomatch_inclusions.keys()):
+                for matchmap_candidate in known_nomatch_inclusions[rname]:
+                    if matchmap_candidate not in ret_names:
+                        ret_names.append(matchmap_candidate)
 
         return(ret_names, ret_versions)
 
@@ -789,12 +963,15 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-        if containing_image.gems:
-            for gem in containing_image.gems:
-                guessed_names = self._fuzzy_gem(gem.name)
+        gem_json_raw = analysis_json.get('package_list', {}).get('pkgs.gems', {}).get('base')
+        if gem_json_raw:
+            for path, gem_str in list(gem_json_raw.items()):
+                gem_json = json.loads(gem_str)
+                guessed_names = self._fuzzy_gem(gem_json['name'])
+                guessed_versions = gem_json['versions']
                 for n in guessed_names:
-                    for version in gem.versions_json:
-                        rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(n, version)
+                    for v in guessed_versions:
+                        rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(n, v)
 
                         toks = rawcpe.split(":")
                         final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
@@ -806,14 +983,14 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        cpekey = ':'.join(final_cpe + [gem.path])
+                        cpekey = ':'.join(final_cpe + [path])
 
                         if cpekey not in allcpes:
                             allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "gem"
-                            cpe.pkg_path = gem.path
+                            cpe.pkg_path = path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]
@@ -825,12 +1002,53 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-        if containing_image.npms:
-            for npm in containing_image.npms:
-                guessed_names = self._fuzzy_npm(npm.name)
+        if False:
+            gems = containing_image.get_packages_by_type("gem")
+            if gems:
+                for gem in gems:
+                    guessed_names = self._fuzzy_gem(gem.name)
+                    for n in guessed_names:
+                        for version in [gem.version]:
+                            rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(n, version)
+
+                            toks = rawcpe.split(":")
+                            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                            for i in range(1, len(final_cpe)):
+                                try:
+                                    if toks[i]:
+                                        final_cpe[i] = toks[i]
+                                    else:
+                                        final_cpe[i] = '-'
+                                except:
+                                    final_cpe[i] = '-'
+                            cpekey = ':'.join(final_cpe + [gem.pkg_path])
+
+                            if cpekey not in allcpes:
+                                allcpes[cpekey] = True
+
+                                cpe = ImageCpe()
+                                cpe.pkg_type = "gem"
+                                cpe.pkg_path = gem.pkg_path
+                                cpe.cpetype = final_cpe[1]
+                                cpe.vendor = final_cpe[2]
+                                cpe.name = final_cpe[3]
+                                cpe.version = final_cpe[4]
+                                cpe.update = final_cpe[5]
+                                cpe.meta = final_cpe[6]
+                                cpe.image_user_id = containing_image.user_id
+                                cpe.image_id = containing_image.id
+
+                                cpes.append(cpe)
+
+        npm_json_raw = analysis_json.get('package_list', {}).get('pkgs.npms', {}).get('base')
+        if npm_json_raw:
+            for path, npm_str in list(npm_json_raw.items()):
+                npm_json = json.loads(npm_str)
+                guessed_names = self._fuzzy_npm(npm_json['name'])
+                guessed_versions = npm_json['versions']
                 for n in guessed_names:
-                    for version in npm.versions_json:
-                        rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(n, version)
+                    for v in guessed_versions:
+                        rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(n, v)
 
                         toks = rawcpe.split(":")
                         final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
@@ -842,14 +1060,14 @@ class ImageLoader(object):
                                     final_cpe[i] = '-'
                             except:
                                 final_cpe[i] = '-'
-                        cpekey = ':'.join(final_cpe + [npm.path])
+                        cpekey = ':'.join(final_cpe + [path])
 
                         if cpekey not in allcpes:
                             allcpes[cpekey] = True
 
                             cpe = ImageCpe()
                             cpe.pkg_type = "npm"
-                            cpe.pkg_path = npm.path
+                            cpe.pkg_path = path
                             cpe.cpetype = final_cpe[1]
                             cpe.vendor = final_cpe[2]
                             cpe.name = final_cpe[3]
@@ -860,5 +1078,43 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+
+        if False:
+            npms = containing_image.get_packages_by_type("npm")
+            if npms:
+                for npm in npms:
+                    guessed_names = self._fuzzy_npm(npm.name)
+                    for n in guessed_names:
+                        for version in [npm.version]:
+                            rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(n, version)
+
+                            toks = rawcpe.split(":")
+                            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                            for i in range(1, len(final_cpe)):
+                                try:
+                                    if toks[i]:
+                                        final_cpe[i] = toks[i]
+                                    else:
+                                        final_cpe[i] = '-'
+                                except:
+                                    final_cpe[i] = '-'
+                            cpekey = ':'.join(final_cpe + [npm.pkg_path])
+
+                            if cpekey not in allcpes:
+                                allcpes[cpekey] = True
+
+                                cpe = ImageCpe()
+                                cpe.pkg_type = "npm"
+                                cpe.pkg_path = npm.pkg_path
+                                cpe.cpetype = final_cpe[1]
+                                cpe.vendor = final_cpe[2]
+                                cpe.name = final_cpe[3]
+                                cpe.version = final_cpe[4]
+                                cpe.update = final_cpe[5]
+                                cpe.meta = final_cpe[6]
+                                cpe.image_user_id = containing_image.user_id
+                                cpe.image_id = containing_image.id
+
+                                cpes.append(cpe)
 
         return cpes

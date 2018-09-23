@@ -345,12 +345,17 @@ def delete_staging_dirs(staging_dirs):
         if k == 'cachedir':
             continue
 
-        try:
-            if os.path.exists(staging_dirs[k]):
-                logger.debug("removing dir: " + k + " : " + str(staging_dirs[k]))
-                shutil.rmtree(staging_dirs[k])
-        except Exception as err:
-            raise Exception("unable to delete staging directory - exception: " + str(err))
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        myconfig = localconfig.get('services', {}).get('analyzer', {})
+        if not myconfig.get('keep_image_analysis_tmpfiles', False):
+            try:
+                if os.path.exists(staging_dirs[k]):
+                    logger.debug("removing dir: " + k + " : " + str(staging_dirs[k]))
+                    shutil.rmtree(staging_dirs[k])
+            except Exception as err:
+                raise Exception("unable to delete staging directory - exception: " + str(err))
+        else:
+            logger.debug("keep_image_analysis_tmpfiles is enabled - leaving analysis tmpdir in place {}".format(staging_dirs))
 
     return(True)
 

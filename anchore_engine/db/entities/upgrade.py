@@ -5,6 +5,7 @@ import zlib
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text, Enum
 
 import anchore_engine.db.entities.common
+from anchore_engine.db.entities.common import StringJSON
 from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
 from distutils.version import StrictVersion
 from contextlib import contextmanager
@@ -525,6 +526,156 @@ def catalog_image_upgrades_006_007():
 def db_upgrade_006_007():
     catalog_image_upgrades_006_007()
 
+def db_upgrade_007_008():
+    from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem
+    if True:
+        engine = anchore_engine.db.entities.common.get_engine()
+
+        file_path_length = 512
+        hash_length = 80
+
+        new_columns = [
+            {
+                'table_name': 'image_packages',
+                'columns': [
+                    Column('pkg_path', String(file_path_length), primary_key=True),
+                    Column('pkg_path_hash', String(hash_length)),
+                    Column('metadata_json', StringJSON),
+                ]
+            },
+            {
+                'table_name': 'image_package_vulnerabilities',
+                'columns': [
+                    Column('pkg_path', String(file_path_length), primary_key=True),
+                ]
+            },
+            {
+                'table_name': 'image_package_db_entries',
+                'columns': [
+                    Column('pkg_path', String(file_path_length), primary_key=True),
+                ]
+            }
+        ]
+
+        log.err("creating new table columns")
+        for table in new_columns:
+            for column in table['columns']:
+                log.err("creating new column ({}) in table ({})".format(column.name, table.get('table_name', "")))
+                try:
+                    cn = column.compile(dialect=engine.dialect)
+                    ct = column.type.compile(engine.dialect)
+                    engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+                except Exception as e:
+                    log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+                    raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+
+
+        # populate the new columns
+        for table in ['image_packages', 'image_package_vulnerabilities', 'image_package_db_entries']:
+            log.err("updating table ({}) column (pkg_path)".format(table))
+            engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
+
+        exec_commands = ['ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkg_image_id_fkey',
+                         'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_image_id_fkey',
+                         'ALTER TABLE image_packages DROP CONSTRAINT IF EXISTS image_packages_pkey',
+                         'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_pkey',
+                         'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey',
+                         'ALTER TABLE image_packages ADD PRIMARY KEY (image_id,image_user_id,name,version,pkg_type,arch,pkg_path)',
+                         'ALTER TABLE image_package_vulnerabilities ADD PRIMARY KEY (pkg_user_id,pkg_image_id,pkg_name,pkg_version,pkg_type,pkg_arch,vulnerability_id,pkg_path)',
+                         'ALTER TABLE image_package_db_entries ADD PRIMARY KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path,file_path)',
+                         'ALTER TABLE image_package_vulnerabilities ADD CONSTRAINT image_package_vulnerabilities_pkg_image_id_fkey FOREIGN KEY (pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
+                         'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
+                     ]
+    
+        log.err("updating primary key / foreign key relationships for new column")
+        cmdcount = 1
+        for command in exec_commands:
+            log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
+            engine.execute(command)
+            cmdcount = cmdcount + 1
+    
+
+        log.err("converting ImageNpm and ImageGem records into ImagePackage records")
+        # migrate ImageNpm and ImageGem records into ImagePackage records
+        with session_scope() as dbsession:
+            db_npms = dbsession.query(ImageNpm)
+            db_gems = dbsession.query(ImageGem)
+
+        gems = []
+        npms = []
+        try:
+            for n in db_npms:
+                np = ImagePackage()
+
+                # primary keys
+                np.name = n.name
+                np.version = n.versions_json[0]
+                np.pkg_type = 'npm'
+                np.arch = 'N/A'
+                np.image_user_id = n.image_user_id
+                np.image_id = n.image_id
+                np.pkg_path = n.path
+
+                # other
+                np.pkg_path_hash = n.path_hash
+                np.distro_name = 'npm'
+                np.distro_version = 'N/A'
+                np.like_distro = 'npm'
+                np.fullversion = np.version
+                np.license = ' '.join(n.licenses_json)
+                np.origin = ' '.join(n.origins_json)
+                fullname = np.name
+                np.normalized_src_pkg = fullname
+                np.src_pkg = fullname
+                npms.append(np)
+        except Exception as err:
+            raise err
+
+        try:
+            for n in db_gems:
+                np = ImagePackage()
+
+                # primary keys
+                np.name = n.name
+                np.version = n.versions_json[0]
+                np.pkg_type = 'gem'
+                np.arch = 'N/A'
+                np.image_user_id = n.image_user_id
+                np.image_id = n.image_id
+                np.pkg_path = n.path
+
+                # other
+                np.pkg_path_hash = n.path_hash
+                np.distro_name = 'gem'
+                np.distro_version = 'N/A'
+                np.like_distro = 'gem'
+                np.fullversion = np.version
+                np.license = ' '.join(n.licenses_json)
+                np.origin = ' '.join(n.origins_json)
+                fullname = np.name
+                np.normalized_src_pkg = fullname
+                np.src_pkg = fullname
+                gems.append(np)
+        except Exception as err:
+            raise err
+
+
+        with session_scope() as dbsession:
+            log.err("merging npms: {} records to merge".format(len(npms)))
+            try:
+                for npm in npms:
+                    dbsession.merge(npm)
+            except Exception as err:
+                raise err
+
+        with session_scope() as dbsession:
+            log.err("merging gems: {} records to merge".format(len(gems)))
+            try:
+                for gem in gems:
+                    dbsession.merge(gem)
+            except Exception as err:
+                raise err
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -534,7 +685,8 @@ upgrade_functions = (
     (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
     (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
     (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ]),
-    (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ])
+    (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ]),
+    (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ])
 )
 
 

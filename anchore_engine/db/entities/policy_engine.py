@@ -6,10 +6,16 @@ import zlib
 from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
-    ForeignKeyConstraint, DateTime, types, Text, Index, JSON
+    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_
 from sqlalchemy.orm import relationship
 
 from anchore_engine.utils import ensure_str, ensure_bytes
+
+from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
+from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
+from anchore_engine.util.apk import compare_versions as apkg_compare_versions
+from anchore_engine.util.semver import compare_versions as semver_compare_versions
+
 try:
     from anchore_engine.subsys import logger as log
 except:
@@ -17,7 +23,7 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-from .common import Base, UtilMixin
+from .common import Base, UtilMixin, StringJSON
 from .common import get_thread_scoped_session
 
 
@@ -46,30 +52,6 @@ file_path_length = 512
 hash_length = 80
 
 DistroTuple = namedtuple('DistroTuple', ['distro', 'version', 'flavor'])
-
-
-class StringJSON(types.TypeDecorator):
-    """
-    A generic json text type for serialization and deserialization of json to text columns.
-    Note: will not detect modification of the content of the dict as an update. To update must change and re-assign the
-    value to the column rather than in-place updates.
-
-    """
-    impl = types.TEXT
-
-    def process_bind_param(self, value, dialect):
-        if value is not None:
-            value = json.dumps(value)
-            return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            value = json.loads(value)
-        return value
-
-# A generic JSON type to allow use of native json types where possible
-#StringJSON = types.JSON().with_variant(StringJSON, 'mysql')
-
 
 # Feeds
 class FeedMetadata(Base, UtilMixin):
@@ -197,7 +179,6 @@ class Vulnerability(Base):
     def __repr__(self):
         return '<{} id={}, namespace_name={}, severity={}, created_at={}>'.format(self.__class__, self.id, self.namespace_name, self.severity,
                                                                           self.created_at)
-
     def current_package_vulnerabilities(self, db_session):
         """
         Return a list of all packages that are marked as vulnerable to this item
@@ -210,7 +191,24 @@ class Vulnerability(Base):
         Can a package be vulnerable to this, or is it an empty definition.
         :return: boolean
         """
-        return not self.vulnerable_in and not self.fixed_in
+        #return not self.vulnerable_in and not self.fixed_in
+        return not self.fixed_in
+
+    def get_cvss_severity(self):
+        sev = "Unknown"
+        try:
+            score = self.cvss2_score
+            if score <= 3.9:
+                sev = "Low"
+            elif score <= 6.9:
+                sev = "Medium"
+            elif score <= 10.0:
+                sev = "High"
+            else:
+                sev = "Unknown"
+        except:
+            sev = "Unknown"
+        return(sev)
 
 
 class VulnerableArtifact(Base):
@@ -240,6 +238,39 @@ class VulnerableArtifact(Base):
         return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name,
                                                                           self.updated_at)
 
+    def match_and_vulnerable(self, package_obj):
+        """
+        Given a VulnerableArtifact record, is the given package object a match indicating that the package is vulnerable.
+
+        :param vuln_obj:
+        :param package_obj:
+        :param has_fix: boolean indicating if there is a corresponding fix record
+        :return:
+        """
+        vuln_obj = self
+        if not isinstance(vuln_obj, VulnerableArtifact):
+            raise TypeError('Expected a VulnerableArtifact type, got: {}'.format(type(vuln_obj)))
+
+        dist = DistroNamespace.for_obj(package_obj)
+        flavor = dist.flavor
+
+        # Double-check names
+        if vuln_obj.name != package_obj.name and vuln_obj.name != package_obj.normalized_src_pkg:
+            log.warn(
+                'Name mismatch in vulnerable check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}'.format(
+                    vuln_obj.name, package_obj.name, package_obj.normalized_src_pkg, package_obj.src_pkg))
+            return False
+
+        # Is it a catch-all record? Explicit 'None' or 'all' versions indicate all versions of the named package are vulnerable.
+        if vuln_obj.epochless_version in ['all', 'None']:
+            return True
+
+        # Is the package older than the fix?
+        if package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version:
+            return True
+
+        # Newer or the same
+        return False
 
 class FixedArtifact(Base):
     """
@@ -265,6 +296,65 @@ class FixedArtifact(Base):
 
     def __repr__(self):
         return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name, self.created_at)
+
+    def match_but_not_fixed(self, package_obj):
+        """
+        Does the FixedArtifact match the package as a vulnerability such that the fix indicates the package is *not* fixed and is
+        therefore vulnerable.
+
+        :param fix_obj: as FixedArtifact record
+        :param package_obj: an ImagePackage record
+        :return: True if the names match and the fix record indicates the package is vulnerable and not fixed. False if no match or fix is applied and no vulnerability match
+        """
+        fix_obj  = self
+        if not isinstance(fix_obj, FixedArtifact):
+            raise TypeError('Expected a FixedArtifact type, got: {}'.format(type(fix_obj)))
+
+        dist = DistroNamespace.for_obj(package_obj)
+        flavor = dist.flavor
+        log.spew('Package: {}, Fix: {}, Flavor: {}'.format(package_obj.name, fix_obj.name, flavor))
+
+        # Double-check names
+        if fix_obj.name != package_obj.name and fix_obj.name != package_obj.normalized_src_pkg:
+            log.warn('Name mismatch in fix check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}'.format(fix_obj.name, package_obj.name, package_obj.normalized_src_pkg, package_obj.src_pkg))
+            return False
+
+        # Handle the case where there is no version, indicating no fix available, all versions are vulnerable.
+        # Is it a catch-all record? Explicit 'None' versions indicate all versions of the named package are vulnerable.
+        if fix_obj.version == 'None':
+            return True
+
+        # Is the package older than the fix?
+        if flavor == 'RHEL':
+            if rpm_compare_versions(package_obj.name, package_obj.fullversion, fix_obj.name, fix_obj.epochless_version) < 0:
+                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+                return True
+        elif flavor == 'DEB':
+            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
+                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+                return True
+        elif flavor == 'ALPINE':
+            if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
+                log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+                return True
+
+
+        if package_obj.pkg_type in ['java', 'maven', 'npm', 'gem', 'python', 'js']:
+            if package_obj.pkg_type in ['java', 'maven']:
+                pomprops = package_obj.get_pom_properties()
+                if pomprops:
+                    pkgkey = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
+                    pkgversion = pomprops.get('version', None)
+                else:
+                    pkgversion = package_obj.version
+            else:
+                pkgversion = package_obj.fullversion
+
+            if semver_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
+                return(True)
+
+        # Newer or the same
+        return False
 
 
 class NvdMetadata(Base):
@@ -361,6 +451,9 @@ class ImagePackage(Base):
     version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
     arch = Column(String(16), default='N/A', primary_key=True)
+    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
+
+    pkg_path_hash = Column(String(hash_length))  # The sha256 hash of the path in hex
 
     # Could pkg namespace be diff than os? e.g. rpms in Deb?
     distro_name = Column(String(distro_length))
@@ -372,6 +465,9 @@ class ImagePackage(Base):
     origin = Column(String(512), default='N/A')
     src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
     normalized_src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
+
+    metadata_json = Column(StringJSON)
+
     license = Column(String(1024), default='N/A')
     size = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -403,6 +499,119 @@ class ImagePackage(Base):
         else:
             return None
 
+    def get_pom_properties(self):
+        if not self.metadata_json:
+            return None
+
+        filebuf = self.metadata_json.get('pom.properties', "")
+        props = {}
+        for line in filebuf.splitlines():
+            #line = anchore_engine.utils.ensure_str(line)                                                                                                                                                                                                 
+            if not re.match("\s*(#.*)?$", line):
+                kv = line.split('=')
+                key = kv[0].strip()
+                value = '='.join(kv[1:]).strip()
+                props[key] = value
+        return props
+
+    def vulnerabilities_for_package(self):
+        """
+        Given an ImagePackage object, return the vulnerabilities that it matches.
+
+        :param package_obj:
+        :return: list of Vulnerability objects
+        """
+        package_obj = self
+        log.debug('Finding vulnerabilities for package: {} - {}'.format(package_obj.name, package_obj.version))
+
+        matches = []
+        dist = DistroNamespace(package_obj.distro_name, package_obj.distro_version, package_obj.like_distro)
+
+        db = get_thread_scoped_session()
+        namespace_name_to_use = dist.namespace_name
+        
+        nslang = package_obj.pkg_type
+        pkgkey = pkgversion = None
+        #TODO better handling of the non-os pkg_type <-> namespace_name mapping, maybe use the above existing distro mechanism?
+        likematch = None
+        if package_obj.pkg_type in ['java', 'maven']:
+            # search for maven hits
+            if package_obj.metadata_json:
+                pombuf = package_obj.metadata_json.get('pom.properties', "")
+                if pombuf:
+                    pomprops = package_obj.get_pom_properties()
+                    pkgkey = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
+                    pkgversion = pomprops.get('version', None)
+                    likematch = '%java%'
+        elif package_obj.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python']:
+            pkgkey = package_obj.name
+            pkgversion = package_obj.version
+            if package_obj.pkg_type in ['ruby', 'gem']:
+                likematch = '%ruby%'
+            elif package_obj.pkg_type in ['npm', 'js']:
+                likematch = '%js%'
+            elif package_obj.pkg_type in ['python']:
+                likematch = '%python%'
+
+        if pkgkey and pkgversion and likematch:
+            candidates = db.query(FixedArtifact).filter(FixedArtifact.name == pkgkey).filter(FixedArtifact.version_format == 'semver').filter(FixedArtifact.namespace_name.like(likematch))
+            for candidate in candidates:
+                if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (semver_compare_versions(candidate.version, pkgversion, language=nslang)):
+                    matches.append(candidate)
+
+        # All options are the same, no need to loop
+        if len(set(dist.like_namespace_names)) > 1:
+            # Look for exact match first
+            if not db.query(FeedGroupMetadata).filter(FeedGroupMetadata.name == dist.namespace_name).first():
+                # Check all options for distro/flavor mappings, stop at first with records present
+                for namespace_name in dist.like_namespace_names:
+                    record_count = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
+                    if record_count > 0:
+                        namespace_name_to_use = namespace_name
+                        break
+
+        fix_candidates, vulnerable_candidates = package_obj.candidates_for_package(namespace_name_to_use)
+
+        for candidate in fix_candidates:
+            # De-dup evaluations based on the underlying vulnerability_id. For packages where src has many binary builds, once we have a match we have a match.
+            if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(package_obj):
+                matches.append(candidate)
+
+        #for candidate in vulnerable_candidates:
+        #    if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(package_obj):
+        #        matches.append(candidate)
+
+        return matches
+
+    def candidates_for_package(self, distro_namespace=None):
+        """
+        Return all vulnerabilities for the named package with the specified distro. Will apply to any version
+        of the package. If version is used, will filter to only those for the specified version.
+
+        :param package_obj: the package to match against
+        :param distro_namespace: the DistroNamespace object to match against (typically computed
+        :return: List of Vulnerabilities
+        """
+        package_obj = self
+        db = get_thread_scoped_session()
+
+        if not distro_namespace:
+            namespace_name = DistroNamespace.for_obj(package_obj).namespace_name
+        else:
+            namespace_name = distro_namespace
+
+
+        # Match the namespace and package name or src pkg name
+        fix_candidates = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == namespace_name,
+                                                            or_(FixedArtifact.name == package_obj.name, FixedArtifact.name == package_obj.normalized_src_pkg)).all()
+
+        # Match the namespace and package name or src pkg name
+        vulnerable_candidates = []
+        #vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
+        #                                                            or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
+
+
+        return fix_candidates, vulnerable_candidates
 
 class ImagePackageManifestEntry(Base):
     """
@@ -418,9 +627,11 @@ class ImagePackageManifestEntry(Base):
     pkg_version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
     pkg_arch = Column(String(16), default='N/A', primary_key=True)
+    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
 
     # File path
     file_path = Column(String(file_path_length), primary_key=True)
+
     is_config_file = Column(Boolean, nullable=True)
     digest = Column(String(digest_length)) # Will include a prefix: sha256, sha1, md5 etc.
     digest_algorithm = Column(String(8), nullable=True)
@@ -430,8 +641,8 @@ class ImagePackageManifestEntry(Base):
     size = Column(Integer, nullable=True)
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch],
-                             refcolumns=['image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch']),
+        ForeignKeyConstraint(columns=[image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path],
+                             refcolumns=['image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path']),
         {}
     )
 
@@ -678,8 +889,11 @@ class Image(Base):
 
     packages = relationship('ImagePackage', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     fs = relationship('FilesystemAnalysis', uselist=False, lazy='select', cascade=['all','delete','delete-orphan'])
+    
+    # TODO - move these to ImagePackage records instead of individual tables
     gems = relationship('ImageGem', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     npms = relationship('ImageNpm', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+
     cpes = relationship('ImageCpe', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
     analysis_artifacts = relationship('AnalysisArtifact', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
 
@@ -690,6 +904,11 @@ class Image(Base):
         else:
             return None
 
+    def get_packages_by_type(self, pkg_type):
+        db = get_thread_scoped_session()
+        typed_packages = db.query(ImagePackage).filter(ImagePackage.image_id==self.id, ImagePackage.image_user_id==self.user_id, ImagePackage.pkg_type==pkg_type).all()
+        return(typed_packages)
+        
     def vulnerabilities(self):
         """
         Load vulnerabilties for all packages in this image
@@ -730,6 +949,9 @@ class ImagePackageVulnerability(Base):
     pkg_version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
     pkg_arch = Column(String(16), default='N/A', primary_key=True)
+
+    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
+
     vulnerability_id = Column(String(vuln_id_length), primary_key=True)
     vulnerability_namespace_name = Column(String(namespace_length))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -738,9 +960,9 @@ class ImagePackageVulnerability(Base):
     vulnerability = relationship('Vulnerability')
 
     __table_args__ = (
-         ForeignKeyConstraint(columns=[pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch], refcolumns=[ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch]),
-         ForeignKeyConstraint(columns=[vulnerability_id, vulnerability_namespace_name], refcolumns=[Vulnerability.id, Vulnerability.namespace_name]),
-         {}
+        ForeignKeyConstraint(columns=[pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path], refcolumns=[ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path]),
+        ForeignKeyConstraint(columns=[vulnerability_id, vulnerability_namespace_name], refcolumns=[Vulnerability.id, Vulnerability.namespace_name]),
+        {}
     )
 
     def fixed_artifact(self):
@@ -793,20 +1015,20 @@ class ImagePackageVulnerability(Base):
         rec.pkg_image_id = package_obj.image_id
         rec.pkg_user_id = package_obj.image_user_id
         rec.pkg_version = package_obj.version
+        rec.pkg_path = package_obj.pkg_path
         rec.vulnerability_id = vuln_obj.vulnerability_id if hasattr(vuln_obj, 'vulnerability_id') else vuln_obj.id
         rec.vulnerability_namespace_name = vuln_obj.namespace_name
         return rec
 
     def __repr__(self):
-        return '<ImagePackageVulnerability img_user_id={}, img_id={}, pkg_name={}, pkg_version={}, vuln_id={}, vuln_namespace={}>'.format(self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.vulnerability_id, self.vulnerability_namespace_name)
+        return '<ImagePackageVulnerability img_user_id={}, img_id={}, pkg_name={}, pkg_version={}, vuln_id={}, vuln_namespace={}, pkg_path={}>'.format(self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.vulnerability_id, self.vulnerability_namespace_name, self.pkg_path)
 
     # To support hash functions like set operations, ensure these align with primary key comparisons to ensure two identical records would match as such.
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id) == ((other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id)))
+        return (isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == ((other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path)))
 
     def __hash__(self):
-        return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id))
-
+        return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path))
 
 
 class IDistroMapper(object):

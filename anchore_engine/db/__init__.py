@@ -26,8 +26,11 @@ from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage
 from .entities.policy_engine import ImageGem
 from .entities.policy_engine import ImageNpm
+#from .entities.policy_engine import ImagePython
+#from .entities.policy_engine import ImageJava
 from .entities.policy_engine import ImageCpe
 from .entities.policy_engine import ImagePackageVulnerability
+#from .entities.policy_engine import ImageJavaVulnerability
 from .entities.policy_engine import FeedMetadata
 from .entities.policy_engine import FeedGroupMetadata
 from .entities.policy_engine import GenericFeedDataRecord

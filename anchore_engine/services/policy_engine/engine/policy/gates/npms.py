@@ -113,7 +113,7 @@ class PkgMatchTrigger(BaseTrigger):
         :param context:
         :return:
         """
-        npms = image_obj.npms
+        npms = image_obj.get_packages_by_type('npm')
         if not npms:
             return
 
@@ -170,10 +170,17 @@ class NpmCheckGate(Gate):
             :return:
             """
 
-            if not image_obj.npms:
+            db_npms = image_obj.get_packages_by_type('npm')
+            if not db_npms:
                 return context
 
-            context.data[NPM_LISTING_KEY] = {p.name: p.versions_json for p in image_obj.npms}
+            #context.data[NPM_LISTING_KEY] = {p.name: p.versions_json for p in image_obj.npms}
+            npm_listing_key_data = {}
+            for p in db_npms:
+                if p.name not in npm_listing_key_data:
+                    npm_listing_key_data[p.name] = []
+                npm_listing_key_data[p.name].append(p.version)
+            context.data[NPM_LISTING_KEY] = npm_listing_key_data
 
             npms = list(context.data[NPM_LISTING_KEY].keys())
             context.data[NPM_MATCH_KEY] = []

@@ -61,14 +61,14 @@ class LicensesGate(Gate):
         licenses = []
 
         # NPM handling, convert to list of tuples with a single license
-        for pkg_meta in image_obj.npms:
-            for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
-                licenses.append((pkg_meta.name + "(npm)", license))
+        #for pkg_meta in image_obj.npms:
+        #    for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
+        #        licenses.append((pkg_meta.name + "(npm)", license))
 
         # GEM handling, convert to a list of tuples with single license
-        for pkg_meta in image_obj.gems:
-            for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
-                licenses.append((pkg_meta.name + "(gem)", license))
+        #for pkg_meta in image_obj.gems:
+        #    for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
+        #        licenses.append((pkg_meta.name + "(gem)", license))
 
         for pkg in image_obj.packages:
             for lic in pkg.license.split():

@@ -5,8 +5,8 @@ import re
 import itertools
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.util.docker import parse_dockerimage_string
-from anchore_engine.services.policy_engine.engine.util.matcher import regexify, is_match
+from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.util.matcher import regexify, is_match
 from anchore_engine.services.policy_engine.engine.policy.formatting import policy_json_to_txt, whitelist_json_to_txt
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
 

@@ -15,9 +15,10 @@ import time
 
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
-from anchore_engine.db import FixedArtifact, Vulnerability, VulnerableArtifact, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
+from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
+from anchore_engine.util.semver import convert_langversionlist_to_semver
 
 log = get_logger()
 
@@ -252,6 +253,54 @@ class NvdFeedDataMapper(FeedDataMapper):
 
         return db_rec
 
+class SnykFeedDataMapper(FeedDataMapper):
+    """
+    Maps a Snyk record into an Vulnerability ORM object
+    """
+    def map(self, record_json):
+        if not record_json:
+            return None
+
+        # get the fundamental categories/ids
+        id = list(record_json.keys()).pop()
+        pkgvuln = record_json[id]
+        (group_name, nslang) = self.group.split(":", 2)
+
+        # create a new vulnerability record
+        db_rec = Vulnerability()
+
+        # primary keys
+        db_rec.namespace_name = self.group
+        db_rec.id = id
+
+        # severity calculation
+        db_rec.cvss2_score = pkgvuln.get('cvssScore')
+        #TODO this should be unversioned cvss information
+        db_rec.cvss2_vectors = pkgvuln.get('cvssV3')
+        db_rec.severity = db_rec.get_cvss_severity()
+
+        # other metadata
+        #db_rec.link = "https://snyk.io/vuln/{}".format(db_rec.id)
+        db_rec.link = pkgvuln.get('url')
+        db_rec.description = ""
+        db_rec.metadata_json = pkgvuln
+
+        # add fixed_in records
+        (semver_range, use_strict)= convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
+        sem_versions = semver_range.split(' || ')
+        for sem_version in sem_versions:
+            v_in = FixedArtifact()
+            v_in.name = pkgvuln.get("package")
+            v_in.version = sem_version
+            v_in.version_format = "semver" #"semver:{}".format(nslang)
+            v_in.epochless_version = v_in.version
+            v_in.vulnerability_id = db_rec.id
+            v_in.namespace_name = db_rec.namespace_name
+            db_rec.fixed_in.append(v_in)
+
+        return db_rec
+
+
 class VulnerabilityFeedDataMapper(FeedDataMapper):
     """  
     Maps a Vulnerability record:
@@ -320,7 +369,7 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
         else:
             db_rec.description = ""
         db_rec.fixed_in = []
-        db_rec.vulnerable_in = []
+        #db_rec.vulnerable_in = []
 
         db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
         cvss_data = vuln.get('Metadata', {}).get('NVD', {}).get('CVSSv2')
@@ -343,17 +392,17 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
 
                 db_rec.fixed_in.append(fix)
 
-        if 'VulnerableIn' in vuln:
-            for v in vuln['VulnerableIn']:
-                v_in = VulnerableArtifact()
-                v_in.name = v['Name']
-                v_in.version = v['Version']
-                v_in.version_format = v['VersionFormat']
-                v_in.epochless_version = re.sub(r'^[0-9]*:', '', v['Version'])
-                v_in.vulnerability_id = db_rec.id
-                v_in.namespace_name = self.group
-
-                db_rec.vulnerable_in.append(v_in)
+#        if 'VulnerableIn' in vuln:
+#            for v in vuln['VulnerableIn']:
+#                v_in = VulnerableArtifact()
+#                v_in.name = v['Name']
+#                v_in.version = v['Version']
+#                v_in.version_format = v['VersionFormat']
+#                v_in.epochless_version = re.sub(r'^[0-9]*:', '', v['Version'])
+#                v_in.vulnerability_id = db_rec.id
+#                v_in.namespace_name = self.group
+#
+#                db_rec.vulnerable_in.append(v_in)
 
         return db_rec
 
@@ -1047,14 +1096,14 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             log.debug('Fixed In records diff: {}'.format(fix_diff))
             return False
 
-        normalized_vulnin_a = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_a.vulnerable_in}
-        normalized_vulnin_b = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_b.vulnerable_in}
+        #normalized_vulnin_a = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_a.vulnerable_in}
+        #normalized_vulnin_b = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_b.vulnerable_in}
 
-        vulnin_diff = normalized_vulnin_a.symmetric_difference(normalized_vulnin_b)
+        #vulnin_diff = normalized_vulnin_a.symmetric_difference(normalized_vulnin_b)
 
-        if vulnin_diff:
-            log.debug('VulnIn records diff: {}'.format(vulnin_diff))
-            return False
+        #if vulnin_diff:
+        #    log.debug('VulnIn records diff: {}'.format(vulnin_diff))
+        #    return False
 
         return True
 
@@ -1103,8 +1152,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
         log.info('Flushed {} fix records'.format(count))
-        count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
-        log.info('Flushed {} vuln_in records'.format(count))
+        #count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
+        #log.info('Flushed {} vuln_in records'.format(count))
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
         log.info('Flushed {} vulnerability records'.format(count))
 
@@ -1267,6 +1316,42 @@ class NvdFeed(AnchoreServiceFeed):
         finally:
             db.rollback()
 
+#class SnykFeed(AnchoreServiceFeed):
+class SnykFeed(VulnerabilityFeed):
+    """
+    Feed for package data, served from the anchore feed service backend
+    """
+
+    __feed_name__ = 'snyk'
+    _cve_key = 'id'
+    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, SnykFeedDataMapper, _cve_key)
+
+#    def query_by_key(self, key, group=None):
+#        if not group:
+#            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
+#        db = get_session()
+#        try:
+#            return db.query(Vulnerability).get((key, group))
+#        except Exception as e:
+#            log.exception('Could not retrieve snyk vulnerability by key:')
+
+#    def _dedup_data_key(self, item):
+#        return item.id
+
+    def record_count(self, group_name):
+        db = get_session()
+        try:
+            if 'snyk' in group_name:
+                return db.query(Vulnerability).filter(Vulnerability.namespace_name == group_name).count()
+            else:
+                return 0
+        except Exception as e:
+            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
+        finally:
+            db.rollback()
+
+
 class FeedFactory(object):
     """
     Factory class for creating feed objects. Not necessary yet because we don't have any dynamically updated feeds such that we
@@ -1276,7 +1361,8 @@ class FeedFactory(object):
     override_mapping = {
         'vulnerabilities': VulnerabilityFeed,
         'packages': PackagesFeed,
-        'nvd': NvdFeed
+        'nvd': NvdFeed,
+        'snyk': SnykFeed,
     }
 
     default_mapping = AnchoreServiceFeed
@@ -1317,6 +1403,7 @@ class DataFeeds(object):
     _vulnerabilitiesFeed_cls = VulnerabilityFeed
     _packagesFeed_cls = PackagesFeed
     _nvdsFeed_cls = NvdFeed
+    _snyksFeed_cls = SnykFeed
 
     def __init__(self):
         self.vuln_fn = None
@@ -1357,6 +1444,8 @@ class DataFeeds(object):
             return self.packages.record_count(group_name)
         elif feed_name == 'nvd':
             return self.nvd.record_count(group_name)
+        elif feed_name == 'snyk':
+            return self.snyk.record_count(group_name)
         else:
             return 0
 
@@ -1383,6 +1472,12 @@ class DataFeeds(object):
             self.nvd.refresh_groups()
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
+        try:
+            self.snyk.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for snyk feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
 
     def sync(self, to_sync=None, full_flush=False):
         """
@@ -1418,8 +1513,16 @@ class DataFeeds(object):
                 log.exception('Failure updating the nvd feed.')
                 all_success = False
 
-        if not all_success:
-            raise Exception("one or more feeds failed to sync")
+        if to_sync is None or 'snyk' in to_sync:
+            try:
+                log.info('Syncing snyk feed')
+                updated_records['snyk'] = self.snyk.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
+            except:
+                log.exception('Failure updating the snyk feed.')
+                all_success = False
+
+            if not all_success:
+                raise Exception("one or more feeds failed to sync")
 
         return updated_records
 
@@ -1470,6 +1573,19 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
+        if to_sync is None or 'snyk' in to_sync:
+            if not only_if_unsynced or self.snyk.never_synced():
+                try:
+                    log.info('Syncing snyk feed')
+                    updated_records['snyk'] = self.snyk.bulk_sync()
+                except Exception as err:
+                    log.exception('Failure updating the snyk feed. Continuing with next feed')
+                    all_success = False
+
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
+
+
         if not all_success:
             raise Exception("one or more feeds failed to sync")
 
@@ -1486,3 +1602,7 @@ class DataFeeds(object):
     @property
     def nvd(self):
         return self._nvdsFeed_cls()
+
+    @property
+    def snyk(self):
+        return self._snyksFeed_cls()

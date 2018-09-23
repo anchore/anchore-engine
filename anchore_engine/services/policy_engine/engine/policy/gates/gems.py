@@ -113,7 +113,7 @@ class BlacklistedGemTrigger(BaseTrigger):
         :param context:
         :return:
         """
-        gems = image_obj.gems
+        gems = image_obj.get_packages_by_type('gem')
         if not gems:
             return
 
@@ -168,10 +168,20 @@ class GemCheckGate(Gate):
             :return:
             """
 
-            if not image_obj.gems:
+            db_gems = image_obj.get_packages_by_type('gem') 
+            if not db_gems:
                 return context
 
-            context.data[GEM_LIST_KEY] = {p.name: p.versions_json for p in image_obj.gems}
+            #context.data[GEM_LIST_KEY] = {p.name: p.versions_json for p in image_obj.gems}
+
+            # update to handle multiple records with the same version (but in different locations)
+            gem_list_key_data = {}
+            for p in db_gems:
+                if p.name not in gem_list_key_data:
+                    gem_list_key_data[p.name] = []
+                gem_list_key_data[p.name].append(p.version)
+
+            context.data[GEM_LIST_KEY] = gem_list_key_data
             context.data[GEM_MATCH_KEY] = []
             gems = list(context.data[GEM_LIST_KEY].keys())
 

@@ -24,6 +24,9 @@ super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
+os_package_types = ['rpm', 'dpkg', 'APKG']
+nonos_package_types = ['java', 'python', 'npm', 'gem', 'maven', 'js']
+
 
 def do_simple_pagination(input_items, page=1, limit=None, dosort=True, sortfunc=lambda x: x, query_digest="", ttl=0.0):
     page = int(page)

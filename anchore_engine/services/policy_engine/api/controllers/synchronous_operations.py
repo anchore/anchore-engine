@@ -142,6 +142,8 @@ def delete_image(user_id, image_id):
         if img:
             for pkg_vuln in img.vulnerabilities():
                 db.delete(pkg_vuln)
+            #for pkg_vuln in img.java_vulnerabilities():
+            #    db.delete(pkg_vuln)
             db.delete(img)
             db.commit()
         else:
@@ -339,6 +341,9 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 db.refresh(img)
             
             vulns = img.vulnerabilities()
+            #pvulns = img.vulnerabilities()
+            #jvulns = img.java_vulnerabilities()
+            #vulns = pvulns + jvulns
 
         # Has vulnerabilities?
         warns = []
@@ -419,8 +424,11 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 
+
+
         report = LegacyVulnerabilityReport.from_dict(vuln_listing)
         resp = ImageVulnerabilityListing(user_id=user_id, image_id=image_id, legacy_report=report, cpe_report=cpe_vuln_listing)
+
         return resp.to_dict()
     except HTTPException:
         db.rollback()

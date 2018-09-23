@@ -8,6 +8,7 @@ import zipfile
 from io import BytesIO
 
 import anchore_engine.analyzers.utils
+import anchore_engine.utils
 
 analyzer_name = "package_list"
 
@@ -25,7 +26,7 @@ outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
 
-def parse_properties(file):
+def parse_properties(filebuf):
     """
     Parses the given file using the Java properties file format.
     Lines beginning with # are ignored.
@@ -33,8 +34,8 @@ def parse_properties(file):
     :return: the properties in the file as a dictionary
     """
     props = {}
-    for line in file:
-        line = str(line, 'utf-8')
+    for line in filebuf.splitlines():
+        line = anchore_engine.utils.ensure_str(line)
         if not re.match("\s*(#.*)?$", line):
             kv = line.split('=')
             key = kv[0].strip()
@@ -94,7 +95,7 @@ def process_java_archive(prefix, filename, inZFH=None):
         if 'META-INF/MANIFEST.MF' in filenames:
             try:
                 with ZFH.open('META-INF/MANIFEST.MF', 'r') as MFH:
-                    top_el['metadata']['MANIFEST.MF'] = str(MFH.read(), 'utf-8')
+                    top_el['metadata']['MANIFEST.MF'] = anchore_engine.utils.ensure_str(MFH.read())
 
                 for line in (top_el['metadata']['MANIFEST.MF'].splitlines()):
                     try:
@@ -138,17 +139,42 @@ def process_java_archive(prefix, filename, inZFH=None):
                 sub_els += process_java_archive(location, archive, ZZFH)
 
         for pomprop in pomprops:
+            pom_el = {
+                'metadata': {},
+                'specification-version': "N/A",
+                'implementation-version': "N/A",
+                'maven-version': "N/A",
+                'origin': "N/A",
+                'location': top_el['location'],
+                'type': "java-" + str(jtype),
+                'name': "N/A"
+            }
             with ZFH.open(pomprop) as pomfile:
-                props = parse_properties(pomfile)
-                group = props.get('groupId')
+                pombuf = anchore_engine.utils.ensure_str(pomfile.read())
+                props = parse_properties(pombuf)
+
+                group = props.get('groupId', "N/A")
+                artifact = props.get('artifactId', "N/A")
+                mversion = props.get('version', "N/A")
+
+                addnew = False
+                if re.match("^{}.*".format(artifact), top_el['name']):
+                    the_el = top_el
+                else:
+                    the_el = pom_el
+                    the_el['location'] = ":".join([the_el['location'], artifact])
+                    addnew = True
+
+                the_el['metadata']['pom.properties'] = anchore_engine.utils.ensure_str(pombuf)
                 if group:
-                    top_el['origin'] = group
-                artifact = props.get('artifactId')
+                    the_el['origin'] = group
                 if artifact:
-                    top_el['name'] = artifact
-                mversion = props.get('version')
+                    the_el['name'] = artifact
                 if mversion:
-                    top_el['maven-version'] = mversion
+                    the_el['maven-version'] = mversion
+
+                if addnew:
+                    sub_els.append(the_el)
 
     except Exception as err:
         raise err
@@ -180,7 +206,6 @@ try:
     for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'file':
             prefix = '/'.join([unpackdir, 'rootfs'])
-            #els = process_java_archive(prefix, f.encode('utf8'))
             els = process_java_archive(prefix, f)
             if els:
                 for el in els:

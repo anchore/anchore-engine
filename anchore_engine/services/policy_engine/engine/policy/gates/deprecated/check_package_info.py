@@ -3,7 +3,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import NameVersionStringListParameter, \
     CommaDelimitedStringListParameter
 from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
-from anchore_engine.services.policy_engine.engine.util.packages import compare_package_versions
+from anchore_engine.util.packages import compare_package_versions
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 
 log = get_logger()

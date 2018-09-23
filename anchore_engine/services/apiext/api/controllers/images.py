@@ -173,65 +173,83 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'feed_group': 'None',
     }
 
+    osvulns = []
+    nonosvulns = []
+
+    keymap = {
+        'vuln': 'CVE_ID',
+        'severity': 'Severity',
+        'package': 'Vulnerable_Package',
+        'fix': 'Fix_Available',
+        'url': 'URL',
+        'package_type': 'Package_Type',
+        'feed': 'Feed',
+        'feed_group': 'Feed_Group',
+        'package_name': 'Package_Name',
+        'package_version': 'Package_Version',
+    }
+    scan_result = vulnerability_data['legacy_report']
+    try:
+        for imageId in list(scan_result.keys()):
+            header = scan_result[imageId]['result']['header']
+            rows = scan_result[imageId]['result']['rows']
+            for row in rows:
+                el = {}
+                el.update(eltemplate)
+                for k in list(keymap.keys()):
+                    try:
+                        el[k] = row[header.index(keymap[k])]
+                    except:
+                        el[k] = 'None'
+
+                    # conversions
+                    if el[k] == 'N/A':
+                        el[k] = 'None'
+
+                groupels = el.get('feed_group', "").split(":", 2)
+                if len(groupels) == 2 and groupels[0] in ['ubuntu', 'centos', 'alpine', 'debian']:
+                    osvulns.append(el)
+                else:
+                    nonosvulns.append(el)
+    except Exception as err:
+        logger.warn("could not prepare query response - exception: " + str(err))
+        ret = []
+
+    #non-os CPE search
+    keymap = {
+        'vuln': 'vulnerability_id',
+        'severity': 'severity',
+        'package_name': 'name',
+        'package_version': 'version',
+        'package_path': 'pkg_path',
+        'package_type': 'pkg_type',
+        'package_cpe': 'cpe',
+        'url': 'link',
+        'feed': 'feed_name',
+        'feed_group': 'feed_namespace',
+    }
+    scan_result = vulnerability_data['cpe_report']
+    for vuln in scan_result:
+        el = {}
+        el.update(eltemplate)
+
+        for k in list(keymap.keys()):
+            el[k] = vuln[keymap[k]]
+
+        el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+
+        nonosvulns.append(el)
+
+
+    #else:
+    #    ret = vulnerability_data
+
     if vulnerability_type == 'os':
-        keymap = {
-            'vuln': 'CVE_ID',
-            'severity': 'Severity',
-            'package': 'Vulnerable_Package',
-            'fix': 'Fix_Available',
-            'url': 'URL',
-            'package_type': 'Package_Type',
-            'feed': 'Feed',
-            'feed_group': 'Feed_Group',
-            'package_name': 'Package_Name',
-            'package_version': 'Package_Version',
-        }
-        scan_result = vulnerability_data['legacy_report']
-        try:
-            for imageId in list(scan_result.keys()):
-                header = scan_result[imageId]['result']['header']
-                rows = scan_result[imageId]['result']['rows']
-                for row in rows:
-                    el = {}
-                    el.update(eltemplate)
-                    for k in list(keymap.keys()):
-                        try:
-                            el[k] = row[header.index(keymap[k])]
-                        except:
-                            el[k] = 'None'
-
-                        # conversions
-                        if el[k] == 'N/A':
-                            el[k] = 'None'
-
-                    ret.append(el)
-        except Exception as err:
-            logger.warn("could not prepare query response - exception: " + str(err))
-            ret = []
+        ret = osvulns
     elif vulnerability_type == 'non-os':
-        keymap = {
-            'vuln': 'vulnerability_id',
-            'severity': 'severity',
-            'package_name': 'name',
-            'package_version': 'version',
-            'package_path': 'pkg_path',
-            'package_type': 'pkg_type',
-            'package_cpe': 'cpe',
-            'url': 'link',
-            'feed': 'feed_name',
-            'feed_group': 'feed_namespace',
-        }
-        scan_result = vulnerability_data['cpe_report']
-        for vuln in scan_result:
-            el = {}
-            el.update(eltemplate)
-
-            for k in list(keymap.keys()):
-                el[k] = vuln[keymap[k]]
-
-            el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
-
-            ret.append(el)
+        ret = nonosvulns
+    elif vulnability_type == 'all':
+        ret = osvulns + nonosvulns
     else:
         ret = vulnerability_data
 
@@ -412,7 +430,6 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                         ret = []
                         for vtype in anchore_engine.services.common.image_vulnerability_types:
                             ret = ret + make_response_vulnerability(vtype, resp.to_dict())
-                            #return_object[imageDigest] = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     else:
                         ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     return_object[imageDigest] = ret
