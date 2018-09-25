@@ -1,22 +1,74 @@
 import json
 import re
 from distutils.version import LooseVersion, StrictVersion
+from pkg_resources import parse_version
 
 from anchore_engine.subsys import logger
 
-def normalized_version_match(rawsemver, rawpkgver, use_strict=True):
+def language_compare(a, op, b, language='python'):
+    if op not in ['>', '<', '<=', '>=', '!=', '=', '==']:
+        raise Exception("unknown op {}".format(op))
+    elif not a or not b:
+        raise Exception("must supply valid inputs a={} op={} b={}".format(a, op, b))
+
+    zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
+
+    if language in ['java', 'maven']:
+        aoptions = [LooseVersion(a), parse_version(a)]
+        boptions = [LooseVersion(b), parse_version(b)]
+    elif language in ['ruby', 'gem']:
+        aoptions = [parse_version(a)]
+        boptions = [parse_version(b)]        
+    elif language in ['js', 'npm']:
+        aoptions = [parse_version(a)]
+        boptions = [parse_version(b)]        
+    elif language in ['python']:
+        aoptions = []
+        boptions = []
+        try:
+            aoptions = [StrictVersion(a), LooseVersion(a)]
+            boptions = [StrictVersion(b), LooseVersion(b)]
+        except:
+            aoptions = [LooseVersion(a), parse_version(a)]
+            boptions = [LooseVersion(b), parse_version(b)]
+    else:
+        raise Exception("language {} not supported for version comparison")
+
+    for i in range(0, len(aoptions)):
+        try:
+            if op == '>':
+                if b in zerolikes:
+                    return(True)
+                if aoptions[i] > boptions[i]:
+                    return(True)
+            elif op == '>=':
+                if b in zerolikes:
+                    return(True)
+                if aoptions[i] >= boptions[i]:
+                    return(True)
+            elif op == '<':
+                if b in zerolikes:
+                    return(False)
+                if aoptions[i] < boptions[i]:
+                    return(True)
+            elif op == '<=':
+                if aoptions[i] <= boptions[i]:
+                    return(True)
+            elif op in ['=', '==']:
+                if aoptions[i] == boptions[i]:
+                    return(True)
+            elif op == '!=':
+                if aoptions[i] != boptions[i]:
+                    return(True)
+        except Exception as err:
+            pass
+
+    return(False)
+
+def normalized_version_match(rawsemver, rawpkgver, language='python'):
     versionmatch = False
 
-    if use_strict:
-        try:
-            pkgver = StrictVersion(rawpkgver)
-        except ValueError:
-            use_strict = False
-            pkgver = LooseVersion(rawpkgver)
-    else:
-        pkgver = LooseVersion(rawpkgver)
-
-    vranges = rawsemver.split("||")
+    vranges = re.split(" *\|\| *", rawsemver)
     # or check
     inrange = False
     for vrange in vranges:
@@ -37,40 +89,10 @@ def normalized_version_match(rawsemver, rawpkgver, use_strict=True):
             if patt:
                 op,verraw = (patt.group(1), patt.group(2))
 
-                if use_strict:
-                    try:
-                        ver = StrictVersion(verraw)
-                    except ValueError:
-                        ver = LooseVersion(verraw)
-                else:
-                    ver = LooseVersion(verraw)
-
-                if op == '>':
-                    if not pkgver > ver:
-                        violation = True
-                        break
-                elif op == '>=':
-                    if not pkgver >= ver:
-                        violation = True
-                        break
-                elif op == '<':
-                    if not pkgver < ver:
-                        violation = True
-                        break
-                elif op == '<=':
-                    if not pkgver <= ver:
-                        violation = True
-                        break
-                elif op in ['=', '==']:
-                    if not pkgver == ver:
-                        violation = True
-                        break
-                elif op == '!=':
-                    if not pkgver != ver:
-                        violation = True
-                        break
-                else:
-                    raise Exception("unknown op {}".format(op))
+                inrange = language_compare(rawpkgver, op, verraw, language=language)
+                if not inrange:
+                    violation = True
+                    break
             else:
                 raise Exception("unknown range format {}".format(rangecheck))
 
@@ -82,10 +104,6 @@ def normalized_version_match(rawsemver, rawpkgver, use_strict=True):
     if inrange:
         versionmatch = True
 
-    #if (versionmatch):
-    #    print ("MATCHINFO MATCH:{} PKGVER:{}, ACTUAL:{}, ALL:{}".format(versionmatch, rawpkgver, rangematch, rawsemver))
-    #else:
-    #    print ("MATCHINFO MATCH:{} PKGVER:{}, ALL:{}".format(versionmatch, rawpkgver, rawsemver))
     return(versionmatch)
 
 def convert_mrange_to_srange(rawsemver):
@@ -103,6 +121,8 @@ def convert_mrange_to_srange(rawsemver):
 
             try:
                 startverraw, endverraw = patt.group(2).split(',', 2)
+                startverraw = re.sub(" *", "", startverraw)
+                endverraw = re.sub(" *", "", endverraw)
             except:
                 if startopraw == '[':
                     equalop = True
@@ -112,16 +132,10 @@ def convert_mrange_to_srange(rawsemver):
                     raise Exception("cannot handle range string {}".format(vrange))
                 startverraw = endverraw = patt.group(2)
 
-            if startverraw in ['0', '0.0', '0.0.0']:
-                startverraw = None
-
-            if endverraw in ['0', '0.0', '0.0.0']:
-                endverraw = None
-
             normal_range = []
-            if equalop:
+            if startverraw and equalop:
                 normal_range.append("=={}".format(startverraw))
-            elif nequalop:
+            elif startverraw and nequalop:
                 normal_range.append("!={}".format(startverraw))
             else:
                 if startverraw and startopraw == '[':
@@ -133,59 +147,47 @@ def convert_mrange_to_srange(rawsemver):
                     normal_range.append("<={}".format(endverraw))
                 elif endverraw and endopraw == ')':
                     normal_range.append("<{}".format(endverraw))
+
             normal_ranges.append(' '.join(normal_range))
 
     normal_semver = ' || '.join(normal_ranges)
     return(normal_semver)
 
 def convert_rrange_to_srange(rawsemver):
-    #toks = rawsemver.split(",")
     toks = re.split(", *", rawsemver)
     if len(toks) > 2:
         raise Exception("cannot handle range of len greater than 2")
     ret = " ".join(re.sub(' +', '', x) for x in toks)
-    #ret = "{} {}".format(re.sub(' +', '', start), re.sub(' +', '', end))
     return(ret)
 
 def convert_langversionlist_to_semver(versionlist, language):
-
-    use_strict = False
     semvers = []
-
     for version in versionlist:
         normal_semver = None
-        if language in ['python', 'maven', 'java']:
+        if language in ['python', 'maven', 'java', 'dotnet']:
             normal_semver = convert_mrange_to_srange(version)
-            if language == 'python':
-                use_strict = True
-            else:
-                use_strict = False
-        elif language in ['js', 'npm']:
+        elif language in ['js', 'npm', 'golang', 'go']:
             normal_semver = version
-            use_strict = False
-        elif language in ['ruby', 'gem']:
+        elif language in ['ruby', 'gem', 'php']:
             normal_semver = convert_rrange_to_srange(version)
-            use_strict = False
         else:
             pass
 
         if normal_semver:
             semvers.append(normal_semver)
 
-    normal_semver_range = ' || '.join(semvers)
-    return(normal_semver_range, use_strict)
+    if semvers:
+        normal_semver_range = ' || '.join(semvers)
+    else:
+        normal_semver_range = '*'
+    
+    return(normal_semver_range)
 
-def compare_versions(rawsemver, rawpkgver, language=None):
+def compare_versions(rawsemver, rawpkgver, language='python'):
     ret = False
     versionmatch = False
-    use_strict = False
-
-    if language in ['python']:
-        use_strict = True
-    else:
-        use_strict = False
 
     normal_semver = rawsemver
-    ret = normalized_version_match(normal_semver, rawpkgver, use_strict=use_strict)
+    ret = normalized_version_match(normal_semver, rawpkgver, language=language)
     return(ret)
 

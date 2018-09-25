@@ -257,6 +257,8 @@ class SnykFeedDataMapper(FeedDataMapper):
     """
     Maps a Snyk record into an Vulnerability ORM object
     """
+    _supported_nslangs = ['java', 'js', 'ruby', 'python']
+
     def map(self, record_json):
         if not record_json:
             return None
@@ -265,6 +267,9 @@ class SnykFeedDataMapper(FeedDataMapper):
         id = list(record_json.keys()).pop()
         pkgvuln = record_json[id]
         (group_name, nslang) = self.group.split(":", 2)
+
+        #if nslang not in self._supported_nslangs:
+        #    return(None)
 
         # create a new vulnerability record
         db_rec = Vulnerability()
@@ -286,7 +291,7 @@ class SnykFeedDataMapper(FeedDataMapper):
         db_rec.metadata_json = pkgvuln
 
         # add fixed_in records
-        (semver_range, use_strict)= convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
+        semver_range = convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
         sem_versions = semver_range.split(' || ')
         for sem_version in sem_versions:
             v_in = FixedArtifact()
@@ -745,7 +750,8 @@ class AnchoreServiceFeed(DataFeed):
             pages += 1
             for x in new_data:
                 mapped = mapper.map(x)
-                new_data_deduped[self._dedup_data_key(mapped)] = mapped
+                if mapped:
+                    new_data_deduped[self._dedup_data_key(mapped)] = mapped
 
             new_data = None
             log.debug('Page = {}, new_data = {}, next_token = {}'.format(pages, bool(new_data), bool(next_token), max_pages))
