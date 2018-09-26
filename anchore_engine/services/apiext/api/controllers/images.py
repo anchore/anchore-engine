@@ -188,6 +188,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'package_name': 'Package_Name',
         'package_version': 'Package_Version',
     }
+    id_cves_map = {}
     scan_result = vulnerability_data['legacy_report']
     try:
         for imageId in list(scan_result.keys()):
@@ -211,6 +212,12 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     osvulns.append(el)
                 else:
                     nonosvulns.append(el)
+
+                if row[header.index('CVES')]:
+                    #id_cves_map[el.get('vuln')] = row[header.index('CVES')].split()
+                    for cve in row[header.index('CVES')].split():
+                        id_cves_map[cve] = el.get('vuln')
+
     except Exception as err:
         logger.warn("could not prepare query response - exception: " + str(err))
         ret = []
@@ -240,16 +247,25 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
 
         nonosvulns.append(el)
 
+    # perform a de-dup pass
+    final_nonosvulns = []
+    for v in nonosvulns:
+        include = True
+        try:
+            if v.get('vuln') in id_cves_map:
+                include = False
+        except Exception as err:
+            logger.warn("failure during vulnerability dedup check: {}".format(str(err)))
 
-    #else:
-    #    ret = vulnerability_data
+        if include:
+            final_nonosvulns.append(v)
 
     if vulnerability_type == 'os':
         ret = osvulns
     elif vulnerability_type == 'non-os':
-        ret = nonosvulns
+        ret = final_nonosvulns
     elif vulnability_type == 'all':
-        ret = osvulns + nonosvulns
+        ret = osvulns + final_nonosvulns
     else:
         ret = vulnerability_data
 
@@ -426,12 +442,13 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                 client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
                 resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
                 if doformat:
-                    if vulnerability_type == 'all':
-                        ret = []
-                        for vtype in anchore_engine.services.common.image_vulnerability_types:
-                            ret = ret + make_response_vulnerability(vtype, resp.to_dict())
-                    else:
-                        ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
+                    ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
+                    #if vulnerability_type == 'all':
+                    #    ret = []
+                    #    for vtype in anchore_engine.services.common.image_vulnerability_types:
+                    #        ret = ret + make_response_vulnerability(vtype, resp.to_dict())
+                    #else:
+                    #    ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     return_object[imageDigest] = ret
                 else:
                     return_object[imageDigest] = resp.to_dict()

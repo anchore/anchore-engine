@@ -40,7 +40,7 @@ from anchore_engine.subsys import logger as log
 import anchore_engine.subsys.metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
-TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version']
+TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version', 'CVES']
 
 # Toggle of lock usage, primarily for testing and debugging usage
 feed_sync_locking_enabled = True
@@ -341,9 +341,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 db.refresh(img)
             
             vulns = img.vulnerabilities()
-            #pvulns = img.vulnerabilities()
-            #jvulns = img.java_vulnerabilities()
-            #vulns = pvulns + jvulns
 
         # Has vulnerabilities?
         warns = []
@@ -356,16 +353,13 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         rows = []
         for vuln in vulns:
-            # if vuln.vulnerability.fixed_in:
-            #     fixes_in = filter(lambda x: x.name == vuln.pkg_name or x.name == vuln.package.normalized_src_pkg,
-            #            vuln.vulnerability.fixed_in)
-            #     fix_available_in = fixes_in[0].version if fixes_in else 'None'
-            # else:
-            #     fix_available_in = 'None'
-
             # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
             if vendor_only and vuln.fix_has_no_advisory():
                 continue
+
+            cves = ''
+            if vuln.vulnerability.metadata_json:
+                cves = ' '.join(vuln.vulnerability.metadata_json.get('cves', []))
 
             rows.append([
                 vuln.vulnerability_id,
@@ -381,6 +375,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 vuln.vulnerability.namespace_name,
                 vuln.pkg_name,
                 vuln.package.fullversion,
+                cves,
                 ]
             )
 
