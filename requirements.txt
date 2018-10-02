@@ -37,4 +37,3 @@ python-swiftclient
 python-keystoneclient
 pytz
 certifi
-pytest
