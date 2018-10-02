@@ -264,7 +264,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         ret = osvulns
     elif vulnerability_type == 'non-os':
         ret = final_nonosvulns
-    elif vulnability_type == 'all':
+    elif vulnerability_type == 'all':
         ret = osvulns + final_nonosvulns
     else:
         ret = vulnerability_data
@@ -443,12 +443,6 @@ def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
                 resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
                 if doformat:
                     ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
-                    #if vulnerability_type == 'all':
-                    #    ret = []
-                    #    for vtype in anchore_engine.services.common.image_vulnerability_types:
-                    #        ret = ret + make_response_vulnerability(vtype, resp.to_dict())
-                    #else:
-                    #    ret = make_response_vulnerability(vulnerability_type, resp.to_dict())
                     return_object[imageDigest] = ret
                 else:
                     return_object[imageDigest] = resp.to_dict()

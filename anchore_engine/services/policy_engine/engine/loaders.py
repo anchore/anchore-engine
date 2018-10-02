@@ -546,7 +546,11 @@ class ImageLoader(object):
             np = ImagePackage()
             # primary keys
             np.name = n.name
-            np.version = n.versions_json[0]
+            if len(n.versions_json): 
+                version = n.versions_json[0]
+            else:
+                version = "N/A"
+            np.version = version
             np.pkg_type = 'npm'
             np.arch = 'N/A'
             np.image_user_id = n.image_user_id
@@ -593,7 +597,11 @@ class ImageLoader(object):
             np = ImagePackage()
             # primary keys
             np.name = n.name
-            np.version = n.versions_json[0]
+            if len(n.versions_json):
+                version = n.versions_json[0]
+            else:
+                version = "N/A"
+            np.version = version
             np.pkg_type = 'gem'
             np.arch = 'N/A'
             np.image_user_id = n.image_user_id
@@ -642,10 +650,13 @@ class ImageLoader(object):
             n.fullversion = n.version
             n.license = pkg_json.get('license')
             n.origin = pkg_json.get('origin')
-            n.metadata_json = {
+            
+            m = {
                 'python_distribution_metadata': pkg_json.get('metadata'),
                 'files': pkg_json.get('files')
             }
+            n.metadata_json = m
+
             fullname = n.name
             n.normalized_src_pkg = fullname
             n.src_pkg = fullname
@@ -690,8 +701,10 @@ class ImageLoader(object):
             n.distro_version = 'N/A'
             n.like_distro = 'java'
             n.fullversion = n.version
-            n.metadata_json = pkg_json.get('metadata')
-            n.metadata_json['java_versions'] = versions_json
+
+            m = pkg_json.get('metadata')
+            m['java_versions'] = versions_json
+            n.metadata_json = m
 
             fullname = n.name
             pomprops = n.get_pom_properties()

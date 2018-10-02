@@ -358,8 +358,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 continue
 
             cves = ''
-            if vuln.vulnerability.metadata_json:
-                cves = ' '.join(vuln.vulnerability.metadata_json.get('cves', []))
+            if vuln.vulnerability.additional_metadata:
+                cves = ' '.join(vuln.vulnerability.additional_metadata.get('cves', []))
 
             rows.append([
                 vuln.vulnerability_id,

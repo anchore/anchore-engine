@@ -168,13 +168,27 @@ class Vulnerability(Base):
     @property
     def additional_metadata(self):
         if self.metadata_json:
-            return json.loads(self.metadata_json)
-        else:
-            return None
+            if isinstance(self.metadata_json, str):
+                return(json.loads(self.metadata_json))
+            return(self.metadata_json)
+        return(None)
+        #if self.metadata_json:
+        #    return json.loads(self.metadata_json)
+        #else:
+        #    return None
 
     @additional_metadata.setter
     def additional_metadata(self, value):
-        self.metadata_json = json.dumps(value)
+        m = {}
+        if value:
+            if isinstance(value, str):
+                m = json.loads(value)
+            elif isinstance(value, dict):
+                m.update(value)
+            else:
+                m = {'metadata': value}
+        self.metadata_json = m
+        #self.metadata_json = json.dumps(value)
 
     def __repr__(self):
         return '<{} id={}, namespace_name={}, severity={}, created_at={}>'.format(self.__class__, self.id, self.namespace_name, self.severity,

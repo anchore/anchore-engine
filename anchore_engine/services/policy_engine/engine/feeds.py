@@ -288,7 +288,8 @@ class SnykFeedDataMapper(FeedDataMapper):
         #db_rec.link = "https://snyk.io/vuln/{}".format(db_rec.id)
         db_rec.link = pkgvuln.get('url')
         db_rec.description = ""
-        db_rec.metadata_json = pkgvuln
+        db_rec.additional_metadata = pkgvuln
+        #db_rec.metadata_json = pkgvuln
 
         # add fixed_in records
         semver_range = convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
@@ -376,7 +377,8 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
         db_rec.fixed_in = []
         #db_rec.vulnerable_in = []
 
-        db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
+        #db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
+        db_rec.additional_metadata = vuln.get('Metadata', {})
         cvss_data = vuln.get('Metadata', {}).get('NVD', {}).get('CVSSv2')
         if cvss_data:
             db_rec.cvss2_vectors = cvss_data.get('Vectors')
