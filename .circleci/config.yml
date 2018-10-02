@@ -32,7 +32,7 @@ jobs:
   unit_tests:
     working_directory: ~/build/anchore-engine
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:2.7
       - image: circleci/postgres:9.6
     steps:
       - checkout
@@ -45,7 +45,7 @@ jobs:
           name: install dependencies
           command: |
             pip install --upgrade pip
-            python3 -m venv venv
+            python -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
             pip install pytest
