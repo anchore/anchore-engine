@@ -172,6 +172,7 @@ workflows:
             branches:
               only:
                 - master
+                - "0.2"
       - build:
           requires:
             - unit_tests
