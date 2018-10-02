@@ -46,19 +46,19 @@ jobs:
           command: |
             pip install --upgrade pip
             #python -m venv venv
-            virtualenv ./venv
-            . venv/bin/activate
+            virtualenv ~/venv
+            . ~/venv/bin/activate
             pip install -r requirements.txt
             pip install pytest
             pip install .
       - save_cache:
           paths:
-            - ./venv
+            - ~/venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
+            . ~/venv/bin/activate
             pytest test/ &> test-reports.log
       - store_artifacts:
           path: test-reports.log
