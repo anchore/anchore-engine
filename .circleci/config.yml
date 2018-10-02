@@ -30,6 +30,7 @@ var_2: &attach_workspace
 version: 2
 jobs:
   unit_tests:
+    working_directory: ~/build/anchore-engine
     docker:
       - image: circleci/python:3.6
       - image: circleci/postgres:9.6
@@ -47,6 +48,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
+            pip install .
       - save_cache:
           paths:
             - ./venv
@@ -55,9 +57,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pip install .
-            cd test/
-            python -m unittest -v >> test-reports.log
+            pytest test/ &> test-reports.log
       - store_artifacts:
           path: test-reports.log
           destination: test-reports.log
@@ -166,6 +166,12 @@ workflows:
   version: 2
   default_workflow:
     jobs:
+      - unit_tests:
+          filters:
+            branches:
+              only:
+                - master
+                - "0.2"
       - build:
           filters:
             branches:
