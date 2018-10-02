@@ -45,7 +45,8 @@ jobs:
           name: install dependencies
           command: |
             pip install --upgrade pip
-            python -m venv venv
+            #python -m venv venv
+            virtualenv ./venv
             . venv/bin/activate
             pip install -r requirements.txt
             pip install pytest
