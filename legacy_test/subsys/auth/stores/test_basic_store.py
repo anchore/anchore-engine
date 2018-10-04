@@ -1,10 +1,12 @@
 import json
 import unittest
+from anchore_engine.db import session_scope
 from anchore_engine.subsys import identities
 from anchore_engine.subsys.identities import AccountTypes, UserAccessCredentialTypes
 from anchore_engine.subsys.auth.stores import basic as basic_accountstore
 from yosai.core import UsernamePasswordToken, DefaultPermission
 from passlib.context import CryptContext
+
 
 class TestBasicStore(unittest.TestCase):
     """
@@ -58,23 +60,25 @@ class TestBasicStore(unittest.TestCase):
 
     def test_account_store(self):
         cc = CryptContext(schemes=['argon2'])
-        accnt = identities.create_account(account_name='account1', account_type=AccountTypes.user, email='someemail', creator='test1')
-        user1 = identities.create_user(account_name=accnt['name'], username='testuser1', creator_name='test1',
-                                       password='password123')
-        print('user 1: {}'.format(user1))
 
-        user2 = identities.create_user(account_name=accnt['name'], username='testuser2', creator_name='test1',
-                                       password='password123')
-        print('user 2: {}'.format(user2))
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            accnt = mgr.create_account(account_name='account1', account_type=AccountTypes.user, email='someemail', creator='test1')
+            user1 = mgr.create_user(account_name=accnt['name'], username='testuser1', creator_name='test1',
+                                           password='password123')
+            print('user 1: {}'.format(user1))
 
-        accnt2 = identities.create_account(account_name='admin1', account_type=AccountTypes.admin, email='someemail',
-                                           creator='test1')
-        user3 = identities.create_user(account_name=accnt2['name'], username='admin1', creator_name='test1',
-                                       password='password123')
-        print('user 3: {}'.format(user3))
+            user2 = mgr.create_user(account_name=accnt['name'], username='testuser2', creator_name='test1',
+                                           password='password123')
+            print('user 2: {}'.format(user2))
 
+            accnt2 = mgr.create_account(account_name='admin1', account_type=AccountTypes.admin, email='someemail',
+                                               creator='test1')
+            user3 = mgr.create_user(account_name=accnt2['name'], username='admin1', creator_name='test1',
+                                           password='password123')
+            print('user 3: {}'.format(user3))
 
-        store = basic_accountstore.BasicAccountStore()
+        store = basic_accountstore.DbAccountStore()
 
         # Authc stuff
         token = UsernamePasswordToken(username='testuser1',

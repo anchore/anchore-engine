@@ -1,7 +1,7 @@
 import unittest
 from anchore_engine.db import session_scope, AccountTypes, UserAccessCredentialTypes
 from anchore_engine.subsys import identities
-
+from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME
 
 class TestIdentities(unittest.TestCase):
     """
@@ -48,24 +48,30 @@ class TestIdentities(unittest.TestCase):
         cls.init_db()
 
     def tearDown(self):
-        for accnt in identities.list_accounts():
-            print('Deleting accnt: {}'.format(accnt))
-            identities.delete_account(accnt['name'])
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            for accnt in mgr.list_accounts():
+                print('Deleting accnt: {}'.format(accnt))
+                mgr.delete_account(accnt['name'])
 
     def test_initialize_identities(self):
         with session_scope() as session:
-            identities.initialize_system_identities(session=session)
-
-        accnt1 = identities.get_account(identities.system_username)
-        print(accnt1)
-        self.assertEqual(AccountTypes.service, accnt1['type'])
+            bootstrapper = identities.IdentityBootstrapper(identities.IdentityManager, session)
+            bootstrapper.initialize_system_identities()
 
         with session_scope() as session:
-            user1, creds1 = identities.get_credentials_for_username(session, identities.system_username)
+            mgr = identities.manager_factory.for_session(session)
+            accnt1 = mgr.get_account(SYSTEM_ACCOUNT_NAME)
+            print(accnt1)
+            self.assertEqual(AccountTypes.service, accnt1['type'])
+
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            user1, creds1 = mgr.get_credentials_for_username(SYSTEM_ACCOUNT_NAME)
+
         print(creds1)
         self.assertIsNotNone(user1)
         self.assertIsNotNone(creds1)
-        self.assertEquals(UserAccessCredentialTypes.password, creds1)
 
     def test_initialize_users(self):
         test_creds = {
@@ -82,21 +88,33 @@ class TestIdentities(unittest.TestCase):
         }
 
         with session_scope() as session:
-            identities.initialize_user_identities_from_config(session, config_credentials=test_creds)
+            bootstrapper = identities.IdentityBootstrapper(identities.IdentityManager, session)
+            bootstrapper.initialize_user_identities_from_config(test_creds)
 
-        accnt1 = identities.get_account('user1')
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            accnt1 = mgr.get_account('user1')
+
         print(accnt1)
         self.assertIsNotNone(accnt1)
+
         with session_scope() as session:
-            user1, cred1 = identities.get_credentials_for_username(session, 'user1')
+            mgr = identities.manager_factory.for_session(session)
+            user1, cred1 = mgr.get_credentials_for_username('user1')
+
         print(cred1)
         self.assertIsNotNone(cred1)
 
-        accnt2 = identities.get_account('user2')
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            accnt2 = mgr.get_account('user2')
+
         print(accnt2)
         self.assertIsNotNone(accnt2)
         with session_scope() as session:
-            user2, cred2 = identities.get_credentials_for_username(session, 'user2')
+            mgr = identities.manager_factory.for_session(session)
+            user2, cred2 = mgr.get_credentials_for_username('user2')
+
         print(cred2)
         self.assertIsNotNone(cred2)
 
@@ -108,15 +126,18 @@ class TestIdentities(unittest.TestCase):
             ('system_account1', 'user3', AccountTypes.user)
         ]
 
-        for account_name, user_name, account_type in fixtures:
-            identities.create_account(account_name=account_name, account_type=account_type, creator='test0', email='blah')
-            accnt = identities.get_account(account_name)
-            self.assertIsNotNone(accnt)
-            self.assertEqual(account_type, accnt['type'])
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
 
-            identities.create_user(username=user_name, account_name=account_name, creator_name='test0', password='password123')
-            usr = identities.get_user(user_name)
-            self.assertIsNotNone(usr)
-            self.assertEqual(account_name, usr['account_name'])
+            for account_name, user_name, account_type in fixtures:
+                mgr.create_account(account_name=account_name, account_type=account_type, creator='test0', email='blah')
+                accnt = mgr.get_account(account_name)
+                self.assertIsNotNone(accnt)
+                self.assertEqual(account_type, accnt['type'])
+
+                mgr.create_user(username=user_name, account_name=account_name, creator_name='test0', password='password123')
+                usr = mgr.get_user(user_name)
+                self.assertIsNotNone(usr)
+                self.assertEqual(account_name, usr['account_name'])
 
 
