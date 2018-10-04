@@ -10,8 +10,6 @@ from anchore_engine.db import User
 
 
 def add(userId, password, inobj, session=None):
-    raise NotImplementedError()
-
     if not session:
         session = db.Session()
     
@@ -33,8 +31,6 @@ def add(userId, password, inobj, session=None):
     return(True)
 
 def get_all(session=None):
-    raise NotImplementedError()
-
     if not session:
         session = db.Session()
 
@@ -49,8 +45,6 @@ def get_all(session=None):
     return(ret)
 
 def get(userId, session=None):
-    raise NotImplementedError()
-
     if not session:
         session = db.Session()
 
@@ -65,13 +59,9 @@ def get(userId, session=None):
     return(ret)
 
 def update(userId, password, inobj, session=None):
-    raise NotImplementedError()
-
     return(add(userId, password, inobj, session=session))
 
 def delete(userId, session=None):
-    raise NotImplementedError()
-
     if not session:
         session = db.Session()
 
