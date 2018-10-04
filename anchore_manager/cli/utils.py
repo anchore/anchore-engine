@@ -7,6 +7,7 @@ import time
 import yaml
 import urllib.request, urllib.parse, urllib.error
 import logging
+import copy
 import dateutil.parser
 
 from prettytable import PrettyTable, PLAIN_COLUMNS
@@ -121,7 +122,11 @@ def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_
     return(ret)
 
 def connect_database(config, db_params, db_retries=1):
-    logger.info("DB params: {}".format(json.dumps(db_params)))
+    # db_connect can have secrets - remove them before logging
+    loggable_db_params = copy.deepcopy(db_params)
+    del loggable_db_params['db_connect']
+    logger.info("DB params: {}".format(json.dumps(loggable_db_params)))
+
     rc = anchore_engine.db.entities.common.do_connect(db_params)
     logger.info("DB connection configured: {}".format(str(rc)))
 
