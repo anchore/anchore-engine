@@ -707,7 +707,7 @@ def query_images_by_package(dbsession, request_inputs):
         httpcode = 200
     except Exception as err:
         log.error("{}".format(err))
-        return_object = anchore_engine.apis.make_response_error(err, in_httpcode=httpcode)        
+        return_object = make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -817,7 +817,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
 
     except Exception as err:
         log.error("{}".format(err))
-        return_object = anchore_engine.apis.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -873,7 +873,6 @@ def query_vulnerabilities(dbsession, request_inputs):
 
         vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
         if vulnerabilities:
-            vulnerability_exists = True
             for vulnerability in vulnerabilities:
                 namespace_el = {}
                 namespace_el.update(return_el_template)
@@ -898,10 +897,6 @@ def query_vulnerabilities(dbsession, request_inputs):
 
                 if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
                     return_object.append(namespace_el)
-        
-        if not vulnerability_exists:
-            httpcode = 404
-            raise Exception("no vulnerability with id {} found loaded in anchore-engine".format(id))
 
         httpcode = 200
             
