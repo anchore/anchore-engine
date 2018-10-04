@@ -1,11 +1,12 @@
-from .entities.common import session_scope, Session, initialize
-from .entities.common import get_thread_scoped_session, end_session
+from .entities.common import session_scope
+from .entities.common import initialize
+from .entities.common import get_thread_scoped_session
+from .entities.common import end_session, get_session
 
 from .entities.catalog import Anchore
 from .entities.catalog import ArchiveDocument
 from .entities.catalog import CatalogImage
 from .entities.catalog import CatalogImageDocker
-#from .entities.catalog import CatalogRepoTag
 from .entities.catalog import Event
 from .entities.catalog import PolicyBundle
 from .entities.catalog import PolicyEval
@@ -19,6 +20,8 @@ from .entities.catalog import User
 from .entities.catalog import Lease
 from .entities.catalog import ArchiveMetadata
 from .entities.catalog import ObjectStorageRecord
+from anchore_engine.db.entities.identity import AccountTypes, Account, AccountUser, \
+    UserAccessCredentialTypes, AccessCredential
 
 from .entities.tasks import Task, ArchiveMigrationTask
 
@@ -46,3 +49,7 @@ from .entities.policy_engine import NvdMetadata
 from .entities.policy_engine import CpeVulnerability
 from .entities.policy_engine import AnalysisArtifact
 from .entities.policy_engine import ImagePackageManifestEntry
+
+
+def Session():
+    return get_session()

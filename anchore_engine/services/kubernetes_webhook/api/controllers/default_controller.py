@@ -2,13 +2,22 @@ import json
 
 import connexion
 
-from anchore_engine.clients import catalog
+from anchore_engine.apis.authorization import get_authorizer, Permission, RequestingAccountValue
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.clients.services.catalog import CatalogClient
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-import anchore_engine.services.common
+import anchore_engine.common
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.identities import manager_factory
+from anchore_engine.db import session_scope
 
+
+authorizer = get_authorizer()
+
+
+@authorizer.requires([])
 def status():
     try:
         service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
@@ -20,6 +29,8 @@ def status():
 
     return(return_object, httpcode)
 
+
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action='getPolicyEvaluation', target='*')])
 def imagepolicywebhook(bodycontent):
 
     # TODO - while the image policy webhook feature is in k8s beta, we've decided to make any errors that occur during check still respond with 'allowed: True'.  This should be reverted to default to 'False' on any error, once the k8s feature is further along
@@ -35,7 +46,7 @@ def imagepolicywebhook(bodycontent):
     httpcode = 200
 
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
         user_auth = request_inputs['auth']
         method = request_inputs['method']
@@ -75,15 +86,20 @@ def imagepolicywebhook(bodycontent):
                 # that we can switch roles?
                 localconfig = anchore_engine.configuration.localconfig.get_config()
                 system_user_auth = localconfig['system_user_auth']
-                user_record = catalog.get_user(system_user_auth, requestUserId)
-                request_user_auth = (user_record['userId'], user_record['password'])
+
+                # TODO: zhill This is bad, this is identity switching, need to resolve (this is not a change to previous behavior, but that behavior was bad)
+                with session_scope() as dbsession:
+                    mgr = manager_factory.for_session(dbsession)
+                    request_user_auth = mgr.get_credentials_for_userid(requestUserId)
+
+                catalog = CatalogClient(user=request_user_auth[0], password=request_user_auth[1], as_account=requestUserId if requestUserId else ApiRequestContextProxy.effective_account())
 
                 reason = "all images passed anchore policy checks"
                 final_action = False
                 for el in incoming['spec']['containers']:
                     image = el['image']
                     logger.debug("found image in request: " + str(image))
-                    image_records = catalog.get_image(request_user_auth, tag=image)
+                    image_records = catalog.get_image(tag=image)
                     if not image_records:
                         raise Exception("could not find requested image ("+str(image)+") in anchore service DB")
 
@@ -92,7 +108,7 @@ def imagepolicywebhook(bodycontent):
 
                         for image_detail in image_record['image_detail']:
                             fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ':' + image_detail['tag']
-                            result = catalog.get_eval_latest(request_user_auth, tag=fulltag, imageDigest=imageDigest, policyId=requestPolicyId)
+                            result = catalog.get_eval_latest(tag=fulltag, imageDigest=imageDigest, policyId=requestPolicyId)
                             if result:
                                 httpcode = 200
                                 if result['final_action'].upper() not in ['GO', 'WARN']:

@@ -3,20 +3,21 @@ Base types for all anchore engine services
 """
 
 import copy
-import enum
-
 import connexion
+import enum
 from pathlib import Path
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
-from anchore_engine import monitors
-from anchore_engine.db import db_services, session_scope, initialize as initialize_db
-from anchore_engine.services.common import get_system_user_auth
+from flask import g
 
 import time
 import threading
 import traceback
 
+from anchore_engine.configuration import localconfig
+from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
+from anchore_engine import monitors
+from anchore_engine.db import db_services, session_scope, initialize as initialize_db
+from anchore_engine.subsys.identities import manager_factory
+from anchore_engine.apis.authorization import init_authz_handler
 
 class LifeCycleStages(enum.IntEnum):
     """
@@ -60,10 +61,11 @@ class BaseService(object):
     versioned api - /vX/...
 
     Services have similar bootstrap and initialization path:
-    create() - creates the configs and internal structures to initialize
-    initialize() - config parsing, validation, and checks, and db connect
-    register() - registration of the service in the db
-    start() - starts the monitor thread(s) and any apis
+    self.configure() - load config
+    self.db_connect() - setup db connections
+    self.credential_init() - load system credentials
+    self.bootstrap() - service-specific bootstrap that involves db and maybe other services
+    self.register() - register the service in the db for discoverability
 
     These are all invoked in order from the bootstrap() function directly.
 
@@ -85,9 +87,9 @@ class BaseService(object):
     __service_api_version__ = 'v1'
     __lifecycle_handlers__ = {}
 
-    def __init__(self, options={}):
+    def __init__(self, options=None):
         self.name = self.__service_name__
-        self.options = options
+        self.options = options if options is not None else {}
         self.global_configuration = None
         self.requires_db = None
         self.require_system_user = None
@@ -117,7 +119,7 @@ class BaseService(object):
         """
         return
 
-    def _stage_process(self, stage):
+    def _process_stage_handlers(self, stage):
         logger.info('Processing init handlers for bootsrap stage: {}'.format(stage.name))
         handlers = self.lifecycle_handlers.get(stage, [])
         logger.debug('Executing {} stage {} handlers'.format(len(handlers), stage.name))
@@ -163,9 +165,9 @@ class BaseService(object):
         return global_config['services'][self.__service_name__]
 
     def configure(self):
-        self._stage_process(LifeCycleStages.pre_config)
+        self._process_stage_handlers(LifeCycleStages.pre_config)
         self._configure()
-        self._stage_process(LifeCycleStages.post_config)
+        self._process_stage_handlers(LifeCycleStages.post_config)
 
     def _configure(self):
         """
@@ -204,9 +206,9 @@ class BaseService(object):
         logger.info('Configuration complete')
 
     def db_connect(self):
-        self._stage_process(LifeCycleStages.pre_db)
+        self._process_stage_handlers(LifeCycleStages.pre_db)
         self._db_connect()
-        self._stage_process(LifeCycleStages.post_db)
+        self._process_stage_handlers(LifeCycleStages.post_db)
 
     def _db_connect(self):
         """
@@ -229,9 +231,9 @@ class BaseService(object):
         logger.info('DB connection initialization complete')
 
     def credential_init(self):
-        self._stage_process(LifeCycleStages.pre_credentials)
+        self._process_stage_handlers(LifeCycleStages.pre_credentials)
         self._credential_init()
-        self._stage_process(LifeCycleStages.post_credentials)
+        self._process_stage_handlers(LifeCycleStages.post_credentials)
 
     def _credential_init(self):
         logger.info('Bootstrapping credentials')
@@ -243,20 +245,21 @@ class BaseService(object):
             gotauth = False
             max_retries = 60
             for count in range(1, max_retries):
-                if gotauth:
-                    continue
                 try:
                     with session_scope() as dbsession:
-                        self.global_configuration['system_user_auth'] = get_system_user_auth(session=dbsession)
+                        mgr = manager_factory.for_session(dbsession)
+                        self.global_configuration['system_user_auth'] = mgr.get_system_credentials()
+
                     if self.global_configuration['system_user_auth'] != (None, None):
                         gotauth = True
+                        break
                     else:
                         logger.error('cannot get system user auth credentials yet, retrying (' + str(count) + ' / ' + str(max_retries) + ')')
                         time.sleep(5)
                 except Exception as err:
-                    logger.error(
-                        'cannot get system-user auth credentials - service may not have system level access')
+                    logger.exception('cannot get system-user auth credentials - service may not have system level access')
                     self.global_configuration['system_user_auth'] = (None, None)
+                    gotauth = False
 
             if not gotauth:
                 raise Exception('service requires system user auth to start')
@@ -264,9 +267,9 @@ class BaseService(object):
         logger.info('Credential initialization complete')
 
     def bootstrap(self):
-        self._stage_process(LifeCycleStages.pre_bootstrap)
+        self._process_stage_handlers(LifeCycleStages.pre_bootstrap)
         self._bootstrap()
-        self._stage_process(LifeCycleStages.post_bootstrap)
+        self._process_stage_handlers(LifeCycleStages.post_bootstrap)
 
     def _bootstrap(self):
         """
@@ -279,9 +282,9 @@ class BaseService(object):
         return True
 
     def register(self):
-        self._stage_process(LifeCycleStages.pre_register)
+        self._process_stage_handlers(LifeCycleStages.pre_register)
         self._register()
-        self._stage_process(LifeCycleStages.post_register)
+        self._process_stage_handlers(LifeCycleStages.post_register)
 
     def _register(self):
         if not self.is_enabled:
@@ -417,32 +420,59 @@ class ApiService(BaseService):
     __spec_file__ = 'swagger.yaml'
     __service_api_version__ = 'v1'
 
-    def __init__(self, options={}):
+    def __init__(self, options=None):
         super().__init__(options=options)
         self._api_application = None
+        self.yosai = None
 
     def _register_instance_handlers(self):
         super()._register_instance_handlers()
         logger.info('Registering api handlers')
         self.register_handler(LifeCycleStages.pre_bootstrap, self.initialize_api, None)
 
-    def _get_wsgi_app(self, service_name, api_spec_dir=None, api_spec_file=None):
+    def _init_wsgi_app(self, service_name, api_spec_dir=None, api_spec_file=None):
         """
         Return an initialized service with common api resource and auth config
         :return:
         """
 
         try:
-            application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir)
-            flask_app = application.app
+            self._application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir)
+            flask_app = self._application.app
             flask_app.url_map.strict_slashes = False
 
+            # Setup some debug logging
+            import logging as py_logging
+            py_logging.basicConfig(level=py_logging.ERROR)
+
+            # Intialize the authentication system
+            self.init_auth()
+
+            flask_app.before_request(self._inject_service)
+
             metrics.init_flask_metrics(flask_app, servicename=service_name)
-            application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
-            return application
+            self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
+
+            return self._application
         except Exception as err:
             traceback.print_exc()
             raise err
+
+    def init_auth(self):
+        """
+        Initializes the authentication subsystem as needed
+        :return:
+        """
+
+        # Initialize the wrapper
+        init_authz_handler(configuration=self.configuration)
+
+    def _inject_service(self):
+        """
+        Adds a reference to the service object into the request's app context
+        :return:
+        """
+        g.service = self
 
     def initialize_api(self):
         """
@@ -455,7 +485,7 @@ class ApiService(BaseService):
             return None
 
         if not self._api_application:
-            self._api_application = self._get_wsgi_app(self.__service_name__, self.__spec_dir__, self.__spec_file__)
+            self._api_application = self._init_wsgi_app(self.__service_name__, self.__spec_dir__, self.__spec_file__)
 
     def get_api_application(self):
         if self._api_application is None:

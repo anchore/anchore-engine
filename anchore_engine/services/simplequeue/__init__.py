@@ -1,7 +1,7 @@
 import time
 
 # anchore modules
-import anchore_engine.services.common
+import anchore_engine.common
 import anchore_engine.subsys.simplequeue
 import anchore_engine.subsys.servicestatus
 from anchore_engine.subsys import logger
@@ -58,7 +58,7 @@ def _init_queues(queue_configs):
     :param queue_configs: dict mapping a queue name to a configuration dict
     :return:
     """
-    for st in anchore_engine.services.common.subscription_types:
+    for st in anchore_engine.common.subscription_types:
         if st not in queues_to_bootstrap:
             queues_to_bootstrap[st] = default_queue_config
 

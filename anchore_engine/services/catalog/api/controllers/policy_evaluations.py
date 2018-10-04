@@ -1,15 +1,21 @@
 import connexion
 
+import anchore_engine.apis
+import anchore_engine.common.helpers
 from anchore_engine import db
 from anchore_engine.db import db_policyeval
 #import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
-import anchore_engine.services.common
+import anchore_engine.common
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+from anchore_engine.apis.authorization import get_authorizer, Permission
+
+authorizer = get_authorizer()
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
     """
     GET /evals
@@ -20,7 +26,7 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
     httpcode = 500
 
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         with db.session_scope() as session:
@@ -37,13 +43,14 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
         return evals, 200
 
     except Exception as err:
-        return str(anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)), 500
+        return str(anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)), 500
 
     # return (return_object, httpcode)
     #     httpcode = 500
     #     return_object = str(err)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def add_eval(bodycontent):
     """
     POST /evals
@@ -52,7 +59,7 @@ def add_eval(bodycontent):
     """
 
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         with db.session_scope() as session:
@@ -65,6 +72,7 @@ def add_eval(bodycontent):
     return (return_object, httpcode)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def update_eval(bodycontent):
     """
     PUT /evals
@@ -73,7 +81,7 @@ def update_eval(bodycontent):
     :return:
     """
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         with db.session_scope() as session:
@@ -86,6 +94,7 @@ def update_eval(bodycontent):
     return (return_object, httpcode)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def delete_eval(bodycontent):
     """
     DELETE /evals
@@ -95,7 +104,7 @@ def delete_eval(bodycontent):
     httpcode = 500
     try:
 
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
         policyId = imageDigest = tag = evalId = None
 

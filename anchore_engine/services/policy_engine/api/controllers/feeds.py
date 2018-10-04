@@ -7,8 +7,12 @@ from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask, 
 from anchore_engine.subsys import logger as log
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata, FeedMetadataListing
+from anchore_engine.apis.authorization import get_authorizer, Permission
 
 
+authorizer = get_authorizer()
+
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def list_feeds(include_counts=False):
     """
     GET /feeds
@@ -47,6 +51,7 @@ def list_feeds(include_counts=False):
     return jsonify(response)
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def sync_feeds(sync=True, force_flush=False):
     """
     POST /feeds?sync=True&force_flush=True
@@ -64,6 +69,6 @@ def sync_feeds(sync=True, force_flush=False):
             raise
         except Exception as e:
             log.exception('Error executing feed update task')
-            abort(Response(status=500, response=json.dumps({'error': 'feed sync failure', 'details': 'Failure syncing feed: {}'.format(e.message)}), mimetype='application/json'))
+            abort(Response(status=500, response=json.dumps({'error': 'feed sync failure', 'details': 'Failure syncing feed: {}'.format(e.message if hasattr(e, 'message') else e)}), mimetype='application/json'))
 
     return jsonify(['{}/{}'.format(x[0], x[1]) for x in result]), 200

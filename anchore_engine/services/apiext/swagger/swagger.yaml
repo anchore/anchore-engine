@@ -50,7 +50,7 @@ securityDefinitions:
   basicAuth:
     type: basic
 security:
-  - basicAuth: []
+- basicAuth: []
 paths:
   /:
     get:
@@ -59,7 +59,9 @@ paths:
       description: Simple status check
       responses:
         200:
-          description: Version check response
+          description: Version check response, returns the api version prefix (e.g. 'v1')
+          schema:
+            type: string
   /policies:
     get:
       tags:
@@ -1096,8 +1098,6 @@ paths:
       summary: "list feeds operations and information"
       description: ""
       operationId: "get_system_feeds"
-      produces:
-      - "application/json"
       responses:
         200:
           description: "success"
@@ -1127,8 +1127,6 @@ paths:
         type: boolean
         description: "instruct system to re-sync data feeds"
         required: false
-      produces:
-      - "application/json"
       responses:
         200:
           description: "Feeds operation success"
@@ -1144,8 +1142,6 @@ paths:
       summary: "Get list of resources that can be pruned"
       description: ""
       operationId: "get_system_prune_resourcetypes"
-      produces:
-      - "application/json"
       responses:
         200:
           description: "success"
@@ -1182,8 +1178,6 @@ paths:
         type: integer
         description: "filter only resources older than specified number of seconds"
         required: false
-      produces:
-      - "application/json"
       responses:
         200:
           description: "success"
@@ -1212,8 +1206,6 @@ paths:
           $ref: "#/definitions/PruneCandidate"
         description: "resource objects to prune"
         required: true
-      produces:
-      - "application/json"
       responses:
         200:
           description: "success"
@@ -1320,8 +1312,7 @@ paths:
       operationId: describe_policy
       tags:
       - System
-      produces:
-      - application/json
+      - Policy
       responses:
         200:
           description: Policy Language Description
@@ -1611,6 +1602,346 @@ paths:
           description: Invalid filter parameters
           schema:
             $ref: '#/definitions/ApiErrorResponse'
+  /accounts:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: list_accounts
+      summary: List user summaries. Only available to the system admin user.
+      parameters:
+      - name: is_active
+        in: query
+        type: boolean
+        required: false
+        description: Filter users by active status for listing
+      responses:
+        200:
+          description: Accound summary listing
+          schema:
+            $ref: "#/definitions/AccountList"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    post:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: create_account
+      summary: Create a new user. Only avaialble to admin user.
+      parameters:
+      - name: account
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/Account"
+      responses:
+        200:
+          description: Account Record
+          schema:
+            $ref: "#/definitions/Account"
+        409:
+          description: Conflicting user information. User already exists.
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /accounts/{accountname}:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: get_account
+      summary: Get info about an user. Only available to admin user. Uses the main user Id, not a username.
+      parameters:
+      - name: accountname
+        in: path
+        required: true
+        type: string
+      responses:
+        200:
+          description: Get user information
+          schema:
+            $ref: "#/definitions/Account"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    delete:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: delete_account
+      summary: Delete the specified account, only allowed if the account is not active and there are no active users. All users will be deleted along with the account and all resources will be garbage collected
+      parameters:
+      - name: accountname
+        in: path
+        required: true
+        type: string
+      responses:
+        204:
+          description: Successful deletion
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /accounts/{accountname}/activate:
+    post:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: activate_account
+      summary: Update the active state of an account
+      parameters:
+      - name: accountname
+        in: path
+        required: true
+        type: string
+      responses:
+        200:
+          description: Updated active state of the account
+          schema:
+            $ref: "#/definitions/AccountStatus"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /accounts/{accountname}/deactivate:
+    post:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: deactivate_account
+      summary: Update the active state of an account
+      parameters:
+      - name: accountname
+        in: path
+        required: true
+        type: string
+      responses:
+        200:
+          description: Updated active state of the user
+          schema:
+            $ref: "#/definitions/AccountStatus"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /accounts/{accountname}/users:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: list_users
+      summary: List accounts for the user
+      parameters:
+      - name: accountname
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: User listing
+          schema:
+            type: array
+            description: List of user credential records
+            items:
+              $ref: "#/definitions/User"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    post:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: create_user
+      summary: Create a new user
+      parameters:
+      - name: accountname
+        in: path
+        type: string
+        required: true
+      - name: user
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/UserCreationRequest"
+      responses:
+        200:
+          description: Credential summary
+          schema:
+            $ref: "#/definitions/User"
+  /accounts/{accountname}/users/{username}:
+    delete:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: delete_user
+      summary: Delete a specific user credential by username of the credential. Cannot be the credential used to authenticate the request.
+      parameters:
+      - name: accountname
+        type: string
+        in: path
+        required: true
+      - name: username
+        type: string
+        in: path
+        required: true
+      responses:
+        204:
+          description: Deleted credential
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: get_account_user
+      summary: Get a specific user in the specified account
+      parameters:
+      - name: accountname
+        type: string
+        in: path
+        required: true
+      - name: username
+        type: string
+        in: path
+        required: true
+      responses:
+        200:
+          description: User record
+          schema:
+            $ref: "#/definitions/User"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /accounts/{accountname}/users/{username}/credentials:
+    get:
+      summary: Get current credential summary
+      parameters:
+      - name: accountname
+        in: path
+        type: string
+        required: true
+      - name: username
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: User credential listing
+          schema:
+            $ref: "#/definitions/CredentialList"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      operationId: list_user_credentials
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+    post:
+      summary: add/replace credential
+      parameters:
+      - name: accountname
+        in: path
+        type: string
+        required: true
+      - name: username
+        in: path
+        type: string
+        required: true
+      - name: credential
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/AccessCredential"
+      responses:
+        200:
+          description: Add a credential, overwritting if already exists
+          schema:
+            $ref: "#/definitions/User"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      operationId: create_user_credential
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+    delete:
+      summary: Delete a credential by type
+      parameters:
+      - name: accountname
+        in: path
+        type: string
+        required: true
+      - name: username
+        in: path
+        type: string
+        required: true
+      - name: credential_type
+        type: string
+        in: query
+        required: true
+        enum:
+          - password
+      responses:
+        204:
+          description: Successful deletion
+        400:
+          description: Conflict, cannot delete the credential used to authenticate this request
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      operationId: delete_user_credential
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+  # Context-bound requests available for normal accounts (the /accounts routes are only for system admin)
+  /account:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
+      operationId: get_users_account
+      summary: List the account for the authenticated user
+      responses:
+        200:
+          description: User details for caller's user
+          schema:
+            $ref: "#/definitions/Account"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /user:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
+      operationId: get_user
+      summary: List authenticated user info
+      responses:
+        200:
+          description: User details for caller's user
+          schema:
+            $ref: "#/definitions/User"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /user/credentials:
+    get:
+      summary: Get current credential summary
+      responses:
+        200:
+          description: User credential listing
+          schema:
+            $ref: "#/definitions/CredentialList"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      operationId: get_credentials
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
+    post:
+      summary: add/replace credential
+      parameters:
+      - name: credential
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/AccessCredential"
+      responses:
+        200:
+          description: Add a credential, overwritting if already exists
+          schema:
+            $ref: "#/definitions/User"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      operationId: add_credential
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
 definitions:
   PaginationProperties:
     type: object
@@ -1914,9 +2245,9 @@ definitions:
     properties:
       type:
         enum:
-          - tag
-          - digest
-          - id
+        - tag
+        - digest
+        - id
       value:
         type: string
   Policy:
@@ -2054,7 +2385,7 @@ definitions:
     items:
       $ref: "#/definitions/AnchoreImageTagSummary"
   AnchoreImageTagSummary:
-    description: A unique image in the engine. 
+    description: A unique image in the engine.
     type: object
     properties:
       imageDigest:
@@ -2117,7 +2448,7 @@ definitions:
     description: System status response
     properties:
       service_states:
-          $ref: "#/definitions/ServiceList"
+        $ref: "#/definitions/ServiceList"
   StatusResponse:
     type: object
     description: System status response
@@ -2658,3 +2989,111 @@ definitions:
       page:
         description: Page number of this result set
         type: integer
+  Account:
+    type: object
+    description: Account information
+    required:
+    - name
+    - email
+    - type
+    properties:
+      name:
+        type: string
+        description: The account identifier, not updatable after creation
+      type:
+        type: string
+        description: The user type (admin vs user).
+        enum:
+        - user
+        - admin
+        - service
+      is_active:
+        type: boolean
+        description: Is the account active (users can login)
+      email:
+        type: string
+        description: Email address associated with the account
+      created_at:
+        type: string
+        format: date-time
+        description: The timestamp when the account was created
+      last_updated:
+        type: string
+        format: date-time
+        description: The timestamp of the last update to the account metadata itself (not users or creds)
+      created_by:
+        type: string
+        description: The uuid of the user that created this account
+  AccountStatus:
+    type: object
+    description: A summary of account status
+    properties:
+      is_active:
+        type: boolean
+        description: The active status of the account
+  User:
+    type: object
+    description: A username, password pair that can be used to authenticate with the service as a specific user
+    required:
+    - username
+    properties:
+      username:
+        description: The username to authenticate with
+        type: string
+      created_at:
+        description: The timestampt the user record was created
+        type: string
+        format: date-time
+      last_updated:
+        description: The timestamp of the last update to this record
+        type: string
+        format: date-time
+      created_by:
+        type: string
+        description: The uuid of the user that created this user
+  UserCreationRequest:
+    type: object
+    description: A payload for creating a new user, includes the username and password in a single request
+    required:
+    - username
+    - password
+    properties:
+      username:
+        description: The username to create
+        type: string
+      password:
+        description: The initial password for the user
+        type: string
+  AccessCredential:
+    type: object
+    description: A login credential mapped to a user identity. For password credentials, the username to present for Basic auth is the user's username from the user record
+    required:
+    - type
+    - value
+    properties:
+      type:
+        description: The type of credential
+        type: string
+        enum:
+        - password
+      value:
+        description: The credential value (e.g. the password)
+        type: string
+      created_at:
+        type: string
+        description: The timestamp of creation of the credential
+      created_by:
+        type: string
+        description: The uuid of the user that created this credential
+  AccountList:
+    type: array
+    items:
+      $ref: "#/definitions/Account"
+  UserList:
+    type: array
+    items:
+      $ref: "#/definitions/User"
+  CredentialList:
+    type: array
+    items:
+      $ref: "#/definitions/AccessCredential"

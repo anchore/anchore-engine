@@ -1,16 +1,19 @@
-import copy
-import json
-import datetime
-
-from anchore_engine.clients import catalog
-from anchore_engine.subsys import logger
+import anchore_engine.apis
+import anchore_engine.common.helpers
+from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.clients.services import internal_client_for
 from flask import request
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
+from anchore_engine.services.apiext.api import AuthActions
 
-import anchore_engine.services.common
+import anchore_engine.common
+
+authorizer = get_authorizer()
 
 
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_events.value, target=None)])
 def list_events(source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -18,22 +21,22 @@ def list_events(source_servicename=None, source_hostid=None, resource_type=None,
 
     return_object = {}
     httpcode = 500
-    userId, pw = user_auth
-
     try:
-        return_object = catalog.get_events(user_auth, source_servicename=source_servicename, source_hostid=source_hostid,
+        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        return_object = client.get_events(source_servicename=source_servicename, source_hostid=source_hostid,
                                            resource_type=resource_type, resource_id=resource_id, level=level, since=since,
                                            before=before, page=page, limit=limit)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.flush_events.value, target=None)])
 def delete_events(before=None, since=None, level=None):
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -41,20 +44,21 @@ def delete_events(before=None, since=None, level=None):
 
     return_object = {}
     httpcode = 500
-    userId, pw = user_auth
 
     try:
-        return_object = catalog.delete_events(user_auth, since=since, before=before, level=level)
+        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        return_object = client.delete_events(since=since, before=before, level=level)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_event.value, target=None)])
 def get_event(eventId):
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -65,17 +69,19 @@ def get_event(eventId):
     userId, pw = user_auth
 
     try:
-        return_object = catalog.get_event(user_auth, eventId)
+        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        return_object = client.get_event(eventId)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_event.value, target=None)])
 def delete_event(eventId):
-    request_inputs = anchore_engine.services.common.do_request_prep(request, default_params={})
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
@@ -86,12 +92,14 @@ def delete_event(eventId):
     userId, pw = user_auth
 
     try:
-        return_object = catalog.delete_event(user_auth, eventId)
+        client = internal_client_for(CatalogClient, request_inputs['userId'])
+
+        return_object = client.delete_event(eventId)
         if return_object:
             httpcode = 200
             return_object = None
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode

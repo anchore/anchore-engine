@@ -142,7 +142,7 @@ paths:
             $ref: "#/definitions/ImageIngressResponse"
         400:
           description: "Bad request"
-  /query/images/by_vulnerability:
+  /users/{user_id}/query/images/by_vulnerability:
     get:
       x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
       operationId: query_images_by_vulnerability_get
@@ -151,6 +151,11 @@ paths:
       produces:
       - "application/json"
       parameters:
+      - name: "user_id"
+        in: "path"
+        type: string
+        description: "user id string of catalog user"
+        required: true
       - name: "vulnerability_id"
         in: "query"
         type: string
@@ -178,7 +183,7 @@ paths:
           description: "Vulnerable image listing"
           schema:
             type: object
-  /query/images/by_package:
+  /users/{user_id}/query/images/by_package:
     get:
       x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
       operationId: query_images_by_package_get
@@ -187,6 +192,11 @@ paths:
       produces:
       - "application/json"
       parameters:
+      - name: "user_id"
+        in: "path"
+        type: string
+        description: "user id string of catalog user"
+        required: true
       - name: "name"
         in: "query"
         type: string
