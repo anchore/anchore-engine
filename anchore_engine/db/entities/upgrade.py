@@ -1,18 +1,16 @@
 import json
-import hashlib
-import uuid
-import zlib
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Text, Enum
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
 import anchore_engine.db.entities.common
 from anchore_engine.db.entities.common import StringJSON
-from anchore_engine.db.entities.exceptions import is_table_not_found, TableNotFoundError
+import anchore_engine.common.helpers
+from anchore_engine.db.entities.exceptions import is_table_not_found
 from distutils.version import StrictVersion
 from contextlib import contextmanager
 
 
 try:
-    from anchore_engine.subsys import logger
+    from anchore_engine.subsys import logger, identities
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
 except:
@@ -40,38 +38,8 @@ def do_db_compatibility_check():
     raise Exception("database compatibility could not be performed")
 
 def do_db_post_actions(localconfig=None):
-    do_user_update(localconfig=localconfig)
+    return
 
-def do_user_update(localconfig=None):
-    # configure users into the system from configuration, once connected to the DB and boostrapped
-    from anchore_engine.db import db_users, session_scope
-    if localconfig:
-        with session_scope() as dbsession:
-            try:
-                for userId in localconfig['credentials']['users']:
-                    if not localconfig['credentials']['users'][userId]:
-                        localconfig['credentials']['users'][userId] = {}
-
-                    cuser = localconfig['credentials']['users'][userId]
-
-                    password = cuser.pop('password', None)
-                    email = cuser.pop('email', None)
-                    if password and email:
-                        db_users.add(userId, password, {'email': email, 'active': True}, session=dbsession)
-                    else:
-                        raise Exception("user defined but has empty password/email: " + str(userId))
-
-                if localconfig.get('credentials', {}).get('user_config_db_sync', False):
-                    user_records = db_users.get_all(session=dbsession)
-                    for user_record in user_records:
-                        if user_record['userId'] == 'anchore-system':
-                            continue
-                        if user_record['userId'] not in localconfig['credentials']['users']:
-                            logger.warn("user {} is in DB, but is not in configuration - setting to inactive".format(user_record['userId']))
-                            db_users.update(user_record['userId'], user_record['password'], {'active': False}, session=dbsession)
-
-            except Exception as err:
-                raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
 
 def get_versions():
     code_versions = {}
@@ -132,20 +100,23 @@ def do_create_tables(specific_tables=None):
     return(True)
 
 def do_db_bootstrap(localconfig=None):
+    from anchore_engine.db import session_scope
+
     with upgrade_context(my_module_upgrade_id) as ctx:
-
-        from anchore_engine.db import db_users, session_scope
-        with session_scope() as dbsession:
-            # system user
+        with session_scope() as session:
             try:
-                system_user_record = db_users.get('anchore-system', session=dbsession)
-                if not system_user_record:
-                    rc = db_users.add('anchore-system', str(uuid.uuid4()), {'active': True}, session=dbsession)
-                else:
-                    db_users.update(system_user_record['userId'], system_user_record['password'], {'active': True}, session=dbsession)
-
+                initializer = identities.IdentityBootstrapper(identities.IdentityManager, session)
+                initializer.initialize_system_identities()
             except Exception as err:
-                raise Exception("Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(err))
+                logger.exception('Error initializing system credentials on db bootstrap')
+                raise Exception("Initialization failed: could not initialize system credentials - exception: " + str(err))
+
+            try:
+                initializer.initialize_user_identities_from_config(config_credentials=localconfig.get('credentials'))
+            except Exception as err:
+                logger.exception('Error initializing user credentials on db bootstrap')
+                raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
+
 
 def run_upgrade():
     """
@@ -309,7 +280,7 @@ def db_upgrade_003_004():
     engine = anchore_engine.db.entities.common.get_engine()
 
     from anchore_engine.db import db_catalog_image, db_archivedocument, session_scope
-    import anchore_engine.services.common
+    import anchore_engine.common
 
     newcolumns = [
         Column('arch', String, primary_key=False),
@@ -348,7 +319,7 @@ def db_upgrade_003_004():
                 
             if image_data:
                 # update the record and store
-                anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
+                anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
                 with session_scope() as dbsession:
                     db_catalog_image.update_record(image_record, session=dbsession)
             else:
@@ -454,7 +425,7 @@ def fixed_artifact_upgrade_005_006():
     Upgrade the feed_data_vulnerabilities_fixed_artifacts schema with new columns and fill in the defaults
 
     """
-    from anchore_engine.db import session_scope, FixedArtifact
+    from anchore_engine.db import session_scope
     from sqlalchemy import Column, Text, Boolean
 
     engine = anchore_engine.db.entities.common.get_engine()
@@ -523,10 +494,45 @@ def catalog_image_upgrades_006_007():
     except Exception as e:
         raise Exception('failed to perform DB upgrade on catalog_image_docker setting default value for column tag_detected_at - exception: {}'.format(str(e)))
 
+
+def user_account_upgrades_007_008():
+    logger.info('Upgrading user accounts for multi-user support')
+
+    from anchore_engine.db import session_scope, db_users
+    from anchore_engine.subsys.identities import manager_factory
+    from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME, SYSTEM_IDENTITY_BOOTSTRAPPER, ADMIN_ACCOUNT_NAME
+
+    with session_scope() as session:
+        mgr = manager_factory.for_session(session)
+        for user in db_users.get_all():
+
+            if user['userId'] == ADMIN_ACCOUNT_NAME:
+                account_type = identities.AccountTypes.admin
+            elif user['userId'] == SYSTEM_ACCOUNT_NAME:
+                account_type = identities.AccountTypes.service
+            else:
+                account_type = identities.AccountTypes.user
+
+            logger.info('Migrating user: {} to new account with name {}, type {}, is_active {}'.format(user['userId'], user['userId'], account_type, user['active']))
+            mgr.create_account(account_name=user['userId'], email=user['email'], account_type=account_type, creator=SYSTEM_IDENTITY_BOOTSTRAPPER, is_active=user['active'])
+
+            logger.info('Creating new user record in new account {} with username {}'.format(user['userId'], user['userId']))
+            mgr.create_user(account_name=user['userId'], username=user['userId'], password=user['password'], creator_name=SYSTEM_IDENTITY_BOOTSTRAPPER)
+
+            logger.info('Deleting old user record')
+            db_users.delete(user['userId'], session)
+
+    logger.info('User account upgrade complete')
+
+
 def db_upgrade_006_007():
     catalog_image_upgrades_006_007()
 
 def db_upgrade_007_008():
+    policy_engine_packages_upgrade_007__008()
+    user_account_upgrades_007_008()
+
+def policy_engine_packages_upgrade_007__008():
     from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
@@ -586,14 +592,14 @@ def db_upgrade_007_008():
                          'ALTER TABLE image_package_vulnerabilities ADD CONSTRAINT image_package_vulnerabilities_pkg_image_id_fkey FOREIGN KEY (pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
                          'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
                      ]
-    
+
         log.err("updating primary key / foreign key relationships for new column")
         cmdcount = 1
         for command in exec_commands:
             log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
             engine.execute(command)
             cmdcount = cmdcount + 1
-    
+
 
         log.err("converting ImageNpm and ImageGem records into ImagePackage records")
         # migrate ImageNpm and ImageGem records into ImagePackage records
@@ -688,5 +694,3 @@ upgrade_functions = (
     (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ]),
     (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ])
 )
-
-

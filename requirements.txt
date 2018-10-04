@@ -37,3 +37,6 @@ python-swiftclient
 python-keystoneclient
 pytz
 certifi
+yosai
+zope.component
+zope.interface

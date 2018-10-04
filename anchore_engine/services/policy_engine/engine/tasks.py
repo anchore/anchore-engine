@@ -14,18 +14,18 @@ from anchore_engine.db import get_thread_scoped_session as get_session, Image, e
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image, delete_matches
+from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image
 
-from anchore_engine.clients import catalog
+from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.clients.services import internal_client_for
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
 from anchore_engine.configuration import localconfig
-from anchore_engine.services.common import get_system_user_auth
-from anchore_engine.clients.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
+from anchore_engine.clients.services.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
 from anchore_engine.subsys.events import FeedSyncStart, FeedSyncComplete, FeedSyncFail
+from anchore_engine.subsys import identities
 
 # A hack to get admin credentials for executing api ops
-#from anchore_engine.services.catalog import db_users
-from anchore_engine.db import session_scope, db_users
+from anchore_engine.db import session_scope
 
 log = get_logger()
 
@@ -118,6 +118,7 @@ class FeedsFlushTask(IAsyncTask):
             log.exception('Error executing feeds flush task')
             raise
 
+
 class FeedsUpdateTask(IAsyncTask):
     """
     Scan and sync all configured and available feeds to ensure latest state.
@@ -138,8 +139,14 @@ class FeedsUpdateTask(IAsyncTask):
         error = None
         feeds = None
 
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            system_user = mgr.get_system_credentials()
+
+        catalog_client = CatalogClient(user=system_user[0], password=system_user[1])
+
         try:
-            system_user = get_system_user_auth()
+
             feeds = get_selected_feeds_to_sync(localconfig.get_config())
             if json_obj:
                 task = cls.from_json(json_obj)
@@ -151,7 +158,7 @@ class FeedsUpdateTask(IAsyncTask):
 
             # Create feed task begin event
             try:
-                catalog.add_event(system_user, FeedSyncStart(groups=feeds if feeds else 'all'))
+                catalog_client.add_event(FeedSyncStart(groups=feeds if feeds else 'all'))
             except:
                 log.exception('Ignoring event generation error before feed sync')
 
@@ -178,9 +185,9 @@ class FeedsUpdateTask(IAsyncTask):
             # log feed sync event
             try:
                 if error:
-                    catalog.add_event(system_user, FeedSyncFail(groups=feeds if feeds else 'all', error=error))
+                    catalog_client.add_event(FeedSyncFail(groups=feeds if feeds else 'all', error=error))
                 else:
-                    catalog.add_event(system_user, FeedSyncComplete(groups=feeds if feeds else 'all'))
+                    catalog_client.add_event(FeedSyncComplete(groups=feeds if feeds else 'all'))
             except:
                 log.exception('Ignoring event generation error after feed sync')
 
@@ -527,15 +534,8 @@ class ImageLoadTask(IAsyncTask):
 
             # Add auth if necessary
             try:
-                with session_scope() as dbsession:
-                    usr_record = db_users.get(userId, session=dbsession)
-                if not usr_record:
-                    raise Exception('User {} not found, cannot fetch analysis data'.format(userId))
-            except:
-                log.exception('Cannot get credentials for user {} fetching the analysis content to load'.format(userId))
-                raise
-            try:
-                doc = catalog.get_document((usr_record['userId'], usr_record['password']), bucket, name)
+                catalog_client = internal_client_for(CatalogClient, userId)
+                doc = catalog_client.get_document(bucket, name)
                 return doc
             except:
                 log.exception('Error retrieving analysis json from the catalog service')

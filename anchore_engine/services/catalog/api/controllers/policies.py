@@ -5,17 +5,23 @@ API Handlers for /policies routes
 
 import connexion
 
+import anchore_engine.apis
+import anchore_engine.common
+import anchore_engine.common.helpers
 from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
-from anchore_engine.services import common
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 
 from anchore_engine.db import db_policybundle, db_policyeval
 from anchore_engine.subsys import archive
+from anchore_engine.apis.authorization import get_authorizer, Permission
+
+authorizer = get_authorizer()
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def list_policies(active=None):
     """
     GET /policies?active=true|false
@@ -24,7 +30,7 @@ def list_policies(active=None):
 
     # set up the filter based on input
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         with db.session_scope() as dbsession:
@@ -48,9 +54,9 @@ def list_policies(active=None):
 
                 except Exception as err:
                     logger.warn("failed to fetch policy bundle from archive - exception: " + str(err))
-                    raise anchore_engine.services.common.make_anchore_exception(err,
-                                                                                input_message="failed to fetch policy bundle from archive",
-                                                                                input_httpcode=500)
+                    raise anchore_engine.common.helpers.make_anchore_exception(err,
+                                                                               input_message="failed to fetch policy bundle from archive",
+                                                                               input_httpcode=500)
         else:
             records = []
 
@@ -58,7 +64,7 @@ def list_policies(active=None):
     except Exception as err:
         return str(err), 500
 
-
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def get_policy(policyId):
     """
     GET /policies/{policyId}
@@ -67,7 +73,7 @@ def get_policy(policyId):
     :return:
     """
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         with db.session_scope() as dbsession:
@@ -87,16 +93,17 @@ def get_policy(policyId):
 
             except Exception as err:
                 logger.warn("failed to fetch policy bundle from archive - exception: " + str(err))
-                raise anchore_engine.services.common.make_anchore_exception(err,
-                                                                            input_message="failed to fetch policy bundle from archive",
-                                                                            input_httpcode=500)
+                raise anchore_engine.common.helpers.make_anchore_exception(err,
+                                                                           input_message="failed to fetch policy bundle from archive",
+                                                                           input_httpcode=500)
             return record, 200
         else:
-            return common.make_anchore_exception(Exception('Policy bundle {} not found in DB'.format(policyId))), 404
+            return anchore_engine.common.helpers.make_anchore_exception(Exception('Policy bundle {} not found in DB'.format(policyId))), 404
     except Exception as err:
         return str(err), 500
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def update_policy(policyId, bodycontent):
     """
     PUT /policies/{policyId}
@@ -109,7 +116,7 @@ def update_policy(policyId, bodycontent):
     :return:
     """
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
         bundle_policyId = bodycontent.get('policyId')
         active = bodycontent.get('active', False)
@@ -125,7 +132,7 @@ def update_policy(policyId, bodycontent):
         with db.session_scope() as dbsession:
             record = db_policybundle.get(user_id, policyId, session=dbsession)
             if not record:
-                return common.make_anchore_exception(Exception("existing policyId not found to update"), 400)
+                return anchore_engine.common.helpers.make_anchore_exception(Exception("existing policyId not found to update"), 400)
 
             return save_policy(user_id, policyId, active, policybundle, dbsession), 200
 
@@ -133,6 +140,7 @@ def update_policy(policyId, bodycontent):
         return str(err), 500
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def add_policy(bodycontent):
     """
     POST /policies
@@ -145,7 +153,7 @@ def add_policy(bodycontent):
     """
 
     try:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         policyId = bodycontent.get('policyId')
@@ -162,6 +170,7 @@ def add_policy(bodycontent):
         return str(err), 500
 
 
+@authorizer.requires([Permission(domain='system', action='*', target='*')])
 def delete_policy(policyId, cleanup_evals=False):
     """
     DELETE /policies/{policyId}?cleanup_evals=true|false
@@ -176,7 +185,7 @@ def delete_policy(policyId, cleanup_evals=False):
     return_object = True
 
     with db.session_scope() as dbsession:
-        request_inputs = anchore_engine.services.common.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
         policy_record = db_policybundle.get(user_id, policyId, session=dbsession)
@@ -208,9 +217,9 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
         else:
             rc = False
     except Exception as err:
-        raise anchore_engine.services.common.make_anchore_exception(err,
-                                                                    input_message="cannot add policy, failed to update archive/DB",
-                                                                    input_httpcode=500)
+        raise anchore_engine.common.helpers.make_anchore_exception(err,
+                                                                   input_message="cannot add policy, failed to update archive/DB",
+                                                                   input_httpcode=500)
     if not rc:
         raise Exception("DB update failed")
     else:

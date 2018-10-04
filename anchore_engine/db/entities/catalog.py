@@ -77,8 +77,12 @@ class ObjectStorageRecord(Base, UtilMixin):
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
 
-
+# This will be migrated to the Account table
 class User(Base, UtilMixin):
+    """
+    Legacy user definition. Migrated to Account + UserCredential
+
+    """
     __tablename__ = 'users'
 
     userId = Column(String, primary_key=True)
@@ -93,24 +97,6 @@ class User(Base, UtilMixin):
 
     def __repr__(self):
         return "userId='%s'" % (self.userId)
-
-
-# class EventLog(Base, UtilMixin):
-#     __tablename__ = 'eventlog'
-#
-#     hostId = Column(String, primary_key=True)
-#     service_name = Column(String, primary_key=True)
-#     message = Column(String, primary_key=True)
-#     level = Column(String, primary_key=True)
-#     message_ts = Column(Integer, default=anchore_now)
-#     created_at = Column(Integer, default=anchore_now)
-#     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
-#     record_state_key = Column(String, default="active")
-#     record_state_val = Column(String)
-#     detail = Column(String)
-#
-#     def __repr__(self):
-#         return "hostId='%s' message='%s' level='%s'" % (self.hostId, self.message, self.level)
 
 
 class Event(Base, UtilMixin):

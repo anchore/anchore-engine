@@ -7,20 +7,25 @@ import operator
 
 # anchore modules
 import anchore_engine.clients.localanchore_standalone
-from anchore_engine.clients import catalog, simplequeue, localanchore_standalone
+import anchore_engine.common.helpers
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+from anchore_engine.clients import localanchore_standalone
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-import anchore_engine.services.common
+import anchore_engine.common
 import anchore_engine.subsys.taskstate
 import anchore_engine.subsys.notifications
 from anchore_engine.subsys import logger
 
-import anchore_engine.clients.policy_engine
-from anchore_engine.clients.policy_engine.generated.models import ImageIngressRequest
 from anchore_engine.utils import AnchoreException
 import anchore_engine.subsys.events as events
+from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.service import ApiService
+from anchore_engine.db import session_scope
 
 ############################################
 
@@ -88,19 +93,16 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
         imageDigest = record['imageDigest']
         manifest = record['manifest']
 
-        user_record = catalog.get_user(system_user_auth, userId)
-        user_auth = (user_record['userId'], user_record['password'])
-
         # check to make sure image is still in DB
+        catalog_client = internal_client_for(CatalogClient, userId)
         try:
-            image_records = catalog.get_image(user_auth, imageDigest=imageDigest)
+            image_records = catalog_client.get_image(imageDigest=imageDigest)
             if image_records:
                 image_record = image_records[0]
             else:
                 raise Exception("empty image record from catalog")
         except Exception as err:
-            logger.warn("dequeued image cannot be fetched from catalog - skipping analysis (" + str(
-                imageDigest) + ") - exception: " + str(err))
+            logger.warn("dequeued image cannot be fetched from catalog - skipping analysis (" + str(imageDigest) + ") - exception: " + str(err))
             return (True)
 
         logger.info("image dequeued for analysis: " + str(userId) + " : " + str(imageDigest))
@@ -113,7 +115,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             last_analysis_status = image_record['analysis_status']
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
-            rc = catalog.update_image(user_auth, imageDigest, image_record)
+            rc = catalog_client.update_image(imageDigest, image_record)
 
             # disable the webhook call for image state transistion to 'analyzing'
             #try:
@@ -128,7 +130,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             #    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
             # actually do analysis
-            registry_creds = catalog.get_registry(user_auth)
+            registry_creds = catalog_client.get_registry()
             try:
                 image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
             except AnchoreException as e:
@@ -143,7 +145,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             try:
                 logger.debug("archiving analysis data")
-                rc = catalog.put_document(user_auth, 'analysis_data', imageDigest, image_data)
+                rc = catalog_client.put_document('analysis_data', imageDigest, image_data)
             except Exception as e:
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
                 event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
@@ -153,19 +155,19 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 try:
                     logger.debug("extracting image content data")
                     image_content_data = {}
-                    for content_type in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
+                    for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
                         try:
-                            image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(image_data, content_type, manifest=manifest)
+                            image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=manifest)
                         except:
                             image_content_data[content_type] = {}
 
                     if image_content_data:
                         logger.debug("adding image content data to archive")
-                        rc = catalog.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
+                        rc = catalog_client.put_document('image_content_data', imageDigest, image_content_data)
 
                     try:
                         logger.debug("adding image analysis data to image_record")
-                        anchore_engine.services.common.update_image_record_with_analysis_data(image_record, image_data)
+                        anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
 
                     except Exception as err:
                         raise err
@@ -183,18 +185,18 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     localconfig = anchore_engine.configuration.localconfig.get_config()
                     verify = localconfig['internal_ssl_verify']
 
-                    client = anchore_engine.clients.policy_engine.get_client(user=system_user_auth[0], password=system_user_auth[1], verify_ssl=verify)
+                    pe_client = internal_client_for(PolicyEngineClient, userId)
 
                     try:
                         logger.debug("clearing any existing record in policy engine for image: " + str(imageId))
-                        rc = client.delete_image(user_id=userId, image_id=imageId)
+                        rc = pe_client.delete_image(user_id=userId, image_id=imageId)
                     except Exception as err:
                         logger.warn("exception on pre-delete - exception: " + str(err))
 
-                    logger.info('Loading image: {} {}'.format(userId, imageId))
-                    request = ImageIngressRequest(user_id=userId, image_id=imageId, fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest))
-                    logger.debug("policy engine request: " + str(request))
-                    resp = client.ingress_image(request)
+                    logger.info('Loading image into policy engine: {} {}'.format(userId, imageId))
+                    image_analysis_fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+                    logger.debug("policy engine request: " + image_analysis_fetch_url)
+                    resp = pe_client.ingress_image(userId, imageId, image_analysis_fetch_url)
                     logger.debug("policy engine image add response: " + str(resp))
 
                 except Exception as err:
@@ -207,7 +209,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 last_analysis_status = image_record['analysis_status']
                 image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
                 image_record['analyzed_at'] = int(time.time())
-                rc = catalog.update_image(user_auth, imageDigest, image_record)
+                rc = catalog_client.update_image(imageDigest, image_record)
 
                 try:
                     annotations = {}
@@ -264,11 +266,11 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="fail")
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.fault_state('analyze')
             image_record['image_status'] = anchore_engine.subsys.taskstate.fault_state('image_status')
-            rc = catalog.update_image(user_auth, imageDigest, image_record)
+            rc = catalog_client.update_image(imageDigest, image_record)
         finally:
             if event:
                 try:
-                    catalog.add_event(user_auth, event)
+                    catalog_client.add_event(event)
                 except:
                     logger.error('Ignoring error creating analysis failure event')
 
@@ -350,11 +352,16 @@ def handle_layer_cache(**kwargs):
     return(True)
 
 def handle_image_analyzer(*args, **kwargs):
+    """
+    Processor for image analysis requests coming from the work queue
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
     global system_user_auth, queuename, servicename
 
     cycle_timer = kwargs['mythread']['cycle_timer']
-
-    logger.info('Config: {}'.format(anchore_engine.configuration.localconfig.get_config()))
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     system_user_auth = localconfig['system_user_auth']
@@ -369,10 +376,11 @@ def handle_image_analyzer(*args, **kwargs):
             layer_cache_enable = myconfig.get('layer_cache_enable', False)
 
             logger.debug("max threads: " + str(max_analyze_threads))
+            q_client = internal_client_for(SimpleQueueClient, userId=None)
 
             if len(threads) < max_analyze_threads:
                 logger.debug("analyzer has free worker threads {} / {}".format(len(threads), max_analyze_threads))
-                qobj = simplequeue.dequeue(system_user_auth, queuename)
+                qobj = q_client.dequeue(queuename)
                 if qobj:
                     logger.debug("got work from queue task Id: {}".format(qobj.get('queueId', 'unknown')))
                     myqobj = copy.deepcopy(qobj)

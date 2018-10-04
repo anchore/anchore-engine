@@ -2,15 +2,13 @@ import time
 import sys
 
 # anchore modules
-#import anchore_engine.services.common
-import anchore_engine.clients.common
+import anchore_engine.clients.services.common
 import anchore_engine.subsys.servicestatus
-#import anchore_engine.subsys.taskstate
 import anchore_engine.subsys.metrics
-#import anchore_engine.clients.catalog
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
-from anchore_engine.clients import simplequeue
+from anchore_engine.clients.services import simplequeue
+from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.service import ApiService, LifeCycleStages
 
 feed_sync_queuename = 'feed_sync_tasks'
@@ -175,7 +173,7 @@ def handle_feed_sync(*args, **kwargs):
 
         if feed_sync_enabled:
             try:
-                all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+                all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
                 if not all_ready:
                     logger.info("simplequeue service not yet ready, will retry")
                 else:
@@ -208,20 +206,20 @@ def handle_feed_sync_trigger(*args, **kwargs):
     cycle_time = kwargs['mythread']['cycle_timer']
 
     while True:
-
         config = localconfig.get_config()
         feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
-
         if feed_sync_enabled:
             try:
-                all_ready = anchore_engine.clients.common.check_services_ready(['simplequeue'])
+                all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
+
                 if not all_ready:
                     logger.info("simplequeue service not yet ready, will retry")
                 else:
                     logger.info('Feed Sync Trigger activated')
-                    if not simplequeue.is_inqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg):
+                    q_client = SimpleQueueClient(user=system_user[0], password=system_user[1])
+                    if not q_client.is_inqueue(name=feed_sync_queuename, inobj=feed_sync_msg):
                         try:
-                            simplequeue.enqueue(userId=system_user, name=feed_sync_queuename, inobj=feed_sync_msg)
+                            q_client.enqueue(name=feed_sync_queuename, inobj=feed_sync_msg)
                         except:
                             logger.exception('Could not enqueue message for a feed sync')
                     logger.info('Feed Sync Trigger done, waiting for next cycle.')

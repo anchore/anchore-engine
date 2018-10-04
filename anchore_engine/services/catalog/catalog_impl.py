@@ -2,27 +2,49 @@ import json
 import hashlib
 import time
 import base64
-import re
-import datetime
 
 from dateutil import parser as dateparser
 
-import anchore_engine.services.common
+import anchore_engine.apis.authorization
+import anchore_engine.common
 import anchore_engine.configuration.localconfig
-from anchore_engine.auth import anchore_resources, aws_ecr
+import anchore_engine.common.helpers
+import anchore_engine.common.images
+from anchore_engine.auth import aws_ecr
 import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 import anchore_engine.subsys.metrics
-from anchore_engine.clients import simplequeue, docker_registry
+from anchore_engine.clients import docker_registry
 from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
-    db_registries, db_services, db_archivedocument, ImagePackageVulnerability, get_thread_scoped_session as get_session, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata
-import anchore_engine.clients.policy_engine
+    db_registries, db_services, db_archivedocument, db_accounts
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+from anchore_engine.subsys.identities import manager_factory
 
-from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
+def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
+    """
+    Helper function for constructing the call to the PE for loading images
+
+    :param client:
+    :param imageUserId:
+    :param imageId:
+    :param imageDigest:
+    :return:
+    """
+    try:
+        fetch_url='catalog://{user_id}/analysis_data/{digest}'.format(user_id=imageUserId, digest=imageDigest)
+
+        logger.debug("policy engine request (image add): img_user_id={}, image_id={}, fetch_url={}".format(imageUserId, imageId, fetch_url))
+        resp = client.ingress_image(user_id=imageUserId, image_id=imageId, analysis_fetch_url=fetch_url)
+        logger.spew("policy engine response (image add): " + str(resp))
+    except Exception as err:
+        logger.error("failed to add/check image: " + str(err))
+        raise err
+
+    return(resp)
 
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -42,7 +64,7 @@ def registry_lookup(dbsession, request_inputs):
                 input_string = params[t]
                 if input_string:
                     input_type = t
-                    image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None,None))
+                    image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                     break
 
         if not image_info:
@@ -56,7 +78,7 @@ def registry_lookup(dbsession, request_inputs):
                 except Exception as err:
                     logger.warn("failed to refresh registry credentials - exception: " + str(err))
 
-                digest, manifest = anchore_engine.services.common.lookup_registry_image(userId, image_info, registry_creds)
+                digest, manifest = anchore_engine.common.images.lookup_registry_image(userId, image_info, registry_creds)
                 return_object['digest'] = image_info['registry'] + "/" + image_info['repo'] + "@" + digest
                 return_object['manifest'] = manifest
                 httpcode = 200
@@ -64,7 +86,7 @@ def registry_lookup(dbsession, request_inputs):
                 httpcode = 404
                 raise Exception("cannot lookup image in registry - detail: " + str(err))
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -94,7 +116,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
     try:
         if method == 'POST':
-            image_info = anchore_engine.services.common.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
+            image_info = anchore_engine.common.images.get_image_info(userId, "docker", fulltag, registry_lookup=False, registry_creds=(None, None))
 
             registry_creds = db_registries.get_byuserId(userId, session=dbsession)
             try:
@@ -155,7 +177,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 pass
 
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -173,7 +195,7 @@ def image_tags(dbsession, request_inputs):
             httpcode = 200
             return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -205,7 +227,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                 input_string = params[t]
                 if input_string:
                     input_type = t
-                    image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
+                    image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                     break
 
         if method == 'GET':
@@ -220,7 +242,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                             refresh_registry_creds(registry_creds, dbsession)
                         except Exception as err:
                             logger.warn("failed to refresh registry credentials - exception: " + str(err))
-                        image_info = anchore_engine.services.common.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
+                        image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
                     except Exception as err:
                         httpcode = 404
                         raise Exception("cannot perform registry lookup - exception: " + str(err))
@@ -319,7 +341,7 @@ def image(dbsession, request_inputs, bodycontent={}):
 
                 for input_string in input_strings:
                     logger.debug("INPUT_STRING: " + input_string)
-                    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                    image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
 
                     if image_info_overrides:
                         image_info.update(image_info_overrides)
@@ -357,7 +379,7 @@ def image(dbsession, request_inputs, bodycontent={}):
 
     except Exception as err:
         logger.exception('Error processing image request')
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -421,7 +443,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
                 raise Exception("image not found")
 
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -471,18 +493,11 @@ def image_import(dbsession, request_inputs, bodycontent={}):
             logger.debug("ADDING/UPDATING IMAGE IN IMAGE IMPORT: " + str(imageId))
             ret_list = add_or_update_image(dbsession, userId, imageId, tags=tags, digests=digests, anchore_data=anchore_data)
 
-            system_user_auth = get_system_auth(dbsession)
-            system_userId = system_user_auth[0]
-            system_password = system_user_auth[1]
-            
-            localconfig = anchore_engine.configuration.localconfig.get_config()
-            verify = localconfig['internal_ssl_verify']
-
-            client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+            client = internal_client_for(PolicyEngineClient, userId)
             for image_report in ret_list:
                 imageDigest = image_report['imageDigest']
                 try:
-                    resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
+                    resp = policy_engine_image_load(client, userId, imageId, imageDigest)
                 except Exception as err:
                     logger.warn("failed to load image data into policy engine: " + str(err))
             # return the new image:
@@ -493,7 +508,7 @@ def image_import(dbsession, request_inputs, bodycontent={}):
             raise err
 
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
 
     return(return_object, httpcode)
@@ -597,7 +612,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
 
     except Exception as err:
         logger.exception('Error handling subscriptions')
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -735,7 +750,7 @@ def events(dbsession, request_inputs, bodycontent=None):
                 raise Exception('Cannot create event')
     except Exception as err:
         logger.exception('Error in events handler')
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -767,7 +782,7 @@ def events_eventId(dbsession, request_inputs, eventId):
                 httpcode = 200
 
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -786,7 +801,7 @@ def users(dbsession, request_inputs):
         return_object = user_records
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -826,7 +841,7 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
                 httpcode = 500
                 raise err
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
        
     return(return_object, httpcode)
 
@@ -856,7 +871,7 @@ def users_userId(dbsession, request_inputs, inuserId):
                 raise err
    
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         
     return(return_object, httpcode)
 
@@ -873,7 +888,7 @@ def system(dbsession, request_inputs):
         httpcode = 200
         return_object = ['services', 'registries']
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -891,7 +906,7 @@ def system_services(dbsession, request_inputs):
         return_object = service_records
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -912,7 +927,7 @@ def system_services_servicename(dbsession, request_inputs, inservicename):
                 return_object.append(service_record)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -949,7 +964,7 @@ def system_services_servicename_hostId(dbsession, request_inputs, inservicename,
             raise Exception("servicename/host_id ("+str(inservicename)+"/"+str(inhostId)+") not found in anchore-engine")
             
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1025,7 +1040,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             return_object = registry_records
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1119,7 +1134,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
                     raise Exception(str(rc))
                     
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1133,10 +1148,10 @@ def system_subscriptions(dbsession, request_inputs):
     httpcode = 500
 
     try:
-        return_object = anchore_engine.services.common.subscription_types
+        return_object = anchore_engine.common.subscription_types
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1146,20 +1161,20 @@ def system_prune_listresources(dbsession, request_inputs):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    allowed = anchore_resources.operation_access(userId, "system_prune_listresources", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
-    if not allowed:
+    #allowed = anchore_engine.apis.authorization.operation_access(userId, "system_prune_listresources", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    if not userId in anchore_engine.common.super_users:
         httpcode = 401
-        return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
         return(return_object, httpcode)
 
     return_object = []
     httpcode = 500
 
     try:
-        return_object = anchore_engine.services.common.resource_types
+        return_object = anchore_engine.common.resource_types
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1169,10 +1184,10 @@ def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
     params = request_inputs['params']
     userId = request_inputs['userId']
 
-    allowed = anchore_resources.operation_access(userId, "system_prune", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
-    if not allowed:
+    #allowed = anchore_engine.apis.authorization.operation_access(userId, "system_prune", operation_access_scope={'allowed_userIds': anchore_engine.services.common.super_users})
+    if not userId in anchore_engine.common.super_users:
         httpcode = 401
-        return_object = anchore_engine.services.common.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error("user has insufficient privs for this operation", in_httpcode=httpcode)
         return(return_object, httpcode)
 
     if method == 'GET':
@@ -1190,7 +1205,7 @@ def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
         try:
             return_object, httpcode = get_prune_candidates(resourcetype, dbsession, dangling=dangling, olderthan=olderthan)
         except Exception as err:
-            return_object = anchore_engine.services.common.make_response_error("cannot get prune candidates - exception: " + str(err), in_httpcode=httpcode)
+            return_object = anchore_engine.common.helpers.make_response_error("cannot get prune candidates - exception: " + str(err), in_httpcode=httpcode)
 
     elif method == 'POST':
         return_object = {}
@@ -1200,30 +1215,17 @@ def system_prune(dbsession, request_inputs, resourcetype, bodycontent=None):
         try:
             return_object, httpcode = delete_prune_candidates(resourcetype, bodycontent, dbsession)
         except Exception as err:
-            return_object = anchore_engine.services.common.make_response_error("cannot delete prune candidates - exception: " + str(err), in_httpcode=httpcode)
+            return_object = anchore_engine.common.helpers.make_response_error("cannot delete prune candidates - exception: " + str(err), in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
 ################################################################################
 
-# helpers
-
-def get_system_auth(dbsession):
-    try:
-        system_user = db_users.get('anchore-system', session=dbsession)
-        system_userId = system_user['userId']
-        system_password = system_user['password']
-        system_user_auth = (system_userId, system_password)
-    except Exception as err:
-        logger.error("could not get system user auth record - exception: " + str(err))
-        raise err
-
-    return(system_user_auth)
-
 def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, force_refresh=False):
     # prepare inputs
     try:
-        system_user_auth = get_system_auth(dbsession)
+        mgr = manager_factory.for_session(dbsession)
+        system_user_auth = mgr.get_system_credentials()
         system_userId = system_user_auth[0]
         system_password = system_user_auth[1]
 
@@ -1243,7 +1245,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
     except Exception as err:
         raise Exception("could not gather/prepare all necessary inputs for vulnerability - exception: " + str(err))
 
-    client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+    client = internal_client_for(PolicyEngineClient, userId)
 
     imageIds = []
     for image_detail in image_record['image_detail']:
@@ -1251,15 +1253,15 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if imageId and imageId not in imageIds:
             imageIds.append(imageId)
 
+
     for imageId in imageIds:
         # do the image load, just in case it was missed in analyze...
         try:
-            resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
+            resp = policy_engine_image_load(client, userId, imageId, imageDigest)
         except Exception as err:
             logger.warn("failed to load image data into policy engine: " + str(err))
             
-        resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
-        curr_vuln_result = resp.to_dict()
+        curr_vuln_result = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh)
 
         last_vuln_result = {}
         try:
@@ -1302,12 +1304,14 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None):
     # prepare inputs
     try:
-        system_user_auth = get_system_auth(dbsession)
-        system_userId = system_user_auth[0]
-        system_password = system_user_auth[1]
+        # mgr = manager_factory.for_session(dbsession)
+        # system_user_auth = mgr.get_system_credentials()
+        # system_userId = system_user_auth[0]
+        # system_password = system_user_auth[1]
+        #
+        # localconfig = anchore_engine.configuration.localconfig.get_config()
+        # verify = localconfig['internal_ssl_verify']
 
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
 
         annotations = {}
@@ -1329,7 +1333,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
     except Exception as err:
         raise Exception("could not gather/prepare all necessary inputs for policy evaluation - exception: " + str(err))
 
-    client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+    client = internal_client_for(PolicyEngineClient, userId)
 
     imageId = None
     for image_detail in image_record['image_detail']:
@@ -1342,7 +1346,8 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
     # do the image load, just in case it was missed in analyze...
     try:
-        resp = anchore_engine.services.common.policy_engine_image_load(client, userId, imageId, imageDigest)
+        logger.debug('Reloading image: {}, user: {} digest: {}'.format(imageId, userId, imageDigest))
+        resp = policy_engine_image_load(client, userId, imageId, imageDigest)
     except Exception as err:
         logger.warn("failed to load image data into policy engine: " + str(err))
 
@@ -1351,16 +1356,16 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
         logger.debug("calling policy_engine: " + str(userId) + " : " + str(imageId) + " : " + str(fulltag))
 
         try:
-            resp = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, bundle=policy_bundle)
+            curr_evaluation_result = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, policy_bundle=policy_bundle)
         except Exception as err:
             raise err
 
-        curr_final_action = resp.final_action.upper()
+        curr_final_action = curr_evaluation_result.get('final_action', '').upper()
         
         # set up the newest evaluation
+
         evalId = hashlib.md5(':'.join([policyId, userId, imageDigest, fulltag, str(curr_final_action)]).encode('utf8')).hexdigest()
-        curr_evaluation_record = anchore_engine.services.common.make_eval_record(userId, evalId, policyId, imageDigest, fulltag, curr_final_action, "policy_evaluations/"+evalId)
-        curr_evaluation_result = resp.to_dict()
+        curr_evaluation_record = anchore_engine.common.helpers.make_eval_record(userId, evalId, policyId, imageDigest, fulltag, curr_final_action, "policy_evaluations/" + evalId)
 
         # get last image evaluation
         last_evaluation_record = db_policyeval.tsget_latest(userId, imageDigest, fulltag, session=dbsession)
@@ -1460,7 +1465,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                 fulldigest = registry + "/" + repo + "@" + d
                 for t in tags:
                     fulltag = registry + "/" + repo + ":" + t
-                    new_image_record = anchore_engine.services.common.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
+                    new_image_record = anchore_engine.common.images.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
                     imageDigest = new_image_record['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
@@ -1470,9 +1475,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
                             image_content_data = {}
-                            for content_type in anchore_engine.services.common.image_content_types + anchore_engine.services.common.image_metadata_types:
+                            for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
                                 try:
-                                    image_content_data[content_type] = anchore_engine.services.common.extract_analyzer_content(anchore_data, content_type, manifest=manifest)
+                                    image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(anchore_data, content_type, manifest=manifest)
                                 except:
                                     image_content_data[content_type] = {}
                             if image_content_data:
@@ -1481,7 +1486,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
 
                             try:
                                 logger.debug("adding image analysis data to image_record")
-                                anchore_engine.services.common.update_image_record_with_analysis_data(new_image_record, anchore_data)
+                                anchore_engine.common.helpers.update_image_record_with_analysis_data(new_image_record, anchore_data)
                             except Exception as err:
                                 logger.warn("unable to update image record with analysis data - exception: " + str(err))
 
@@ -1497,10 +1502,10 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             if not manifest:
                                 manifest = json.dumps({})
                         except Exception as err:
-                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
+                            raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
                     else:
-                        new_image_detail = anchore_engine.services.common.clean_docker_image_details_for_update(new_image_record['image_detail'])
+                        new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(new_image_record['image_detail'])
 
                         if 'imageId' not in new_image_detail or not new_image_detail['imageId']:
                             for image_detail in image_record['image_detail']:
@@ -1544,7 +1549,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                             if not manifest:
                                 manifest = json.dumps({})
                         except Exception as err:
-                            raise anchore_engine.services.common.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
+                            raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
                     addlist[imageDigest] = image_record
 
@@ -1564,7 +1569,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession, resource_user=
             httpcode = 404
             raise Exception("no body content passed to POST")
         else:
-            resource_types = anchore_engine.services.common.resource_types
+            resource_types = anchore_engine.common.resource_types
             if resourcetype == 'all':
                 types_to_run = resource_types
             else:
@@ -1633,7 +1638,8 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession, resource_user=
                                 logger.warn("prune delete failed: " + str(httpcode) + " : " + str(rc))
                 elif input_resourcetype == 'users':
                     duserId = resource['resource_ids']['userId']
-                    user_record = db_users.get(duserId, session=dbsession)
+                    user_record = db_accounts.get(duserId, session=dbsession)
+                    #user_record = db_users.get(duserId, session=dbsession)
                     if user_record:
                         rc, httpcode = do_user_delete(ruserId, user_record, dbsession, force=True)
                         if httpcode in range(200,299):
@@ -1666,7 +1672,7 @@ def delete_prune_candidates(resourcetype, bodycontent, dbsession, resource_user=
             httpcode = 200
 
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -1709,7 +1715,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
         raise Exception("failed to gather full DB records for pruning run")
 
     try:
-        resource_types = anchore_engine.services.common.resource_types
+        resource_types = anchore_engine.common.resource_types
 
         if resourcetype == 'all':
             types_to_run = resource_types
@@ -1898,7 +1904,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
                         prune_candidates.append(el)
 
             elif resourcetype == 'archive':
-                bucket_types = anchore_engine.services.common.bucket_types
+                bucket_types = anchore_engine.common.bucket_types
 
                 records = db_archivedocument.list_all(session=dbsession)
                 for record in records:
@@ -2015,7 +2021,7 @@ def get_prune_candidates(resourcetype, dbsession, dangling=True, olderthan=None,
         }
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.services.common.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return(return_object, httpcode)
 
@@ -2079,19 +2085,13 @@ def do_image_delete(userId, image_record, dbsession, force=False):
                 rc = archive_sys.delete(userId, bucket, imageDigest)
 
             logger.debug("DELETEing image from policy_engine")
+
             # prepare inputs
             try:
-                system_user_auth = get_system_auth(dbsession)
-                system_userId = system_user_auth[0]
-                system_password = system_user_auth[1]
-
-                localconfig = anchore_engine.configuration.localconfig.get_config()
-                verify = localconfig['internal_ssl_verify']
-
-                client = anchore_engine.clients.policy_engine.get_client(user=system_userId, password=system_password, verify_ssl=verify)
+                pe_client = internal_client_for(PolicyEngineClient, userId=userId)
                 for img_id in set(image_ids):
                     logger.debug("DELETING image from policy engine userId = {} imageId = {}".format(userId, img_id))
-                    rc = client.delete_image(user_id=userId, image_id=img_id)
+                    rc = pe_client.delete_image(user_id=userId, image_id=img_id)
             except:
                 logger.exception('Failed deleting image from policy engine')
                 raise

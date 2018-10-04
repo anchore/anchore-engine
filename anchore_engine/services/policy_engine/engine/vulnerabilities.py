@@ -15,7 +15,7 @@ from sqlalchemy import or_
 
 from anchore_engine.db import DistroNamespace, get_thread_scoped_session
 from anchore_engine.db import Vulnerability, FixedArtifact, ImagePackage, ImagePackageVulnerability
-from anchore_engine.services.common import nonos_package_types, os_package_types
+from anchore_engine.common import nonos_package_types, os_package_types
 
 from .feeds import DataFeeds, VulnerabilityFeed
 from .logs import get_logger

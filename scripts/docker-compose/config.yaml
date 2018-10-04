@@ -86,7 +86,6 @@ credentials:
       ssl: False
     db_pool_size: 30
     db_pool_max_overflow: 100
-
 services:
   apiext:
     enabled: True
@@ -94,6 +93,7 @@ services:
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
     port: 8228
+    authorization_handler: native
   kubernetes_webhook:
     enabled: True
     require_auth: False

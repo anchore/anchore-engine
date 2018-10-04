@@ -49,6 +49,13 @@ DEFAULT_CONFIG = {
 DEFAULT_CONFIG_FILENAME = 'config.yaml'
 localconfig = {}
 
+# System configuration for identities and bootstrap
+SYSTEM_ACCOUNT_NAME = 'anchore-system'
+SYSTEM_USERNAME = 'anchore-system'
+ADMIN_ACCOUNT_NAME = 'admin'
+ADMIN_USERNAME = 'admin'
+ADMIN_USER_DEFAULT_PASSWORD = 'foobar' # TODO: remove this, use a generated cred instead
+SYSTEM_IDENTITY_BOOTSTRAPPER = 'system-init' # The 'creator' username to keep in the db for the initially bootstrapped identities
 
 # Top-level config keys required to be present
 default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
