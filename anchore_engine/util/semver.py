@@ -5,17 +5,21 @@ from pkg_resources import parse_version
 
 from anchore_engine.subsys import logger
 
+zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
+
 def language_compare(a, op, b, language='python'):
+    global zerolikes
+
     if op not in ['>', '<', '<=', '>=', '!=', '=', '==']:
         raise Exception("unknown op {}".format(op))
     elif not a or not b:
         raise Exception("must supply valid inputs a={} op={} b={}".format(a, op, b))
 
-    zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
-
     if language in ['java', 'maven']:
-        aoptions = [LooseVersion(a), parse_version(a)]
-        boptions = [LooseVersion(b), parse_version(b)]
+        aoptions = [parse_version(a), LooseVersion(a)]
+        boptions = [parse_version(b), LooseVersion(b)]
+        #aoptions = [LooseVersion(a), parse_version(a)]
+        #boptions = [LooseVersion(b), parse_version(b)]
     elif language in ['ruby', 'gem']:
         aoptions = [parse_version(a)]
         boptions = [parse_version(b)]        
@@ -32,7 +36,7 @@ def language_compare(a, op, b, language='python'):
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
     else:
-        raise Exception("language {} not supported for version comparison")
+        raise Exception("language {} not supported for version comparison".format(language))
 
     for i in range(0, len(aoptions)):
         try:
@@ -41,25 +45,37 @@ def language_compare(a, op, b, language='python'):
                     return(True)
                 if aoptions[i] > boptions[i]:
                     return(True)
+                else:
+                    return(False)
             elif op == '>=':
                 if b in zerolikes:
                     return(True)
                 if aoptions[i] >= boptions[i]:
                     return(True)
+                else:
+                    return(False)
             elif op == '<':
                 if b in zerolikes:
                     return(False)
                 if aoptions[i] < boptions[i]:
                     return(True)
+                else:
+                    return(False)
             elif op == '<=':
                 if aoptions[i] <= boptions[i]:
                     return(True)
+                else:
+                    return(False)
             elif op in ['=', '==']:
                 if aoptions[i] == boptions[i]:
                     return(True)
+                else:
+                    return(False)
             elif op == '!=':
                 if aoptions[i] != boptions[i]:
                     return(True)
+                else:
+                    return(False)
         except Exception as err:
             pass
 
@@ -88,7 +104,6 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
             patt = re.match("([!|<|>|=]+)(.*)", rangecheck)
             if patt:
                 op,verraw = (patt.group(1), patt.group(2))
-
                 inrange = language_compare(rawpkgver, op, verraw, language=language)
                 if not inrange:
                     violation = True
@@ -182,6 +197,18 @@ def convert_langversionlist_to_semver(versionlist, language):
         normal_semver_range = '*'
     
     return(normal_semver_range)
+
+def semver_is_all(rawsemver):
+    global zerolikes
+
+    if rawsemver in ['*', 'all']:
+        return(True)
+    
+    for zl in zerolikes:
+        if rawsemver == ">{}".format(zl) or rawsemver == ">={}".format(zl):
+            return(True)
+
+    return(False)
 
 def compare_versions(rawsemver, rawpkgver, language='python'):
     ret = False

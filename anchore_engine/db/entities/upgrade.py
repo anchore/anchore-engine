@@ -573,7 +573,14 @@ def db_upgrade_007_008():
         # populate the new columns
         for table in ['image_packages', 'image_package_vulnerabilities', 'image_package_db_entries']:
             log.err("updating table ({}) column (pkg_path)".format(table))
-            engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
+            done = False
+            while not done:
+                #rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
+                rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 4096 )".format(table, table))
+                log.err("\tupdated {} records, performing next range".format(rc.rowcount))
+                if rc.rowcount == 0:
+                    done = True
+                
 
         exec_commands = ['ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkg_image_id_fkey',
                          'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_image_id_fkey',

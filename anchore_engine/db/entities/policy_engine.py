@@ -14,7 +14,7 @@ from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
-from anchore_engine.util.semver import compare_versions as semver_compare_versions
+from anchore_engine.util.semver import compare_versions as semver_compare_versions, semver_is_all
 
 try:
     from anchore_engine.subsys import logger as log
@@ -1008,6 +1008,15 @@ class ImagePackageVulnerability(Base):
         """
         fixed_in = self.fixed_artifact()
         fix_available_in = fixed_in.version if fixed_in and fixed_in.version != 'None' else None
+
+        # NOTE: semver version format indicates a range where package
+        # is vulnerable (as opposed to a value where anythng < value
+        # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
+        if fix_available_in and fixed_in.version_format in ['semver']:
+            if semver_is_all(fix_available_in):
+                fix_available_in = None
+            else:
+                fix_available_in = "! {}".format(fix_available_in)
 
         return fix_available_in
 
