@@ -529,10 +529,10 @@ def db_upgrade_006_007():
     catalog_image_upgrades_006_007()
 
 def db_upgrade_007_008():
-    policy_engine_packages_upgrade_007__008()
+    policy_engine_packages_upgrade_007_008()
     user_account_upgrades_007_008()
 
-def policy_engine_packages_upgrade_007__008():
+def policy_engine_packages_upgrade_007_008():
     from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
