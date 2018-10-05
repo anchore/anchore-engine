@@ -16,7 +16,7 @@ authorizer = get_authorizer()
 
 
 @authorizer.requires([Permission(domain='system', action='*', target='*')])
-def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
+def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False):
     """
     GET /evals
 
@@ -30,12 +30,7 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
         user_id = request_inputs['userId']
 
         with db.session_scope() as session:
-            if newest_only:
-                evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag,
-                                        evalId=evalId)
-            else:
-                evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag, evalId=evalId)
-
+            evals = list_evals_impl(session, userId=user_id, policyId=policyId, imageDigest=imageDigest, tag=tag,evalId=evalId, interactive=interactive, newest_only=newest_only)
             if not evals:
                 httpcode = 404
                 raise Exception("eval not found in DB")
@@ -128,9 +123,8 @@ def delete_eval(bodycontent):
     return (return_object, httpcode)
 
 
-def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
+def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False):
     logger.debug("looking up eval record: " + userId)
-
 
     # set up the filter based on input
     dbfilter = {}
@@ -147,7 +141,6 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
     if evalId is not None:
         dbfilter['evalId'] = evalId
 
-
     # perform an interactive eval to get/install the latest
     try:
         logger.debug("performing eval refresh: " + str(dbfilter))
@@ -162,16 +155,16 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
         else:
             policyId = None
 
-        rc = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId)
+        latest_eval_record = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId, interactive=interactive, newest_only=newest_only)
 
     except Exception as err:
         logger.error(
             "interactive eval failed, will return any in place evaluation records - exception: " + str(err))
 
-    records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-    # Return None instead?
-    #if not records:
-    #    raise Exception("eval not found in DB")
+    if interactive or newest_only:
+        records = [latest_eval_record]
+    else:
+        records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
 
     return records
 

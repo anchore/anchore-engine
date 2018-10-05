@@ -1301,7 +1301,8 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
     return(True)
 
-def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None):
+def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None, interactive=False, newest_only=False):
+    ret = {}
     # prepare inputs
     try:
         # mgr = manager_factory.for_session(dbsession)
@@ -1359,56 +1360,60 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             curr_evaluation_result = client.check_user_image_inline(user_id=userId, image_id=imageId, tag=fulltag, policy_bundle=policy_bundle)
         except Exception as err:
             raise err
-
         curr_final_action = curr_evaluation_result.get('final_action', '').upper()
         
         # set up the newest evaluation
-
         evalId = hashlib.md5(':'.join([policyId, userId, imageDigest, fulltag, str(curr_final_action)]).encode('utf8')).hexdigest()
         curr_evaluation_record = anchore_engine.common.helpers.make_eval_record(userId, evalId, policyId, imageDigest, fulltag, curr_final_action, "policy_evaluations/" + evalId)
 
-        # get last image evaluation
-        last_evaluation_record = db_policyeval.tsget_latest(userId, imageDigest, fulltag, session=dbsession)
-        last_evaluation_result = {}
-        last_final_action = None
-        if last_evaluation_record:
-            try:
-                last_evaluation_result = archive_sys.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
-                last_final_action = last_evaluation_result['final_action'].upper()
-            except:
-                logger.warn("no last eval record - skipping")
+        if interactive:
+            logger.debug("interactive eval requested, skipping eval archive store and notification check")
+        else:
+            # store the newest evaluation
+            logger.debug("non-interactive eval requested, performing eval archive store")
 
-        # store the newest evaluation
-        archive_sys.put_document(userId, 'policy_evaluations', evalId, curr_evaluation_result)
-        db_policyeval.tsadd(policyId, userId, imageDigest, fulltag, curr_final_action, curr_evaluation_record, session=dbsession)
+            # get last image evaluation
+            last_evaluation_record = db_policyeval.tsget_latest(userId, imageDigest, fulltag, session=dbsession)
+            last_evaluation_result = {}
+            last_final_action = None
+            if last_evaluation_record:
+                try:
+                    last_evaluation_result = archive_sys.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
+                    last_final_action = last_evaluation_result['final_action'].upper()
+                except:
+                    logger.warn("no last eval record - skipping")
 
-        # compare last with newest evaluation
-        doqueue = False
-        if last_evaluation_result and curr_evaluation_result:
-            if last_final_action != curr_final_action:
-                logger.debug("detected difference in policy eval results (current vs last)")
-                doqueue = True
-            else:
-                logger.debug("no difference in policy evaluation")
+            archive_sys.put_document(userId, 'policy_evaluations', evalId, curr_evaluation_result)
+            db_policyeval.tsadd(policyId, userId, imageDigest, fulltag, curr_final_action, curr_evaluation_record, session=dbsession)
 
-        # if different, set up a policy eval notification update
-        if doqueue:            
-            try:
-                logger.debug("queueing policy eval notification")
-                npayload = {
-                    'last_eval': last_evaluation_result,
-                    'curr_eval': curr_evaluation_result,
-                }
-                if annotations:
-                    npayload['annotations'] = annotations
+            # compare last with newest evaluation
+            doqueue = False
+            if last_evaluation_result and curr_evaluation_result:
+                if last_final_action != curr_final_action:
+                    logger.debug("detected difference in policy eval results (current vs last)")
+                    doqueue = True
+                else:
+                    logger.debug("no difference in policy evaluation")
 
-                rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
-            except Exception as err:
-                logger.warn("failed to enqueue notification - exception: " + str(err))
+            # if different, set up a policy eval notification update
+            if doqueue:            
+                try:
+                    logger.debug("queueing policy eval notification")
+                    npayload = {
+                        'last_eval': last_evaluation_result,
+                        'curr_eval': curr_evaluation_result,
+                        }
+                    if annotations:
+                        npayload['annotations'] = annotations
+
+                    rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
+                except Exception as err:
+                    logger.warn("failed to enqueue notification - exception: " + str(err))
 
         # done
-            
-    return(True)
+
+    ret = curr_evaluation_record        
+    return(ret)
 
 def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
     ret = []

@@ -1222,12 +1222,13 @@ def images_check_impl(request_inputs, image_records):
                         return_object_el[imageDigest][tag] = []
 
                     try:
-                        if params and 'history' in params and params['history']:
-                            results = client.get_evals(imageDigest=imageDigest, tag=tag,
-                                                               policyId=policyId)
+                        if params and params.get('history', False):
+                            results = client.get_evals(imageDigest=imageDigest, tag=tag, policyId=policyId)
+                        elif params and params.get('interactive', False):
+                            results = [client.get_eval_interactive(imageDigest=imageDigest, tag=tag, policyId=policyId)]
                         else:
-                            results = [client.get_eval_latest(imageDigest=imageDigest, tag=tag,
-                                                                       policyId=policyId)]
+                            results = [client.get_eval_latest(imageDigest=imageDigest, tag=tag, policyId=policyId)]
+                                                                       
                     except Exception as err:
                         results = []
 

@@ -101,11 +101,25 @@ class CatalogClient(InternalServiceClient):
     def delete_policy(self, policyId=None, cleanup_evals=True):
         return self.call_api(http.anchy_delete, 'policies/{policyId}', path_params={'policyId': policyId}, query_params={'cleanup_evals': cleanup_evals})
 
-    def get_evals(self, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False):
-        return self.call_api(http.anchy_get, 'evals', query_params={'policyId': policyId, 'imageDigest': imageDigest, 'evalId': evalId, 'tag': tag, 'newest_only': newest_only})
+    def get_evals(self, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False, history_only=False):
+        return self.call_api(http.anchy_get, 'evals', query_params={'policyId': policyId, 'imageDigest': imageDigest, 'evalId': evalId, 'tag': tag, 'newest_only': newest_only, 'interactive': interactive, 'history_only': history_only})
+
+    def get_eval_interactive(self, policyId=None, imageDigest=None, tag=None, evalId=None):
+        evals = self.get_evals(policyId, imageDigest, tag, evalId, interactive=True)
+        if evals:
+            return evals[0]
+        else:
+            return {}
 
     def get_eval_latest(self, policyId=None, imageDigest=None, tag=None, evalId=None):
         evals = self.get_evals(policyId, imageDigest, tag, evalId, newest_only=True)
+        if evals:
+            return evals[0]
+        else:
+            return {}
+
+    def get_eval_history(self, policyId=None, imageDigest=None, tag=None, evalId=None):
+        evals = self.get_evals(policyId, imageDigest, tag, evalId, history_only=True)
         if evals:
             return evals[0]
         else:

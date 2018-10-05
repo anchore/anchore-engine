@@ -506,6 +506,10 @@ paths:
         in: query
         required: false
         type: boolean
+      - name: interactive
+        in: query
+        required: false
+        type: boolean
       responses:
         200:
           description: Policy evaluation success

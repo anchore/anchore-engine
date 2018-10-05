@@ -515,6 +515,14 @@ paths:
         type: boolean
         required: false
         in: query
+      - name: interactive
+        type: boolean
+        required: false
+        in: query
+      - name: history_only
+        type: boolean
+        required: false
+        in: query
       produces:
       - "application/json"
       responses:
