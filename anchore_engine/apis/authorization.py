@@ -16,6 +16,7 @@ import functools
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 from threading import RLock
+from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
 
 # Global authorizer configured
 _global_authorizer = None
@@ -282,6 +283,11 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
             # Disable sessions, since the APIs are not session-based
             ExternalAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
 
+            logger.info('Initializing external authz realm')
+            ExternalAuthzRealm.init_realm(configuration)
+
+            logger.info('External authz handler init complete')
+
 
 class InternalServiceAuthorizer(DbAuthorizationHandler):
     """
@@ -307,7 +313,7 @@ def init_authz_handler(configuration=None):
     else:
         raise Exception('Unknown authorization handler: {}'.format(handler_config))
 
-    handler.load(configuration)
+    handler.load(configuration.get('authorization_handler_config', {}))
     _global_authorizer = handler
 
 
