@@ -29,8 +29,7 @@ service_map = {
     'catalog': 'anchore-catalog',
     'kubernetes_webhook': 'anchore-kubernetes-webhook',
     'policy_engine': 'anchore-policy-engine',
-    'feeds': 'anchore-feeds',
-    'identity': 'anchore-identity'
+    'feeds': 'anchore-feeds'
 }
 
 
