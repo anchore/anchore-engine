@@ -5,6 +5,7 @@ Internal service client base and common functions
 
 import copy
 import urllib
+import urllib.parse
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.http import anchy_get
 from anchore_engine.clients.services.common import get_service_endpoint, get_service_endpoints
@@ -52,7 +53,13 @@ class InternalServiceClient(object):
         self.request_namespace = as_account
         self.user = user
         self.password = password
-        self.verify_ssl = config_provider_fn()['internal_ssl_verify']
+        if config_provider_fn:
+            try:
+                self.verify_ssl = config_provider_fn()['internal_ssl_verify']
+            except:
+                # Default to verify ssl if not set
+                self.verify_ssl = True
+
         self.service_url_provider = url_provider
 
     def call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None):
@@ -104,7 +111,7 @@ class InternalServiceClient(object):
 
         logger.debug('Dispatching: url={url}, headers={headers}, body={body}, params={params}'.format(url=final_url, headers=request_headers, body=body, params=filtered_qry_params))
         try:
-            return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params)
+            return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl)
         except Exception as e:
             logger.error('Failed client call to service {} for url: {}. Response: {}'.format(self.__service__, final_url, e.__dict__))
             raise e
