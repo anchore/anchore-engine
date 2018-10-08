@@ -576,6 +576,21 @@ def policy_engine_packages_upgrade_007_008():
                     raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
 
 
+        exec_commands = [
+            'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkg_image_id_fkey',
+            'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_image_id_fkey',
+            'ALTER TABLE image_packages DROP CONSTRAINT IF EXISTS image_packages_pkey',
+            'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_pkey',
+            'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey',
+        ]
+
+        log.err("dropping primary key / foreign key relationships for new column")
+        cmdcount = 1
+        for command in exec_commands:
+            log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
+            engine.execute(command)
+            cmdcount = cmdcount + 1
+
         # populate the new columns
         for table in ['image_packages', 'image_package_vulnerabilities', 'image_package_db_entries']:
             log.err("updating table ({}) column (pkg_path)".format(table))
@@ -586,19 +601,14 @@ def policy_engine_packages_upgrade_007_008():
                 log.err("\tupdated {} records, performing next range".format(rc.rowcount))
                 if rc.rowcount == 0:
                     done = True
-                
 
-        exec_commands = ['ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkg_image_id_fkey',
-                         'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_image_id_fkey',
-                         'ALTER TABLE image_packages DROP CONSTRAINT IF EXISTS image_packages_pkey',
-                         'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_pkey',
-                         'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey',
-                         'ALTER TABLE image_packages ADD PRIMARY KEY (image_id,image_user_id,name,version,pkg_type,arch,pkg_path)',
-                         'ALTER TABLE image_package_vulnerabilities ADD PRIMARY KEY (pkg_user_id,pkg_image_id,pkg_name,pkg_version,pkg_type,pkg_arch,vulnerability_id,pkg_path)',
-                         'ALTER TABLE image_package_db_entries ADD PRIMARY KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path,file_path)',
-                         'ALTER TABLE image_package_vulnerabilities ADD CONSTRAINT image_package_vulnerabilities_pkg_image_id_fkey FOREIGN KEY (pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
-                         'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
-                     ]
+        exec_commands = [
+            'ALTER TABLE image_packages ADD PRIMARY KEY (image_id,image_user_id,name,version,pkg_type,arch,pkg_path)',
+            'ALTER TABLE image_package_vulnerabilities ADD PRIMARY KEY (pkg_user_id,pkg_image_id,pkg_name,pkg_version,pkg_type,pkg_arch,vulnerability_id,pkg_path)',
+            'ALTER TABLE image_package_db_entries ADD PRIMARY KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path,file_path)',
+            'ALTER TABLE image_package_vulnerabilities ADD CONSTRAINT image_package_vulnerabilities_pkg_image_id_fkey FOREIGN KEY (pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
+            'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
+        ]
 
         log.err("updating primary key / foreign key relationships for new column")
         cmdcount = 1
