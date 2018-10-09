@@ -114,8 +114,8 @@ class ListVersionItem(list):
             if type(other) == ListVersionItem:
                 l_iter = self.__iter__()
                 r_iter = other.__iter__()
-                left = next(l_iter)
-                right = next(r_iter)
+                left = next(l_iter, None)
+                right = next(r_iter, None)
 
                 while left or right:
                     if left and type(left) in [IntegerVersionItem, StringVersionItem, ListVersionItem]:
