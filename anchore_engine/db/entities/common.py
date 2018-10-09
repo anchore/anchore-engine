@@ -197,7 +197,8 @@ def get_params(localconfig):
     }
     return(ret)
 
-def do_create(base, engine, specific_tables):
+def do_create(specific_tables=None, base=Base):
+    engine = get_engine()
     try:
         if specific_tables:
             logger.info('Initializing only a subset of tables as requested: {}'.format(specific_tables))
