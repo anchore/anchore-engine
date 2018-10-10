@@ -584,10 +584,13 @@ def policy_engine_packages_upgrade_007_008():
             done = False
             while not done:
                 startts = time.time()
-                rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 32000 )".format(table, table))
+                #rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 32000 )".format(table, table))
+                #if rc.rowcount == 0:
+                #    done = True
+                rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
                 log.err("updated {} records in {} (time={}), performing next range".format(rc.rowcount, table, time.time() - startts))
-                if rc.rowcount == 0:
-                    done = True
+                done=True
+
 
         with session_scope() as dbsession:
             db_image_ids = dbsession.query(Image.id).distinct().all()
