@@ -64,6 +64,8 @@ class TestMavenVersionHandling(unittest.TestCase):
             self.assertEqual(mv2.compare_to(mv1), 1, 'Expected {} to be less than {}'.format(mv1.value, mv2.value))
 
     def test_versions_equal(self):
+        self._check_op_('0', '0.0.0', '==')
+        self._check_op_('0.0', '0.0-0', '==')
         self._check_op_('1', '1', '==')
         self._check_op_('1', '1.0', '==')
         self._check_op_('1', '1.0.0', '==')
