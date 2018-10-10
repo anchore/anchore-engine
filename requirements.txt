@@ -40,3 +40,4 @@ certifi
 yosai
 zope.component
 zope.interface
+semantic_version
