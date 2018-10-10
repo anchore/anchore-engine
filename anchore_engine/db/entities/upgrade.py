@@ -1,4 +1,5 @@
 import json
+import time
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
 import anchore_engine.db.entities.common
@@ -533,7 +534,7 @@ def db_upgrade_007_008():
     user_account_upgrades_007_008()
 
 def policy_engine_packages_upgrade_007_008():
-    from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem
+    from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem, Image
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
 
@@ -576,12 +577,39 @@ def policy_engine_packages_upgrade_007_008():
                     raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
 
 
+        # populate the new columns
+        log.err("updating new column (pkg_path) - this may take a while")
+        for table in ['image_packages', 'image_package_vulnerabilities']:
+            log.err("updating table ({}) column (pkg_path)".format(table))
+            done = False
+            while not done:
+                startts = time.time()
+                rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 32000 )".format(table, table))
+                log.err("updated {} records in {} (time={}), performing next range".format(rc.rowcount, table, time.time() - startts))
+                if rc.rowcount == 0:
+                    done = True
+
+        with session_scope() as dbsession:
+            db_image_ids = dbsession.query(Image.id).distinct().all()
+
+        total_records = len(db_image_ids)
+        record_count = 0
+        for record in db_image_ids:
+            db_image_id = record[0]
+            startts = time.time()
+            rc = engine.execute("UPDATE image_package_db_entries set pkg_path='pkgdb' where image_id='{}' and pkg_path is null".format(db_image_id))
+            record_count = record_count + 1
+            log.err("updated {} image ({} / {}) in {} (time={}), performing next image update".format(db_image_id, record_count, total_records, 'image_package_db_entries', time.time() - startts))
+
         exec_commands = [
             'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkg_image_id_fkey',
             'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_image_id_fkey',
             'ALTER TABLE image_packages DROP CONSTRAINT IF EXISTS image_packages_pkey',
             'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_pkey',
             'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey',
+            #'CREATE INDEX pkg_path_index_0 ON image_packages (pkg_path)',
+            #'CREATE INDEX pkg_path_index_1 ON image_package_vulnerabilities (pkg_path)',
+            #'CREATE INDEX pkg_path_index_2 ON image_package_db_entries (pkg_path)',
         ]
 
         log.err("dropping primary key / foreign key relationships for new column")
@@ -591,17 +619,6 @@ def policy_engine_packages_upgrade_007_008():
             engine.execute(command)
             cmdcount = cmdcount + 1
 
-        # populate the new columns
-        for table in ['image_packages', 'image_package_vulnerabilities', 'image_package_db_entries']:
-            log.err("updating table ({}) column (pkg_path)".format(table))
-            done = False
-            while not done:
-                #rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
-                rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 4096 )".format(table, table))
-                log.err("\tupdated {} records, performing next range".format(rc.rowcount))
-                if rc.rowcount == 0:
-                    done = True
-
         exec_commands = [
             'ALTER TABLE image_packages ADD PRIMARY KEY (image_id,image_user_id,name,version,pkg_type,arch,pkg_path)',
             'ALTER TABLE image_package_vulnerabilities ADD PRIMARY KEY (pkg_user_id,pkg_image_id,pkg_name,pkg_version,pkg_type,pkg_arch,vulnerability_id,pkg_path)',
@@ -610,7 +627,7 @@ def policy_engine_packages_upgrade_007_008():
             'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
         ]
 
-        log.err("updating primary key / foreign key relationships for new column")
+        log.err("updating primary key / foreign key relationships for new column - this may take a while")
         cmdcount = 1
         for command in exec_commands:
             log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
@@ -618,21 +635,28 @@ def policy_engine_packages_upgrade_007_008():
             cmdcount = cmdcount + 1
 
 
-        log.err("converting ImageNpm and ImageGem records into ImagePackage records")
+        log.err("converting ImageNpm and ImageGem records into ImagePackage records - this may take a while")
         # migrate ImageNpm and ImageGem records into ImagePackage records
         with session_scope() as dbsession:
             db_npms = dbsession.query(ImageNpm)
+            total_npms = dbsession.query(ImageNpm).count()
             db_gems = dbsession.query(ImageGem)
+            total_gems = dbsession.query(ImageGem).count()
 
-        gems = []
         npms = []
+        chunk_size = 32
+        record_count = 0
         try:
             for n in db_npms:
                 np = ImagePackage()
 
                 # primary keys
                 np.name = n.name
-                np.version = n.versions_json[0]
+                if len(n.versions_json):
+                    version = n.versions_json[0]
+                else:
+                    version = "N/A"
+                np.version = version
                 np.pkg_type = 'npm'
                 np.arch = 'N/A'
                 np.image_user_id = n.image_user_id
@@ -651,16 +675,48 @@ def policy_engine_packages_upgrade_007_008():
                 np.normalized_src_pkg = fullname
                 np.src_pkg = fullname
                 npms.append(np)
+                if len(npms) >= chunk_size:
+                    startts = time.time()
+                    try:
+                        with session_scope() as dbsession:
+                            dbsession.bulk_save_objects(npms)
+                            record_count = record_count + chunk_size
+                    except:
+                        log.err("skipping duplicates")
+                        record_count = record_count + chunk_size
+                    log.err("merged {} / {} npm records (time={}), performing next range".format(record_count, total_npms, time.time() - startts))
+
+                    npms = []
+
+            if len(npms):
+                startts = time.time()
+                try:
+                    with session_scope() as dbsession:
+                        dbsession.bulk_save_objects(npms)
+                        record_count = record_count + chunk_size
+                except:
+                    log.err("skipping duplicates")
+                    record_count = record_count + chunk_size
+                log.err("final merged {} / {} npm records (time={})".format(record_count, total_npms, time.time() - startts))
+
         except Exception as err:
             raise err
 
+        gems = []
+        chunk_size = 8192
+        record_count = 0
         try:
             for n in db_gems:
+
                 np = ImagePackage()
 
                 # primary keys
                 np.name = n.name
-                np.version = n.versions_json[0]
+                if len(n.versions_json):
+                    version = n.versions_json[0]
+                else:
+                    version = "N/A"
+                np.version = version
                 np.pkg_type = 'gem'
                 np.arch = 'N/A'
                 np.image_user_id = n.image_user_id
@@ -679,25 +735,33 @@ def policy_engine_packages_upgrade_007_008():
                 np.normalized_src_pkg = fullname
                 np.src_pkg = fullname
                 gems.append(np)
+                if len(gems) >= chunk_size:
+                    startts = time.time()
+                    try:
+                        with session_scope() as dbsession:
+                            dbsession.bulk_save_objects(gems)
+                            record_count = record_count + chunk_size
+                    except:
+                        log.err("skipping duplicates")
+                        record_count = record_count + chunk_size
+                    log.err("merged {} / {} gem records (time={}), performing next range".format(record_count, total_gems, time.time() - startts))
+
+                    gems = []
+
+            if len(gems):
+                startts = time.time()
+                try:
+                    with session_scope() as dbsession:
+                        dbsession.bulk_save_objects(gems)
+                        record_count = record_count + chunk_size
+                except:
+                    log.err("skipping duplicates")
+                    record_count = record_count + chunk_size
+                log.err("final merged {} / {} gem records (time={})".format(record_count, total_gems, time.time() - startts))
+
         except Exception as err:
             raise err
 
-
-        with session_scope() as dbsession:
-            log.err("merging npms: {} records to merge".format(len(npms)))
-            try:
-                for npm in npms:
-                    dbsession.merge(npm)
-            except Exception as err:
-                raise err
-
-        with session_scope() as dbsession:
-            log.err("merging gems: {} records to merge".format(len(gems)))
-            try:
-                for gem in gems:
-                    dbsession.merge(gem)
-            except Exception as err:
-                raise err
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.

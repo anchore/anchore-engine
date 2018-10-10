@@ -7,7 +7,7 @@ from anchore_engine.db import db_policyeval
 #import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.common
-from anchore_engine.subsys import logger
+from anchore_engine.subsys import logger, archive as archive_sys
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine.apis.authorization import get_authorizer, Permission
@@ -155,16 +155,24 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
         else:
             policyId = None
 
-        latest_eval_record = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId, interactive=interactive, newest_only=newest_only)
+        latest_eval_record, latest_eval_result = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId, interactive=interactive, newest_only=newest_only)
 
     except Exception as err:
         logger.error(
             "interactive eval failed, will return any in place evaluation records - exception: " + str(err))
 
+    records = []
     if interactive or newest_only:
+        latest_eval_record['result'] = latest_eval_result
         records = [latest_eval_record]
     else:
         records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+        for record in records:
+            try:
+                result = archive_sys.get_document(userId, 'policy_evaluations', record['evalId'])
+                record['result'] = result
+            except:
+                record['result'] = {}
 
     return records
 

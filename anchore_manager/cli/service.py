@@ -307,8 +307,13 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
         # preflight - db checks
         try:
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
-            db_params = anchore_manager.cli.utils.connect_database(config, db_params, db_retries=300)
-
+            #override db_timeout since upgrade might require longer db session timeout setting
+            try:
+                db_params['db_connect_args']['timeout'] = 86400
+            except Exception as err:
+                pass
+            
+            anchore_manager.cli.utils.connect_database(config, db_params, db_retries=300)
             code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=(not skip_db_compat_check))
 
             in_sync = False

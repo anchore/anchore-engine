@@ -18,7 +18,7 @@ from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMeta
 from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
-from anchore_engine.util.semver import convert_langversionlist_to_semver
+from anchore_engine.util.langpack import convert_langversionlist_to_semver
 
 log = get_logger()
 

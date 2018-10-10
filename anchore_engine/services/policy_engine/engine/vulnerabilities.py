@@ -19,10 +19,6 @@ from anchore_engine.common import nonos_package_types, os_package_types
 
 from .feeds import DataFeeds, VulnerabilityFeed
 from .logs import get_logger
-from anchore_engine.util.apk import compare_versions as apkg_compare_versions
-from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
-from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
-from anchore_engine.util.semver import compare_versions as semver_compare_versions
 
 log = get_logger()
 

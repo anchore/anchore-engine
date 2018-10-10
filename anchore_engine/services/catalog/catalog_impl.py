@@ -1305,14 +1305,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
     ret = {}
     # prepare inputs
     try:
-        # mgr = manager_factory.for_session(dbsession)
-        # system_user_auth = mgr.get_system_credentials()
-        # system_userId = system_user_auth[0]
-        # system_password = system_user_auth[1]
-        #
-        # localconfig = anchore_engine.configuration.localconfig.get_config()
-        # verify = localconfig['internal_ssl_verify']
-
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
 
         annotations = {}
@@ -1412,8 +1404,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
         # done
 
-    ret = curr_evaluation_record        
-    return(ret)
+    return(curr_evaluation_record, curr_evaluation_result)
 
 def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
     ret = []

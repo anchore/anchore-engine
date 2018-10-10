@@ -14,7 +14,7 @@ from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
-from anchore_engine.util.semver import compare_versions as semver_compare_versions, semver_is_all
+from anchore_engine.util.langpack import compare_versions as langpack_compare_versions, langpack_is_all
 
 try:
     from anchore_engine.subsys import logger as log
@@ -364,7 +364,7 @@ class FixedArtifact(Base):
             else:
                 pkgversion = package_obj.fullversion
 
-            if semver_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
+            if langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
                 return(True)
 
         # Newer or the same
@@ -570,7 +570,7 @@ class ImagePackage(Base):
         if pkgkey and pkgversion and likematch:
             candidates = db.query(FixedArtifact).filter(FixedArtifact.name == pkgkey).filter(FixedArtifact.version_format == 'semver').filter(FixedArtifact.namespace_name.like(likematch))
             for candidate in candidates:
-                if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (semver_compare_versions(candidate.version, pkgversion, language=nslang)):
+                if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (langpack_compare_versions(candidate.version, pkgversion, language=nslang)):
                     matches.append(candidate)
 
         # All options are the same, no need to loop
@@ -1001,7 +1001,7 @@ class ImagePackageVulnerability(Base):
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
         if fix_available_in and fixed_in.version_format in ['semver']:
-            if semver_is_all(fix_available_in):
+            if langpack_is_all(fix_available_in):
                 fix_available_in = None
             else:
                 fix_available_in = "! {}".format(fix_available_in)

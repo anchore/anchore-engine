@@ -1,9 +1,12 @@
 import json
 import re
+import semantic_version
+
 from distutils.version import LooseVersion, StrictVersion
 from pkg_resources import parse_version
 
 from anchore_engine.subsys import logger
+from anchore_engine.util.maven import MavenVersion
 
 zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
 
@@ -15,20 +18,22 @@ def language_compare(a, op, b, language='python'):
     elif not a or not b:
         raise Exception("must supply valid inputs a={} op={} b={}".format(a, op, b))
 
+    aoptions = []
+    boptions = []
     if language in ['java', 'maven']:
-        aoptions = [parse_version(a), LooseVersion(a)]
-        boptions = [parse_version(b), LooseVersion(b)]
-        #aoptions = [LooseVersion(a), parse_version(a)]
-        #boptions = [LooseVersion(b), parse_version(b)]
+        aoptions = [MavenVersion(a)]
+        boptions = [MavenVersion(b)]
     elif language in ['ruby', 'gem']:
         aoptions = [parse_version(a)]
         boptions = [parse_version(b)]        
     elif language in ['js', 'npm']:
-        aoptions = [parse_version(a)]
-        boptions = [parse_version(b)]        
+        try:
+            aoptions = [semantic_version.Version(a, partial=True)]
+            boptions = [semantic_version.Version(b, partial=True)]
+        except:
+            aoptions = [parse_version(a)]
+            boptions = [parse_version(b)]
     elif language in ['python']:
-        aoptions = []
-        boptions = []
         try:
             aoptions = [StrictVersion(a), LooseVersion(a)]
             boptions = [StrictVersion(b), LooseVersion(b)]
@@ -198,7 +203,7 @@ def convert_langversionlist_to_semver(versionlist, language):
     
     return(normal_semver_range)
 
-def semver_is_all(rawsemver):
+def langpack_is_all(rawsemver):
     global zerolikes
 
     if rawsemver in ['*', 'all']:
@@ -217,4 +222,3 @@ def compare_versions(rawsemver, rawpkgver, language='python'):
     normal_semver = rawsemver
     ret = normalized_version_match(normal_semver, rawpkgver, language=language)
     return(ret)
-

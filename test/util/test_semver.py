@@ -1,6 +1,6 @@
 import subprocess
 import unittest
-from anchore_engine.util.semver import compare_versions
+from anchore_engine.util.langpack import compare_versions
 
 enable_training = False
 

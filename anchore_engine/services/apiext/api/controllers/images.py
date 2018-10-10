@@ -292,11 +292,9 @@ def make_response_policyeval(eval_record, params, catalog_client):
         if eval_record['evalId'] and eval_record['policyId']:
             ret[tag]['detail'] = {}
             if params and 'detail' in params and params['detail']:
-                eval_data = catalog_client.get_document('policy_evaluations', eval_record['evalId'])
-                # ret[tag]['detail']['result'] = json.loads(eval_data)
+                eval_data = eval_record['result']
                 ret[tag]['detail']['result'] = eval_data
                 bundle_data = catalog_client.get_document('policy_bundles', eval_record['policyId'])
-                # ret[tag]['detail']['policy'] = json.loads(bundle_data)
                 ret[tag]['detail']['policy'] = bundle_data
 
             ret[tag]['policyId'] = eval_record['policyId']
