@@ -49,12 +49,12 @@ class TestSemverVersionHandling(unittest.TestCase):
         ('>0.0.1 <0.0.9 || >1.0.1 <1.0.9', '', 'all', 'exception'),
         ('>0.0.1 <0.0.9 || >1.0.1 <1.0.9', None, 'all', 'exception'),
         ('>0.0.1 <0.0.9 || >1.0.1 <1.0.9', [], 'all', 'exception'),
-        #('', '1', 'all', 'exception'),
+        ('', '1', 'all', 'exception'),
         (None, '1', 'all', 'exception'),
         ([], '1', 'all', 'exception'),
         ('>==1', '1', 'all', 'exception'),
         ('>>1', '1', 'all', 'exception'),
-        #('blah', '1', 'all', 'exception'),
+        ('blah', '1', 'all', 'exception'),
         
         #TODO need to add some language-specific version checks here in addition to the 'all' as above
     ]

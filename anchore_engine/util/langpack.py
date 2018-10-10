@@ -104,6 +104,9 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
 
         # and check
         violation = False
+        if not rangechecks:
+            raise Exception("invalid range detected - {}".format(vrange))
+
         for rangecheck in rangechecks:
             rangecheck = re.sub(r"\s+", "", rangecheck)
             patt = re.match("([!|<|>|=]+)(.*)", rangecheck)
@@ -218,7 +221,8 @@ def langpack_is_all(rawsemver):
 def compare_versions(rawsemver, rawpkgver, language='python'):
     ret = False
     versionmatch = False
-
+    if not rawsemver:
+        raise Exception("empty version range passed as input")
     normal_semver = rawsemver
     ret = normalized_version_match(normal_semver, rawpkgver, language=language)
     return(ret)
