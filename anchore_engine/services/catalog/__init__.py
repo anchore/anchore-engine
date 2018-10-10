@@ -3,6 +3,7 @@ import os
 import copy
 import threading
 import time
+import pkg_resources
 
 # anchore modules
 import anchore_engine.clients.anchoreio
@@ -1372,7 +1373,7 @@ def monitor(*args, **kwargs):
 
 class CatalogService(ApiService):
     __service_name__ = 'catalog'
-    __spec_dir__ = 'services/catalog/swagger'
+    __spec_dir__ = pkg_resources.resource_filename(__name__, 'swagger')
     __monitor_fn__ = monitor
 
     def _register_instance_handlers(self):
