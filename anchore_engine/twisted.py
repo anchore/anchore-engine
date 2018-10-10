@@ -57,22 +57,21 @@ class VersionResource(Resource):
     """
     isLeaf = True
 
-    def render_GET(self, request):
-        try:
-            versions = localconfig.get_versions()
-        except:
-            versions = {}
+    def __init__(self, versions):
+        super().__init__()
+        self.versions = versions
 
+    def render_GET(self, request):
         request.responseHeaders.addRawHeader(b"Content-Type", b"application/json")
 
         ret = {
             'service': {
-                'version': versions.get('service_version', None),
+                'version': self.versions.get('service_version', None),
             },
             'api': {
             },
             'db': {
-                'schema_version': versions.get('db_version', None),
+                'schema_version': self.versions.get('db_version', None),
             }
         }
 
@@ -121,7 +120,7 @@ class WsgiApiServiceMaker(object):
     # The base child paths served by this service (e.g. /health, /v1/...). A list of web.resource.Resource() objects
     _default_resource_nodes = {
         b'health': EmptyResource(),
-        b'version': VersionResource(),
+        b'version': VersionResource({})
     }
 
     def __init__(self, *args, **kwargs):
@@ -181,6 +180,7 @@ class WsgiApiServiceMaker(object):
             assert (issubclass(self.service_cls, ApiService))
             self.anchore_service = self.service_cls(options=options)
             self.anchore_service.initialize(self.configuration)
+            self.resource_nodes[b'version'].versions = self.anchore_service.versions
 
             # application object
             application = service.Application("Service-" + '-'.join(self.anchore_service.name))
