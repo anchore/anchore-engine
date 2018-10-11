@@ -175,7 +175,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 return None
         else:
             logger.debug('Anon auth complete')
-            return IdentityContext(username=None, user_account=None, user_account_type=None)
+            return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_active=None)
 
     def authorize(self, identity: IdentityContext, permission_list):
         logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
