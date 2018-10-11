@@ -9,6 +9,7 @@ from io import BytesIO
 
 import anchore_engine.analyzers.utils
 import anchore_engine.utils
+import anchore_engine.util.java as java_util
 
 analyzer_name = "package_list"
 
@@ -33,16 +34,7 @@ def parse_properties(filebuf):
     :param file: an open iterator into the file
     :return: the properties in the file as a dictionary
     """
-    props = {}
-    for line in filebuf.splitlines():
-        line = anchore_engine.utils.ensure_str(line)
-        if not re.match("\s*(#.*)?$", line):
-            kv = line.split('=')
-            key = kv[0].strip()
-            value = '='.join(kv[1:]).strip()
-            props[key] = value
-    return props
-
+    return java_util.parse_properties(filebuf.splitlines())
 
 def process_java_archive(prefix, filename, inZFH=None):
     ret = []
