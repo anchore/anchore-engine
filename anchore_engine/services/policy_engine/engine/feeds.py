@@ -257,8 +257,6 @@ class SnykFeedDataMapper(FeedDataMapper):
     """
     Maps a Snyk record into an Vulnerability ORM object
     """
-    _supported_nslangs = ['java', 'js', 'ruby', 'python']
-
     def map(self, record_json):
         if not record_json:
             return None
@@ -267,9 +265,6 @@ class SnykFeedDataMapper(FeedDataMapper):
         id = list(record_json.keys()).pop()
         pkgvuln = record_json[id]
         (group_name, nslang) = self.group.split(":", 2)
-
-        #if nslang not in self._supported_nslangs:
-        #    return(None)
 
         # create a new vulnerability record
         db_rec = Vulnerability()
@@ -280,16 +275,13 @@ class SnykFeedDataMapper(FeedDataMapper):
 
         # severity calculation
         db_rec.cvss2_score = pkgvuln.get('cvssScore')
-        #TODO this should be unversioned cvss information
         db_rec.cvss2_vectors = pkgvuln.get('cvssV3')
         db_rec.severity = db_rec.get_cvss_severity()
 
         # other metadata
-        #db_rec.link = "https://snyk.io/vuln/{}".format(db_rec.id)
         db_rec.link = pkgvuln.get('url')
         db_rec.description = ""
         db_rec.additional_metadata = pkgvuln
-        #db_rec.metadata_json = pkgvuln
 
         # add fixed_in records
         semver_range = convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
@@ -302,6 +294,7 @@ class SnykFeedDataMapper(FeedDataMapper):
             v_in.epochless_version = v_in.version
             v_in.vulnerability_id = db_rec.id
             v_in.namespace_name = db_rec.namespace_name
+            v_in.fix_metadata = {'fix_exists': pkgvuln.get('upgradeable', False)}
             db_rec.fixed_in.append(v_in)
 
         return db_rec

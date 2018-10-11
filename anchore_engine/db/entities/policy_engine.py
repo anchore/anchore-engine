@@ -1000,11 +1000,11 @@ class ImagePackageVulnerability(Base):
         # NOTE: semver version format indicates a range where package
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
-        if fix_available_in and fixed_in.version_format in ['semver']:
-            if langpack_is_all(fix_available_in):
-                fix_available_in = None
-            else:
+        if fixed_in.version_format in ['semver']:
+            if fix_available_in and fixed_in.fix_metadata and fixed_in.fix_metadata.get('fix_exists', False):
                 fix_available_in = "! {}".format(fix_available_in)
+            else:
+                fix_available_in = None
 
         return fix_available_in
 
