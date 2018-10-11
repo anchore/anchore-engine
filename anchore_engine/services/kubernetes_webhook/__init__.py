@@ -3,10 +3,10 @@
 import pkg_resources
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.service import ApiService
+from anchore_engine.service import UserFacingApiService
 
 
-class K8sWebhookHandlerService(ApiService):
+class K8sWebhookHandlerService(UserFacingApiService):
     __service_name__ = 'kubernetes_webhook'
     __spec_dir__ = pkg_resources.resource_filename(__name__, 'swagger')
 

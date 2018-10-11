@@ -2,10 +2,10 @@ import pkg_resources
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
 
-from anchore_engine.service import ApiService
+from anchore_engine.service import UserFacingApiService
 
 
-class ExternalApiService(ApiService):
+class ExternalApiService(UserFacingApiService):
     __service_name__ = 'apiext'
     __spec_dir__ = pkg_resources.resource_filename(__name__, 'swagger')
 

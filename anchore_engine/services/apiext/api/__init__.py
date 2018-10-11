@@ -11,6 +11,7 @@ class AuthActions(enum.Enum):
     delete_image = 'deleteImage'
     get_image = 'getImage'
     update_image = 'updateImage'
+    import_image = 'importImage'
 
     list_events = 'listEvents'
     get_event = 'getEvent'

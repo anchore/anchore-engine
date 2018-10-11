@@ -30,7 +30,7 @@ def status():
     return(return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action='getPolicyEvaluation', target='*')])
+@authorizer.requires([Permission(domain=RequestingAccountValue(), action='getImageEvaluation', target='*')])
 def imagepolicywebhook(bodycontent):
 
     # TODO - while the image policy webhook feature is in k8s beta, we've decided to make any errors that occur during check still respond with 'allowed: True'.  This should be reverted to default to 'False' on any error, once the k8s feature is further along
