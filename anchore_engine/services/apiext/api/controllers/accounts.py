@@ -159,7 +159,7 @@ def create_account(account):
     """
 
     try:
-        if account.get('type') != AccountTypes.user:
+        if account.get('type') != AccountTypes.user.value:
             return make_response_error('Invalid account type: {}. Only valid value is "user"'.format(account.get('type')), in_httpcode=400), 400
 
         with session_scope() as session:
