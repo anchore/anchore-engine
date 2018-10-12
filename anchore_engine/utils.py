@@ -275,7 +275,7 @@ def parse_dockerimage_string(instr):
                 host = a
                 port = None
             else:
-                patt = re.match(".*\..*", a)
+                patt = re.match(r".*\..*", a)
                 if patt:
                     host = a
                 else:

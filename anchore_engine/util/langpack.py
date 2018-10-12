@@ -103,7 +103,7 @@ def language_compare(a, op, b, language='python'):
 def normalized_version_match(rawsemver, rawpkgver, language='python'):
     versionmatch = False
 
-    vranges = re.split(" *\|\| *", rawsemver)
+    vranges = re.split(r" *\|\| *", rawsemver)
     # or check
     inrange = False
     for vrange in vranges:
@@ -113,7 +113,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
             rangematch = vrange
             break
 
-        tokre = re.compile("[!|<|>|=|~|^]+\s*[^\s]+")
+        tokre = re.compile(r"[!|<|>|=|~|^]+\s*[^\s]+")
         rangechecks = tokre.findall(vrange)
 
         # and check
@@ -146,10 +146,10 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
 def convert_mrange_to_srange(rawsemver):
     normal_ranges = []
 
-    tokre = re.compile("[\[|\(][^[\]|\)]+[\]|\)]")
+    tokre = re.compile(r"[\[|\(][^[\]|\)]+[\]|\)]")
     vranges = tokre.findall(rawsemver)
     for vrange in vranges:
-        patt = re.match("([\[|\(])([^[\]|\)]+)([\]|\)])", vrange)
+        patt = re.match(r"([\[|\(])([^[\]|\)]+)([\]|\)])", vrange)
         if patt:
             equalop = False
             nequalop = False
