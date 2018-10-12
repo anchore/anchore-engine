@@ -9,7 +9,6 @@ from anchore_engine.db.entities.exceptions import is_table_not_found
 from distutils.version import StrictVersion
 from contextlib import contextmanager
 
-
 try:
     from anchore_engine.subsys import logger, identities
     # Separate logger for use during bootstrap when logging may not be fully configured
@@ -92,9 +91,11 @@ def upgrade_context(lock_id):
 
 def do_create_tables(specific_tables=None):
     print ("Creating DB Tables")
+    from anchore_engine.db.entities.common import Base, do_create
+
     try:
         with upgrade_context(my_module_upgrade_id) as ctx:
-            anchore_engine.db.entities.common.do_create(specific_tables)
+            do_create(specific_tables=specific_tables, base=Base)
     except Exception as err:
         raise err
     print ("DB Tables created")

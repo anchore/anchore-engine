@@ -5,7 +5,7 @@ import copy
 import hashlib
 import json
 
-from anchore_engine.apis.context import ApiRequestContextProxy
+from .context import ApiRequestContextProxy
 from anchore_engine.subsys import logger
 
 

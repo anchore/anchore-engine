@@ -28,9 +28,7 @@ service_map = {
     'apiext': 'anchore-api',
     'catalog': 'anchore-catalog',
     'kubernetes_webhook': 'anchore-kubernetes-webhook',
-    'policy_engine': 'anchore-policy-engine',
-    'feeds': 'anchore-feeds',
-    'identity': 'anchore-identity'
+    'policy_engine': 'anchore-policy-engine'
 }
 
 
@@ -201,8 +199,15 @@ def service(ctx_config):
         sys.exit(2)
 
 @service.command(name='list', short_help="List valid service names")
-def do_list():
-    click.echo('\n'.join(service_map.keys()))
+@click.option('--anchore-module', help='Module to list services for', default='anchore_engine')
+def do_list(anchore_module):
+    click.echo('Locally installed and available service types:')
+    from anchore_engine.service import BaseService
+
+    # Expects a services module within the base module
+    importlib.import_module(anchore_module + '.services')
+    for name in BaseService.registry.keys():
+        click.echo(name)
     anchore_manager.cli.utils.doexit(0)
     return
 

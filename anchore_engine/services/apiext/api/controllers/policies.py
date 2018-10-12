@@ -14,8 +14,7 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 import anchore_engine.common
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.services.apiext.api import AuthActions
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 
 authorizer = get_authorizer()
 
@@ -69,7 +68,7 @@ def make_response_policy(policy_record, params):
     return (ret)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_policies.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_policies(detail=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'detail': False})
     user_auth = request_inputs['auth']
@@ -106,7 +105,7 @@ def list_policies(detail=None):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_policy.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_policy(bundle):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     bodycontent = request_inputs['bodycontent']
@@ -162,7 +161,7 @@ def add_policy(bundle):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_policy.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_policy(policyId, detail=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'detail': True})
     user_auth = request_inputs['auth']
@@ -197,7 +196,7 @@ def get_policy(policyId, detail=None):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.update_policy.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_policy(bundle, policyId, active=False):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'active': active})
     method = request_inputs['method']
@@ -273,7 +272,7 @@ def update_policy(bundle, policyId, active=False):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_policy.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_policy(policyId):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']

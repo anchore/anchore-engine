@@ -16,6 +16,7 @@ import functools
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 from threading import RLock
+from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
 
 # Global authorizer configured
 _global_authorizer = None
@@ -39,6 +40,23 @@ class UnauthenticatedError(Exception):
 Permission = namedtuple('Permission', ['domain', 'action', 'target'])
 
 
+class ActionBoundPermission(object):
+    def __init__(self, domain, target='*'):
+        self.domain = domain
+        self.action = OperationActionLookup(action_provider)
+        self.target = target
+
+
+def action_provider(op_id):
+    """
+    Lazy lookup of the action associated with the operation id via the request context reference
+    to the parent service, which provides the map of ops->actions (via the swagger doc)
+    :param op_id:
+    :return:
+    """
+    return ApiRequestContextProxy.get_service().action_for_operation(op_id)
+
+
 class LazyBoundValue(ABC):
     """
     A generic domain handler that supports lazy binding and injection
@@ -46,7 +64,7 @@ class LazyBoundValue(ABC):
     def __init__(self, value=None):
         self._value = value
 
-    def bind(self, kwargs=None):
+    def bind(self, operation: callable, kwargs=None):
         """
         Bind the actual value for the authz domain if applicable
         :return:
@@ -67,7 +85,7 @@ class FunctionInjectedValue(LazyBoundValue):
         super().__init__(None)
         self.loader = load_fn
 
-    def bind(self, kwargs=None):
+    def bind(self, operation, kwargs=None):
         self._value = self.loader()
 
 
@@ -81,8 +99,14 @@ class ParameterBoundValue(LazyBoundValue):
         super().__init__(default_value)
         self.param_name = parameter_name
 
-    def bind(self, kwargs=None):
+    def bind(self, operation, kwargs=None):
         self._value = kwargs.get(self.param_name) if kwargs else self._value
+
+
+class OperationActionLookup(FunctionInjectedValue):
+    def bind(self, operation: callable, kwargs=None):
+        fq_operation_id = operation.__module__ + '.' + operation.__name__
+        self._value = self.loader(fq_operation_id)
 
 
 class AuthorizationHandler(ABC):
@@ -174,7 +198,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 return None
         else:
             logger.debug('Anon auth complete')
-            return IdentityContext(username=None, user_account=None, user_account_type=None)
+            return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_active=None)
 
     def authorize(self, identity: IdentityContext, permission_list):
         logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
@@ -226,15 +250,15 @@ class DbAuthorizationHandler(AuthorizationHandler):
                                 target = perm.target if perm.target else '*'
 
                                 if hasattr(domain, 'bind'):
-                                    domain.bind(kwargs=kwargs)
+                                    domain.bind(operation=f, kwargs=kwargs)
                                     domain = domain.value
 
                                 if hasattr(action, 'bind'):
-                                    action.bind(kwargs=kwargs)
+                                    action.bind(operation=f, kwargs=kwargs)
                                     action = action.value
 
                                 if hasattr(target, 'bind'):
-                                    target.bind(kwargs=kwargs)
+                                    target.bind(operation=f, kwargs=kwargs)
                                     target = target.value
 
                                 permissions_final.append(':'.join([domain, action, target]))
@@ -282,6 +306,11 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
             # Disable sessions, since the APIs are not session-based
             ExternalAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
 
+            logger.info('Initializing external authz realm')
+            ExternalAuthzRealm.init_realm(configuration, account_lookup_fn=lookup_account_type_from_identity)
+
+            logger.info('External authz handler init complete')
+
 
 class InternalServiceAuthorizer(DbAuthorizationHandler):
     """
@@ -307,9 +336,16 @@ def init_authz_handler(configuration=None):
     else:
         raise Exception('Unknown authorization handler: {}'.format(handler_config))
 
-    handler.load(configuration)
+    handler.load(configuration.get('authorization_handler_config', {}))
     _global_authorizer = handler
 
 
 def get_authorizer():
     return _global_authorizer
+
+
+def lookup_account_type_from_identity(identity):
+    if ApiRequestContextProxy.identity().username == identity:
+        return ApiRequestContextProxy.identity().user_account_type
+    else:
+        return None

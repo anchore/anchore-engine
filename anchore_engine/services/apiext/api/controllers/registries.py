@@ -6,8 +6,7 @@ from connexion import request
 
 # anchore modules
 import anchore_engine.apis
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
-from anchore_engine.services.apiext.api import AuthActions
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 import anchore_engine.common.helpers
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
@@ -36,7 +35,7 @@ def make_response_registry(user_auth, registry_record, params):
 
     return (ret)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_registries.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_registries():
     """
     GET /registries
@@ -65,7 +64,7 @@ def list_registries():
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_registry.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_registry(registry):
     """
     GET /registries
@@ -93,7 +92,7 @@ def get_registry(registry):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_registry.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def create_registry(registrydata, validate=True):
     """
     POST /registries
@@ -135,7 +134,7 @@ def create_registry(registrydata, validate=True):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.update_registry.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_registry(registry, registrydata, validate=True):
     """
     PUT /registries/<id>
@@ -180,7 +179,7 @@ def update_registry(registry, registrydata, validate=True):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_registry.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_registry(registry):
     """
     DELETE /registries

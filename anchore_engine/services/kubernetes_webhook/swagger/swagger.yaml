@@ -36,11 +36,11 @@ paths:
       summary: "Get the status of the service"
       description: ""
       operationId: "status"
+      x-anchore-authz-action: None
       produces:
       - "application/json"
       responses:
         200:
-          description: "success"
           description: "service status"
           schema:
             type: object
@@ -52,6 +52,7 @@ paths:
       summary: "Kubernetes image policy webhook service call"
       description: ""
       operationId: "imagepolicywebhook"
+      x-anchore-authz-action: getImageEvaluation
       parameters:
       - name: 'bodycontent'
         in: body

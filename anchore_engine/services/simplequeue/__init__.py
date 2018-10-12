@@ -1,4 +1,5 @@
 import time
+import pkg_resources
 
 # anchore modules
 import anchore_engine.common
@@ -80,7 +81,7 @@ def _init_queues(queue_configs):
 
 class SimpleQueueService(ApiService):
     __service_name__ = 'simplequeue'
-    __spec_dir__ = 'services/simplequeue/swagger'
+    __spec_dir__ = pkg_resources.resource_filename(__name__, 'swagger')
     __service_api_version__ = 'v1'
     __monitors__ = {
         'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [__service_name__], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},

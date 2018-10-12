@@ -5,8 +5,12 @@ Base types for all anchore engine services
 import copy
 import connexion
 import enum
-from pathlib import Path
 from flask import g
+import json
+import os
+from pathlib import Path
+import yaml
+
 
 import time
 import threading
@@ -18,6 +22,7 @@ from anchore_engine import monitors
 from anchore_engine.db import db_services, session_scope, initialize as initialize_db
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import init_authz_handler
+
 
 class LifeCycleStages(enum.IntEnum):
     """
@@ -51,7 +56,35 @@ _default_lifecycle_handlers = {
     }
 
 
-class BaseService(object):
+class ServiceMeta(type):
+    """
+    Metaclass to create a registry for all subclasses of Gate for finding, building, and documenting the services
+
+    """
+
+    def __init__(cls, name, bases, dct):
+        if not hasattr(cls, 'registry'):
+            cls.registry = {}
+        else:
+            if '__service_name__' in dct:
+                svc_id = dct['__service_name__'].lower()
+                cls.registry[svc_id] = cls
+
+        super(ServiceMeta, cls).__init__(name, bases, dct)
+
+    def get_service_by_name(cls, name):
+        # Try direct name
+        found = cls.registry.get(name.lower())
+        if found:
+            return found
+        else:
+            raise KeyError(name)
+
+    def registered_service_types(cls):
+        return list(cls.registry.keys())
+
+
+class BaseService(object, metaclass=ServiceMeta):
     """
     Base type for all services to inherit from.
 
@@ -429,6 +462,7 @@ class ApiService(BaseService):
         super()._register_instance_handlers()
         logger.info('Registering api handlers')
         self.register_handler(LifeCycleStages.pre_bootstrap, self.initialize_api, None)
+        self.register_handler(LifeCycleStages.pre_bootstrap, self._process_api_spec, None)
 
     def _init_wsgi_app(self, service_name, api_spec_dir=None, api_spec_file=None):
         """
@@ -458,12 +492,14 @@ class ApiService(BaseService):
             traceback.print_exc()
             raise err
 
+    def _process_api_spec(self):
+        return
+
     def init_auth(self):
         """
         Initializes the authentication subsystem as needed
         :return:
         """
-
         # Initialize the wrapper
         init_authz_handler(configuration=self.configuration)
 
@@ -481,14 +517,71 @@ class ApiService(BaseService):
         """
 
         logger.info('Initializing API from: {}/{}'.format(self.__spec_dir__, self.__spec_file__))
-        if not self.configuration['listen'] and self.configuration['port'] and self.configuration['endpoint_hostname']:
-            return None
-
-        if not self._api_application:
-            self._api_application = self._init_wsgi_app(self.__service_name__, self.__spec_dir__, self.__spec_file__)
+        if self.configuration['listen'] and self.configuration['port'] and self.configuration['endpoint_hostname']:
+            if not self._api_application:
+                self._api_application = self._init_wsgi_app(self.__service_name__, self.__spec_dir__, self.__spec_file__)
 
     def get_api_application(self):
         if self._api_application is None:
             raise Exception('API not initialized yet. Must initialize the service or call initialize_api() before the application is available')
 
         return self._api_application.app
+
+
+class UserFacingApiService(ApiService):
+    def __init__(self, options=None):
+        super().__init__(options)
+        self._authz_actions = {}
+
+    @staticmethod
+    def parse_swagger(path):
+        with open(path) as f:
+            if path.endswith('yaml') or path.endswith('yml'):
+                return yaml.load(f)
+            else:
+                return json.load(f)
+
+    @staticmethod
+    def build_action_map(swagger_content):
+        """
+        Given a dict from the swagger spec (must be fully materialized, no external refs), determine the mapping
+        of a operation to an action using x-anchore-action labels in the swagger.
+
+        This relies on using connexion such that the x-swagger-router-controller + operationId define the key as is implemented
+        in connextion. The resulting dict maps a fully-qualified function to an action
+
+        :param swagger_content: dict
+        :return: dict function_name -> action (e.g. anchore_engine.services.apiext.images.list_images -> listImages)
+        """
+
+        action_map = {}
+        for path in swagger_content.get('paths').values():
+            for verb in path.values():
+                action = verb.get('x-anchore-authz-action')
+                controller = verb.get('x-swagger-router-controller')
+                operationId = verb.get('operationId')
+                action_map[controller + '.' + operationId] = action
+
+        return action_map
+
+    def _process_api_spec(self):
+        try:
+            swagger_content = UserFacingApiService.parse_swagger(os.path.join(self.__spec_dir__, self.__spec_file__))
+            actions = UserFacingApiService.build_action_map(swagger_content)
+            missing = [x for x in filter(lambda x: x[1] is None, actions.items())]
+            if missing:
+                raise Exception('API Spec validation error: All operations must have a x-anchore-authz-action label. Missing for: {}'.format(missing))
+            else:
+                self._authz_actions = actions
+        except Exception as ex:
+            logger.exception('Error loading swagger spec for authz action parsing. Cannot proceed')
+            raise ex
+
+    def action_for_operation(self, fq_operation_id):
+        """
+        Raises KeyError if id not found
+
+        :param fq_operation_id:
+        :return:
+        """
+        return self._authz_actions[fq_operation_id]

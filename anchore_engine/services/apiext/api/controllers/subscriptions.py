@@ -4,8 +4,7 @@ from connexion import request
 
 # anchore modules
 import anchore_engine.apis
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
-from anchore_engine.services.apiext.api import AuthActions
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 import anchore_engine.common.helpers
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -35,7 +34,7 @@ def make_response_subscription(subscription_record, params):
     return (ret)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_subscriptions.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_subscriptions(subscription_key=None, subscription_type=None):
     """
     GET /subscriptions
@@ -62,7 +61,7 @@ def list_subscriptions(subscription_key=None, subscription_type=None):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_subscription.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_subscription(subscriptionId):
     """
     GET /subscriptions/<subscriptionId>
@@ -86,7 +85,7 @@ def get_subscription(subscriptionId):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_subscription.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_subscription(subscription):
     """
     POST /subscriptions
@@ -116,7 +115,7 @@ def add_subscription(subscription):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.update_subscription.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_subscription(subscriptionId, subscription):
     """
     PUT /subscriptions/<subscriptionId>
@@ -147,7 +146,7 @@ def update_subscription(subscriptionId, subscription):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_subscription.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_subscription(subscriptionId):
     """
     DELETE /subscriptions/<subscriptionId>
