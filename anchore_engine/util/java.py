@@ -33,15 +33,15 @@ def parse_manifest(lines):
     full_lines = []
     for line in lines:
         line = anchore_engine.utils.ensure_str(line)
-        if not line.startswith(' '):
-            full_lines.append(line)
+        if line.startswith(' '):
+            full_lines[-1] += line[1:]
         else:
-            full_lines[-1] += line.lstrip()
+            full_lines.append(line)
     attrs = {}
     for line in full_lines:
         idx = line.find(':')
         if idx > -1:
-            key = line[0:idx].strip()
-            value = line[idx+1:].strip()
+            key = line[0:idx]
+            value = line[idx+1:].lstrip()
             attrs[key] = value
     return attrs
