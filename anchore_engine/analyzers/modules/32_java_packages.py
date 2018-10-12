@@ -89,23 +89,13 @@ def process_java_archive(prefix, filename, inZFH=None):
                 with ZFH.open('META-INF/MANIFEST.MF', 'r') as MFH:
                     top_el['metadata']['MANIFEST.MF'] = anchore_engine.utils.ensure_str(MFH.read())
 
-                for line in (top_el['metadata']['MANIFEST.MF'].splitlines()):
-                    try:
-                        (k, v) = line.split(": ", 1)
-                        if k == 'Specification-Title':
-                            sname = v
-                        elif k == 'Specification-Version':
-                            sversion = v
-                        elif k == 'Specification-Vendor':
-                            svendor = v
-                        elif k == 'Implementation-Title':
-                            iname = v
-                        elif k == 'Implementation-Version':
-                            iversion = v
-                        elif k == 'Implementation-Vendor':
-                            ivendor = v
-                    except:
-                        pass
+                manifest = java_util.parse_manifest(top_el['metadata']['MANIFEST.MF'].splitlines())
+                sname = manifest['Specification-Title']
+                sversion = manifest['Specification-Version']
+                svendor = manifest['Specification-Vendor']
+                iname = manifest['Implementation-Title']
+                iversion = manifest['Implementation-Version']
+                ivendor = manifest['Implementation-Vendor']
 
                 if sversion:
                     top_el['specification-version'] = sversion

@@ -16,8 +16,32 @@ def parse_properties(lines):
     for line in lines:
         line = anchore_engine.utils.ensure_str(line)
         if not re.match(r"\s*(#.*)?$", line):
-            kv = line.split('=')
-            key = kv[0].strip()
-            value = '='.join(kv[1:]).strip()
-            props[key] = value
+            idx = line.find('=')
+            if idx > -1:
+                key = line[0:idx].strip()
+                value = line[idx+1:].strip()
+                props[key] = value
     return props
+
+def parse_manifest(lines):
+    """
+    Parses the given line iterable using the JAR manifest file format.
+    Note that this only parses the main section and attributes.
+    :param lines: an iterable container of lines
+    :return: the main attributes of the manifest file as a dictionary
+    """
+    full_lines = []
+    for line in lines:
+        line = anchore_engine.utils.ensure_str(line)
+        if not line.startswith(' '):
+            full_lines.append(line)
+        else:
+            full_lines[-1] += line.lstrip()
+    attrs = {}
+    for line in full_lines:
+        idx = line.find(':')
+        if idx > -1:
+            key = line[0:idx].strip()
+            value = line[idx+1:].strip()
+            attrs[key] = value
+    return attrs
