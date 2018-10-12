@@ -25,18 +25,18 @@ class BasicApiClient(object):
         """
         Invoke the api
 
-        :param method:
-        :param path:
-        :param path_params:o
-        :param query_params:
+        :param method: requests function to invoke (eg. requests.get)
+        :param path: url path
+        :param path_params: path params as dict
+        :param query_params: query param dict
+        :param extra_headers: header map to merge with default headers for this client
+        :param body: string body to send
         :return:
         """
         if path_params:
             path_params = {name: urlparse.quote(value) for name, value in path_params.items()}
-            #final_url = '/'.join([self.url, path.format(**path_params)])
             final_url = urlparse.urljoin(self.url, path.format(**path_params))
         else:
-            #final_url = '/'.join([self.url, path])
             final_url = urlparse.urljoin(self.url, path)
 
         request_headers = copy.copy(self.__headers__)
@@ -92,9 +92,9 @@ class SimpleJsonModel(object):
 
 
 class AuthorizationRequest(SimpleJsonModel):
-    def __init__(self, principal=None, action_set=None):
+    def __init__(self, principal=None, actions=None):
         self.principal = principal
-        self.action_set = action_set
+        self.actions = actions
 
     @classmethod
     def from_json(cls, json_dict):
@@ -110,7 +110,7 @@ class AuthorizationRequest(SimpleJsonModel):
 
 class AuthorizationDecision(SimpleJsonModel):
 
-    def __init__(self, principal=None, allowed_actions=None, denied_actions=None, ttl=-1):
+    def __init__(self, principal=None, allowed_actions=None, denied_actions=None, is_authorized=False, ttl=-1):
         self.principal = principal
         self.allowed = allowed_actions
         self.denied = denied_actions
@@ -128,9 +128,9 @@ class AuthorizationDecision(SimpleJsonModel):
             raise ValueError('Incorrect denied type, must be a list, found: {}'.format(type(json_dict.get('actions'))))
 
         ad = AuthorizationDecision(Principal.from_json(json_dict.get('principal')),
-                                                       [Action.from_json(act) for act in json_dict.get('allowed', [])],
-                                                       [Action.from_json(act) for act in json_dict.get('denied', [])],
-                                                       int(json_dict.get('ttl', -1)))
+                                   [Action.from_json(act) for act in json_dict.get('allowed', [])],
+                                   [Action.from_json(act) for act in json_dict.get('denied', [])],
+                                   int(json_dict.get('ttl', "-1")))
         return ad
 
 
@@ -140,7 +140,6 @@ class Action(SimpleJsonModel):
         self.action = action
         self.target = target
 
-
     @classmethod
     def from_json(cls, json_dict):
         if set(json_dict.keys()) != {'domain', 'action', 'target'}:
@@ -148,6 +147,12 @@ class Action(SimpleJsonModel):
 
         act = Action(json_dict.get('domain'), json_dict.get('action'), json_dict.get('target'))
         return act
+
+    def __eq__(self, other):
+        return isinstance(other, Action) and self.domain == other.domain and self.action == other.action and self.target == other.target
+
+    def __hash__(self):
+        return (self.domain.__hash__(), self.action.__hash__(), self.target.__hash__()).__hash__()
 
 
 class Domain(SimpleJsonModel):
@@ -161,10 +166,16 @@ class Domain(SimpleJsonModel):
 
         return Domain(json_dict.get('name'))
 
+    def __eq__(self, other):
+        return isinstance(other, Domain) and self.name == other.name
+
 
 class Principal(SimpleJsonModel):
     def __init__(self, name):
         self.name = name
+
+    def __eq__(self, other):
+        return isinstance(other, Domain) and self.name == other.name
 
     @classmethod
     def from_json(cls, json_dict):
@@ -189,8 +200,10 @@ class AuthzPluginHttpClient(BasicApiClient):
         if not all(map(lambda x: isinstance(x, Action), action_s)):
             raise ValueError('action_s must be a list of Action objects')
 
-        req = AuthorizationRequest(principal=Principal(principal), action_set=action_s)
-        resp = self.call_api(requests.post, 'authorize', body=json.dumps(req.to_json()))
+        req = AuthorizationRequest(principal=Principal(principal), actions=action_s)
+        payload = json.dumps(req.to_json())
+        logger.debug('Invoking authorize with payload: {}'.format(payload))
+        resp = self.call_api(requests.post, 'authorize', body=payload)
 
         if resp.status_code == 200:
             resp_j = resp.json()

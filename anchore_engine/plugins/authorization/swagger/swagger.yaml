@@ -128,9 +128,6 @@ definitions:
         $ref: "#/definitions/ActionSet"
       denied:
         $ref: "#/definitions/ActionSet"
-      authorized:
-        type: boolean
-        description: True if-and-only-if there are no entries in the denied actions array
       ttl:
         type: integer
         description: An optional ttl for the result. If provided the caller should respect it.
