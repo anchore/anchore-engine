@@ -13,7 +13,7 @@ zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
 def language_compare(a, op, b, language='python'):
     global zerolikes
 
-    if op not in ['>', '<', '<=', '>=', '!=', '=', '==']:
+    if op not in ['>', '<', '<=', '>=', '!=', '=', '==', '~', '^']:
         raise Exception("unknown op {}".format(op))
     elif not a or not b:
         raise Exception("must supply valid inputs a={} op={} b={}".format(a, op, b))
@@ -23,14 +23,13 @@ def language_compare(a, op, b, language='python'):
     if language in ['java', 'maven']:
         aoptions = [MavenVersion(a)]
         boptions = [MavenVersion(b)]
-    elif language in ['ruby', 'gem']:
-        aoptions = [parse_version(a)]
-        boptions = [parse_version(b)]        
-    elif language in ['js', 'npm']:
+    elif language in ['js', 'npm', 'ruby', 'gem']:
         try:
-            aoptions = [semantic_version.Version(a, partial=True)]
-            boptions = [semantic_version.Version(b, partial=True)]
+            aoptions = [semantic_version.Version.coerce(a)]
+            boptions = [semantic_version.Version.coerce(b)]
         except:
+            logger.debug("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
+            print("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
             aoptions = [parse_version(a)]
             boptions = [parse_version(b)]
     elif language in ['python']:
@@ -38,6 +37,7 @@ def language_compare(a, op, b, language='python'):
             aoptions = [StrictVersion(a), LooseVersion(a)]
             boptions = [StrictVersion(b), LooseVersion(b)]
         except:
+            logger.debug("python versions {}/{} unable to load as StrictVersion - falling back to LooseVersion/parse_version".format(a, b))
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
     else:
@@ -81,6 +81,20 @@ def language_compare(a, op, b, language='python'):
                     return(True)
                 else:
                     return(False)
+            elif op == '~':
+                # for these operations, attempt to coerce and compare with semantic_version
+                ha = semantic_version.Version.coerce(str(aoptions[i]))
+                hb = semantic_version.Version.coerce(str(boptions[i]))
+                hs = semantic_version.Spec("~{}".format(hb))
+                rc = hs.match(ha)
+                return(rc)
+            elif op == '^':
+                # for these operations, attempt to coerce and compare with semantic_version
+                ha = semantic_version.Version.coerce(str(aoptions[i]))
+                hb = semantic_version.Version.coerce(str(boptions[i]))
+                hs = semantic_version.Spec("^{}".format(hb))
+                rc = hs.match(ha)
+                return(rc)
         except Exception as err:
             pass
 
@@ -99,7 +113,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
             rangematch = vrange
             break
 
-        tokre = re.compile("[!|<|>|=]+\s*[^\s]+")
+        tokre = re.compile("[!|<|>|=|~|^]+\s*[^\s]+")
         rangechecks = tokre.findall(vrange)
 
         # and check
@@ -109,7 +123,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
 
         for rangecheck in rangechecks:
             rangecheck = re.sub(r"\s+", "", rangecheck)
-            patt = re.match("([!|<|>|=]+)(.*)", rangecheck)
+            patt = re.match("([!|<|>|=|~|^]+)(.*)", rangecheck)
             if patt:
                 op,verraw = (patt.group(1), patt.group(2))
                 inrange = language_compare(rawpkgver, op, verraw, language=language)
