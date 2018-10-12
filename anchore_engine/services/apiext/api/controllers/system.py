@@ -5,8 +5,7 @@ import datetime
 
 # anchore modules
 import anchore_engine.apis
-from anchore_engine.apis.authorization import get_authorizer, Permission
-from anchore_engine.services.apiext.api import AuthActions
+from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission
 
 import anchore_engine.common.helpers
 from anchore_engine.clients.services import internal_client_for
@@ -15,6 +14,7 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 import anchore_engine.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.configuration.localconfig
+from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME
 from anchore_engine.apis.context import ApiRequestContextProxy
 
 authorizer = get_authorizer()
@@ -159,7 +159,7 @@ def get_service_detail():
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.list_services.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def list_services():
     """
     GET /system/services
@@ -186,7 +186,7 @@ def list_services():
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.get_service.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def get_services_by_name(servicename):
     """
     GET /system/services/<servicename>
@@ -216,7 +216,7 @@ def get_services_by_name(servicename):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.get_service.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def get_services_by_name_and_host(servicename, hostid):
     """
     GET /system/services/<servicename>/<hostid>
@@ -246,7 +246,7 @@ def get_services_by_name_and_host(servicename, hostid):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.delete_service.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def delete_service(servicename, hostid):
     """
     DELETE /system/services/<servicename>/<hostid>
@@ -271,7 +271,7 @@ def delete_service(servicename, hostid):
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.list_feeds.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def get_system_feeds():
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     return_object = []
@@ -288,7 +288,7 @@ def get_system_feeds():
 
     return (return_object, httpcode)    
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.update_feeds.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def post_system_feeds(flush=False):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'flush': flush})
 
@@ -306,7 +306,7 @@ def post_system_feeds(flush=False):
 
     return (return_object, httpcode)    
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.prune.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def get_system_prune_resourcetypes():
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
@@ -325,7 +325,7 @@ def get_system_prune_resourcetypes():
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.prune.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def get_system_prune_candidates(resourcetype, dangling=True, olderthan=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'dangling': dangling, 'olderthan': olderthan})
     user_auth = request_inputs['auth']
@@ -347,7 +347,7 @@ def get_system_prune_candidates(resourcetype, dangling=True, olderthan=None):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.prune.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def post_system_prune_candidates(resourcetype, bodycontent):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
 

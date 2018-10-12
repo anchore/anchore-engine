@@ -3,15 +3,14 @@ import anchore_engine.common.helpers
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
 from flask import request
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
-from anchore_engine.services.apiext.api import AuthActions
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 
 import anchore_engine.common
 
 authorizer = get_authorizer()
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_events.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_events(source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
@@ -34,7 +33,7 @@ def list_events(source_servicename=None, source_hostid=None, resource_type=None,
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.flush_events.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_events(before=None, since=None, level=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
@@ -56,7 +55,7 @@ def delete_events(before=None, since=None, level=None):
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_event.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_event(eventId):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']
@@ -79,7 +78,7 @@ def get_event(eventId):
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_event.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_event(eventId):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     user_auth = request_inputs['auth']

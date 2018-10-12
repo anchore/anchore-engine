@@ -2,8 +2,7 @@ import json
 import time
 
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.services.apiext.api import AuthActions
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 import anchore_engine.common.pagination
 import anchore_engine.common.helpers
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -14,7 +13,7 @@ import anchore_engine.common
 
 authorizer = get_authorizer()
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, affected_package_version=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'id': id, 'page': page, 'limit': limit, 'affected_package': affected_package, 'affected_package_version': None})
     method = request_inputs['method']
@@ -46,7 +45,7 @@ def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, af
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def query_images_by_vulnerability(vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'page': page, 'limit': limit, 'vendor_only': vendor_only})
     method = request_inputs['method']
@@ -76,7 +75,7 @@ def query_images_by_vulnerability(vulnerability_id=None, severity=None, namespac
 
     return (return_object, httpcode)
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def query_images_by_package(name=None, version=None, package_type=None, page=1, limit=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'name': name, 'version': version, 'package_type': package_type, 'page': page, 'limit': limit})
     method = request_inputs['method']

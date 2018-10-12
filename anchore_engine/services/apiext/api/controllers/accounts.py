@@ -12,8 +12,9 @@ from anchore_engine.utils import datetime_to_rfc2339
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ParameterBoundValue, Permission
-from anchore_engine.services.apiext.api import AuthActions
+from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission
+from anchore_engine.configuration.localconfig import ADMIN_USERNAME, ADMIN_ACCOUNT_NAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME
+
 
 authorizer = get_authorizer()
 
@@ -66,10 +67,35 @@ def credential_db_to_msg(credential):
     }
 
 
+def can_delete(user):
+    """
+    Return if the user/account can be deleted (is allowed based on type, eg. not a service account)
+    :param user:
+    :return:
+    """
+    if user['username'] in [SYSTEM_USERNAME, ADMIN_USERNAME] or \
+        user['account_name'] in [SYSTEM_ACCOUNT_NAME, ADMIN_ACCOUNT_NAME] or \
+        user['account']['type'] != AccountTypes.user:
+        return False
+    else:
+        return True
+
+
+def can_deactivate(user):
+    if user['username'] in [SYSTEM_USERNAME, ADMIN_USERNAME] or \
+        user['account_name'] in [SYSTEM_ACCOUNT_NAME] or \
+        user['account']['type'] == AccountTypes.service:
+        return False
+    else:
+        return True
+
+
 def verify_account(accountname, mgr):
     accnt = mgr.get_account(accountname)
     if not accnt:
         raise AccountNotFoundError(accountname)
+    if accnt['type'] == AccountTypes.service:
+        raise Exception('Bad Request')
     return accnt
 
 
@@ -77,10 +103,12 @@ def verify_user(username, accountname, mgr):
     usr = mgr.get_user(username)
     if not usr or usr['account_name'] != accountname:
         raise UserNotFoundError(username)
+    if usr['account']['type'] == AccountTypes.service:
+        raise Exception('Bad Request')
     return usr
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_account.value, target=None)])
+@authorizer.requires([])
 def get_users_account():
     """
     GET /account
@@ -98,7 +126,7 @@ def get_users_account():
         return make_response_error(errmsg=str(ex)), 500
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.list_accounts.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def list_accounts(is_active=None):
     """
     GET /accounts
@@ -121,7 +149,7 @@ def list_accounts(is_active=None):
         return make_response_error('Error listing accounts', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.create_account.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
 def create_account(account):
     """
     POST /accounts
@@ -131,6 +159,9 @@ def create_account(account):
     """
 
     try:
+        if account.get('type') != AccountTypes.user:
+            return make_response_error('Invalid account type: {}. Only valid value is "user"'.format(account.get('type')), in_httpcode=400), 400
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
@@ -142,7 +173,7 @@ def create_account(account):
         return make_response_error('Error creating account', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= 'system', action=AuthActions.get_account.value, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
 def get_account(accountname):
     """
     GET /accounts/{accountname}
@@ -163,7 +194,7 @@ def get_account(accountname):
         return make_response_error('Error getting account', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= 'system', action=AuthActions.delete_account.value, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
 def delete_account(accountname):
     """
     DELETE /account/{accountname}
@@ -176,7 +207,10 @@ def delete_account(accountname):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
-            resp = mgr.delete_account(accountname)
+            if account['type'] != AccountTypes.user:
+                return make_response_error('Cannot delete non-user accounts', in_httpcode=400), 400
+            else:
+                resp = mgr.delete_account(accountname)
             return None, 204
     except AccountNotFoundError as ex:
         return make_response_error('Account not found', in_httpcode=404), 404
@@ -185,7 +219,7 @@ def delete_account(accountname):
         return make_response_error('Error deleting account', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= 'system', action=AuthActions.update_account.value, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
 def activate_account(accountname):
     """
     POST /accounts/{accountname}/activate
@@ -213,7 +247,7 @@ def activate_account(accountname):
         return make_response_error('Error activating account', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain='system', action=AuthActions.update_account.value, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
 def deactivate_account(accountname):
     """
     POST /accounts/{accountname}/deactivate
@@ -238,7 +272,7 @@ def deactivate_account(accountname):
         return make_response_error('Internal error deactivating account', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.list_users.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'))])
 def list_users(accountname):
     """
     GET /accounts/{accountname}/users
@@ -265,7 +299,7 @@ def list_users(accountname):
         return make_response_error('Error listing account users', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= 'system', action=AuthActions.get_user.value, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
 def get_account_user(accountname, username):
     """
     GET /accounts/{accountname}/users/{username}
@@ -289,7 +323,7 @@ def get_account_user(accountname, username):
         return make_response_error('Error getting user record', in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.create_user.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'))])
 def create_user(accountname, user):
     """
     POST /accounts/{accountname}/users
@@ -314,7 +348,7 @@ def create_user(accountname, user):
         return make_response_error('Internal error deleting account {}'.format(accountname)), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.update_user.value, target=ParameterBoundValue('username'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
 def create_user_credential(accountname, username, credential):
     """
     POST /accounts/{accountname}/users/{username}/credentials
@@ -353,7 +387,7 @@ def create_user_credential(accountname, username, credential):
         return make_response_error('Internal error creating credential {}'.format(accountname)), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.get_user.value, target=ParameterBoundValue('username'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
 def list_user_credentials(accountname, username):
     """
     GET /accounts/{accountname}/users/{username}/credentials
@@ -381,7 +415,7 @@ def list_user_credentials(accountname, username):
         return make_response_error(errmsg=str(ex), in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.update_user.value, target=ParameterBoundValue('username'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
 def delete_user_credential(accountname, username, credential_type):
     """
     DELETE /accounts/{accountname}/users/{username}/credentials?credential_type=password
@@ -396,7 +430,7 @@ def delete_user_credential(accountname, username, credential_type):
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            verify_user(username, accountname, mgr)
+            usr = verify_user(username, accountname, mgr)
             if credential_type != 'password':
                 return make_response_error('Invalid credential type', in_httpcode=400), 400
 
@@ -414,7 +448,7 @@ def delete_user_credential(accountname, username, credential_type):
         return make_response_error(errmsg=str(ex), in_httpcode=500), 500
 
 
-@authorizer.requires([Permission(domain= ParameterBoundValue('accountname'), action=AuthActions.delete_user.value, target=ParameterBoundValue('username'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
 def delete_user(accountname, username):
     """
     DELETE /accounts/{accountname}/users/{username}
@@ -427,15 +461,16 @@ def delete_user(accountname, username):
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            verify_user(username, accountname, mgr)
-
-            if ApiRequestContextProxy.identity().username == username:
+            usr = verify_user(username, accountname, mgr)
+            if not can_delete(usr):
+                return make_response_error('User not allowed to be deleted due to system constraints', in_httpcode=400), 400
+            elif ApiRequestContextProxy.identity().username == username:
                 return make_response_error('Cannot delete credential used for authentication of the request', in_httpcode=400), 400
-
-            if mgr.delete_user(username):
-                return None, 204
             else:
-                return make_response_error('Failed to delete user: {}'.format(username), in_httpcode=500), 500
+                if mgr.delete_user(username):
+                    return None, 204
+                else:
+                    return make_response_error('Failed to delete user: {}'.format(username), in_httpcode=500), 500
     except (UserNotFoundError, AccountNotFoundError):
         return make_response_error('User not found', in_httpcode=404), 404
     except Exception as e:

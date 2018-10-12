@@ -7,8 +7,7 @@ from connexion import request
 
 from anchore_engine import utils
 import anchore_engine.apis
-from anchore_engine.services.apiext.api import AuthActions
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, Permission
+from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
@@ -535,7 +534,7 @@ def get_content(request_inputs, content_type, doformat=False):
     return (return_object, httpcode)
 
 # repositories
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_repository.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_repository(repository=None, autosubscribe=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'autosubscribe':autosubscribe, 'repository':repository})
@@ -589,7 +588,7 @@ def repositories(request_inputs):
 
 
 # images CRUD
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_images.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_imagetags():
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
@@ -611,10 +610,10 @@ def list_imagetags():
         httpcode = 500
         return_object = str(err)
 
-    return return_object, httpcode    
+    return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.list_images.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_images(history=None, image_to_get=None, fulltag=None):
 
     try:
@@ -627,7 +626,7 @@ def list_images(history=None, image_to_get=None, fulltag=None):
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_image(image, force=False):
 
     try:
@@ -640,7 +639,7 @@ def add_image(image, force=False):
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_image(imageDigest, force=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
@@ -652,7 +651,7 @@ def delete_image(imageDigest, force=False):
     return return_object, httpcode
 
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image(imageDigest, history=None):
     
     try:
@@ -665,7 +664,7 @@ def get_image(imageDigest, history=None):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_by_imageId(imageId, history=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
@@ -682,7 +681,7 @@ def get_image_by_imageId(imageId, history=None):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.delete_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_image_by_imageId(imageId, force=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
@@ -699,7 +698,7 @@ def delete_image_by_imageId(imageId, force=False):
 
     return return_object, httpcode
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_evaluation.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_policy_check(imageDigest, policyId=None, tag=None, detail=True, history=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'tag':None, 'detail':True, 'history':False, 'policyId':None})
@@ -711,7 +710,7 @@ def get_image_policy_check(imageDigest, policyId=None, tag=None, detail=True, hi
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_evaluation.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=None, history=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
@@ -728,7 +727,7 @@ def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=N
 
     return return_object, httpcode
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_metadata(imageDigest):
     try:
         return_object = anchore_engine.common.image_metadata_types
@@ -740,7 +739,7 @@ def list_image_metadata(imageDigest):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_metadata_by_type(imageDigest, mtype):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'imageDigest':imageDigest})
@@ -759,7 +758,7 @@ def get_image_metadata_by_type(imageDigest, mtype):
     
     return return_object, httpcode
 
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_content(imageDigest):
     try:
         return_object = anchore_engine.common.image_content_types
@@ -771,7 +770,7 @@ def list_image_content(imageDigest):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_content_by_imageid(imageId):
     try:
         return_object = anchore_engine.common.image_content_types
@@ -783,7 +782,7 @@ def list_image_content_by_imageid(imageId):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type(imageDigest, ctype):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'imageDigest':imageDigest})
@@ -803,17 +802,17 @@ def get_image_content_by_type(imageDigest, ctype):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_files(imageDigest):
     return(get_image_content_by_type(imageDigest, 'files'))
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_javapackage(imageDigest):
     return(get_image_content_by_type(imageDigest, 'java'))
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
@@ -831,18 +830,18 @@ def get_image_content_by_type_imageId(imageId, ctype):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_files(imageId):
     return(get_image_content_by_type_imageId(imageId, 'files'))
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_javapackage(imageId):
     return(get_image_content_by_type_imageId(imageId, 'java'))
 
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_vulnerability_types(imageDigest):
     try:
         return_object = anchore_engine.common.image_vulnerability_types + ['all']
@@ -855,7 +854,7 @@ def get_image_vulnerability_types(imageDigest):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_vulnerability_types_by_imageId(imageId):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
@@ -873,7 +872,7 @@ def get_image_vulnerability_types_by_imageId(imageId):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, vendor_only=True):
     try:
         vulnerability_type = vtype
@@ -894,7 +893,7 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, v
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.get_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     try:
         vulnerability_type = vtype
@@ -913,7 +912,7 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     return return_object, httpcode
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain=RequestingAccountValue(), action=AuthActions.create_image.value, target=None)])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def import_image(analysis_report):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
