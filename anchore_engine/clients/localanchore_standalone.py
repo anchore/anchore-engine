@@ -416,13 +416,16 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
                 lsize = hel['Size']
             except:
                 lsize = 0
-            
-            if hel['container_config']['Cmd']:
+
+            try:
                 lcreatedby = ' '.join(hel['container_config']['Cmd'])
-            else:
+            except:
                 lcreatedby = ""
-            
-            lcreated = hel['created']
+
+            try:
+                lcreated = hel['created']
+            except:
+                lcreated = ""
             lid = layers[count]
             count = count + 1
             hfinal.append(
