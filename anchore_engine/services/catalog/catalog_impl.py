@@ -285,7 +285,7 @@ def image(dbsession, request_inputs, bodycontent={}):
 
             logger.debug("MARK0: " + str(time.time() - timer))
             if input_type == 'digest':
-                raise Exception("catalog add only supports adding by tag")
+                raise Exception("catalog add requires a tag string to determine registry/repo")
 
             # body
             jsondata = {}
@@ -340,12 +340,15 @@ def image(dbsession, request_inputs, bodycontent={}):
                 input_strings = [input_string]
 
                 for input_string in input_strings:
-                    logger.debug("INPUT_STRING: " + input_string)
+                    logger.debug("INPUT STRING: {}".format(input_string))
+                    logger.debug("INPUT IMAGE INFO: {}".format(image_info))
+                    logger.debug("INPUT IMAGE INFO OVERRIDES: {}".format(image_info_overrides))
                     image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
 
                     if image_info_overrides:
                         image_info.update(image_info_overrides)
 
+                    logger.debug("INPUT FINAL IMAGE INFO: {}".format(image_info))
                     logger.debug("MARK3: " + str(time.time() - timer))
 
                     manifest = None

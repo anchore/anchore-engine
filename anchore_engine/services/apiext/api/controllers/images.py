@@ -990,10 +990,6 @@ def images(request_inputs):
 
         if 'tag' in jsondata:
             tag = jsondata['tag']
-        #elif 'imageDigest' in jsondata:
-        #    imageDigest = jsondata['imageDigest']
-        #elif 'imageId' in jsondata:
-        #    imageId = jsondata['imageId']
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
@@ -1029,12 +1025,13 @@ def images(request_inputs):
         elif method == 'POST':
             logger.debug("handling POST: input_tag={} input_digest={} input_force={}".format(tag, digest, force))
             # if not, add it and set it up to be analyzed
+
             if not tag:
                 # dont support digest add, yet
                 httpcode = 400
                 raise Exception("tag is required for image add")
 
-            if digest and tag:
+            if False and digest and tag:
                 if not force:
                     httpcode = 400
                     raise Exception("force is required to add digest+tag")
