@@ -241,22 +241,6 @@ class CatalogClient(InternalServiceClient):
     def delete_event(self, eventId):
         return self.call_api(http.anchy_delete, 'events/{id}', path_params={'id': eventId})
 
-    def get_prune_resourcetypes(self):
-        return self.call_api(http.anchy_get, 'system/prune')
-
-    def get_prune_candidates(self, resourcetype, dangling=True, olderthan=None):
-        if olderthan:
-            return self.call_api(http.anchy_get, 'system/prune/{resourcetype}',
-                                 path_params={'resourcetype': resourcetype},
-                                 query_params={'dangling': dangling, 'olderthan': str(int(olderthan))})
-        else:
-            return self.call_api(http.anchy_get, 'system/prune/{resourcetype}',
-                                 path_params={'resourcetype': resourcetype},
-                                 query_params={'dangling': dangling})
-
-    def perform_prune(self, resourcetype, prune_candidates):
-        return self.call_api(http.anchy_post, 'system/prune/{resourcetype}', path_params={'resourcetype': resourcetype}, body=json.dumps(prune_candidates))
-
     def create_user(self, accountname, username, password=None):
         return self.call_api(http.anchy_post, 'accounts/{account}/users', path_params={'account': accountname}, body=json.dumps({'username': username, 'password': password}))
 

@@ -39,6 +39,97 @@ from anchore_engine.subsys.identities import manager_factory
 
 # monitor section
 
+
+def do_user_resources_delete(userId):
+    return_object = {}
+    httpcode = 500
+
+    resourcemaps = [
+        ("subscriptions", db.db_subscriptions.get_all_byuserId, catalog_impl.do_subscription_delete),
+        ("registries", db.db_registries.get_byuserId, catalog_impl.do_registry_delete),
+        ("evaluations", db.db_policyeval.get_all_byuserId, catalog_impl.do_evaluation_delete),
+        ("policybundles", db.db_policybundle.get_all_byuserId, catalog_impl.do_policy_delete),
+        ("images", db.db_catalog_image.get_all_byuserId, catalog_impl.do_image_delete),
+        ("archive", db.db_archivemetadata.list_all_byuserId, catalog_impl.do_archive_delete),
+    ]
+
+    limit = 2048
+    all_total = 0
+    all_deleted = 0
+    for resourcename,getfunc,delfunc in resourcemaps:
+        try:
+            deleted = 0
+            total = 0
+            with db.session_scope() as dbsession:
+                records = getfunc(userId, session=dbsession, limit=limit)
+                total = len(records)
+                for record in records:
+                    delfunc(userId, record, dbsession, force=True)
+                    deleted = deleted + 1
+            return_object['total_{}'.format(resourcename)] = total
+            return_object['total_{}_deleted'.format(resourcename)] = deleted
+            all_total = all_total + total
+            all_deleted = all_deleted + deleted
+            if total or deleted:
+                logger.debug("deleted {} / {} {} records for user {}".format(deleted, total, resourcename, userId))
+
+        except Exception as err:
+            logger.warn("failed to delete resources in {} for user {}, will continue and try again - exception: {}".format(resourcename, userId, err))
+
+    return_object['all_total'] = all_total
+    return_object['all_deleted'] = all_deleted
+    
+    httpcode = 200
+    return(return_object, httpcode)
+
+def handle_account_resource_cleanup(*args, **kwargs):
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))    
+
+    try:
+        # iterate over all deleted account records, and perform resource cleanup for that account.  If there are no longer any resources associated with the account id, then finally delete the account record itself
+        with db.session_scope() as dbsession:
+            accounts = db_accounts.get_all(session=dbsession)
+            #TODO only accounts to be deleted
+
+        for account in accounts:
+            userId = account['name']
+            if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
+                continue
+
+            logger.debug("inspecting account {} for resource cleanup tasks".format(userId))
+            try:
+                return_object, httpcode = do_user_resources_delete(userId)
+                logger.debug("resources for deleted user cleaned-up: {} - {}".format(return_object, httpcode))
+                if return_object.get('all_total', None) == 0 and return_object.get('all_deleted', None) == 0:
+                    logger.debug("resources for pending deleted user {} cleared - deleting user".format(userId))
+                    #TODO account delete
+                else:
+                    logger.debug("resources for pending deleted user {} not entirely cleared this cycle".format(userId))
+            except Exception as err:
+                raise Exception("failed to delete user {} resources - exception: {}".format(userId, err))
+
+    except Exception as err:
+        logger.warn("failure in handler - exception: " + str(err))
+
+    logger.debug("FIRING DONE: " + str(watcher))
+    try:
+        kwargs['mythread']['last_return'] = handler_success
+    except:
+        pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
+                                                      function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
+                                                      function=watcher, status="fail")
+
+    return (True)
+
 def handle_vulnerability_scan(*args, **kwargs):
     global feed_sync_updated
 
@@ -1481,6 +1572,10 @@ watchers = {
     'vulnerability_scan': {'handler': handle_vulnerability_scan, 'task_lease_id': 'vulnerability_scan',
                            'taskType': 'handle_vulnerability_scan', 'args': [], 'cycle_timer': 300,
                            'min_cycle_timer': 60, 'max_cycle_timer': 86400 * 2, 'last_queued': 0, 'last_return': False,
+                           'initialized': False},
+    'account_resource_cleanup': {'handler': handle_account_resource_cleanup, 'task_lease_id': 'account_resource_cleanup',
+                           'taskType': 'handle_account_resource_cleanup', 'args': [], 'cycle_timer': 30,
+                           'min_cycle_timer': 30, 'max_cycle_timer': 30, 'last_queued': 0, 'last_return': False,
                            'initialized': False},
     'service_watcher': {'handler': handle_service_watcher, 'task_lease_id': False, 'taskType': None, 'args': [],
                         'cycle_timer': 10, 'min_cycle_timer': 1, 'max_cycle_timer': 300, 'last_queued': 0,

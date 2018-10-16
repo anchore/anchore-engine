@@ -35,13 +35,16 @@ def add(userId, subscription_key, subscription_type, inobj, session=None):
     return (True)
 
 
-def get_all_byuserId(userId, session=None):
+def get_all_byuserId(userId, limit=None, session=None):
     if not session:
         session = db.Session
 
     ret = []
 
     our_results = session.query(Subscription).filter_by(userId=userId)
+    if limit:
+        our_results = our_results.limit(int(limit))
+
     for result in our_results:
         ret.append(result.to_dict())
 

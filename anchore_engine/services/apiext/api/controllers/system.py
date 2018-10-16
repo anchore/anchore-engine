@@ -43,25 +43,6 @@ def make_response_service(user_auth, service_record, params):
     return (ret)
 
 
-def make_response_prune_candidate(user_auth, prune_record, params):
-    ret = {}
-    userId, pw = user_auth
-
-    try:
-        for k in ['reason', 'resourcetype', 'userId']:
-            ret[k] = prune_record[k]
-        ret['created_at'] = datetime.datetime.utcfromtimestamp(prune_record['created_at']).isoformat() + 'Z'
-
-        ret['resource_ids'] = {}
-        if 'resource_ids' in prune_record:
-            ret['resource_ids'] = copy.deepcopy(prune_record['resource_ids'])
-
-    except Exception as err:
-        raise Exception("failed to format prune response: " + str(err))
-
-    return (ret)
-
-
 def ping():
     """
     GET /
@@ -305,64 +286,6 @@ def post_system_feeds(flush=False):
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)    
-
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
-def get_system_prune_resourcetypes():
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-
-    return_object = []
-    httpcode = 500
-    try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
-        return_object = client.get_prune_resourcetypes()
-        if return_object:
-            httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
-
-
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
-def get_system_prune_candidates(resourcetype, dangling=True, olderthan=None):
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'dangling': dangling, 'olderthan': olderthan})
-    user_auth = request_inputs['auth']
-    params = request_inputs['params']
-
-    return_object = {'prune_candidates': []}
-    httpcode = 500
-    try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
-        prune_candidates = client.get_prune_candidates(resourcetype, dangling=params['dangling'], olderthan=params['olderthan'])
-        if prune_candidates:
-            for p in prune_candidates['prune_candidates']:
-                return_object['prune_candidates'].append(make_response_prune_candidate(user_auth, p, params))
-            httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
-
-
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
-def post_system_prune_candidates(resourcetype, bodycontent):
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-
-    return_object = []
-    httpcode = 500
-    try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
-        return_object = client.perform_prune(resourcetype, bodycontent)
-        if return_object:
-            httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
 
 @authorizer.requires([])
 def describe_policy():
