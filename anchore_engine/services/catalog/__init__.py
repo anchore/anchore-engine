@@ -335,6 +335,7 @@ def handle_repo_watcher(*args, **kwargs):
                                                                                  new_image_info['imageId'],
                                                                                  tags=[new_image_info['fulltag']],
                                                                                  digests=[new_image_info['fulldigest']],
+                                                                                 parentdigest=new_image_info.get('parentdigest', None),
                                                                                  manifest=manifest)
                                 # add the subscription records with the configured default activations
 
@@ -524,6 +525,7 @@ def handle_image_watcher(*args, **kwargs):
                         image_records = catalog_impl.add_or_update_image(dbsession, userId, image_info['imageId'],
                                                                          tags=[image_info['fulltag']],
                                                                          digests=[image_info['fulldigest']],
+                                                                         parentdigest=image_info.get('parentdigest', None),
                                                                          manifest=manifest,
                                                                          annotations=last_annotations)
 

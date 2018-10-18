@@ -327,16 +327,11 @@ def image(dbsession, request_inputs, bodycontent={}):
                     input_fulldigest = "{}/{}@{}".format(image_info['registry'], image_info['repo'], input_digest)
                     image_info_overrides['fulltag'] = input_tag
                     image_info_overrides['tag'] = image_info['tag']
+                    if params.get('created_at', None):
+                        image_info_overrides['created_at_override'] = params.get('created_at')
+
                     input_string = input_fulldigest
 
-                input_strings = []
-                #if input_type == 'repo':
-                #    image_info = anchore_engine.services.common.get_image_info(userId, 'docker', input_string, registry_lookup=False, registry_creds=(None, None))
-                #    repotags = anchore_engine.auth.docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
-                #    for repotag in repotags:
-                #        input_strings.append(image_info['registry'] + "/" + image_info['repo'] + ":" + repotag)
-                #else:
-                #    input_strings = [input_string]
                 input_strings = [input_string]
 
                 for input_string in input_strings:
@@ -363,7 +358,7 @@ def image(dbsession, request_inputs, bodycontent={}):
                     logger.debug("MARK4: " + str(time.time() - timer))
 
                     logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
-                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
+                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
                     logger.debug("MARK5: " + str(time.time() - timer))
                     if image_records:
                         image_record = image_records[0]
@@ -1409,7 +1404,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
     return(curr_evaluation_record, curr_evaluation_result)
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
     ret = []
 
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
@@ -1421,6 +1416,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
         registry = image_info['registry']
         repo = image_info['repo']
         digest = image_info['digest']
+        if not parentdigest:
+            parentdigest = digest
 
         if registry not in image_ids:
             image_ids[registry] = {}
@@ -1464,7 +1461,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], anchore
                 fulldigest = registry + "/" + repo + "@" + d
                 for t in tags:
                     fulltag = registry + "/" + repo + ":" + t
-                    new_image_record = anchore_engine.common.images.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
+                    new_image_record = anchore_engine.common.images.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'parentdigest': parentdigest, 'created_at': created_at, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
                     imageDigest = new_image_record['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:

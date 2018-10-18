@@ -2202,6 +2202,10 @@ definitions:
       tag:
         type: string
         description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest"
+      created_at:
+        type: string
+        format: "date-time"
+        description: "Optional override of the image creation time, only honored when both tag and digest are also supplied  e.g. 2018-10-17T18:14:00Z"
       image_type:
         type: string
         description: The type of image this is adding, defaults to "docker"
