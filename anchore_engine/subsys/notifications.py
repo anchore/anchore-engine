@@ -32,7 +32,7 @@ def make_notification(user_record, subscription_type, notification):
     ret = {}
     try:
         payload_data = {
-            'notification_user': user_record['userId'],
+            'notification_user': user_record['name'],
             'notification_user_email': user_record['email'],
             'notification_type': subscription_type,
             'notification_payload': notification
@@ -55,12 +55,12 @@ def notify(user_record, notification):
     return(True)
 
 def do_notify_webhook(user_record, notification):
-    logger.spew("webhook notify user: " + json.dumps(user_record, indent=4))
-    logger.debug("webhook notify user: " + json.dumps(notification, indent=4))
+    #logger.spew("webhook notify user: " + json.dumps(user_record, indent=4))
+    #logger.debug("webhook notify user: " + json.dumps(notification, indent=4))
 
     notification_type = notification['data']['notification_type']
     user = pw = None
-    subvars = [('<userId>', user_record['userId']), ('<notification_type>', notification_type)]
+    subvars = [('<userId>', user_record['name']), ('<notification_type>', notification_type)]
 
     try:
         payload = json.dumps(notification)
