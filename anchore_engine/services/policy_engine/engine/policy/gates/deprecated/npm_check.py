@@ -36,7 +36,7 @@ class NotLatestTrigger(BaseTrigger):
 
             for v in versions:
                 if v and v != feed_names.get(npm):
-                    self._fire("NPMNOTLATEST Package ("+npm+") version ("+v+") installed but is not the latest version ("+feed_names[npm]['latest']+")")
+                    self._fire(msg="NPMNOTLATEST Package ("+npm+") version ("+v+") installed but is not the latest version ("+feed_names[npm]['latest']+")")
 
 
 class NotOfficialTrigger(BaseTrigger):
@@ -158,6 +158,7 @@ class NoFeedTrigger(BaseTrigger):
     __lifecycle_state__ = LifecycleStates.deprecated
     __trigger_name__ = 'npmnofeed'
     __description__ = 'triggers if anchore does not have access to the NPM data feed'
+    __msg__ = "NPMNOFEED NPM packages are present but the anchore NPM feed is not available - will be unable to perform checks that require feed data"
 
     def evaluate(self, image_obj, context):
         try:

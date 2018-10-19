@@ -37,7 +37,7 @@ class NotLatestTrigger(BaseTrigger):
 
             for v in versions:
                 if v and v != feed_names.get(gem):
-                    self._fire("Package ("+gem+") version ("+v+") installed but is not the latest version ("+feed_names[gem]['latest']+")")
+                    self._fire(msg="Package ({}) version ({}) installed but is not the latest version ({})".format(gem, v, feed_names[gem]['latest']))
 
 
 class NotOfficialTrigger(BaseTrigger):

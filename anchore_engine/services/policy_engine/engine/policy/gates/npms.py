@@ -37,7 +37,7 @@ class NotLatestTrigger(BaseTrigger):
 
             for v in versions:
                 if v and v != feed_names.get(npm):
-                    self._fire("NPMNOTLATEST Package ("+npm+") version ("+v+") installed but is not the latest version ("+feed_names[npm]['latest']+")")
+                    self._fire(msg="NPMNOTLATEST Package ({}) version ({}) installed but is not the latest version ({})".format(npm, v, feed_names[npm]['latest']))
 
 
 class NotOfficialTrigger(BaseTrigger):
@@ -137,6 +137,7 @@ class PkgMatchTrigger(BaseTrigger):
 class NoFeedTrigger(BaseTrigger):
     __trigger_name__ = 'feed_data_unavailable'
     __description__ = 'Triggers if the engine does not have access to the NPM data feed.'
+    __msg__ = "NPM packages are present but the anchore npm feed is not available - will be unable to perform checks that require feed data"
 
     def evaluate(self, image_obj, context):
         try:
