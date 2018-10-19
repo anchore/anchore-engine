@@ -162,53 +162,6 @@ def get_all_tagsummary(userId, session=None):
 
     return(ret)
 
-<<<<<<< HEAD
-if False:
-    def get_all_filtertest(userId, colfilter, session=None, ):
-
-        if 'userId' not in colfilter:
-            colfilter.append('userId')
-
-        value_colfilter = []
-        for c in colfilter:
-            value_colfilter.append('"'+str(c)+'"')
-
-        acols = ['imageDigest']
-        avcols = ['"imageDigest"']
-        cols = list(CatalogImage.__table__.columns.keys())
-        for col in cols:
-            if col != 'imageDigest' and col in colfilter:
-                acols.append(col)
-                avcols.append('"'+col+'"')
-
-        bcols = ['imageDigest']
-        bvcols = ['"imageDigest"']
-        cols = list(CatalogImageDocker.__table__.columns.keys())
-        for col in cols:
-            if col != 'imageDigest' and col in colfilter:
-                bcols.append(col)
-                bvcols.append('"'+col+'"')
-
-        hmap = {}
-        ret = []
-        if acols:
-            results = session.query(CatalogImage).options(load_only(*acols)).filter_by(userId=userId).values(*avcols)
-            for result in list(results):
-                hmap[result[0]] = dict(list(zip(acols, result)))
-
-
-        if bcols:
-            results = session.query(CatalogImageDocker).options(load_only(*bcols)).filter_by(userId=userId).values(*bvcols)
-            for result in list(results):
-                if hmap[result[0]]:
-                    hmap[result[0]].update(dict(list(zip(bcols, result))))
-                else:
-                    hmap[result[0]] = dict(list(zip(bcols, result)))
-
-        ret = list(hmap.values())
-
-        return(ret)
-
 def get_all_byuserId(userId, limit=None, session=None):
     if not session:
         session = db.Session
