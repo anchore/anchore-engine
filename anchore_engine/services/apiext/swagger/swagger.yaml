@@ -1008,7 +1008,7 @@ paths:
       - Registries
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.registries
       operationId: create_registry
-      x-anchore-authz-action: createregistry
+      x-anchore-authz-action: createRegistry
       summary: Add a new registry
       description: Adds a new registry to the system
       parameters:
@@ -1126,7 +1126,7 @@ paths:
       - System
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
       operationId: get_service_detail
-      x-anchore-authz-action: getImage
+      x-anchore-authz-action: None
       summary: System status
       description: Get the system status including queue lengths
       responses:
