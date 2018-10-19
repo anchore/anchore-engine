@@ -2,3 +2,4 @@
 .idea/*
 .git*
 .git/*
+.circleci/*
