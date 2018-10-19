@@ -129,9 +129,9 @@ def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, histor
 
 
 @authorizer.requires([Permission(domain='system', action='*', target='*')])
-def image_post(bodycontent={}, tag=None, digest=None):
+def image_post(bodycontent={}, tag=None, digest=None, created_at=None):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest, 'created_at': created_at})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
 

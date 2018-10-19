@@ -41,7 +41,7 @@ class CatalogClient(InternalServiceClient):
     def add_repo(self, regrepo=None, autosubscribe=False, lookuptag=None):
         return self.call_api(http.anchy_post, 'repo', query_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
 
-    def add_image(self, tag=None, digest=None, dockerfile=None, annotations=None):
+    def add_image(self, tag=None, digest=None, dockerfile=None, annotations=None, created_at=None):
         payload = {}
         if dockerfile:
             payload['dockerfile'] = dockerfile
@@ -49,7 +49,7 @@ class CatalogClient(InternalServiceClient):
         if annotations:
             payload['annotations'] = annotations
 
-        return self.call_api(http.anchy_post, 'image', query_params={'tag': tag, 'digest': digest}, body=json.dumps(payload))
+        return self.call_api(http.anchy_post, 'image', query_params={'tag': tag, 'digest': digest, 'created_at': created_at}, body=json.dumps(payload))
 
     def get_imagetags(self):
         return self.call_api(http.anchy_get, 'summaries/imagetags')

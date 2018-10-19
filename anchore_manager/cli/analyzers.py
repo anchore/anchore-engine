@@ -60,9 +60,10 @@ def exec(tag, tmpdir):
     registry, rest = tag.split('/', 1)
     repo, tag = rest.split(':', 1)
     click.echo('Registry: {}, Repository: {}, Tag: {}'.format(registry, repo, tag))
-    manifest, digest = get_image_manifest_skopeo(None, registry, repo, intag=tag)
+    manifest, digest, parentdigest = get_image_manifest_skopeo(None, registry, repo, intag=tag)
     img_record = {
         'imageDigest': digest,
+        'parentDigest': parentdigest,
         'dockerfile_mode': 'guessed',
         'image_detail': [
             {
@@ -76,6 +77,7 @@ def exec(tag, tmpdir):
         ]
     }
     click.echo('Got digest: {}'.format(digest))
+    click.echo('Got parentdigest: {}'.format(parentdigest))
     click.echo('Config: {}'.format(config))
     click.echo('Running analyzers')
 

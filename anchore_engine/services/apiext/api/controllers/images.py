@@ -962,12 +962,13 @@ def images(request_inputs):
 
     username, pw = user_auth
     userId = request_inputs['userId']
-    fulltag = digest = tag = imageId = imageDigest = dockerfile = annotations = None
+    fulltag = digest = tag = imageId = imageDigest = dockerfile = annotations = created_at_override = None
 
     history = False
     force = False
     autosubscribe = True
     query_fulltag = None
+
 
     if params:
         if 'history' in params:
@@ -990,10 +991,24 @@ def images(request_inputs):
 
         if 'tag' in jsondata:
             tag = jsondata['tag']
-        #elif 'imageDigest' in jsondata:
-        #    imageDigest = jsondata['imageDigest']
-        #elif 'imageId' in jsondata:
-        #    imageId = jsondata['imageId']
+
+        if 'created_at' in jsondata:
+            ts = jsondata['created_at']
+            tsformats = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S:%fZ']
+            created_at_override = None
+            for tsformat in tsformats:
+                try:
+                    created_at_override = int(datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").timestamp())
+                except Exception as err:
+                    pass
+            
+            if not created_at_override:
+                err = Exception("could not convert input created_at value ({}) into datetime using formats in {}".format(ts, tsformats))
+                logger.debug("operation exception: " + str(err))
+
+                return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=500)
+                httpcode = return_object['httpcode']
+                return(return_object, httpcode)
 
         if 'dockerfile' in jsondata:
             dockerfile = jsondata['dockerfile']
@@ -1029,24 +1044,25 @@ def images(request_inputs):
         elif method == 'POST':
             logger.debug("handling POST: input_tag={} input_digest={} input_force={}".format(tag, digest, force))
             # if not, add it and set it up to be analyzed
+
             if not tag:
                 # dont support digest add, yet
                 httpcode = 400
                 raise Exception("tag is required for image add")
 
             if digest and tag:
-                if not force:
-                    httpcode = 400
-                    raise Exception("force is required to add digest+tag")
-                else:
+                if force:
                     try:
                         image_check = client.get_image(digest=digest, tag=tag, imageId=None, imageDigest=digest, history=False)
                     except Exception as err:
                         httpcode = 400
                         raise Exception("image digest must already exist to force re-analyze using tag+digest")
+                elif not created_at_override:
+                    httpcode = 400
+                    raise Exception("must supply created_at override when adding a new image by tag+digest")
 
             # add the image to the catalog
-            image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations)
+            image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations, created_at=created_at_override)
             imageDigest = image_record['imageDigest']
 
             # finally, do any state updates and return

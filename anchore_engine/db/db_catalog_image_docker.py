@@ -45,8 +45,6 @@ def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=No
     our_result = session.query(CatalogImageDocker).filter_by(imageDigest=imageDigest, userId=userId, tag=tag).first()
     if not our_result:
         our_result = CatalogImageDocker(imageDigest=imageDigest, userId=userId, tag=tag)
-        #dbobj['created_at'] = int(time.time())
-
         our_result.update(dbobj)
         session.add(our_result)
     else:

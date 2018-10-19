@@ -456,14 +456,14 @@ class ImageLoader(object):
         """
 
         file_entries = {}
-        all_infos = analysis_report_json.get('file_list').get('files.allinfo', {}).get('base', [])
-        file_perms = analysis_report_json.get('file_list').get('files.all', {}).get('base', [])
-        md5_checksums = analysis_report_json.get('file_checksums').get('files.md5sums', {}).get('base', {})
-        sha256_checksums = analysis_report_json.get('file_checksums').get('files.sha256sums', {}).get('base', {})
-        sha1_checksums = analysis_report_json.get('file_checksums').get('files.sha1sums', {}).get('base', {})
-        non_pkged = analysis_report_json.get('file_list').get('files.nonpkged', {}).get('base', [])
+        all_infos = analysis_report_json.get('file_list', {}).get('files.allinfo', {}).get('base', {})
+        file_perms = analysis_report_json.get('file_list', {}).get('files.all', {}).get('base', {})
+        md5_checksums = analysis_report_json.get('file_checksums', {}).get('files.md5sums', {}).get('base', {})
+        sha256_checksums = analysis_report_json.get('file_checksums', {}).get('files.sha256sums', {}).get('base', {})
+        sha1_checksums = analysis_report_json.get('file_checksums', {}).get('files.sha1sums', {}).get('base', {})
+        non_pkged = analysis_report_json.get('file_list', {}).get('files.nonpkged', {}).get('base', {})
         suids = analysis_report_json.get('file_suids', {}).get('files.suids', {}).get('base', {})
-        pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', [])
+        pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', {})
 
         path_map = {path: json.loads(value) for path, value in list(all_infos.items())}
         entry = FilesystemAnalysis()

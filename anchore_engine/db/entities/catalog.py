@@ -260,6 +260,7 @@ class CatalogImage(Base, UtilMixin):
 
     imageDigest = Column(String, primary_key=True)
     userId = Column(String, primary_key=True)
+    parentDigest = Column(String)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
     analyzed_at = Column(Integer)

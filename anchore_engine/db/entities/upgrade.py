@@ -531,9 +531,35 @@ def db_upgrade_006_007():
     catalog_image_upgrades_006_007()
 
 def db_upgrade_007_008():
+    catalog_upgrade_007_008()
     policy_engine_packages_upgrade_007_008()
     user_account_upgrades_007_008()
 
+def catalog_upgrade_007_008():
+    from anchore_engine.db import session_scope, CatalogImage
+
+    engine = anchore_engine.db.entities.common.get_engine()
+    new_columns = [
+        {
+            'table_name': 'catalog_image',
+            'columns': [
+                Column('parentDigest', String()),
+            ]
+        },
+    ]
+
+    log.err("creating new table columns")
+    for table in new_columns:
+        for column in table['columns']:
+            log.err("creating new column ({}) in table ({})".format(column.name, table.get('table_name', "")))
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+            except Exception as e:
+                log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+                raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+        
 def policy_engine_packages_upgrade_007_008():
     from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem, Image
     if True:

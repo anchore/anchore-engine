@@ -18,12 +18,9 @@ def lookup_registry_image(userId, image_info, registry_creds):
     #else:
     # try clause from below is in the else-clause
     try:
-        manifest,digest = docker_registry.get_image_manifest(userId, image_info, registry_creds)
-        #if 'schemaVersion' not in manifest or manifest['schemaVersion'] != 2:
-        #    raise Exception("manifest schemaVersion != 2 not supported")
+        manifest,digest,parentdigest = docker_registry.get_image_manifest(userId, image_info, registry_creds)
     except Exception as err:
         raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch image digest/manifest from registry", input_httpcode=400)
-        #raise Exception("cannot fetch image digest/manifest from registry - exception: " + str(err))
 
     return(digest, manifest)
 
@@ -39,10 +36,15 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
         ret.update(image_info)
 
         if registry_lookup and image_info['registry'] != 'localbuild':
-            digest, manifest = lookup_registry_image(userId, image_info, registry_creds)
+            #digest, manifest = lookup_registry_image(userId, image_info, registry_creds)
+            try:
+                manifest,digest,parentdigest = docker_registry.get_image_manifest(userId, image_info, registry_creds)
+            except Exception as err:
+                raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch image digest/manifest from registry", input_httpcode=400)
             image_info['digest'] = digest
             image_info['fulldigest'] = image_info['registry']+"/"+image_info['repo']+"@"+digest
             image_info['manifest'] = manifest
+            image_info['parentdigest'] = parentdigest
 
             # if we got a manifest, and the image_info does not yet contain an imageId, try to get it from the manifest
             if manifest and not image_info['imageId']:
@@ -79,41 +81,39 @@ def clean_docker_image_details_for_update(image_details):
 def make_image_record(userId, image_type, input_string, image_metadata={}, registry_lookup=True, registry_creds=[]):
     if image_type == 'docker':
         try:
-            dockerfile = image_metadata['dockerfile']
+            dockerfile = image_metadata.get('dockerfile', None)
         except:
             dockerfile = None
 
         try:
-            dockerfile_mode = image_metadata['dockerfile_mode']
+            dockerfile_mode = image_metadata.get('dockerfile_mode', None)
         except:
             dockerfile_mode = None
 
         try:
-            tag = image_metadata['tag']
+            tag = image_metadata.get('tag', None)
         except:
             tag = None
 
         try:
-            imageId = image_metadata['imageId']
+            imageId = image_metadata.get('imageId', None)
         except:
             imageId = None
 
         try:
-            digest = image_metadata['digest']
+            digest = image_metadata.get('digest', None)
         except:
             digest = None
 
         try:
-            annotations = image_metadata['annotations']
+            annotations = image_metadata.get('annotations', {})
         except:
             annotations = {}
 
-        #try:
-        #    manifest = image_metadata['manifest']
-        #except:
-        #    manifest = None
+        parentdigest = image_metadata.get('parentdigest', None)
+        created_at = image_metadata.get('created_at', None)
 
-        return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations))
+        return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, parentdigest=parentdigest, created_at=created_at, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations))
 
     else:
         raise Exception("image type ("+str(image_type)+") not supported")
@@ -121,7 +121,7 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
     return(None)
 
 
-def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[], annotations={}):
+def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, parentdigest=None, created_at=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[], annotations={}):
     ret = {}
 
     if input_string:
@@ -149,6 +149,13 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
     new_input['userId'] = userId
     new_input['image_type'] = 'docker'
     new_input['dockerfile_mode'] = dockerfile_mode
+
+    if not parentdigest:
+        parentdigest = imageDigest
+    new_input['parentDigest'] = parentdigest
+
+    if created_at:
+        new_input['created_at'] = created_at
 
     final_annotation_data = {}
     for k,v in list(annotations.items()):

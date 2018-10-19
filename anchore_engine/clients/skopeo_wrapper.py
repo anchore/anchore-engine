@@ -117,7 +117,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
 
     return(repotags)
 
-def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, user=None, pw=None, verify=True):
+def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True):
     manifest = {}
     digest = None
     testDigest = None
@@ -159,6 +159,8 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
             sout = str(sout, 'utf-8') if sout else None
             digest = manifest_to_digest(sout)
             manifest = json.loads(sout)
+            if not topdigest:
+                topdigest = digest
 
             if manifest.get('schemaVersion') == 2 and manifest.get('mediaType') == 'application/vnd.docker.distribution.manifest.list.v2+json':
                 # Get the arch-specific version for amd64 and linux
@@ -169,7 +171,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
                         new_digest = entry.get('digest')
                         break
 
-                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify)
+                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify, topdigest=topdigest)
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
             raise err
@@ -182,7 +184,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, us
     if not manifest or not digest:
         raise SkopeoError(msg="No digest/manifest from skopeo")
 
-    return(manifest, digest)
+    return(manifest, digest, topdigest)
 
 
 class SkopeoError(AnchoreException):
