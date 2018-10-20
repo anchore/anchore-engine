@@ -29,7 +29,6 @@ def language_compare(a, op, b, language='python'):
             boptions = [semantic_version.Version.coerce(b)]
         except:
             logger.debug("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
-            print("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
             aoptions = [parse_version(a)]
             boptions = [parse_version(b)]
     elif language in ['python']:
@@ -194,26 +193,39 @@ def convert_rrange_to_srange(rawsemver):
     toks = re.split(", *", rawsemver)
     if len(toks) > 2:
         raise Exception("cannot handle range of len greater than 2")
-    final_toks = []
-    for tok in toks:
-        if tok[0] not in ['<', '>', '!', '=', '~', '^']:
-            final_toks.append("={}".format(tok))
-        else:
-            final_toks.append(tok)
         
-    ret = " ".join(re.sub(' +', '', x) for x in final_toks)
+    ret = " ".join(re.sub(r'\s+', "", x) for x in toks)
     return(ret)
+
+def cleanup_range(rawrange):
+    vtoks = rawrange.split("||")
+    final_vtoks = []
+    for vtok in vtoks:
+        toks = [vtok]
+        final_toks = []
+        for tok in toks:
+            tok = re.sub(r"^\s+", "", tok)
+            if tok:
+                if tok[0] not in ['<', '>', '!', '=', '~', '^']:
+                    final_toks.append("={}".format(tok))
+                else:
+                    final_toks.append(tok)        
+            else:
+                final_toks.append("<0.0.0")
+        final_vtoks.append(" ".join(final_toks))
+    retrange = " || ".join(final_toks)
+    return(retrange)
 
 def convert_langversionlist_to_semver(versionlist, language):
     semvers = []
     for version in versionlist:
         normal_semver = None
         if language in ['python', 'maven', 'java', 'dotnet']:
-            normal_semver = convert_mrange_to_srange(version)
+            normal_semver = cleanup_range(convert_mrange_to_srange(version))
         elif language in ['js', 'npm', 'golang', 'go']:
-            normal_semver = version
+            normal_semver = cleanup_range(version)
         elif language in ['ruby', 'gem', 'php']:
-            normal_semver = convert_rrange_to_srange(version)
+            normal_semver = cleanup_range(convert_rrange_to_srange(version))
         else:
             pass
 
