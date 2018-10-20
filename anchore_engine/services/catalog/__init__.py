@@ -92,8 +92,9 @@ def handle_account_resource_cleanup(*args, **kwargs):
     try:
         # iterate over all deleted account records, and perform resource cleanup for that account.  If there are no longer any resources associated with the account id, then finally delete the account record itself
         with db.session_scope() as dbsession:
-            accounts = db_accounts.get_all(session=dbsession)
+            #accounts = db_accounts.get_all(session=dbsession)
             #TODO only accounts to be deleted
+            accounts = []
 
         for account in accounts:
             userId = account['name']
@@ -107,6 +108,7 @@ def handle_account_resource_cleanup(*args, **kwargs):
                 if return_object.get('all_total', None) == 0 and return_object.get('all_deleted', None) == 0:
                     logger.debug("resources for pending deleted user {} cleared - deleting user".format(userId))
                     #TODO account delete
+                    
                 else:
                     logger.debug("resources for pending deleted user {} not entirely cleared this cycle".format(userId))
             except Exception as err:
