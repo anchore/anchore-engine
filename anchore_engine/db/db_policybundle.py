@@ -40,13 +40,16 @@ def get_all(session=None):
 
     return(ret)
 
-def get_all_byuserId(userId, session=None):
+def get_all_byuserId(userId, limit=None, session=None):
     if not session:
         session = db.Session
 
     ret = []
 
     our_results = session.query(PolicyBundle).filter_by(userId=userId)
+    if limit:
+        our_results = our_results.limit(int(limit))
+
     for result in our_results:
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)

@@ -162,13 +162,16 @@ def get_all_tagsummary(userId, session=None):
 
     return(ret)
 
-def get_all_byuserId(userId, session=None):
+def get_all_byuserId(userId, limit=None, session=None):
     if not session:
         session = db.Session
 
     ret = []
 
     results = session.query(CatalogImage).filter_by(userId=userId).order_by(desc(CatalogImage.created_at))
+    if limit:
+        results = results.limit(int(limit))
+
     if results:
         # get all the tags in single DB query, hash by imageDigest
         alltags = db.db_catalog_image_docker.get_all(userId, session=session)

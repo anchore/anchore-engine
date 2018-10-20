@@ -1184,90 +1184,6 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
-  /system/prune:
-    get:
-      tags:
-      - System
-      summary: "Get list of resources that can be pruned"
-      description: ""
-      operationId: "get_system_prune_resourcetypes"
-      x-anchore-authz-action: runPrune
-      responses:
-        200:
-          description: "success"
-          schema:
-            type: array
-            items:
-              type: string
-        500:
-          description: Internal Error
-          schema:
-            $ref: "#/definitions/ApiErrorResponse"
-      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
-
-  /system/prune/{resourcetype}:
-    get:
-      tags:
-      - System
-      summary: "Get list of candidates for pruning"
-      description: ""
-      operationId: "get_system_prune_candidates"
-      x-anchore-authz-action: runPrune
-      parameters:
-      - name: 'resourcetype'
-        in: path
-        type: string
-        description: "resource type"
-        required: true
-      - name: 'dangling'
-        in: query
-        type: boolean
-        description: "filter only disconnected resources"
-        required: false
-      - name: 'olderthan'
-        in: query
-        type: integer
-        description: "filter only resources older than specified number of seconds"
-        required: false
-      responses:
-        200:
-          description: "success"
-          schema:
-            $ref: "#/definitions/PruneCandidateList"
-        500:
-          description: Internal Error
-          schema:
-            $ref: "#/definitions/ApiErrorResponse"
-      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
-    post:
-      tags:
-      - System
-      summary: "Perform pruning on input resource name"
-      description: ""
-      operationId: "post_system_prune_candidates"
-      x-anchore-authz-action: runPrune
-      parameters:
-      - name: 'resourcetype'
-        in: path
-        type: string
-        description: "resource type"
-        required: true
-      - name: 'bodycontent'
-        in: body
-        schema:
-          $ref: "#/definitions/PruneCandidate"
-        description: "resource objects to prune"
-        required: true
-      responses:
-        200:
-          description: "success"
-          schema:
-            $ref: "#/definitions/PruneCandidateList"
-        500:
-          description: Internal Error
-          schema:
-            $ref: "#/definitions/ApiErrorResponse"
-      x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
 
   /system/services:
     get:
@@ -2597,14 +2513,6 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/Service"
-  PruneCandidate:
-    description: A resource that can be pruned
-    type: object
-  PruneCandidateList:
-    description: A list of prune candidate resources
-    type: array
-    items:
-      $ref: "#/definitions/PruneCandidate"
   ContentResponse:
     type: object
     description: "Generic wrapper for content listings from images"

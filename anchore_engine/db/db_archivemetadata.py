@@ -126,17 +126,20 @@ def list_all(session=None, **dbfilter):
     results = session.query(ArchiveMetadata).filter_by(**dbfilter)
 
     for result in results:
-        obj = {}
-        for i in range(0, len(list(result.keys()))):
-            k = list(result.keys())[i]
-            obj[k] = result[i]
-        if obj:
-            ret.append(obj)
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        ret.append(obj)
+
+        #obj = {}
+        #for i in range(0, len(list(result.keys()))):
+        #    k = list(result.keys())[i]
+        #    obj[k] = result[i]
+        #if obj:
+        #    ret.append(obj)
 
     return (ret)
 
 
-def list_all_byuserId(userId, session=None, **dbfilter):
+def list_all_byuserId(userId, limit=None, session=None, **dbfilter):
     if not session:
         session = db.Session
 
@@ -146,13 +149,18 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     results = session.query(ArchiveMetadata).filter_by(**dbfilter)
 
+    if limit:
+        results = results.limit(int(limit))
+
     for result in results:
-        obj = {}
-        for i in range(0, len(list(result.keys()))):
-            k = list(result.keys())[i]
-            obj[k] = result[i]
-        if obj:
-            ret.append(obj)
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        ret.append(obj)
+        #obj = {}
+        #for i in range(0, len(list(result.keys()))):
+        #    k = list(result.keys())[i]
+        #    obj[k] = result[i]
+        #if obj:
+        #    ret.append(obj)
 
     return (ret)
 

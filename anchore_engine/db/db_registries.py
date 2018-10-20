@@ -58,13 +58,19 @@ def get_all(session=None):
 
     return(ret)
 
-def get_byuserId(userId, session=None):
+def get_all_byuserId(userId, limit=None, session=None):
+    return(get_byuserId(userId, limit=limit, session=session))
+
+def get_byuserId(userId, limit=None, session=None):
     if not session:
         session = db.Session
 
     ret = []
 
     our_results = session.query(Registry).filter_by(userId=userId)
+    if limit:
+        our_results = our_results.limit(int(limit))
+        
     for result in our_results:
         ret.append(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
