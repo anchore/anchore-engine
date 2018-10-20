@@ -194,7 +194,14 @@ def convert_rrange_to_srange(rawsemver):
     toks = re.split(", *", rawsemver)
     if len(toks) > 2:
         raise Exception("cannot handle range of len greater than 2")
-    ret = " ".join(re.sub(' +', '', x) for x in toks)
+    final_toks = []
+    for tok in toks:
+        if tok[0] not in ['<', '>', '!', '=', '~', '^']:
+            final_toks.append("={}".format(tok))
+        else:
+            final_toks.append(tok)
+        
+    ret = " ".join(re.sub(' +', '', x) for x in final_toks)
     return(ret)
 
 def convert_langversionlist_to_semver(versionlist, language):
