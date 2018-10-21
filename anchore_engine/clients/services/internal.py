@@ -90,7 +90,6 @@ class InternalServiceClient(object):
         :param extra_headers:
         :return:
         """
-        logger.debug("HERE {} / {} - {} params={} query_params={}".format(base_url, path, method, path_params, query_params))
 
         if path_params:
             path_params = { name: urllib.parse.quote(value) for name, value in path_params.items()}
