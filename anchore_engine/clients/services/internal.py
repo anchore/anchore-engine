@@ -90,6 +90,8 @@ class InternalServiceClient(object):
         :param extra_headers:
         :return:
         """
+        logger.debug("HERE {} / {} - {} params={} query_params={}".format(base_url, path, method, path_params, query_params))
+
         if path_params:
             path_params = { name: urllib.parse.quote(value) for name, value in path_params.items()}
             final_url = '/'.join([base_url, path.format(**path_params)])
@@ -109,7 +111,7 @@ class InternalServiceClient(object):
         else:
             filtered_qry_params = None
 
-        logger.debug('Dispatching: url={url}, headers={headers}, body={body}, params={params}'.format(url=final_url, headers=request_headers, body=body, params=filtered_qry_params))
+        logger.debug('Dispatching: url={url}, headers={headers}, body={body}..., params={params}'.format(url=final_url, headers=request_headers, body="%.512s" % body, params=filtered_qry_params))
         try:
             return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl)
         except Exception as e:

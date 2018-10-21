@@ -232,8 +232,7 @@ class CatalogClient(InternalServiceClient):
             'before': before,
             'level': level
         }
-
-        return self.call_api(http.anchy_delete, 'events', query_params)
+        return self.call_api(http.anchy_delete, 'events', query_params=query_params)
 
     def get_event(self, eventId):
         return self.call_api(http.anchy_get, 'events/{id}', path_params={'id': eventId})

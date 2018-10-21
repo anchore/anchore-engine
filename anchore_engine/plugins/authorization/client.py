@@ -51,9 +51,9 @@ class BasicApiClient(object):
             filtered_qry_params = None
 
         logger.debug(
-            'Dispatching: url={url}, headers={headers}, body={body}, params={params}'.format(url=final_url,
+            'Dispatching: url={url}, headers={headers}, body={body}..., params={params}'.format(url=final_url,
                                                                                              headers=request_headers,
-                                                                                             body=body,
+                                                                                             body=".512s" % body,
                                                                                              params=filtered_qry_params))
         try:
             if self.username and self.password:
