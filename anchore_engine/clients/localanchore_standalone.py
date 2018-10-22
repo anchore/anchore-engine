@@ -141,12 +141,12 @@ def get_tar_filenames(layertar):
     ret = []
     layertarfile = None
     try:
-        logger.debug("using tarfile library to get file names from tarfile={}".format(layertarfile))
+        logger.debug("using tarfile library to get file names from tarfile={}".format(layertar))
         layertarfile = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
         ret = layertarfile.getnames()
     except:
         # python tarfile fils to unpack some docker image layers due to PAX header issue, try another method
-        logger.debug("using tar command to get file names from tarfile={}".format(layertarfile))
+        logger.debug("using tar command to get file names from tarfile={}".format(layertar))
         tarcmd = "tar tf {}".format(layertar)
         try:
             ret = []
