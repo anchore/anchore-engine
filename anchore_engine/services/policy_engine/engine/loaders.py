@@ -681,16 +681,13 @@ class ImageLoader(object):
             n.pkg_type = 'java'
             n.arch = 'N/A'
             n.pkg_path = path
-            version = None
+
+            metaversion = None
             versions_json = {}
             for k in ['maven-version', 'implementation-version', 'specification-version']:
-                if not version and pkg_json.get(k, 'N/A') != 'N/A':
-                    version = pkg_json.get(k)
+                if not metaversion and pkg_json.get(k, 'N/A') != 'N/A':
+                    metaversion = pkg_json.get(k)
                 versions_json[k] = pkg_json.get(k, 'N/A')
-            if version:
-                n.version = version
-            else:
-                n.version = 'N/A'
 
             n.image_user_id = containing_image.user_id
             n.image_id = containing_image.id
@@ -700,7 +697,6 @@ class ImageLoader(object):
             n.distro_name = 'java'
             n.distro_version = 'N/A'
             n.like_distro = 'java'
-            n.fullversion = n.version
 
             m = pkg_json.get('metadata')
             m['java_versions'] = versions_json
@@ -708,11 +704,30 @@ class ImageLoader(object):
 
             fullname = n.name
             pomprops = n.get_pom_properties()
+            pomversion = None
             if pomprops:
                 fullname = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
-                
+                pomversion = pomprops.get('version', None)
+
             n.normalized_src_pkg = fullname
             n.src_pkg = fullname
+
+            # final version decision - try our best to get an accurate version/name pair
+            n.version = 'N/A'
+            if pomversion:
+                n.version = pomversion
+            elif metaversion:
+                n.version = metaversion
+            else:
+                try:
+                    patt = re.match(r"(.*)-(([\d]\.)+.*)", n.name)
+                    if patt and patt.group(1):
+                        n.version = patt.group(2)
+                        n.name = patt.group(1)
+                except Exception as err:
+                    pass
+            n.fullversion = n.version
+
             pkgs.append(n)
 
         return pkgs
