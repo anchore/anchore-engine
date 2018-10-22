@@ -3,17 +3,17 @@ API handlers for /accounts routes in the External API
 
 """
 import datetime
-
+import os, json
 from anchore_engine.apis import ApiRequestContextProxy
-from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope
+from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, db_policybundle
 from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc2339
-from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import logger
+from anchore_engine.common.helpers import make_response_error, make_policy_record
+from anchore_engine.subsys import logger, archive
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission
-from anchore_engine.configuration.localconfig import ADMIN_USERNAME, ADMIN_ACCOUNT_NAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME
+from anchore_engine.configuration.localconfig import ADMIN_USERNAME, ADMIN_ACCOUNT_NAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, RESERVED_ACCOUNT_NAMES, get_config
 
 
 authorizer = get_authorizer()
@@ -67,15 +67,40 @@ def credential_db_to_msg(credential):
     }
 
 
-def can_delete(user):
+def can_create_account(account_dict):
+    if not account_dict.get('name'):
+        raise ValueError('"name" is required')
+
+    if account_dict.get('name') in RESERVED_ACCOUNT_NAMES:
+        raise ValueError('Cannot use name {}'.format(account_dict.get('name')))
+
+    if account_dict.get('type') and account_dict.get('type') != 'user':
+        raise ValueError('Account type must be "user", found: {}'.format(account_dict.get('type')))
+
+    return True
+
+
+def can_delete_user(user):
     """
-    Return if the user/account can be deleted (is allowed based on type, eg. not a service account)
+    Return if the user can be deleted (is allowed based on type, eg. not a service account)
     :param user:
     :return:
     """
     if user['username'] in [SYSTEM_USERNAME, ADMIN_USERNAME] or \
-        user['account_name'] in [SYSTEM_ACCOUNT_NAME, ADMIN_ACCOUNT_NAME] or \
-        user['account']['type'] != AccountTypes.user:
+        user['account_name'] in RESERVED_ACCOUNT_NAMES or \
+        user['account']['type'] not in [AccountTypes.user, AccountTypes.admin]:
+        return False
+    else:
+        return True
+
+def can_delete_account(account):
+    """
+    Return if the user can be deleted (is allowed based on type, eg. not a service account)
+    :param user:
+    :return:
+    """
+    if account['name'] in RESERVED_ACCOUNT_NAMES or \
+        account['type'] not in [AccountTypes.user]:
         return False
     else:
         return True
@@ -126,7 +151,7 @@ def get_users_account():
         return make_response_error(errmsg=str(ex)), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def list_accounts(is_active=None):
     """
     GET /accounts
@@ -149,7 +174,7 @@ def list_accounts(is_active=None):
         return make_response_error('Error listing accounts', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def create_account(account):
     """
     POST /accounts
@@ -159,12 +184,29 @@ def create_account(account):
     """
 
     try:
-        if account.get('type') != AccountTypes.user.value:
-            return make_response_error('Invalid account type: {}. Only valid value is "user"'.format(account.get('type')), in_httpcode=400), 400
+        try:
+            can_create_account(account)
+        except ValueError as ex:
+            return make_response_error('Invalid account request: {}'.format(ex.args[0]), in_httpcode=400), 400
+        except Exception as ex:
+            logger.exception('Unexpected exception in account validation')
+            return make_response_error('Invalid account request', in_httpcode=400), 400
 
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
+
+            # Initialize account stuff
+            # try:
+            #     _init_policy(account['name'], config=get_config(), dbsession=session)
+            # except Exception:
+            #     logger.exception('Could not initialize policy bundle for new account: {}'.format(account['name']))
+            #     raise
+
+            # TODO: add init for the authz plugin domain if present
+            # Wrap with retries....
+            # Call to authz.initialize_domain()
+
         return account_db_to_msg(resp), 200
     except AccountAlreadyExistsError as ex:
         return make_response_error(errmsg='Account already exists', in_httpcode=400), 400
@@ -173,7 +215,7 @@ def create_account(account):
         return make_response_error('Error creating account', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
 def get_account(accountname):
     """
     GET /accounts/{accountname}
@@ -194,7 +236,7 @@ def get_account(accountname):
         return make_response_error('Error getting account', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
 def delete_account(accountname):
     """
     DELETE /account/{accountname}
@@ -207,8 +249,8 @@ def delete_account(accountname):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
-            if account['type'] != AccountTypes.user:
-                return make_response_error('Cannot delete non-user accounts', in_httpcode=400), 400
+            if not can_delete_account(account):
+                return make_response_error('Account cannot be deleted', in_httpcode=400), 400
             else:
                 resp = mgr.delete_account(accountname)
             return None, 204
@@ -219,7 +261,7 @@ def delete_account(accountname):
         return make_response_error('Error deleting account', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
 def activate_account(accountname):
     """
     POST /accounts/{accountname}/activate
@@ -247,7 +289,7 @@ def activate_account(accountname):
         return make_response_error('Error activating account', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
 def deactivate_account(accountname):
     """
     POST /accounts/{accountname}/deactivate
@@ -462,7 +504,7 @@ def delete_user(accountname, username):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             usr = verify_user(username, accountname, mgr)
-            if not can_delete(usr):
+            if not can_delete_user(usr):
                 return make_response_error('User not allowed to be deleted due to system constraints', in_httpcode=400), 400
             elif ApiRequestContextProxy.identity().username == username:
                 return make_response_error('Cannot delete credential used for authentication of the request', in_httpcode=400), 400
@@ -476,3 +518,31 @@ def delete_user(accountname, username):
     except Exception as e:
         logger.exception('API Error')
         return make_response_error('Internal error deleting user {}'.format(username), in_httpcode=500), 500
+
+
+def _init_policy(accountname, config, dbsession):
+    """
+    Initialize a new bundle for the given accountname
+    :return:
+    """
+
+    bundle_records = db_policybundle.get_all_byuserId(accountname, session=dbsession)
+    if not bundle_records:
+        logger.debug("Account {} has no policy bundle - installing default".format(accountname))
+
+        if 'default_bundle_file' in config and os.path.exists(config['default_bundle_file']):
+            logger.info("loading def bundle: " + str(config['default_bundle_file']))
+            try:
+                default_bundle = {}
+                with open(config['default_bundle_file'], 'r') as FH:
+                    default_bundle = json.loads(FH.read())
+                if default_bundle:
+                    bundle_url = archive.put_document(accountname, 'policy_bundles', default_bundle['id'],
+                                                      default_bundle)
+                    policy_record = make_policy_record(accountname, default_bundle, active=True)
+                    rc = db_policybundle.add(policy_record['policyId'], accountname, True, policy_record,
+                                             session=dbsession)
+                    if not rc:
+                        raise Exception("policy bundle DB add failed")
+            except Exception as err:
+                logger.error("could not load up default bundle for user - exception: " + str(err))

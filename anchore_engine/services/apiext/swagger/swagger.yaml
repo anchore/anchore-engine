@@ -38,6 +38,10 @@ tags:
   description: View and delete events
 - name: Queries
   description: Resource Queries
+- name: User Management
+  description: Manage Accounts, Users, and Credentials
+- name: Identity
+  description: Get and operate on the authenticated user's identity
 basePath: "/"
 schemes:
 - "http"
@@ -1584,6 +1588,8 @@ paths:
             $ref: '#/definitions/ApiErrorResponse'
   /accounts:
     get:
+      tags:
+        - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: list_accounts
       x-anchore-authz-action: listAccounts
@@ -1604,6 +1610,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     post:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: create_account
       x-anchore-authz-action: createAccount
@@ -1613,7 +1621,7 @@ paths:
         in: body
         required: true
         schema:
-          $ref: "#/definitions/Account"
+          $ref: "#/definitions/AccountCreationRequest"
       responses:
         200:
           description: Account Record
@@ -1629,6 +1637,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}:
     get:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: get_account
       x-anchore-authz-action: getAccount
@@ -1648,6 +1658,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     delete:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: delete_account
       x-anchore-authz-action: deleteAccount
@@ -1666,6 +1678,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}/activate:
     post:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: activate_account
       x-anchore-authz-action: updateAccount
@@ -1686,6 +1700,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}/deactivate:
     post:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: deactivate_account
       x-anchore-authz-action: updateAccount
@@ -1706,6 +1722,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}/users:
     get:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: list_users
       x-anchore-authz-action: listUsers
@@ -1728,6 +1746,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     post:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: create_user
       x-anchore-authz-action: createUser
@@ -1749,6 +1769,8 @@ paths:
             $ref: "#/definitions/User"
   /accounts/{accountname}/users/{username}:
     delete:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: delete_user
       x-anchore-authz-action: deleteUser
@@ -1770,6 +1792,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     get:
+      tags:
+      - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: get_account_user
       x-anchore-authz-action: getUser
@@ -1794,6 +1818,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}/users/{username}/credentials:
     get:
+      tags:
+      - User Management
       summary: Get current credential summary
       parameters:
       - name: accountname
@@ -1817,6 +1843,8 @@ paths:
       x-anchore-authz-action: getUser
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
     post:
+      tags:
+      - User Management
       operationId: create_user_credential
       x-anchore-authz-action: updateUser
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
@@ -1845,6 +1873,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     delete:
+      tags:
+      - User Management
       summary: Delete a credential by type
       operationId: delete_user_credential
       x-anchore-authz-action: updateUser
@@ -1863,7 +1893,7 @@ paths:
         in: query
         required: true
         enum:
-          - password
+        - password
       responses:
         204:
           description: Successful deletion
@@ -1876,6 +1906,8 @@ paths:
   # Context-bound requests available for normal accounts (the /accounts routes are only for system admin)
   /account:
     get:
+      tags:
+      - Identity
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: get_users_account
       x-anchore-authz-action: None
@@ -1891,6 +1923,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /user:
     get:
+      tags:
+      - Identity
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
       operationId: get_user
       x-anchore-authz-action: None
@@ -1906,6 +1940,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /user/credentials:
     get:
+      tags:
+      - Identity
       summary: Get current credential summary
       operationId: get_credentials
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
@@ -1920,6 +1956,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     post:
+      tags:
+      - Identity
       summary: add/replace credential
       operationId: add_credential
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.user
@@ -2982,20 +3020,32 @@ definitions:
       page:
         description: Page number of this result set
         type: integer
+  AccountCreationRequest:
+    type: object
+    description: An account to create/add to the system. If already exists will return 400.
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: The account name to use. This will identify the account and must be globally unique in the system.
+        pattern: '[a-zA-Z0-9_\-+~]+'
+      email:
+        type: string
+        description: An optional email to associate with the account for contact purposes
+        pattern: "[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
   Account:
     type: object
     description: Account information
     required:
     - name
-    - email
-    - type
     properties:
       name:
         type: string
         description: The account identifier, not updatable after creation
       type:
         type: string
-        description: The user type (admin vs user).
+        description: The user type (admin vs user). If not specified in a POST request, 'user' is default
         enum:
         - user
         - admin
@@ -3005,7 +3055,7 @@ definitions:
         description: Is the account active (users can login)
       email:
         type: string
-        description: Email address associated with the account
+        description: Optional email address associated with the account
       created_at:
         type: string
         format: date-time
@@ -3054,9 +3104,11 @@ definitions:
       username:
         description: The username to create
         type: string
+        pattern: '[a-zA-Z0-9_\-+~]+'
       password:
-        description: The initial password for the user
+        description: The initial password for the user, must be at least 6 characters
         type: string
+        pattern: '.{6}'
   AccessCredential:
     type: object
     description: A login credential mapped to a user identity. For password credentials, the username to present for Basic auth is the user's username from the user record
