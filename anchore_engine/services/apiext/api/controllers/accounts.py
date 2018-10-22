@@ -71,10 +71,10 @@ def can_create_account(account_dict):
     if not account_dict.get('name'):
         raise ValueError('"name" is required')
 
-    if account_dict.get('name') in RESERVED_ACCOUNT_NAMES:
+    if account_dict.get('name').lower() in RESERVED_ACCOUNT_NAMES:
         raise ValueError('Cannot use name {}'.format(account_dict.get('name')))
 
-    if account_dict.get('type') and account_dict.get('type') != 'user':
+    if account_dict.get('type') and account_dict.get('type').lower() != 'user':
         raise ValueError('Account type must be "user", found: {}'.format(account_dict.get('type')))
 
     return True
@@ -225,6 +225,7 @@ def get_account(accountname):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
@@ -246,6 +247,7 @@ def delete_account(accountname):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
@@ -273,6 +275,8 @@ def activate_account(accountname):
     """
 
     try:
+        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
@@ -298,6 +302,7 @@ def deactivate_account(accountname):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
@@ -324,6 +329,7 @@ def list_users(accountname):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
@@ -352,6 +358,7 @@ def get_account_user(accountname, username):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             user = verify_user(username, accountname, mgr)
@@ -376,6 +383,7 @@ def create_user(accountname, user):
     """
 
     try:
+        accountname = accountname.lower()
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
