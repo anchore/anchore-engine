@@ -10,6 +10,7 @@ Generally, this code has a lot of comments to help explain things since it can b
 work the way they do and often the behavior is a result of the range of cleanliness of the data itself.
 
 """
+import time
 
 from sqlalchemy import or_
 
@@ -148,6 +149,7 @@ def vulnerabilities_for_image(image_obj):
 
     # Recompute. Session and persistence in the session is up to the caller
     try:
+        ts = time.time()
         computed_vulnerabilties = []
         for package in image_obj.packages:
             pkg_vulnerabilities = package.vulnerabilities_for_package()
@@ -163,6 +165,7 @@ def vulnerabilities_for_image(image_obj):
                 img_v.vulnerability_id = v.vulnerability_id
                 img_v.vulnerability_namespace_name = v.namespace_name
                 computed_vulnerabilties.append(img_v)
+        #log.debug("TIMER VULNERABILITIES: {}".format(time.time() - ts))
 
         return computed_vulnerabilties
     except Exception as e:

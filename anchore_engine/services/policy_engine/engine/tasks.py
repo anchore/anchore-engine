@@ -465,12 +465,14 @@ class ImageLoadTask(IAsyncTask):
                 log.info("Adding image to db")
                 db.add(image_obj)
 
+                ts = time.time()
                 log.info("Adding image package vulnerabilities to db")
                 vulns = vulnerabilities_for_image(image_obj)
                 for vuln in vulns:
                     db.add(vuln)
 
                 db.commit()
+                #log.debug("TIMER TASKS: {}".format(time.time() - ts))
             except:
                 log.exception('Error adding image to db')
                 db.rollback()

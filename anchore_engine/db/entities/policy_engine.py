@@ -2,6 +2,7 @@ import datetime
 import hashlib
 import json
 import re
+import time
 import zlib
 from collections import namedtuple
 
@@ -535,66 +536,85 @@ class ImagePackage(Base):
         :param package_obj:
         :return: list of Vulnerability objects
         """
-        package_obj = self
-        log.debug('Finding vulnerabilities for package: {} - {}'.format(package_obj.name, package_obj.version))
+        #ts = time.time()
+
+        #package_obj = self
+        log.debug('Finding vulnerabilities for package: {} - {}'.format(self.name, self.version))
 
         matches = []
-        dist = DistroNamespace(package_obj.distro_name, package_obj.distro_version, package_obj.like_distro)
-
         db = get_thread_scoped_session()
-        namespace_name_to_use = dist.namespace_name
 
-        nslang = package_obj.pkg_type
+        # decide what type of scan(s) to perform
+        do_langscan = do_osscan = False
+
         pkgkey = pkgversion = None
-        #TODO better handling of the non-os pkg_type <-> namespace_name mapping, maybe use the above existing distro mechanism?
         likematch = None
-        if package_obj.pkg_type in ['java', 'maven']:
+        if self.pkg_type in ['java', 'maven']:
             # search for maven hits
-            if package_obj.metadata_json:
-                pombuf = package_obj.metadata_json.get('pom.properties', "")
+            if self.metadata_json:
+                pombuf = self.metadata_json.get('pom.properties', "")
                 if pombuf:
-                    pomprops = package_obj.get_pom_properties()
+                    pomprops = self.get_pom_properties()
                     pkgkey = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
                     pkgversion = pomprops.get('version', None)
                     likematch = '%java%'
-        elif package_obj.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python']:
-            pkgkey = package_obj.name
-            pkgversion = package_obj.version
-            if package_obj.pkg_type in ['ruby', 'gem']:
+                    do_langscan = True
+
+        elif self.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python']:
+            pkgkey = self.name
+            pkgversion = self.version
+            if self.pkg_type in ['ruby', 'gem']:
                 likematch = '%ruby%'
-            elif package_obj.pkg_type in ['npm', 'js']:
+                do_langscan = True
+            elif self.pkg_type in ['npm', 'js']:
                 likematch = '%js%'
-            elif package_obj.pkg_type in ['python']:
+                do_langscan = True
+            elif self.pkg_type in ['python']:
                 likematch = '%python%'
+                do_langscan = True
+        else:
+            do_osscan = True
 
-        if pkgkey and pkgversion and likematch:
-            candidates = db.query(FixedArtifact).filter(FixedArtifact.name == pkgkey).filter(FixedArtifact.version_format == 'semver').filter(FixedArtifact.namespace_name.like(likematch))
-            for candidate in candidates:
-                if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (langpack_compare_versions(candidate.version, pkgversion, language=nslang)):
+        if do_langscan:
+            semvercount = db.query(FixedArtifact).filter(FixedArtifact.version_format == 'semver').count()
+            if semvercount:
+                nslang = self.pkg_type
+                log.debug("performing LANGPACK vuln scan {} - {}".format(pkgkey, pkgversion))
+                if pkgkey and pkgversion and likematch:
+                    candidates = db.query(FixedArtifact).filter(FixedArtifact.name == pkgkey).filter(FixedArtifact.version_format == 'semver').filter(FixedArtifact.namespace_name.like(likematch))
+                    for candidate in candidates:
+                        if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (langpack_compare_versions(candidate.version, pkgversion, language=nslang)):
+                            matches.append(candidate)
+
+        if do_osscan:
+            log.debug("performing OS vuln scan {} - {}".format(self.name, self.version))
+
+            dist = DistroNamespace(self.distro_name, self.distro_version, self.like_distro)
+            namespace_name_to_use = dist.namespace_name
+
+            # All options are the same, no need to loop
+            if len(set(dist.like_namespace_names)) > 1:
+                # Look for exact match first
+                if not db.query(FeedGroupMetadata).filter(FeedGroupMetadata.name == dist.namespace_name).first():
+                    # Check all options for distro/flavor mappings, stop at first with records present
+                    for namespace_name in dist.like_namespace_names:
+                        record_count = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
+                        if record_count > 0:
+                            namespace_name_to_use = namespace_name
+                            break
+
+            fix_candidates, vulnerable_candidates = self.candidates_for_package(namespace_name_to_use)
+
+            for candidate in fix_candidates:
+                # De-dup evaluations based on the underlying vulnerability_id. For packages where src has many binary builds, once we have a match we have a match.
+                if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(self):
                     matches.append(candidate)
-
-        # All options are the same, no need to loop
-        if len(set(dist.like_namespace_names)) > 1:
-            # Look for exact match first
-            if not db.query(FeedGroupMetadata).filter(FeedGroupMetadata.name == dist.namespace_name).first():
-                # Check all options for distro/flavor mappings, stop at first with records present
-                for namespace_name in dist.like_namespace_names:
-                    record_count = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
-                    if record_count > 0:
-                        namespace_name_to_use = namespace_name
-                        break
-
-        fix_candidates, vulnerable_candidates = package_obj.candidates_for_package(namespace_name_to_use)
-
-        for candidate in fix_candidates:
-            # De-dup evaluations based on the underlying vulnerability_id. For packages where src has many binary builds, once we have a match we have a match.
-            if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(package_obj):
-                matches.append(candidate)
 
         #for candidate in vulnerable_candidates:
         #    if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(package_obj):
         #        matches.append(candidate)
 
+        #log.debug("TIMER DB: {}".format(time.time() - ts))
         return matches
 
     def candidates_for_package(self, distro_namespace=None):
