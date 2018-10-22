@@ -127,7 +127,6 @@ def run_upgrade():
 
     :return: True if upgrade executed, False if success, but no upgrade needed.
     """
-
     with upgrade_context(my_module_upgrade_id) as ctx:
         code_versions = ctx[0]
         db_versions = ctx[1]
@@ -538,6 +537,7 @@ def db_upgrade_007_008():
 def catalog_upgrade_007_008():
     from anchore_engine.db import session_scope, CatalogImage
 
+    log.err("performing catalog table upgrades")
     engine = anchore_engine.db.entities.common.get_engine()
     new_columns = [
         {
@@ -611,9 +611,6 @@ def policy_engine_packages_upgrade_007_008():
             done = False
             while not done:
                 startts = time.time()
-                #rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where CTID IN ( select CTID from {} where pkg_path is null limit 32000 )".format(table, table))
-                #if rc.rowcount == 0:
-                #    done = True
                 rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
                 log.err("updated {} records in {} (time={}), performing next range".format(rc.rowcount, table, time.time() - startts))
                 done=True
@@ -637,9 +634,6 @@ def policy_engine_packages_upgrade_007_008():
             'ALTER TABLE image_packages DROP CONSTRAINT IF EXISTS image_packages_pkey',
             'ALTER TABLE image_package_db_entries DROP CONSTRAINT IF EXISTS image_package_db_entries_pkey',
             'ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey',
-            #'CREATE INDEX pkg_path_index_0 ON image_packages (pkg_path)',
-            #'CREATE INDEX pkg_path_index_1 ON image_package_vulnerabilities (pkg_path)',
-            #'CREATE INDEX pkg_path_index_2 ON image_package_db_entries (pkg_path)',
         ]
 
         log.err("dropping primary key / foreign key relationships for new column")
@@ -674,7 +668,7 @@ def policy_engine_packages_upgrade_007_008():
             total_gems = dbsession.query(ImageGem).count()
 
         npms = []
-        chunk_size = 32
+        chunk_size = 8192
         record_count = 0
         try:
             for n in db_npms:
@@ -723,10 +717,10 @@ def policy_engine_packages_upgrade_007_008():
                 try:
                     with session_scope() as dbsession:
                         dbsession.bulk_save_objects(npms)
-                        record_count = record_count + chunk_size
+                        record_count = record_count + len(npms)
                 except:
                     log.err("skipping duplicates")
-                    record_count = record_count + chunk_size
+                    record_count = record_count + len(npms)
                 log.err("final merged {} / {} npm records (time={})".format(record_count, total_npms, time.time() - startts))
 
         except Exception as err:
@@ -783,10 +777,10 @@ def policy_engine_packages_upgrade_007_008():
                 try:
                     with session_scope() as dbsession:
                         dbsession.bulk_save_objects(gems)
-                        record_count = record_count + chunk_size
+                        record_count = record_count + len(gems)
                 except:
                     log.err("skipping duplicates")
-                    record_count = record_count + chunk_size
+                    record_count = record_count + len(gems)
                 log.err("final merged {} / {} gem records (time={})".format(record_count, total_gems, time.time() - startts))
 
         except Exception as err:
