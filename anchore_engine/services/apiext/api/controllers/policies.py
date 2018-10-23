@@ -84,19 +84,17 @@ def list_policies(detail=None):
         client = internal_client_for(CatalogClient, request_inputs['userId'])
         try:
             policy_records = client.list_policies()
+            httpcode = 200
         except Exception as err:
             logger.warn("unable to get policy_records for user (" + str(userId) + ") - exception: " + str(err))
             raise err
 
         if policy_records:
-            httpcode = 200
             ret = []
             for policy_record in policy_records:
                 ret.append(make_response_policy(policy_record, params))
             return_object = ret
-        # else:
-        #     httpcode = 404
-        #     raise Exception('no policies found for user')
+
     except Exception as err:
         logger.debug("operation exception: " + str(err))
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
