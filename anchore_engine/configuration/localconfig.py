@@ -56,6 +56,13 @@ ADMIN_ACCOUNT_NAME = 'admin'
 ADMIN_USERNAME = 'admin'
 ADMIN_USER_DEFAULT_PASSWORD = 'foobar' # TODO: remove this, use a generated cred instead
 SYSTEM_IDENTITY_BOOTSTRAPPER = 'system-init' # The 'creator' username to keep in the db for the initially bootstrapped identities
+GLOBAL_RESOURCE_DOMAIN = 'system' # Used as the domain for things like accounts
+
+RESERVED_ACCOUNT_NAMES = [
+    GLOBAL_RESOURCE_DOMAIN,
+    SYSTEM_ACCOUNT_NAME,
+    ADMIN_ACCOUNT_NAME
+]
 
 # Top-level config keys required to be present
 default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}

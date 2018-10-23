@@ -162,7 +162,7 @@ class IdentityManager(object):
         :return:
         """
 
-        usrs = db_account_users.list_for_account(userId, session=self.session)
+        usrs = db_account_users.list_for_account(userId.lower(), session=self.session)
         if usrs:
             return usrs[0]['username'], usrs[0].get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get(
                 'value')
@@ -170,7 +170,7 @@ class IdentityManager(object):
             return None, None
 
     def get_credentials_for_username(self, username):
-        user = db_account_users.get(username=username, session=self.session)
+        user = db_account_users.get(username=username.lower(), session=self.session)
         return user['username'], user.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value')
 
 
@@ -188,7 +188,7 @@ class IdentityManager(object):
         :return: (account, user) tuple with the account and admin user for the account
         """
 
-        account = db_accounts.add(account_name, account_type=account_type, email=email, creator_username=creator, is_active=is_active, session=self.session)
+        account = db_accounts.add(account_name.lower(), account_type=account_type, email=email, creator_username=creator, is_active=is_active, session=self.session)
         return account
 
     def list_accounts(self, include_service=False):
@@ -197,17 +197,17 @@ class IdentityManager(object):
         return accounts
 
     def get_account(self, accountname):
-        account = db_accounts.get(accountname, session=self.session)
+        account = db_accounts.get(accountname.lower(), session=self.session)
         return account
 
     def activate_account(self, account_name):
-        return db_accounts.update_active_state(account_name, is_active=True, session=self.session)
+        return db_accounts.update_active_state(account_name.lower(), is_active=True, session=self.session)
 
     def deactivate_account(self, account_name):
-        return db_accounts.update_active_state(account_name, is_active=False, session=self.session)
+        return db_accounts.update_active_state(account_name.lower(), is_active=False, session=self.session)
 
     def delete_account(self, account_name):
-        return db_accounts.delete(account_name, session=self.session)
+        return db_accounts.delete(account_name.lower(), session=self.session)
 
     def create_user(self, account_name, username, creator_name, password=None):
         """
@@ -219,6 +219,8 @@ class IdentityManager(object):
         :param creator_name: the username of creator
         :return:
         """
+
+        account_name = account_name.lower()
 
         account = db_accounts.get(account_name, session=self.session)
         if not account:
@@ -243,6 +245,7 @@ class IdentityManager(object):
 
     def list_users(self, account_name=None):
         if account_name:
+            account_name = account_name.lower()
             return db_account_users.list_for_account(account_name, session=self.session)
         else:
             return db_account_users.get_all(session=self.session)

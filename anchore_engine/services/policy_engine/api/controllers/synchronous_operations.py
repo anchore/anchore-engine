@@ -35,7 +35,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vu
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 
 authorizer = get_authorizer()
@@ -51,7 +51,7 @@ TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_
 feed_sync_locking_enabled = True
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_status():
     """
     Generic status return common to all services
@@ -98,7 +98,7 @@ class ImageMessageMapper(object):
 msg_mapper = ImageMessageMapper()
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_image_users(page=None):
     """
     Returns the list of users the system knows about, based on images from users.
@@ -118,7 +118,7 @@ def list_image_users(page=None):
     return list(img_user_set)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_user_images(user_id):
     """
     Given a user_id, returns a list of Image objects scoped to that user.
@@ -135,7 +135,7 @@ def list_user_images(user_id):
     return imgs
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_image(user_id, image_id):
     """
     DELETE the image and all resources for it. Returns 204 - No Content on success
@@ -197,7 +197,7 @@ def problem_from_exception(eval_exception, severity=None):
 
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def check_user_image_inline(user_id, image_id, tag, bundle):
     """
     Execute a policy evaluation using the info in the request body including the bundle content
@@ -289,7 +289,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 
 
 @flask_metrics.do_not_track()
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_only=True):
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
@@ -447,7 +447,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         db.close()
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def ingress_image(ingress_request):
     """
     :param ingress_request json object specifying the identity of the image to sync
@@ -472,7 +472,7 @@ def ingress_image(ingress_request):
         abort(500, 'Internal error processing image analysis import')
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def validate_bundle(policy_bundle):
     """
     Performs a validation of the given policy bundle and either returns 200 OK with a status message in the response indicating pass/fail and any validation errors.
@@ -504,7 +504,7 @@ def validate_bundle(policy_bundle):
         abort(Response('Unexpected internal error', 500))
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def describe_policy():
     """
     Return a dictionary/json description of the set of gates available and triggers.
@@ -906,7 +906,7 @@ def query_vulnerabilities(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
         session = get_session()
@@ -920,7 +920,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
 
     return (return_object, httpcode)    
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_images_by_package_get(user_id, name=None, version=None, package_type=None):
 
     try:
@@ -936,7 +936,7 @@ def query_images_by_package_get(user_id, name=None, version=None, package_type=N
     return (return_object, httpcode)    
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
     try:
         session = get_session()

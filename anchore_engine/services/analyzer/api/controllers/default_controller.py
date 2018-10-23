@@ -7,11 +7,11 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.common.images
 import anchore_engine.subsys.servicestatus
 from anchore_engine.subsys import logger
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def status():
     httpcode = 500
     try:
@@ -23,7 +23,7 @@ def status():
 
     return(return_object, httpcode)
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def interactive_analyze(bodycontent):
 
     try:

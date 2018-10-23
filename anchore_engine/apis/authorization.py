@@ -10,7 +10,7 @@ from anchore_engine.subsys import logger
 from connexion import request as request_proxy
 from anchore_engine.apis.context import ApiRequestContextProxy
 from yosai.core import Yosai, exceptions as auth_exceptions, UsernamePasswordToken
-from anchore_engine.db import session_scope
+from anchore_engine.db import session_scope, AccountTypes
 import pkg_resources
 import functools
 from anchore_engine.common.helpers import make_response_error
@@ -21,6 +21,7 @@ from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
 # Global authorizer configured
 _global_authorizer = None
 
+INTERNAL_SERVICE_ALLOWED = [AccountTypes.admin, AccountTypes.service]
 
 class UnauthorizedError(Exception):
     def __init__(self, required_permissions):
@@ -31,6 +32,11 @@ class UnauthorizedError(Exception):
         perm_str = ','.join('domain={} action={} target={}'.format(perm[0], perm[1], '*' if len(perm) == 2 else perm[2]) for perm in required_permissions)
         super(UnauthorizedError, self).__init__('Not authorized. Requires permissions: {}'.format(perm_str))
         self.required_permissions = required_permissions
+
+
+class UnauthorizedAccountError(Exception):
+    def __init__(self, account_names, account_types):
+        super(UnauthorizedAccountError, self).__init__('Not authorized. Requires account name in {} or type in {}'.format(account_names, account_types))
 
 
 class UnauthenticatedError(Exception):
@@ -158,6 +164,16 @@ class AuthorizationHandler(ABC):
     def requires(self, permission_s: list):
         pass
 
+    @abstractmethod
+    def requires_account(self, with_names=None, with_types=None):
+        """
+        Requires a specific role name. This is typically use for internal services where the role name is the account name of the caller
+        :param name: optional account name str to match against
+        :param account_type:
+        :return:
+        """
+        pass
+
 
 class DbAuthorizationHandler(AuthorizationHandler):
     """
@@ -214,6 +230,68 @@ class DbAuthorizationHandler(AuthorizationHandler):
             raise UnauthorizedError(required_permissions=permission_list)
 
         logger.debug('Passed check permission: {}'.format(permission_list))
+
+    def _check_account(self, account_name, account_type, with_names, with_types):
+        try:
+            if type(account_type) == AccountTypes:
+                account_type = account_type.value
+
+            if with_types:
+                with_types = [x.value if type(x) == AccountTypes else x for x in with_types]
+
+            if (with_names is None or account_name in with_names) and \
+                    (with_types is None or account_type in with_types):
+                return True
+            else:
+                raise UnauthorizedAccountError(account_names=','.join(with_names if with_names else []), account_types=','.join(with_types if with_types else []))
+        except UnauthorizedAccountError as ex:
+            raise
+        except Exception as e:
+            logger.exception('Error doing authz: {}'.format(e))
+            raise UnauthorizedAccountError(account_names=','.join(with_names if with_names else []), account_types=','.join(with_types if with_types else []))
+
+    def requires_account(self, with_names=None, with_types=None):
+        """
+        :param with_names: list of strings of names any of which is accepted
+        :param with_types: list of strings of account types any of which are accepted
+        :return:
+        """
+        if with_names is None and with_types is None:
+            raise ValueError('Cannot have None values for both name and type')
+
+        def outer_wrapper(f):
+            @functools.wraps(f)
+            def inner_wrapper(*args, **kwargs):
+                try:
+                    with Yosai.context(self._yosai):
+                        # Context Manager functions
+                        try:
+                            try:
+                                identity = self.authenticate(request_proxy)
+                                if not identity.username:
+                                    raise UnauthenticatedError('Authentication Required')
+                            except:
+                                raise UnauthenticatedError('Authentication Required')
+
+                            ApiRequestContextProxy.set_identity(identity)
+
+                            if self._check_account(identity.user_account, identity.user_account_type, with_names, with_types):
+                                return f(*args, **kwargs)
+                        finally:
+                            # Teardown the request context
+                            ApiRequestContextProxy.set_identity(None)
+
+                except UnauthorizedAccountError as ex:
+                    return make_response_error(str(ex), in_httpcode=403), 403
+                except UnauthenticatedError as ex:
+                    return make_response_error('Unauthorized', in_httpcode=401), 401
+                except Exception as ex:
+                    logger.exception('Unexpected exception: {}'.format(ex))
+                    return make_response_error('Internal error', in_httpcode=500), 500
+
+            return inner_wrapper
+
+        return outer_wrapper
 
     def requires(self, permission_s: list):
         """

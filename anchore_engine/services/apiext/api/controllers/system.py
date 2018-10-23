@@ -14,7 +14,7 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 import anchore_engine.common
 import anchore_engine.subsys.servicestatus
 import anchore_engine.configuration.localconfig
-from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME
+from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
 from anchore_engine.apis.context import ApiRequestContextProxy
 
 authorizer = get_authorizer()
@@ -140,7 +140,7 @@ def get_service_detail():
     return (return_object, httpcode)
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def list_services():
     """
     GET /system/services
@@ -167,7 +167,7 @@ def list_services():
 
     return (return_object, httpcode)
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def get_services_by_name(servicename):
     """
     GET /system/services/<servicename>
@@ -197,7 +197,7 @@ def get_services_by_name(servicename):
     return (return_object, httpcode)
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def get_services_by_name_and_host(servicename, hostid):
     """
     GET /system/services/<servicename>/<hostid>
@@ -227,7 +227,7 @@ def get_services_by_name_and_host(servicename, hostid):
     return (return_object, httpcode)
 
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def delete_service(servicename, hostid):
     """
     DELETE /system/services/<servicename>/<hostid>
@@ -252,7 +252,7 @@ def delete_service(servicename, hostid):
 
     return (return_object, httpcode)
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def get_system_feeds():
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     return_object = []
@@ -269,7 +269,7 @@ def get_system_feeds():
 
     return (return_object, httpcode)    
 
-@authorizer.requires([ActionBoundPermission(domain=SYSTEM_ACCOUNT_NAME)])
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def post_system_feeds(flush=False):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'flush': flush})
 
