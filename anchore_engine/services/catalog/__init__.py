@@ -757,10 +757,7 @@ def handle_policyeval(*args, **kwargs):
             accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
 
         for account in accounts:
-            userId = ['name']
-            if ['type'] == AccountTypes.service:  # userId == 'anchore-system':
-                continue
-
+            userId = account['name']
             # policy evaluations
 
             doperform = False
