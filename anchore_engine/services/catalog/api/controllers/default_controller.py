@@ -10,6 +10,7 @@ import anchore_engine.subsys.servicestatus
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.db import AccountTypes
 from anchore_engine.apis.context import ApiRequestContextProxy
 
 from anchore_engine.subsys.metrics import flask_metrics
@@ -17,7 +18,7 @@ from anchore_engine.subsys.metrics import flask_metrics
 authorizer = get_authorizer()
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=[AccountTypes.service, AccountTypes.admin])
 def status():
     httpcode = 500
     try:
