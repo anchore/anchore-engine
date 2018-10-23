@@ -62,6 +62,7 @@ def list_policies(active=None):
 
         return records, 200
     except Exception as err:
+        logger.exception('Uncaught exception')
         return str(err), 500
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -98,8 +99,9 @@ def get_policy(policyId):
                                                                            input_httpcode=500)
             return record, 200
         else:
-            return anchore_engine.common.helpers.make_anchore_exception(Exception('Policy bundle {} not found in DB'.format(policyId))), 404
+            return anchore_engine.common.helpers.make_response_error('Policy bundle {} not found in DB'.format(policyId), in_httpcode=404), 404
     except Exception as err:
+        logger.exception('Uncaught exception')
         return str(err), 500
 
 
@@ -132,11 +134,12 @@ def update_policy(policyId, bodycontent):
         with db.session_scope() as dbsession:
             record = db_policybundle.get(user_id, policyId, session=dbsession)
             if not record:
-                return anchore_engine.common.helpers.make_anchore_exception(Exception("existing policyId not found to update"), 400)
+                return anchore_engine.common.helpers.make_response_error("Existing policyId not found to update", in_httpcode=404), 404
 
             return save_policy(user_id, policyId, active, policybundle, dbsession), 200
 
     except Exception as err:
+        logger.exception('Uncaught exception')
         return str(err), 500
 
 
@@ -161,12 +164,13 @@ def add_policy(bodycontent):
         active = bodycontent.get('active', False)
 
         if not policyId:
-            raise Exception("must include 'policyId' in the json payload for this operation")
+            return anchore_engine.common.helpers.make_response_error('policyId is required field in json body', in_httpcode=400), 400
 
         with db.session_scope() as dbsession:
             return save_policy(user_id, policyId, active, policybundle, dbsession), 200
 
     except Exception as err:
+        logger.exception('Uncaught exception')
         return str(err), 500
 
 
@@ -184,20 +188,23 @@ def delete_policy(policyId, cleanup_evals=False):
     httpcode = 200
     return_object = True
 
-    with db.session_scope() as dbsession:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
-        user_id = request_inputs['userId']
+    try:
+        with db.session_scope() as dbsession:
+            request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+            user_id = request_inputs['userId']
 
-        policy_record = db_policybundle.get(user_id, policyId, session=dbsession)
+            policy_record = db_policybundle.get(user_id, policyId, session=dbsession)
 
-        if policy_record:
-            rc, httpcode = do_policy_delete(user_id, policy_record, dbsession, force=True,
-                                            cleanup_evals=cleanup_evals)
-            if httpcode not in list(range(200, 299)):
-                raise Exception(str(rc))
+            if policy_record:
+                rc, httpcode = do_policy_delete(user_id, policy_record, dbsession, force=True,
+                                                cleanup_evals=cleanup_evals)
+                if httpcode not in list(range(200, 299)):
+                    raise Exception(str(rc))
 
-        return return_object, httpcode
-
+            return return_object, httpcode
+    except Exception as ex:
+        logger.exception('Uncaught exception')
+        raise ex
 
 def save_policy(user_id, policyId, active, policy_bundle, dbsession):
     """
