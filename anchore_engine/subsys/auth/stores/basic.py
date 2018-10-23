@@ -1,5 +1,5 @@
 from yosai.core import account_abcs
-from anchore_engine.db import session_scope, AccountTypes
+from anchore_engine.db import session_scope, AccountTypes, AccountStates
 from anchore_engine.subsys import logger
 from anchore_engine.apis.authentication import idp_factory
 import json
@@ -76,7 +76,7 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
                 creds = None
 
             if identity:
-                result_account['account_locked'] = not identity.user_account_active
+                result_account['account_locked'] = not (identity.user_account_state == AccountStates.active)
 
             if creds:
                 result_account['authc_info'] = {

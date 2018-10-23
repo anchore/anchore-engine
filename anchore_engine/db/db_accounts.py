@@ -2,7 +2,7 @@
 Interface to the accounts table. Data format is dicts, not objects.
 """
 
-from anchore_engine.db import Account, AccountTypes
+from anchore_engine.db import Account, AccountTypes, AccountStates
 from anchore_engine.db.entities.common import anchore_now
 
 
@@ -18,14 +18,21 @@ class AccountAlreadyExistsError(Exception):
         self.account_name = account_name
 
 
-def add(account_name, creator_username, is_active=True, account_type=AccountTypes.user, email=None, session=None):
+class InvalidStateError(Exception):
+    def __init__(self, current_state, desired_state):
+        super(InvalidStateError, self).__init__('Invalid account state change requested. Cannot go from state {} to state {}'.format(current_state.value, desired_state.value))
+        self.current_state = current_state
+        self.desired_state = desired_state
+
+
+def add(account_name, creator_username, state=AccountStates.active, account_type=AccountTypes.user, email=None, session=None):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
     if found_account:
         raise AccountAlreadyExistsError(account_name)
 
     accnt = Account()
     accnt.name = account_name
-    accnt.is_active = is_active
+    accnt.state = state
     accnt.type = account_type
     accnt.email = email
     accnt.created_by = creator_username
@@ -35,12 +42,31 @@ def add(account_name, creator_username, is_active=True, account_type=AccountType
     return accnt.to_dict()
 
 
-def update_active_state(name, is_active, session=None):
+def update_state(name, new_state, session=None):
+    """
+    Update state of the account. Allowed transitions:
+
+    active -> disabled
+    disabled -> active
+    disabled -> deleting
+
+    Deleting is a terminal state, and can be reached only from disabled
+
+    :param name:
+    :param new_state:
+    :param session:
+    :return:
+    """
+
     accnt = session.query(Account).filter_by(name=name).one_or_none()
     if not accnt:
         raise AccountNotFoundError(name)
 
-    accnt.is_active = is_active
+    # Deleting state is terminal. Must deactivate account prior to deleting it.
+    if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.active and new_state == AccountStates.deleting):
+        raise InvalidStateError(accnt.state, new_state)
+
+    accnt.state = new_state
     return accnt.to_dict()
 
 

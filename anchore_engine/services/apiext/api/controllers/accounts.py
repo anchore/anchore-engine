@@ -7,15 +7,15 @@ import os, json
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.apis import ApiRequestContextProxy
-from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, db_policybundle
-from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError
+from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, AccountStates
+from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError, InvalidStateError
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc2339
-from anchore_engine.common.helpers import make_response_error, make_policy_record
-from anchore_engine.subsys import logger, archive
+from anchore_engine.common.helpers import make_response_error
+from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission
-from anchore_engine.configuration.localconfig import ADMIN_USERNAME, ADMIN_ACCOUNT_NAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, RESERVED_ACCOUNT_NAMES, get_config
+from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, RESERVED_ACCOUNT_NAMES, get_config
 
 
 authorizer = get_authorizer()
@@ -28,7 +28,7 @@ def account_db_to_msg(account):
     return {
         'name': account['name'],
         'email': account['email'],
-        'is_active': account['is_active'],
+        'state': account['state'].value if type(account['state']) != str else account['state'],
         'type': account['type'] if type(account['type']) == str else account['type'].value ,
         'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['created_at'])),
         'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['last_updated'])),
@@ -41,7 +41,7 @@ def account_db_to_status_msg(account):
         return None
 
     return {
-        'is_active': account['is_active']
+        'state': account['state'].value if type(account['state']) != str else account['state'],
     }
 
 
@@ -154,7 +154,7 @@ def get_users_account():
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
-def list_accounts(is_active=None):
+def list_accounts(state=None):
     """
     GET /accounts
 
@@ -165,10 +165,12 @@ def list_accounts(is_active=None):
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            if is_active is not None:
-                response = filter(lambda x: x['is_active'] == is_active, mgr.list_accounts())
-            else:
-                response = mgr.list_accounts()
+            try:
+                state = AccountStates(state)
+            except:
+                return make_response_error('Bad Request: state {} not a valid value', in_httpcode=400), 400
+
+            response = mgr.list_accounts(with_state=state)
 
             return list(map(account_db_to_msg, response)), 200
     except Exception as ex:
@@ -257,8 +259,16 @@ def delete_account(accountname):
             if not can_delete_account(account):
                 return make_response_error('Account cannot be deleted', in_httpcode=400), 400
             else:
-                resp = mgr.delete_account(accountname)
-            return None, 204
+                account = mgr.update_account_state(accountname, AccountStates.deleting.value)
+                users = mgr.list_users(accountname)
+                for usr in users:
+                    # Flush users
+                    logger.debug('Deleting account user: {}'.format(usr['username']))
+                    mgr.delete_user(usr['username'])
+
+            return account_db_to_status_msg(account), 200
+    except InvalidStateError as ex:
+        return make_response_error(str(ex), in_httpcode=400), 400
     except AccountNotFoundError as ex:
         return make_response_error('Account not found', in_httpcode=404), 404
     except Exception as e:
@@ -267,13 +277,14 @@ def delete_account(accountname):
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
-def activate_account(accountname):
+def update_account_state(accountname, desired_state):
     """
-    POST /accounts/{accountname}/activate
+    POST /accounts/{accountname}/state
 
-    idempotently activate an account
+    Body: {"state": "active"|"disabled"}
 
-    :param accountname: str account name to activate
+    :param accountname: str account name to update
+    :param desired_state: json object for desired state to set
     :return: account json object
     """
 
@@ -284,42 +295,18 @@ def activate_account(accountname):
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
 
-            result = mgr.activate_account(accountname)
+            result = mgr.update_account_state(accountname, AccountStates(desired_state.get('state')))
             if result:
                 return account_db_to_status_msg(result), 200
             else:
                 return make_response_error('Error updating account state'), 500
+    except InvalidStateError as ex:
+        return make_response_error(str(ex), in_httpcode=400), 400
     except AccountNotFoundError as ex:
         return make_response_error('Account not found', in_httpcode=404), 404
     except Exception as e:
         logger.exception('API Error')
-        return make_response_error('Error activating account', in_httpcode=500), 500
-
-
-@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
-def deactivate_account(accountname):
-    """
-    POST /accounts/{accountname}/deactivate
-    :param accountname: str account Id to deactivate
-    :return: account json object
-    """
-
-    try:
-        accountname = accountname.lower()
-        with session_scope() as session:
-            mgr = manager_factory.for_session(session)
-            verify_account(accountname, mgr)
-
-            result = mgr.deactivate_account(accountname)
-            if result:
-                return account_db_to_status_msg(result), 200
-            else:
-                return make_response_error('Error updating account state'), 500
-    except AccountNotFoundError as ex:
-        return make_response_error('Account not found', in_httpcode=404), 404
-    except Exception as e:
-        logger.exception('API Error')
-        return make_response_error('Internal error deactivating account', in_httpcode=500), 500
+        return make_response_error('Error updating account state', in_httpcode=500), 500
 
 
 @authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'))])

@@ -240,43 +240,43 @@ class CatalogClient(InternalServiceClient):
     def delete_event(self, eventId):
         return self.call_api(http.anchy_delete, 'events/{id}', path_params={'id': eventId})
 
-    def create_user(self, accountname, username, password=None):
-        return self.call_api(http.anchy_post, 'accounts/{account}/users', path_params={'account': accountname}, body=json.dumps({'username': username, 'password': password}))
-
-    def delete_user(self, account, username):
-        return self.call_api(http.anchy_delete, 'accounts/{account}/users/{username}', path_params={'account': account, 'username': username})
-
-    def add_user_credential(self, account, username, credential_type, value):
-        payload = {
-            'type': credential_type.value if type(credential_type) != str else credential_type,
-            'value': value
-        }
-
-        return self.call_api(http.anchy_delete, 'accounts/{account}/users/{user}/credentials', path_params={'account': account, 'user': username}, body=json.dumps(payload))
-
-    def delete_user_credential(self, account, username, cred_id):
-        return self.call_api(http.anchy_delete, '/accounts/{account}/users/{user}/credentials', path_params={'account': account, 'user': username}, query_params={'uuid': cred_id})
-
-    def list_accounts(self, is_active=None):
-        return self.call_api(http.anchy_get, 'accounts', query_params={'is_active': is_active})
-
-    def create_account(self, name, account_type, email):
-
-        payload = {
-            'name': name,
-            'type': account_type,
-            'email': email
-        }
-        return self.call_api(http.anchy_post, 'accounts', body=json.dumps(payload))
-
-    def get_account(self, name):
-        return self.call_api(http.anchy_get, 'accounts/{name}', path_params={'name': name})
-
-    def delete_account(self, name):
-        return self.call_api(http.anchy_delete, 'accounts/{name}', path_params={'name': name})
-
-    def activate_account(self, name):
-        return self.call_api(http.anchy_post, 'accounts/{name}/activate', path_params={'name': name})
-
-    def dectivate_account(self, name):
-        return self.call_api(http.anchy_post, 'accounts/{name}/deactivate', path_params={'name': name})
+    # def create_user(self, accountname, username, password=None):
+    #     return self.call_api(http.anchy_post, 'accounts/{account}/users', path_params={'account': accountname}, body=json.dumps({'username': username, 'password': password}))
+    #
+    # def delete_user(self, account, username):
+    #     return self.call_api(http.anchy_delete, 'accounts/{account}/users/{username}', path_params={'account': account, 'username': username})
+    #
+    # def add_user_credential(self, account, username, credential_type, value):
+    #     payload = {
+    #         'type': credential_type.value if type(credential_type) != str else credential_type,
+    #         'value': value
+    #     }
+    #
+    #     return self.call_api(http.anchy_delete, 'accounts/{account}/users/{user}/credentials', path_params={'account': account, 'user': username}, body=json.dumps(payload))
+    #
+    # def delete_user_credential(self, account, username, cred_id):
+    #     return self.call_api(http.anchy_delete, '/accounts/{account}/users/{user}/credentials', path_params={'account': account, 'user': username}, query_params={'uuid': cred_id})
+    #
+    # def list_accounts(self, is_active=None):
+    #     return self.call_api(http.anchy_get, 'accounts', query_params={'is_active': is_active})
+    #
+    # def create_account(self, name, account_type, email):
+    #
+    #     payload = {
+    #         'name': name,
+    #         'type': account_type,
+    #         'email': email
+    #     }
+    #     return self.call_api(http.anchy_post, 'accounts', body=json.dumps(payload))
+    #
+    # def get_account(self, name):
+    #     return self.call_api(http.anchy_get, 'accounts/{name}', path_params={'name': name})
+    #
+    # def delete_account(self, name):
+    #     return self.call_api(http.anchy_delete, 'accounts/{name}', path_params={'name': name})
+    #
+    # def activate_account(self, name):
+    #     return self.call_api(http.anchy_post, 'accounts/{name}/activate', path_params={'name': name})
+    #
+    # def dectivate_account(self, name):
+    #     return self.call_api(http.anchy_post, 'accounts/{name}/deactivate', path_params={'name': name})
