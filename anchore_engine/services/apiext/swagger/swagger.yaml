@@ -1595,11 +1595,15 @@ paths:
       x-anchore-authz-action: listAccounts
       summary: List user summaries. Only available to the system admin user.
       parameters:
-      - name: is_active
+      - name: state
         in: query
-        type: boolean
+        type: string
+        enum:
+          - active
+          - disabled
+          - deleting
         required: false
-        description: Filter users by active status for listing
+        description: Filter accounts by state
       responses:
         200:
           description: Accound summary listing
@@ -1663,7 +1667,7 @@ paths:
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: delete_account
       x-anchore-authz-action: deleteAccount
-      summary: Delete the specified account, only allowed if the account is not active and there are no active users. All users will be deleted along with the account and all resources will be garbage collected
+      summary: Delete the specified account, only allowed if the account is in the disabled state. All users will be deleted along with the account and all resources will be garbage collected
       parameters:
       - name: accountname
         in: path
@@ -1676,46 +1680,33 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /accounts/{accountname}/activate:
+  /accounts/{accountname}/state:
     post:
       tags:
       - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
-      operationId: activate_account
+      operationId: update_account_state
       x-anchore-authz-action: updateAccount
-      summary: Update the active state of an account
+      summary: Update the state of an account to either active or disabled. For deletion use the DELETE route
       parameters:
       - name: accountname
         in: path
         required: true
         type: string
+      - name: desired_state
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/AccountStatus"
       responses:
         200:
           description: Updated active state of the account
           schema:
             $ref: "#/definitions/AccountStatus"
-        500:
-          description: Internal error
+        400:
+          description: State requested is invalid based on current state of the account
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /accounts/{accountname}/deactivate:
-    post:
-      tags:
-      - User Management
-      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
-      operationId: deactivate_account
-      x-anchore-authz-action: updateAccount
-      summary: Update the active state of an account
-      parameters:
-      - name: accountname
-        in: path
-        required: true
-        type: string
-      responses:
-        200:
-          description: Updated active state of the user
-          schema:
-            $ref: "#/definitions/AccountStatus"
         500:
           description: Internal error
           schema:
@@ -3029,7 +3020,7 @@ definitions:
       name:
         type: string
         description: The account name to use. This will identify the account and must be globally unique in the system.
-        pattern: '[a-zA-Z0-9_\-+~]+'
+        pattern: '^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$'
       email:
         type: string
         description: An optional email to associate with the account for contact purposes
@@ -3050,9 +3041,13 @@ definitions:
         - user
         - admin
         - service
-      is_active:
-        type: boolean
-        description: Is the account active (users can login)
+      state:
+        type: string
+        enum:
+          - active
+          - disabled
+          - deleting
+        description: State of the account. Disabled accounts prevent member users from logging in, deleting accounts are disabled and pending deletion and will be removed once all owned resources are garbage collected by the system
       email:
         type: string
         description: Optional email address associated with the account
@@ -3071,8 +3066,11 @@ definitions:
     type: object
     description: A summary of account status
     properties:
-      is_active:
-        type: boolean
+      state:
+        type: string
+        enum:
+          - active
+          - disabled
         description: The active status of the account
   User:
     type: object
@@ -3104,11 +3102,11 @@ definitions:
       username:
         description: The username to create
         type: string
-        pattern: '[a-zA-Z0-9_\-+~]+'
+        pattern: '^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$'
       password:
-        description: The initial password for the user, must be at least 6 characters
+        description: The initial password for the user, must be at least 6 characters, up to 128
         type: string
-        pattern: '.{6}'
+        pattern: '.{6,128}$'
   AccessCredential:
     type: object
     description: A login credential mapped to a user identity. For password credentials, the username to present for Basic auth is the user's username from the user record

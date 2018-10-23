@@ -18,7 +18,7 @@ from anchore_engine import utils as anchore_utils
 from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
-from anchore_engine.db import db_users, db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
+from anchore_engine.db import db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
     db_registries, db_services, db_archivedocument, db_accounts
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
@@ -785,24 +785,6 @@ def events_eventId(dbsession, request_inputs, eventId):
     return(return_object, httpcode)
 
 
-def users(dbsession, request_inputs):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
-
-    return_object = {}
-    httpcode = 500
-
-    try:
-        user_records = db_users.get_all(session=dbsession)
-        return_object = user_records
-        httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-
-    return(return_object, httpcode)
-
 def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -843,35 +825,6 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
        
     return(return_object, httpcode)
 
-def users_userId(dbsession, request_inputs, inuserId):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
-
-    return_object = {}
-    httpcode = 500
-
-    try:
-        if method == 'GET':
-            try:
-                user_record = db_users.get(inuserId, session=dbsession)
-                return_object = user_record
-                httpcode = 200
-            except Exception as err:
-                raise err
-
-        elif method == 'DELETE':
-            try:
-                httpcode = 200
-                return_object = True
-            except Exception as err:
-                raise err
-   
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        
-    return(return_object, httpcode)
 
 def system(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -1650,22 +1603,6 @@ def do_archive_delete(userId, archive_document, session, force=False):
 
     return(return_object, httpcode)
 
-def do_user_delete(userId, user_record, dbsession, force=False):
-    return_object = False
-    httpcode = 500
-
-    try:
-        userId = user_record['userId']
-        rc = db_users.delete(userId, session=dbsession)
-        if not rc:
-            raise Exception("DB delete failed")
-
-        return_object = True
-        httpcode = 200
-    except Exception as err:
-        return_object = str(err)
-
-    return(return_object, httpcode)
 
 def do_registry_delete(userId, registry_record, dbsession, force=False):
     return_object = False

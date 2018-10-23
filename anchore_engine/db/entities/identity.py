@@ -20,7 +20,10 @@ class AccountTypes(enum.Enum):
     external = 'external' # Identity managed by an external identity provider
 
 
-id_sanitizer = re.compile('[a-zA-Z0-9\-_+]+')
+class AccountStates(enum.Enum):
+    active = 'active' # Normal state, all functionality enabled
+    disabled = 'disabled' # No user within the account can authenticate, effectively locked
+    deleting = 'deleting' # Pending deletion. Holds the name in the namespace until all resources are flushed and then record is removed
 
 
 class Account(Base, UtilMixin):
@@ -31,18 +34,15 @@ class Account(Base, UtilMixin):
     __tablename__ = 'accounts'
 
     name = Column(String, primary_key=True)
+    state = Column(Enum(AccountStates, name='account_states'), default=AccountStates.active)
     is_active = Column(Boolean, default=True)
-    type = Column(Enum(AccountTypes, name='account_types'))
+    type = Column(Enum(AccountTypes, name='account_types'), nullable=False, default=AccountTypes.user)
     email = Column(String)
     created_by = Column(String, nullable=False)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
 
-    users = relationship('AccountUser', back_populates='account', lazy='dynamic', cascade=['all'])
-
-    @staticmethod
-    def sanitize_accountname(name):
-        return bool(re.fullmatch(id_sanitizer, name))
+    users = relationship('AccountUser', back_populates='account', lazy='dynamic', cascade='all, delete-orphan')
 
 
 class AccountUser(Base, UtilMixin):
@@ -60,7 +60,7 @@ class AccountUser(Base, UtilMixin):
     last_updated = Column(Integer, default=anchore_now)
 
     account = relationship('Account', back_populates='users', lazy='joined', innerjoin=True)
-    credentials = relationship('AccessCredential', back_populates='user', lazy='joined', cascade=['all'])
+    credentials = relationship('AccessCredential', back_populates='user', lazy='joined', cascade='all, delete-orphan')
 
     def to_dict(self):
         """
@@ -71,10 +71,6 @@ class AccountUser(Base, UtilMixin):
         value['credentials'] = { cred.type : cred.to_dict() for cred in self.credentials } if self.credentials else {}
         value['account'] = self.account.to_dict()
         return value
-
-    @staticmethod
-    def sanitize_username(usr):
-        return bool(re.fullmatch(id_sanitizer, usr))
 
     def is_external_user(self):
         return self.account.type == AccountTypes.external

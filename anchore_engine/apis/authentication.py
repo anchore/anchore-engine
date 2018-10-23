@@ -10,7 +10,7 @@ from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.subsys import logger
 
 
-IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_active'])
+IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_state'])
 Credential = namedtuple('Credential', ['type', 'value'])
 
 
@@ -34,7 +34,7 @@ class IdentityProvider(object):
         ident = IdentityContext(username=username,
                                 user_account=usr['account_name'],
                                 user_account_type=usr['account']['type'],
-                                user_account_active=usr['account']['is_active'])
+                                user_account_state=usr['account']['state'])
 
         creds = [Credential(type=x[0], value=x[1]['value']) for x in usr.get('credentials', {}).items()]
 

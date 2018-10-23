@@ -20,20 +20,25 @@ from .entities.catalog import User
 from .entities.catalog import Lease
 from .entities.catalog import ArchiveMetadata
 from .entities.catalog import ObjectStorageRecord
-from anchore_engine.db.entities.identity import AccountTypes, Account, AccountUser, \
-    UserAccessCredentialTypes, AccessCredential
 
+# Identity types
+from .entities.identity import AccountTypes
+from .entities.identity import AccountStates
+from .entities.identity import Account
+from .entities.identity import AccountUser
+from .entities.identity import UserAccessCredentialTypes
+from .entities.identity import AccessCredential
+
+# Task types
 from .entities.tasks import Task, ArchiveMigrationTask
 
+# Policy engine types
 from .entities.policy_engine import Image
 from .entities.policy_engine import ImagePackage
 from .entities.policy_engine import ImageGem
 from .entities.policy_engine import ImageNpm
-#from .entities.policy_engine import ImagePython
-#from .entities.policy_engine import ImageJava
 from .entities.policy_engine import ImageCpe
 from .entities.policy_engine import ImagePackageVulnerability
-#from .entities.policy_engine import ImageJavaVulnerability
 from .entities.policy_engine import FeedMetadata
 from .entities.policy_engine import FeedGroupMetadata
 from .entities.policy_engine import GenericFeedDataRecord
