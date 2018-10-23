@@ -219,7 +219,12 @@ def test_account_lifecycle():
 
     assert_ok(admin_client.delete_account(account_name))
     assert_account_state(admin_client.get_account(account_name), 'deleting')
-    time.sleep(10)
+
+    for i in range(10):
+        time.sleep(3)
+        if 'deleting' != admin_client.get_account(account_name).json()['state']:
+            break
+
     assert_not_found(admin_client.get_account(account_name))
 
 
