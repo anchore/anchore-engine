@@ -22,8 +22,7 @@ from anchore_engine.clients import docker_registry
 from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_policybundle, db_queues, db_registries, db_subscriptions, \
     db_accounts, \
-    db_anchore, db_services, db_events
-from anchore_engine.db.entities.identity import AccountTypes
+    db_anchore, db_services, db_events, AccountStates, AccountTypes
 from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.subsys.events as events
@@ -33,6 +32,7 @@ from anchore_engine.services.catalog.exceptions import TagManifestParseError, Ta
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.subsys.identities import manager_factory
+
 
 
 ##########################################################
@@ -92,22 +92,22 @@ def handle_account_resource_cleanup(*args, **kwargs):
     try:
         # iterate over all deleted account records, and perform resource cleanup for that account.  If there are no longer any resources associated with the account id, then finally delete the account record itself
         with db.session_scope() as dbsession:
-            #accounts = db_accounts.get_all(session=dbsession)
-            #TODO only accounts to be deleted
-            accounts = []
+            mgr = manager_factory.for_session(dbsession)
+            accounts = mgr.list_accounts(with_state=AccountStates.deleting, include_service=False)
 
         for account in accounts:
             userId = account['name']
-            if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
-                continue
 
-            logger.debug("inspecting account {} for resource cleanup tasks".format(userId))
+            logger.debug("Inspecting account {} for resource cleanup tasks".format(userId))
             try:
                 return_object, httpcode = do_user_resources_delete(userId)
-                logger.debug("resources for deleted user cleaned-up: {} - {}".format(return_object, httpcode))
+                logger.debug("Resources for deleted account cleaned-up: {} - {}".format(return_object, httpcode))
                 if return_object.get('all_total', None) == 0 and return_object.get('all_deleted', None) == 0:
-                    logger.debug("resources for pending deleted user {} cleared - deleting user".format(userId))
-                    #TODO account delete
+                    logger.debug("Resources for pending deleted user {} cleared - deleting account".format(userId))
+                    with db.session_scope() as session:
+                        mgr = manager_factory.for_session(session)
+                        mgr.delete_account(userId)
+
                     
                 else:
                     logger.debug("resources for pending deleted user {} not entirely cleared this cycle".format(userId))
@@ -152,12 +152,11 @@ def handle_vulnerability_scan(*args, **kwargs):
             return (True)
 
         with db.session_scope() as dbsession:
-            users = db_accounts.get_all(session=dbsession)
+            mgr = manager_factory.for_session(dbsession)
+            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
 
-        for user in users:
-            userId = user['name']
-            if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
-                continue
+        for account in accounts:
+            userId = account['name']
 
             # vulnerability scans
 
@@ -339,12 +338,11 @@ def handle_repo_watcher(*args, **kwargs):
     logger.debug("FIRING: " + str(watcher))
 
     with db.session_scope() as dbsession:
-        users = db_accounts.get_all(session=dbsession)
+        mgr = manager_factory.for_session(dbsession)
+        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
 
-    for user in users:
-        userId = user['name']
-        if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
-            continue
+    for account in accounts:
+        userId = account['name']
 
         dbfilter = {}
         with db.session_scope() as dbsession:
@@ -487,12 +485,14 @@ def handle_image_watcher(*args, **kwargs):
 
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
-    with db.session_scope() as dbsession:
-        users = db_accounts.get_all(session=dbsession)
 
-    for user in users:
-        userId = user['name']
-        if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
+    with db.session_scope() as dbsession:
+        mgr = manager_factory.for_session(dbsession)
+        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+
+    for account in accounts:
+        userId = account['name']
+        if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
             continue
 
         with db.session_scope() as dbsession:
@@ -753,11 +753,12 @@ def handle_policyeval(*args, **kwargs):
 
         with db.session_scope() as dbsession:
             feed_updated = check_feedmeta_update(dbsession)
-            users = db_accounts.get_all(session=dbsession)
+            mgr = manager_factory.for_session(dbsession)
+            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
 
-        for user in users:
-            userId = user['name']
-            if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
+        for account in accounts:
+            userId = ['name']
+            if ['type'] == AccountTypes.service:  # userId == 'anchore-system':
                 continue
 
             # policy evaluations
@@ -841,13 +842,14 @@ def handle_analyzer_queue(*args, **kwargs):
         return (True)
 
     with db.session_scope() as dbsession:
-        users = db_accounts.get_all(session=dbsession)
+        mgr = manager_factory.for_session(dbsession)
+        accounts = mgr.list_accounts(include_service=False)
 
     q_client = internal_client_for(SimpleQueueClient, userId=None)
-
-    for user in users:
-        userId = user['name']
-        if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
+    
+    for account in accounts:
+        userId = account['name']
+        if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
             continue
 
         # do this in passes, for each analysis_status state
@@ -992,10 +994,12 @@ def handle_policy_bundle_sync(*args, **kwargs):
 
     with db.session_scope() as dbsession:
         event = None
-        users = db_accounts.get_all(session=dbsession)
-        for user in users:
-            userId = user['name']
-            if user['type'] == AccountTypes.service:  # userId == 'anchore-system':
+        mgr = manager_factory.for_session(dbsession)
+        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+
+        for account in accounts:
+            userId = account['name']
+            if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
                 continue
 
             try:
@@ -1018,10 +1022,10 @@ def handle_policy_bundle_sync(*args, **kwargs):
                 anchore_user, anchore_pw = anchorecredstr.split(':')
 
                 try:
-                    anchore_user_bundle = sync_policy_bundle(user['userId'], anchore_user,
+                    anchore_user_bundle = sync_policy_bundle(account['userId'], anchore_user,
                                                              anchore_pw, localconfig)
                 except AnchoreException as err:
-                    event = events.PolicyBundleSyncFail(user_id=user['userId'], error=err.to_dict())
+                    event = events.PolicyBundleSyncFail(user_id=account['userId'], error=err.to_dict())
                     raise err
 
                 # with localanchore.get_anchorelock():
@@ -1113,6 +1117,7 @@ def handle_notifications(*args, **kwargs):
     q_client = internal_client_for(SimpleQueueClient, userId=None)
 
     with db.session_scope() as dbsession:
+        mgr = manager_factory.for_session(dbsession)
         localconfig = anchore_engine.configuration.localconfig.get_config()
         try:
             notification_timeout = int(localconfig['webhooks']['notification_retry_timeout'])
@@ -1143,7 +1148,7 @@ def handle_notifications(*args, **kwargs):
         event_log_type = 'event_log'
         for subscription_type in anchore_engine.common.subscription_types + [event_log_type]:
             logger.debug("notifier: " + subscription_type)
-            users = db_accounts.get_all(session=dbsession)
+            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
 
             try:
                 qlen = q_client.qlen(subscription_type)
@@ -1161,19 +1166,19 @@ def handle_notifications(*args, **kwargs):
                     userId = notification['userId']
                     subscription_key = notification['subscription_key']
                     notificationId = notification['notificationId']
-                    for user in users:
+                    for account in accounts:
                         try:
-                            if userId == user['name']:
+                            if userId == account['name']:
                                 notification_record = None
                                 if subscription_type in anchore_engine.common.subscription_types:
                                     dbfilter = {'subscription_type': subscription_type,
                                                 'subscription_key': subscription_key}
-                                    subscription_records = db_subscriptions.get_byfilter(user['name'],
+                                    subscription_records = db_subscriptions.get_byfilter(account['name'],
                                                                                          session=dbsession, **dbfilter)
                                     if subscription_records:
                                         subscription = subscription_records[0]
                                         if subscription and subscription['active']:
-                                            notification_record = notifications.make_notification(user,
+                                            notification_record = notifications.make_notification(account,
                                                                                                   subscription_type,
                                                                                                   notification)
                                 elif subscription_type == event_log_type:  # handle event_log differently since its not a type of subscriptions
@@ -1181,11 +1186,11 @@ def handle_notifications(*args, **kwargs):
                                             event_levels is None or subscription_key.lower() in event_levels):
                                         notification.pop('subscription_key',
                                                          None)  # remove subscription_key property from notification
-                                        notification_record = notifications.make_notification(user, subscription_type,
+                                        notification_record = notifications.make_notification(account, subscription_type,
                                                                                               notification)
 
                                 if notification_record:
-                                    logger.spew("Storing NOTIFICATION: " + str(user) + str(notification_record))
+                                    logger.spew("Storing NOTIFICATION: " + str(account) + str(notification_record))
                                     db_queues.add(subscription_type, userId, notificationId, notification_record, 0,
                                                   int(time.time() + notification_timeout), session=dbsession)
                         except Exception as err:
@@ -1195,12 +1200,12 @@ def handle_notifications(*args, **kwargs):
 
                 qlen = q_client.qlen(subscription_type)
 
-            for user in users:
-                notification_records = db_queues.get_all(subscription_type, user['name'], session=dbsession)
+            for account in accounts:
+                notification_records = db_queues.get_all(subscription_type, account['name'], session=dbsession)
                 for notification_record in notification_records:
                     logger.debug("drained to send: " + json.dumps(notification_record))
                     try:
-                        rc = notifications.notify(user, notification_record)
+                        rc = notifications.notify(account, notification_record)
                         if rc:
                             db_queues.delete_record(notification_record, session=dbsession)
                     except Exception as err:
@@ -1491,7 +1496,8 @@ class CatalogService(ApiService):
         """
 
         with db.session_scope() as dbsession:
-            for account_dict in db_accounts.get_all(session=dbsession):
+            mgr = manager_factory.for_session(dbsession)
+            for account_dict in mgr.list_accounts(include_service=False):
                 try:
                     logger.info('Initializing a new account')
                     userId = account_dict['name']  # Old keys are userId, now that maps to account name
@@ -1518,39 +1524,6 @@ class CatalogService(ApiService):
                                 logger.error("could not load up default bundle for user - exception: " + str(err))
                 except Exception as err:
                     raise Exception("unable to initialize default user data - exception: " + str(err))
-
-    # Removed now that API is available
-
-    # def _init_users(self):
-    #     # set up defaults for users if not yet set up
-    #     try:
-    #         with db.session_scope() as dbsession:
-    #             user_records = db_accounts.get_all(session=dbsession)
-    #             for user_record in user_records:
-    #                 userId = user_record['id']
-    #                 if user_record['type'] == AccountTypes.service: #userId == 'anchore-system':
-    #                     continue
-    #
-    #                 bundle_records = db_policybundle.get_all_byuserId(userId, session=dbsession)
-    #                 if not bundle_records:
-    #                     logger.debug("user has no policy bundle - installing default: " +str(userId))
-    #                     localconfig = anchore_engine.configuration.localconfig.get_config()
-    #                     if 'default_bundle_file' in localconfig and os.path.exists(localconfig['default_bundle_file']):
-    #                         logger.info("loading def bundle: " + str(localconfig['default_bundle_file']))
-    #                         try:
-    #                             default_bundle = {}
-    #                             with open(localconfig['default_bundle_file'], 'r') as FH:
-    #                                 default_bundle = json.loads(FH.read())
-    #                             if default_bundle:
-    #                                 bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'], default_bundle)
-    #                                 policy_record = anchore_engine.services.common.make_policy_record(userId, default_bundle, active=True)
-    #                                 rc = db_policybundle.add(policy_record['policyId'], userId, True, policy_record, session=dbsession)
-    #                                 if not rc:
-    #                                     raise Exception("policy bundle DB add failed")
-    #                         except Exception as err:
-    #                             logger.error("could not load up default bundle for user - exception: " + str(err))
-    #     except Exception as err:
-    #         raise Exception ("unable to initialize default user data - exception: " + str(err))
 
 
 watchers = {

@@ -70,9 +70,9 @@ def update_state(name, new_state, session=None):
     return accnt.to_dict()
 
 
-def get_all(is_active=None, session=None):
-    if is_active is not None:
-        return [x.to_dict() for x in session.query(Account).filter(Account.is_active == is_active)]
+def get_all(with_state=None, session=None):
+    if with_state is not None:
+        return [x.to_dict() for x in session.query(Account).filter(Account.state == with_state)]
     else:
         return [x.to_dict() for x in session.query(Account)]
 

@@ -499,13 +499,13 @@ def catalog_image_upgrades_006_007():
 def user_account_upgrades_007_008():
     logger.info('Upgrading user accounts for multi-user support')
 
-    from anchore_engine.db import session_scope, db_users
+    from anchore_engine.db import session_scope, legacy_db_users
     from anchore_engine.subsys.identities import manager_factory
     from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME, SYSTEM_IDENTITY_BOOTSTRAPPER, ADMIN_ACCOUNT_NAME
 
     with session_scope() as session:
         mgr = manager_factory.for_session(session)
-        for user in db_users.get_all():
+        for user in legacy_db_users.get_all():
 
             if user['userId'] == ADMIN_ACCOUNT_NAME:
                 account_type = identities.AccountTypes.admin
@@ -521,7 +521,7 @@ def user_account_upgrades_007_008():
             mgr.create_user(account_name=user['userId'], username=user['userId'], password=user['password'], creator_name=SYSTEM_IDENTITY_BOOTSTRAPPER)
 
             logger.info('Deleting old user record')
-            db_users.delete(user['userId'], session)
+            legacy_db_users.delete(user['userId'], session)
 
     logger.info('User account upgrade complete')
 
