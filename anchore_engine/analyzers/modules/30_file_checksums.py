@@ -44,7 +44,7 @@ try:
         if os.path.isfile(thefile) and not os.path.islink(thefile):
             if domd5:
                 try:
-                    with open(thefile, 'r') as FH:
+                    with open(thefile, 'rb') as FH:
                         csum = hashlib.md5(FH.read()).hexdigest()
                 except:
                     csum = "DIRECTORY_OR_OTHER"
@@ -52,14 +52,14 @@ try:
 
             if dosha1:
                 try:
-                    with open(thefile, 'r') as FH:
+                    with open(thefile, 'rb') as FH:
                         csum = hashlib.sha1(FH.read()).hexdigest()
                 except:
                     csum = "DIRECTORY_OR_OTHER"
                 outfiles_sha1[name] = csum
 
             try:
-                with open(thefile, 'r') as FH:
+                with open(thefile, 'rb') as FH:
                     csum = hashlib.sha256(FH.read()).hexdigest()
             except:
                 csum = "DIRECTORY_OR_OTHER"
