@@ -4,6 +4,8 @@ API handlers for /accounts routes in the External API
 """
 import datetime
 import os, json
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.apis import ApiRequestContextProxy
 from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, db_policybundle
 from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError
@@ -196,16 +198,17 @@ def create_account(account):
             mgr = manager_factory.for_session(session)
             resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
 
-            # Initialize account stuff
-            # try:
-            #     _init_policy(account['name'], config=get_config(), dbsession=session)
-            # except Exception:
-            #     logger.exception('Could not initialize policy bundle for new account: {}'.format(account['name']))
-            #     raise
 
-            # TODO: add init for the authz plugin domain if present
-            # Wrap with retries....
-            # Call to authz.initialize_domain()
+        # Initialize account stuff
+        try:
+            _init_policy(account['name'], config=get_config())
+        except Exception:
+            logger.exception('Could not initialize policy bundle for new account: {}'.format(account['name']))
+            raise
+
+        # TODO: add init for the authz plugin domain if present
+        # Wrap with retries....
+        # Call to authz.initialize_domain()
 
         return account_db_to_msg(resp), 200
     except AccountAlreadyExistsError as ex:
@@ -528,14 +531,18 @@ def delete_user(accountname, username):
         return make_response_error('Internal error deleting user {}'.format(username), in_httpcode=500), 500
 
 
-def _init_policy(accountname, config, dbsession):
+# TODO: move this to the catalog when all account/user modifications are handled there
+def _init_policy(accountname, config):
     """
     Initialize a new bundle for the given accountname
-    :return:
+
+    :return: bool indicating if bundle was created or not (False means one already existed)
     """
 
-    bundle_records = db_policybundle.get_all_byuserId(accountname, session=dbsession)
-    if not bundle_records:
+    client = internal_client_for(CatalogClient, accountname)
+    policies = client.list_policies()
+
+    if len(policies) == 0:
         logger.debug("Account {} has no policy bundle - installing default".format(accountname))
 
         if 'default_bundle_file' in config and os.path.exists(config['default_bundle_file']):
@@ -544,13 +551,18 @@ def _init_policy(accountname, config, dbsession):
                 default_bundle = {}
                 with open(config['default_bundle_file'], 'r') as FH:
                     default_bundle = json.loads(FH.read())
+
                 if default_bundle:
-                    bundle_url = archive.put_document(accountname, 'policy_bundles', default_bundle['id'],
-                                                      default_bundle)
-                    policy_record = make_policy_record(accountname, default_bundle, active=True)
-                    rc = db_policybundle.add(policy_record['policyId'], accountname, True, policy_record,
-                                             session=dbsession)
-                    if not rc:
+                    resp = client.add_policy(default_bundle)
+                    if not resp:
                         raise Exception("policy bundle DB add failed")
+
+                    return True
+                else:
+                    raise Exception('No default bundle found')
             except Exception as err:
                 logger.error("could not load up default bundle for user - exception: " + str(err))
+                raise
+    else:
+        logger.debug('Existing bundle found for account: {}. Not expected on invocations of this function in most uses'.format(accountname))
+        return False
