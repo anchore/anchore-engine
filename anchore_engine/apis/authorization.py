@@ -2,7 +2,7 @@
 API Authorization handlers and functions for use in API processing
 
 """
-
+import enum
 from abc import abstractmethod, ABC
 import anchore_engine
 from collections import namedtuple
@@ -115,6 +115,13 @@ class OperationActionLookup(FunctionInjectedValue):
         self._value = self.loader(fq_operation_id)
 
 
+class NotificationTypes(enum.Enum):
+    domain_created = 'domain_created'
+    domain_deleted = 'domain_deleted'
+    principal_created= 'principal_created'
+    principal_deleted = 'principal_deleted'
+
+
 class AuthorizationHandler(ABC):
     def __init__(self, identity_provider_factory):
         self._idp_factory = identity_provider_factory
@@ -174,6 +181,10 @@ class AuthorizationHandler(ABC):
         """
         pass
 
+    @abstractmethod
+    def notify(self, notification_type, notification_value):
+        pass
+
 
 class DbAuthorizationHandler(AuthorizationHandler):
     """
@@ -189,6 +200,16 @@ class DbAuthorizationHandler(AuthorizationHandler):
             DbAuthorizationHandler._yosai = Yosai(file_path=conf_path)
             # Disable sessions, since the APIs are not session-based
             DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
+
+    def notify(self, notification_type, notification_value):
+        """
+        No-Op for the default handler since permissions are ephemeral.
+        :param notification_type:
+        :param notification_value:
+        :return:
+        """
+        logger.debug('no-op notification handler for event {} value {}'.format(notification_type, notification_type))
+        return True
 
     def authenticate(self, request):
         logger.debug('Authenticating with native auth handler')
@@ -370,11 +391,60 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
 class ExternalAuthorizationHandler(DbAuthorizationHandler):
 
-    def init_domain(self, domain_name):
-        pass
+    def notify(self, notification_type, notification_value):
+        """
+        No-Op for the default handler since permissions are ephemeral.
+        :param notification_type:
+        :param notification_value:
+        :return:
+        """
+        logger.info('Calling notification!')
+        retries = 3
 
-    def init_account(self, account_name, requesting_username):
-        pass
+        try:
+            if not ExternalAuthzRealm.__client__:
+                logger.warn('Got authz notification type: {} value:{}, but no client configured so nothing to do'.format(notification_type, notification_value))
+                return True
+            else:
+                if NotificationTypes.domain_created == notification_type:
+                    fn = ExternalAuthzRealm.__client__.initialize_domain
+                elif NotificationTypes.domain_deleted == notification_type:
+                    fn = ExternalAuthzRealm.__client__.delete_domain
+                elif NotificationTypes.principal_created == notification_type:
+                    fn = ExternalAuthzRealm.__client__.initialize_principal
+                elif NotificationTypes.principal_deleted == notification_type:
+                    fn = ExternalAuthzRealm.__client__.delete_principal
+                else:
+                    fn = None
+
+            if fn is None:
+                logger.warn('Got notification type {} with no handler mapped'.format(notification_type))
+                return
+
+            err = None
+            for i in range(retries):
+                try:
+                    resp = fn(notification_value)
+                    if not resp:
+                        logger.warn('Bad response from authz service, will retry: {}'.format(resp))
+                    else:
+                        logger.debug('Notification succeeded to authz plugin service')
+                        break
+                except Exception as ex:
+                    err = ex
+                    logger.exception('Error calling {} against authz plugin client'.format(fn.__name__))
+
+            else:
+                logger.error(
+                    'Could not confirm successful response of authz handler for notification {} with value {}'.format(
+                        notification_type, notification_value))
+                raise Exception('Error invoking POST /domains on external authz handler: {}'.format(str(err) if err else 'Retry count exceeded {}'.format(retries)))
+
+            return True
+
+        except:
+            logger.exception('Notification handler for external authz plugin caught exception and could not complete: {} {}'.format(notification_type, notification_type))
+            raise
 
     def load(self, configuration):
         with ExternalAuthorizationHandler._config_lock:

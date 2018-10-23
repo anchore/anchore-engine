@@ -14,7 +14,7 @@ from anchore_engine.utils import datetime_to_rfc2339
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission
+from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission, NotificationTypes
 from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, RESERVED_ACCOUNT_NAMES, get_config
 
 
@@ -165,10 +165,11 @@ def list_accounts(state=None):
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            try:
-                state = AccountStates(state)
-            except:
-                return make_response_error('Bad Request: state {} not a valid value', in_httpcode=400), 400
+            if state is not None:
+                try:
+                    state = AccountStates(state)
+                except:
+                    return make_response_error('Bad Request: state {} not a valid value', in_httpcode=400), 400
 
             response = mgr.list_accounts(with_state=state)
 
@@ -200,17 +201,14 @@ def create_account(account):
             mgr = manager_factory.for_session(session)
             resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
 
+            authorizer.notify(NotificationTypes.domain_created, account['name'])
 
-        # Initialize account stuff
-        try:
-            _init_policy(account['name'], config=get_config())
-        except Exception:
-            logger.exception('Could not initialize policy bundle for new account: {}'.format(account['name']))
-            raise
-
-        # TODO: add init for the authz plugin domain if present
-        # Wrap with retries....
-        # Call to authz.initialize_domain()
+            # Initialize account stuff
+            try:
+                _init_policy(account['name'], config=get_config())
+            except Exception:
+                logger.exception('Could not initialize policy bundle for new account: {}'.format(account['name']))
+                raise
 
         return account_db_to_msg(resp), 200
     except AccountAlreadyExistsError as ex:
@@ -260,11 +258,19 @@ def delete_account(accountname):
                 return make_response_error('Account cannot be deleted', in_httpcode=400), 400
             else:
                 account = mgr.update_account_state(accountname, AccountStates.deleting.value)
+
+                # Flush from authz system if necessary
+                authorizer.notify(NotificationTypes.domain_deleted, accountname)
+
                 users = mgr.list_users(accountname)
-                for usr in users:
+                for user in users:
                     # Flush users
-                    logger.debug('Deleting account user: {}'.format(usr['username']))
-                    mgr.delete_user(usr['username'])
+                    logger.debug('Deleting account user {} on authz system if using plugin'.format(user['username']))
+                    authorizer.notify(NotificationTypes.principal_deleted, user['username'])
+
+                    logger.debug('Deleting account user: {}'.format(user['username']))
+                    mgr.delete_user(user['username'])
+
 
             return account_db_to_status_msg(account), 200
     except InvalidStateError as ex:
@@ -378,6 +384,10 @@ def create_user(accountname, user):
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
             usr = mgr.create_user(account_name=accountname, username=user['username'], creator_name=ApiRequestContextProxy.identity().username, password=user['password'])
+
+            # Flush from authz system if necessary, will rollback if this fails, but rely on the db state checks first to gate this
+            authorizer.notify(NotificationTypes.principal_created, usr['username'])
+
             return user_db_to_msg(usr), 200
     except UserAlreadyExistsError as ex:
         return make_response_error('User already exists', in_httpcode=400), 400
@@ -508,6 +518,9 @@ def delete_user(accountname, username):
                 return make_response_error('Cannot delete credential used for authentication of the request', in_httpcode=400), 400
             else:
                 if mgr.delete_user(username):
+                    # Flush from authz system if necessary, will rollback if this fails, but rely on the db state checks first to gate this
+                    authorizer.notify(NotificationTypes.principal_deleted, username)
+
                     return None, 204
                 else:
                     return make_response_error('Failed to delete user: {}'.format(username), in_httpcode=500), 500
