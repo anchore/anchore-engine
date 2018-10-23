@@ -16,12 +16,12 @@ import anchore_engine.subsys.servicestatus
 
 from anchore_engine.db import db_policybundle, db_policyeval
 from anchore_engine.subsys import archive
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_policies(active=None):
     """
     GET /policies?active=true|false
@@ -64,7 +64,7 @@ def list_policies(active=None):
     except Exception as err:
         return str(err), 500
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_policy(policyId):
     """
     GET /policies/{policyId}
@@ -103,7 +103,7 @@ def get_policy(policyId):
         return str(err), 500
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def update_policy(policyId, bodycontent):
     """
     PUT /policies/{policyId}
@@ -140,7 +140,7 @@ def update_policy(policyId, bodycontent):
         return str(err), 500
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def add_policy(bodycontent):
     """
     POST /policies
@@ -170,7 +170,7 @@ def add_policy(bodycontent):
         return str(err), 500
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_policy(policyId, cleanup_evals=False):
     """
     DELETE /policies/{policyId}?cleanup_evals=true|false

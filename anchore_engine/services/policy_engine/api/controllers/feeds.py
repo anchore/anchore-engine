@@ -7,12 +7,12 @@ from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask, 
 from anchore_engine.subsys import logger as log
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata, FeedMetadataListing
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 
 authorizer = get_authorizer()
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_feeds(include_counts=False):
     """
     GET /feeds
@@ -51,7 +51,7 @@ def list_feeds(include_counts=False):
     return jsonify(response)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def sync_feeds(sync=True, force_flush=False):
     """
     POST /feeds?sync=True&force_flush=True

@@ -10,12 +10,12 @@ import anchore_engine.common
 from anchore_engine.subsys import logger, archive as archive_sys
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False):
     """
     GET /evals
@@ -45,7 +45,7 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
     #     return_object = str(err)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def add_eval(bodycontent):
     """
     POST /evals
@@ -67,7 +67,7 @@ def add_eval(bodycontent):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def update_eval(bodycontent):
     """
     PUT /evals
@@ -89,7 +89,7 @@ def update_eval(bodycontent):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_eval(bodycontent):
     """
     DELETE /evals

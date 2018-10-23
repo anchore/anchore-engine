@@ -8,7 +8,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine.subsys import logger
 import time
-from anchore_engine.apis.authorization import get_authorizer, Permission
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 
 authorizer = get_authorizer()
@@ -24,7 +24,7 @@ def normalize_errors(f):
     return decorator
 
 @normalize_errors
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def status():
     logger.info('Hitting status!')
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
@@ -46,7 +46,7 @@ def status():
     return return_object, httpcode
 
 @normalize_errors
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def is_inqueue(queuename, bodycontent):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
     try:
@@ -59,7 +59,7 @@ def is_inqueue(queuename, bodycontent):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def qlen(queuename):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
     try:
@@ -73,7 +73,7 @@ def qlen(queuename):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def enqueue(queuename, bodycontent, forcefirst=None, qcount=0):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'forcefirst': forcefirst, 'qcount': qcount})
     try:
@@ -86,7 +86,7 @@ def enqueue(queuename, bodycontent, forcefirst=None, qcount=0):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def dequeue(queuename, wait_max_seconds=0, visibility_timeout=0):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -114,7 +114,7 @@ def dequeue(queuename, wait_max_seconds=0, visibility_timeout=0):
     return (return_object, 200)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_message(queuename, receipt_handle):
     """
     Delete a message in given queue using the given receipt_handle, which must match the currently outstanding handle for the message.
@@ -137,7 +137,7 @@ def delete_message(queuename, receipt_handle):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def update_message_visibility_timeout(queuename, receipt_handle, visibility_timeout):
     """
     Delete a message in given queue using the given receipt_handle, which must match the currently outstanding handle for the message.
@@ -162,7 +162,7 @@ def update_message_visibility_timeout(queuename, receipt_handle, visibility_time
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def queues():
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -176,7 +176,7 @@ def queues():
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def create_lease(lease_id):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -190,7 +190,7 @@ def create_lease(lease_id):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_leases():
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -204,7 +204,7 @@ def list_leases():
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def describe_lease(lease_id):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -218,7 +218,7 @@ def describe_lease(lease_id):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def acquire_lease(lease_id, client_id, ttl):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -232,7 +232,7 @@ def acquire_lease(lease_id, client_id, ttl):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def release_lease(lease_id, client_id, epoch):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 
@@ -246,7 +246,7 @@ def release_lease(lease_id, client_id, epoch):
     return (return_object, httpcode)
 
 
-@authorizer.requires([Permission(domain='system', action='*', target='*')])
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def refresh_lease(lease_id, client_id, ttl, epoch):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
 

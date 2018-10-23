@@ -21,6 +21,7 @@ from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
 # Global authorizer configured
 _global_authorizer = None
 
+INTERNAL_SERVICE_ALLOWED = [AccountTypes.admin, AccountTypes.service]
 
 class UnauthorizedError(Exception):
     def __init__(self, required_permissions):
