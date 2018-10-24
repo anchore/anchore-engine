@@ -501,7 +501,7 @@ def user_account_upgrades_007_008():
 
     from anchore_engine.db import session_scope, legacy_db_users
     from anchore_engine.subsys.identities import manager_factory, AccountStates
-    from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME, SYSTEM_IDENTITY_BOOTSTRAPPER, ADMIN_ACCOUNT_NAME
+    from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME, ADMIN_ACCOUNT_NAME
 
     with session_scope() as session:
         mgr = manager_factory.for_session(session)
@@ -515,12 +515,12 @@ def user_account_upgrades_007_008():
                 account_type = identities.AccountTypes.user
 
             logger.info('Migrating user: {} to new account with name {}, type {}, is_active {}'.format(user['userId'], user['userId'], account_type, user['active']))
-            accnt = mgr.create_account(account_name=user['userId'], email=user['email'], account_type=account_type, creator=SYSTEM_IDENTITY_BOOTSTRAPPER)
+            accnt = mgr.create_account(account_name=user['userId'], email=user['email'], account_type=account_type)
             if not user['active']:
                 mgr.update_account_state(accnt['name'], AccountStates.disabled)
 
             logger.info('Creating new user record in new account {} with username {}'.format(user['userId'], user['userId']))
-            mgr.create_user(account_name=user['userId'], username=user['userId'], password=user['password'], creator_name=SYSTEM_IDENTITY_BOOTSTRAPPER)
+            mgr.create_user(account_name=user['userId'], username=user['userId'], password=user['password'])
 
             logger.info('Deleting old user record')
             legacy_db_users.delete(user['userId'], session)

@@ -55,7 +55,6 @@ SYSTEM_USERNAME = 'anchore-system'
 ADMIN_ACCOUNT_NAME = 'admin'
 ADMIN_USERNAME = 'admin'
 ADMIN_USER_DEFAULT_PASSWORD = 'foobar' # TODO: remove this, use a generated cred instead
-SYSTEM_IDENTITY_BOOTSTRAPPER = 'system-init' # The 'creator' username to keep in the db for the initially bootstrapped identities
 GLOBAL_RESOURCE_DOMAIN = 'system' # Used as the domain for things like accounts
 
 RESERVED_ACCOUNT_NAMES = [

@@ -38,7 +38,7 @@ def _generate_password():
     return pwd.genword(entropy=48)
 
 
-def add(account_name, username, created_by=None, session=None):
+def add(account_name, username, session):
     """
     Create a new user, raising error on conflict
 
@@ -56,7 +56,6 @@ def add(account_name, username, created_by=None, session=None):
         user_to_create = AccountUser()
         user_to_create.account_name = account_name
         user_to_create.username = username
-        user_to_create.created_by = created_by
         user_to_create.created_at = anchore_now()
         user_to_create.last_updated = anchore_now()
         session.add(user_to_create)
@@ -67,7 +66,7 @@ def add(account_name, username, created_by=None, session=None):
     return user_to_create.to_dict()
 
 
-def add_user_credential(creator, username, credential_type=UserAccessCredentialTypes.password, value=None, overrwrite=True, session=None):
+def add_user_credential(username, credential_type=UserAccessCredentialTypes.password, value=None, overrwrite=True, session=None):
     usr = session.query(AccountUser).filter_by(username=username).one_or_none()
 
     if not usr:
@@ -84,7 +83,6 @@ def add_user_credential(creator, username, credential_type=UserAccessCredentialT
     credential = AccessCredential()
     credential.user = usr
     credential.username = usr.username
-    credential.created_by = creator
     credential.type = credential_type
     credential.created_at = anchore_now()
 

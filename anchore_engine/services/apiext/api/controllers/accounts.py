@@ -31,8 +31,7 @@ def account_db_to_msg(account):
         'state': account['state'].value if type(account['state']) != str else account['state'],
         'type': account['type'] if type(account['type']) == str else account['type'].value ,
         'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['created_at'])),
-        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['last_updated'])),
-        'created_by': account['created_by']
+        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['last_updated']))
     }
 
 
@@ -52,8 +51,7 @@ def user_db_to_msg(user):
     return {
         'username': user['username'],
         'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(user['created_at'])),
-        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(user['last_updated'])),
-        'created_by': user['created_by']
+        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(user['last_updated']))
     }
 
 
@@ -64,8 +62,7 @@ def credential_db_to_msg(credential):
     return {
         'type': credential['type'].value,
         'value': ''.join(['*' for _ in credential['value']]),
-        'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(credential['created_at'])),
-        'created_by': credential['created_by']
+        'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(credential['created_at']))
     }
 
 

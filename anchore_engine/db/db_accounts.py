@@ -24,7 +24,7 @@ class InvalidStateError(Exception):
         self.desired_state = desired_state
 
 
-def add(account_name, creator_username, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
+def add(account_name, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
 
     if found_account:
@@ -35,7 +35,6 @@ def add(account_name, creator_username, state=AccountStates.enabled, account_typ
     accnt.state = state
     accnt.type = account_type
     accnt.email = email
-    accnt.created_by = creator_username
     accnt.created_at = anchore_now()
     accnt.last_updated = anchore_now()
     session.add(accnt)
