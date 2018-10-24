@@ -188,7 +188,7 @@ class IdentityManager(object):
         return account
 
     def list_accounts(self, with_state=None, include_service=False):
-        accounts = filter(lambda x: (not include_service or (x['type'] != AccountTypes.service)),
+        accounts = filter(lambda x: (include_service or (x['type'] != AccountTypes.service)),
                           db_accounts.get_all(with_state=with_state, session=self.session))
         return accounts
 
