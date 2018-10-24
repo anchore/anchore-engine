@@ -76,7 +76,7 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
                 creds = None
 
             if identity:
-                result_account['account_locked'] = not (identity.user_account_state == AccountStates.active)
+                result_account['account_locked'] = not (identity.user_account_state == AccountStates.enabled)
 
             if creds:
                 result_account['authc_info'] = {

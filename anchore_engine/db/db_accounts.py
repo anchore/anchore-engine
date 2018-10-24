@@ -25,7 +25,7 @@ class InvalidStateError(Exception):
         self.desired_state = desired_state
 
 
-def add(account_name, creator_username, state=AccountStates.active, account_type=AccountTypes.user, email=None, session=None):
+def add(account_name, creator_username, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
     if found_account:
         raise AccountAlreadyExistsError(account_name)
@@ -63,7 +63,7 @@ def update_state(name, new_state, session=None):
         raise AccountNotFoundError(name)
 
     # Deleting state is terminal. Must deactivate account prior to deleting it.
-    if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.active and new_state == AccountStates.deleting):
+    if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.enabled and new_state == AccountStates.deleting):
         raise InvalidStateError(accnt.state, new_state)
 
     accnt.state = new_state

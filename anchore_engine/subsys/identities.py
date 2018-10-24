@@ -184,7 +184,7 @@ class IdentityManager(object):
         :return: (account, user) tuple with the account and admin user for the account
         """
 
-        account = db_accounts.add(account_name.lower(), account_type=account_type, email=email, creator_username=creator, state=AccountStates.active, session=self.session)
+        account = db_accounts.add(account_name.lower(), account_type=account_type, email=email, creator_username=creator, state=AccountStates.enabled, session=self.session)
         return account
 
     def list_accounts(self, with_state=None, include_service=False):

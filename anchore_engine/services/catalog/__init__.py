@@ -153,7 +153,7 @@ def handle_vulnerability_scan(*args, **kwargs):
 
         with db.session_scope() as dbsession:
             mgr = manager_factory.for_session(dbsession)
-            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+            accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
         for account in accounts:
             userId = account['name']
@@ -339,7 +339,7 @@ def handle_repo_watcher(*args, **kwargs):
 
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
-        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+        accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
     for account in accounts:
         userId = account['name']
@@ -488,7 +488,7 @@ def handle_image_watcher(*args, **kwargs):
 
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
-        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+        accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
     for account in accounts:
         userId = account['name']
@@ -754,7 +754,7 @@ def handle_policyeval(*args, **kwargs):
         with db.session_scope() as dbsession:
             feed_updated = check_feedmeta_update(dbsession)
             mgr = manager_factory.for_session(dbsession)
-            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+            accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
         for account in accounts:
             userId = account['name']
@@ -992,7 +992,7 @@ def handle_policy_bundle_sync(*args, **kwargs):
     with db.session_scope() as dbsession:
         event = None
         mgr = manager_factory.for_session(dbsession)
-        accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+        accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
         for account in accounts:
             userId = account['name']
@@ -1145,7 +1145,7 @@ def handle_notifications(*args, **kwargs):
         event_log_type = 'event_log'
         for subscription_type in anchore_engine.common.subscription_types + [event_log_type]:
             logger.debug("notifier: " + subscription_type)
-            accounts = mgr.list_accounts(with_state=AccountStates.active, include_service=False)
+            accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
 
             try:
                 qlen = q_client.qlen(subscription_type)

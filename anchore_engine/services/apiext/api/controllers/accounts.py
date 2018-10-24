@@ -279,7 +279,7 @@ def update_account_state(accountname, desired_state):
     """
     POST /accounts/{accountname}/state
 
-    Body: {"state": "active"|"disabled"}
+    Body: {"state": "enabled"|"disabled"}
 
     :param accountname: str account name to update
     :param desired_state: json object for desired state to set

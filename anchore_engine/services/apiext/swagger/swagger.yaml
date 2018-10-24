@@ -1687,7 +1687,7 @@ paths:
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: update_account_state
       x-anchore-authz-action: updateAccount
-      summary: Update the state of an account to either active or disabled. For deletion use the DELETE route
+      summary: Update the state of an account to either enabled or disabled. For deletion use the DELETE route
       parameters:
       - name: accountname
         in: path
@@ -1700,7 +1700,7 @@ paths:
           $ref: "#/definitions/AccountStatus"
       responses:
         200:
-          description: Updated active state of the account
+          description: Updated state of the account
           schema:
             $ref: "#/definitions/AccountStatus"
         400:
@@ -3044,7 +3044,7 @@ definitions:
       state:
         type: string
         enum:
-          - active
+          - enabled
           - disabled
           - deleting
         description: State of the account. Disabled accounts prevent member users from logging in, deleting accounts are disabled and pending deletion and will be removed once all owned resources are garbage collected by the system
@@ -3069,9 +3069,9 @@ definitions:
       state:
         type: string
         enum:
-          - active
+          - enabled
           - disabled
-        description: The active status of the account
+        description: The status of the account
   User:
     type: object
     description: A username, password pair that can be used to authenticate with the service as a specific user

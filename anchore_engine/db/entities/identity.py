@@ -21,7 +21,7 @@ class AccountTypes(enum.Enum):
 
 
 class AccountStates(enum.Enum):
-    active = 'active' # Normal state, all functionality enabled
+    enabled = 'enabled' # Normal state, all functionality enabled
     disabled = 'disabled' # No user within the account can authenticate, effectively locked
     deleting = 'deleting' # Pending deletion. Holds the name in the namespace until all resources are flushed and then record is removed
 
@@ -34,8 +34,7 @@ class Account(Base, UtilMixin):
     __tablename__ = 'accounts'
 
     name = Column(String, primary_key=True)
-    state = Column(Enum(AccountStates, name='account_states'), default=AccountStates.active)
-    is_active = Column(Boolean, default=True)
+    state = Column(Enum(AccountStates, name='account_states'), default=AccountStates.enabled)
     type = Column(Enum(AccountTypes, name='account_types'), nullable=False, default=AccountTypes.user)
     email = Column(String)
     created_by = Column(String, nullable=False)
