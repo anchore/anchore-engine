@@ -552,7 +552,7 @@ def _init_policy(accountname, config):
                     default_bundle = json.loads(FH.read())
 
                 if default_bundle:
-                    resp = client.add_policy(default_bundle)
+                    resp = client.add_policy(default_bundle, active=True)
                     if not resp:
                         raise Exception("policy bundle DB add failed")
 

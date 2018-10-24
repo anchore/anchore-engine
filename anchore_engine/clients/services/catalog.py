@@ -73,9 +73,9 @@ class CatalogClient(InternalServiceClient):
     def import_image(self, anchore_data):
         return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
 
-    def add_policy(self, bundle):
+    def add_policy(self, bundle, active=False):
         try:
-            payload = anchore_engine.common.helpers.make_policy_record(self.request_namespace, bundle)
+            payload = anchore_engine.common.helpers.make_policy_record(self.request_namespace, bundle, active=active)
         except Exception as err:
             logger.error("couldn't prep input as valid policy add payload: " + str(err))
             raise err
