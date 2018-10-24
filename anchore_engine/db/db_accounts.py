@@ -1,7 +1,6 @@
 """
 Interface to the accounts table. Data format is dicts, not objects.
 """
-
 from anchore_engine.db import Account, AccountTypes, AccountStates
 from anchore_engine.db.entities.common import anchore_now
 
@@ -27,6 +26,7 @@ class InvalidStateError(Exception):
 
 def add(account_name, creator_username, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
+
     if found_account:
         raise AccountAlreadyExistsError(account_name)
 

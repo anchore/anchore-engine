@@ -1,8 +1,14 @@
+import re
 import anchore_engine.configuration
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates
 from anchore_engine.db.db_accounts import AccountNotFoundError
+
+# Not currently used because upgrade...
+name_validator_regex = re.compile('^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$')
+email_validator_regex = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+password_validator_regex = re.compile('.{6,128}$')
 
 
 class IdentityBootstrapper(object):
@@ -119,7 +125,6 @@ class IdentityManagerFactory(object):
 
 manager_factory = IdentityManagerFactory(localconfig.get_config())
 
-
 class IdentityManager(object):
     """
     A db session-aware identity manager.
@@ -162,7 +167,7 @@ class IdentityManager(object):
         :return:
         """
 
-        usrs = db_account_users.list_for_account(userId.lower(), session=self.session)
+        usrs = db_account_users.list_for_account(userId, session=self.session)
         if usrs:
             return usrs[0]['username'], usrs[0].get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get(
                 'value')
@@ -170,7 +175,7 @@ class IdentityManager(object):
             return None, None
 
     def get_credentials_for_username(self, username):
-        user = db_account_users.get(username=username.lower(), session=self.session)
+        user = db_account_users.get(username=username, session=self.session)
         return user['username'], user.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value')
 
     def create_account(self, account_name, account_type, email, creator):
@@ -183,8 +188,7 @@ class IdentityManager(object):
         :param creator:
         :return: (account, user) tuple with the account and admin user for the account
         """
-
-        account = db_accounts.add(account_name.lower(), account_type=account_type, email=email, creator_username=creator, state=AccountStates.enabled, session=self.session)
+        account = db_accounts.add(account_name, account_type=account_type, email=email, creator_username=creator, state=AccountStates.enabled, session=self.session)
         return account
 
     def list_accounts(self, with_state=None, include_service=False):
@@ -193,14 +197,14 @@ class IdentityManager(object):
         return accounts
 
     def get_account(self, accountname):
-        account = db_accounts.get(accountname.lower(), session=self.session)
+        account = db_accounts.get(accountname, session=self.session)
         return account
 
     def update_account_state(self, account_name: str, new_state: AccountStates):
-        return db_accounts.update_state(account_name.lower(), new_state, session=self.session)
+        return db_accounts.update_state(account_name, new_state, session=self.session)
 
     def delete_account(self, account_name):
-        return db_accounts.delete(account_name.lower(), session=self.session)
+        return db_accounts.delete(account_name, session=self.session)
 
     def create_user(self, account_name, username, creator_name, password=None):
         """
@@ -212,8 +216,6 @@ class IdentityManager(object):
         :param creator_name: the username of creator
         :return:
         """
-
-        account_name = account_name.lower()
 
         account = db_accounts.get(account_name, session=self.session)
         if not account:
@@ -238,7 +240,7 @@ class IdentityManager(object):
 
     def list_users(self, account_name=None):
         if account_name:
-            account_name = account_name.lower()
+
             return db_account_users.list_for_account(account_name, session=self.session)
         else:
             return db_account_users.get_all(session=self.session)

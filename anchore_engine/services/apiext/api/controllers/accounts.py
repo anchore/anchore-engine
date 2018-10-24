@@ -73,10 +73,10 @@ def can_create_account(account_dict):
     if not account_dict.get('name'):
         raise ValueError('"name" is required')
 
-    if account_dict.get('name').lower() in RESERVED_ACCOUNT_NAMES:
+    if account_dict.get('name') in RESERVED_ACCOUNT_NAMES:
         raise ValueError('Cannot use name {}'.format(account_dict.get('name')))
 
-    if account_dict.get('type') and account_dict.get('type').lower() != 'user':
+    if account_dict.get('type') and account_dict.get('type') != 'user':
         raise ValueError('Account type must be "user", found: {}'.format(account_dict.get('type')))
 
     return True
@@ -191,7 +191,11 @@ def create_account(account):
 
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
+            try:
+                resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
+            except ValueError as ex:
+                return make_response_error('Validation failed: {}'.format(ex), in_httpcode=400), 400
+
 
             authorizer.notify(NotificationTypes.domain_created, account['name'])
 
@@ -220,7 +224,7 @@ def get_account(accountname):
     """
 
     try:
-        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
@@ -242,7 +246,7 @@ def delete_account(accountname):
     """
 
     try:
-        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             account = verify_account(accountname, mgr)
@@ -287,7 +291,7 @@ def update_account_state(accountname, desired_state):
     """
 
     try:
-        accountname = accountname.lower()
+
 
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
@@ -316,7 +320,7 @@ def list_users(accountname):
     """
 
     try:
-        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
@@ -345,7 +349,7 @@ def get_account_user(accountname, username):
     """
 
     try:
-        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             user = verify_user(username, accountname, mgr)
@@ -370,11 +374,15 @@ def create_user(accountname, user):
     """
 
     try:
-        accountname = accountname.lower()
+
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
-            usr = mgr.create_user(account_name=accountname, username=user['username'], creator_name=ApiRequestContextProxy.identity().username, password=user['password'])
+
+            try:
+                usr = mgr.create_user(account_name=accountname, username=user['username'], creator_name=ApiRequestContextProxy.identity().username, password=user['password'])
+            except ValueError as ex:
+                return make_response_error('Validation failed: {}'.format(ex), in_httpcode=400), 400
 
             # Flush from authz system if necessary, will rollback if this fails, but rely on the db state checks first to gate this
             authorizer.notify(NotificationTypes.principal_created, usr['username'])

@@ -49,6 +49,7 @@ def add(account_name, username, created_by=None, session=None):
     :param session:
     :return:
     """
+
     user_to_create = session.query(AccountUser).filter_by(username=username).one_or_none()
 
     if user_to_create is None:
