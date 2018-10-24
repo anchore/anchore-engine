@@ -15,7 +15,7 @@ from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission, NotificationTypes
-from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_ACCOUNT_NAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, RESERVED_ACCOUNT_NAMES, get_config
+from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, PROTECTED_ACCOUNT_NAMES, RESERVED_ACCOUNT_NAMES, get_config
 
 
 authorizer = get_authorizer()
@@ -88,12 +88,13 @@ def can_delete_user(user):
     :param user:
     :return:
     """
-    if user['username'] in [SYSTEM_USERNAME, ADMIN_USERNAME] or \
-        user['account_name'] in RESERVED_ACCOUNT_NAMES or \
+    if user['username'] in PROTECTED_ACCOUNT_NAMES or \
+        user['account_name'] in PROTECTED_ACCOUNT_NAMES or \
         user['account']['type'] not in [AccountTypes.user, AccountTypes.admin]:
         return False
     else:
         return True
+
 
 def can_delete_account(account):
     """
@@ -103,15 +104,6 @@ def can_delete_account(account):
     """
     if account['name'] in RESERVED_ACCOUNT_NAMES or \
         account['type'] not in [AccountTypes.user]:
-        return False
-    else:
-        return True
-
-
-def can_deactivate(user):
-    if user['username'] in [SYSTEM_USERNAME, ADMIN_USERNAME] or \
-        user['account_name'] in [SYSTEM_ACCOUNT_NAME] or \
-        user['account']['type'] == AccountTypes.service:
         return False
     else:
         return True

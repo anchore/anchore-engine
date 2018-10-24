@@ -64,6 +64,16 @@ RESERVED_ACCOUNT_NAMES = [
     ADMIN_ACCOUNT_NAME
 ]
 
+PROTECTED_ACCOUNT_NAMES = [
+    GLOBAL_RESOURCE_DOMAIN,
+    SYSTEM_ACCOUNT_NAME
+]
+
+PROTECTED_USER_NAMES = [
+    SYSTEM_USERNAME,
+    ADMIN_USERNAME
+]
+
 # Top-level config keys required to be present
 default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
 
