@@ -257,7 +257,7 @@ def delete_account(accountname):
             if not can_delete_account(account):
                 return make_response_error('Account cannot be deleted', in_httpcode=400), 400
             else:
-                account = mgr.update_account_state(accountname, AccountStates.deleting.value)
+                account = mgr.update_account_state(accountname, AccountStates.deleting)
 
                 # Flush from authz system if necessary
                 authorizer.notify(NotificationTypes.domain_deleted, accountname)
@@ -300,7 +300,6 @@ def update_account_state(accountname, desired_state):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
-
             result = mgr.update_account_state(accountname, AccountStates(desired_state.get('state')))
             if result:
                 return account_db_to_status_msg(result), 200

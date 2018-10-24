@@ -196,7 +196,7 @@ class IdentityManager(object):
         account = db_accounts.get(accountname.lower(), session=self.session)
         return account
 
-    def update_account_state(self, account_name, new_state):
+    def update_account_state(self, account_name: str, new_state: AccountStates):
         return db_accounts.update_state(account_name.lower(), new_state, session=self.session)
 
     def delete_account(self, account_name):
