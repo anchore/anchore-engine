@@ -462,7 +462,6 @@ class ApiService(BaseService):
         super()._register_instance_handlers()
         logger.info('Registering api handlers')
         self.register_handler(LifeCycleStages.pre_bootstrap, self.initialize_api, None)
-        self.register_handler(LifeCycleStages.pre_bootstrap, self._process_api_spec, None)
 
     def _init_wsgi_app(self, service_name, api_spec_dir=None, api_spec_file=None):
         """
@@ -491,9 +490,6 @@ class ApiService(BaseService):
         except Exception as err:
             traceback.print_exc()
             raise err
-
-    def _process_api_spec(self):
-        return
 
     def init_auth(self):
         """
@@ -533,6 +529,10 @@ class UserFacingApiService(ApiService):
         super().__init__(options)
         self._authz_actions = {}
 
+    def _register_instance_handlers(self):
+        super()._register_instance_handlers()
+        self.register_handler(LifeCycleStages.pre_bootstrap, self._process_api_spec, None)
+
     @staticmethod
     def parse_swagger(path):
         with open(path) as f:
@@ -548,7 +548,7 @@ class UserFacingApiService(ApiService):
         of a operation to an action using x-anchore-action labels in the swagger.
 
         This relies on using connexion such that the x-swagger-router-controller + operationId define the key as is implemented
-        in connextion. The resulting dict maps a fully-qualified function to an action
+        in connexion. The resulting dict maps a fully-qualified function to an action
 
         :param swagger_content: dict
         :return: dict function_name -> action (e.g. anchore_engine.services.apiext.images.list_images -> listImages)
