@@ -7,7 +7,6 @@ import copy
 import json
 import os
 import sys
-import traceback
 from twisted import web
 from twisted.application import service
 from twisted.application.internet import TimerService, StreamServerEndpointService
@@ -201,8 +200,7 @@ class WsgiApiServiceMaker(object):
             return self.twistd_service
 
         except Exception as err:
-            logger.error("cannot create/init/register service: " + self.service_cls.__service_name__ + " - exception: " + str(err))
-            traceback.print_exc('Service init failure')
+            logger.exception("cannot create/init/register service: " + self.service_cls.__service_name__ + " - exception: " + str(err))
             raise Exception("cannot start service (see above for information)")
         finally:
             pass

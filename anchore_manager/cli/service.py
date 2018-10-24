@@ -167,8 +167,8 @@ def startup_service(service, configdir):
         rc = pipes.returncode
         raise Exception("process exited: " + str(rc))
     except Exception as err:
-        traceback.print_exc()
-        logger.info("service process exited at ({}): {}".format(str(time.ctime()), str(err)))
+        logger.exception("service process exited at ({}): {}".format(str(time.ctime()), str(err)))
+        logger.fatal('Could not start service due to: {}'.format(str(err)))
 
     logger.info("exiting service thread")
     return (False)
@@ -394,7 +394,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
                 logger.warn("service start failed - exception: {}".format(str(err)))
 
         if startFailed:
-            logger.error("one or more services failed to start. cleanly terminating the others")
+            logger.fatal("one or more services failed to start. cleanly terminating the others")
             for service in services:
                 terminate_service(service, flush_pidfile=True)
 
