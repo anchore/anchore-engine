@@ -37,7 +37,6 @@ class Account(Base, UtilMixin):
     state = Column(Enum(AccountStates, name='account_states'), default=AccountStates.enabled)
     type = Column(Enum(AccountTypes, name='account_types'), nullable=False, default=AccountTypes.user)
     email = Column(String)
-    created_by = Column(String, nullable=False)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
 
@@ -54,7 +53,6 @@ class AccountUser(Base, UtilMixin):
 
     username = Column(String, primary_key=True) # Enforce globally unique user names
     account_name = Column(String, ForeignKey(Account.name), index=True)
-    created_by = Column(String, nullable=False)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
 
@@ -89,7 +87,6 @@ class AccessCredential(Base, UtilMixin):
     username = Column(String, ForeignKey(AccountUser.username), primary_key=True)
     type = Column(Enum(UserAccessCredentialTypes, name='user_access_credential_types'), primary_key=True)
     value = Column(String, nullable=False)
-    created_by = Column(String, nullable=False, index=True)
     created_at = Column(Integer, default=anchore_now)
 
     user = relationship('AccountUser', back_populates='credentials', lazy='joined')

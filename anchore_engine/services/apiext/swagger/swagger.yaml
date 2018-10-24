@@ -3059,9 +3059,6 @@ definitions:
         type: string
         format: date-time
         description: The timestamp of the last update to the account metadata itself (not users or creds)
-      created_by:
-        type: string
-        description: The uuid of the user that created this account
   AccountStatus:
     type: object
     description: A summary of account status
@@ -3089,9 +3086,6 @@ definitions:
         description: The timestamp of the last update to this record
         type: string
         format: date-time
-      created_by:
-        type: string
-        description: The uuid of the user that created this user
   UserCreationRequest:
     type: object
     description: A payload for creating a new user, includes the username and password in a single request
@@ -3125,9 +3119,6 @@ definitions:
       created_at:
         type: string
         description: The timestamp of creation of the credential
-      created_by:
-        type: string
-        description: The uuid of the user that created this credential
   AccountList:
     type: array
     items:
