@@ -1681,7 +1681,7 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
   /accounts/{accountname}/state:
-    post:
+    put:
       tags:
       - User Management
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
