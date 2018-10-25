@@ -119,13 +119,14 @@ class BaseService(object, metaclass=ServiceMeta):
     __monitor_fn__ = monitors.monitor
     __service_api_version__ = 'v1'
     __lifecycle_handlers__ = {}
+    __require_system_user__ = True
 
     def __init__(self, options=None):
         self.name = self.__service_name__
         self.options = options if options is not None else {}
         self.global_configuration = None
         self.requires_db = None
-        self.require_system_user = None
+        self.require_system_user = self.__require_system_user__
         self.lifecycle_handlers = copy.deepcopy(_default_lifecycle_handlers)
         self.lifecycle_handlers.update(self.__lifecycle_handlers__)
 
@@ -402,7 +403,7 @@ class BaseService(object, metaclass=ServiceMeta):
         logger.info('Service registration complete')
         return True
 
-    def initialize(self, global_configuration, db_connect=True, require_system_user_auth=True):
+    def initialize(self, global_configuration, db_connect=True, require_system_user_auth=None):
         """
         Service initialization that requires the service config loaded and available but before registration of the service
         or db connection and access to service discovery.
@@ -416,7 +417,9 @@ class BaseService(object, metaclass=ServiceMeta):
 
         self.global_configuration = global_configuration
         self.requires_db = db_connect
-        self.require_system_user = require_system_user_auth
+
+        if require_system_user_auth is not None:
+            self.require_system_user = require_system_user_auth
 
         logger.debug('Invoking instance-specific handler registration')
         self._register_instance_handlers()
