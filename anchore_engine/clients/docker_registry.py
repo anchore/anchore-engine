@@ -67,28 +67,29 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
     httpcode = 500
     message = "unknown failure"
 
-    timeout = 30.0
     try:
         # base_url is of the form 'https://index.docker.io' or 'https://mydocker.com:5000' <-- note: https only, no trailing slash, etc
         index_url = "{}/v2".format(base_url)
         try:
-            r = requests.get(index_url, verify=verify, allow_redirects=True, timeout=timeout)
+            r = requests.get(index_url, verify=verify, allow_redirects=True)
         except Exception as err:
             httpcode = 500
             raise err
         try:
             if r.status_code in [404]:
-                r = requests.get(index_url+'/', verify=verify, allow_redirects=True, timeout=timeout)
+                r = requests.get(index_url+'/', verify=verify, allow_redirects=True)
             if r.status_code not in [200, 401]:
                 httpcode = 400
                 raise Exception("cannot access registry using registry version 2 {}".format(index_url))
         except Exception as err:
             raise err
 
+        auth_tries = []
         if u and p:
             auth_url = None
             try:
                 for hkey in r.headers.keys():
+                    urlparams = []
                     if hkey.lower() == "www-authenticate":
                         www_auth = r.headers.get(hkey)
                         (www_auth_type, www_auth_raw) = re.match("(.*?) +(.*)", www_auth).groups()
@@ -98,17 +99,29 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
                                 key, val = keyval.split('=', 2)
                                 if key.lower() == 'realm':
                                     auth_url = val.replace('"', '')
+                                else:
+                                    urlparams.append(key + "=" + val.replace('"', ''))
                         elif www_auth_type == 'Basic':
                             auth_url = index_url
                         else:
                             auth_url = index_url
+
+                    if auth_url:
+                        if urlparams:
+                            param_auth_url = auth_url + "?" + '&'.join(urlparams)
+                            auth_tries.append(param_auth_url)
+                        if auth_url not in auth_tries:
+                            auth_tries.append(auth_url)
+
                 if not auth_url:
                     httpcode = 400
                     raise Exception("could not retrieve an auth URL from response")
             except Exception as err:
                 raise err
 
-            auth_tries = [auth_url, index_url]
+            if index_url not in auth_tries:
+                auth_tries.append(index_url)
+
             logged_in = False
             for auth_url in auth_tries:
                 try:
@@ -127,7 +140,6 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
                         break
                 except Exception as err:
                     raise err
-
             if not logged_in:
                 httpcode = 401
                 raise Exception("cannot login to registry user={} registry={} - invalid username/password".format(u, base_url))
