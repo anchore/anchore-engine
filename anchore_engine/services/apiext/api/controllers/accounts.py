@@ -189,7 +189,7 @@ def create_account(account):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             try:
-                resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'), creator=ApiRequestContextProxy.identity().username)
+                resp = mgr.create_account(account_name=account['name'], account_type=account.get('type', AccountTypes.user.value), email=account.get('email'))
             except ValueError as ex:
                 return make_response_error('Validation failed: {}'.format(ex), in_httpcode=400), 400
 
@@ -377,7 +377,7 @@ def create_user(accountname, user):
             verify_account(accountname, mgr)
 
             try:
-                usr = mgr.create_user(account_name=accountname, username=user['username'], creator_name=ApiRequestContextProxy.identity().username, password=user['password'])
+                usr = mgr.create_user(account_name=accountname, username=user['username'], password=user['password'])
             except ValueError as ex:
                 return make_response_error('Validation failed: {}'.format(ex), in_httpcode=400), 400
 
@@ -421,7 +421,7 @@ def create_user_credential(accountname, username, credential):
             except:
                 return make_response_error(errmsg='Invalid credential type', in_httpcode=400), 400
 
-            cred = mgr.add_user_credential(username=username, creator_name=ApiRequestContextProxy.identity().username, credential_type=cred_type, value=credential['value'])
+            cred = mgr.add_user_credential(username=username, credential_type=cred_type, value=credential['value'])
 
             return credential_db_to_msg(cred), 200
     except UserNotFoundError as ex:

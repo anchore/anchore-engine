@@ -76,7 +76,7 @@ def add_credential(credential):
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
             user = ApiRequestContextProxy.identity().username
-            result = mgr.add_user_credential(creator_name=user, username=user, credential_type=cred_type, value=credential['value'])
+            result = mgr.add_user_credential(username=user, credential_type=cred_type, value=credential['value'])
             return credential_db_to_msg(result), 200
     except Exception as ex:
         logger.exception('API Error')

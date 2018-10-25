@@ -63,19 +63,17 @@ class TestBasicStore(unittest.TestCase):
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
-            accnt = mgr.create_account(account_name='account1', account_type=AccountTypes.user, email='someemail', creator='test1')
-            user1 = mgr.create_user(account_name=accnt['name'], username='testuser1', creator_name='test1',
+            accnt = mgr.create_account(account_name='account1', account_type=AccountTypes.user, email='someemail')
+            user1 = mgr.create_user(account_name=accnt['name'], username='testuser1',
                                            password='password123')
             print('user 1: {}'.format(user1))
 
-            user2 = mgr.create_user(account_name=accnt['name'], username='testuser2', creator_name='test1',
+            user2 = mgr.create_user(account_name=accnt['name'], username='testuser2',
                                            password='password123')
             print('user 2: {}'.format(user2))
 
-            accnt2 = mgr.create_account(account_name='admin1', account_type=AccountTypes.admin, email='someemail',
-                                               creator='test1')
-            user3 = mgr.create_user(account_name=accnt2['name'], username='admin1', creator_name='test1',
-                                           password='password123')
+            accnt2 = mgr.create_account(account_name='admin1', account_type=AccountTypes.admin, email='someemail',)
+            user3 = mgr.create_user(account_name=accnt2['name'], username='admin1', password='password123')
             print('user 3: {}'.format(user3))
 
         store = basic_accountstore.DbAccountStore()
