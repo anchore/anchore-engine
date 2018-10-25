@@ -68,13 +68,17 @@ auto_restart_services: True
 #  read_timeout_seconds: 60
 #
 
-# Can be omitted and will default to 'foobar' on db initialization
-#default_admin_password: 'foobar'
-
-# Can be ommitted and will default to 'admin@myanchore'
-#default_admin_email: 'admin@myanchore'
-
 credentials:
+  users:
+     admin:
+       password: 'foobar'
+       email: 'admin@myemail.com'
+       external_service_auths:
+       #  anchoreio:
+       #    anchorecli:
+       #      auth: 'myanchoreiouser:myanchoreiopass'
+       #auto_policy_sync: True
+
   database:
     db_connect: 'postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres'
     db_connect_args:
