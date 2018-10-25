@@ -41,14 +41,16 @@ class IdentityBootstrapper(object):
         # admin user
         try:
             if not self.mgr.get_account(localconfig.ADMIN_ACCOUNT_NAME):
-                self.mgr.create_account(localconfig.ADMIN_ACCOUNT_NAME, AccountTypes.admin, 'admin@system')
+                init_email = localconfig.get_config().get(localconfig.DEFAULT_ADMIN_EMAIL_KEY, 'admin@myanchore')
+                self.mgr.create_account(localconfig.ADMIN_ACCOUNT_NAME, AccountTypes.admin, init_email)
 
             if not self.mgr.get_user(localconfig.ADMIN_USERNAME):
                 self.mgr.create_user(localconfig.ADMIN_ACCOUNT_NAME, localconfig.ADMIN_USERNAME)
 
+                init_password = localconfig.get_config().get(localconfig.DEFAULT_ADMIN_PASSWORD_KEY, localconfig.ADMIN_USER_DEFAULT_PASSWORD)
                 self.mgr.add_user_credential(username=localconfig.ADMIN_USERNAME,
                                              credential_type=UserAccessCredentialTypes.password,
-                                             value=localconfig.ADMIN_USER_DEFAULT_PASSWORD)
+                                             value=init_password)
 
             return True
         except Exception as err:

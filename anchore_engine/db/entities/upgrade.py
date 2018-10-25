@@ -113,12 +113,6 @@ def do_db_bootstrap(localconfig=None):
                 logger.exception('Error initializing system credentials on db bootstrap')
                 raise Exception("Initialization failed: could not initialize system credentials - exception: " + str(err))
 
-            try:
-                initializer.initialize_user_identities_from_config(config_credentials=localconfig.get('credentials'))
-            except Exception as err:
-                logger.exception('Error initializing user credentials on db bootstrap')
-                raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
-
 
 def run_upgrade():
     """

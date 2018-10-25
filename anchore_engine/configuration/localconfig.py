@@ -54,7 +54,9 @@ SYSTEM_ACCOUNT_NAME = 'anchore-system'
 SYSTEM_USERNAME = 'anchore-system'
 ADMIN_ACCOUNT_NAME = 'admin'
 ADMIN_USERNAME = 'admin'
-ADMIN_USER_DEFAULT_PASSWORD = 'foobar' # TODO: remove this, use a generated cred instead
+ADMIN_USER_DEFAULT_PASSWORD = 'foobar' # This is used if the config doesn't include a value for the key referenced by DEFAULT_ADMIN_PASSWORD_KEY
+DEFAULT_ADMIN_PASSWORD_KEY = 'default_admin_password'
+DEFAULT_ADMIN_EMAIL_KEY = 'default_admin_email'
 GLOBAL_RESOURCE_DOMAIN = 'system' # Used as the domain for things like accounts
 
 RESERVED_ACCOUNT_NAMES = [
@@ -315,7 +317,7 @@ def validate_config(config, validate_params=None):
                 raise Exception("no 'credentials' definition in configuration file")
             else:
                 credentials = config['credentials']
-                for check_key in ['database', 'users']:
+                for check_key in ['database']:
                     if check_key not in credentials:
                         raise Exception(
                             "no '" + str(check_key) + "' definition in 'credentials' section of configuration file")
@@ -327,21 +329,6 @@ def validate_config(config, validate_params=None):
                     if check_key not in credentials['database']:
                         raise Exception("no '" + str(
                             check_key) + "' definition in 'credentials'/'database' section of configuration file")
-
-                # users checks
-                if 'admin' not in credentials['users']:
-                    raise Exception("no 'admin' user defined in 'credentials'/'users' section of configuration file")
-                else:
-                    for username in list(credentials['users'].keys()):
-                        if not credentials['users'][username]:
-                            raise Exception("missing details for user '"+str(username)+"' in configuration file")
-                        user = credentials['users'][username]
-                        # for check_key in ['password', 'email', 'external_service_auths', 'registry_service_auths']:
-                        for check_key in ['password', 'email', 'external_service_auths']:
-                            if check_key not in user:
-                                raise Exception(
-                                    "required key '" + str(check_key) + "' missing from 'credentials'/'users'/'" + str(
-                                        username) + "' section of configuration file")
 
             # webhook checks
             if 'webhooks' in validate_params and validate_params['webhooks']:
