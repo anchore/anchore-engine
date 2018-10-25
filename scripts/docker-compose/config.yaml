@@ -68,6 +68,13 @@ auto_restart_services: True
 #  read_timeout_seconds: 60
 #
 
+# As of 0.3.0dev0 this section is used instead of the credentials.users section
+# Can be omitted and will default to 'foobar' on db initialization
+default_admin_password: 'foobar'
+
+# Can be ommitted and will default to 'admin@myanchore'
+default_admin_email: 'admin@myanchore'
+
 credentials:
   users:
      admin:
