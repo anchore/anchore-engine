@@ -1,6 +1,7 @@
 import time
 import sys
 import pkg_resources
+import os
 
 # anchore modules
 import anchore_engine.clients.services.common
@@ -12,6 +13,10 @@ from anchore_engine.clients.services import simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.service import ApiService, LifeCycleStages
 
+# from anchore_engine.subsys.logger import enable_bootstrap_logging
+# enable_bootstrap_logging()
+
+
 feed_sync_queuename = 'feed_sync_tasks'
 system_user_auth = None
 feed_sync_msg = {
@@ -19,15 +24,45 @@ feed_sync_msg = {
     'enabled': True
 }
 
+try:
+    feed_config_check_retries = int(os.getenv('FEED_CLIENT_CHECK_RETRIES', 3))
+except:
+    logger.exception('Error parsing env value FEED_CLIENT_CHECK_RETRIES into int, using default value of 3')
+    feed_config_check_retries = 3
+
+try:
+    feed_config_check_backoff = int(os.getenv('FEED_CLIENT_CKECK_BACKOFF', 5))
+except:
+    logger.exception('Error parsing env FEED_CLIENT_CHECK_BACKOFF value into int, using default value of 5')
+    feed_config_check_backoff = 5
+
 # service funcs (must be here)
 
 def _check_feed_client_credentials():
     from anchore_engine.clients.feeds.feed_service import get_client
-    logger.info('Checking feeds client credentials')
-    client = get_client()
-    client = None
-    logger.info('Feeds client credentials ok')
+    sleep_time = feed_config_check_backoff
+    last_ex = None
 
+    for i in range(feed_config_check_retries):
+        if i > 0:
+            logger.info("Waiting for {} seconds to try feeds client config check again".format(sleep_time))
+            time.sleep(sleep_time)
+            sleep_time += feed_config_check_backoff
+
+        try:
+            logger.info('Checking feeds client credentials. Attempt {} of {}'.format(i + 1, feed_config_check_retries))
+            client = get_client()
+            client = None
+            logger.info('Feeds client credentials ok')
+            return True
+        except Exception as e:
+            logger.warn("Could not verify feeds endpoint and/or config. Got exception: {}".format(e))
+            last_ex = e
+    else:
+        if last_ex:
+            raise last_ex
+        else:
+            raise Exception('Exceeded retries for feeds client config check. Failing check')
 
 def _system_creds():
     global system_user_auth
