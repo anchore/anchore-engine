@@ -171,6 +171,7 @@ def startup_service(service, configdir):
         logger.fatal('Could not start service due to: {}'.format(str(err)))
 
     logger.info("exiting service thread")
+
     return (False)
 
 config = {}
@@ -380,24 +381,43 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
         for service in services:
             pidfile = "/var/run/" + service + ".pid"
             try:
+                terminate_service(service, flush_pidfile=True)
+
                 service_thread = ServiceThread(startup_service, (service, configdir))
                 keepalive_threads.append(service_thread)
                 max_tries = 30
                 tries = 0
+                alive = True
                 while not os.path.exists(pidfile) and tries < max_tries:
+                    logger.info("waiting for service pidfile {} to exist {}/{}".format(pidfile, tries, max_tries))
+
+                    try:
+                        alive = service_thread.thread.is_alive()
+                    except:
+                        pass
+                    if not alive:
+                        logger.info("service thread has stopped {}".format(service))
+                        break
+
                     time.sleep(1)
                     tries = tries + 1
 
-                time.sleep(2)
+                logger.info("auto_restart_services setting: {}".format(localconfig.get('auto_restart_services', False)))
+                if not localconfig.get('auto_restart_services', False):
+                    logger.info("checking for startup failure pidfile={}, is_alive={}".format(os.path.exists(pidfile), alive))
+                    if not os.path.exists(pidfile) or not alive:
+                        raise Exception("service thread for ({}) failed to start".format(service))
+
+                time.sleep(1)
             except Exception as err:
                 startFailed = True
                 logger.warn("service start failed - exception: {}".format(str(err)))
+                break
 
         if startFailed:
             logger.fatal("one or more services failed to start. cleanly terminating the others")
             for service in services:
                 terminate_service(service, flush_pidfile=True)
-
             sys.exit(1)
         else:
             # start up the log watchers
@@ -409,7 +429,7 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
                 try:
                     while True:
                         time.sleep(1)
-                        if 'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
+                        if localconfig.get('auto_restart_services', False): #'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
                             for service_thread in keepalive_threads:
                                 if not service_thread.thread.is_alive():
                                     logger.info("restarting service: {}".format(service_thread.thread.name))
