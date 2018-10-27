@@ -27,6 +27,12 @@ produces:
 consumes:
   - application/json
 paths:
+  /health:
+    get:
+      descripton: "A healthcheck to call to verify availability. Returns 200 ok"
+      responses:
+        200:
+          descrption: "Ok healthy"
   /authorize:
     post:
       description: "Authorize a principal against a set of actions"

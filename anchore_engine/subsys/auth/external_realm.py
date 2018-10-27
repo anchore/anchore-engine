@@ -50,6 +50,7 @@ class ExternalAuthzRealm(AccountStoreRealm):
                     result_list.append((actions[i], False))
             except Exception as e:
                 logger.exception('Unexpected error invoking authorization plugin via client: {}'.format(e))
+                logger.error('Authorization plugin invocation error. Could not perform a proper authz check. Please check configuration and/or authz service status: {}'.format(self.__client__.url))
                 raise e
 
         return result_list

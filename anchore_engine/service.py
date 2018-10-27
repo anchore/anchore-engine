@@ -21,7 +21,10 @@ from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
 from anchore_engine import monitors
 from anchore_engine.db import db_services, session_scope, initialize as initialize_db
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.apis.authorization import init_authz_handler
+from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
+from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFail
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.catalog import CatalogClient
 
 
 class LifeCycleStages(enum.IntEnum):
@@ -525,6 +528,50 @@ class ApiService(BaseService):
             raise Exception('API not initialized yet. Must initialize the service or call initialize_api() before the application is available')
 
         return self._api_application.app
+
+
+    @staticmethod
+    def build_authz_heartbeat(service_name):
+        """
+        Returns the handler function itself (uses closure to pass some values in
+        :return:
+        """
+        def authz_heartbeat(*args, **kwargs):
+            cycle_timer = kwargs['mythread']['cycle_timer']
+            logger.info('Checking authz availability')
+            try:
+                host_id = localconfig.get_host_id()
+                authz_handlr = get_authorizer()
+                handler = authz_handlr.__class__.__name__
+                ex = None
+                try:
+                    result = authz_handlr.healthcheck()
+                except Exception as e:
+                    ex = e
+                    result = False
+
+                if not result:
+                    fail_event = ServiceAuthzPluginHealthCheckFail(user_id=localconfig.SYSTEM_ACCOUNT_NAME,
+                                                                   name=service_name,
+                                                                   host=host_id,
+                                                                   plugin=handler,
+                                                                   details=str(ex)
+                                                                   )
+                    logger.info('Sending healthcheck failure event: {}'.format(fail_event.__event_type__))
+
+                    try:
+                        client = internal_client_for(CatalogClient, localconfig.ADMIN_ACCOUNT_NAME)
+                        client.add_event(fail_event)
+                    except Exception as ex:
+                        logger.exception(
+                            'Failure to send authz healthcheck failure event: {}'.format(fail_event.to_json()))
+
+            except Exception as e:
+                logger.exception('Caught unexpected exception from the authz heartbeat handler')
+
+            time.sleep(cycle_timer)
+            return True
+        return authz_heartbeat
 
 
 class UserFacingApiService(ApiService):

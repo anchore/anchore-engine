@@ -190,6 +190,13 @@ class AuthzPluginHttpClient(BasicApiClient):
     Client for interacting with Authz Plugins
     """
 
+    def healthcheck(self):
+        resp = self.call_api(requests.get, 'health')
+        if resp.status_code != 200:
+            resp.raise_for_status()
+        else:
+            return True
+
     def authorize(self, principal: str, action_s: list):
         """
         Authorize the named principal against the set of actions

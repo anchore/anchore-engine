@@ -13,3 +13,4 @@ from .repositories import ListTagsFail
 from .tags import TagManifestParseFail
 from .policies import PolicyBundleSyncFail
 from .services import ServiceOrphanedEvent
+from .services import ServiceAuthzPluginHealthCheckFail

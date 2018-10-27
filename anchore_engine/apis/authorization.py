@@ -17,6 +17,7 @@ from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 from threading import RLock
 from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
+from anchore_engine.configuration import localconfig
 
 # Global authorizer configured
 _global_authorizer = None
@@ -185,6 +186,14 @@ class AuthorizationHandler(ABC):
     def notify(self, notification_type, notification_value):
         pass
 
+    @abstractmethod
+    def healthcheck(self):
+        """
+        Function to invoke to determine if handler is healthy and able to process requests
+        :return:
+        """
+        pass
+
 
 class DbAuthorizationHandler(AuthorizationHandler):
     """
@@ -210,6 +219,19 @@ class DbAuthorizationHandler(AuthorizationHandler):
         """
         logger.debug('no-op notification handler for event {} value {}'.format(notification_type, notification_type))
         return True
+
+    def healthcheck(self):
+        try:
+            with session_scope() as session:
+                mgr = idp_factory.for_session(session)
+                sys_usr = mgr.lookup_user(localconfig.SYSTEM_USERNAME)
+                if sys_usr is not None:
+                    logger.debug('Healthcheck for native authz handler returning ok')
+                    return True
+        except Exception as e:
+            logger.error('Healthcheck for native authz handler caught exception: {}'.format(e))
+
+        return False
 
     def authenticate(self, request):
         logger.debug('Authenticating with native auth handler')
@@ -390,6 +412,38 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
 
 class ExternalAuthorizationHandler(DbAuthorizationHandler):
+
+    def healthcheck(self):
+        """
+        Raises an exception on failure or returns True on success
+
+        :return:
+        """
+
+        internal_check = external_check = False
+
+        try:
+            internal_check = super().healthcheck()
+        except Exception as e:
+            logger.error('Caught exception from admin/native authz check: {}'.format(str(e)))
+            internal_check = False
+
+        try:
+            if not ExternalAuthzRealm.__client__:
+                logger.warn('Attempted health check for external authz handler but no client configured yet')
+                return False
+            else:
+                external_check = ExternalAuthzRealm.__client__.healthcheck()
+        except Exception as e:
+            logger.error('Healthcheck for external authz handler caught exception: {}'.format(e))
+            external_check = False
+
+        logger.debug('External authz healthcheck result: internal handler {}, external handler {}'.format(internal_check, external_check))
+        if internal_check and external_check:
+            return True
+        else:
+            raise Exception('Internal authz check returned {}, External authz check returned {}'.format(internal_check, external_check))
+
 
     def notify(self, notification_type, notification_value):
         """
