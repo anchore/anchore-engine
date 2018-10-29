@@ -639,8 +639,8 @@ def query_images_by_package(dbsession, request_inputs):
     ret_hash = {}
     pkg_hash = {}
     try:
-        ipm_query = dbsession.query(ImagePackage).filter(ImagePackage.name==pkg_name)
-        cpm_query = dbsession.query(ImageCpe).filter(ImageCpe.name==pkg_name)
+        ipm_query = dbsession.query(ImagePackage).filter(ImagePackage.name==pkg_name).filter(ImagePackage.image_user_id==userId)
+        cpm_query = dbsession.query(ImageCpe).filter(ImageCpe.name==pkg_name).filter(ImageCpe.image_user_id==userId)
 
         if pkg_version and pkg_version != 'None':
             ipm_query = ipm_query.filter(or_(ImagePackage.version==pkg_version, ImagePackage.fullversion==pkg_version))
@@ -742,8 +742,8 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         image_package_matches = []
         image_cpe_matches = []
 
-        ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id)
-        icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+        ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id).filter(ImagePackageVulnerability.pkg_user_id==userId)
+        icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.image_user_id==userId).filter(ImageCpe.version==CpeVulnerability.version)
 
         if severity_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability.has(severity=severity_filter))
