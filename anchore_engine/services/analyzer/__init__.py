@@ -464,6 +464,6 @@ class AnalyzerService(ApiService):
     __service_api_version__ = 'v1'
     __monitors__ = {
         'service_heartbeat': {'handler': anchore_engine.subsys.servicestatus.handle_service_heartbeat, 'taskType': 'handle_service_heartbeat', 'args': [__service_name__], 'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False, 'initialized': False},
-        'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 1, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
+        'image_analyzer': {'handler': handle_image_analyzer, 'taskType': 'handle_image_analyzer', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1, 'max_cycle_timer': 120, 'last_queued': 0, 'last_return': False, 'initialized': False},
         'handle_metrics': {'handler': handle_metrics, 'taskType': 'handle_metrics', 'args': [__service_name__], 'cycle_timer': 15, 'min_cycle_timer': 15, 'max_cycle_timer': 15, 'last_queued': 0, 'last_return': False, 'initialized': False},
     }

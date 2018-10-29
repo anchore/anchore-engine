@@ -131,7 +131,7 @@ services:
       image_watcher: 3600
       policy_eval: 3600
       vulnerability_scan: 14400
-      analyzer_queue: 1
+      analyzer_queue: 5
       notifications: 30
       service_watcher: 15
       policy_bundle_sync: 300
@@ -156,6 +156,8 @@ services:
     enabled: True
     require_auth: True
     cycle_timer_seconds: 1
+    cycle_timers:
+      image_analyzer: 5
     max_threads: 1
     analyzer_driver: 'nodocker'
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
