@@ -551,7 +551,7 @@ class ApiService(BaseService):
                     result = False
 
                 if not result:
-                    fail_event = ServiceAuthzPluginHealthCheckFail(user_id=localconfig.SYSTEM_ACCOUNT_NAME,
+                    fail_event = ServiceAuthzPluginHealthCheckFail(user_id=localconfig.ADMIN_ACCOUNT_NAME,
                                                                    name=service_name,
                                                                    host=host_id,
                                                                    plugin=handler,
