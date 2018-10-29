@@ -1,0 +1,3 @@
+pytest
+requests==2.20.0
+Flask-Testing
