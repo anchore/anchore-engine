@@ -1,0 +1,124 @@
+# The difference between this and docker-compose.yaml is the image. This should always reference the dev image rather than a stable release'
+---
+version: '2.1'
+volumes:
+  anchore-db-volume:
+    # Set this to 'true' to use an external volume. In which case, it must be created manually with "docker volume create anchore-db-volume"
+    external: false
+
+  anchore-scratch: {}
+
+services:
+  # The primary API endpoint service
+  engine-api:
+    image: anchore/anchore-engine:dev
+    depends_on:
+    - anchore-db
+    - engine-catalog
+    ports:
+    - "8228:8228"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+    - ANCHORE_ENDPOINT_HOSTNAME=engine-api
+    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "apiext"]
+
+  # Catalog is the primary persistence and state manager of the system
+  engine-catalog:
+    image: anchore/anchore-engine:dev
+    depends_on:
+    - anchore-db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    expose:
+    - 8228
+    environment:
+    - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
+    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "catalog"]
+  engine-simpleq:
+    image: anchore/anchore-engine:dev
+    depends_on:
+    - anchore-db
+    - engine-catalog
+    expose:
+    - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+    - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
+    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "simplequeue"]
+  engine-policy-engine:
+    image: anchore/anchore-engine:dev
+    depends_on:
+    - anchore-db
+    - engine-catalog
+    expose:
+    - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+    - ANCHORE_ENDPOINT_HOSTNAME=engine-policy-engine
+    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "policy_engine"]
+  engine-analyzer:
+    image: anchore/anchore-engine:dev
+    depends_on:
+    - anchore-db
+    - engine-catalog
+    expose:
+    - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+    - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
+    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_PASSWORD=mysecretpassword
+    volumes:
+    - anchore-scratch:/analysis_scratch
+    command: ["anchore-manager", "service", "start", "analyzer"]
+  anchore-db:
+    image: "postgres:9"
+    volumes:
+    - anchore-db-volume:/var/lib/postgresql/data
+    environment:
+    - POSTGRES_PASSWORD=mysecretpassword
+    expose:
+    - 5432
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+  # Kubernetes handler webhook. Uncomment to use, not typically needed for docker-compose installs
+#  kubehook:
+#    image: anchore/anchore-engine:dev
+#    depends_on:
+#    - anchore-db
+#    - engine-catalog
+#    ports:
+#    - "8338:8228"
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: 100m
+#    environment:
+#    - ANCHORE_DB_HOST=anchore-db
+#    - ANCHORE_DB_PASSWORD=mysecretpassword
+#    - ANCHORE_ENDPOINT_HOSTNAME=kubehook
+#    command: ["anchore-manager", "service", "start", "kubernetes_webhook"]

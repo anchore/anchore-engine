@@ -213,12 +213,13 @@ def do_list(anchore_module):
     return
 
 @service.command(name='start', short_help="Start anchore-engine")
+@click.argument('services', nargs=-1)
 @click.option("--auto-upgrade", is_flag=True, help="Perform automatic upgrade on startup")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB routines from (default=anchore_engine)")
 @click.option("--skip-config-validate", nargs=1, help="Comma-separated list of configuration file sections to skip specific validation processing (e.g. services,credentials,webhooks)")
 @click.option("--skip-db-compat-check", is_flag=True, help="Skip the database compatibility check.")
-@click.option("--service", multiple=True, envvar='ANCHORE_ENGINE_SERVICES')
-def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check, service=None):
+@click.option("--all", is_flag=True, default=False)
+def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check, all):
     """
     Startup and monitor service processes. Specify a list of service names or empty for all.
     """
@@ -238,10 +239,13 @@ def start(auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_che
     else:
         skip_db_compat_check = False
 
-    if service:
-        input_services = list(service)
+    if services:
+        input_services = list(services)
     else:
-        input_services = []
+        input_services = os.getenv('ANCHORE_ENGINE_SERVICES', '').strip().split()
+
+    if not input_services and not all:
+        raise click.exceptions.BadArgumentUsage('No services defined to start. Must either provide service arguments, ANCHORE_ENGINE_SERVICES env var, or --all option')
 
     try:
         validate_params = {
