@@ -492,7 +492,6 @@ definitions:
       user_id:
         type: string
       content:
-        type: object
         $ref: "#/definitions/TableStyleResult"
   TableStyleResult:
     type: object
