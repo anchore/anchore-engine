@@ -31,7 +31,7 @@ except:
     feed_config_check_retries = 3
 
 try:
-    feed_config_check_backoff = int(os.getenv('FEED_CLIENT_CKECK_BACKOFF', 5))
+    feed_config_check_backoff = int(os.getenv('FEED_CLIENT_CHECK_BACKOFF', 5))
 except:
     logger.exception('Error parsing env FEED_CLIENT_CHECK_BACKOFF value into int, using default value of 5')
     feed_config_check_backoff = 5
