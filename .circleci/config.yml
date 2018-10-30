@@ -123,19 +123,16 @@ jobs:
       - run:
           name: docker compose
           command: |
-            cd scripts/docker-compose
-            sed -i "s|/root|${PWD}|; s|docker.io/anchore/anchore-engine:latest|${IMAGE_NAME}:ci|" docker-compose.yaml
-            mkdir config db
-            cp config.yaml config/
             docker-compose up -d
-            docker logs docker-compose_anchore-engine_1
+            docker-compose ps
+            docker-compose logs engine-api
       - run:
           name: run test
           command: |
-            docker run -td --net=host --name anchore-cli docker.io/anchore/engine-cli:latest tail -f /dev/null
+            docker run -td --net=host --name anchore-cli -e ANCHORE_CLI_USER=admin -e ANCHORE_CLI_PASS=foobar docker.io/anchore/engine-cli:latest tail -f /dev/null
             sleep 60
-            docker logs docker-compose_anchore-engine_1
-            docker exec anchore-cli anchore-cli --u admin --p foobar system status
+            docker-compose logs engine-api
+            docker exec anchore-cli anchore-cli system status
             cd ~/build/scripts/tests/
             python aetest.py docker.io/alpine:latest anchore-cli
             python aefailtest.py docker.io/alpine:latest anchore-cli
