@@ -21,7 +21,13 @@ def rpm_get_all_packages_detail(unpackdir):
         for l in sout.splitlines():
             l = l.strip()
             l = str(l, 'utf-8')
-            (name, vers, rel, arch, size, lic, source, vendor) = l.split("|ANCHORETOK|")
+            (name, vers, rel, arch, rawsize, lic, source, vendor) = l.split("|ANCHORETOK|")
+
+            try:
+                size = str(int(rawsize))
+            except:
+                size = str(0)
+
             vendor = vendor + " (vendor)"
             rpms[name] = {'version':vers, 'release':rel, 'arch':arch, 'size':size, 'license':lic, 'sourcepkg':source, 'origin':vendor, 'type':'rpm'}
     except:
@@ -37,16 +43,16 @@ def dpkg_get_all_packages_detail(unpackdir):
         for l in sout.splitlines(True):
             l = l.strip()
             l = str(l, 'utf-8')
-            (p, v, arch, size, source, vendor) = l.split("|ANCHORETOK|")
+            (p, v, arch, rawsize, source, vendor) = l.split("|ANCHORETOK|")
+
+            try:
+                size = str(int(rawsize) * 1000)
+            except:
+                size = str(0)
 
             vendor = str(vendor) + " (maintainer)"
             arch = str(arch)
             source = str(source)
-
-            try:
-                size = str(int(size) * 1000)
-            except:
-                size = str(0)
 
             try:
                 licfile = '/'.join([unpackdir, 'rootfs/usr/share/doc/', p, 'copyright'])

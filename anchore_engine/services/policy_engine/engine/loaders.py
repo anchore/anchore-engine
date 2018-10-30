@@ -384,7 +384,12 @@ class ImageLoader(object):
             p.name = pkg_name
             p.version = metadata.get('version')
             p.origin = metadata.get('origin')
-            p.size = metadata.get('size')
+            try:
+                psize = int(metadata.get('size', 0))
+            except:
+                psize = 0
+            p.size = psize
+            #p.size = metadata.get('size')
             p.arch = metadata.get('arch')
             p.license = metadata.get('license') if metadata.get('license') else metadata.get('lics')
             p.release = metadata.get('release', 'N/A')
