@@ -5,9 +5,6 @@ from anchore_engine.apis.authentication import idp_factory
 import json
 
 
-from passlib.context import CryptContext
-
-
 class DbAccountStore(account_abcs.CredentialsAccountStore,
                         account_abcs.AuthorizationAccountStore):
     """
@@ -35,7 +32,6 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
     def __init__(self, settings=None):
         logger.info('Initializing account store')
         self.settings = settings
-        #self.cc = CryptContext(schemes=['argon2', 'bcrypt_sha256', 'sha256_crypt'])
 
     # CredentialAccountStore functions
 
@@ -80,7 +76,6 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
 
             if creds:
                 result_account['authc_info'] = {
-                    #cred.type.value: {'credential': self.cc.hash(cred.value), 'failed_attempts': []} for cred in creds
                     cred.type.value: {'credential': cred.value, 'failed_attempts': []} for cred in creds
                 }
 
