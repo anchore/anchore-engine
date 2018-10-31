@@ -35,7 +35,7 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
     def __init__(self, settings=None):
         logger.info('Initializing account store')
         self.settings = settings
-        self.cc = CryptContext(schemes=['argon2', 'bcrypt_sha256', 'sha256_crypt'])
+        #self.cc = CryptContext(schemes=['argon2', 'bcrypt_sha256', 'sha256_crypt'])
 
     # CredentialAccountStore functions
 
@@ -80,7 +80,8 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
 
             if creds:
                 result_account['authc_info'] = {
-                    cred.type.value: {'credential': self.cc.hash(cred.value), 'failed_attempts': []} for cred in creds
+                    #cred.type.value: {'credential': self.cc.hash(cred.value), 'failed_attempts': []} for cred in creds
+                    cred.type.value: {'credential': cred.value, 'failed_attempts': []} for cred in creds
                 }
 
                 logger.debug('Returning found authc credentials for {}'.format(authc_token))

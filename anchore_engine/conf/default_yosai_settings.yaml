@@ -22,7 +22,8 @@ SECURITY_MANAGER_CONFIG:
     realms:
       yosai.core.AccountStoreRealm:
         account_store: anchore_engine.subsys.auth.stores.basic.DbAccountStore
-        authc_verifiers: yosai.core.PasslibVerifier
+        #authc_verifiers: yosai.core.PasslibVerifier
+        authc_verifiers: anchore_engine.subsys.auth.stores.verifier.SimpleVerifier
     cache_handler: anchore_engine.subsys.auth.util.caches.SimpleMemoryCache
     session_attributes: null
 
