@@ -10,7 +10,7 @@ from anchore_engine.subsys import logger
 from connexion import request as request_proxy
 from anchore_engine.apis.context import ApiRequestContextProxy
 from yosai.core import Yosai, exceptions as auth_exceptions, UsernamePasswordToken
-from anchore_engine.db import session_scope, AccountTypes
+from anchore_engine.db import session_scope, AccountTypes, AccountStates
 import pkg_resources
 import functools
 from anchore_engine.common.helpers import make_response_error
@@ -24,6 +24,7 @@ _global_authorizer = None
 
 INTERNAL_SERVICE_ALLOWED = [AccountTypes.admin, AccountTypes.service]
 
+
 class UnauthorizedError(Exception):
     def __init__(self, required_permissions):
         if type(required_permissions) != list:
@@ -33,6 +34,15 @@ class UnauthorizedError(Exception):
         perm_str = ','.join('domain={} action={} target={}'.format(perm[0], perm[1], '*' if len(perm) == 2 else perm[2]) for perm in required_permissions)
         super(UnauthorizedError, self).__init__('Not authorized. Requires permissions: {}'.format(perm_str))
         self.required_permissions = required_permissions
+
+
+class AccountStateError(UnauthorizedError):
+    def __init__(self):
+        super(AccountStateError, self).__init__([])
+        self.msg = 'Not authorized. Account not enabled.'
+
+    def __str__(self):
+        return self.msg
 
 
 class UnauthorizedAccountError(Exception):
@@ -266,6 +276,10 @@ class DbAuthorizationHandler(AuthorizationHandler):
         if subject.primary_identifier != identity.username:
             raise UnauthorizedError(permission_list)
 
+        # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
+        if not identity.user_account_state or identity.user_account_state != AccountStates.enabled:
+            raise AccountStateError()
+
         logger.debug('Checking permission: {}'.format(permission_list))
         try:
             subject.check_permission(permission_list, logical_operator=all)
@@ -388,7 +402,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                             try:
                                 self.authorize(identity, permissions_final)
                             except UnauthorizedError as ex:
-                                raise
+                                raise ex
                             except Exception as e:
                                 logger.exception('Error doing authz: {}'.format(e))
                                 raise UnauthorizedError(permissions_final)
