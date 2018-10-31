@@ -123,6 +123,7 @@ jobs:
       - run:
           name: docker compose
           command: |
+            sed -i 's/engine:dev/engine:ci/g' docker-compose.yaml
             docker-compose up -d
             docker-compose ps
             docker-compose logs engine-api
