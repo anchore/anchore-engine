@@ -160,7 +160,14 @@ jobs:
             else
               false
             fi
-
+  trigger_downstream:
+    steps:
+      - run:
+          name: Trigger Downstream Builds
+          command: |
+            if [ "${IMAGE_NAME}" == "anchore-engine" ] && [ "${IMAGE_TAG}" == "dev" ]; then
+              echo Triggering downstream build
+              curl -X POST -H "Content-Type: application/json" -d '{"branch": "master"}' ${DOWNSTREAM_TRIGGER_URL}
 workflows:
   version: 2
   default_workflow:
@@ -185,3 +192,7 @@ workflows:
       - push_dockerhub:
           requires:
             - functional_tests
+      - trigger_downstream:
+          requires:
+            - push_dockerhub
+
