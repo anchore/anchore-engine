@@ -24,7 +24,7 @@ var_1: &load_docker_image
 
 var_2: &attach_workspace
   attach_workspace:
-      at: /home/circleci/workspace/
+    at: /home/circleci/workspace/
 
 # Start circleci configuration
 version: 2
@@ -38,9 +38,9 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-          - v1-dependencies-{{ checksum "requirements.txt" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
       - run:
           name: install dependencies
           command: |
@@ -199,4 +199,3 @@ workflows:
       - trigger_downstream:
           requires:
             - push_dockerhub
-
