@@ -166,8 +166,8 @@ def init_database(upgrade_module=None, localconfig=None, do_db_compatibility_che
             if code_versions and not db_versions:
                 logger.info("DB not initialized: initializing tables...")
                 upgrade_module.do_create_tables()
-                upgrade_module.do_db_bootstrap(localconfig=localconfig)
-                upgrade_module.do_version_update(db_versions, code_versions)
+                upgrade_module.do_db_bootstrap(localconfig=localconfig, db_versions=db_versions, code_versions=code_versions)
+                #upgrade_module.do_version_update(db_versions, code_versions)
                 code_versions, db_versions = upgrade_module.get_versions()
         except Exception as err:
             raise err

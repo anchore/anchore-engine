@@ -101,7 +101,7 @@ def do_create_tables(specific_tables=None):
     print ("DB Tables created")
     return(True)
 
-def do_db_bootstrap(localconfig=None):
+def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
     from anchore_engine.db import session_scope
 
     with upgrade_context(my_module_upgrade_id) as ctx:
@@ -113,6 +113,8 @@ def do_db_bootstrap(localconfig=None):
                 logger.exception('Error initializing system credentials on db bootstrap')
                 raise Exception("Initialization failed: could not initialize system credentials - exception: " + str(err))
 
+        if db_versions and code_versions:
+            do_version_update(db_versions, code_versions)
 
 def run_upgrade():
     """
