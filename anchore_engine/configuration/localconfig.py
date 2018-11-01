@@ -39,8 +39,9 @@ DEFAULT_CONFIG = {
             'enabled': True,
             'feeds': {
                 'vulnerabilities': True,
-                'packages': False,
-                'nvd': False
+                'packages': True,
+                'nvd': True,
+                'snyk': True
             }
         }
     }
