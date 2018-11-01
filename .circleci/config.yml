@@ -161,6 +161,7 @@ jobs:
               false
             fi
   trigger_downstream:
+    machine: true
     steps:
       - run:
           name: Trigger Downstream Builds
