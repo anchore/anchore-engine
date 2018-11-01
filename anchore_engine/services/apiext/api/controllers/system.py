@@ -52,6 +52,22 @@ def ping():
     return ApiRequestContextProxy.get_service().__service_api_version__, 200
 
 
+def health_noop():
+    """
+    NOTE: not actually used. This is handled upstream by the twisted service wrapper
+    :return:
+    """
+    return '', 200
+
+
+def version_noop():
+    """
+    NOTE: not actually used. This is handled upstream by the twisted service wrapper
+    :return:
+    """
+    return '', 200
+
+
 @authorizer.requires([]) # Any authenticated user
 def get_status():
     """

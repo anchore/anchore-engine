@@ -135,7 +135,7 @@ def get_users_account():
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            account = mgr.get_account(ApiRequestContextProxy.namespace())
+            account = mgr.get_account(ApiRequestContextProxy.identity().user_account)
             return account_db_to_msg(account), 200
     except Exception as ex:
         logger.exception('API Error')
