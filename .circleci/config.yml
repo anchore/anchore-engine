@@ -169,6 +169,9 @@ jobs:
             if [ "${IMAGE_NAME}" == "anchore-engine" ] && [ "${IMAGE_TAG}" == "dev" ]; then
               echo Triggering downstream build
               curl -X POST -H "Content-Type: application/json" -d '{"branch": "master"}' ${DOWNSTREAM_TRIGGER_URL}
+            else
+              echo Skipping downstream push because pushed image is not anchore-engine:dev
+            fi
 workflows:
   version: 2
   default_workflow:
