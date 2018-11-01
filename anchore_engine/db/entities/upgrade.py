@@ -113,8 +113,7 @@ def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
                 logger.exception('Error initializing system credentials on db bootstrap')
                 raise Exception("Initialization failed: could not initialize system credentials - exception: " + str(err))
 
-        if db_versions and code_versions:
-            do_version_update(db_versions, code_versions)
+        do_version_update(db_versions, code_versions)
 
 def run_upgrade():
     """
