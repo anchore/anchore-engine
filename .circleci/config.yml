@@ -166,7 +166,7 @@ jobs:
       - run:
           name: Trigger Downstream Builds
           command: |
-            if [ "${IMAGE_NAME}" == "anchore-engine" ] && [ "${IMAGE_TAG}" == "dev" ]; then
+            if [ "${IMAGE_NAME}" == "docker.io/anchore/anchore-engine" ] && [ "${IMAGE_TAG}" == "dev" ]; then
               echo Triggering downstream build
               curl -X POST -H "Content-Type: application/json" -d '{"branch": "master"}' ${DOWNSTREAM_TRIGGER_URL}
             else
