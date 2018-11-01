@@ -55,6 +55,13 @@ securityDefinitions:
     type: basic
 security:
 - basicAuth: []
+parameters:
+  AsAccountParameter:
+    name: x-anchore-account
+    in: header
+    required: false
+    type: string
+    description: An account name to change the resource scope of the request to that account, if permissions allow (admin only)
 paths:
   /:
     get:
@@ -82,6 +89,7 @@ paths:
         type: boolean
         required: false
         description: Include policy bundle detail in the form of the full bundle content for each entry
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Policy listing
@@ -101,6 +109,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/PolicyBundle"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Saved bundle
@@ -129,6 +138,7 @@ paths:
         type: boolean
         required: false
         description: Include policy bundle detail in the form of the full bundle content for each entry
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: A list with a single fetched policy bundle record
@@ -161,6 +171,7 @@ paths:
         type: boolean
         required: false
         description: Mark policy as active
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: A list with a single updated policy bundle record
@@ -183,6 +194,7 @@ paths:
         in: path
         required: true
         type: string
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Delete success
@@ -213,6 +225,7 @@ paths:
         type: string
         description: "filter only subscriptions matching type"
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Subscription listing
@@ -236,6 +249,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/SubscriptionRequest"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Subscription add success
@@ -254,6 +268,7 @@ paths:
         in: path
         required: true
         type: string
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Filtered subscription list by type
@@ -280,6 +295,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/SubscriptionUpdate"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Subscription add success
@@ -297,6 +313,7 @@ paths:
         in: path
         required: true
         type: string
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Delete success
@@ -318,6 +335,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/ImageAnalysisReport"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Import task accepted
@@ -336,6 +354,8 @@ paths:
       x-anchore-authz-action: listImages
       summary: List all visible image digests and tags
       description: List all image tags visible to the user
+      parameters:
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: "successful operation"
@@ -370,6 +390,7 @@ paths:
         in: body
         schema:
           $ref: "#/definitions/ImageAnalysisRequest"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Successfully added image to analysis queue
@@ -404,6 +425,7 @@ paths:
         required: false
         type: string
         description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: "successful operation"
@@ -426,6 +448,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image lookup success
@@ -451,6 +474,7 @@ paths:
         in: query
         required: false
         type: boolean
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image deletion success
@@ -467,6 +491,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image lookup success
@@ -492,6 +517,7 @@ paths:
         in: query
         required: false
         type: boolean
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image deletion success
@@ -534,6 +560,7 @@ paths:
         in: query
         required: false
         type: boolean
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Policy evaluation success
@@ -574,6 +601,7 @@ paths:
         in: query
         required: false
         type: boolean
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Policy evaluation success
@@ -598,6 +626,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Vulnerability listing for the image
@@ -640,6 +669,7 @@ paths:
         in: query
         type: boolean
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Vulnerability listing for the image
@@ -664,6 +694,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Vulnerability listing for the image
@@ -698,6 +729,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Vulnerability listing for the image
@@ -722,6 +754,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content listing for the image
@@ -748,6 +781,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -778,6 +812,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -802,6 +837,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -826,6 +862,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -854,6 +891,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -878,6 +916,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -902,6 +941,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Content of specified type from the image
@@ -925,6 +965,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Metadata listing for the image
@@ -954,6 +995,7 @@ paths:
         in: path
         type: string
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Metadata of specified type from the image
@@ -987,6 +1029,7 @@ paths:
         type: string
         description: "use specified existing tag to perform repo scan (default is 'latest')"
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Repository and discovered tags added
@@ -1002,6 +1045,8 @@ paths:
       x-anchore-authz-action: listRegistries
       summary: List configured registries
       description: List all configured registries the system can/will watch
+      parameters:
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Registry listing
@@ -1026,6 +1071,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/RegistryConfigurationRequest"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Saved registry configuration
@@ -1049,6 +1095,7 @@ paths:
         in: path
         required: true
         type: string
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Registry configuration
@@ -1077,6 +1124,7 @@ paths:
         required: true
         schema:
           $ref: "#/definitions/RegistryConfigurationRequest"
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Updated registry configuration
@@ -1099,6 +1147,7 @@ paths:
         in: path
         required: true
         type: string
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Delete success
@@ -1356,6 +1405,7 @@ paths:
         description: Number of events in the result set. Defaults to 100 if left empty
         required: false
         default: 100
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Paginated list of event records and the next token
@@ -1385,6 +1435,7 @@ paths:
         type: string
         description: Delete events that match the level - INFO or ERROR
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: List of deleted event IDs
@@ -1411,6 +1462,7 @@ paths:
         type: string
         description: "Event ID of the event for lookup"
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Single event record
@@ -1430,6 +1482,7 @@ paths:
         type: string
         description: "Event ID of the event to be deleted"
         required: true
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Delete success
@@ -1487,6 +1540,7 @@ paths:
         type: integer
         description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image lookup success
@@ -1531,6 +1585,7 @@ paths:
         type: integer
         description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
         required: false
+      - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
           description: Image listing
@@ -1547,7 +1602,7 @@ paths:
       - Queries
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.query"
       operationId: query_vulnerabilities
-      x-anchore-authz-action: listImages
+      x-anchore-authz-action: None
       summary: Listing information about given vulnerability
       description: List (w/filters) vulnerability records known by the system, with affected packages information if present
       parameters:
