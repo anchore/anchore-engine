@@ -74,6 +74,26 @@ paths:
           description: Version check response, returns the api version prefix (e.g. 'v1')
           schema:
             type: string
+  /health:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: health_noop
+      x-anchore-authz-action: None
+      description: Health check, returns 200 and no body if service is running
+      responses:
+        200:
+          description: Empty body on success
+  /version:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: version_noop
+      x-anchore-authz-action: None
+      description: Returns the version object for the service, including db schema version info
+      responses:
+        200:
+          description: Version object describing version state
+          schema:
+            $ref: "#/definitions/ServiceVersion"
   /policies:
     get:
       tags:
@@ -3186,3 +3206,26 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/AccessCredential"
+  ServiceVersion:
+    type: object
+    description: Version information for a service
+    properties:
+      service:
+        type: object
+        properties:
+          version:
+            type: string
+            description: Semantic Version string of the service implementation
+      api:
+        type: object
+        description: Api Version string
+        properties:
+          version:
+            type: string
+            description: Semantic version of the api
+      db:
+        type: object
+        properties:
+          schema_version:
+            type: string
+            description: Semantic version of the db schema
