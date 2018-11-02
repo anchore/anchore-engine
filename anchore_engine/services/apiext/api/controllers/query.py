@@ -13,7 +13,7 @@ import anchore_engine.common
 
 authorizer = get_authorizer()
 
-@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+@authorizer.requires([])
 def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, affected_package_version=None):
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'id': id, 'page': page, 'limit': limit, 'affected_package': affected_package, 'affected_package_version': None})
     method = request_inputs['method']
