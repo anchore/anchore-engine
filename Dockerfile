@@ -49,13 +49,14 @@ ENV ANCHORE_CONFIG_DIR=/config \
     SET_HOSTID_TO_HOSTNAME=false \
     ANCHORE_CLI_USER=admin \
     ANCHORE_CLI_PASS=foobar \
+    ANCHORE_SERVICE_PORT=8228 \
     ANCHORE_CLI_URL="http://localhost:8228" \
     ANCHORE_FEEDS_URL="https://ancho.re/v1/service/feeds" \
     ANCHORE_FEEDS_CLIENT_URL="https://ancho.re/v1/account/users" \
     ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token"
 
 
-EXPOSE 8228
+EXPOSE ${ANCHORE_SERVICE_PORT}
 RUN apt -y update && \
     apt -y install git curl psmisc rpm python3-minimal python3-pip && \
     pip3 install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \

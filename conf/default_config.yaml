@@ -83,7 +83,7 @@ services:
     require_auth: true
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
     authorization_handler: ${ANCHORE_AUTHZ_HANDLER}
     authorization_handler_config:
       endpoint: ${ANCHORE_EXTERNAL_AUTHZ_ENDPOINT}
@@ -92,7 +92,7 @@ services:
     require_auth: false
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
     authorization_handler: ${ANCHORE_AUTHZ_HANDLER}
     authorization_handler_config:
       endpoint: ${ANCHORE_EXTERNAL_AUTHZ_ENDPOINT}
@@ -101,7 +101,7 @@ services:
     require_auth: true
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
 # NOTE: use the below external_* parameters to define the port/tls
 # setting that will allow other internal services to access this
 # service - if left unset services will use the above,
@@ -136,7 +136,7 @@ services:
     require_auth: true
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: false
   analyzer:
@@ -147,7 +147,7 @@ services:
     analyzer_driver: 'nodocker'
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: false
   policy_engine:
@@ -155,7 +155,7 @@ services:
     require_auth: true
     endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
     listen: '0.0.0.0'
-    port: 8228
+    port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: false
     cycle_timer_seconds: 1
