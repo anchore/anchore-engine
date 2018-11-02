@@ -26,7 +26,6 @@ DEFAULT_CONFIG = {
     'docker_conn': 'unix://var/run/docker.sock',
     'docker_conn_timeout': 600,
     'allow_awsecr_iam_auto': False,
-    'policy_sync_url': 'https://ancho.re/v1/service/policies/policy',
     'feeds': {
         'anonymous_user_username': 'anon@ancho.re',
         'anonymous_user_password': 'pbiU2RYZ2XrmYQ',

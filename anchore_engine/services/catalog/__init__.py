@@ -27,8 +27,7 @@ from anchore_engine.subsys import notifications, taskstate, logger, archive
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.subsys.events as events
 from anchore_engine.utils import AnchoreException
-from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError, \
-    PolicyBundleDownloadError, PolicyBundleValidationError, PolicySyncUrlNotFound
+from anchore_engine.services.catalog.exceptions import TagManifestParseError, TagManifestNotFoundError, PolicyBundleValidationError
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.subsys.identities import manager_factory
@@ -931,177 +930,6 @@ def handle_analyzer_queue(*args, **kwargs):
     return (True)
 
 
-def sync_policy_bundle(userId, anchoreio_user, anchoreio_pw, localconfig):
-    url = localconfig.get('policy_sync_url', None)
-    if not url:
-        raise PolicySyncUrlNotFound(msg="cannot read policy_sync_url from loaded configuration")
-
-    client = anchore_engine.clients.anchoreio.get_anchoreio_client(anchoreio_user, anchoreio_pw)
-
-    bundledata = None
-    r = client.authenticated_get(url)
-    if r.get('status_code') == 200 and r.get('success'):
-        bundledataraw = r.get('text')
-        if bundledataraw:
-            bundledata = json.loads(bundledataraw).get('bundle')
-    else:
-        raise PolicyBundleDownloadError(url=url, status=r.get('status_code'), cause=r.get('text', ""))
-
-    # schema check
-    try:
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        user_auth = localconfig['system_user_auth']
-        verify = localconfig.get('internal_ssl_verify', True)
-
-        p_client = internal_client_for(PolicyEngineClient, userId)
-        response = p_client.validate_bundle(bundledata)
-        if not response.valid:
-            raise PolicyBundleValidationError(cause='Invalid policy bundle')
-    except Exception as err:
-        raise PolicyBundleValidationError(
-            cause='Error response from policy service during bundle validation: {}'.format(err))
-
-    return (bundledata)
-
-
-def handle_policy_bundle_sync(*args, **kwargs):
-    global system_user_auth, bundle_user_last_updated
-
-    watcher = str(kwargs['mythread']['taskType'])
-    handler_success = True
-
-    timer = time.time()
-    logger.debug("FIRING: " + str(watcher))
-
-    all_ready = anchore_engine.clients.services.common.check_services_ready(['policy_engine'])
-    count = 0
-    retries = 10
-    while (not all_ready) and (count < retries):
-        logger.info("policy engine is not yet ready - retrying {}/{}".format(count, retries))
-        time.sleep(1)
-        count = count + 1
-        all_ready = anchore_engine.clients.services.common.check_services_ready(['policy_engine'])
-
-    if not all_ready:
-        logger.warn("policy engine not ready after {} retries - will try again next cycle".format(retries))
-        logger.debug("FIRING DONE: " + str(watcher))
-        return (True)
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    with db.session_scope() as dbsession:
-        event = None
-        mgr = manager_factory.for_session(dbsession)
-        accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
-
-        for account in accounts:
-            userId = account['name']
-            if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
-                continue
-
-            try:
-                autosync = False
-                try:
-                    autosync = localconfig['credentials']['users'][userId]['auto_policy_sync']
-                except:
-                    pass
-
-                if not autosync:
-                    logger.debug(
-                        "user (" + str(userId) + ") has auto_policy_sync set to false in config - skipping bundle sync")
-                    continue
-                else:
-                    logger.debug("user (" + str(
-                        userId) + ") has auto_policy_sync set to true in config - attempting bundle sync")
-
-                anchorecredstr = \
-                localconfig['credentials']['users'][userId]['external_service_auths']['anchoreio']['anchorecli']['auth']
-                anchore_user, anchore_pw = anchorecredstr.split(':')
-
-                try:
-                    anchore_user_bundle = sync_policy_bundle(account['userId'], anchore_user,
-                                                             anchore_pw, localconfig)
-                except AnchoreException as err:
-                    event = events.PolicyBundleSyncFail(user_id=account['userId'], error=err.to_dict())
-                    raise err
-
-                # with localanchore.get_anchorelock():
-                #    anchore_user_bundle = localanchore.get_bundle(anchore_user, anchore_pw)
-                # try:
-                #    import anchore.anchore_policy
-                #    rc = anchore.anchore_policy.verify_policy_bundle(bundle=anchore_user_bundle)
-                #    if not rc:
-                #        raise Exception("input bundle does not conform to anchore bundle schema")
-                # except Exception as err:
-                #    raise Exception("cannot run bundle schema verification - exception: " + str(err))
-
-                # TODO should compare here to determine if new bundle is different from stored/active bundle
-                do_update = True
-                try:
-                    current_policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
-                    if current_policy_record:
-                        current_policy_bundle = archive.get_document(userId, 'policy_bundles',
-                                                                     current_policy_record['policyId'])
-                        if current_policy_bundle and current_policy_bundle == anchore_user_bundle:
-                            logger.debug("synced bundle is the same as currently installed/active bundle")
-                            do_update = False
-
-                            # special case for upgrade when adding the policy_source column
-                            try:
-                                if current_policy_record['policy_source'] == 'local':
-                                    logger.debug(
-                                        "upgrade case detected - need to write policy_source as anchoreio for existing policy bundle")
-                                    do_update = True
-                            except:
-                                pass
-
-                        else:
-                            logger.debug("synced bundle is different from currently installed/active bundle")
-                            do_update = True
-                except Exception as err:
-                    logger.warn("unable to compare synced bundle with current bundle: " + str(err))
-
-                if do_update:
-
-                    logger.spew("synced bundle object: " + json.dumps(anchore_user_bundle, indent=4))
-                    new_policybundle_record = anchore_engine.common.helpers.make_policy_record(userId,
-                                                                                               anchore_user_bundle,
-                                                                                               policy_source="anchore.io",
-                                                                                               active=True)
-                    logger.spew("created new bundle record: " + json.dumps(new_policybundle_record, indent=4))
-
-                    policyId = new_policybundle_record['policyId']
-                    rc = archive.put_document(userId, 'policy_bundles', policyId, anchore_user_bundle)
-                    logger.debug("bundle record archived: " + str(userId) + " : " + str(policyId))
-                    rc = db_policybundle.update(policyId, userId, True, new_policybundle_record, session=dbsession)
-                    logger.debug("bundle record stored: " + str(userId) + " : " + str(policyId))
-                    if not rc:
-                        raise Exception("DB update failed")
-                    else:
-                        rc = db_policybundle.set_active_policy(policyId, userId, session=dbsession)
-                        bundle_user_last_updated[userId] = 0
-            except Exception as err:
-                logger.warn("no valid bundle available for user (" + str(userId) + ") - exception: " + str(err))
-            finally:
-                if event:
-                    _add_event(event)
-
-    logger.debug("FIRING DONE: " + str(watcher))
-    try:
-        kwargs['mythread']['last_return'] = handler_success
-    except:
-        pass
-
-    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
-        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
-                                                      function=watcher, status="success")
-    else:
-        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
-                                                      function=watcher, status="fail")
-
-    return (True)
-
-
 def handle_notifications(*args, **kwargs):
     global system_user_auth
 
@@ -1533,10 +1361,6 @@ watchers = {
     'policy_eval': {'handler': handle_policyeval, 'task_lease_id': 'policy_eval', 'taskType': 'handle_policyeval',
                     'args': [], 'cycle_timer': 300, 'min_cycle_timer': 60, 'max_cycle_timer': 86400 * 2,
                     'last_queued': 0, 'last_return': False, 'initialized': False},
-    'policy_bundle_sync': {'handler': handle_policy_bundle_sync, 'task_lease_id': 'policy_bundle_sync',
-                           'taskType': 'handle_policy_bundle_sync', 'args': [], 'cycle_timer': 3600,
-                           'min_cycle_timer': 300, 'max_cycle_timer': 86400 * 2, 'last_queued': 0, 'last_return': False,
-                           'initialized': False},
     'analyzer_queue': {'handler': handle_analyzer_queue, 'task_lease_id': 'analyzer_queue',
                        'taskType': 'handle_analyzer_queue', 'args': [], 'cycle_timer': 5, 'min_cycle_timer': 1,
                        'max_cycle_timer': 7200, 'last_queued': 0, 'last_return': False, 'initialized': False},
