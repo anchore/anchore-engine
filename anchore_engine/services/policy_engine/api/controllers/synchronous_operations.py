@@ -4,17 +4,18 @@ Controller for all synchronous web operations. These are handled by the main web
 Async operations are handled by teh async_operations controller.
 
 """
-
+import connexion
+import datetime
+import enum
+from flask import abort, Response
 import json
 import time
 import hashlib
+import os
 import re
-import datetime
-
-import connexion
-from flask import abort, Response
-from werkzeug.exceptions import HTTPException
+import collections
 from sqlalchemy import or_, and_
+from werkzeug.exceptions import HTTPException
 
 
 import anchore_engine.subsys.servicestatus
@@ -26,7 +27,7 @@ from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, ImageCpe, CpeVulnerability, get_thread_scoped_session as get_session, ImagePackageVulnerability, CatalogImageDocker, ImageCpe,CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata, db_catalog_image
+from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, CpeVulnerability, Vulnerability, ImagePackage, NvdMetadata, db_catalog_image, CachedPolicyEvaluation
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -36,19 +37,21 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_
 from anchore_engine.db import DistroNamespace
 from anchore_engine.subsys import logger as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
-
+from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.clients.services import internal_client_for, catalog
 
 authorizer = get_authorizer()
 
-
 # Leave this here to ensure gates registry is fully loaded
-import anchore_engine.subsys.metrics
+from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version', 'CVES']
 
 # Toggle of lock usage, primarily for testing and debugging usage
 feed_sync_locking_enabled = True
+
+evaluation_cache_enabled = (os.getenv('ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED', 'true').lower() == 'true')
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -95,7 +98,24 @@ class ImageMessageMapper(object):
         db_obj.last_modified = msg.last_modified
         return db_obj
 
+
 msg_mapper = ImageMessageMapper()
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def get_cache_status():
+    return {"enabled": evaluation_cache_enabled}, 200
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def set_cache_status(status):
+    global evaluation_cache_enabled
+
+    if status.get('enabled') is not None and type(status.get('enabled')) == bool:
+        evaluation_cache_enabled = status.get('enabled')
+        return {"enabled": evaluation_cache_enabled}, 200
+    else:
+        return make_response_error(errmsg='Invalid request', in_httpcode=400), 400
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -153,6 +173,9 @@ def delete_image(user_id, image_id):
                 db.delete(pkg_vuln)
             #for pkg_vuln in img.java_vulnerabilities():
             #    db.delete(pkg_vuln)
+            mgr = EvaluationCacheManager(img, None, None)
+            mgr.flush()
+
             db.delete(img)
             db.commit()
         else:
@@ -196,6 +219,182 @@ def problem_from_exception(eval_exception, severity=None):
     return prob
 
 
+# Global cache for policy evaluations
+class EvaluationCacheManager(object):
+
+    class CacheStatus(enum.Enum):
+        valid = 'valid'  # The cached entry is a valid result
+        stale = 'stale'  # The entry is stale because a feed sync has occurred since last evaluation
+        invalid = 'invalid'  # The entry is invalid because the bundle digest has changed
+        missing = 'missing'  # No entry
+
+    __cache_bucket__ = 'policy-engine-evaluation-cache'
+
+    def __init__(self, image_object, tag, bundle):
+        self.image = image_object
+        self.tag = tag
+        if bundle:
+            self.bundle = bundle
+            self.bundle_id = None
+
+            if bundle.get('id') is None:
+                raise ValueError('Invalid bundle format')
+            else:
+                self.bundle_id = bundle['id']
+
+            self.bundle_digest = self._digest_for_bundle()
+        else:
+            self.bundle = None
+            self.bundle_id = None
+            self.bundle_digest = None
+
+        self._catalog_client = internal_client_for(catalog.CatalogClient, userId=self.image.user_id)
+
+    def _digest_for_bundle(self):
+        return hashlib.sha256(utils.ensure_bytes(json.dumps(self.bundle, sort_keys=True))).hexdigest()
+
+    def refresh(self):
+        """
+        Refreshes the cache state (not entry) for this initialized request.
+
+        Has stateful side-effects of flushing objects from cache if determined to be invalid
+
+        If a valid entry exists, it is loaded, if an invalid entry exists it is deleted
+
+        :return:
+        """
+        session = get_session()
+        match = None
+        for result in self._lookup():
+            if self._should_evaluate(result) != EvaluationCacheManager.CacheStatus.valid:
+                self._delete_entry(result)
+            else:
+                match = result
+
+        session.flush()
+
+        if match:
+            if match.is_archive_ref():
+                bucket, key = match.archive_tuple()
+                try:
+                    data = self._catalog_client.get_document(bucket, key)
+                except:
+                    log.exception('Unexpected error getting document {}/{} from archive'.format(bucket, key))
+                    data = None
+            else:
+                data = match.result.get('result')
+        else:
+            data = None
+
+        return data
+
+    def _delete_entry(self, entry):
+        session = get_session()
+
+        if entry.is_archive_ref():
+            bucket, key = entry.archive_tuple()
+            retry = 3
+            while retry > 0:
+                try:
+                    resp = self._catalog_client.delete_document(bucket, key)
+                    break
+                except:
+                    log.exception('Could not delete policy eval from cache, will retry. Bucket={}, Key={}'.format(bucket, key))
+                    retry -= 1
+            else:
+                log.error('Could not flush policy eval from cache after all retries, may be orphaned. Will remove from index.')
+
+        session.delete(entry)
+        session.flush()
+
+    def _lookup(self):
+        """
+        Returns all entries for the bundle,
+        :param user_id:
+        :param image_id:
+        :param tag:
+        :param bundle_id:
+        :return:
+        """
+
+        session = get_session()
+        return session.query(CachedPolicyEvaluation).filter_by(user_id=self.image.user_id, image_id=self.image.id, eval_tag=self.tag, bundle_id=self.bundle_id).all()
+
+    def save(self, result):
+        """
+        Persist the new result for this cache entry
+        :param result:
+        :return:
+        """
+        eval = CachedPolicyEvaluation()
+        eval.user_id = self.image.user_id
+        eval.image_id = self.image.id
+        eval.bundle_id = self.bundle_id
+        eval.bundle_digest = self.bundle_digest
+        eval.eval_tag = self.tag
+
+        # Send to archive
+        key = 'sha256:' + hashlib.sha256(utils.ensure_bytes(str(eval.key_tuple()))).hexdigest()
+        resp = self._catalog_client.put_document(self.__cache_bucket__, key, result)
+        if not resp:
+            raise Exception('Failed cache write to archive store')
+
+        str_result = json.dumps(result, sort_keys=True)
+        result_digest = 'sha256:' + hashlib.sha256(utils.ensure_bytes(str_result)).hexdigest()
+
+        eval.add_remote_result(self.__cache_bucket__, key, result_digest)
+        eval.last_modified = datetime.datetime.utcnow()
+
+        # Update index
+        session = get_session()
+        return session.merge(eval)
+
+    def _inputs_changed(self, cache_timestamp):
+        # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
+        feed_synced = max([group.last_sync if group.last_sync is not None else datetime.datetime.utcfromtimestamp(0) for feed in
+                DataFeeds.instance().list_metadata() for group in feed.groups]) > cache_timestamp
+
+        image_updated = self.image.last_modified > cache_timestamp
+
+        return feed_synced or image_updated
+
+    def _should_evaluate(self, cache_entry: CachedPolicyEvaluation):
+        if cache_entry is None:
+            metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_notfound')
+            return EvaluationCacheManager.CacheStatus.missing
+
+        # The cached result is not for this exact bundle content, so result is invalid
+        if cache_entry.bundle_id != self.bundle_id:
+            log.warn("Unexpectedly got a cached evaluation for a different bundle id")
+            metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_notfound')
+            return EvaluationCacheManager.CacheStatus.missing
+
+        if cache_entry.bundle_digest == cache_entry.bundle_digest:
+            # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
+            if self._inputs_changed(cache_entry.last_modified):
+                metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_stale')
+                return EvaluationCacheManager.CacheStatus.stale
+            else:
+                return EvaluationCacheManager.CacheStatus.valid
+        else:
+            metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_invalid')
+            return EvaluationCacheManager.CacheStatus.invalid
+
+    def flush(self):
+        """
+        Flush all cache entries for the given image
+        :return:
+        """
+        session = get_session()
+        for entry in session.query(CachedPolicyEvaluation).filter_by(user_id=self.image.user_id, image_id=self.image.id):
+            try:
+                self._delete_entry(entry)
+
+            except:
+                log.exception('Could not delete eval cache entry: {}'.format(entry))
+
+        return True
+
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def check_user_image_inline(user_id, image_id, tag, bundle):
@@ -225,6 +424,29 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         if not img_obj:
             log.info('Request for evaluation of image that cannot be found: user_id = {}, image_id = {}'.format(user_id, image_id))
             abort(Response(response='Image not found', status=404))
+
+        if evaluation_cache_enabled:
+            timer2 = time.time()
+            try:
+                cache_mgr = EvaluationCacheManager(img_obj, tag, bundle)
+            except ValueError as err:
+                log.warn('Could not leverage cache due to error in bundle data: {}'.format(err))
+                cache_mgr = None
+
+            cached_result = cache_mgr.refresh()
+            if cached_result:
+                metrics.counter_inc(name='anchore_policy_evaluation_cache_hits')
+                metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
+                                          status="hit")
+                log.info('Returning cached result of policy evaluation for {}/{}, with tag {} and bundle {} with digest {}. Last evaluation: {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest, cached_result.get('last_modified')))
+                return cached_result
+            else:
+                metrics.counter_inc(name='anchore_policy_evaluation_cache_misses')
+                metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
+                                          status="miss")
+                log.info('Policy evaluation not cached, or invalid, executing evaluation for {}/{} with tag {} and bundle {} with digest {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest))
+        else:
+            log.info('Policy evaluation cache disabled. Executing evaluation')
 
         # Build bundle exec.
         problems = []
@@ -270,11 +492,17 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         if resp.evaluation_problems:
             for i in resp.evaluation_problems:
                 log.warn('Returning evaluation response for image {}/{} w/tag {} and bundle {} that contains error: {}'.format(user_id, image_id, tag, bundle['id'], json.dumps(i.to_dict())))
-            anchore_engine.subsys.metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="fail")
+            metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="fail")
         else:
-            anchore_engine.subsys.metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="success")
+            metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="success")
 
-        return resp.to_dict()
+        result = resp.to_dict()
+        if evaluation_cache_enabled and cache_mgr is not None:
+            cache_mgr.save(result)
+
+        db.commit()
+
+        return result
 
     except HTTPException as e:
         db.rollback()

@@ -170,6 +170,9 @@ class CatalogClient(InternalServiceClient):
 
         return self.call_api(http.anchy_post, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name}, body=json.dumps(payload))
 
+    def delete_document(self, bucket, name):
+        return self.call_api(http.anchy_delete, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
+
     def get_service(self, servicename=None, hostid=None):
         if servicename:
             if hostid:

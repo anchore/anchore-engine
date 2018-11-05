@@ -1292,10 +1292,57 @@ class CachedPolicyEvaluation(Base):
     bundle_id = Column(String, primary_key=True) # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
     bundle_digest = Column(String, primary_key=True)
 
-    result = Column(StringJSON, nullable=False)
-    # References to the archive system
-    #result_bucket = Column(String, nullable=False)
-    #result_key = Column(String, nullable=False)
+    result = Column(StringJSON, nullable=False) # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+    def key_tuple(self):
+        return self.user_id, self.image_id, self.eval_tag, self.bundle_id, self.bundle_digest
+
+    def _constuct_raw_result(self, result_json):
+        return {
+            'type': 'direct',
+            'result': result_json
+        }
+
+    def _construct_remote_result(self, bucket, key, digest):
+        """
+        Build the result json for the db record
+
+        :param bucket: bucket in archive to lookup result
+        :param key: key in archive to lookup result
+        :param digest: sha256 digest of the result
+        :return:
+        """
+        return {
+            'type': 'archive',
+            'digest': digest,
+            'uri': 'catalog://{bucket}/{key}'.format(bucket=bucket, key=key)
+        }
+
+    def add_raw_result(self, result_json):
+        self.result = self._constuct_raw_result(result_json)
+
+    def add_remote_result(self, bucket, key, result_digest):
+        self.result = self._construct_remote_result(bucket, key, result_digest)
+
+    def is_raw(self):
+        return self.result['type'] == 'direct'
+
+    def is_archive_ref(self):
+        return self.result['type'] == 'archive'
+
+    def archive_tuple(self):
+        """
+        Returns the bucket, key tuple for an archive reference
+        :return:
+        """
+
+        if self.is_archive_ref():
+            uri = self.result.get('uri', '')
+            _, path = uri.split('catalog://', 1)
+            bucket, key = path.split('/', 1)
+            return bucket, key
+        else:
+            raise ValueError('Result type is not an archive')

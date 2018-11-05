@@ -657,7 +657,31 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
-
+    delete:
+      tags:
+      - "catalog"
+      summary: "Delete a document from archive"
+      description: ""
+      operationId: "archive_delete"
+      parameters:
+      - name: 'bucket'
+        in: path
+        type: string
+        description: "bucket"
+        required: true
+      - name: 'archiveid'
+        in: path
+        type: string
+        description: "archiveid"
+        required: true
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /subscriptions:
     get:
       tags:

@@ -54,7 +54,7 @@ from .entities.policy_engine import NvdMetadata
 from .entities.policy_engine import CpeVulnerability
 from .entities.policy_engine import AnalysisArtifact
 from .entities.policy_engine import ImagePackageManifestEntry
-
+from .entities.policy_engine import CachedPolicyEvaluation
 
 def Session():
     return get_session()

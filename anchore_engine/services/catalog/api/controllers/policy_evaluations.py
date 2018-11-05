@@ -128,6 +128,7 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
 
     # set up the filter based on input
     dbfilter = {}
+    latest_eval_record = latest_eval_result = None
 
     if policyId is not None:
         dbfilter['policyId'] = policyId

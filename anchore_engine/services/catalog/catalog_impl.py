@@ -806,7 +806,7 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
         elif method == 'POST':
             try:
                 jsondata = bodycontent
-                rc =  archive_sys.put(userId, bucket, archiveid, json.dumps(jsondata))
+                rc = archive_sys.put(userId, bucket, archiveid, json.dumps(jsondata))
                 
                 service_records = db_services.get_byname('catalog', session=dbsession)
                 if service_records:
@@ -820,6 +820,15 @@ def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
             except Exception as err:
                 httpcode = 500
                 raise err
+        elif method == 'DELETE':
+            try:
+                rc = archive_sys.delete(userId, bucket, archiveid)
+                httpcode = 200
+                return_object = None
+            except Exception as err:
+                httpcode = 500
+                raise err
+
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
        

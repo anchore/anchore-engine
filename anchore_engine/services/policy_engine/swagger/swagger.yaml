@@ -18,6 +18,37 @@ securityDefinitions:
 security:
   - anchore_basic: []
 paths:
+  /evaluation_cache/status:
+    get:
+      description: Query the caching status (enabled/disabled) for this instance of the policy engine
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
+      operationId: get_cache_status
+      produces:
+      - application/json
+      responses:
+        200:
+          description: Cache status
+          schema:
+            $ref: "#/definitions/PolicyEvaluationCacheEnabledStatus"
+    post:
+      description: Set the policy eval caching status to enabled disable the caching mechanisms
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
+      operationId: set_cache_status
+      produces:
+      - application/json
+      consumes:
+      - application/json
+      parameters:
+      - name: status
+        in: body
+        required: true
+        schema:
+          $ref: "#/definitions/PolicyEvaluationCacheEnabledStatus"
+      responses:
+        200:
+          description: Set cache status
+          schema:
+            $ref: "#/definitions/PolicyEvaluationCacheEnabledStatus"
   /policy_spec:
     get:
       summary: Describe the policy language spec implemented by this service.
@@ -1101,4 +1132,12 @@ definitions:
         format: date-time
       record_count:
         type: integer
-
+  PolicyEvaluationCacheEnabledStatus:
+    type: object
+    description: The enabled status of policy evaluation caching for a specific policy engine instance
+    required:
+    - enabled
+    properties:
+      enabled:
+        type: boolean
+        description: Is evaluation caching enabled on this node

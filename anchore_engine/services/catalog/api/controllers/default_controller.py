@@ -457,6 +457,20 @@ def archive_post(bucket, archiveid, bodycontent):
 
     return (return_object, httpcode)
 
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def archive_delete(bucket, archiveid):
+    try:
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid)
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return (return_object, httpcode)
+
 
 # system/service calls
 # @api.route("/system", methods=['GET'])
