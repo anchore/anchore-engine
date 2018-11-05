@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 
+import anchore_engine.configuration.localconfig
 from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 
@@ -14,7 +15,21 @@ def manifest_to_digest_shellout(rawmanifest):
         os.write(fd, rawmanifest.encode('utf-8'))
         os.close(fd)
 
-        cmd = "skopeo manifest-digest {}".format(tmpmanifest)
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        try:
+            global_timeout = int(global_timeout)
+            if global_timeout < 0:
+                global_timeout = 0
+        except:
+            global_timeout = 0
+
+        if global_timeout:
+            global_timeout_str = "--command-timeout {}s".format(global_timeout)
+        else:
+            global_timeout_str = ""
+
+        cmd = "skopeo {} manifest-digest {}".format(global_timeout_str, tmpmanifest)
         rc, sout, serr = run_command(cmd)
         if rc == 0 and re.match("^sha256:.*", str(sout, 'utf-8')):
             ret = sout.strip()
@@ -49,13 +64,28 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         else:
             cachestr = ""
 
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        try:
+            global_timeout = int(global_timeout)
+            if global_timeout < 0:
+                global_timeout = 0
+        except:
+            global_timeout = 0
+
+        if global_timeout:
+            global_timeout_str = "--command-timeout {}s".format(global_timeout)
+        else:
+            global_timeout_str = ""
+
+
         if dest_type == 'oci':
             if manifest:
                 with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
                     OFH.write(manifest)
-            cmd = ["/bin/sh", "-c", "skopeo copy {} {} {} docker://{} oci:{}:image".format(tlsverifystr, credstr, cachestr, fulltag, copydir)]
+            cmd = ["/bin/sh", "-c", "skopeo {} copy {} {} {} docker://{} oci:{}:image".format(global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
         else:
-            cmd = ["/bin/sh", "-c", "skopeo copy {} {} docker://{} dir:{}".format(tlsverifystr, credstr, fulltag, copydir)]
+            cmd = ["/bin/sh", "-c", "skopeo {} copy {} {} docker://{} dir:{}".format(global_timeout_str, tlsverifystr, credstr, fulltag, copydir)]
 
         cmdstr = ' '.join(cmd)
         try:
@@ -88,13 +118,27 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
         else:
             tlsverifystr = "--tls-verify=false"
             
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        try:
+            global_timeout = int(global_timeout)
+            if global_timeout < 0:
+                global_timeout = 0
+        except:
+            global_timeout = 0
+
+        if global_timeout:
+            global_timeout_str = "--command-timeout {}s".format(global_timeout)
+        else:
+            global_timeout_str = ""
+
         pullstring = registry + "/" + repo
         if lookuptag:
             pullstring = pullstring + ":" + lookuptag
 
         repotags = []
 
-        cmd = ["/bin/sh", "-c", "skopeo inspect {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]
+        cmd = ["/bin/sh", "-c", "skopeo {} inspect {} {} docker://{}".format(global_timeout_str, tlsverifystr, credstr, pullstring)]
         cmdstr = ' '.join(cmd)
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
@@ -142,9 +186,23 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
             tlsverifystr = "--tls-verify=true"
         else:
             tlsverifystr = "--tls-verify=false"
-            
+
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)            
         try:
-            cmd = ["/bin/sh", "-c", "skopeo inspect --raw {} {} docker://{}".format(tlsverifystr, credstr, pullstring)]
+            global_timeout = int(global_timeout)
+            if global_timeout < 0:
+                global_timeout = 0
+        except:
+            global_timeout = 0
+
+        if global_timeout:
+            global_timeout_str = "--command-timeout {}s".format(global_timeout)
+        else:
+            global_timeout_str = ""
+
+        try:
+            cmd = ["/bin/sh", "-c", "skopeo {} inspect --raw {} {} docker://{}".format(global_timeout_str, tlsverifystr, credstr, pullstring)]
             cmdstr = ' '.join(cmd)
             try:
                 rc, sout, serr = run_command_list(cmd, env=proc_env)

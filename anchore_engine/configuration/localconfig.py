@@ -26,6 +26,7 @@ DEFAULT_CONFIG = {
     'docker_conn': 'unix://var/run/docker.sock',
     'docker_conn_timeout': 600,
     'allow_awsecr_iam_auto': False,
+    'skopeo_global_timeout': 0,
     'feeds': {
         'anonymous_user_username': 'anon@ancho.re',
         'anonymous_user_password': 'pbiU2RYZ2XrmYQ',
