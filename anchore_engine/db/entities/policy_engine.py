@@ -1263,3 +1263,21 @@ class DistroNamespace(object):
         :return: list of name, version pairs
         """
         return [x.distro for x in DistroMapping.distros_mapped_to(self.name, self.version)]
+
+
+class CachedPolicyEvaluation(Base):
+    __tablename__ = 'policy_engine_evaluation_cache'
+
+    user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    eval_tag = Column(String, primary_key=True)
+    bundle_id = Column(String, primary_key=True) # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
+    bundle_digest = Column(String, primary_key=True)
+
+    result = Column(StringJSON, nullable=False)
+    # References to the archive system
+    #result_bucket = Column(String, nullable=False)
+    #result_key = Column(String, nullable=False)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
