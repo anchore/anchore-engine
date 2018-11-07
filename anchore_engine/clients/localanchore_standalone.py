@@ -89,7 +89,7 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, lay
 
     try:
         slinkre = "tar: (.*): Cannot open: File exists"
-        hlinkre = "tar: (.*): Cannot hard link to `(.*)': No such file or directory"
+        hlinkre = "tar: (.*): Cannot hard link to .(.*).: No such file or directory"
 
         for errline in serr.splitlines():
             patt = re.match(slinkre, errline)
