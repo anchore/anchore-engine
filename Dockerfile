@@ -89,4 +89,4 @@ HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["anchore-manager", "--help"]
+CMD ["anchore-manager", "service", "start", "--all"]
