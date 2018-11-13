@@ -73,7 +73,10 @@ def imagepolicywebhook(bodycontent):
                     # see if the request from k8s contains an anchore policy and/or whitelist name
                     if 'annotations' in incoming['spec']:
                         logger.debug("incoming request contains annotations: " + json.dumps(incoming['spec']['annotations'], indent=4))
-                        requestUserId = incoming['spec']['annotations'].pop("anchore.image-policy.k8s.io/userId", None)
+                        requestUserId = incoming['spec']['annotations'].pop("anchore.image-policy.k8s.io/account", None)
+                        if requestUserId is None:
+                            requestUserId = incoming['spec']['annotations'].pop("anchore.image-policy.k8s.io/userId", None)
+
                         requestPolicyId = incoming['spec']['annotations'].pop("anchore.image-policy.k8s.io/policyBundleId", None)
                 except Exception as err:
                     raise Exception("could not parse out annotations: " + str(err))
