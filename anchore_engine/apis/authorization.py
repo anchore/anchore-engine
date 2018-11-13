@@ -8,6 +8,7 @@ import anchore_engine
 from collections import namedtuple
 from anchore_engine.subsys import logger
 from connexion import request as request_proxy
+from flask import Response
 from anchore_engine.apis.context import ApiRequestContextProxy
 from yosai.core import Yosai, exceptions as auth_exceptions, UsernamePasswordToken
 from anchore_engine.db import session_scope, AccountTypes, AccountStates
@@ -25,6 +26,7 @@ _global_authorizer = None
 INTERNAL_SERVICE_ALLOWED = [AccountTypes.admin, AccountTypes.service]
 
 
+# ToDo: rename this to AccessDeniedError
 class UnauthorizedError(Exception):
     def __init__(self, required_permissions):
         if type(required_permissions) != list:
@@ -267,7 +269,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 return None
         else:
             logger.debug('Anon auth complete')
-            return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_active=None)
+            return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_state=None)
 
     def authorize(self, identity: IdentityContext, permission_list):
         logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
@@ -341,7 +343,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedAccountError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return make_response_error('Unauthorized', in_httpcode=401), 401
+                    return Response(response=None, status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500
@@ -415,7 +417,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return make_response_error('Unauthorized', in_httpcode=401), 401
+                    return Response(response=None, status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500
