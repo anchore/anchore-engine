@@ -5,6 +5,7 @@ import connexion
 from anchore_engine.apis.authorization import get_authorizer, Permission, RequestingAccountValue
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.clients.services import internal_client_for
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
@@ -80,19 +81,7 @@ def imagepolicywebhook(bodycontent):
                 if not requestUserId:
                     raise Exception("need to specify an anchore.image-policy.k8s.io/userId annotation with a valid anchore service username as a value")
 
-                # TODO - get anchore system uber cred to access
-                # this data on behalf of user?  tough...maybe see
-                # if kuber can make request as anchore-system so
-                # that we can switch roles?
-                localconfig = anchore_engine.configuration.localconfig.get_config()
-                system_user_auth = localconfig['system_user_auth']
-
-                # TODO: zhill This is bad, this is identity switching, need to resolve (this is not a change to previous behavior, but that behavior was bad)
-                with session_scope() as dbsession:
-                    mgr = manager_factory.for_session(dbsession)
-                    request_user_auth = mgr.get_credentials_for_userid(requestUserId)
-
-                catalog = CatalogClient(user=request_user_auth[0], password=request_user_auth[1], as_account=requestUserId if requestUserId else ApiRequestContextProxy.effective_account())
+                catalog = internal_client_for(CatalogClient, requestUserId)
 
                 reason = "all images passed anchore policy checks"
                 final_action = False
