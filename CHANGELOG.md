@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.3.0 (2018-11-15)
+
+NOTE: For users upgrading from 0.2.X to 0.3.X, please note that the upgrade process may take some time for deployments anchore-engine that have a large number of images stored (many thousands).  Please review the upgrade guide (https://anchore.freshdesk.com/support/solutions/articles/36000052927-upgrading-anchore-engine) to safely plan for an upgrade, and plan for a longer service maintainence window than usual for this upgrade if your engine has a large number of images analyzed.
+
++ Major Version Update - anchore-engine and anchore-cli ported to Python3!
++ New Feature - Multi-user API and Structure
+  + Adds user management and detection API routes: /accounts/*, /account, /user
+  + New option in config.yaml for the "apiext" service: "authorization_handler" key, with default value "native". Allows extension point for other models in the future.
+  + Accounts have one of three types: service (internal), admin, and user. Only admin account users can create other accounts/users.
+  + During upgrade, existing users are migrated to accounts of the same name with user records with the same credentials.
+  + Adds 'x-anchore-account' header support to allow admin users to make requests in the namespace of other accounts, for example to view events or image status, without requiring api route changes.
+  + The existing config.yaml user sections are respected during first system initialization but ignored afterwards, so user management is purely via the APIs.
++ New Feature - Security-first Queries and Reports
+  + Query for a list of images affected by input Vulnerability ID
+  + Query for a list of images with an input package installed
+  + Query for record information about a specific Vulnerability by ID
+  + All queries include filter parameters to further refine results
+  + API routes /v1/queries/ and corresponding CLI operation (anchore-cli query ...) included
++ New - Build and Testing infrastructure
+  + Single canonical ./Dockerfile for container builds
+  + CircleCI automation and test config
+  + Unit and functional testing framework under ./test
++ Added - ability to add an image by specifying a digest,tag,created_at tuple with a POST to the /v1/images API route
++ Added - ability to add, fetch, store and refer to images by manifestList digest (common to see these digests in docker/runtime side) - reported as 'parentDigest' field for image records
++ Added - unauthenticated API route /version to retrieve service version information
++ Added - optional skopeo_global_timeout setting (seconds) for config.yaml which will be passed through to skopeo calls as the command-timeout option
++ Added - ability to ask for interactive (DB side effect free) policy evaluation via interactive=<true|false> query parameter to /v1/image/<image>/check route
++ Improved - java artifact manifest file parsing support and implementation (contributions by Matt Sicker <boards@gmail.com>)
++ Improved - add bootstrap process retries to improve behavior of simultaneous startup of distributed anchore-engine services
++ Improved - normalize all package database record handling for OS and Non-OS (NPM, GEM, Java, Python, etc) packages
++ Improved - better error passthrough from internal services (catalog/policy engine) back through external API to user (400, 404 instead of 500)
++ Improved - more consistent logging during bootstrap, throughout
++ Changed - move from CentOS to Ubuntu base image for anchore-engine containers
++ Removed - deprecated 'prune' routes and operations
++ Fix - handle case where manifests have incomplete history information, causing analysis failures (contribution by jianqli <jianqli@ebay.com>)
++ Fix - handle case that caused image analysis failure when package managers output non-integer values for package size metadata
++ Fix - prevent logging of DB connect string/credentials (Fix #95 contributed by Brendan Shaklovitz <nyanshak@users.noreply.github.com>)
++ Fix - bug where a container with no files triggers an analysis failure, during load in policy engine.  Fixes #105
++ Many bug fixes and improvements
+
 ## 0.2.4 (2018-08-06)
 
 + New ability to disable feed syncs and skip feed client bootstrap checks in the policy engine (see latest scripts/docker-compose/config.yaml example for 'sync_enabled: <True|False>')
