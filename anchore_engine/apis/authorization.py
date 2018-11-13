@@ -343,7 +343,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedAccountError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return Response(response=None, status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                    return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500
@@ -417,7 +417,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return Response(response=None, status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                    return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500
