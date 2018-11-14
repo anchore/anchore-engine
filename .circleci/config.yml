@@ -124,7 +124,7 @@ jobs:
           name: docker compose
           command: |
             #sed -i 's/engine:dev/engine:ci/g' docker-compose.yaml
-	    sed -i 's/anchore\/anchore-engine:.*$/anchore\/anchore-engine:ci/g' docker-compose.yaml
+            sed -i 's/anchore\/anchore-engine:.*$/anchore\/anchore-engine:ci/g' docker-compose.yaml
             docker-compose up -d
             docker-compose ps
             docker-compose logs engine-api
