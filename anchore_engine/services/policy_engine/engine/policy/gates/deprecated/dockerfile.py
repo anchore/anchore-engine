@@ -360,7 +360,12 @@ class DockerfileGate(Gate):
                     else:
                         linebuf = linebuf + line
                         if linebuf:
-                            directive,remainder = linebuf.split(' ', 1)
+                            tokens = linebuf.split(' ', 1)
+                            if tokens:
+                                directive = tokens[0]
+                            else:
+                                directive = ''
+
                             directive = directive.upper()
                             if directive not in context.data['prepared_dockerfile']:
                                 context.data['prepared_dockerfile'][directive] = []
