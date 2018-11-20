@@ -405,7 +405,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
-            all_cpe_matches = db.query(ImageCpe,CpeVulnerability).filter(ImageCpe.image_id==image_id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+            all_cpe_matches = img.cpe_vulnerabilities()
             if not all_cpe_matches:
                 all_cpe_matches = []
 
@@ -429,8 +429,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     cpe_hashes[cpe_hash] = True
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
-
-
 
         report = LegacyVulnerabilityReport.from_dict(vuln_listing)
         resp = ImageVulnerabilityListing(user_id=user_id, image_id=image_id, legacy_report=report, cpe_report=cpe_vuln_listing)

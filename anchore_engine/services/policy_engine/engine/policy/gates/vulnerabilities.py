@@ -181,7 +181,7 @@ class VulnerabilitiesGate(Gate):
         context.data['loaded_vulnerabilities'] = image_obj.vulnerabilities()
 
         # Load the non-package (CPE) vulnerability info up front
-        all_cpe_matches = context.db.query(ImageCpe,CpeVulnerability).filter(ImageCpe.image_id==image_obj.id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.version==CpeVulnerability.version)
+        all_cpe_matches = image_obj.cpe_vulnerabilities()
         if not all_cpe_matches:
             all_cpe_matches = []
 

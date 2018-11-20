@@ -429,7 +429,11 @@ class CpeVulnerability(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]), {})
+    __table_args__ = (
+        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
+        #Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
+        {}
+    )
 
     def __repr__(self):
         return '<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.name, self.version, self.created_at.isoformat())
@@ -754,6 +758,7 @@ class ImageCpe(Base):
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id','images.user_id']),
+        # Index('ix_image_cpe_user_img', image_user_id, image_id),
         {}
     )
 
@@ -941,6 +946,19 @@ class Image(Base):
             ImagePackageVulnerability.pkg_user_id == self.user_id,
             ImagePackageVulnerability.pkg_image_id == self.id).all()
         return known_vulnerabilities
+
+    def cpe_vulnerabilities(self):
+        """
+        Similar to the vulnerabilities function, but using the cpe matches instead, basically the NVD raw data source
+
+        :return: list of (image_cpe, cpe_vulnerability) tuples
+        """
+        db = get_thread_scoped_session()
+        cpe_vulnerabilities = db.query(ImageCpe, CpeVulnerability).filter(ImageCpe.image_id == self.id,
+                                                                              ImageCpe.image_user_id == self.user_id,
+                                                                              ImageCpe.name == CpeVulnerability.name,
+                                                                              ImageCpe.version == CpeVulnerability.version).all()
+        return cpe_vulnerabilities
 
     def get_image_base(self):
         """
