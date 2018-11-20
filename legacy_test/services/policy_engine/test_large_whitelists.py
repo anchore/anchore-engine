@@ -9,7 +9,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionCo
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, ExecutableWhitelist
 from anchore_engine.db import get_thread_scoped_session as get_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from test.services.policy_engine import LocalTestDataEnvironment, init_db
+from legacy_test.services.policy_engine import LocalTestDataEnvironment, init_db
 
 
 class TestLargeBundlesEval(unittest.TestCase):

@@ -3,7 +3,7 @@ import logging
 import os
 
 from anchore_engine.services.policy_engine.api.controllers.synchronous_operations import check_user_image_inline
-from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
+from legacy_test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()

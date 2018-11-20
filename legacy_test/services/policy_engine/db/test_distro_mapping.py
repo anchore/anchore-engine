@@ -2,7 +2,7 @@ import unittest
 import logging
 import os
 
-from test.services.policy_engine.utils import LocalTestDataEnvironment, init_db
+from legacy_test.services.policy_engine.utils import LocalTestDataEnvironment, init_db
 from anchore_engine.db.entities.policy_engine import DistroNamespace, DistroMapping, DistroTuple, VersionPreservingDistroMapper
 
 

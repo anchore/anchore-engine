@@ -7,7 +7,7 @@ import unittest
 import json
 import os
 
-from test.services.policy_engine import BaseDBUnitTest
+from legacy_test.services.policy_engine import BaseDBUnitTest
 from anchore_engine.db import DistroNamespace
 
 DISTRO_VERSIONS = """alpine,3.0.0

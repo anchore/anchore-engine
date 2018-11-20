@@ -2,7 +2,7 @@ import unittest
 import os
 from anchore_engine.db import Image, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from test.services.policy_engine.utils import LocalTestDataEnvironment, init_db
+from legacy_test.services.policy_engine.utils import LocalTestDataEnvironment, init_db
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 
 

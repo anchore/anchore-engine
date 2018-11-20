@@ -5,7 +5,7 @@ from anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities i
     VulnerabilityMatchTrigger
 
 from anchore_engine.db import Image, get_thread_scoped_session
-from test.services.policy_engine.engine.policy.gates import GateUnitTest
+from legacy_test.services.policy_engine.engine.policy.gates import GateUnitTest
 
 
 class AnchoreSecGateTest(GateUnitTest):

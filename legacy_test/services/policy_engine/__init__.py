@@ -1,7 +1,7 @@
 import unittest
 import os
 from .utils import LocalTestDataEnvironment, init_db
-from test import init_test_logging
+from legacy_test import init_test_logging
 from anchore_engine.services.policy_engine.engine import logs
 from anchore_engine.db.entities.common import ThreadLocalSession, Session, engine, end_session
 

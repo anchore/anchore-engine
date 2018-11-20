@@ -1,7 +1,7 @@
 import unittest
 import os
 from anchore_engine.services.policy_engine.engine.feeds import Vulnerability, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, GemMetadata, NpmMetadata, DataFeeds
-from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
+from legacy_test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
 
 test_env = LocalTestDataEnvironment(data_dir=os.environ['ANCHORE_ENGINE_TEST_HOME'])
 init_db(test_env.mk_db())

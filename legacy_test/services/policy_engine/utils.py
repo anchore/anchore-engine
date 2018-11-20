@@ -8,7 +8,7 @@ import os
 
 
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
-from test.services.policy_engine.feeds import TimeWindowedLocalFilesytemFeedClient, LocalPackagesFeed, \
+from legacy_test.services.policy_engine.feeds import TimeWindowedLocalFilesytemFeedClient, LocalPackagesFeed, \
     LocalVulnerabilityFeed
 
 

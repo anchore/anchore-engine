@@ -1,7 +1,7 @@
-from test import init_test_logging
+from legacy_test import init_test_logging
 import unittest, logging
 import time
-from test.services.policy_engine import NewDBPerTestUnitTest
+from legacy_test.services.policy_engine import NewDBPerTestUnitTest
 
 init_test_logging(level=logging.DEBUG)
 

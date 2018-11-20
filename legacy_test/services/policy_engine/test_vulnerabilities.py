@@ -6,8 +6,8 @@ from anchore_engine.db import get_thread_scoped_session, end_session, Image, Dis
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.services.policy_engine.api.controllers.synchronous_operations import get_image_vulnerabilities
-from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
-from test.services.policy_engine.feeds import reset_feed_sync_time
+from legacy_test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
+from legacy_test.services.policy_engine.feeds import reset_feed_sync_time
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()

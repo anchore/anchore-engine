@@ -1,4 +1,4 @@
-from test.services.policy_engine.engine.policy.gates import GateUnitTest
+from legacy_test.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import get_thread_scoped_session, Image
 from anchore_engine.services.policy_engine.engine.policy.gates.deprecated.npm_check import NpmCheckGate, NotOfficialTrigger, NotLatestTrigger, NoFeedTrigger, BadVersionTrigger, PkgFullMatchTrigger, PkgNameMatchTrigger

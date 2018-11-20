@@ -7,7 +7,7 @@ from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.db import get_thread_scoped_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate
-from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
+from legacy_test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
 
 
 class GateIntegrationTests(unittest.TestCase):

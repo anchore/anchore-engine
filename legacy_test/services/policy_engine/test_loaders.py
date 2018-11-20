@@ -7,7 +7,7 @@ from anchore_engine.services.policy_engine.engine import logs
 logs.test_mode = True
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask
-from test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
+from legacy_test.services.policy_engine.utils import init_db, LocalTestDataEnvironment
 
 logging.basicConfig(level='DEBUG')
 log = get_logger()
