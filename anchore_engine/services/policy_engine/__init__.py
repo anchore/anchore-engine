@@ -127,6 +127,7 @@ def _init_distro_mappings():
         DistroMapping(from_distro='ol', to_distro='ol', flavor='RHEL'),
         DistroMapping(from_distro='rhel', to_distro='centos', flavor='RHEL'),
         DistroMapping(from_distro='ubuntu', to_distro='ubuntu', flavor='DEB'),
+        DistroMapping(from_distro='amzn', to_distro='amzn', flavor='RHEL'),
         #DistroMapping(from_distro='java', to_distro='snyk', flavor='JAVA'),
         #DistroMapping(from_distro='gem', to_distro='snyk', flavor='RUBY'),
         #DistroMapping(from_distro='npm', to_distro='snyk', flavor='NODEJS'),
