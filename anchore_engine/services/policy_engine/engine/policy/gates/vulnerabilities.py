@@ -193,10 +193,14 @@ class VulnerabilitiesGate(Gate):
             if sev not in severity_matches:
                 severity_matches[sev] = []
             
-            if image_cpe.pkg_path not in dedup_hash:
-                dedup_hash[image_cpe.pkg_path] = []
-            if vulnerability_cpe.vulnerability_id not in dedup_hash[image_cpe.pkg_path]:
-                dedup_hash[image_cpe.pkg_path].append(vulnerability_cpe.vulnerability_id)
+            if image_cpe.pkg_path:
+                if image_cpe.pkg_path not in dedup_hash:
+                    dedup_hash[image_cpe.pkg_path] = []
+
+                if vulnerability_cpe.vulnerability_id not in dedup_hash[image_cpe.pkg_path]:
+                    dedup_hash[image_cpe.pkg_path].append(vulnerability_cpe.vulnerability_id)
+                    severity_matches[sev].append((image_cpe, vulnerability_cpe))
+            else:
                 severity_matches[sev].append((image_cpe, vulnerability_cpe))
 
         context.data['loaded_cpe_vulnerabilities'] = severity_matches
