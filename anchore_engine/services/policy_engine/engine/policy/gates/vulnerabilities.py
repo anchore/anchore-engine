@@ -56,6 +56,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         found_severity_idx = SEVERITY_ORDERING.index(sev.lower()) if sev else 0
                         if comparison_fn(found_severity_idx, comparison_idx):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:
+                                trigger_fname = None
                                 if image_cpe.pkg_type in ['java', 'gem']:
                                     try:
                                         trigger_fname = image_cpe.pkg_path.split("/")[-1]
@@ -185,12 +186,18 @@ class VulnerabilitiesGate(Gate):
         if not all_cpe_matches:
             all_cpe_matches = []
 
+        dedup_hash = {}
         severity_matches = {}
         for image_cpe, vulnerability_cpe in all_cpe_matches:
             sev = vulnerability_cpe.severity
             if sev not in severity_matches:
                 severity_matches[sev] = []
-            severity_matches[sev].append((image_cpe, vulnerability_cpe))
+            
+            if image_cpe.pkg_path not in dedup_hash:
+                dedup_hash[image_cpe.pkg_path] = []
+            if vulnerability_cpe.vulnerability_id not in dedup_hash[image_cpe.pkg_path]:
+                dedup_hash[image_cpe.pkg_path].append(vulnerability_cpe.vulnerability_id)
+                severity_matches[sev].append((image_cpe, vulnerability_cpe))
 
         context.data['loaded_cpe_vulnerabilities'] = severity_matches
 
