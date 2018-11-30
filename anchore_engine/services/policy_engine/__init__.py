@@ -82,30 +82,7 @@ def process_preflight():
     :return:
     """
 
-    config = localconfig.get_config()
-
-    # read the global feed disable parameter
-    feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
-
-    # get the list of feeds if they have been explicitly configured in config.yaml
-    feed_enabled_status = config.get('feeds', {}).get('selective_sync', {}).get('feeds', {})
-
-    # check to see if the engine is configured to sync at least one data feed
-    at_least_one = False
-    for feed in feed_enabled_status.keys():
-        if feed_enabled_status[feed]:
-            at_least_one = True
-            break
-
-    # toggle credential validation based on whether or not any feeds are configured to sync
-    skip_credential_validate = False
-    if not feed_sync_enabled or not at_least_one:
-        logger.info("Engine is configured to skip data feed syncs - skipping feed sync client check")
-        skip_credential_validate = True
-
     preflight_check_functions = [_init_db_content]
-    if not skip_credential_validate:
-        preflight_check_functions.append(_check_feed_client_credentials)
 
     for fn in preflight_check_functions:
         try:
