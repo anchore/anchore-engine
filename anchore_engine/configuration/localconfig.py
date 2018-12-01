@@ -41,7 +41,7 @@ DEFAULT_CONFIG = {
                 'vulnerabilities': True,
                 'packages': True,
                 'nvd': True,
-                'snyk': True
+                'snyk': False
             }
         }
     }
