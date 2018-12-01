@@ -861,19 +861,7 @@ class AnchoreServiceFeed(DataFeed):
         :return: map of group:record_count for insertions
         """
 
-        db = get_session()
-        try:
-            log.debug('Refreshing groups for bulk sync')
-            self._sync_meta()
-            self.refresh_groups()
-            db.add(self.metadata)
-            db.commit()
-        except (InvalidCredentialsError, InsufficientAccessTierError):
-            raise
-        except Exception as e:
-            log.exception('Error updating feed metadata')
-            db.rollback()
-            raise
+        self.init_feed_meta_and_groups()
 
         updated_records = {}
 
@@ -916,6 +904,21 @@ class AnchoreServiceFeed(DataFeed):
                 db_session.rollback()
             raise
 
+    def init_feed_meta_and_groups(self):
+        db = get_session()
+        try:
+            log.debug('Refreshing groups')
+            self._sync_meta()
+            self.refresh_groups()
+            db.add(self.metadata)
+            db.commit()
+        except (InsufficientAccessTierError, InvalidCredentialsError):
+            raise
+        except Exception as e:
+            log.exception('Error updating feed metadata')
+            db.rollback()
+            raise
+
     def sync(self, group=None, item_processing_fn=None, full_flush=False, flush_helper_fn=None):
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
@@ -931,19 +934,7 @@ class AnchoreServiceFeed(DataFeed):
         :return: changed data updated in the sync as a list of records        
         """
 
-        db = get_session()
-        try:
-            log.debug('Refreshing groups')
-            self._sync_meta()
-            self.refresh_groups()
-            db.add(self.metadata)
-            db.commit()
-        except (InsufficientAccessTierError, InvalidCredentialsError):
-            raise
-        except Exception as e:
-            log.exception('Error updating feed metadata')
-            db.rollback()
-            raise
+        self.init_feed_meta_and_groups()
 
         updated_records = {}
         # Each group update is a unique session and can roll itself back.
@@ -1175,19 +1166,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         :return: changed data updated in the sync as a list of records
         """
 
-        db = get_session()
-        try:
-            log.debug('Refreshing groups')
-            self._sync_meta()
-            self.refresh_groups()
-            db.add(self.metadata)
-            db.commit()
-        except (InvalidCredentialsError, InsufficientAccessTierError):
-            raise
-        except Exception as e:
-            log.exception('Error updating feed metadata')
-            db.rollback()
-            raise
+        self.init_feed_meta_and_groups()
 
         updated_records = {}
 
@@ -1490,40 +1469,85 @@ class DataFeeds(object):
 
         updated_records = {}
         log.info('Performing feed sync of feeds: {}'.format('all' if to_sync is None else to_sync))
+
+        # Initialize the feed metadata and groups first
+
+        vuln_feed = None
         if to_sync is None or 'vulnerabilities' in to_sync:
             try:
+                log.info('Syncing group metadata for vulnerabilities feed')
+                vuln_feed = self.vulnerabilities
+                vuln_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Failure syncing group metadata for vulnerabilities feed. Continuing with next feed')
+                all_success = False
+
+        pkgs_feed = None
+        if to_sync is None or 'packages' in to_sync:
+            try:
+                log.info('Syncing group metadata for packages feed')
+                pkgs_feed = self.packages
+                pkgs_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Failure syncing group metadata for packages feed. Continuing with next feed')
+                all_success = False
+
+        nvd_feed = None
+        if to_sync is None or 'nvd' in to_sync:
+            try:
+                log.info('Syncing group metadata for nvd feed')
+                nvd_feed = self.nvd
+                nvd_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Failure syncing group metadata for nvd feed. Continuing with next feed')
+                all_success = False
+
+        snyk_feed = None
+        if to_sync is None or 'snyk' in to_sync:
+            try:
+                log.info('Syncing group metadata for snyk feed')
+                snyk_feed = self.snyk
+                snyk_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Failure syncing group metadata for snyk feed')
+                all_success = False
+
+        # Perform the feed sync next
+
+        if vuln_feed:
+            try:
                 log.info('Syncing vulnerability feed')
-                updated_records['vulnerabilities'] = self.vulnerabilities.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
+                updated_records['vulnerabilities'] = vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
             except:
                 log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
                 all_success = False
 
-        if to_sync is None or 'packages' in to_sync:
+        if pkgs_feed:
             try:
                 log.info('Syncing packages feed')
-                updated_records['packages'] = self.packages.sync()
+                updated_records['packages'] = pkgs_feed.sync()
             except:
                 log.exception('Failure updating the packages feed.')
                 all_success = False
 
-        if to_sync is None or 'nvd' in to_sync:
+        if nvd_feed:
             try:
                 log.info('Syncing nvd feed')
-                updated_records['nvd'] = self.nvd.sync()
+                updated_records['nvd'] = nvd_feed.sync()
             except:
                 log.exception('Failure updating the nvd feed.')
                 all_success = False
 
-        if to_sync is None or 'snyk' in to_sync:
+        if snyk_feed:
             try:
                 log.info('Syncing snyk feed')
-                updated_records['snyk'] = self.snyk.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
+                updated_records['snyk'] = snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
             except:
                 log.exception('Failure updating the snyk feed.')
                 all_success = False
 
-            if not all_success:
-                raise Exception("one or more feeds failed to sync")
+        if not all_success:
+            raise Exception("one or more feeds failed to sync")
 
         return updated_records
 
