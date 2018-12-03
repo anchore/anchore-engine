@@ -46,27 +46,30 @@ auto_restart_services: True
 # A feeds section is available for override, but shouldn't be
 # needed. By default, the 'admin' credentials are used if present,
 # otherwise anonymous access for feed sync is used
-#
-#feeds:
-#  # If set to False, instruct anchore-engine to skip (all) feed sync operations
-#  sync_enabled: True
-#  selective_sync:
-#    # If enabled only sync specific feeds instead of all.
-#    enabled: True
-#    feeds:
-#      vulnerabilities: True
-#      # Warning: enabling the packages and nvd sync causes the service to require much
-#      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
-#      packages: False
-#      nvd: False
-#  anonymous_user_username: anon@ancho.re
-#  anonymous_user_password: pbiU2RYZ2XrmYQ
-#  url: 'https://ancho.re/v1/service/feeds'
-#  client_url: 'https://ancho.re/v1/account/users'
-#  token_url: 'https://ancho.re/oauth/token'
-#  connection_timeout_seconds: 3
-#  read_timeout_seconds: 60
-#
+
+feeds:
+  # If set to False, instruct anchore-engine to skip (all) feed sync operations
+  sync_enabled: True
+  selective_sync:
+    # If enabled only sync specific feeds instead of all.
+    enabled: True
+    feeds:
+      vulnerabilities: True
+      # Warning: enabling the packages and nvd sync causes the service to require much
+      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
+      packages: False
+      nvd: False
+      # Enabling snyk syncs snyk vulnerability data from an on-premise anchore enterprise feeds service. Please contact
+      # anchore support for finding out more about this service
+      snyk: False
+  anonymous_user_username: anon@ancho.re
+  anonymous_user_password: pbiU2RYZ2XrmYQ
+  url: 'https://ancho.re/v1/service/feeds'
+  client_url: 'https://ancho.re/v1/account/users'
+  token_url: 'https://ancho.re/oauth/token'
+  connection_timeout_seconds: 3
+  read_timeout_seconds: 60
+
 
 # As of 0.3.0dev0 this section is used instead of the credentials.users section
 # Can be omitted and will default to 'foobar' on db initialization
