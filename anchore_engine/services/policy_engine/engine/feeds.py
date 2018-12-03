@@ -12,6 +12,7 @@ import datetime
 import re
 import threading
 import time
+import traceback
 
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
@@ -915,7 +916,6 @@ class AnchoreServiceFeed(DataFeed):
         except (InsufficientAccessTierError, InvalidCredentialsError):
             raise
         except Exception as e:
-            log.exception('Error updating feed metadata')
             db.rollback()
             raise
 
@@ -1479,8 +1479,8 @@ class DataFeeds(object):
                 vuln_feed = self.vulnerabilities
                 vuln_feed.init_feed_meta_and_groups()
             except:
-                log.exception('Failure syncing group metadata for vulnerabilities feed. Continuing with next feed')
-                all_success = False
+                log.exception('Cannot sync group metadata for vulnerabilities feed')
+                vuln_feed = None
 
         pkgs_feed = None
         if to_sync is None or 'packages' in to_sync:
@@ -1489,8 +1489,8 @@ class DataFeeds(object):
                 pkgs_feed = self.packages
                 pkgs_feed.init_feed_meta_and_groups()
             except:
-                log.exception('Failure syncing group metadata for packages feed. Continuing with next feed')
-                all_success = False
+                log.exception('Cannot sync group metadata for packages feed')
+                pkgs_feed = None
 
         nvd_feed = None
         if to_sync is None or 'nvd' in to_sync:
@@ -1499,8 +1499,8 @@ class DataFeeds(object):
                 nvd_feed = self.nvd
                 nvd_feed.init_feed_meta_and_groups()
             except:
-                log.exception('Failure syncing group metadata for nvd feed. Continuing with next feed')
-                all_success = False
+                log.exception('Cannot sync group metadata for nvd feed')
+                nvd_feed = None
 
         snyk_feed = None
         if to_sync is None or 'snyk' in to_sync:
@@ -1509,8 +1509,9 @@ class DataFeeds(object):
                 snyk_feed = self.snyk
                 snyk_feed.init_feed_meta_and_groups()
             except:
-                log.exception('Failure syncing group metadata for snyk feed')
-                all_success = False
+                log.warn('Cannot sync group metadata for snyk feed, may not be available in the feed source')
+                log.debug(traceback.format_exc())
+                snyk_feed = None
 
         # Perform the feed sync next
 
@@ -1519,7 +1520,7 @@ class DataFeeds(object):
                 log.info('Syncing vulnerability feed')
                 updated_records['vulnerabilities'] = vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
             except:
-                log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
+                log.exception('Failure updating the vulnerabilities feed')
                 all_success = False
 
         if pkgs_feed:
@@ -1527,7 +1528,7 @@ class DataFeeds(object):
                 log.info('Syncing packages feed')
                 updated_records['packages'] = pkgs_feed.sync()
             except:
-                log.exception('Failure updating the packages feed.')
+                log.exception('Failure updating the packages feed')
                 all_success = False
 
         if nvd_feed:
@@ -1535,7 +1536,7 @@ class DataFeeds(object):
                 log.info('Syncing nvd feed')
                 updated_records['nvd'] = nvd_feed.sync()
             except:
-                log.exception('Failure updating the nvd feed.')
+                log.exception('Failure updating the nvd feed')
                 all_success = False
 
         if snyk_feed:
@@ -1543,7 +1544,7 @@ class DataFeeds(object):
                 log.info('Syncing snyk feed')
                 updated_records['snyk'] = snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
             except:
-                log.exception('Failure updating the snyk feed.')
+                log.exception('Failure updating the snyk feed')
                 all_success = False
 
         if not all_success:
