@@ -173,8 +173,12 @@ def delete_image(user_id, image_id):
                 db.delete(pkg_vuln)
             #for pkg_vuln in img.java_vulnerabilities():
             #    db.delete(pkg_vuln)
-            mgr = EvaluationCacheManager(img, None, None)
-            mgr.flush()
+            try:
+                mgr = EvaluationCacheManager(img, None, None)
+                mgr.flush()
+            except Exception as ex:
+                log.exception("Could not delete evaluations for image {}/{} in the cache. May be orphaned".format(user_id, image_id))
+
 
             db.delete(img)
             db.commit()
@@ -428,23 +432,31 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         if evaluation_cache_enabled:
             timer2 = time.time()
             try:
-                cache_mgr = EvaluationCacheManager(img_obj, tag, bundle)
-            except ValueError as err:
-                log.warn('Could not leverage cache due to error in bundle data: {}'.format(err))
-                cache_mgr = None
+                try:
+                    cache_mgr = EvaluationCacheManager(img_obj, tag, bundle)
+                except ValueError as err:
+                    log.warn('Could not leverage cache due to error in bundle data: {}'.format(err))
+                    cache_mgr = None
 
-            cached_result = cache_mgr.refresh()
-            if cached_result:
-                metrics.counter_inc(name='anchore_policy_evaluation_cache_hits')
-                metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
-                                          status="hit")
-                log.info('Returning cached result of policy evaluation for {}/{}, with tag {} and bundle {} with digest {}. Last evaluation: {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest, cached_result.get('last_modified')))
-                return cached_result
-            else:
-                metrics.counter_inc(name='anchore_policy_evaluation_cache_misses')
-                metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
-                                          status="miss")
-                log.info('Policy evaluation not cached, or invalid, executing evaluation for {}/{} with tag {} and bundle {} with digest {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest))
+                if cache_mgr is None:
+                    log.info('Could not initialize cache manager for policy evaluation, skipping cache usage')
+                else:
+                    cached_result = cache_mgr.refresh()
+                    if cached_result:
+                        metrics.counter_inc(name='anchore_policy_evaluation_cache_hits')
+                        metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
+                                                  status="hit")
+                        log.info('Returning cached result of policy evaluation for {}/{}, with tag {} and bundle {} with digest {}. Last evaluation: {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest, cached_result.get('last_modified')))
+                        return cached_result
+                    else:
+                        metrics.counter_inc(name='anchore_policy_evaluation_cache_misses')
+                        metrics.histogram_observe('anchore_policy_evaluation_cache_access_latency', time.time() - timer2,
+                                                  status="miss")
+                        log.info('Policy evaluation not cached, or invalid, executing evaluation for {}/{} with tag {} and bundle {} with digest {}'.format(user_id, image_id, tag, cache_mgr.bundle_id, cache_mgr.bundle_digest))
+
+            except Exception as ex:
+                log.exception('Unexpected error operating on policy evaluation cache. Skipping use of cache.')
+
         else:
             log.info('Policy evaluation cache disabled. Executing evaluation')
 
@@ -497,8 +509,13 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="success")
 
         result = resp.to_dict()
-        if evaluation_cache_enabled and cache_mgr is not None:
-            cache_mgr.save(result)
+
+        # Never let the cache block returning results
+        try:
+            if evaluation_cache_enabled and cache_mgr is not None:
+                cache_mgr.save(result)
+        except Exception as ex:
+            log.exception("Failed saving policy result in cache. Skipping and continuing.")
 
         db.commit()
 
