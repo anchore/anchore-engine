@@ -373,7 +373,7 @@ class EvaluationCacheManager(object):
             metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_notfound')
             return EvaluationCacheManager.CacheStatus.missing
 
-        if cache_entry.bundle_digest == cache_entry.bundle_digest:
+        if cache_entry.bundle_digest == self.bundle_digest:
             # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
             if self._inputs_changed(cache_entry.last_modified):
                 metrics.counter_inc(name='anchore_policy_evaluation_cache_misses_stale')
@@ -414,6 +414,8 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 
     timer = time.time()
     db = get_session()
+    cache_mgr = None
+
     try:
         # Input validation
         if tag is None:
