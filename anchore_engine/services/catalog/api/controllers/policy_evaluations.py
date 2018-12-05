@@ -157,15 +157,16 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
             policyId = None
 
         latest_eval_record, latest_eval_result = catalog_impl.perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=evaltag, policyId=policyId, interactive=interactive, newest_only=newest_only)
-
     except Exception as err:
-        logger.error(
-            "interactive eval failed, will return any in place evaluation records - exception: " + str(err))
+        logger.error("interactive eval failed - exception: {}".format(err))
 
     records = []
     if interactive or newest_only:
-        latest_eval_record['result'] = latest_eval_result
-        records = [latest_eval_record]
+        try:
+            latest_eval_record['result'] = latest_eval_result
+            records = [latest_eval_record]
+        except:
+            raise Exception("interactive or newest_only eval requested, but unable to perform eval at this time")
     else:
         records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
         for record in records:

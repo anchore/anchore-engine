@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 (2018-12-05)
+
++ Added - added vulnerabilty scan support for Amazon Linux 2 images (ALAS-* vulnerability matches)
++ Added -  policy engine policy evaluation optimization and cache for results to avoid re-evaluation when inputs have not changed. Uses combination of bundle content digest, feed sync update timestamps, and image load times to detect when a policy evaluation cannot have changed and uses a cached result instead of an evaluation to reduce CPU and DB usage.
++ Added - CLI operation 'system wait' to be used for scripting processes that need to block on an anchore-engine deployment coming up and being fully ready for use
++ Improved - removed feed endpoint and credentials check from policy engine bootstrap, and initialize group metadata for enabled feed types before syncing feed data
++ Fix - adjust build of embedded skopeo command that was causing segmentation fault when registry hostnames included the domain suffix '.local'
++ Minor bug fixes
+	
 ## 0.3.0 (2018-11-15)
 
 NOTE: For users upgrading from 0.2.X to 0.3.X, please note that the upgrade process may take some time for deployments anchore-engine that have a large number of images stored (many thousands).  Please review the upgrade guide (https://anchore.freshdesk.com/support/solutions/articles/36000052927-upgrading-anchore-engine) to safely plan for an upgrade, and plan for a longer service maintainence window than usual for this upgrade if your engine has a large number of images analyzed.
