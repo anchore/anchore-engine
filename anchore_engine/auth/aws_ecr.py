@@ -30,7 +30,7 @@ def parse_registry_url(registry_url):
     """
     parsed = urlparse(registry_url)
     host = parsed.hostname if parsed.hostname is not None else parsed.path
-    (aid, dkr, ecr, region,azn,com) = host.split(".")
+    (aid, dkr, ecr, region, rest) = host.split(".", 4) # We only care about the prefix bits to extract account and region
     return aid, region
 
 def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
