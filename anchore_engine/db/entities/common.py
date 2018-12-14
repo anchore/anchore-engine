@@ -126,19 +126,26 @@ def do_connect(db_params):
 
     db_connect = db_params.get('db_connect', None)
     db_connect_args = db_params.get('db_connect_args', None)
-    db_pool_size = db_params.get('db_pool_size', None)
-    db_pool_max_overflow = db_params.get('db_pool_max_overflow', None)
-    db_echo = db_params.get('db_echo', False)
+    db_engine_args = db_params.get('db_engine_args', {})
+
+    # for bkwds compat
+    if db_params.get('db_pool_size', None):
+        db_engine_args['pool_size'] = db_params.get('db_pool_size', 30)
+    if db_params.get('db_pool_max_overflow', None):
+        db_engine_args['max_overflow'] = db_params.get('db_pool_max_overflow', 100)
+    if 'db_echo' in db_params:
+        db_engine_args['echo'] = db_params.get('db_echo', False)
 
     if db_connect:
         try:
             if db_connect.startswith('sqlite://'):
                 # Special case for testing with sqlite. Not for production use, unit tests only
-                engine = sqlalchemy.create_engine(db_connect, echo=db_echo)
+                engine = sqlalchemy.create_engine(db_connect, echo=True)
             else:
-                logger.debug("database connection args {} db_echo={}".format(db_connect_args, db_echo))
-                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=db_echo,
-                                                  pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
+                logger.debug("db_connect_args {} db_engine_args={}".format(db_connect_args, db_engine_args))
+                #engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=db_echo,
+                #                                  pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
+                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, **db_engine_args)
 
         except Exception as err:
             raise Exception("could not connect to DB - exception: " + str(err))
@@ -188,14 +195,36 @@ def get_params(localconfig):
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
 
-    ret = {
+    db_params = {
         'db_connect': db_connect,
         'db_connect_args': db_connect_args,
         'db_pool_size': db_pool_size,
         'db_pool_max_overflow': db_pool_max_overflow,
         'db_echo': db_echo
     }
+    ret = normalize_db_params(db_params)
     return(ret)
+
+def normalize_db_params(db_params):
+    try:
+        db_connect = db_params['db_connect']
+    except:
+        raise Exception("input db_connect must be set")
+
+    db_connect_args = db_params.get('db_connect_args', {})
+
+    if '+pg8000' not in db_connect:
+        if 'timeout' in db_connect_args:
+            timeout = db_connect_args.pop('timeout')
+            db_connect_args['connect_timeout'] = int(timeout)
+        if 'ssl' in db_connect_args:
+            ssl = db_connect_args.pop('ssl')
+            if ssl:
+                db_connect_args['sslmode'] = 'require'
+            
+
+    return(db_params)
+        
 
 def do_create(specific_tables=None, base=Base):
     engine = get_engine()

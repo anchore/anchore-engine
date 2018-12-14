@@ -107,18 +107,15 @@ def doexit(ecode):
     sys.exit(ecode)
 
 def make_db_params(db_connect=None, db_use_ssl=False, db_timeout=30, db_connect_timeout=120, db_pool_size=30, db_pool_max_overflow=100):
-    db_connect_args = {
-        'timeout': db_timeout,
-        'ssl': db_use_ssl,
-        #'connect_timeout': db_connect_timeout,
-    }
 
-    ret = {
+    db_params = {
         'db_connect': db_connect,
         'db_connect_args': db_connect_args,
         'db_pool_size': db_pool_size,
         'db_pool_max_overflow': db_pool_max_overflow,
-    }            
+    }
+
+    ret = anchore_engine.db.entities.common.normalize_db_params(db_params)
     return(ret)
 
 def connect_database(config, db_params, db_retries=1):

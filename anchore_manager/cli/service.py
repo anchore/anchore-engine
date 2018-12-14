@@ -317,9 +317,13 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
         # preflight - db checks
         try:
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
+            
             #override db_timeout since upgrade might require longer db session timeout setting
             try:
-                db_params['db_connect_args']['timeout'] = 86400
+                if 'timeout' in db_params.get('db_connect_args', {}):
+                    db_params['db_connect_args']['timeout'] = 86400
+                elif 'connect_timeout' in db_params.get('db_connect_args', {}):
+                    db_params['db_connect_args']['connect_timeout'] = 86400
             except Exception as err:
                 pass
             
