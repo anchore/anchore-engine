@@ -74,7 +74,7 @@ def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata=
                     os.remove(rmfile)
         
     if handled_post_metadata.get('temporary_dir_adds', []):
-        for tfile in handled_post_metadata.get('temporary_dir_adds', []):
+        for tfile in sorted(handled_post_metadata.get('temporary_dir_adds', []), reverse=True):
             rmfile = os.path.join(rootfsdir, tfile)
             if os.path.exists(rmfile):
                 logger.debug("removing temporary image dir: {}".format(rmfile))
@@ -122,9 +122,14 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
                         ltar = get_layertarfile(unpackdir, cachedir, lname)
 
                         #tarcmd = "tar -C {} -x -f {} '{}'".format(rootfsdir, layertar, missingfile)
-                        tarcmd = "tar -C {} -x -f {} {}".format(rootfsdir, ltar, missingfile)
-                        logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd))
-                        rc, sout, serr = utils.run_command(tarcmd)
+                        #tarcmd = "tar -C {} -x -f {} {}".format(rootfsdir, ltar, missingfile)
+                        #logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd))
+                        #rc, sout, serr = utils.run_command(tarcmd)
+
+                        tarcmd = "tar -C {} -x -f {}".format(rootfsdir, ltar)
+                        tarcmd_list = tarcmd.split() + ["{}".format(missingfile)]
+                        logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd_list))
+                        rc, sout, serr = utils.run_command_list(tarcmd_list)
                         sout = utils.ensure_str(sout)
                         serr = utils.ensure_str(serr)
                         logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd, rc, serr, sout))
