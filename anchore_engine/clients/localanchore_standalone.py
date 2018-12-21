@@ -108,8 +108,6 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
                 basedir = os.path.dirname(missingfile)
                 logger.debug("found 'hard link' error on name: {}".format(missingfile))
                 if not os.path.exists(os.path.join(rootfsdir, missingfile)):
-                    logger.debug("MEH layers: {}".format(layers))
-                    #logger.debug("MEH layers and below: {}".format(layers[layers.index("sha256:"+layer)::-1]))
                     #for l in layers[layers.index("sha256:"+layer)::-1]:
                     for l in layers[-1::-1]:
 
@@ -118,21 +116,15 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
                             missingdir = basedir
 
                         dighash, lname = l.split(":")
-                        #os.path.join(unpackdir, 'raw', 'blobs', dighash, lname)
                         ltar = get_layertarfile(unpackdir, cachedir, lname)
-
-                        #tarcmd = "tar -C {} -x -f {} '{}'".format(rootfsdir, layertar, missingfile)
-                        #tarcmd = "tar -C {} -x -f {} {}".format(rootfsdir, ltar, missingfile)
-                        #logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd))
-                        #rc, sout, serr = utils.run_command(tarcmd)
 
                         tarcmd = "tar -C {} -x -f {}".format(rootfsdir, ltar)
                         tarcmd_list = tarcmd.split() + ["{}".format(missingfile)]
-                        logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd_list))
+                        #logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd_list))
                         rc, sout, serr = utils.run_command_list(tarcmd_list)
                         sout = utils.ensure_str(sout)
                         serr = utils.ensure_str(serr)
-                        logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd, rc, serr, sout))
+                        #logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd, rc, serr, sout))
                         if rc == 0:
                             if not handled_post_metadata.get('temporary_file_adds', False):
                                 handled_post_metadata['temporary_file_adds'] = []
