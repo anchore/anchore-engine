@@ -3095,7 +3095,7 @@ definitions:
       name:
         type: string
         description: The account name to use. This will identify the account and must be globally unique in the system.
-        pattern: '^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$'
+        pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]{1,126}[a-zA-Z0-9]$'
       email:
         type: string
         description: An optional email to associate with the account for contact purposes
@@ -3171,7 +3171,7 @@ definitions:
       username:
         description: The username to create
         type: string
-        pattern: '^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$'
+        pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]{1,126}[a-zA-Z0-9]$'
       password:
         description: The initial password for the user, must be at least 6 characters, up to 128
         type: string

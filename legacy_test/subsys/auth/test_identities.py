@@ -121,8 +121,8 @@ class TestIdentities(unittest.TestCase):
     def test_create(self):
         print('Creating user account/users')
         fixtures = [
-            ('user_account1', 'user1', AccountTypes.user),
-            ('admin_account1', 'user2', AccountTypes.admin),
+            ('user_Account1', 'user1', AccountTypes.user),
+            ('admin_Account1', 'user2', AccountTypes.admin),
             ('system_account1', 'user3', AccountTypes.user)
         ]
 
@@ -130,12 +130,12 @@ class TestIdentities(unittest.TestCase):
             mgr = identities.manager_factory.for_session(session)
 
             for account_name, user_name, account_type in fixtures:
-                mgr.create_account(account_name=account_name, account_type=account_type, creator='test0', email='blah')
+                mgr.create_account(account_name=account_name, account_type=account_type, email='blah')
                 accnt = mgr.get_account(account_name)
                 self.assertIsNotNone(accnt)
                 self.assertEqual(account_type, accnt['type'])
 
-                mgr.create_user(username=user_name, account_name=account_name, creator_name='test0', password='password123')
+                mgr.create_user(username=user_name, account_name=account_name, password='password123')
                 usr = mgr.get_user(user_name)
                 self.assertIsNotNone(usr)
                 self.assertEqual(account_name, usr['account_name'])

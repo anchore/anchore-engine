@@ -63,7 +63,7 @@ class TestBasicStore(unittest.TestCase):
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
-            accnt = mgr.create_account(account_name='account1', account_type=AccountTypes.user, email='someemail')
+            accnt = mgr.create_account(account_name='accountAbc', account_type=AccountTypes.user, email='someemail')
             user1 = mgr.create_user(account_name=accnt['name'], username='testuser1',
                                            password='password123')
             print('user 1: {}'.format(user1))
@@ -84,15 +84,18 @@ class TestBasicStore(unittest.TestCase):
         print(token.credentials)
         resp = store.get_authc_info(token.identifier)
         print(resp)
-        self.assertTrue(cc.verify(token.credentials, resp['authc_info']['password']['credential']))
+        self.assertTrue(token.credentials == bytes(resp['authc_info']['password']['credential'], 'utf8'))
 
         # Authz stuff
         authz_resp = store.get_authz_permissions(token.identifier)
         print(authz_resp)
 
         # Standard user
-        self.assertTrue(DefaultPermission(parts=json.loads(authz_resp[user1['account_name']])[0]).implies(DefaultPermission(parts={'domain': user1['account_name'], 'action': '*', 'target': '*'})))
+        self.assertTrue(DefaultPermission(parts=json.loads(authz_resp[user1['account_name']])[0]).implies(
+            DefaultPermission(parts={'domain': user1['account_name'], 'action': '*', 'target': '*'})))
         self.assertIsNone(authz_resp.get('*'))
+        self.assertTrue(DefaultPermission(parts=json.loads(authz_resp[user1['account_name']])[0]).implies(
+            DefaultPermission(parts={'domain': user1['account_name'], 'action': 'listImages', 'target': '*'})))
 
         admin_token = UsernamePasswordToken(username='admin1',
                                       password=user3['credentials'][UserAccessCredentialTypes.password]['value'])
@@ -104,7 +107,3 @@ class TestBasicStore(unittest.TestCase):
         self.assertIsNotNone(authz_resp.get('*'))
         self.assertIsNone(authz_resp.get(user3['account_name']))
         self.assertTrue(DefaultPermission(parts=json.loads(authz_resp['*'])[0]).implies(DefaultPermission(parts={'domain': '*', 'action': '*', 'target': '*'})))
-
-
-
-

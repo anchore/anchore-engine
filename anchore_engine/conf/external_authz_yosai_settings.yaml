@@ -20,7 +20,7 @@ SECURITY_MANAGER_CONFIG:
   attributes:
     serializer: cbor
     realms:
-      anchore_engine.subsys.auth.external_realm.ExternalAuthzRealm:
+      anchore_engine.subsys.auth.realms.ExternalAuthzRealm:
         account_store: anchore_engine.subsys.auth.stores.basic.DbAccountStore
         authc_verifiers: anchore_engine.subsys.auth.stores.verifier.SimpleVerifier
         #authc_verifiers: yosai.core.PasslibVerifier

@@ -17,7 +17,7 @@ import functools
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 from threading import RLock
-from anchore_engine.subsys.auth.external_realm import ExternalAuthzRealm
+from anchore_engine.subsys.auth.realms import ExternalAuthzRealm
 from anchore_engine.configuration import localconfig
 
 # Global authorizer configured
@@ -221,6 +221,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
             DbAuthorizationHandler._yosai = Yosai(file_path=conf_path)
             # Disable sessions, since the APIs are not session-based
             DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
+            DbAuthorizationHandler._yosai.security_manager
 
     def notify(self, notification_type, notification_value):
         """

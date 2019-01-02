@@ -25,7 +25,7 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         # Read/write permissions within the account domain on everything except users/accounts
         return {
             account_name: json.dumps([
-                {'domain': account_name.lower(), 'action': '*', 'target': '*'},
+                {'domain': account_name, 'action': '*', 'target': '*'},
             ])
         }
 
