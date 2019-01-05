@@ -535,6 +535,8 @@ class ImageLoader(object):
         image_packages = []
         for path, npm_str in list(npms_json.items()):
             npm_json = json.loads(npm_str)
+
+            # TODO: remove this usage of ImageNPM, that is deprecated
             n = ImageNpm()
             n.path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
             n.path = path
@@ -586,6 +588,8 @@ class ImageLoader(object):
         image_packages = []
         for path, gem_str in list(gems_json.items()):
             gem_json = json.loads(gem_str)
+
+            # TODO: remove this usage of ImageGem, that is deprecated
             n = ImageGem()
             n.path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
             n.path = path

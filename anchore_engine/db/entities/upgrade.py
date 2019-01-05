@@ -646,6 +646,15 @@ def policy_engine_packages_upgrade_007_008():
             'ALTER TABLE image_package_db_entries ADD PRIMARY KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path,file_path)',
             'ALTER TABLE image_package_vulnerabilities ADD CONSTRAINT image_package_vulnerabilities_pkg_image_id_fkey FOREIGN KEY (pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
             'ALTER TABLE image_package_db_entries ADD CONSTRAINT image_package_db_entries_image_id_fkey FOREIGN KEY (image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path) REFERENCES image_packages (image_id, image_user_id, name, version, pkg_type, arch, pkg_path) MATCH SIMPLE',
+
+            # These are helpers for the upgrade itself, not needed by the functioning system. Needed for large npm/gem tables and pagination support
+            "CREATE SEQUENCE IF NOT EXISTS image_npms_seq_id_seq",
+            "ALTER TABLE image_npms add column IF NOT EXISTS seq_id int DEFAULT nextval('image_npms_seq_id_seq')",
+            "CREATE INDEX IF NOT EXISTS idx_npm_seq ON image_npms using btree (seq_id)",
+
+            "CREATE SEQUENCE IF NOT EXISTS image_gems_seq_id_seq",
+            "ALTER TABLE image_gems add column IF NOT EXISTS seq_id int DEFAULT nextval('image_gems_seq_id_seq')",
+            "CREATE INDEX IF NOT EXISTS idx_gem_seq ON image_gems using btree (seq_id)"
         ]
 
         log.err("updating primary key / foreign key relationships for new column - this may take a while")
@@ -659,129 +668,136 @@ def policy_engine_packages_upgrade_007_008():
         log.err("converting ImageNpm and ImageGem records into ImagePackage records - this may take a while")
         # migrate ImageNpm and ImageGem records into ImagePackage records
         with session_scope() as dbsession:
-            db_npms = dbsession.query(ImageNpm)
             total_npms = dbsession.query(ImageNpm).count()
-            db_gems = dbsession.query(ImageGem)
             total_gems = dbsession.query(ImageGem).count()
+
+        log.err("will migrate {} image npm records".format(total_npms))
+
 
         npms = []
         chunk_size = 8192
         record_count = 0
-        try:
-            for n in db_npms:
-                np = ImagePackage()
+        skipped_count = 0
 
-                # primary keys
-                np.name = n.name
-                if len(n.versions_json):
-                    version = n.versions_json[0]
-                else:
-                    version = "N/A"
-                np.version = version
-                np.pkg_type = 'npm'
-                np.arch = 'N/A'
-                np.image_user_id = n.image_user_id
-                np.image_id = n.image_id
-                np.pkg_path = n.path
+        with session_scope() as dbsession:
+            try:
+                last_seq = -1
+                while record_count < total_npms:
+                    chunk_time = time.time()
+                    log.err('Processing next chunk of records')
+                    for n in dbsession.query(ImageNpm).filter(ImageNpm.seq_id > last_seq).limit(chunk_size):
+                        np = ImagePackage()
 
-                # other
-                np.pkg_path_hash = n.path_hash
-                np.distro_name = 'npm'
-                np.distro_version = 'N/A'
-                np.like_distro = 'npm'
-                np.fullversion = np.version
-                np.license = ' '.join(n.licenses_json)
-                np.origin = ' '.join(n.origins_json)
-                fullname = np.name
-                np.normalized_src_pkg = fullname
-                np.src_pkg = fullname
-                npms.append(np)
-                if len(npms) >= chunk_size:
-                    startts = time.time()
-                    try:
-                        with session_scope() as dbsession:
-                            dbsession.bulk_save_objects(npms)
-                            record_count = record_count + chunk_size
-                    except:
-                        log.err("skipping duplicates")
-                        record_count = record_count + chunk_size
-                    log.err("merged {} / {} npm records (time={}), performing next range".format(record_count, total_npms, time.time() - startts))
+                        # primary keys
+                        np.name = n.name
+                        if len(n.versions_json):
+                            version = n.versions_json[0]
+                        else:
+                            version = "N/A"
+                        np.version = version
+                        np.pkg_type = 'npm'
+                        np.arch = 'N/A'
+                        np.image_user_id = n.image_user_id
+                        np.image_id = n.image_id
+                        np.pkg_path = n.path
 
+                        # other
+                        np.pkg_path_hash = n.path_hash
+                        np.distro_name = 'npm'
+                        np.distro_version = 'N/A'
+                        np.like_distro = 'npm'
+                        np.fullversion = np.version
+                        np.license = ' '.join(n.licenses_json)
+                        np.origin = ' '.join(n.origins_json)
+                        fullname = np.name
+                        np.normalized_src_pkg = fullname
+                        np.src_pkg = fullname
+
+                        npms.append(np)
+                        last_seq = n.seq_id
+
+                    if len(npms):
+                        log.err('Inserting {} new records'.format(len(npms)))
+
+                        startts = time.time()
+                        try:
+                            with session_scope() as dbsession2:
+                                dbsession2.bulk_save_objects(npms)
+                        except Exception as err:
+                            log.err("skipping duplicates: {}".format(err))
+                            skipped_count += 1
+
+                        record_count = record_count + len(npms)
+                        log.err("merged {} / {} npm records (time={})".format(record_count, total_npms, time.time() - startts))
+
+                    log.err('Chunk took: {} seconds to process {} records'.format(time.time() - chunk_time, len(npms)))
                     npms = []
 
-            if len(npms):
-                startts = time.time()
-                try:
-                    with session_scope() as dbsession:
-                        dbsession.bulk_save_objects(npms)
-                        record_count = record_count + len(npms)
-                except:
-                    log.err("skipping duplicates")
-                    record_count = record_count + len(npms)
-                log.err("final merged {} / {} npm records (time={})".format(record_count, total_npms, time.time() - startts))
+            except Exception as err:
+                log.err('Error during npm migration: {}'.format(err))
+                raise err
 
-        except Exception as err:
-            raise err
-
+        log.err("will migrate {} image gem records".format(total_gems))
         gems = []
-        chunk_size = 8192
         record_count = 0
-        try:
-            for n in db_gems:
+        skipped_count = 0
+        with session_scope() as dbsession:
+            try:
+                last_seq = -1
+                while record_count < total_gems:
+                    chunk_time = time.time()
+                    log.err('Processing next chunk of records')
+                    for n in dbsession.query(ImageGem).filter(ImageGem.seq_id > last_seq).limit(chunk_size):
 
-                np = ImagePackage()
+                        np = ImagePackage()
 
-                # primary keys
-                np.name = n.name
-                if len(n.versions_json):
-                    version = n.versions_json[0]
-                else:
-                    version = "N/A"
-                np.version = version
-                np.pkg_type = 'gem'
-                np.arch = 'N/A'
-                np.image_user_id = n.image_user_id
-                np.image_id = n.image_id
-                np.pkg_path = n.path
+                        # primary keys
+                        np.name = n.name
+                        if len(n.versions_json):
+                            version = n.versions_json[0]
+                        else:
+                            version = "N/A"
+                        np.version = version
+                        np.pkg_type = 'gem'
+                        np.arch = 'N/A'
+                        np.image_user_id = n.image_user_id
+                        np.image_id = n.image_id
+                        np.pkg_path = n.path
 
-                # other
-                np.pkg_path_hash = n.path_hash
-                np.distro_name = 'gem'
-                np.distro_version = 'N/A'
-                np.like_distro = 'gem'
-                np.fullversion = np.version
-                np.license = ' '.join(n.licenses_json)
-                np.origin = ' '.join(n.origins_json)
-                fullname = np.name
-                np.normalized_src_pkg = fullname
-                np.src_pkg = fullname
-                gems.append(np)
-                if len(gems) >= chunk_size:
-                    startts = time.time()
-                    try:
-                        with session_scope() as dbsession:
-                            dbsession.bulk_save_objects(gems)
-                            record_count = record_count + chunk_size
-                    except:
-                        log.err("skipping duplicates")
-                        record_count = record_count + chunk_size
-                    log.err("merged {} / {} gem records (time={}), performing next range".format(record_count, total_gems, time.time() - startts))
+                        # other
+                        np.pkg_path_hash = n.path_hash
+                        np.distro_name = 'gem'
+                        np.distro_version = 'N/A'
+                        np.like_distro = 'gem'
+                        np.fullversion = np.version
+                        np.license = ' '.join(n.licenses_json)
+                        np.origin = ' '.join(n.origins_json)
+                        fullname = np.name
+                        np.normalized_src_pkg = fullname
+                        np.src_pkg = fullname
+                        gems.append(np)
+                        last_seq = n.seq_id
 
+                    if len(gems):
+                        log.err('Inserting {} new records'.format(len(gems)))
+
+                        startts = time.time()
+                        try:
+                            with session_scope() as dbsession2:
+                                dbsession2.bulk_save_objects(gems)
+                        except Exception as err:
+                            log.err("skipping duplicates: {}".format(err))
+                            skipped_count += 1
+
+                        record_count = record_count + len(gems)
+                        log.err("merged {} / {} gem records (time={})".format(record_count, total_gems, time.time() - startts))
+
+                    log.err('Chunk took: {} seconds to process {} records'.format(time.time() - chunk_time, len(npms)))
                     gems = []
 
-            if len(gems):
-                startts = time.time()
-                try:
-                    with session_scope() as dbsession:
-                        dbsession.bulk_save_objects(gems)
-                        record_count = record_count + len(gems)
-                except:
-                    log.err("skipping duplicates")
-                    record_count = record_count + len(gems)
-                log.err("final merged {} / {} gem records (time={})".format(record_count, total_gems, time.time() - startts))
-
-        except Exception as err:
-            raise err
+            except Exception as err:
+                log.err('Error during gem migration: {}'.format(err))
+                raise err
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here

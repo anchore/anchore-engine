@@ -686,6 +686,9 @@ class ImagePackageManifestEntry(Base):
 
 
 class ImageNpm(Base):
+    """
+    NOTE: This is a deprecated class used for legacy support and upgrade. Image NPMs are now stored in the ImagePackage type
+    """
     __tablename__ = 'image_npms'
 
     image_user_id = Column(String(user_id_length), primary_key=True)
@@ -698,6 +701,7 @@ class ImageNpm(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
+    seq_id = Column(Integer) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='npms')
 
@@ -712,6 +716,10 @@ class ImageNpm(Base):
 
 
 class ImageGem(Base):
+    """
+    NOTE: This is a deprecated class used for legacy support. Gems are now loaded as types of packages for the ImagePackage class
+    """
+
     __tablename__ = 'image_gems'
 
     image_user_id = Column(String(user_id_length), primary_key=True)
@@ -725,6 +733,7 @@ class ImageGem(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
+    seq_id = Column(Integer) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='gems')
 
