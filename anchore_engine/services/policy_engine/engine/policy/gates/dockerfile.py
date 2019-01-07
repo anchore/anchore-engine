@@ -80,10 +80,10 @@ class ParameterizedDockerfileModeBaseTrigger(BaseTrigger):
 
 class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
     __trigger_name__ = 'effective_user'
-    __description__ = 'Checks if the effective user matches the provided user names and fires based on the allowed parameter. If allowed=true, the rule behaves as a whitelist, otherwise acts as a blacklist.'
+    __description__ = 'Checks if the effective user matches the provided user names, either as a whitelist or blacklist depending on the type parameter setting.'
 
     user = CommaDelimitedStringListParameter(name='users', example_str='root,docker', description='User names to check against as the effective user (last user entry) in the images history.', is_required=True, validator=TypeValidator('string'), sort_order=1)
-    allowed_type = EnumStringParameter(name='type', enum_values=['whitelist', 'blacklist'], description='How to treat the provided user names.', is_required=True, sort_order=2)
+    allowed_type = EnumStringParameter(name='type', enum_values=['whitelist', 'blacklist'], example_str='blacklist', description='How to treat the provided user names.', is_required=True, sort_order=2)
 
     _sanitize_regex = '\s*USER\s+\[?([^\]]+)\]?\s*'
 
