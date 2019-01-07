@@ -268,7 +268,7 @@ def delete_service(servicename, hostid):
 
     return (return_object, httpcode)
 
-@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+@authorizer.requires([])
 def get_system_feeds():
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     return_object = []
