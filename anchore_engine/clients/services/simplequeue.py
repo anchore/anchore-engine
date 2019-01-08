@@ -6,7 +6,7 @@ from anchore_engine.clients.services import http
 from anchore_engine.subsys import logger
 from anchore_engine.utils import get_threadbased_id
 from anchore_engine.clients.services.internal import InternalServiceClient
-
+import retrying
 
 class LeaseAcquisitionFailedError(Exception):
     pass
@@ -56,7 +56,7 @@ class SimpleQueueClient(InternalServiceClient):
         return self.round_robin_call_api(http.anchy_put, 'leases/{lease_id}/ttl', path_params={'lease_id': lease_id}, query_params={'client_id': client_id, 'ttl': ttl, 'epoch': epoch})
 
 
-def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_wait_seconds=0, autorefresh=True, *args, **kwargs):
+def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_wait_seconds=0, autorefresh=True, retries=1, backoff_time=0, *args, **kwargs):
     """
     Run a target function with the message pulled from the queue. If autorefresh=True, then run target as a thread and periodically check
     for completion, updating the message visibility timeout to keep it fresh until the thread completes.
@@ -69,14 +69,24 @@ def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_
     :param visibility_timeout:
     :param target:
     :param autorefresh:
+    :param retries
+    :param backoff_time
     :param args:
     :param kwargs:
     :return:
     """
 
     client = SimpleQueueClient(as_account=user_auth[0], user=user_auth[0], password=user_auth[1])
+    ex = None
+    qobj = None
 
-    qobj = client.dequeue(queue, max_wait_seconds=max_wait_seconds, visibility_timeout=visibility_timeout)
+    @retrying.retry(stop_max_attempt_number=retries, wait_incrementing_start=0, wait_incrementing_increment=backoff_time*1000)
+    def get_msg():
+        logger.debug("Checking queue {} for message with vis timeout {}".format(queue, visibility_timeout))
+        return client.dequeue(queue, max_wait_seconds=max_wait_seconds, visibility_timeout=visibility_timeout)
+
+    qobj = get_msg()
+
     logger.debug('Got msg: {}'.format(qobj))
     if not qobj:
         logger.debug("Got empty message from queue - nothing to do")

@@ -42,3 +42,4 @@ yosai==0.3.2
 zope.component==4.5
 zope.interface==4.5.0
 semantic_version==2.6.0
+retrying==1.3.3

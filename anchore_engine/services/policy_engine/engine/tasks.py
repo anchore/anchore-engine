@@ -254,7 +254,7 @@ class FeedsUpdateTask(IAsyncTask):
         try:
             # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
             imgs = [(x.id, x.user_id) for x in db.query(Image).filter(Image.created_at >= from_time, Image.created_at <= to_time)]
-            log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs])))
+            log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]'))
         finally:
             db.rollback()
 

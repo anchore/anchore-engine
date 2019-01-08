@@ -1,8 +1,8 @@
-import contextlib
 import time
 import sys
 import pkg_resources
 import os
+import retrying
 
 # anchore modules
 import anchore_engine.clients.services.common
@@ -24,6 +24,18 @@ feed_sync_msg = {
     'task_type': 'feed_sync',
     'enabled': True
 }
+
+try:
+    FEED_SYNC_RETRIES = int(os.getenv('ANCHORE_FEED_SYNC_CHECK_RETRIES', 5))
+except:
+    logger.exception('Error parsing env value ANCHORE_FEED_SYNC_CHECK_RETRIES into int, using default value of 5')
+    FEED_SYNC_RETRIES = 5
+
+try:
+    FEED_SYNC_RETRY_BACKOFF = int(os.getenv('ANCHORE_FEED_SYNC_CHECK_FAILURE_BACKOFF', 5))
+except:
+    logger.exception('Error parsing env value ANCHORE_FEED_SYNC_CHECK_FAILURE_BACKOFF into int, using default value of 5')
+    FEED_SYNC_RETRY_BACKOFF = 5
 
 try:
     feed_config_check_retries = int(os.getenv('FEED_CLIENT_CHECK_RETRIES', 3))
@@ -185,23 +197,35 @@ def handle_feed_sync(*args, **kwargs):
         config = localconfig.get_config()
         feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
         if feed_sync_enabled:
+            logger.info("Feed sync task executor activated")
             try:
-                all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
-                if not all_ready:
-                    logger.info("simplequeue service not yet ready, will retry")
-                else:
-                    try:
-                        simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync, max_wait_seconds=30, visibility_timeout=180)
-                    except Exception as err:
-                        logger.warn("failed to process task this cycle: " + str(err))
+                run_feed_sync(system_user)
             except Exception as e:
                 logger.error('Caught escaped error in feed sync handler: {}'.format(e))
+            finally:
+                logger.info('Feed sync task executor complete')
         else:
-            logger.debug("sync_enabled is set to false in config - skipping feed sync")
+            logger.info("sync_enabled is set to false in config - skipping feed sync")
 
         time.sleep(cycle_time)
 
     return True
+
+
+@retrying.retry(stop_max_attempt_number=FEED_SYNC_RETRIES, wait_incrementing_start=FEED_SYNC_RETRY_BACKOFF * 1000, wait_incrementing_increment=FEED_SYNC_RETRY_BACKOFF * 1000)
+def run_feed_sync(system_user):
+    all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
+    if not all_ready:
+        logger.info("simplequeue service not yet ready, will retry")
+        raise Exception('Simplequeue service not yet ready')
+    else:
+        try:
+            # This has its own retry on the queue fetch, so wrap with catch block to ensure we don't double-retry on task exec
+            simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync,
+                                                  max_wait_seconds=30, visibility_timeout=180, retries=FEED_SYNC_RETRIES,
+                                                  backoff_time=FEED_SYNC_RETRY_BACKOFF)
+        except Exception as err:
+            logger.warn("failed to process task this cycle: " + str(err))
 
 
 def handle_feed_sync_trigger(*args, **kwargs):
@@ -218,46 +242,41 @@ def handle_feed_sync_trigger(*args, **kwargs):
     logger.info('init args: {}'.format(kwargs))
     cycle_time = kwargs['mythread']['cycle_timer']
 
-    retries = int(os.getenv('ANCHORE_FEED_SYNC_CHECK_RETRIES', 5))
-    backoff_time = int(os.getenv('ANCHORE_FEED_SYNC_CHECK_FAILURE_BACKOFF', 5))
-
     while True:
         config = localconfig.get_config()
         feed_sync_enabled = config.get('feeds', {}).get('sync_enabled', True)
         if feed_sync_enabled:
-            sleep_time = backoff_time
-            for i in range(retries):
-                try:
-                    all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
-
-                    if not all_ready:
-                        logger.info("simplequeue service not yet ready, will retry")
-                    else:
-                        logger.info('Feed Sync Trigger activated')
-                        q_client = SimpleQueueClient(user=system_user[0], password=system_user[1])
-                        if not q_client.is_inqueue(name=feed_sync_queuename, inobj=feed_sync_msg):
-                            try:
-                                q_client.enqueue(name=feed_sync_queuename, inobj=feed_sync_msg)
-                            except:
-                                logger.error('Could not enqueue message for a feed sync')
-                                raise
-
-                        logger.info('Feed Sync Trigger done, waiting for next cycle.')
-                        break
-                except Exception as e:
-                    logger.exception('Error caught in feed sync trigger handler. Will backoff {} seconds and retry. Attempt {}. Exception: {}'.format(sleep_time, i, e))
-
-                time.sleep(sleep_time)
-                sleep_time += backoff_time
-            else:
-                logger.info('Exceeded max retries {} to check feed sync queue. Will wait until next duty cycle'.format(retries))
-
+            logger.info('Feed Sync task creator activated')
+            try:
+                push_sync_task(system_user)
+                logger.info('Feed Sync Trigger done, waiting for next cycle.')
+            except Exception as e:
+                logger.error('Error caught in feed sync trigger handler after all retries. Will wait for next cycle')
+            finally:
+                logger.info('Feed Sync task creator complete')
         else:
-            logger.debug("sync_enabled is set to false in config - skipping feed sync trigger")
+            logger.info("sync_enabled is set to false in config - skipping feed sync trigger")
 
         time.sleep(cycle_time)
 
     return True
+
+
+@retrying.retry(stop_max_attempt_number=FEED_SYNC_RETRIES, wait_incrementing_start=FEED_SYNC_RETRY_BACKOFF * 1000, wait_incrementing_increment=FEED_SYNC_RETRY_BACKOFF * 1000)
+def push_sync_task(system_user):
+    all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
+
+    if not all_ready:
+        logger.info("simplequeue service not yet ready, will retry")
+        raise Exception("Simplequeue service not yet ready")
+    else:
+        q_client = SimpleQueueClient(user=system_user[0], password=system_user[1])
+        if not q_client.is_inqueue(name=feed_sync_queuename, inobj=feed_sync_msg):
+            try:
+                q_client.enqueue(name=feed_sync_queuename, inobj=feed_sync_msg)
+            except:
+                logger.error('Could not enqueue message for a feed sync')
+                raise
 
 
 class PolicyEngineService(ApiService):
