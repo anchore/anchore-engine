@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.2 (2019-XX-YY)
+
++ Added - retry on feed sync failures due to queue availability, preventing delayed sync on bootstrap
++ Fix - update to dockerfile/effective_user trigger description and example str. Fixes #120
++ Fix - make feed sync listing available to all authenticated users rather than only admins
++ Fix - errors in mixed case username/accountnames by adding full case sensitivity in username and accounts
+  + New realm impl to ensure case-sensitive Permission types loaded
+  + Updates to the API swagger doc's regexes to allow upper-case letters
+  + Updates to tests
+  + Now supports mixed case in both username and account
++ Fix - high memory usage for db upgrades with large numbers of ImageGem or ImageNpm records in DB upgrade from DB version 0.0.7 to 0.0.8
++ Fix - ecr url parsing for getting the account and region. Fixes #118
++ Fix - Downgrade pg8000 dep version to support DB reconnect when DB connection is interrupted. Fixes #116
++ Improved - better hardlink handler for image squash, handling hardlinks being re-targetted across spanning layers
++ Minor logging cleanup, bug fixes
+	
 ## 0.3.1 (2018-12-05)
 
 + Added - added vulnerabilty scan support for Amazon Linux 2 images (ALAS-* vulnerability matches)
