@@ -47,7 +47,6 @@ class AnchoreNativeRealm(AccountStoreRealm):
         for required_perm in permission_s:
 
             required_permission = CaseSensitivePermission(wildcard_string=required_perm)
-            logger.info("Requires: {} w/case {}".format(required_permission, required_permission.case_sensitive))
 
             # get_authzd_permissions returns a list of DefaultPermission instances,
             # requesting from cache using '*' and permission.domain as hash keys:
