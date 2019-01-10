@@ -802,6 +802,43 @@ def policy_engine_packages_upgrade_007_008():
                 raise err
 
 
+def db_upgrade_008_009():
+    """
+    Runs upgrade on ImageGems and ImageNpms to add the column that was retrofitted for the 0.0.8 upgrade. This function ensures that
+    users that already ran that upgrade end up with a 0.0.9 db that has the same schema.
+    :return:
+    """
+
+    from anchore_engine.db import session_scope, ImageNpm, ImageGem
+    if True:
+        engine = anchore_engine.db.entities.common.get_engine()
+
+        exec_commands = [
+            # These are helpers for the upgrade itself, not needed by the functioning system. Needed for large npm/gem tables and pagination support
+            "CREATE SEQUENCE IF NOT EXISTS image_npms_seq_id_seq",
+            "ALTER TABLE image_npms add column IF NOT EXISTS seq_id int DEFAULT nextval('image_npms_seq_id_seq')",
+            "CREATE INDEX IF NOT EXISTS idx_npm_seq ON image_npms using btree (seq_id)",
+
+            "CREATE SEQUENCE IF NOT EXISTS image_gems_seq_id_seq",
+            "ALTER TABLE image_gems add column IF NOT EXISTS seq_id int DEFAULT nextval('image_gems_seq_id_seq')",
+            "CREATE INDEX IF NOT EXISTS idx_gem_seq ON image_gems using btree (seq_id)",
+
+
+            # This is a duplicate action from the updated 0.0.8 upgrade, effectively a no-op if that upgrade was already run
+            "ALTER TABLE image_packages ALTER COLUMN origin TYPE varchar",
+
+            # Indexes for vuln lookup performance
+            "CREATE INDEX IF NOT EXISTS ix_image_cpe_user_img on image_cpes (image_id, image_user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_feed_data_cpe_vulnerabilities on feed_data_cpe_vulnerabilities (name, version)"
+        ]
+
+        cmdcount = 1
+        for command in exec_commands:
+            log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
+            engine.execute(command)
+            cmdcount = cmdcount + 1
+
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -812,5 +849,6 @@ upgrade_functions = (
     (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
     (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ]),
     (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ]),
-    (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ])
+    (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ]),
+    (('0.0.8', '0.0.9'), [ db_upgrade_008_009 ])
 )

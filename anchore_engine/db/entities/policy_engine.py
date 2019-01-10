@@ -7,7 +7,7 @@ import zlib
 from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
-    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_
+    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence
 from sqlalchemy.orm import relationship
 
 from anchore_engine.utils import ensure_str, ensure_bytes
@@ -431,7 +431,7 @@ class CpeVulnerability(Base):
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
         ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
-        #Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
+        Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
         {}
     )
 
@@ -500,6 +500,8 @@ class ImagePackage(Base):
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id', 'images.user_id']),
                              Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
+                             # TODO: add this index for feed sync performance, needs to be re-tested with new package usage
+                             #  Index('ix_image_package_distro_pkgs', distro_name, distro_version, name, normalized_src_pkg, version),
         {}
     )
 
@@ -701,13 +703,14 @@ class ImageNpm(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(Integer, Sequence('image_npms_seq_id_seq', metadata=Base.metadata)) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='npms')
 
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id','images.user_id']),
+        Index('idx_npm_seq', seq_id),
         {}
     )
 
@@ -733,13 +736,14 @@ class ImageGem(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(Integer, Sequence('image_gems_seq_id_seq', metadata=Base.metadata)) # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='gems')
 
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id', 'images.user_id']),
+        Index('idx_npm_seq'),
         {}
     )
 
@@ -767,7 +771,7 @@ class ImageCpe(Base):
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id','images.user_id']),
-        # Index('ix_image_cpe_user_img', image_user_id, image_id),
+        Index('ix_image_cpe_user_img', image_id, image_user_id),
         {}
     )
 
