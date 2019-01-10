@@ -743,7 +743,7 @@ class ImageGem(Base):
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id', 'images.user_id']),
-        Index('idx_npm_seq'),
+        Index('idx_npm_seq', seq_id),
         {}
     )
 
