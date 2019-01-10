@@ -654,7 +654,9 @@ def policy_engine_packages_upgrade_007_008():
 
             "CREATE SEQUENCE IF NOT EXISTS image_gems_seq_id_seq",
             "ALTER TABLE image_gems add column IF NOT EXISTS seq_id int DEFAULT nextval('image_gems_seq_id_seq')",
-            "CREATE INDEX IF NOT EXISTS idx_gem_seq ON image_gems using btree (seq_id)"
+            "CREATE INDEX IF NOT EXISTS idx_gem_seq ON image_gems using btree (seq_id)",
+
+            "ALTER TABLE image_packages ALTER COLUMN origin TYPE varchar"
         ]
 
         log.err("updating primary key / foreign key relationships for new column - this may take a while")
