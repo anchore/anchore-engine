@@ -1,14 +1,20 @@
+from . import *
+
+from distutils.version import LooseVersion
 import requests
 import uuid
 import time
 import json
+import os
 
 # Functional tests for user management flows for the api
+anchore_user = os.environ.get('ANCHORE_CLI_USER', 'admin')
+anchore_pass = os.environ.get('ANCHORE_CLI_PASS', 'foobar')
+anchore_url = os.environ.get('ANCHORE_CLI_URL', 'http://localhost:8228/v1')
 
 # User and endpoint for most requests
-base_url = 'http://localhost/v1'
-base_auth = ('admin', 'foobar')
-
+base_url = anchore_url
+base_auth = (anchore_user, anchore_pass)
 
 class SimpleClient(object):
     def __init__(self, username, password, base_url=None):
@@ -84,11 +90,11 @@ class SimpleClient(object):
 
     def activate_account(self, account_name):
         path = 'accounts/{account}/state'.format(account=account_name)
-        return self._dispatch(requests.post, path, body={'state': 'active'})
+        return self._dispatch(requests.put, path, body={'state': 'enabled'})
 
     def deactivate_account(self, account_name):
         path = 'accounts/{account}/state'.format(account=account_name)
-        return self._dispatch(requests.post, path, body={'state': 'disabled'})
+        return self._dispatch(requests.put, path, body={'state': 'disabled'})
 
     def user(self):
         path = 'user'
@@ -164,84 +170,99 @@ def assert_account_state(resp, state_str):
     else:
         print('Got expected account state: {}'.format(found))
 
+runtest = False
+def test_engine_version():
+    global runtest
+
+    version = get_engine_version(base_auth[0], base_auth[1], base_url=base_url)
+    if version:
+        if LooseVersion(version) >= LooseVersion("0.3.0"):
+            runtest = True
 
 def test_account_lifecycle():
-    account_name = uuid.uuid4().hex
-    print('Testing basic account lifecycle with account: {}'.format(account_name))
-    account_type = 'user'
+    if runtest:
+        account_name = uuid.uuid4().hex
+        print('Testing basic account lifecycle with account: {}'.format(account_name))
+        account_type = 'user'
 
-    username = uuid.uuid4().hex
-    print('Using user: {}'.format(username))
+        username = uuid.uuid4().hex
+        print('Using user: {}'.format(username))
 
-    admin_client = SimpleClient(username=base_auth[0], password=base_auth[1], base_url=base_url)
-    assert_ok(admin_client.create_account(account_name, account_type))
-    assert_ok(admin_client.get_account(account_name))
+        admin_client = SimpleClient(username=base_auth[0], password=base_auth[1], base_url=base_url)
+        assert_ok(admin_client.create_account(account_name, account_type))
+        assert_ok(admin_client.get_account(account_name))
 
-    assert_ok(admin_client.create_user(account_name, username, 'testpass'))
-    assert_ok(admin_client.get_user(account_name, username))
+        assert_ok(admin_client.create_user(account_name, username, 'testpass'))
+        assert_ok(admin_client.get_user(account_name, username))
 
-    assert_ok(admin_client.add_credential(account_name, username, 'newpass'))
+        assert_ok(admin_client.add_credential(account_name, username, 'newpass'))
 
-    user_client = SimpleClient(username=username, password='newpass', base_url=base_url)
-    assert_ok(user_client.user())
-    assert_ok(user_client.account())
+        user_client = SimpleClient(username=username, password='newpass', base_url=base_url)
+        assert_ok(user_client.user())
+        assert_ok(user_client.account())
 
-    assert_denied(user_client.list_accounts())
-    assert_denied(user_client.get_account(account_name))
-    assert_denied(user_client.get_user('admin', 'admin'))
-    assert_ok(user_client.get_user(account_name, username)) # can get itself
+        assert_denied(user_client.list_accounts())
+        assert_denied(user_client.get_account(account_name))
+        assert_denied(user_client.get_user('admin', 'admin'))
+        assert_ok(user_client.get_user(account_name, username)) # can get itself
 
-    assert_ok(admin_client.deactivate_account(account_name))
-    print('Sleeping for cache flush')
-    time.sleep(6)
-    assert_ok(admin_client.get_account(account_name))
-    assert_unauthorized(user_client.user())
-    assert_ok(admin_client.activate_account(account_name))
+        assert_ok(admin_client.deactivate_account(account_name))
+        print('Sleeping for cache flush')
+        time.sleep(6)
+        assert_ok(admin_client.get_account(account_name))
+        assert_denied(user_client.user())
+        assert_ok(admin_client.activate_account(account_name))
 
-    print('Sleeping for cache flush')
-    time.sleep(6)
-    assert_ok(user_client.user())
+        print('Sleeping for cache flush')
+        time.sleep(6)
+        assert_ok(user_client.user())
 
-    admin_client.delete_credential(account_name, username, cred_type='password')
-    print('Sleeping for cache flush')
-    time.sleep(6)
+        admin_client.delete_credential(account_name, username, cred_type='password')
+        print('Sleeping for cache flush')
+        time.sleep(6)
 
-    assert_unauthorized(user_client.user())
-    admin_client.add_credential(account_name, username, 'newpass')
+        assert_unauthorized(user_client.user())
+        admin_client.add_credential(account_name, username, 'newpass')
 
-    print('Sleeping for cache flush')
-    time.sleep(6)
+        print('Sleeping for cache flush')
+        time.sleep(6)
 
-    assert_ok(user_client.user())
+        assert_ok(user_client.user())
 
-    assert_ok(admin_client.delete_user(account_name, username))
-    assert_not_found(admin_client.get_user(account_name, username))
+        assert_ok(admin_client.delete_user(account_name, username))
+        assert_not_found(admin_client.get_user(account_name, username))
 
-    assert_ok(admin_client.delete_account(account_name))
-    assert_account_state(admin_client.get_account(account_name), 'deleting')
+        assert_ok(admin_client.deactivate_account(account_name))
+        assert_ok(admin_client.delete_account(account_name))
+        assert_account_state(admin_client.get_account(account_name), 'deleting')
 
-    for i in range(10):
-        time.sleep(3)
-        if 'deleting' != admin_client.get_account(account_name).json()['state']:
-            break
+        for i in range(10):
+            time.sleep(10)
+            if 'deleting' != admin_client.get_account(account_name).json().get('state', None):
+                break
 
-    assert_not_found(admin_client.get_account(account_name))
+        assert_not_found(admin_client.get_account(account_name))
 
 
 def test_duplicate_account_create():
-    account_name = uuid.uuid4().hex
-    print('Testing basic account lifecycle with account: {}'.format(account_name))
-    account_type = 'user'
+    if runtest:
+        account_name = uuid.uuid4().hex
+        print('Testing basic account lifecycle with account: {}'.format(account_name))
+        account_type = 'user'
 
-    username = uuid.uuid4().hex
-    print('Using user: {}'.format(username))
+        username = uuid.uuid4().hex
+        print('Using user: {}'.format(username))
 
-    admin_client = SimpleClient(username=base_auth[0], password=base_auth[1], base_url=base_url)
-    assert_ok(admin_client.create_account(account_name, account_type))
-    assert_bad_request(admin_client.create_account(account_name, account_type))
-    assert_ok(admin_client.deactivate_account(account_name))
-    assert_ok(admin_client.delete_account(account_name))
-    assert_account_state(admin_client.get_account(account_name), 'deleting')
-    time.sleep(10)
-    assert_not_found(admin_client.get_account(account_name))
+        admin_client = SimpleClient(username=base_auth[0], password=base_auth[1], base_url=base_url)
+        assert_ok(admin_client.create_account(account_name, account_type))
+        assert_bad_request(admin_client.create_account(account_name, account_type))
+        assert_ok(admin_client.deactivate_account(account_name))
+        assert_ok(admin_client.delete_account(account_name))
+        assert_account_state(admin_client.get_account(account_name), 'deleting')
 
+        for i in range(10):
+            time.sleep(10)
+            if 'deleting' != admin_client.get_account(account_name).json().get('state', None):
+                break
+
+        assert_not_found(admin_client.get_account(account_name))
