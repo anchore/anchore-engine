@@ -481,7 +481,7 @@ class ImagePackage(Base):
 
     fullversion = Column(String(pkg_version_length))
     release = Column(String(pkg_version_length), default='')
-    origin = Column(String(512), default='N/A')
+    origin = Column(String, default='N/A')
     src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
     normalized_src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
 
