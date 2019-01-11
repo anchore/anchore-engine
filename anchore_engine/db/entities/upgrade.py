@@ -829,7 +829,7 @@ def db_upgrade_008_009():
 
             # Indexes for vuln lookup performance
             "CREATE INDEX IF NOT EXISTS ix_image_cpe_user_img on image_cpes (image_id, image_user_id)",
-            "CREATE INDEX IF NOT EXISTS ix_feed_data_cpe_vulnerabilities on feed_data_cpe_vulnerabilities (name, version)"
+            "CREATE INDEX IF NOT EXISTS ix_feed_data_cpe_vulnerabilities_name_version on feed_data_cpe_vulnerabilities (name, version)"
         ]
 
         cmdcount = 1
