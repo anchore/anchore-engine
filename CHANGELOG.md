@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.2 (2019-XX-YY)
+## 0.3.2 (2019-01-11)
 
 + Added - retry on feed sync failures due to queue availability, preventing delayed sync on bootstrap
 + Fix - update to dockerfile/effective_user trigger description and example str. Fixes #120
