@@ -687,6 +687,7 @@ class ImagePackageManifestEntry(Base):
     )
 
 
+NPM_SEQ = Sequence('image_npms_seq_id_seq', metadata=Base.metadata)
 class ImageNpm(Base):
     """
     NOTE: This is a deprecated class used for legacy support and upgrade. Image NPMs are now stored in the ImagePackage type
@@ -703,7 +704,7 @@ class ImageNpm(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer, Sequence('image_npms_seq_id_seq', metadata=Base.metadata)) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(Integer, NPM_SEQ, server_default=NPM_SEQ.next_value()) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='npms')
 
@@ -718,6 +719,7 @@ class ImageNpm(Base):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
 
+GEM_SEQ = Sequence('image_gems_seq_id_seq', metadata=Base.metadata)
 class ImageGem(Base):
     """
     NOTE: This is a deprecated class used for legacy support. Gems are now loaded as types of packages for the ImagePackage class
@@ -736,14 +738,14 @@ class ImageGem(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer, Sequence('image_gems_seq_id_seq', metadata=Base.metadata)) # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(Integer, GEM_SEQ, server_default=GEM_SEQ.next_value()) # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
     image = relationship('Image', back_populates='gems')
 
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
                              refcolumns=['images.id', 'images.user_id']),
-        Index('idx_npm_seq', seq_id),
+        Index('idx_gem_seq', seq_id),
         {}
     )
 
