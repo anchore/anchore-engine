@@ -128,7 +128,7 @@ def add_policy(bundle):
             response = p_client.validate_bundle(jsondata)
             if not response.get('valid', False):
                 httpcode = 400
-                return_object = anchore_engine.common.helpers.make_response_error('Bundle failed validation', in_httpcode=400, detail={'validation_details': [x.to_dict() for x in response.validation_details]})
+                return_object = anchore_engine.common.helpers.make_response_error('Bundle failed validation', in_httpcode=400, detail=response.get('validation_details'))
                 return (return_object, httpcode)
 
         except Exception as err:

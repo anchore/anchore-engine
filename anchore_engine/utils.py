@@ -10,12 +10,27 @@ import uuid
 import threading
 from collections import OrderedDict
 from contextlib import contextmanager
-from operator import itemgetter 
+from operator import itemgetter
 import time
 import os
 import re
 
 from anchore_engine.subsys import logger
+
+
+K_BYTES = 1024
+M_BYTES = 1024 * K_BYTES
+G_BYTES = 1024 * M_BYTES
+T_BYTES = 1024 * G_BYTES
+
+SIZE_UNITS = {
+    'kb': K_BYTES,
+    'mb': M_BYTES,
+    'gb': G_BYTES,
+    'tb': T_BYTES
+}
+
+BYTES_REGEX = re.compile('^([0-9]+)([kmgt]b)?$')
 
 
 def process_cve_status(old_cves_result=None, new_cves_result=None):
@@ -400,3 +415,27 @@ def epoch_to_rfc3339(epoch_int):
     :return:
     """
     return datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(epoch_int))
+
+
+def convert_bytes_size(size_str):
+    """
+    Converts a size string to an int. Allows trailing units
+
+    e.g. "10" -> 10, "1kb" -> 1024, "1gb" -> 1024*1024*1024
+    :param size_str:
+    :return:
+    """
+
+    m = BYTES_REGEX.fullmatch(size_str.lower())
+    if m:
+        number = int(m.group(1))
+
+        if m.group(2) is not None:
+            unit = m.group(2)
+            conversion = SIZE_UNITS.get(unit)
+            if conversion:
+                return conversion * number
+        return number
+    else:
+        raise ValueError("Invalid size string: {}".format(size_str))
+
