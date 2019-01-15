@@ -20,7 +20,7 @@ pathlib==1.0.1
 prettytable==0.7.2
 psutil==5.4.7
 python-dateutil==2.7.3
-PyYAML==3.13
+PyYAML==4.2b1
 requests==2.20.0
 s3transfer==0.1.13
 six==1.11.0
