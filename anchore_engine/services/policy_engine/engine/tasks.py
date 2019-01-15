@@ -20,7 +20,7 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
 from anchore_engine.configuration import localconfig
-from anchore_engine.clients.services.simplequeue import run_target_with_lease, LeaseAcquisitionFailedError
+from anchore_engine.clients.services.simplequeue import run_target_with_lease
 from anchore_engine.subsys.events import FeedSyncStart, FeedSyncComplete, FeedSyncFail
 from anchore_engine.subsys import identities
 
@@ -173,10 +173,6 @@ class FeedsUpdateTask(IAsyncTask):
                 result = task.execute()
 
             return result
-        except LeaseAcquisitionFailedError as ex:
-            error = ex
-            log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
-            raise Exception('Cannot execute feed sync, lock is held by another feed sync in progress')
         except Exception as e:
             error = e
             log.exception('Error executing feeds update')

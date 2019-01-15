@@ -1,16 +1,15 @@
-import json
+from flask import jsonify
 
-from flask import Response, jsonify
-from werkzeug.exceptions import HTTPException, abort
-
-from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask, FeedsFlushTask
-from anchore_engine.subsys import logger as log
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
-from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata, FeedMetadataListing
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
-
+from anchore_engine.clients.services.simplequeue import LeaseAcquisitionFailedError
+from anchore_engine.common.helpers import make_response_error
+from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata
+from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
+from anchore_engine.subsys import logger as log
 
 authorizer = get_authorizer()
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_feeds(include_counts=False):
@@ -65,10 +64,12 @@ def sync_feeds(sync=True, force_flush=False):
     if sync:
         try:
             result = FeedsUpdateTask.run_feeds_update(force_flush=force_flush)
-        except HTTPException:
-            raise
+        except LeaseAcquisitionFailedError as e:
+            log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
+            return make_response_error('Failed to execute feed sync', in_httpcode=409,
+                                       detail='Could not acquire lock on feed sync, likely another sync already in progress'), 409
         except Exception as e:
             log.exception('Error executing feed update task')
-            abort(Response(status=500, response=json.dumps({'error': 'feed sync failure', 'details': 'Failure syncing feed: {}'.format(e.message if hasattr(e, 'message') else e)}), mimetype='application/json'))
+            return make_response_error('Failed to execute feed sync due to an internal error', in_httpcode=500), 500
 
     return jsonify(['{}/{}'.format(x[0], x[1]) for x in result]), 200
