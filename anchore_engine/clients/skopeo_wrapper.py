@@ -161,18 +161,8 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
 
     return(repotags)
 
-def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True):
-    manifest = {}
-    digest = None
-    testDigest = None
-
-    if indigest:
-        pullstring = registry + "/" + repo + "@" + indigest
-    elif intag:
-        pullstring = registry + "/" + repo + ":" + intag
-    else:
-        raise Exception("invalid input - must supply either an intag or indigest")
-
+def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
+    ret = None
     try:
         proc_env = os.environ.copy()
         if user and pw:
@@ -214,9 +204,31 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
                 logger.error("command failed with exception - " + str(err))
                 raise err
 
-            sout = str(sout, 'utf-8') if sout else None
-            digest = manifest_to_digest(sout)
-            manifest = json.loads(sout)
+            sout = str(sout, 'utf-8') if sout else None    
+            ret = sout
+        except Exception as err:
+            raise err
+    except Exception as err:
+        raise err
+    return(ret)
+
+def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True):
+    manifest = {}
+    digest = None
+    testDigest = None
+
+    if indigest:
+        pullstring = registry + "/" + repo + "@" + indigest
+    elif intag:
+        pullstring = registry + "/" + repo + ":" + intag
+    else:
+        raise Exception("invalid input - must supply either an intag or indigest")
+
+    try:
+        try:
+            rawmanifest = get_image_manifest_skopeo_raw(pullstring, user=user, pw=pw, verify=verify)
+            digest = manifest_to_digest(rawmanifest)
+            manifest = json.loads(rawmanifest)
             if not topdigest:
                 topdigest = digest
 

@@ -1,0 +1,51 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+   "config": {
+      "mediaType": "application/vnd.docker.container.image.v1+json",
+      "size": 7089,
+      "digest": "sha256:f28a9e1d0449a75ac4baa10614da765e9ed09fc4478a6f71e9c4436234395af3"
+   },
+   "layers": [
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 45323792,
+         "digest": "sha256:cd8eada9c7bb496eb685fc6d2198c33db7cb05daf0fde42e4cf5bf0127cbdf38"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 10780911,
+         "digest": "sha256:c2677faec825930a8844845f55454ee0495ceb5bea9fc904d5b3125de863dc1d"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 4340024,
+         "digest": "sha256:fcce419a96b1219a265bf7a933d66b585a6f8d73448533f3833c73ad49fb5e88"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 50062697,
+         "digest": "sha256:045b51e26e750443c84216071a1367a7aae0b76245800629dc04934628b4b1ea"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 214278237,
+         "digest": "sha256:3b969ad6f1474525a12e57e0f9fad719fa0899131fe190ce876b8bd4d998cbbf"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 204,
+         "digest": "sha256:f2db762ad32ec10262dc5bd521c4563128c498f56fd14de03fb488f2e6204753"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 19721290,
+         "digest": "sha256:708e57760f1b78a90aed254b03d1b031c98b9736c4bbe65af0a3da8090a7cda1"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 148,
+         "digest": "sha256:06478b05a41b7c437ef191d44249535c1b7d2f96f6c6f903320c9bd2291b5760"
+      }
+   ]
+}

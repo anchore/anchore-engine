@@ -1,0 +1,63 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+   "manifests": [
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:5c77bfdf8cfaf99ec94309be2687032629f4f985d6bd388354dfd85475aa5f21",
+         "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:9de9a348ce839f1ff045c385a49c56c24150f3c560de5bb4a9b6116e713f9991",
+         "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v5"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:e13ba9847038195489916e9db3f9036c910a2c44141423458b2283f10f295f9d",
+         "platform": {
+            "architecture": "arm",
+            "os": "linux",
+            "variant": "v7"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:19aca26c9c8f455d4658b96c2daf4001bee15caaa453d6441695339c9ff1ec11",
+         "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:38117edc48a1b46f5f917c0c521061afe0cd15ebd661555bb7a76f5c277308d9",
+         "platform": {
+            "architecture": "386",
+            "os": "linux"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 4710,
+         "digest": "sha256:a391a46a448383970dbe179e6ac0003f734c82efa0a8734f8c8e587727958581",
+         "platform": {
+            "architecture": "ppc64le",
+            "os": "linux"
+         }
+      }
+   ]
+}

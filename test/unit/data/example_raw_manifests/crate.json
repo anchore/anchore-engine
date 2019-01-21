@@ -1,0 +1,25 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+   "manifests": [
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 1988,
+         "digest": "sha256:a165a32085cfb857c8738f0d7885d1eca947e17a22c6c20bcc9177b3ebad0066",
+         "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+         }
+      },
+      {
+         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+         "size": 2195,
+         "digest": "sha256:cb3d05f527171daccf766956c4b7619df5b3d29e7d1cb18c124ea16057fec7c9",
+         "platform": {
+            "architecture": "arm64",
+            "os": "linux",
+            "variant": "v8"
+         }
+      }
+   ]
+}

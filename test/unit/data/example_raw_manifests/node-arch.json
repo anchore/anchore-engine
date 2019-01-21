@@ -1,0 +1,51 @@
+{
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+   "config": {
+      "mediaType": "application/vnd.docker.container.image.v1+json",
+      "size": 7321,
+      "digest": "sha256:3223c9cf205b61165109b06fb5d358810b3fb25d7ea0ed816b8cd8520d4aae88"
+   },
+   "layers": [
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 45323792,
+         "digest": "sha256:cd8eada9c7bb496eb685fc6d2198c33db7cb05daf0fde42e4cf5bf0127cbdf38"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 10780911,
+         "digest": "sha256:c2677faec825930a8844845f55454ee0495ceb5bea9fc904d5b3125de863dc1d"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 4340024,
+         "digest": "sha256:fcce419a96b1219a265bf7a933d66b585a6f8d73448533f3833c73ad49fb5e88"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 50062697,
+         "digest": "sha256:045b51e26e750443c84216071a1367a7aae0b76245800629dc04934628b4b1ea"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 214278237,
+         "digest": "sha256:3b969ad6f1474525a12e57e0f9fad719fa0899131fe190ce876b8bd4d998cbbf"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 4171,
+         "digest": "sha256:a81151df0bcd48b1dd439b8106c24828f248e345a7be3f6f0056f813fa4ac4f7"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 20031923,
+         "digest": "sha256:8c550792c3c9f3508a31886c50d2475c25c894672fd706acec0e726f72bdc204"
+      },
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 1323205,
+         "digest": "sha256:b2e7e2cb9c06f1e82064fcbe3ba407a6d8f441da278c081744795d253c4bcea9"
+      }
+   ]
+}
