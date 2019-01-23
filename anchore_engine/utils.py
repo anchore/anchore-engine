@@ -216,17 +216,8 @@ def manifest_to_digest(rawmanifest):
     ret = None
     d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
     if d['schemaVersion'] != 1:
-        d.pop('signatures', None)
-
-        # this is using regular json
-        dmanifest = re.sub(" +\n", "\n", json.dumps(d, indent=3))
-
-        # this if using simplejson
-        #dmanifest = json.dumps(d, indent=3)
-
-        ret = "sha256:" + str(hashlib.sha256(dmanifest.encode('utf-8')).hexdigest())
+        ret = "sha256:" + str(hashlib.sha256(rawmanifest.encode('utf-8')).hexdigest())
     else:
-        #ret = anchore_engine.auth.skopeo_wrapper.manifest_to_digest_shellout(rawmanifest)
         ret = manifest_to_digest_shellout(rawmanifest)
 
     ret = ensure_str(ret)
