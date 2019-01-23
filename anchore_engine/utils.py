@@ -10,6 +10,7 @@ import uuid
 import threading
 from collections import OrderedDict
 from contextlib import contextmanager
+from operator import itemgetter 
 import time
 import os
 import re
@@ -57,15 +58,20 @@ def process_cve_status(old_cves_result=None, new_cves_result=None):
         "Severity",
         "Vulnerable_Package",
         "Fix_Available",
-        "URL"
+        "URL",
+        "Package_Name",
+        "Package_Version",
+        "Package_Type",
+        "Feed",
+        "Feed_Group",
     ]
 
     if new_cve_rows is None or old_cve_rows is None:
         return {}
 
-    new_cves = pivot_rows_to_keys(new_cve_header, new_cve_rows, key_name='CVE_ID',
+    new_cves = pivot_rows_to_keys(new_cve_header, new_cve_rows, key_names=['CVE_ID', 'Vulnerable_Package'],
                                   whitelist_headers=summary_elements)
-    old_cves = pivot_rows_to_keys(old_cve_header, old_cve_rows, key_name='CVE_ID',
+    old_cves = pivot_rows_to_keys(old_cve_header, old_cve_rows, key_names=['CVE_ID', 'Vulnerable_Package'],
                                   whitelist_headers=summary_elements)
     diff = item_diffs(old_cves, new_cves)
 
@@ -131,7 +137,7 @@ def map_rows(header_list, row_list):
     return mapped
 
 
-def pivot_rows_to_keys(header_list, row_list, key_name, whitelist_headers=None):
+def pivot_rows_to_keys(header_list, row_list, key_names=[], whitelist_headers=None):
     """
     Slightly more direct converter for header,row combo into a dict of objects
 
@@ -141,9 +147,16 @@ def pivot_rows_to_keys(header_list, row_list, key_name, whitelist_headers=None):
     :return:
     """
     header_map = {v: header_list.index(v) for v in
-                  [x for x in header_list if not whitelist_headers or x in whitelist_headers or x == key_name]}
-    key_idx = header_map[key_name]
-    return {x[key_idx]: {k: x[v] for k, v in list(header_map.items())} for x in row_list}
+                  [x for x in header_list if not whitelist_headers or x in whitelist_headers or x in key_names]}
+
+    key_idxs = []
+    for key_name in key_names:
+        key_idxs.append(header_map[key_name])
+
+    #key_idx = header_map[key_name]
+    #return {"{}{}".format(x[key_idx],x[keya_idx]): {k: x[v] for k, v in list(header_map.items())} for x in row_list}
+
+    return {":".join(itemgetter(*key_idxs)(x)): {k: x[v] for k, v in list(header_map.items())} for x in row_list}
 
 
 def filter_record_keys(record_list, whitelist_keys):

@@ -1188,7 +1188,11 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if doqueue:
             try:
                 logger.debug("queueing vulnerability update notification")
-                npayload = {'diff_vulnerability_result': vdiff}
+                npayload = {
+                    'diff_vulnerability_result': vdiff,
+                    'imageDigest': imageDigest,
+                }
+                
                 if annotations:
                     npayload['annotations'] = annotations
 
