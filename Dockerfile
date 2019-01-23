@@ -3,9 +3,9 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV GOPATH=/go
 RUN mkdir -p /go && \
-    apt -y update && \
-    apt -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev && \
-    git clone https://github.com/containers/skopeo $GOPATH/src/github.com/containers/skopeo && \
+    apt-get -y update && \
+    apt-get -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev && \
+    git clone --branch v0.1.32 https://github.com/containers/skopeo $GOPATH/src/github.com/containers/skopeo && \
     cd $GOPATH/src/github.com/containers/skopeo && \
     make binary-local && \
     make install
@@ -57,11 +57,11 @@ ENV ANCHORE_CONFIG_DIR=/config \
 
 
 EXPOSE ${ANCHORE_SERVICE_PORT}
-RUN apt -y update && \
-    apt -y install git curl psmisc rpm python3-minimal python3-pip libgpgme11 libdevmapper1.02.1 libostree-1-1 && \
+RUN apt-get -y update && \
+    apt-get -y install git curl psmisc rpm python3-minimal python3-pip libgpgme11 libdevmapper1.02.1 libostree-1-1 && \
     pip3 install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
-    apt -y remove git && \
-    apt -y autoremove
+    apt-get -y remove git && \
+    apt-get -y autoremove
 
 # Skopeo stuff
 COPY --from=wheelbuilder /usr/bin/skopeo /usr/bin/skopeo
