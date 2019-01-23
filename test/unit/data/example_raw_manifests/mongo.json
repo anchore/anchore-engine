@@ -24,31 +24,31 @@
       {
          "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
          "size": 2614,
-         "digest": "sha256:72d71df87e8de3526fcc7464070cae80f47ad80a188cf70ce2140f4cb2ecb18e",
+         "digest": "sha256:5a8f8c2fe7eeb6d29fb24b5248102d070f35f924c3b6d8e864ed9227b42d6340",
          "platform": {
             "architecture": "amd64",
             "os": "windows",
-            "os.version": "10.0.14393.2665"
+            "os.version": "10.0.14393.2724"
          }
       },
       {
          "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
          "size": 2613,
-         "digest": "sha256:153391faa91987dc530f5813f7e87c23e35831a29df71022ef2f1ab431228a37",
+         "digest": "sha256:a75d3138c705b579ca2944486aa9d039a5261b7406b7a2eac6b8ecb7f8e6e54a",
          "platform": {
             "architecture": "amd64",
             "os": "windows",
-            "os.version": "10.0.16299.846"
+            "os.version": "10.0.16299.904"
          }
       },
       {
          "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
          "size": 2613,
-         "digest": "sha256:5d7316e98bedbbf66590d8f83c39572ad0ac079c234b5d9fdb627e76bd77bc07",
+         "digest": "sha256:e25994a53e176b240a98b03c6172fd762552c8b546f2aca20f8638192773e8f5",
          "platform": {
             "architecture": "amd64",
             "os": "windows",
-            "os.version": "10.0.17134.469"
+            "os.version": "10.0.17134.523"
          }
       }
    ]

@@ -5,7 +5,7 @@
       {
          "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
          "size": 1150,
-         "digest": "sha256:cef0c2cde57a973ed80513a7d3614bc654d9d6becad2c068c9328b41bb3f6713",
+         "digest": "sha256:eb5d7eda6804359e4fc5223a31a2d9caa4c8ea590b14060d81c8bc05b22ca04e",
          "platform": {
             "architecture": "amd64",
             "os": "linux"

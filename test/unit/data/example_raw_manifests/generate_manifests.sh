@@ -7,6 +7,7 @@ do
     echo Fetching top level manifest for docker.io/${i}:latest
     NAME=`echo ${i} | sed "s/\//_/g"`    
     skopeo inspect --raw docker://docker.io/${i}:latest > ${NAME}.json
+    skopeo manifest-digest ${NAME}.json > ${NAME}.json.digest
 done
 
 for i in ${REPOLIST}
@@ -16,5 +17,6 @@ do
     if [ ! -z ${D} ]; then
 	echo Fetching arch amd64 level manifest for docker.io/${i}@${D}
 	skopeo inspect --raw docker://docker.io/${i}@${D} > ${NAME}-arch.json
+	skopeo manifest-digest ${NAME}-arch.json > ${NAME}-arch.json.digest
     fi
 done
