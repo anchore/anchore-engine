@@ -7,7 +7,6 @@ This is the interface exposed to services for identity.
 from collections import namedtuple
 
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.subsys import logger
 
 
 IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_state'])
@@ -31,10 +30,14 @@ class IdentityProvider(object):
         """
         usr = self.mgr.get_user(username)
 
-        ident = IdentityContext(username=username,
-                                user_account=usr['account_name'],
-                                user_account_type=usr['account']['type'],
-                                user_account_state=usr['account']['state'])
+        if usr:
+            ident = IdentityContext(username=username,
+                                    user_account=usr['account_name'],
+                                    user_account_type=usr['account']['type'],
+                                    user_account_state=usr['account']['state'])
+        else:
+            # Handle the case where username doesn't match cleanly, rather than KeyError
+            return None, None
 
         creds = [Credential(type=x[0], value=x[1]['value']) for x in usr.get('credentials', {}).items()]
 

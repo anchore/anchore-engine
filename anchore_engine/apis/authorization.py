@@ -3,6 +3,7 @@ API Authorization handlers and functions for use in API processing
 
 """
 import enum
+import json
 from abc import abstractmethod, ABC
 import anchore_engine
 from collections import namedtuple
@@ -310,6 +311,59 @@ class DbAuthorizationHandler(AuthorizationHandler):
             logger.exception('Error doing authz: {}'.format(e))
             raise UnauthorizedAccountError(account_names=','.join(with_names if with_names else []), account_types=','.join(with_types if with_types else []))
 
+    def inline_authz(self, permission_s: list):
+        """
+        Non-decorator impl of the @requires() decorator for isolated and inline invocation.
+        Returns None on success or raises an exception
+
+        :param permission_s:
+        :return:
+        """
+        try:
+            with Yosai.context(self._yosai):
+                # Context Manager functions
+                try:
+                    try:
+                        identity = self.authenticate(request_proxy)
+                        if not identity.username:
+                            raise UnauthenticatedError('Authentication Required')
+                    except:
+                        raise UnauthenticatedError('Authentication Required')
+
+                    ApiRequestContextProxy.set_identity(identity)
+                    permissions_final = []
+
+                    # Bind all the permissions as needed
+                    for perm in permission_s:
+                        domain = perm.domain if perm.domain else '*'
+                        action = perm.action if perm.action else '*'
+                        target = perm.target if perm.target else '*'
+
+                        permissions_final.append(':'.join([domain, action, target]))
+
+                    # Do the authz on the bound permissions
+                    try:
+                        self.authorize(identity, permissions_final)
+                    except UnauthorizedError as ex:
+                        raise ex
+                    except Exception as e:
+                        logger.exception('Error doing authz: {}'.format(e))
+                        raise UnauthorizedError(permissions_final)
+
+                    return None
+                finally:
+                    # Teardown the request context
+                    ApiRequestContextProxy.set_identity(None)
+        except UnauthorizedError as ex:
+            return make_response_error(str(ex), in_httpcode=403), 403
+        except UnauthenticatedError as ex:
+            return Response(response='Unauthorized', status=401,
+                            headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+        except Exception as ex:
+            logger.exception('Unexpected exception: {}'.format(ex))
+            return make_response_error('Internal error', in_httpcode=500), 500
+
+
     def requires_account(self, with_names=None, with_types=None):
         """
         :param with_names: list of strings of names any of which is accepted
@@ -544,6 +598,31 @@ class InternalServiceAuthorizer(DbAuthorizationHandler):
         # Disable sessions, since the APIs are not session-based
         self.yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
 
+
+def auth_function_factory():
+    """
+    An auth function factory that returns functions that can be used in before_request() calls to flask for doing
+    auth for things like subsystems that Anchore doesn't define each route for
+    :param authorizer_fetch_fn:
+    :return:
+    """
+    def do_auth():
+        try:
+            resp = get_authorizer().inline_authz([])
+            if resp is not None:
+                if type(resp) == tuple:
+                    if type(resp[0]) == dict:
+                        return Response(json.dumps(resp[0]), status=resp[1], content_type='application/json')
+                    else:
+                        return Response(resp[0], status=resp[1])
+            return resp
+        except:
+            logger.exception('Rejected')
+            logger.info("Authc rejected!")
+            return Response('Unauthorized', status=401,
+                            headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+
+    return do_auth
 
 def init_authz_handler(configuration=None):
     global _global_authorizer
