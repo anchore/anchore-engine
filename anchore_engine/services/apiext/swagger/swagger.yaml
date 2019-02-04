@@ -2495,6 +2495,8 @@ definitions:
     properties:
       imageDigest:
         type: string
+      parentDigest:
+        type: string
       imageId:
         type: string
       analysis_status:
