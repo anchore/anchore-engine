@@ -43,6 +43,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         'max_retries': 3,
         'conn_timeout': 3,
         'read_timeout': 60,
+        'verify': True,
         'client_info_url': None,
         'token_url': None,
         'client_info': {},
@@ -59,7 +60,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         else:
             raise Exception('Feed operation failed for user: {}. Msg: {}. Response: {}'.format(self.user, exc.response, exc.response.text))
 
-    def __init__(self, token_url, client_url, username, password, token=None, connect_timeout=None, read_timeout=None, retries=None):
+    def __init__(self, token_url, client_url, username, password, token=None, connect_timeout=None, read_timeout=None, retries=None, verify=True):
         self.token_url = token_url
         self.client_url = client_url
         self._user = username
@@ -71,6 +72,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         self.auth_config['password'] = self.password
         self.auth_config['token_url'] = self.token_url
         self.auth_config['client_info_url'] = self.client_url
+        self.auth_config['verify'] = verify
         if connect_timeout:
             self.auth_config['conn_timeout'] = connect_timeout
         if read_timeout:
@@ -97,7 +99,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         user_url = '{}/{}'.format(self.auth_config['client_info_url'], self.auth_config['username'])
         user_timeout = 60
         retries = 3
-        result = requests.get(user_url, headers={'x-anchore-password': self.auth_config['password']})
+        result = requests.get(user_url, verify=self.auth_config['verify'], headers={'x-anchore-password': self.auth_config['password']})
         if result.status_code == 200:
             user_data = result.json()
         else:
@@ -135,6 +137,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         conn_timeout = int(self.auth_config['conn_timeout'])
         read_timeout = int(self.auth_config['read_timeout'])
         timeout_tuple = (conn_timeout, read_timeout)
+        verify=self.auth_config['verify']
 
         if not client_info:
             # get client info
@@ -142,7 +145,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
 
             headers = {'x-anchore-password': password}
             try:
-                r = requests.get(url, headers=headers, timeout=timeout_tuple)
+                r = requests.get(url, headers=headers, timeout=timeout_tuple, verify=verify)
             except:
                 # print "request timed out"
                 ret['text'] = json.dumps(
@@ -174,7 +177,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
                 'cache-control': "no-cache",
             }
             try:
-                r = requests.post(token_url, headers=headers, data=payload, timeout=timeout_tuple)
+                r = requests.post(token_url, headers=headers, data=payload, timeout=timeout_tuple, verify=verify)
             except:
                 # print "request timed out"
                 ret['text'] = json.dumps(
@@ -198,7 +201,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
                 'cache-control': "no-cache",
             }
             try:
-                r = requests.post(token_url, headers=headers, data=payload, timeout=timeout_tuple)
+                r = requests.post(token_url, headers=headers, data=payload, timeout=timeout_tuple, verify=verify)
             except:
                 # print "request timed out"
                 ret['text'] = json.dumps(
@@ -248,8 +251,9 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
 
         if not retries:
             retries = int(self.auth_config['max_retries'])
-
         retries = int(retries)
+
+        verify = self.auth_config['verify']
 
         ret = {'status_code': 1, 'text': '', 'success': False}
 
@@ -273,8 +277,8 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
                     accessToken = token_info['accessToken']
                     headers = {"Authorization": "Bearer " + accessToken, "Cache-Control": "no-cache"}
 
-                    logger.debug("making authenticated request to url: " + str(url))
-                    r = method(url, headers=headers, timeout=(conn_timeout, read_timeout))
+                    logger.debug("making authenticated request (conn_timeout={}, read_timeout={}, verify={}) to url: {}".format(conn_timeout, read_timeout, verify, str(url)))
+                    r = method(url, headers=headers, timeout=(conn_timeout, read_timeout), verify=verify)
                     logger.debug("\tresponse status_code: " + str(r.status_code))
                     if r.status_code == 401:
                         logger.debug(
@@ -328,10 +332,11 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
     client_config = {
         'max_retries': 3,
         'conn_timeout': 3,
-        'read_timeout': 60
+        'read_timeout': 60,
+        'verify': True
     }
 
-    def __init__(self, username, password, connect_timeout=None, read_timeout=None, retries=None):
+    def __init__(self, username, password, connect_timeout=None, read_timeout=None, retries=None, verify=True):
         self.auth_config = copy.copy(self.client_config)
         self._user = username
         self.password = password
@@ -343,6 +348,8 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
             self.auth_config['read_timeout'] = read_timeout
         if retries:
             self.auth_config['max_retries'] = retries
+        
+        self.auth_config['verify'] = verify
 
     @property
     def user(self):
@@ -381,8 +388,9 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
 
         if not retries:
             retries = int(self.auth_config['max_retries'])
-
         retries = int(retries)
+        
+        verify = self.auth_config['verify']
 
         ret = {'status_code': 1, 'text': '', 'success': False}
 
@@ -400,8 +408,8 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                     pass
                 else:
                     auth = (self.user, self.password)
-                    logger.debug("making authenticated request (user=" + str(self.user) + ") to url: " + str(url))
-                    r = method(url, auth=auth, timeout=(conn_timeout, read_timeout))
+                    logger.debug("making authenticated request (user={}, conn_timeout={}, read_timeout={}, verify={}) to url {}".format(str(self.user), conn_timeout, read_timeout, verify, str(url)))
+                    r = method(url, auth=auth, timeout=(conn_timeout, read_timeout), verify=verify)
                     logger.debug("\tresponse status_code: " + str(r.status_code))
                     if r.status_code == 401:
                         logger.debug(
@@ -451,7 +459,7 @@ def get_anchoreio_client(user, pw):
     anchoreio_clients[user] = {}
     try:
         anchoreio_clients[user]['pw'] = pw
-        anchoreio_clients[user]['client'] = Oauth2AuthenticatedClient(localconfig.get('feeds', {}).get('token_url'), localconfig.get('feeds', {}).get('client_url'), user, pw, connect_timeout=localconfig.get('connection_timeout_seconds', None), read_timeout=localconfig.get('read_timeout_seconds', None))
+        anchoreio_clients[user]['client'] = Oauth2AuthenticatedClient(localconfig.get('feeds', {}).get('token_url'), localconfig.get('feeds', {}).get('client_url'), user, pw, connect_timeout=localconfig.get('feeds', {}).get('connection_timeout_seconds', None), read_timeout=localconfig.get('feeds', {}).get('read_timeout_seconds', None), verify=localconfig.get('feeds', {}).get('ssl_verify', True))
     except Exception as err:
         anchoreio_clients.pop(user, None)
         raise AnchoreIOClientError(cause=err)
