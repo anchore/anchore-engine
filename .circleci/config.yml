@@ -29,7 +29,7 @@ var_2: &attach_workspace
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1.1.0
+  anchore: anchore/anchore-engine@1.2.0
 commands:
   run_tox_tests:
     description: Pass path to tests to be run with tox
