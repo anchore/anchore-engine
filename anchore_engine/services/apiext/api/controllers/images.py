@@ -994,16 +994,9 @@ def images(request_inputs):
 
         if 'created_at' in jsondata:
             ts = jsondata['created_at']
-            tsformats = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S:%fZ']
-            created_at_override = None
-            for tsformat in tsformats:
-                try:
-                    created_at_override = int(datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").timestamp())
-                except Exception as err:
-                    pass
-            
-            if not created_at_override:
-                err = Exception("could not convert input created_at value ({}) into datetime using formats in {}".format(ts, tsformats))
+            try:
+                created_at_override = utils.rfc3339str_to_epoch(ts)
+            except Exception as err:
                 logger.debug("operation exception: " + str(err))
 
                 return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=500)

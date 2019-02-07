@@ -4,7 +4,7 @@ import json
 import datetime
 from anchore_engine.subsys import logger
 from urllib import parse as urlparse
-from anchore_engine.utils import datetime_to_rfc2339
+from anchore_engine.utils import datetime_to_rfc3339
 
 
 class BasicApiClient(object):
@@ -73,7 +73,7 @@ class SimpleJsonModel(object):
     @staticmethod
     def _map_type(obj):
         if type(obj) == datetime.datetime:
-            return datetime_to_rfc2339(obj)
+            return datetime_to_rfc3339(obj)
         elif type(obj) in [list, set]:
             return [SimpleJsonModel._map_type(i) for i in obj]
         elif type(obj) == dict:

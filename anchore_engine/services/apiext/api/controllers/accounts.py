@@ -10,7 +10,7 @@ from anchore_engine.apis import ApiRequestContextProxy
 from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, AccountStates
 from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError, InvalidStateError
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
-from anchore_engine.utils import datetime_to_rfc2339
+from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
@@ -30,8 +30,8 @@ def account_db_to_msg(account):
         'email': account['email'],
         'state': account['state'].value if type(account['state']) != str else account['state'],
         'type': account['type'] if type(account['type']) == str else account['type'].value ,
-        'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['created_at'])),
-        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(account['last_updated']))
+        'created_at': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(account['created_at'])),
+        'last_updated': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(account['last_updated']))
     }
 
 
@@ -50,8 +50,8 @@ def user_db_to_msg(user):
 
     return {
         'username': user['username'],
-        'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(user['created_at'])),
-        'last_updated': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(user['last_updated']))
+        'created_at': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['created_at'])),
+        'last_updated': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['last_updated']))
     }
 
 
@@ -62,7 +62,7 @@ def credential_db_to_msg(credential):
     return {
         'type': credential['type'].value,
         'value': ''.join(['*' for _ in credential['value']]),
-        'created_at': datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(credential['created_at']))
+        'created_at': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(credential['created_at']))
     }
 
 

@@ -75,12 +75,12 @@ class ImageMessageMapper(object):
     """
     Map the msg to db and vice-versa
     """
-    rfc2339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
+    rfc3339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
 
     def db_to_msg(self, db_obj):
         msg = ImageMsg()
-        msg.last_modified = db_obj.last_modified.strftime(self.rfc2339_date_fmt)
-        msg.created_at = db_obj.created_at.strftime(self.rfc2339_date_fmt)
+        msg.last_modified = db_obj.last_modified.strftime(self.rfc3339_date_fmt)
+        msg.created_at = db_obj.created_at.strftime(self.rfc3339_date_fmt)
         msg.distro_namespace = db_obj.distro_namespace
         msg.user_id = db_obj.user_id
         msg.state = db_obj.state

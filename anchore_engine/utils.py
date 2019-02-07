@@ -360,24 +360,43 @@ def ensure_str(obj):
     return str(obj, 'utf-8') if type(obj) != str else obj
 
 
-rfc2339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
+rfc3339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
+rfc3339_date_input_fmts = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%S:%fZ']
 
+def rfc3339str_to_epoch(rfc3339_str):
+    return( int(rfc3339str_to_datetime(rfc3339_str).timestamp()) )
 
-def datetime_to_rfc2339(dt_obj):
+def rfc3339str_to_datetime(rfc3339_str):
+
+    ret = None
+    for fmt in rfc3339_date_input_fmts:
+        try:
+            ret = datetime.datetime.strptime(rfc3339_str, fmt)
+            continue
+        except:
+            pass
+
+    if ret is None:
+        raise Exception("could not convert input created_at value ({}) into datetime using formats in {}".format(rfc3339_str, rfc3339_date_input_fmts))
+
+    return(ret)
+
+def datetime_to_rfc3339(dt_obj):
     """
     Simple utility function. Expects a UTC input, does no tz conversion
 
     :param dt_obj:
     :return:
     """
-    return dt_obj.strftime(rfc2339_date_fmt)
+
+    return dt_obj.strftime(rfc3339_date_fmt)
 
 
-def epoch_to_rfc2339(epoch_int):
+def epoch_to_rfc3339(epoch_int):
     """
-    Convert an epoch int value to a RFC2339 datetime string
+    Convert an epoch int value to a RFC3339 datetime string
 
     :param epoch_int:
     :return:
     """
-    return datetime_to_rfc2339(datetime.datetime.utcfromtimestamp(epoch_int))
+    return datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(epoch_int))
