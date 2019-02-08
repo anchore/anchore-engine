@@ -50,6 +50,7 @@ auto_restart_services: True
 feeds:
   # If set to False, instruct anchore-engine to skip (all) feed sync operations
   sync_enabled: True
+  ssl_verify: True
   selective_sync:
     # If enabled only sync specific feeds instead of all.
     enabled: True

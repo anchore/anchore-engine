@@ -194,6 +194,8 @@ def get_client(feeds_url=None, token_url=None, client_url=None, user=tuple(), co
     if not client_url:
         client_url = conf.get('feeds', {}).get('client_url')
 
+    verify = conf.get('feeds', {}).get('ssl_verify', True)
+
     password = None
 
     if not user:
@@ -220,12 +222,14 @@ def get_client(feeds_url=None, token_url=None, client_url=None, user=tuple(), co
                                                 username=user,
                                                 password=password,
                                                 connect_timeout=conn_timeout,
-                                                read_timeout=read_timeout)
+                                                read_timeout=read_timeout,
+                                                verify=verify)
     else:
         http_client = HTTPBasicAuthClient(username=user,
                                           password=password,
                                           connect_timeout=conn_timeout,
-                                          read_timeout=read_timeout)
+                                          read_timeout=read_timeout, 
+                                          verify=verify)
 
     return FeedClient(endpoint=feeds_url, http_client=http_client)
 
