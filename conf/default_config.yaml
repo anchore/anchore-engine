@@ -41,6 +41,7 @@ webhooks:
 feeds:
   # If set to false, instruct anchore-engine to skip (all) feed sync operations
   sync_enabled: ${ANCHORE_FEEDS_ENABLED}
+  ssl_verify: ${ANCHORE_FEEDS_SSL_VERIFY}
   selective_sync:
     # If enabled only sync specific feeds instead of all.
     enabled: ${ANCHORE_FEEDS_SELECTIVE_ENABLED}
