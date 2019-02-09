@@ -108,7 +108,7 @@ services:
 # service - if left unset services will use the above,
 # e.g. http://<endpoint_hostname>:<port>
     external_port: ${ANCHORE_EXTERNAL_PORT}
-    external_tls: false
+    external_tls: ${ANCHORE_EXTERNAL_TLS}
     archive:
       compression:
         enabled: false
@@ -139,7 +139,7 @@ services:
     listen: '0.0.0.0'
     port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
-    external_tls: false
+    external_tls: ${ANCHORE_EXTERNAL_TLS}
   analyzer:
     enabled: true
     require_auth: true
@@ -150,7 +150,7 @@ services:
     listen: '0.0.0.0'
     port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
-    external_tls: false
+    external_tls: ${ANCHORE_EXTERNAL_TLS}
   policy_engine:
     enabled: true
     require_auth: true
@@ -158,7 +158,7 @@ services:
     listen: '0.0.0.0'
     port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
-    external_tls: false
+    external_tls: ${ANCHORE_EXTERNAL_TLS}
     cycle_timer_seconds: 1
     cycle_timers:
       feed_sync: ${ANCHORE_FEED_SYNC_INTERVAL_SEC} # 6 hours between feed syncs
