@@ -1,15 +1,17 @@
 FROM ubuntu:18.04 as wheelbuilder
-ENV LANG=C.UTF-8
-ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV GOPATH=/go
-RUN mkdir -p /go && \
+ENV SKOPEO_VERSION=v0.1.32
+
+RUN set -ex && \
+    mkdir -p /go && \
     apt-get -y update && \
+    apt-get -y upgrade && \
     apt-get -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev && \
-    git clone --branch v0.1.32 https://github.com/containers/skopeo $GOPATH/src/github.com/containers/skopeo && \
-    cd $GOPATH/src/github.com/containers/skopeo && \
+    git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
+    cd ${GOPATH}/src/github.com/containers/skopeo && \
     make binary-local && \
     make install
-RUN pip3 install --upgrade pip
 COPY ./requirements.txt /requirements.txt
 
 # Build the wheels from the requirements
@@ -59,10 +61,13 @@ ENV ANCHORE_CONFIG_DIR=/config \
 
 
 EXPOSE ${ANCHORE_SERVICE_PORT}
-RUN apt-get -y update && \
+RUN set -ex && \
+    apt-get -y update && \
+    apt-get -y upgrade && \
     apt-get -y install git curl psmisc rpm python3-minimal python3-pip libgpgme11 libdevmapper1.02.1 libostree-1-1 && \
     pip3 install -e git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
     apt-get -y remove git && \
+    apt-get clean && \
     apt-get -y autoremove
 
 # Skopeo stuff
@@ -74,7 +79,8 @@ COPY --from=wheelbuilder /wheels /wheels
 COPY . /anchore-engine
 
 WORKDIR /anchore-engine
-RUN mkdir ${ANCHORE_SERVICE_DIR} && \
+RUN set -ex && \
+    mkdir ${ANCHORE_SERVICE_DIR} && \
     mkdir /config && \
     cp conf/default_config.yaml /config/config.yaml && \
     md5sum /config/config.yaml > /config/build_installed && \
@@ -83,9 +89,10 @@ RUN mkdir ${ANCHORE_SERVICE_DIR} && \
     cp docker-entrypoint.sh /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 
-RUN pip3 install --no-index --find-links=/wheels -r requirements.txt && \
+RUN set -ex && \
+    pip3 install --no-index --find-links=/wheels -r requirements.txt && \
     pip3 install . && \
-    rm -rf /anchore-engine
+    rm -rf /anchore-engine /root/.cache /wheels
 
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
