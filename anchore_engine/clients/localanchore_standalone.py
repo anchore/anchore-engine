@@ -77,20 +77,28 @@ def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata=
         for tfile in sorted(handled_post_metadata.get('temporary_dir_adds', []), reverse=True):
             rmfile = os.path.join(rootfsdir, tfile)
             if os.path.exists(rmfile):
-                logger.debug("removing temporary image dir: {}".format(rmfile))
+                logger.debug("removing temporary image dir, only if terminal (empty): {}".format(rmfile))
                 if os.path.isdir(rmfile):
-                    os.rmdir(rmfile)
+                    try:
+                        os.rmdir(rmfile)
+                    except:
+                        pass
 
     return(True)
 
 def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cachedir=None, layer=None, layertar=None, layers=[]):
     handled = False
-    handled_post_metadata = {}
+
+    handled_post_metadata = {
+        'temporary_file_adds': [],
+        'temporary_dir_adds': [],
+    }
 
     try:
         slinkre = "tar: (.*): Cannot open: File exists"
         hlinkre = "tar: (.*): Cannot hard link to .(.*).: No such file or directory"
-
+        missingfiles = []
+        missingdirs = []
         for errline in serr.splitlines():
             patt = re.match(slinkre, errline)
             patt1 = re.match(hlinkre, errline)
@@ -108,35 +116,61 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
                 basedir = os.path.dirname(missingfile)
                 logger.debug("found 'hard link' error on name: {}".format(missingfile))
                 if not os.path.exists(os.path.join(rootfsdir, missingfile)):
-                    #for l in layers[layers.index("sha256:"+layer)::-1]:
-                    for l in layers[-1::-1]:
+                    missingfiles.append(missingfile)
 
-                        missingdir = None
-                        if not os.path.exists(os.path.join(rootfsdir, basedir)):
-                            missingdir = basedir
+                missingdir = None
+                if not os.path.exists(os.path.join(rootfsdir, basedir)):
+                    missingdir = basedir
+                    missingdirs.append(missingdir)
 
-                        dighash, lname = l.split(":")
-                        ltar = get_layertarfile(unpackdir, cachedir, lname)
+        # only move on to further processing if the error is still not handled
+        if not handled:
+            if missingfiles:
+                logger.info("found {} missing hardlink destination files to extract from lower layers".format(len(missingfiles)))
 
-                        tarcmd = "tar -C {} -x -f {}".format(rootfsdir, ltar)
-                        tarcmd_list = tarcmd.split() + ["{}".format(missingfile)]
-                        #logger.debug("attempting to run command to extract missing hardlink target from layer {}: {}".format(l, tarcmd_list))
-                        rc, sout, serr = utils.run_command_list(tarcmd_list)
-                        sout = utils.ensure_str(sout)
-                        serr = utils.ensure_str(serr)
-                        #logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd, rc, serr, sout))
-                        if rc == 0:
-                            if not handled_post_metadata.get('temporary_file_adds', False):
-                                handled_post_metadata['temporary_file_adds'] = []
-                            handled_post_metadata['temporary_file_adds'].append(missingfile)
+                for l in layers[layers.index("sha256:"+layer)::-1]:
+                    dighash, lname = l.split(":")
+                    ltar = get_layertarfile(unpackdir, cachedir, lname)
 
-                            if missingdir:
-                                if not handled_post_metadata.get('temporary_dir_adds', False):
-                                    handled_post_metadata['temporary_dir_adds'] = []
+                    tarcmd = "tar -C {} -x -f {}".format(rootfsdir, ltar)
+                    tarcmd_list = tarcmd.split() + missingfiles
+                    logger.debug("attempting to run command to extract missing hardlink targets from layer {}: {}.....".format(l, tarcmd_list[:16]))
+
+                    rc, sout, serr = utils.run_command_list(tarcmd_list)
+                    sout = utils.ensure_str(sout)
+                    serr = utils.ensure_str(serr)
+                    #logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd_list[:16], rc, serr, sout))
+
+                    newmissingfiles = []
+                    logger.debug("missing file count before extraction at layer {}: {}".format(l, len(missingfiles)))
+                    for missingfile in missingfiles:
+                        tmpmissingfile = os.path.join(rootfsdir, missingfile)
+                        if os.path.exists(tmpmissingfile):
+                            if missingfile not in handled_post_metadata['temporary_file_adds']:
+                                handled_post_metadata['temporary_file_adds'].append(missingfile)
+                        else:
+                            if missingfile not in newmissingfiles:
+                                newmissingfiles.append(missingfile)
+                    missingfiles = newmissingfiles
+                    logger.debug("missing file count after extraction at layer {}: {}".format(l, len(missingfiles)))
+
+                    newmissingdirs = []
+                    for missingdir in missingdirs:
+                        tmpmissingdir = os.path.join(rootfsdir, missingdir)
+                        if os.path.exists(tmpmissingdir):
+                            if missingdir not in handled_post_metadata['temporary_dir_adds']:
                                 handled_post_metadata['temporary_dir_adds'].append(missingdir)
+                        else:
+                            if missingdir not in newmissingdirs:
+                                newmissingdirs.append(missingdir)
+                    missingdirs = newmissingdirs
 
-                            handled = True
-                            break
+                    if not missingfiles:
+                        logger.info("extraction of all missing files complete at layer {}".format(l))
+                        handled = True
+                        break
+                    else:
+                        logger.info("extraction of all missing files not complete at layer {}, moving on to next layer".format(l))
 
     except Exception as err:
         raise err
@@ -559,8 +593,11 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                 except:
                     lcreatedby = ""
 
-                lcreated = hel['created']
-
+                try:
+                    lcreated = hel['created']
+                except:
+                    lcreated = ""
+                    
                 hfinal.append(
                     {
                         'Created': lcreated,
