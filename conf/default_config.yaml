@@ -116,7 +116,7 @@ services:
       storage_driver:
         name: db
         config: {}
-    cycle_timer_seconds: '1'
+    cycle_timer_seconds: 1
     cycle_timers:
       image_watcher: 3600
       policy_eval: 3600

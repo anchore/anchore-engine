@@ -188,6 +188,7 @@ workflows:
         requires:
         - build
     - push_dockerhub:
+        context: dockerhub
         requires:
         - compose_tests
     - trigger_downstream:
