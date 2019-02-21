@@ -270,6 +270,13 @@ def handle_service_watcher(*args, **kwargs):
                                     service_update_record[
                                         'short_description'] = "no heartbeat from service in ({}) seconds".format(
                                         max_service_heartbeat_timer)
+
+                                    # Trigger an event to log the down service
+                                    event = events.ServiceDownEvent(user_id=userId, name=service['servicename'],
+                                                                        host=service['hostid'],
+                                                                        url=service['base_url'],
+                                                                        cause='no heartbeat from service in ({}) seconds'.format(
+                                                                            max_service_orphaned_timer))
                                 else:
                                     service_update_record['status'] = True
                                     service_update_record['status_message'] = taskstate.complete_state('service_status')
@@ -286,12 +293,14 @@ def handle_service_watcher(*args, **kwargs):
                                     service_update_record[
                                         'short_description'] = "no heartbeat from service in ({}) seconds".format(
                                         max_service_orphaned_timer)
-                                    # Trigger an event to log the orphaned service
-                                    event = events.ServiceOrphanedEvent(user_id=userId, name=service['servicename'],
-                                                                        host=service['hostid'],
-                                                                        url=service['base_url'],
-                                                                        cause='no heartbeat from service in ({}) seconds'.format(
-                                                                            max_service_orphaned_timer))
+
+                                    if service['status_message'] != taskstate.orphaned_state('service_status'):
+                                        # Trigger an event to log the orphaned service, only on transition
+                                        event = events.ServiceOrphanedEvent(user_id=userId, name=service['servicename'],
+                                                                            host=service['hostid'],
+                                                                            url=service['base_url'],
+                                                                            cause='no heartbeat from service in ({}) seconds'.format(
+                                                                                max_service_orphaned_timer))
 
                         except Exception as err:
                             logger.warn(

@@ -13,6 +13,15 @@ class ServiceOrphanedEvent(Event):
                                                    details={'service_name': name, 'host_id': host, 'cause': cause})
 
 
+class ServiceDownEvent(Event):
+    __event_type__ = 'service_down'
+    __resource_type__ = _service_resource_type
+
+    def __init__(self, user_id, name, host, url, cause):
+        super(ServiceOrphanedEvent, self).__init__(user_id=user_id, level='ERROR', message='Service down', resource_id=url,
+                                                   details={'service_name': name, 'host_id': host, 'cause': cause})
+
+
 class ServiceAuthzPluginHealthCheckFail(Event):
     __event_type__ = 'authz_plugin_healthcheck_failed'
     __resource_type__ = _service_resource_type
