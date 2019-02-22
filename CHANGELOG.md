@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.3 (2019-02-22)
+
++ Added - new ssl_verify option in feeds section of default/example config yamls and related environment settings in Dockerfile, to handle cases where default feed endpoint (ancho.re) is behind proxy with site-specific cert. Fixes #141
++ Added - the parentDigest to AnchoreImageTagSummary definition in apiext swagger.yaml.  Fixes #140
++ Added - imageDigest and more elements (package name, version, type, feed, feed group) to the vuln_update webhook payload. Fixes #130
++ Added - regex support for mapping rules using value prefix 'regexp:'. Fixes #128
++ Fix - only emit events into the event log for orphaned or down services when they transition, mitigating condition where simplequeue service can getting highly loaded when many orphaned service records are in place. Fixes #147
++ Fix - update to image unpack hardlink handler implementation and docker config parsing implementation to handle missing created fields, observed for images created using kaniko and buildkit.  Fixes #143. Fixes #144.
++ Fix - make updates to RFC3339 format validation and parsing for the add image by digest request input to correctly handle strings that contain millis. Fixes #136. Fixes #135.
++ Fix - update to routine that generates a digest from a manifest, removing intermediate parse that computed the wrong digest in cases where manifest contained un-indented json.  Fixes #131
++ Fix - improve feed sync error handling. Fixes #125
++ Improved - update default config to allow external setting of ANCHORE_EXTERNAL_TLS and ANCHORE_LOG_LEVEL.  Contribution by Jeremy T. Bouse <Jeremy.Bouse@UnderGrid.net> (PR #137 and #139)
++ Improved - several updates to circleCI/build configs, unit tests
++ Minor bug fixes
+
 ## 0.3.2 (2019-01-11)
 
 + Added - retry on feed sync failures due to queue availability, preventing delayed sync on bootstrap
