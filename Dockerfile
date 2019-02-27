@@ -7,7 +7,7 @@ RUN set -ex && \
     mkdir -p /go && \
     apt-get -y update && \
     apt-get -y upgrade && \
-    apt-get -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev && \
+    apt-get -y install vim curl psmisc git rpm python3 python3-pip golang btrfs-tools git-core libdevmapper-dev libgpgme11-dev go-md2man libglib2.0-dev libostree-dev libssl-dev && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
     make binary-local && \
