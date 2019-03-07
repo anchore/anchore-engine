@@ -81,7 +81,7 @@ services:
 #    depends_on:
 #     - anchore-engine
 #    volumes:
-#     - ./anchore-prometheus.yml:/etc/prometheus/prometheus.yml:z
+#     - ./anchore-prometheus:/etc/prometheus/prometheus:z
 #    logging:
 #     driver: "json-file"
 #     options:
