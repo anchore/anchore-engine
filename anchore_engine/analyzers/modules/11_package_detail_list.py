@@ -108,10 +108,7 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-#if not os.path.exists(outputdir):
-#    os.makedirs(outputdir)
-
-meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 pkgs = None
@@ -119,18 +116,21 @@ pkglist = {}
 
 if distrodict['flavor'] == "RHEL":
     try:
-        pkgs = rpm_get_all_packages_detail(unpackdir)
+        #pkgs = rpm_get_all_packages_detail(unpackdir)
+        pkgs = anchore_engine.analyzers.utils.rpm_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
     except Exception as err:
         print("WARN: failed to generate RPM package list: " + str(err))
 
 elif distrodict['flavor'] == "DEB":
     try:
-        pkgs = dpkg_get_all_packages_detail(unpackdir)
+        #pkgs = dpkg_get_all_packages_detail(unpackdir)
+        pkgs = anchore_engine.analyzers.utils.dpkg_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
     except Exception as err:
         print("WARN: failed to generate DPKG package list: " + str(err))
 elif distrodict['flavor'] == "ALPINE":
     try:
-        pkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles(unpackdir)
+        #pkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles(unpackdir)
+        pkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
     except Exception as err:
         print("WARN: failed to generate APKG package list: " + str(err))
 else:

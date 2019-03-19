@@ -7,6 +7,7 @@ import threading
 import uuid
 import shutil
 import tarfile
+import copy 
 
 import yaml
 from pkg_resources import resource_filename
@@ -216,141 +217,181 @@ def squash(unpackdir, cachedir, layers):
     if os.path.exists(unpackdir + "/squashed.tar"):
         return (True)
 
-    if not os.path.exists(rootfsdir):
-        os.makedirs(rootfsdir)
+    whpatt = re.compile("\.wh\..*")
+    whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
 
-    revlayer = list(layers)
-    revlayer.reverse()
+    tarfiles = {}
+    fhistory = {}
+    try:
+        logger.debug("Layers to process: {}".format(layers))
 
-    l_excludes = {}
-    l_opqexcludes = {} # stores list of special files to exclude only for next layer (.wh..wh..opq handling)
+        logger.debug("Pass 1: generating layer file timeline")
+        deferred_hardlinks_destination = {}
+        hardlink_destinations = {}
 
-    last_opqexcludes = {} # opq exlcudes for the last layer
+        for l in layers:
+            htype, layer = l.split(":",1)
+            layertar = get_layertarfile(unpackdir, cachedir, layer)
+            ltf = None
+            try:
+                lfhistory = {}
+                deferred_hardlinks = {}
 
-    for l in revlayer:
-        htype, layer = l.split(":",1)
+                logger.debug("processing layer {} - {}".format(l, layertar))
+                tarfiles[l] = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
+                for member in tarfiles[l].getmembers():
+                    filename = member.name
+                    if filename not in lfhistory:
+                        lfhistory[filename] = {}
 
-        layertar = get_layertarfile(unpackdir, cachedir, layer)
+                    lfhistory[filename]['latest_layer_tar'] = l
+                    lfhistory[filename]['exists'] = True
 
-        count = 0
+                    if whopqpatt.match(os.path.basename(filename)):
+                        # never include the wh itself
+                        lfhistory[filename]['exists'] = False
 
-        logger.debug("\tPass 1: " + str(layertar))
+                        # found an opq entry, which means that this files in the next layer down (only) should not be included
+                        fsub = re.sub(r"\.wh\.\.wh\.\.opq", "", filename, 1)
+                        fsub = re.sub("/+$","", fsub)
 
-        #whpatt = re.compile(".*/\.wh\..*")
-        #whopqpatt = re.compile(".*/\.wh\.\.wh\.\.opq")
-        whpatt = re.compile("\.wh\..*")
-        whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
+                        for other_filename in fhistory.keys():
+                            if re.match("^{}/".format(re.escape(fsub)), other_filename):
+                                #fhistory[other_filename]['exists'] = False
+                                if other_filename not in lfhistory:
+                                    lfhistory[other_filename] = {}
+                                    lfhistory[other_filename].update(fhistory[other_filename])
+                                lfhistory[other_filename]['exists'] = False
 
-        l_opqexcludes[layer] = {}
 
-        myexcludes = {}
-        opqexcludes = {}
+                    elif whpatt.match(os.path.basename(filename)):
+                        # never include the wh itself
+                        lfhistory[filename]['exists'] = False
 
-        tarfilenames = get_tar_filenames(layertar)
-        for fname in tarfilenames:
-            # checks for whiteout conditions
-            if whopqpatt.match(os.path.basename(fname)):
-                #if whopqpatt.match(fname):
-                # found an opq entry, which means that this files in the next layer down (only) should not be included
-                fsub = re.sub(r"\.wh\.\.wh\.\.opq", "", fname, 1)
+                        fsub = re.sub(r"\.wh\.", "", filename, 1)
+                        if fsub not in lfhistory:
+                            lfhistory[fsub] = {}
+                            if fsub in fhistory:
+                                lfhistory[fsub].update(fhistory[fsub])
+                        lfhistory[fsub]['exists'] = False
 
-                # never include the whiteout file itself
-                myexcludes[fname] = True
-                opqexcludes[fsub] = True
+                        for other_filename in fhistory.keys():
+                            if re.match("^{}/".format(re.escape(fsub)), other_filename):
+                                #fhistory[other_filename]['exists'] = False
+                                if other_filename not in lfhistory:
+                                    lfhistory[other_filename] = {}
+                                    lfhistory[other_filename].update(fhistory[other_filename])
+                                lfhistory[other_filename]['exists'] = False
 
-            elif whpatt.match(os.path.basename(fname)):
-                #elif whpatt.match(fname):
-                # found a normal whiteout, which means that this file in any lower layer should be excluded
-                fsub = re.sub(r"\.wh\.", "", fname, 1)
+                    if lfhistory[filename]['exists'] and member.islnk():
+                        el = {
+                            'hl_target_layer': l,
+                            'hl_target_name': member.linkname,
+                            'hl_replace': False,
+                        }
+                        lfhistory[filename].update(el)
+                        if member.linkname not in hardlink_destinations:
+                            hardlink_destinations[member.linkname] = []
+                        el = {
+                            'filename': filename,
+                            'layer': l,
+                        }
+                        hardlink_destinations[member.linkname].append(el)
 
-                # never include a whiteout file
-                myexcludes[fname] = True
-                myexcludes[fsub] = True
+                for filename in list(lfhistory.keys()):
+                    if filename in hardlink_destinations:
+                        for el in hardlink_destinations[filename]:
+                            if el['layer'] != l:
+                                if el['filename'] not in lfhistory:
+                                    lfhistory[el['filename']] = {}
+                                    lfhistory[el['filename']].update(fhistory[el['filename']])
+                                lfhistory[el['filename']]['hl_replace'] = True
 
-            else:
-                # if the last processed layer had an opq whiteout, check file to see if it lives in the opq directory
-                if last_opqexcludes:
-                    dtoks = fname.split("/")
-                    for i in range(0, len(dtoks)):
-                        dtok = '/'.join(dtoks[0:i])
-                        dtokwtrail = '/'.join(dtoks[0:i]) + "/"
-                        if dtok in last_opqexcludes or dtokwtrail in last_opqexcludes:
-                            l_opqexcludes[layer][fname] = True
-                            break
+                fhistory.update(lfhistory)
 
-        # build up the list of excludes as we move down the layers
-        for l in list(l_excludes.keys()):
-            myexcludes.update(l_excludes[l])
+            except Exception as err:
+                logger.error("layer handler failure - exception: {}".format(err))
+                raise(err)
 
-        l_excludes[layer] = myexcludes
+        logger.debug("Pass 2: creating squashtar from layers")
+        allexcludes = []
+        with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='w', format=tarfile.PAX_FORMAT) as oltf:
+            imageSize = 0
+            deferred_hardlinks = {}
+            added_members = {}
+            for filename in fhistory.keys():
+                if fhistory[filename]['exists']:
+                    l = fhistory[filename]['latest_layer_tar']
+                    member = tarfiles[l].getmember(filename)
+                    if member.isreg():
+                        memberfd = tarfiles[l].extractfile(member)
+                        oltf.addfile(member, fileobj=memberfd)
+                        added_members[filename] = fhistory[filename]
+                    elif member.islnk():
+                        if fhistory[filename]['hl_replace']:
+                            deferred_hardlinks[filename] = fhistory[filename]
+                        else:
+                            oltf.addfile(member)
+                            added_members[filename] = fhistory[filename]                        
+                    else:
+                        oltf.addfile(member)
+                        added_members[filename] = fhistory[filename]
 
-        last_opqexcludes.update(opqexcludes)
-        
-    logger.debug("Pass 3: untarring layers with exclusions")
+            for filename in deferred_hardlinks.keys():
+                l = fhistory[filename]['latest_layer_tar']
+                member = tarfiles[l].getmember(filename)
+                logger.debug("deferred hardlink {}".format(fhistory[filename]))
+                try:
+                    logger.debug("attempt to lookup deferred {} content source".format(filename))
+                    content_layer = fhistory[filename]['hl_target_layer']
+                    content_filename = fhistory[filename]['hl_target_name']
+
+                    logger.debug("attempt to extract deferred {} from layer {} (for lnk {})".format(content_filename, content_layer, filename))
+                    content_member = tarfiles[content_layer].getmember(content_filename)
+                    content_memberfd = tarfiles[content_layer].extractfile(content_member)
+                    
+                    logger.debug("attempt to construct new member for deferred {}".format(filename))
+                    new_member = copy.deepcopy(content_member)
+                    
+                    new_member.name = member.name
+                    new_member.pax_headers['path'] = member.name
+
+                    logger.debug("attempt to add final to squashed tar {} -> {}".format(filename, new_member.name))
+                    oltf.addfile(new_member, fileobj=content_memberfd)
+                except Exception as err:
+                    import traceback
+                    traceback.print_exc()
+                    logger.warn("failed to store hardlink ({} -> {}) - exception: {}".format(member.name, member.linkname, err))
+
+                if False:
+                    if member.linkname not in added_members:
+                        logger.debug("caught dangling hardlink, attempting to handle: {} -> {}".format(filename, member.linkname))
+                        if member.linkname in fhistory:
+                            newl = fhistory[member.linkname]['latest_layer_tar']
+                            newmember = tarfiles[l].getmember(member.linkname)
+                            newmemberfd = tarfiles[l].extractfile(member.linkname)
+                            newmember.name = filename
+                            oltf.addfile(newmember, fileobj=newmemberfd)
+                            added_members[filename] = fhistory[filename]
+                            logger.debug("handled dangling hardlink: {} -> {}".format(filename, member.linkname))
+                        else:
+                            logger.warn("failed to handle dangling hardlink, skipping inclusion in final: {} -> {}".format(filename, member.linkname))
+                    else:
+                        oltf.addfile(member)
+                        added_members[filename] = fhistory[filename]
+
+    finally:
+        logger.debug("Pass 3: closing layer tarfiles")
+        for l in tarfiles.keys():
+            if tarfiles[l]:
+                try:
+                    tarfiles[l].close()
+                except Exception as err:
+                    logger.error("failure closing tarfile {} - exception: {}".format(l, err))
 
     imageSize = 0
-    for l in layers:
-        htype, layer = l.split(":",1)
-
-        layertar = get_layertarfile(unpackdir, cachedir, layer)
-
-        imageSize = imageSize + os.path.getsize(layertar) 
-        
-        # write out the exluded files, adding the per-layer excludes if present
-        with open(unpackdir+"/efile", 'w') as OFH:
-            for efile in l_excludes[layer]:
-                OFH.write("%s\n" % efile)
-            if layer in l_opqexcludes and l_opqexcludes[layer]:
-                for efile in l_opqexcludes[layer]:
-                    logger.debug("adding special for layer exclude: " + str(efile))
-                    OFH.write("%s\n" % efile)
-
-        retry = True
-        success = False
-        last_err = None
-        max_retries = 10
-        retries = 0
-        handled_post_metadata = {}
-
-        while (not success) and (retry):
-            tarcmd = "tar -C " + rootfsdir + " -x -X " + unpackdir+"/efile -f " + layertar
-            logger.debug("untarring squashed tarball: " + str(tarcmd))
-            try:
-                rc, sout, serr = utils.run_command(tarcmd)
-                sout = utils.ensure_str(sout)
-                serr = utils.ensure_str(serr)
-
-                if rc != 0:
-                    logger.debug("tar error encountered, attempting to handle")
-                    handled, handled_post_metadata = handle_tar_error(tarcmd, rc, sout, serr, unpackdir=unpackdir, rootfsdir=rootfsdir, cachedir=cachedir, layer=layer, layertar=layertar, layers=layers)
-                    if not handled:
-                        raise Exception("command failed: cmd="+str(tarcmd)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    else:
-                        logger.debug("tar error successfully handled, retrying")
-                else:
-                    logger.debug("command succeeded: stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    success = True
-            except Exception as err:
-                logger.error("command failed with exception - " + str(err))
-                last_err = err
-                success = False
-                retry = False
-                
-            # safety net
-            if retries > max_retries:
-                retry = False
-            retries = retries + 1
-
-        if not success:
-            if last_err:
-                raise last_err
-            else:
-                raise Exception("unknown exception in untar")
-        else:
-            try:
-                handle_tar_error_post(unpackdir=unpackdir, rootfsdir=rootfsdir, handled_post_metadata=handled_post_metadata)
-            except Exception as err:
-                raise err
+    if os.path.exists(os.path.join(unpackdir,"squashed.tar")):
+        imageSize = os.path.getsize(os.path.join(unpackdir, "squashed.tar"))
 
     return ("done", imageSize)
 
@@ -490,7 +531,6 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
 
     if not dockerfile_contents:
         # get dockerfile_contents (translate history to guessed DF)
-        # TODO 'FROM' guess?
         dockerfile_contents = "FROM scratch\n"
         for hel in docker_history:
             patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
@@ -618,7 +658,6 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
 
     if not dockerfile_contents:
         # get dockerfile_contents (translate history to guessed DF)
-        # TODO 'FROM' guess?
         dockerfile_contents = "FROM scratch\n"
         for hel in docker_history:
             patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
@@ -927,7 +966,8 @@ def get_anchorelock(lockId=None, driver=None):
         anchore_config = localconfig['anchore_scanner_config']
         anchore_data_dir = anchore_config['anchore_data_dir']
     else:
-        anchore_data_dir = "/root/.anchore"
+        #anchore_data_dir = "/root/.anchore"
+        anchore_data_dir = "{}/.anchore".format(os.getenv("HOME", "/tmp/anchoretmp"))
         if not os.path.exists(os.path.join(anchore_data_dir, 'conf')):
             try:
                 os.makedirs(os.path.join(anchore_data_dir, 'conf'))

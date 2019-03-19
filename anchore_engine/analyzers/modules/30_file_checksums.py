@@ -28,50 +28,31 @@ outfiles_sha1 = {}
 outfiles_md5 = {}
 outfiles_sha256 = {}
 
-meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+#meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 if distrodict['flavor'] == "ALPINE":
     dosha1 = True
 
 try:
     timer = time.time()
-    (tmp, allfiles) = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
-    for name in list(allfiles.keys()):
-        name = re.sub("^\.", "", name)
-        thefile = '/'.join([unpackdir, "rootfs", name])
+    csums = ['sha256', 'md5']
+    if dosha1:
+        csums.append('sha1')
+    allfiles = anchore_engine.analyzers.utils.get_checksums_from_squashtar(os.path.join(unpackdir, "squashed.tar"), csums=csums)
+        
+    for filename in allfiles.keys():
+        file_sha256 = allfiles[filename].get('sha256', None)
+        if file_sha256:
+            outfiles_sha256[filename] = file_sha256
 
-        csum = "DIRECTORY_OR_OTHER"
-        if os.path.isfile(thefile) and not os.path.islink(thefile):
-            if domd5:
-                try:
-                    with open(thefile, 'rb') as FH:
-                        csum = hashlib.md5(FH.read()).hexdigest()
-                except:
-                    csum = "DIRECTORY_OR_OTHER"
-                outfiles_md5[name] = csum
+        file_sha1 = allfiles[filename].get('sha1', None)
+        if file_sha1:
+            outfiles_sha1[filename] = file_sha1
 
-            if dosha1:
-                try:
-                    with open(thefile, 'rb') as FH:
-                        csum = hashlib.sha1(FH.read()).hexdigest()
-                except:
-                    csum = "DIRECTORY_OR_OTHER"
-                outfiles_sha1[name] = csum
-
-            try:
-                with open(thefile, 'rb') as FH:
-                    csum = hashlib.sha256(FH.read()).hexdigest()
-            except:
-                csum = "DIRECTORY_OR_OTHER"
-            outfiles_sha256[name] = csum
-
-        else:
-            if domd5:
-                outfiles_md5[name] = "DIRECTORY_OR_OTHER"
-            if dosha1:
-                outfiles_sha1[name] = "DIRECTORY_OR_OTHER"
-
-            outfiles_sha256[name] = "DIRECTORY_OR_OTHER"
+        file_md5 = allfiles[filename].get('md5', None)
+        if file_md5:
+            outfiles_md5[filename] = file_md5
 
 except Exception as err:
     import traceback

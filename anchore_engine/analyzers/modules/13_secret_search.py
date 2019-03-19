@@ -5,6 +5,7 @@ import sys
 import os
 import re
 import json
+import tarfile
 
 import anchore_engine.analyzers.utils
 
@@ -51,52 +52,59 @@ if os.path.exists(unpackdir + "/anchore_allfiles.json"):
     with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
         allfiles = json.loads(FH.read())
 else:
-    fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+    #fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+    fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
     with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
         OFH.write(json.dumps(allfiles))
 
 results = {}
-pathmap = {}
-# fileinfo                                                                                                                         
-for name in list(allfiles.keys()):
-    thefile = '/'.join([rootfsdir, name])
-    if os.path.isfile(thefile):
+with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='r', format=tarfile.PAX_FORMAT) as tfl:
+    alltnames = tfl.getnames()
+    alltfiles = {}
+    for name in alltnames:
+        alltfiles[name] = True
 
-        dochecks = True
-        if params['maxfilesize'] and os.path.getsize(thefile) > params['maxfilesize']:
-            dochecks = False
+    for member in tfl.getmembers():
+        name = "/{}".format(member.name)
+        if member.islnk() or member.issym():
+            emember = anchore_engine.analyzers.utils._get_extractable_member(tfl, member, deref_symlink=True, alltfiles=alltfiles)
+            if emember:
+                member = emember
 
-        if dochecks:
-            with open(thefile, 'rb') as FH:
-                lineno = 0
-                for line in FH.readlines():
-                    for regexp in regexps:
-                        try:
-                            regexpname, theregexp = regexp.split("=", 1)
-                        except:
-                            theregexp = regexp
+        if member.isreg():
+            dochecks = True
+            if params['maxfilesize'] and int(member.size) > params['maxfilesize']:
+                dochecks = False
 
-                        try:
-                            patt = re.match(theregexp.encode('utf-8'), line)
-                            if patt:
-                                b64regexp = str(base64.encodebytes(regexp.encode('utf-8')), 'utf-8')
-                                if name not in results:
-                                    results[name] = {}
-                                if b64regexp not in results[name]:
-                                    results[name][b64regexp] = list()
-                                results[name][b64regexp].append(lineno)
-                                pathmap[name] = thefile
-                        except Exception as err:
-                            import traceback
-                            traceback.print_exc()
-                            print("ERROR: configured regexp not valid or regexp cannot be applied - exception: " + str(err))
-                            sys.exit(1)
-                    lineno += 1
-        else:
-            # skipping this file because maxfilesize is set and file is larger
-            pass
+            if dochecks:
+                with tfl.extractfile(member) as FH:
+                    lineno = 0
+                    for line in FH.readlines():
+                        for regexp in regexps:
+                            try:
+                                regexpname, theregexp = regexp.split("=", 1)
+                            except:
+                                theregexp = regexp
 
-storefiles = list()
+                            try:
+                                patt = re.match(theregexp.encode('utf-8'), line)
+                                if patt:
+                                    b64regexp = str(base64.encodebytes(regexp.encode('utf-8')), 'utf-8')
+                                    if name not in results:
+                                        results[name] = {}
+                                    if b64regexp not in results[name]:
+                                        results[name][b64regexp] = list()
+                                    results[name][b64regexp].append(lineno)
+                            except Exception as err:
+                                import traceback
+                                traceback.print_exc()
+                                print("ERROR: configured regexp not valid or regexp cannot be applied - exception: " + str(err))
+                                sys.exit(1)
+                        lineno += 1
+            else:
+                # skipping this file because maxfilesize is set and file is larger
+                pass
+
 for name in list(results.keys()):
     buf = json.dumps(results[name])
     outputdata[name] = buf

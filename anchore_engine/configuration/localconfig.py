@@ -11,7 +11,7 @@ from pkg_resources import resource_filename
 from anchore_engine.subsys import logger
 
 DEFAULT_CONFIG = {
-    'service_dir': '/root/.anchore_engine',
+    'service_dir': os.path.join("{}".format(os.getenv("HOME", "/tmp/anchoretmp")), ".anchore_engine"), #'/root/.anchore_engine',
     'tmp_dir': '/tmp',
     'log_level': 'INFO',
     'metrics': {'enable': False},
@@ -125,10 +125,11 @@ def load_defaults(configdir=None):
     global localconfig, DEFAULT_CONFIG
 
     if not configdir:
-        try:
-            configdir = os.path.join(os.environ['HOME'], ".anchore_engine")
-        except:
-            configdir = "/root/.anchore_engine"
+        configdir = os.path.join("{}".format(os.getenv("HOME", "/tmp/anchoretmp")), ".anchore_engine")
+        #try:
+        #    configdir = os.path.join(os.environ['HOME'], ".anchore_engine")
+        #except:
+        #    configdir = "/root/.anchore_engine"
 
     localconfig.update(DEFAULT_CONFIG)
     localconfig['service_dir'] = configdir

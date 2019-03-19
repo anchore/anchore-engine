@@ -13,7 +13,7 @@ import anchore_engine.util.java as java_util
 
 analyzer_name = "package_list"
 
-java_library_file = ".*\.([jwe]ar|[jh]pi)"
+java_library_file = ".*\.([jwe]ar|[jh]pi)$"
 
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
@@ -25,7 +25,7 @@ imgname = config['imgid']
 imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
-
+squashtar = os.path.join(unpackdir, "squashed.tar")
 
 def parse_properties(filebuf):
     """
@@ -173,7 +173,6 @@ def process_java_archive(prefix, filename, inZFH=None):
 
     return ret
 
-
 resultlist = {}
 try:
     allfiles = {}
@@ -181,14 +180,22 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        #fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
     for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'file':
-            prefix = '/'.join([unpackdir, 'rootfs'])
-            els = process_java_archive(prefix, f)
+            #prefix = '/'.join([unpackdir, 'rootfs'])
+            #els = process_java_archive(prefix, f)
+                        
+            patt = re.match(java_library_file, f)
+            els = []
+            if patt:
+                prefix = anchore_engine.analyzers.utils.java_prepdb_from_squashtar(unpackdir, squashtar, java_library_file)
+                els = process_java_archive(prefix, f)
+                
             if els:
                 for el in els:
                     resultlist[el['location']] = json.dumps(el)

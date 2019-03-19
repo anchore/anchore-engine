@@ -11,6 +11,8 @@ import anchore_engine.analyzers.utils
 
 analyzer_name = "package_list"
 
+py_library_file = ".*(\.(py|pyc|pyo)|(dist-info|egg-info))$"
+
 try:
     config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
 except Exception as err:
@@ -21,6 +23,7 @@ imgname = config['imgid']
 imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
+squashtar = os.path.join(unpackdir, "squashed.tar")
 
 resultlist = {}
 try:
@@ -29,14 +32,16 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        #fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
+    pythondbdir = anchore_engine.analyzers.utils.python_prepdb_from_squashtar(unpackdir, squashtar, py_library_file)
+
     for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'dir':
-            #candidate = '/'.join([unpackdir, 'rootfs', f.encode('utf8')])
-            candidate = '/'.join([unpackdir, 'rootfs', f])
+            candidate = '/'.join([pythondbdir, f])
             distributions = pkg_resources.find_distributions(candidate)
             for distribution in distributions:
                 el = {}
@@ -45,8 +50,8 @@ try:
                     el['version'] = distribution.version
                     el['type'] = 'python'
 
-                    prefix = '/'.join([unpackdir, 'rootfs'])
-                    el['location'] = re.sub("^/*"+prefix+"/*", "/", candidate)
+                    #prefix = '/'.join([unpackdir, 'rootfs'])
+                    el['location'] = f #re.sub("^/*"+prefix+"/*", "/", candidate)
 
                     # extract file info if available
                     el['files'] = []

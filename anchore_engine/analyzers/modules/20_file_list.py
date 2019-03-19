@@ -18,8 +18,9 @@ def rpm_check_file_membership_from_path(unpackdir, allfiles=None):
     rpmdbdir = anchore_engine.analyzers.utils.rpm_prepdb(unpackdir)
 
     if not allfiles:
-        filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
-
+        #filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
+        filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
+        
     try:
         try:
             # get a list of all files from RPM
@@ -82,7 +83,8 @@ def dpkg_check_file_membership_from_path(unpackdir, allfiles=None):
     inpath = os.path.join(unpackdir, 'rootfs')
 
     if not allfiles:
-        filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
+        #filemap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(inpath)
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
 
     try:
         try:
@@ -128,7 +130,8 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+#meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 simplefiles = {}
@@ -137,11 +140,12 @@ nonpkgoutfiles = {}
 
 try:
     allfiles = {}
+    fmap = {}
     if os.path.exists(unpackdir + "/anchore_allfiles.json"):
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"), inpath=os.path.join(unpackdir, "rootfs"))
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
@@ -173,6 +177,7 @@ if simplefiles:
 if outfiles:
     ofile = os.path.join(outputdir, 'files.allinfo')
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles)
+
 if nonpkgoutfiles:
     ofile = os.path.join(outputdir, 'files.nonpkged')
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, nonpkgoutfiles)

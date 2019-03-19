@@ -20,7 +20,8 @@ outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
 try:
-    meta = anchore_engine.analyzers.utils.get_distro_from_path(os.path.join(unpackdir, "rootfs"))
+    #meta = anchore_engine.analyzers.utils.get_distro_from_path(os.path.join(unpackdir, "rootfs"))
+    meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
 
     dockerfile_contents = None
     if os.path.exists(os.path.join(unpackdir, "Dockerfile")):
