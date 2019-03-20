@@ -154,6 +154,10 @@ jobs:
             echo "${IMAGE_NAME}:v0.2-${IMAGE_TAG}"
             docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:v0.2-${IMAGE_TAG}"
             docker push "${IMAGE_NAME}:v0.2-${IMAGE_TAG}"
+          elif [ "$CIRCLE_BRANCH" == "0.3" ]; then
+            echo "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
+            docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
+            docker push "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
           else
             false
           fi
@@ -183,6 +187,7 @@ workflows:
           branches:
             only:
             - 'master'
+            - '0.3'
             - '0.2'
     - compose_tests:
         requires:

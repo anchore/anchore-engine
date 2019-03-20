@@ -6,7 +6,7 @@ The Anchore Engine is an open source project that provides a centralized service
 
 The Anchore engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
 
-Using the Anchore Engine, container images can be downloaded from Docker V2 compatible container registries, and then evaluated against user defined policies. The Anchore Engine can integrate with Anchore's [Navigator](https://anchore.io) service, allowing you to define policies and whitelists using a graphical editor that are automatically synchronized to the Anchore Engine.
+Using the Anchore Engine, container images can be downloaded from Docker V2 compatible container registries, and then evaluated against user defined policies. The Anchore Engine can integrate with Anchore's [Enterprise Client](https://anchore.com/enterprise) application, allowing you to define policies and whitelists using a graphical editor that are automatically synchronized to the Anchore Engine.
 
 ## Installation
 
