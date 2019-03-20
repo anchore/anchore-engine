@@ -25,7 +25,7 @@ LABEL anchore_cli_commit=$CLI_COMMIT
 LABEL anchore_commit=$ANCHORE_COMMIT
 ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
-VOLUME /analysis_scratch
+#VOLUME /analysis_scratch
 
 # Default values overrideable at runtime of the container
 ENV ANCHORE_CONFIG_DIR=/config \
@@ -63,12 +63,6 @@ ENV ANCHORE_CONFIG_DIR=/config \
 EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
-    groupadd --gid 1000 anchore && \
-    useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
-    mkdir -p /var/log/anchore && chown anchore:anchore /var/log/anchore && \
-    mkdir -p /var/run/anchore && chown anchore:anchore /var/run/anchore
-
-RUN set -ex && \
     apt-get -y update && \
     apt-get -y upgrade && \
     apt-get -y install git curl psmisc rpm python3-minimal python3-pip libgpgme11 libdevmapper1.02.1 libostree-1-1 && \
@@ -100,6 +94,14 @@ RUN set -ex && \
     pip3 install --no-index --find-links=/wheels -r requirements.txt && \
     pip3 install . && \
     rm -rf /anchore-engine /root/.cache /wheels
+
+RUN set -ex && \
+    groupadd --gid 1000 anchore && \
+    useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
+    mkdir -p /var/log/anchore && chown -R anchore:anchore /var/log/anchore && \
+    mkdir -p /var/run/anchore && chown -R anchore:anchore /var/run/anchore && \
+    mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
+    mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service
 
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
