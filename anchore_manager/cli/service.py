@@ -102,7 +102,7 @@ class ServiceThread():
 
 
 def terminate_service(service, flush_pidfile=False):
-    pidfile = "/var/run/" + service + ".pid"
+    pidfile = "/var/run/anchore/" + service + ".pid"
     try:
         logger.info("Looking for pre-existing service ({}) pid from pidfile ({})".format(service, pidfile))
         thepid = None
@@ -143,7 +143,7 @@ def terminate_service(service, flush_pidfile=False):
 
 
 def startup_service(service, configdir):
-    pidfile = "/var/run/" + service + ".pid"
+    pidfile = "/var/run/anchore/" + service + ".pid"
     logfile = "/var/log/anchore/" + service + ".log"
     # os.environ['ANCHORE_LOGFILE'] = logfile
 
@@ -377,17 +377,19 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
 
         # start up services
         logger.info('Starting services: {}'.format(services))
-        try:
-            if not os.path.exists("/var/log/anchore"):
-                os.makedirs("/var/log/anchore/", 0o755)
-        except Exception as err:
-            logger.error("cannot create log directory /var/log/anchore - exception: {}".format(str(err)))
-            raise err
+
+        for supportdir in ["/var/log/anchore", "/var/run/anchore"]:
+            try:
+                if not os.path.exists(supportdir):
+                    os.makedirs(supportdir, 0o755)
+            except Exception as err:
+                logger.error("cannot create log directory {} - exception: {}".format(supportdir, str(err)))
+                raise err
 
         pids = []
         keepalive_threads = []
         for service in services:
-            pidfile = "/var/run/" + service + ".pid"
+            pidfile = "/var/run/anchore/" + service + ".pid"
             try:
                 terminate_service(service, flush_pidfile=True)
 

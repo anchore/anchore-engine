@@ -4,7 +4,7 @@
 # General system-wide configuration options, these should not need to
 # be altered for basic operation
 #
-# service_dir: '/config'
+service_dir: '/home/anchore/.anchore_engine'
 # tmp_dir: '/tmp'
 # log_level: 'DEBUG'
 log_level: 'INFO'

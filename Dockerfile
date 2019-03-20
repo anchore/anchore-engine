@@ -61,6 +61,13 @@ ENV ANCHORE_CONFIG_DIR=/config \
 
 
 EXPOSE ${ANCHORE_SERVICE_PORT}
+
+RUN set -ex && \
+    groupadd --gid 1000 anchore && \
+    useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
+    mkdir -p /var/log/anchore && chown anchore:anchore /var/log/anchore && \
+    mkdir -p /var/run/anchore && chown anchore:anchore /var/run/anchore
+
 RUN set -ex && \
     apt-get -y update && \
     apt-get -y upgrade && \
@@ -96,6 +103,8 @@ RUN set -ex && \
 
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
+
+USER anchore:anchore
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]
