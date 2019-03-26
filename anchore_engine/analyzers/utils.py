@@ -770,7 +770,7 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     except:
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    return(rpms)
+    return(rpms, rpmdbdir)
 
 def make_anchoretmpdir(tmproot):
     tmpdir = '/'.join([tmproot, str(random.randint(0, 9999999)) + ".anchoretmp"])
@@ -1024,31 +1024,40 @@ def dpkg_get_all_pkgfiles(unpackdir):
 
 def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):    
     all_packages = {}
+    actual_packages = {}
+    all_packages_simple = {}
+    other_packages = {}
     
     dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
 
-    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}-${source:Version}|ANCHORETOK|${Maintainer}\\n"]
+    #cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}-${source:Version}|ANCHORETOK|${Maintainer}\\n"]
+    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}\\n"]
     try:
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
             l = str(l, 'utf-8')
-            (p, v, arch, rawsize, source, vendor) = l.split("|ANCHORETOK|")
+            (p, v, arch, rawsize, sp, sv, vendor) = l.split("|ANCHORETOK|")
+            if sp and sv:
+                source = "{}-{}".format(sp, sv)
+            else:
+                source = ""
 
             try:
                 size = str(int(rawsize) * 1000)
             except:
                 size = str(0)
-
+            
+            sp = str(sp)
+            sv = str(sv)
             vendor = str(vendor) + " (maintainer)"
             arch = str(arch)
             source = str(source)
 
             try:
-                #licfile = '/'.join([dpkgtmpdir, 'rootfs/usr/share/doc/', p, 'copyright'])
-                licfile = os.path.join(dpkgdocsdir, p, 'copyright') #'/'.join([dpkgtmpdir, 'rootfs/usr/share/doc/', p, 'copyright'])
+                licfile = os.path.join(dpkgdocsdir, p, 'copyright')
                 if not os.path.exists(licfile):
                     lic = "Unknown"
                 else:
@@ -1061,6 +1070,19 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                 lic = "Unknown"
 
             all_packages[p] = {'version':v, 'release':'N/A', 'arch':arch, 'size':size, 'origin':vendor, 'license':lic, 'sourcepkg':source, 'type':'dpkg'}
+
+            if p and v:
+                if p not in actual_packages:
+                    actual_packages[p] = {'version':v, 'arch':arch}
+                if p not in all_packages_simple:
+                    all_packages_simple[p] = {'version':v, 'arch':arch}
+            if sp and sv:
+                if sp not in all_packages_simple:
+                    all_packages_simple[sp] = {'version':sv, 'arch':arch}
+            if p and v and sp and sv:
+                if p == sp and v != sv:
+                    other_packages[p] = [{'version':sv, 'arch':arch}]
+
     except Exception as err:
         import traceback
         traceback.print_exc()
@@ -1068,7 +1090,7 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
         print("Exception: " + str(err))
         raise ValueError("Please ensure the command 'dpkg' is available and try again: " + str(err))
 
-    return(all_packages)
+    return(all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir)
 
 def deb_copyright_getlics(licfile):
     ret = {}
