@@ -14,7 +14,7 @@ import hashlib
 import os
 import re
 import collections
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, desc, asc
 from werkzeug.exceptions import HTTPException
 
 
@@ -1091,8 +1091,10 @@ def query_vulnerabilities(dbsession, request_inputs):
 
         pn_hash = {}
 
-        vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).all()
+        # order_by ascending timestamp will result in dedup hash having only the latest information stored for return, if there are duplicate records for NVD
+        vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).order_by(asc(NvdMetadata.created_at)).all()
         if vulnerabilities:
+            dedupped_return_hash = {}
             vulnerability_exists = True
             for vulnerability in vulnerabilities:
                 namespace_el = {}
@@ -1103,7 +1105,6 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
                 namespace_el['affected_packages'] = []
 
-                # TODO the package info search, and filter, add to affected_packages list
                 for v_pkg in vulnerability.vulnerable_cpes:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
                         pkg_el = {
@@ -1114,7 +1115,9 @@ def query_vulnerabilities(dbsession, request_inputs):
                         namespace_el['affected_packages'].append(pkg_el)
 
                 if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
-                    return_object.append(namespace_el)
+                    dedupped_return_hash[namespace_el['id']] = namespace_el
+
+            return_object.extend(list(dedupped_return_hash.values()))
 
         vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
         if vulnerabilities:
@@ -1127,7 +1130,6 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['link'] = vulnerability.link
                 namespace_el['affected_packages'] = []
                 
-                # TODO the package info search, and filter, add to affected_packages list
                 for v_pkg in vulnerability.fixed_in:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
                         pkg_el = {
