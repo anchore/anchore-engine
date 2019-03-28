@@ -125,23 +125,23 @@ class WsgiApiServiceMaker(object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.configuration = None
+        self.global_configuration = None
+        self.service_config = None
         self.anchore_service = None
         self.root_resource = None
         self.twistd_service = None
-        self.configuration = None
         self.resource_nodes = copy.deepcopy(self._default_resource_nodes)
 
     def _init_logging(self):
-        if self.configuration is None:
+        if self.global_configuration is None:
             log.err('No configuration found to initialize logging for. Expecting other errors, so setting log level to DEBUG')
             log_level = 'DEBUG'
             log_to_db = False
         else:
             try:
-                service_config = self.configuration['services'][self.service_cls.__service_name__]
-                log_level = service_config.get('log_level', self.configuration.get('log_level', 'INFO'))
-                log_to_db = self.configuration.get('log_to_db', False)
+                service_config = self.global_configuration['services'][self.service_cls.__service_name__]
+                log_level = service_config.get('log_level', self.global_configuration.get('log_level', 'INFO'))
+                log_to_db = self.global_configuration.get('log_to_db', False)
             except Exception as err:
                 log.err("error checking for enabled services, check config file - exception: " + str(err))
                 raise Exception("error checking for enabled services, check config file - exception: " + str(err))
@@ -149,13 +149,14 @@ class WsgiApiServiceMaker(object):
         logger.set_log_level(log_level, log_to_db=log_to_db)
 
     def _check_enabled(self):
-        if not self.configuration.get('services', {}).get(self.service_cls.__service_name__, {}).get('enabled', False):
+        if not self.global_configuration.get('services', {}).get(self.service_cls.__service_name__, {}).get('enabled', False):
             log.err("Service {} not enabled in configuration file: shutting down".format(self.service_cls.__service_name__))
             sys.exit(0)
 
     def _init_config(self, options):
         _validate_options(options)
-        self.configuration = _load_config(options['config'])
+        self.global_configuration = _load_config(options['config'])
+        self.service_config = self.global_configuration.get('services', {}).get(self.service_cls.__service_name__, {})
 
     def _get_non_api_monitor(self, service):
         return service.get_monitor_thread(monitor_thread_wrapper=lambda target, kwargs: TimerService(1, target, **kwargs))
@@ -178,7 +179,7 @@ class WsgiApiServiceMaker(object):
 
             assert (issubclass(self.service_cls, ApiService))
             self.anchore_service = self.service_cls(options=options)
-            self.anchore_service.initialize(self.configuration)
+            self.anchore_service.initialize(self.global_configuration)
             self.resource_nodes[b'version'].versions = self.anchore_service.versions
 
             # application object
@@ -216,16 +217,18 @@ class WsgiApiServiceMaker(object):
 
         self.resource_nodes[name] = resource
 
-
-    # Old module-level createService()
     def _build_api_service(self):
         """
         Once called, the resource is initialized. Any calls to self._add_resource() should be done before calling this fn.
         :return:
         """
 
+        thread_count = int(self.service_config.get('max_request_threads', localconfig.DEFAULT_SERVICE_THREAD_COUNT))
+
         wsgi_app = self.anchore_service.get_api_application()
         wsgi_site = wsgi.WSGIResource(reactor, reactor.getThreadPool(), application=wsgi_app)
+        reactor.getThreadPool().adjustPoolsize(maxthreads=thread_count)
+        logger.debug('Thread pool size stats. Min={}, Max={}'.format(reactor.getThreadPool().min, reactor.getThreadPool().max))
 
         self._add_resource(self.anchore_service.__service_api_version__.encode('utf-8'), wsgi_site)
         self.root_resource = web.resource.Resource()

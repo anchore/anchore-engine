@@ -47,6 +47,8 @@ DEFAULT_CONFIG = {
     }
 }
 
+DEFAULT_SERVICE_THREAD_COUNT = 50
+
 DEFAULT_CONFIG_FILENAME = 'config.yaml'
 localconfig = {}
 

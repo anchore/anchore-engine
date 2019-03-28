@@ -151,6 +151,9 @@ def set_log_level(new_log_level, log_to_stdout=False, log_to_db=False):
     """
     global log_level, log_level_map, _log_to_stdout, _log_to_db
 
+    # Don't require the level strings to be upper, normalize it here
+    new_log_level = new_log_level.upper()
+
     if new_log_level in log_level_map:
         log_level = log_level_map[new_log_level]
 
