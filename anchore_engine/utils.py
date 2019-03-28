@@ -379,14 +379,24 @@ rfc3339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
 rfc3339_date_input_fmts = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%S:%fZ']
 
 def rfc3339str_to_epoch(rfc3339_str):
-    return( int(rfc3339str_to_datetime(rfc3339_str).timestamp()) )
+    return int(rfc3339str_to_datetime(rfc3339_str).timestamp())
+    #return int(dt.replace(tzinfo=datetime.timezone.utc).timestamp())
 
 def rfc3339str_to_datetime(rfc3339_str):
+    """
+    Convert the rfc3339 formatted string (UTC only) to a datatime object with tzinfo explicitly set to utc. Raises an exception if the parsing fails.
+
+    :param rfc3339_str:
+    :return:
+    """
 
     ret = None
     for fmt in rfc3339_date_input_fmts:
         try:
             ret = datetime.datetime.strptime(rfc3339_str, fmt)
+            # Force this since the formats we support are all utc formats, to support non-utc
+            if ret.tzinfo is None:
+                ret = ret.replace(tzinfo=datetime.timezone.utc)
             continue
         except:
             pass
