@@ -1139,7 +1139,7 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
             else:
                 logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 
-            return make_response_image(image_record, include_detail=True)
+            return [make_response_image(image_record, include_detail=True)]
     except Exception as err:
         logger.debug("operation exception: " + str(err))
         raise err
