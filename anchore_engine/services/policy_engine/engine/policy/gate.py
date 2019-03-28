@@ -10,11 +10,9 @@ import enum
 import anchore_engine
 from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.policy.params import TriggerParameter
+from anchore_engine.services.policy_engine.engine.policy.params import TriggerParameter, LinkedValidator
 from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, InvalidParameterError,  \
     TriggerEvaluationError, PolicyRuleValidationErrorCollection, ValidationError
-from anchore_engine.services.policy_engine.engine.policy.exceptions import EndOfLifedError
-
 
 class LifecycleStates(enum.Enum):
     active = 1
@@ -120,7 +118,7 @@ class BaseTrigger(LifecycleMixin):
 
     e.g. in class definition:
 
-    tBaseTriggerestparam = TriggerParamter(display_name='should_fire', is_required=False, validator=BooleanValidator())
+    testparam = TriggerParameter(display_name='should_fire', is_required=False, validator=BooleanValidator())
 
     in usage of the instance object:
 
@@ -143,7 +141,6 @@ class BaseTrigger(LifecycleMixin):
         """
         self.gate_cls = parent_gate_cls
         self.msg = None
-        self.eval_params = {}
         self._fired_instances = []
         self.rule_id = rule_id
 
@@ -183,6 +180,19 @@ class BaseTrigger(LifecycleMixin):
             except ValidationError as e:
                 invalid_params.append(ParameterValueInvalidError(validation_error=e, gate=self.gate_cls.__gate_name__, trigger=self.__trigger_name__, rule_id=self.rule_id))
 
+        # One last pass to catch any dependent validations after all values are set, to eliminate issues due to eval order
+        for param_obj in filter(lambda x: isinstance(x.validator, LinkedValidator), list(self.parameters().values())):
+
+            # Update the discriminator link to the object member instead of the class member
+            param_obj.validator.inject_discriminator(self.parameters()[param_obj.validator.discriminator_name].value())
+
+            try:
+                param_obj.validator.validate(param_obj._param_value)
+            except ValidationError as e:
+                invalid_params.append(
+                    ParameterValueInvalidError(validation_error=e, gate=self.gate_cls.__gate_name__,
+                                               trigger=self.__trigger_name__, rule_id=self.rule_id))
+
         # Then, check for any parameters provided that are not defined in the trigger.
         if kwargs:
             given_param_names = set([param_name_map.get(x) for x in list(kwargs.keys())])
@@ -192,6 +202,9 @@ class BaseTrigger(LifecycleMixin):
 
         if invalid_params:
             raise PolicyRuleValidationErrorCollection(invalid_params, trigger=self.__trigger_name__, gate=self.gate_cls.__gate_name__)
+
+    def _get_param_by_name(self, name):
+        return self.parameters()[name]
 
     @classmethod
     def _parameters(cls):
@@ -234,7 +247,7 @@ class BaseTrigger(LifecycleMixin):
                 self.evaluate(image_obj, context)
             except Exception as e:
                 logger.exception('Error evaluating trigger. Aborting trigger execution')
-                raise TriggerEvaluationError(trigger=self, message='Error executing gate {} trigger {} with params: {}. Msg: {}'.format(self.gate_cls.__gate_name__, self.__trigger_name__, self.eval_params, e.message))
+                raise TriggerEvaluationError(trigger=self, message=str(e))
 
         return True
 

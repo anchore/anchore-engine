@@ -406,9 +406,8 @@ class ExecutablePolicyRule(PolicyRule):
         try:
             try:
                 self.configured_trigger = selected_trigger_cls(parent_gate_cls=self.gate_cls, rule_id=self.rule_id, **self.trigger_params)
-            except [TriggerNotFoundError, InvalidParameterError, ParameterValueInvalidError] as e:
+            except (TriggerNotFoundError, InvalidParameterError, ParameterValueInvalidError) as e:
                 # Error finding or initializing the trigger
-                log.exception('Policy rule execution exception: {}'.format(e))
                 self.error_exc = e
                 self.configured_trigger = None
 
@@ -455,7 +454,7 @@ class ExecutablePolicyRule(PolicyRule):
                 raise
             except Exception as e:
                 log.exception('Unmapped exception caught during trigger evaluation')
-                raise TriggerEvaluationError(trigger=self.configured_trigger, message='Could not evaluate trigger due to error in evaluation execution')
+                raise TriggerEvaluationError(trigger=self.configured_trigger, message='Could not evaluate trigger')
 
             matches = self.configured_trigger.fired
             decisions = []
@@ -1288,7 +1287,7 @@ def build_empty_error_execution(image_obj, tag, bundle, errors=None, warnings=No
     """
 
     b = BundleExecution(bundle=bundle, image_id=image_obj.id, tag=tag)
-    b.bundle_decision = BundleDecision(policy_decision=FailurePolicyDecision())
+    b.bundle_decision = BundleDecision(policy_decisions=[FailurePolicyDecision()])
     b.errors = errors
     b.warnings = warnings
     return b
