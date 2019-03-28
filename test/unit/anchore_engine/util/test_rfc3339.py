@@ -3,22 +3,22 @@ import datetime
 import anchore_engine.utils as utils
 
 rfc3339_examples = [
-    ("2001-02-03T04:05:06Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6),'epoch': 981173106}),
-    ("2001-02-03T04:05:06:000007Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, 7),'epoch': 981173106}),
-    ("2001-02-03T04:05:06.000007Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, 7),'epoch': 981173106}),
+    ("2001-02-03T04:05:06Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, tzinfo=datetime.timezone.utc),'epoch': 981173106}),
+    ("2001-02-03T04:05:06:000007Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, 7, tzinfo=datetime.timezone.utc),'epoch': 981173106}),
+    ("2001-02-03T04:05:06.000007Z", {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, 7, tzinfo=datetime.timezone.utc),'epoch': 981173106}),
 ]
 
 epoch_examples = [
-    (981173106, {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6), 'rfc3339': "2001-02-03T04:05:06Z"}),
-    (981173106.000007,{'dt': datetime.datetime(2001, 2, 3, 4, 5, 6), 'rfc3339': "2001-02-03T04:05:06Z"}),
+    (981173106, {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, tzinfo=datetime.timezone.utc), 'rfc3339': "2001-02-03T04:05:06Z"}),
+    (981173106.000007,{'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, tzinfo=datetime.timezone.utc), 'rfc3339': "2001-02-03T04:05:06Z"}),
 ]
 
 dt_examples = [
-    (datetime.datetime(2001, 2, 3, 4, 5, 6), {'epoch': 981173106, 'rfc3339': "2001-02-03T04:05:06Z"}),
-    (datetime.datetime(2001, 2, 3, 4, 5, 6, 7), {'epoch': 981173106, 'rfc3339': "2001-02-03T04:05:06Z"}),
+    (datetime.datetime(2001, 2, 3, 4, 5, 6, tzinfo=datetime.timezone.utc), {'epoch': 981173106, 'rfc3339': "2001-02-03T04:05:06Z"}),
+    (datetime.datetime(2001, 2, 3, 4, 5, 6, 7, tzinfo=datetime.timezone.utc), {'epoch': 981173106, 'rfc3339': "2001-02-03T04:05:06Z"}),
 ]
 
-assert_targets = {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6),'epoch': 981173106,'rfc3339': "2001-02-03T04:05:06Z"}
+assert_targets = {'dt': datetime.datetime(2001, 2, 3, 4, 5, 6, tzinfo=datetime.timezone.utc),'epoch': 981173106,'rfc3339': "2001-02-03T04:05:06Z"}
 
 
 def test_rfc3339():

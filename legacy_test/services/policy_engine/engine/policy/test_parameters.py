@@ -2,7 +2,7 @@ import unittest
 
 from anchore_engine.services.policy_engine.engine.policy.params import JsonSchemaValidator, BooleanStringValidator, TypeValidator, CommaDelimitedNumberListValidator, EnumValidator, \
     DelimitedEnumStringValidator, IntegerValidator, NameVersionListValidator, PipeDelimitedStringListValidator, CommaDelimitedStringListValidator, RegexParamValidator, nested_item_delim_parser, \
-    delim_parser
+    delim_parser, LinkedValidator
 from anchore_engine.services.policy_engine.engine.policy import params
 from anchore_engine.services.policy_engine.engine.policy import gate
 from anchore_engine.services.policy_engine.engine.policy.exceptions import ParameterValueInvalidError, ValidationError, RequiredParameterNotSetError
@@ -404,6 +404,50 @@ class TestParameters(unittest.TestCase, ValidatedParameterTestMixin):
 
         self.run_matrix_test(test_matrix, p)
 
+class TestLinkedValidator(unittest.TestCase, ValidatedParameterTestMixin):
+
+    def test_linked(self):
+        p1 = params.EnumStringParameter(name='attribute', description='Testing123', enum_values=['a', 'b'], is_required=True)
+        p2 = params.SimpleStringParameter(name='downstream', validator=LinkedValidator(discriminator_parameter='attribute', default_validator=TypeValidator('string'), value_map={'a': BooleanStringValidator(), 'b': IntegerValidator()}), description='test123')
+
+        print(p2.validator.validation_criteria())
+
+        #p1.set_value('a')
+        p2.validator.inject_discriminator(None)
+        test_matrix = [
+            ('true', 'true'),
+            ('blah', 'blah') # p1 not set, so uses default
+        ]
+        self.run_matrix_test(test_matrix, p2)
+
+        p1._param_value = None
+        p2._param_value = None
+        p2.validator.inject_discriminator('a')
+        p1.set_value('a')
+        test_matrix = [
+            ('true', 'true'),
+            ('blah', False)  # should fail now that p1 has a value
+        ]
+
+        self.run_matrix_test(test_matrix, p2)
+
+        p1._param_value = None
+        p2._param_value = None
+        p1.set_value('b')
+        p2.validator.inject_discriminator('b')
+        test_matrix = [
+            ('true', False),
+            ('blah', False),
+            ('123', '123')
+        ]
+
+        self.run_matrix_test(test_matrix, p2)
+
+    def test_multiple(self):
+        trig1 = FakeTrigger(parent_gate_cls=FakeGate, param_test="somevalue")
+        trig2 = FakeTrigger(parent_gate_cls=FakeGate, param_test="someothervalue")
+
+        print('{} {}'.format(trig1.json(), trig2.json()))
 
 if __name__ == '__main__':
     unittest.main()

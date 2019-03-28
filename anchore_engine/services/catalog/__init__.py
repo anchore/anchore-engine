@@ -215,8 +215,9 @@ def handle_service_watcher(*args, **kwargs):
     # global latest_service_records
 
     cycle_timer = kwargs['mythread']['cycle_timer']
-    max_service_heartbeat_timer = 300
-    max_service_orphaned_timer = 3600
+    max_service_heartbeat_timer = 100#300
+    max_service_orphaned_timer = 200#3600
+    max_service_cleanup_timer = 300#86400
 
     while (True):
         logger.debug("FIRING: service watcher")
@@ -284,7 +285,32 @@ def handle_service_watcher(*args, **kwargs):
                                     except:
                                         service_update_record['short_description'] = str(status)
                             else:
-                                if time.time() - service['heartbeat'] > max_service_orphaned_timer:
+                                # handle the down state transitions
+                                if time.time() - service['heartbeat'] > max_service_cleanup_timer:
+                                    # remove the service entirely
+                                    logger.warn("no service heartbeat within max allowed time period (" + str(
+                                        [service['hostid'], service['base_url']]) + " - removing service")
+                                    
+                                    try:
+                                        # remove the service record from DB
+                                        removed_hostid = service['hostid']
+                                        removed_servicename = service['servicename']
+                                        removed_base_url = service['base_url']
+                                        
+                                        db_services.delete(removed_hostid, removed_servicename, session=dbsession)
+                                        service_update_record = None
+                                        
+                                        # Trigger an event to log the orphaned service, only on transition
+                                        event = events.ServiceRemovedEvent(user_id=userId, name=removed_servicename,
+                                                                           host=removed_hostid,
+                                                                           url=removed_base_url,
+                                                                           cause='no heartbeat from service in ({}) seconds'.format(
+                                                                               max_service_cleanup_timer))
+                                    except Exception as err:
+                                        logger.warn("attempt to remove service {}/{} failed - exception: {}".format(err))
+                                    
+                                elif time.time() - service['heartbeat'] > max_service_orphaned_timer:
+                                    # transition down service to orphaned
                                     logger.warn("no service heartbeat within max allowed time period (" + str(
                                         [service['hostid'], service['base_url']]) + " - orphaning service")
                                     service_update_record['status'] = False
@@ -293,7 +319,7 @@ def handle_service_watcher(*args, **kwargs):
                                         'short_description'] = "no heartbeat from service in ({}) seconds".format(
                                         max_service_orphaned_timer)
 
-                                    if service['status_message'] != taskstate.orphaned_state('service_status'):
+                                    if service['status_message'] != taskstate.orphaned_state('service_status'): 
                                         # Trigger an event to log the orphaned service, only on transition
                                         event = events.ServiceOrphanedEvent(user_id=userId, name=service['servicename'],
                                                                             host=service['hostid'],
@@ -309,9 +335,10 @@ def handle_service_watcher(*args, **kwargs):
                         logger.warn(
                             "could not get service status: " + str(service) + " : exception: " + str(err) + " : " + str(
                                 err.__dict__))
-                        service_update_record['status'] = False
-                        service_update_record['status_message'] = taskstate.fault_state('service_status')
-                        service_update_record['short_description'] = "could not get service status"
+                        if service_update_record:
+                            service_update_record['status'] = False
+                            service_update_record['status_message'] = taskstate.fault_state('service_status')
+                            service_update_record['short_description'] = "could not get service status"
                     finally:
                         if event:
                             _add_event(event)
@@ -322,8 +349,6 @@ def handle_service_watcher(*args, **kwargs):
                         db_services.update_record(service, session=dbsession)
                     except Exception as err:
                         logger.warn("could not update DB: " + str(err))
-                else:
-                    logger.warn("no service_update_record populated - nothing to update")
 
         logger.debug("FIRING DONE: service watcher")
         try:

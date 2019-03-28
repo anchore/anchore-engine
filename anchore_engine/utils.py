@@ -10,12 +10,27 @@ import uuid
 import threading
 from collections import OrderedDict
 from contextlib import contextmanager
-from operator import itemgetter 
+from operator import itemgetter
 import time
 import os
 import re
 
 from anchore_engine.subsys import logger
+
+
+K_BYTES = 1024
+M_BYTES = 1024 * K_BYTES
+G_BYTES = 1024 * M_BYTES
+T_BYTES = 1024 * G_BYTES
+
+SIZE_UNITS = {
+    'kb': K_BYTES,
+    'mb': M_BYTES,
+    'gb': G_BYTES,
+    'tb': T_BYTES
+}
+
+BYTES_REGEX = re.compile('^([0-9]+)([kmgt]b)?$')
 
 
 def process_cve_status(old_cves_result=None, new_cves_result=None):
@@ -364,14 +379,24 @@ rfc3339_date_fmt = '%Y-%m-%dT%H:%M:%SZ'
 rfc3339_date_input_fmts = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%S:%fZ']
 
 def rfc3339str_to_epoch(rfc3339_str):
-    return( int(rfc3339str_to_datetime(rfc3339_str).timestamp()) )
+    return int(rfc3339str_to_datetime(rfc3339_str).timestamp())
+    #return int(dt.replace(tzinfo=datetime.timezone.utc).timestamp())
 
 def rfc3339str_to_datetime(rfc3339_str):
+    """
+    Convert the rfc3339 formatted string (UTC only) to a datatime object with tzinfo explicitly set to utc. Raises an exception if the parsing fails.
+
+    :param rfc3339_str:
+    :return:
+    """
 
     ret = None
     for fmt in rfc3339_date_input_fmts:
         try:
             ret = datetime.datetime.strptime(rfc3339_str, fmt)
+            # Force this since the formats we support are all utc formats, to support non-utc
+            if ret.tzinfo is None:
+                ret = ret.replace(tzinfo=datetime.timezone.utc)
             continue
         except:
             pass
@@ -400,3 +425,27 @@ def epoch_to_rfc3339(epoch_int):
     :return:
     """
     return datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(epoch_int))
+
+
+def convert_bytes_size(size_str):
+    """
+    Converts a size string to an int. Allows trailing units
+
+    e.g. "10" -> 10, "1kb" -> 1024, "1gb" -> 1024*1024*1024
+    :param size_str:
+    :return:
+    """
+
+    m = BYTES_REGEX.fullmatch(size_str.lower())
+    if m:
+        number = int(m.group(1))
+
+        if m.group(2) is not None:
+            unit = m.group(2)
+            conversion = SIZE_UNITS.get(unit)
+            if conversion:
+                return conversion * number
+        return number
+    else:
+        raise ValueError("Invalid size string: {}".format(size_str))
+

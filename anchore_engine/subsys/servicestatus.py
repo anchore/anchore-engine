@@ -64,6 +64,8 @@ def update_status(service_record):
 
             my_service_record['short_description'] = json.dumps(service_statuses[service])
             db_services.update_record(my_service_record, session=dbsession)
+        else:
+            db_services.add(hostid, servicename, service_record, session=dbsession)
 
     return(True)
 
