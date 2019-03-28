@@ -7,7 +7,7 @@ from anchore_engine.db import db_policyeval
 #import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.common
-from anchore_engine.subsys import logger, archive as archive_sys
+from anchore_engine.subsys import logger, object_store
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
@@ -126,6 +126,8 @@ def delete_eval(bodycontent):
 def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False):
     logger.debug("looking up eval record: " + userId)
 
+    object_store_mgr = object_store.get_manager()
+
     # set up the filter based on input
     dbfilter = {}
     latest_eval_record = latest_eval_result = None
@@ -171,7 +173,7 @@ def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None
         records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
         for record in records:
             try:
-                result = archive_sys.get_document(userId, 'policy_evaluations', record['evalId'])
+                result = object_store_mgr.get_document(userId, 'policy_evaluations', record['evalId'])
                 record['result'] = result
             except:
                 record['result'] = {}

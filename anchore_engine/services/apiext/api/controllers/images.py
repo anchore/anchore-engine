@@ -2,17 +2,19 @@ import json
 import stat
 import datetime
 import base64
-
+import re
 from connexion import request
 
 from anchore_engine import utils
 import anchore_engine.apis
 from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
 import anchore_engine.common
-import anchore_engine.common.helpers
+from anchore_engine.common.helpers import make_response_error, make_anchore_exception, make_eval_record, make_policy_record, make_response_routes
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import taskstate, logger
@@ -22,6 +24,7 @@ from anchore_engine.subsys.metrics import flask_metrics
 
 
 authorizer = get_authorizer()
+
 
 def make_response_content(content_type, content_data):
     ret = []
@@ -317,7 +320,7 @@ def make_response_policyeval(eval_record, params, catalog_client):
     return (ret)
 
 
-def make_response_image(user_auth, image_record, params={}):
+def make_response_image(image_record, include_detail=False):
     ret = image_record
 
     image_content = {'metadata': {}}
@@ -354,7 +357,7 @@ def make_response_image(user_auth, image_record, params={}):
                 except:
                     pass
 
-    if params and 'detail' in params and not params['detail']:
+    if not include_detail:
         image_record['image_detail'] = []
 
     for datekey in ['last_updated', 'created_at', 'analyzed_at']:
@@ -380,7 +383,7 @@ def impl_template(request_inputs):
     try:
         pass
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -396,7 +399,7 @@ def lookup_imageDigest_from_imageId(request_inputs, imageId):
 
     try:
         client = internal_client_for(CatalogClient, request_inputs['userId'])
-        image_records = client.get_image(imageId=imageId)
+        image_records = client.get_image_by_id(imageId=imageId)
         if image_records:
             image_record = image_records[0]
 
@@ -409,59 +412,59 @@ def lookup_imageDigest_from_imageId(request_inputs, imageId):
 
     return (ret)
 
-def vulnerability_query(request_inputs, vulnerability_type, doformat=False):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+def vulnerability_query(account, digest, vulnerability_type, force_refresh=False, vendor_only=True, doformat=False):
+    # user_auth = request_inputs['auth']
+    # method = request_inputs['method']
+    # bodycontent = request_inputs['bodycontent']
+    # params = request_inputs['params']
 
     return_object = {}
     httpcode = 500
-    userId = request_inputs['userId']
+    # userId = request_inputs['userId']
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
     system_user_auth = localconfig['system_user_auth']
     verify = localconfig['internal_ssl_verify']
 
-    force_refresh = params.get('force_refresh', False)
-    vendor_only = params.get('vendor_only', True)
+    # force_refresh = params.get('force_refresh', False)
+    # vendor_only = params.get('vendor_only', True)
 
     try:
         if vulnerability_type not in anchore_engine.common.image_vulnerability_types + ['all']:
             httpcode = 404
             raise Exception("content type ("+str(vulnerability_type)+") not available")
 
-        tag = params.pop('tag', None)
-        imageDigest = params.pop('imageDigest', None)
-        digest = params.pop('digest', None)
-        catalog_client = internal_client_for(CatalogClient, userId)
+        # tag = params.pop('tag', None)
+        # imageDigest = params.pop('imageDigest', None)
+        # digest = params.pop('digest', None)
+        catalog_client = internal_client_for(CatalogClient, account)
 
-        image_reports = catalog_client.get_image(tag=tag, digest=digest, imageDigest=imageDigest)
+        image_report = catalog_client.get_image(digest)
 
-        for image_report in image_reports:
-            if image_report['analysis_status'] != taskstate.complete_state('analyze'):
-                httpcode = 404
-                raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
-            imageDigest = image_report['imageDigest']
-            try:
-                image_detail = image_report['image_detail'][0]
-                imageId = image_detail['imageId']
-                client = internal_client_for(PolicyEngineClient, userId)
-                resp = client.get_image_vulnerabilities(user_id=userId, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
-                if doformat:
-                    ret = make_response_vulnerability(vulnerability_type, resp)
-                    return_object[imageDigest] = ret
-                else:
-                    return_object[imageDigest] = resp
+        if image_report and image_report['analysis_status'] != taskstate.complete_state('analyze'):
+            httpcode = 404
+            raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
 
-                httpcode = 200
-            except Exception as err:
-                httpcode = 500
-                raise Exception("could not fetch vulnerabilities - exception: " + str(err))
+        imageDigest = image_report['imageDigest']
+        try:
+            image_detail = image_report['image_detail'][0]
+            imageId = image_detail['imageId']
+            client = internal_client_for(PolicyEngineClient, account)
+            resp = client.get_image_vulnerabilities(user_id=account, image_id=imageId, force_refresh=force_refresh, vendor_only=vendor_only)
+            if doformat:
+                ret = make_response_vulnerability(vulnerability_type, resp)
+                return_object[imageDigest] = ret
+            else:
+                return_object[imageDigest] = resp
+
+            httpcode = 200
+        except Exception as err:
+            httpcode = 500
+            raise Exception("could not fetch vulnerabilities - exception: " + str(err))
 
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -484,51 +487,52 @@ def get_content(request_inputs, content_type, doformat=False):
         imageDigest = params.pop('imageDigest', None)
         digest = params.pop('digest', None)
         client = internal_client_for(CatalogClient, request_inputs['userId'])
-        image_reports = client.get_image(tag=tag, digest=digest, imageDigest=imageDigest)
-        for image_report in image_reports:
-            if image_report['analysis_status'] != taskstate.complete_state('analyze'):
+        image_report = client.get_image(imageDigest)
+
+        if image_report and image_report['analysis_status'] != taskstate.complete_state('analyze'):
+            httpcode = 404
+            raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
+
+        imageDigest = image_report['imageDigest']
+
+        if content_type == 'manifest':
+            try:
+                image_manifest_data = client.get_document('manifest_data', imageDigest)
+            except Exception as err:
+                raise make_anchore_exception(err, input_message="cannot fetch content data {} from archive".format(content_type), input_httpcode=500)
+
+            image_content_data = {
+                'manifest': image_manifest_data
+            }
+        else:
+            try:
+                image_content_data = client.get_document('image_content_data', imageDigest)
+            except Exception as err:
+                raise make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
+
+            # special handler for dockerfile contents from old method to new
+            if content_type == 'dockerfile' and not image_content_data.get('dockerfile', None):
+                try:
+                    if image_report.get('dockerfile_mode', None) == 'Actual':
+                        for image_detail in image_report.get('image_detail', []):
+                            if image_detail.get('dockerfile', None):
+                                logger.debug("migrating old dockerfile content form into new")
+                                image_content_data['dockerfile'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(image_detail.get('dockerfile', ""))))
+                                client.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
+                                break
+                except Exception as err:
+                    logger.warn("cannot fetch/decode dockerfile contents from image_detail - {}".format(err))
+
+            if content_type not in image_content_data:
                 httpcode = 404
-                raise Exception("image is not analyzed - analysis_status: " + image_report['analysis_status'])
+                raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
 
-            imageDigest = image_report['imageDigest']
-
-            if content_type == 'manifest':
-                try:
-                    image_manifest_data = client.get_document('manifest_data', imageDigest)
-                except Exception as err:
-                    raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch content data {} from archive".format(content_type), input_httpcode=500)
-
-                image_content_data = {
-                    'manifest': image_manifest_data
-                }
-            else:
-                try:
-                    image_content_data = client.get_document('image_content_data', imageDigest)
-                except Exception as err:
-                    raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch content data from archive", input_httpcode=500)
-                    
-                # special handler for dockerfile contents from old method to new
-                if content_type == 'dockerfile' and not image_content_data.get('dockerfile', None):
-                    try:
-                        if image_report.get('dockerfile_mode', None) == 'Actual':
-                            for image_detail in image_report.get('image_detail', []):
-                                if image_detail.get('dockerfile', None):
-                                    logger.debug("migrating old dockerfile content form into new")
-                                    image_content_data['dockerfile'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(image_detail.get('dockerfile', ""))))
-                                    client.put_document(user_auth, 'image_content_data', imageDigest, image_content_data)
-                                    break
-                    except Exception as err:
-                        logger.warn("cannot fetch/decode dockerfile contents from image_detail - {}".format(err))
-
-                if content_type not in image_content_data:
-                    httpcode = 404
-                    raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
-
-            return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
+        return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
 
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        logger.exception('Failed content lookup')
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -580,7 +584,7 @@ def repositories(request_inputs):
 
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
 
@@ -614,11 +618,16 @@ def list_imagetags():
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_images(history=None, image_to_get=None, fulltag=None):
+def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
 
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
-        return_object, httpcode = images(request_inputs)
+        #request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
+        #return_object, httpcode = images(request_inputs)
+        return_object = do_list_images(ApiRequestContextProxy.namespace(), fulltag, history)
+        httpcode = 200
+    except api_exceptions.AnchoreApiError as err:
+        return_object = make_response_error(err, in_httpcode=err.__response_code__)
+        httpcode = err.__response_code__
     except Exception as err:
         httpcode = 500
         return_object = str(err)
@@ -627,11 +636,57 @@ def list_images(history=None, image_to_get=None, fulltag=None):
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def add_image(image, force=False):
+def add_image(image, force=False, autosubscribe=False):
 
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
-        return_object, httpcode = images(request_inputs)
+        #return_object, httpcode = images(request_inputs)
+
+        source = {}
+        if not image.get('source'):
+            # use legacy fields and normalize to a source
+            if image.get('digest'):
+                source['digest'] = {
+                    'pullstring': image.get('digest'),
+                    'tag': image.get('tag'),
+                    'creation_timestamp_override': image.get('created_at'),
+                    'dockerfile': image.get('dockerfile')
+                }
+
+            elif image.get('tag'):
+                source['tag'] = {
+                    'pullstring': image.get('tag'),
+                    'dockerfile': image.get('dockerfile')
+                }
+            else:
+                return make_response_error('Request must include "tag", or "source" properties set in body', in_httpcode=400), 400
+        else:
+            source = image.get('source')
+
+        # Ensure only one source is set
+        if sum([1 if source.get('tag') else 0, 1 if source.get('digest') else 0,
+                1 if source.get('archive') else 0]) > 1:
+            return make_response_error('Source must have only one of ["tag", "digest", "archive"] set to a non-null value', in_httpcode=400), 400
+
+        # Validate source formats
+        # if source.get('digest'):
+            # if not digest_re.match(source['digest'].get('pullstring')):
+            #     raise Exception('Invalid pullstring for digest. Must match regex: {}'.format(digest_re))
+            # if not tag_re.match(source['digest'].get('tag')):
+            #     raise Exception('Invalid tag string. Must match regex: {}'.format(tag_re))
+
+        enable_subscriptions = [
+            'analysis_update'
+        ]
+
+        if autosubscribe:
+            enable_subscriptions.append('tag_update')
+
+        return_object = analyze_image(ApiRequestContextProxy.namespace(), source, force, enable_subscriptions, image.get('annotations'))
+        httpcode = 200
+    except api_exceptions.AnchoreApiError as err:
+        httpcode = err.__response_code__
+        return_object = make_response_error(str(err), in_httpcode=httpcode)
     except Exception as err:
         httpcode = 500
         return_object = str(err)
@@ -877,8 +932,7 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, v
     try:
         vulnerability_type = vtype
 
-        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'imageDigest':imageDigest, 'force_refresh': force_refresh, 'vendor_only': vendor_only})
-        return_object, httpcode = vulnerability_query(request_inputs, vulnerability_type, doformat=True)
+        return_object, httpcode = vulnerability_query(ApiRequestContextProxy.namespace(), imageDigest, vulnerability_type, force_refresh, vendor_only, doformat=True)
         if httpcode == 200:
             return_object = {
                 'imageDigest': imageDigest,
@@ -887,6 +941,7 @@ def get_image_vulnerabilities_by_type(imageDigest, vtype, force_refresh=False, v
             }
 
     except Exception as err:
+        logger.exception('Exception getting vulns')
         httpcode = 500
         return_object = str(err)
 
@@ -941,21 +996,166 @@ def do_import_image(request_inputs, importRequest):
         return_object = []
         image_records = client.import_image(json.loads(bodycontent))
         for image_record in image_records:
-            return_object.append(make_response_image(user_auth, image_record, params))
+            return_object.append(make_response_image(image_record))
         httpcode = 200
 
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return(return_object, httpcode)
 
+
+def do_list_images(account, filter_tag=None, filter_digest=None, history=False):
+    client = internal_client_for(CatalogClient, account)
+
+    try:
+        # Query param fulltag has precedence for search
+        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history)
+
+        return [make_response_image(image_record, include_detail=True) for image_record in image_records]
+
+    except Exception as err:
+        logger.debug("operation exception: " + str(err))
+        raise err
+
+
+def analyze_image(account, source, force=False, enable_subscriptions=None, annotations=None):
+    """
+
+    :param account:
+    :param source:
+    :param force:
+    :param autosubscribe:
+    :param dockerfile: String dockerfile content. Optional.
+    :param annotations: Dict of k/v annotations. Optional.
+    :return: resulting image record
+    """
+
+    if not source:
+        raise Exception('Must have source to fetch image or analysis from')
+
+    client = internal_client_for(CatalogClient, account)
+    tag = None
+    digest = None
+    ts = None
+    is_from_archive = False
+    try:
+        logger.debug("handling POST: source={}, force={}, enable_subscriptions={}, annotations={}".format(source, force, enable_subscriptions, annotations))
+
+        # if not, add it and set it up to be analyzed
+        if source.get('archive'):
+            # Do archive-based add
+            digest = source['archive']['digest']
+            is_from_archive = True
+        elif source.get('tag'):
+            # Do tag-based add
+            tag = source['tag']['pullstring']
+
+        elif source.get('digest'):
+            # Do digest-based add
+            tag = source['digest']['tag']
+            digest = source['digest']['pullstring']
+
+            ts = source.get('creation_timestamp_override')
+            if ts:
+                try:
+                    created_at_override = utils.rfc3339str_to_epoch(ts)
+                except Exception as err:
+                    raise api_exceptions.InvalidDateFormat('source.creation_timestamp_override', ts)
+
+            if force:
+                # Grab the trailing digest sha section and ensure it exists
+                try:
+                    digest_ref = digest.rsplit('@')[1]
+                    image_check = client.get_image(digest_ref)
+                except Exception as err:
+                    raise Exception("image digest must already exist to force re-analyze using tag+digest")
+            elif not ts:
+                raise Exception("must supply creation_timestamp_override when adding a new image by tag+digest")
+        else:
+            raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
+
+        # add the image to the catalog
+        image_record = client.add_image(tag=tag, digest=digest, dockerfile=source.get('dockerfile'), annotations=annotations,
+                                        created_at=ts, from_archive=is_from_archive)
+
+        imageDigest = image_record['imageDigest']
+
+        # finally, do any state updates and return
+        if image_record:
+            logger.debug("added image: " + str(imageDigest))
+
+            # auto-subscribe for NOW
+            for image_detail in image_record['image_detail']:
+                fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+
+                foundtypes = []
+                try:
+                    subscription_records = client.get_subscription(subscription_key=fulltag)
+                except Exception as err:
+                    subscription_records = []
+
+                for subscription_record in subscription_records:
+                    if subscription_record['subscription_key'] == fulltag:
+                        foundtypes.append(subscription_record['subscription_type'])
+
+                sub_types = anchore_engine.common.subscription_types
+                for sub_type in sub_types:
+                    if sub_type in ['repo_update']:
+                        continue
+                    if sub_type not in foundtypes:
+                        try:
+                            default_active = False
+                            if enable_subscriptions and sub_type in enable_subscriptions:
+                                logger.debug("auto-subscribing image: " + str(sub_type))
+                                default_active = True
+                            client.add_subscription({'active': default_active, 'subscription_type': sub_type,
+                                                     'subscription_key': fulltag})
+                        except:
+                            try:
+                                client.update_subscription({'subscription_type': sub_type, 'subscription_key': fulltag})
+                            except:
+                                pass
+
+            # set the state of the image appropriately
+            currstate = image_record['analysis_status']
+            if not currstate:
+                newstate = taskstate.init_state('analyze', None)
+            elif force or currstate == taskstate.fault_state('analyze'):
+                newstate = taskstate.reset_state('analyze')
+            elif image_record['image_status'] == 'deleted':
+                newstate = taskstate.reset_state('analyze')
+            else:
+                newstate = currstate
+
+            if (currstate != newstate) or (force):
+                logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
+                image_record.update({'image_status': 'active', 'analysis_status': newstate})
+                updated_image_record = client.update_image(imageDigest, image_record)
+                if updated_image_record:
+                    image_record = updated_image_record[0]
+            else:
+                logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
+
+            return make_response_image(image_record, include_detail=True)
+    except Exception as err:
+        logger.debug("operation exception: " + str(err))
+        raise err
+
+
 def images(request_inputs):
+    """
+    DEPRECATED! Use the more granular functions above (list_images, analyze_image)
+
+    :param request_inputs:
+    :return:
+    """
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    params = request_inputs.get('params', {})
 
     return_object = {}
     httpcode = 500
@@ -986,28 +1186,22 @@ def images(request_inputs):
     if bodycontent:
         jsondata = json.loads(bodycontent)
 
-        if 'digest' in jsondata:
-            digest = jsondata['digest']
+        digest = jsondata.get('digest')
+        tag = jsondata.get('tag')
+        dockerfile = jsondata.get('dockerfile')
+        annotations = jsondata.get('annotations')
+        archive_digest = jsondata.get('archive_digest')
 
-        if 'tag' in jsondata:
-            tag = jsondata['tag']
-
-        if 'created_at' in jsondata:
-            ts = jsondata['created_at']
+        ts = jsondata.get('created_at')
+        if ts:
             try:
                 created_at_override = utils.rfc3339str_to_epoch(ts)
             except Exception as err:
                 logger.debug("operation exception: " + str(err))
 
-                return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=500)
+                return_object = make_response_error(err, in_httpcode=500)
                 httpcode = return_object['httpcode']
                 return(return_object, httpcode)
-
-        if 'dockerfile' in jsondata:
-            dockerfile = jsondata['dockerfile']
-        
-        if 'annotations' in jsondata:
-            annotations = jsondata['annotations']
 
         autosubscribes = ['analysis_update']
         if autosubscribe:
@@ -1025,11 +1219,12 @@ def images(request_inputs):
                 if query_fulltag:
                     tag = query_fulltag
                     imageId = imageDigest = digest = None
+                    image_records = client.list_images(tag=tag, history=history)
+                else:
+                    image_records = client.list_images(digest=digest, tag=tag, imageId=imageId, history=history)
 
-                image_records = client.get_image(digest=digest, tag=tag, imageId=imageId,
-                                                          imageDigest=imageDigest, history=history)
                 for image_record in image_records:
-                    return_object.append(make_response_image(user_auth, image_record, params))
+                    return_object.append(make_response_image(image_record, include_detail=params.get('detail')))
                 httpcode = 200
             except Exception as err:
                 raise err
@@ -1037,6 +1232,11 @@ def images(request_inputs):
         elif method == 'POST':
             logger.debug("handling POST: input_tag={} input_digest={} input_force={}".format(tag, digest, force))
             # if not, add it and set it up to be analyzed
+
+            if archive_digest:
+                # Do an archive restore, not a new analysis. Ignore all other fields.
+                restore_resp = client.restore_image(digest=archive_digest)
+                return restore_resp
 
             if not tag:
                 # dont support digest add, yet
@@ -1046,7 +1246,7 @@ def images(request_inputs):
             if digest and tag:
                 if force:
                     try:
-                        image_check = client.get_image(digest=digest, tag=tag, imageId=None, imageDigest=digest, history=False)
+                        image_check = client.get_image(digest)
                     except Exception as err:
                         httpcode = 400
                         raise Exception("image digest must already exist to force re-analyze using tag+digest")
@@ -1114,14 +1314,14 @@ def images(request_inputs):
                     logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 
                 httpcode = 200
-                return_object = [make_response_image(user_auth, image_record, params)]
+                return_object = [make_response_image(image_record, include_detail=params.get('detail'))]
             else:
                 httpcode = 500
                 raise Exception("failed to add image")
 
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -1131,7 +1331,7 @@ def images_imageDigest(request_inputs, imageDigest):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    params = request_inputs.get('params', {})
 
     return_object = {}
     httpcode = 500
@@ -1145,11 +1345,9 @@ def images_imageDigest(request_inputs, imageDigest):
         if method == 'GET':
             logger.debug("handling GET on imageDigest: " + str(imageDigest))
 
-            image_records = client.get_image(imageDigest=imageDigest)
-            if image_records:
-                return_object = []
-                for image_record in image_records:
-                    return_object.append(make_response_image(user_auth, image_record, params))
+            image_record = client.get_image(imageDigest)
+            if image_record:
+                return_object = make_response_image(image_record, include_detail=params.get('detail'))
                 httpcode = 200
             else:
                 httpcode = 404
@@ -1173,7 +1371,7 @@ def images_imageDigest(request_inputs, imageDigest):
 
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -1234,7 +1432,7 @@ def images_check_impl(request_inputs, image_records):
                             results = [client.get_eval_interactive(imageDigest=imageDigest, tag=tag, policyId=policyId)]
                         else:
                             results = [client.get_eval_latest(imageDigest=imageDigest, tag=tag, policyId=policyId)]
-                                                                       
+
                     except Exception as err:
                         results = []
 
@@ -1256,7 +1454,7 @@ def images_check_impl(request_inputs, image_records):
 
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)
@@ -1274,15 +1472,17 @@ def images_imageDigest_check(request_inputs, imageDigest):
     userId = request_inputs['userId']
     try:
         client = internal_client_for(CatalogClient, request_inputs['userId'])
-        image_records = client.get_image(imageDigest=imageDigest)
-        for image_record in image_records:
-            if image_record['analysis_status'] != taskstate.complete_state('analyze'):
-                httpcode = 404
-                raise Exception("image is not analyzed - analysis_status: " + str(image_record['analysis_status']))
-        return_object, httpcode = images_check_impl(request_inputs, image_records)
+        image_record = client.get_image(imageDigest)
+
+        if image_record and image_record['analysis_status'] != taskstate.complete_state('analyze'):
+            httpcode = 404
+            raise Exception("image is not analyzed - analysis_status: " + str(image_record['analysis_status']))
+
+        # Use a list of records here for backwards compat of api
+        return_object, httpcode = images_check_impl(request_inputs, [image_record])
     except Exception as err:
         logger.debug("operation exception: " + str(err))
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
     return (return_object, httpcode)

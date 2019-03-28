@@ -262,3 +262,27 @@ def delete(imageDigest, userId, session=None):
         session.delete(result)
 
     return(True)
+
+#
+# def get_tags_by_time_range(session, userId, start=None, end=None):
+#     """
+#     Return the images with a created_at timestamp between the two parameters. Only returns the CatalogImageDocker record, not the source image.
+#
+#     :param session: active sqlachemy session
+#     :param userId:
+#     :param start:
+#     :param end:
+#     :return:
+#     """
+#
+#     if start and end:
+#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at >= start,
+#                                                   CatalogImageDocker.created_at <= end).all()
+#     elif start:
+#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at >= start).all()
+#     elif end:
+#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at <= end).all()
+#     else:
+#         raise Exception('Must specify either start or end or both parameters')
+#
+#     return [x.to_dict() for x in imgs]

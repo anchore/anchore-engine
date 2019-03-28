@@ -1,10 +1,13 @@
 import os
 import unittest
-from anchore_engine.subsys import archive
+from anchore_engine.subsys import object_store
+from anchore_engine.subsys.object_store import config as obj_config
+from anchore_engine.utils import ensure_bytes, ensure_str
 from anchore_engine.subsys.object_store.exc import DriverConfigurationError, BadCredentialsError
 
 test_key = os.getenv('TEST_ACCESS_KEY')
 test_secret = os.getenv('TEST_SECRET_KEY')
+
 
 class TestArchiveSubsys(unittest.TestCase):
     """
@@ -57,11 +60,11 @@ class TestArchiveSubsys(unittest.TestCase):
 
         """
         conf = cls.setup_engine_config(connect_str)
-        from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord, ArchiveMetadata
+        from anchore_engine.db import initialize, LegacyArchiveDocument, Anchore, ObjectStorageRecord, ObjectStorageMetadata
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
         initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf) #, bootstrap_db=do_bootstrap)
-        do_create(specific_tables=[ArchiveDocument.__table__, ArchiveMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__])
+        do_create(specific_tables=[LegacyArchiveDocument.__table__, ObjectStorageMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__])
 
 
     @classmethod
@@ -80,38 +83,41 @@ class TestArchiveSubsys(unittest.TestCase):
         Common test path for all configs to test against
         :return:
         """
+
+        obj_mgr = object_store.get_manager()
+
         print('Basic string operations using get/put/delete')
-        resp = archive.put(userId=self.test_user_id, bucket=self.test_bucket_id, archiveid='document_1',
+        resp = obj_mgr.put(userId=self.test_user_id, bucket=self.test_bucket_id, archiveid='document_1',
                            data=self.document_1)
         print(('Document 1 PUT: {}'.format(resp)))
 
-        resp = archive.get(userId=self.test_user_id,    bucket=self.test_bucket_id, archiveid='document_1')
-        self.assertEqual(self.document_1, resp)
+        resp = obj_mgr.get(userId=self.test_user_id, bucket=self.test_bucket_id, archiveid='document_1')
+        self.assertEqual(ensure_bytes(self.document_1), resp)
 
-        self.assertTrue(archive.exists(self.test_user_id, self.test_bucket_id, 'document_1'))
-        self.assertFalse(archive.exists(self.test_user_id, self.test_bucket_id, 'document_10'))
+        self.assertTrue(obj_mgr.exists(self.test_user_id, self.test_bucket_id, 'document_1'))
+        self.assertFalse(obj_mgr.exists(self.test_user_id, self.test_bucket_id, 'document_10'))
 
         print('Document operations')
-        resp = archive.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
+        resp = obj_mgr.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
                                     data=self.document_json)
         print(('Document JSON PUT Doc: {}'.format(resp)))
 
-        resp = archive.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
+        resp = obj_mgr.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
         print(('Document JSON GET Dock: {}'.format(resp)))
         self.assertEqual(self.document_json, resp)
 
         print('Document operations')
-        resp = archive.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
+        resp = obj_mgr.put_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json',
                                     data=self.document_1)
         print(('Document string PUT Doc: {}'.format(resp)))
 
-        resp = archive.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
+        resp = obj_mgr.get_document(userId=self.test_user_id, bucket=self.test_bucket_id, archiveId='document_json')
         print(('Document string GET Dock: {}'.format(resp)))
         self.assertEqual(self.document_1, resp)
 
     def test_fs(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': True
                 },
@@ -123,12 +129,12 @@ class TestArchiveSubsys(unittest.TestCase):
                 }
             }
         }
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_swift(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': True
                 },
@@ -144,12 +150,12 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
 
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_swift_create_container(self):
         config = {
-            'archive':{
+            'object_store':{
                 'compression': {
                     'enabled': True
                 },
@@ -166,12 +172,12 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
 
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_swift_bad_creds(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': True
                 },
@@ -188,12 +194,12 @@ class TestArchiveSubsys(unittest.TestCase):
         }
 
         with self.assertRaises(BadCredentialsError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_swift_bad_container(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': True
                 },
@@ -210,12 +216,12 @@ class TestArchiveSubsys(unittest.TestCase):
         }
 
         with self.assertRaises(DriverConfigurationError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))
 
-    def test_db(self):
+    def test_db2(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': True
                 },
@@ -225,13 +231,13 @@ class TestArchiveSubsys(unittest.TestCase):
                 }
             }
         }
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
-    def test_legacy_db(self):
+    def test_db(self):
         # NOTE: legacy db driver does not support compression since it uses string type instead of binary for content storage
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -242,12 +248,12 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
 
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_s3(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -263,12 +269,12 @@ class TestArchiveSubsys(unittest.TestCase):
                 }
             }
         }
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_s3_create_bucket(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -285,12 +291,12 @@ class TestArchiveSubsys(unittest.TestCase):
                 }
             }
         }
-        archive.initialize(config, force=True)
+        object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         self.run_test()
 
     def test_s3_bad_creds(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -307,11 +313,11 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
         with self.assertRaises(BadCredentialsError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))
 
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -328,12 +334,12 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
         with self.assertRaises(BadCredentialsError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_s3_bad_bucket(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -350,12 +356,12 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
         with self.assertRaises(DriverConfigurationError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))
 
     def test_s3_auto(self):
         config = {
-            'archive': {
+            'object_store': {
                 'compression': {
                     'enabled': False
                 },
@@ -369,5 +375,5 @@ class TestArchiveSubsys(unittest.TestCase):
             }
         }
         with self.assertRaises(DriverConfigurationError) as err:
-            archive.initialize(config, force=True)
+            object_store.initialize(config, force=True, manager_id=obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[obj_config.DEFAULT_OBJECT_STORE_MANAGER_ID])
         print(('Got expected error: {}'.format(err.exception.message)))

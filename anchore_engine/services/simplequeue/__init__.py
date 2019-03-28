@@ -27,8 +27,12 @@ queues_to_bootstrap = {
     'feed_sync_tasks': {
         'max_outstanding_messages': 1,
         'visibility_timeout': 3600  # Default 1 hour timeout for messages outstanding
-        }
+        },
+    'archive_tasks': {
+        'max_outstanding_messages': -1,
+        'visibility_timeout': 20
     }
+}
 
 queues = {}
 

@@ -12,7 +12,7 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.db import AccountTypes
 from anchore_engine.apis.context import ApiRequestContextProxy
-
+from anchore_engine.services.catalog import archiver
 from anchore_engine.subsys.metrics import flask_metrics
 
 authorizer = get_authorizer()
@@ -115,7 +115,7 @@ def image_tags_get():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
+def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
                                                              default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history})
@@ -130,11 +130,27 @@ def image_get(tag=None, digest=None, imageId=None, registry_lookup=False, histor
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_post(bodycontent={}, tag=None, digest=None, created_at=None):
+def add_image(image_metadata=None, tag=None, digest=None, created_at=None, from_archive=False):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'tag': tag, 'digest': digest, 'created_at': created_at})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=bodycontent)
+        if image_metadata is None:
+            image_metadata = {}
+
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
+                                                             default_params={'tag': tag, 'digest': digest,
+                                                                             'created_at': created_at})
+        if from_archive:
+            task = archiver.RestoreArchivedImageTask(account=ApiRequestContextProxy.namespace(), image_digest=digest)
+            task.start()
+
+            request_inputs['params'] = {}
+            request_inputs['method'] = 'GET'
+
+            with db.session_scope() as session:
+                return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, digest)
+        else:
+
+            with db.session_scope() as session:
+                return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=image_metadata)
 
     except Exception as err:
         logger.exception('Error processing image add')
@@ -147,7 +163,7 @@ def image_post(bodycontent={}, tag=None, digest=None, created_at=None):
 # @api.route('/image/<imageDigest>', methods=['GET', 'PUT', 'DELETE'])
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_imageDigest_get(imageDigest):
+def get_image(imageDigest):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
@@ -161,11 +177,11 @@ def image_imageDigest_get(imageDigest):
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_imageDigest_put(imageDigest, bodycontent):
+def update_image(imageDigest, image):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest, bodycontent=bodycontent)
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest, bodycontent=image)
 
     except Exception as err:
         httpcode = 500
@@ -175,7 +191,7 @@ def image_imageDigest_put(imageDigest, bodycontent):
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_imageDigest_delete(imageDigest, force=False):
+def delete_image(imageDigest, force=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'force':False})
         with db.session_scope() as session:
@@ -425,52 +441,6 @@ def users_userId_delete(inuserId):
         return_object = str(err)
 
     return (return_object, httpcode)
-
-
-# archive calls
-# @api.route('/archive/<bucket>/<archiveid>', methods=['GET', 'POST'])
-@flask_metrics.do_not_track()
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def archive_get(bucket, archiveid):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-@flask_metrics.do_not_track()
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def archive_post(bucket, archiveid, bodycontent):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-@flask_metrics.do_not_track()
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def archive_delete(bucket, archiveid):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.archive(session, request_inputs, bucket, archiveid)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
 
 # system/service calls
 # @api.route("/system", methods=['GET'])

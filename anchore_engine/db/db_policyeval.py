@@ -152,6 +152,38 @@ def get_all_byuserId(userId, limit=None, session=None):
 
     return(ret)
 
+def get_all_bydigest(userId, imageDigest, session):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    our_results = session.query(PolicyEval).filter_by(userId=userId, imageDigest=imageDigest)
+
+    for result in our_results:
+        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        ret.append(obj)
+
+    return(ret)
+
+def add_all_for_digest(records, session):
+    """
+    Assumes these are all valid records.
+
+    :param records: list of dicts from PolicyEval json dumps
+    :param session:
+    :return:
+    """
+
+    recs = []
+    for r in records:
+        rec = PolicyEval()
+        rec.update(r)
+        recs.append(session.add(rec))
+
+    return recs
+
+
 def get(userId, imageDigest, tag, policyId=None, session=None):
     if not session:
         session = db.Session

@@ -97,10 +97,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
         # check to make sure image is still in DB
         catalog_client = internal_client_for(CatalogClient, userId)
         try:
-            image_records = catalog_client.get_image(imageDigest=imageDigest)
-            if image_records:
-                image_record = image_records[0]
-            else:
+            image_record = catalog_client.get_image(imageDigest)
+            if not image_record:
                 raise Exception("empty image record from catalog")
         except Exception as err:
             logger.warn("dequeued image cannot be fetched from catalog - skipping analysis (" + str(imageDigest) + ") - exception: " + str(err))

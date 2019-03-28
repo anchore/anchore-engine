@@ -84,7 +84,7 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
     if not enabled:
         flask_metrics = disabled_flask_metrics()
         return(True)
-    
+
     if not flask_metrics:
         # Build a blueprint for metrics, wrapped in auth
         flask_metrics = PrometheusMetrics(metrics_blueprint, export_defaults=export_defaults)

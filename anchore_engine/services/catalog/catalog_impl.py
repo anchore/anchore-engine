@@ -10,16 +10,18 @@ import anchore_engine.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.common.helpers
 import anchore_engine.common.images
+import anchore_engine.subsys.object_store.manager
 from anchore_engine.auth import aws_ecr
 import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, archive as archive_sys, notifications
+from anchore_engine.subsys import taskstate, logger, object_store, notifications
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
 from anchore_engine.db import db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
-    db_registries, db_services, db_archivedocument, db_accounts
+    db_registries, db_services
+from sqlalchemy.orm import Session
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.subsys.identities import manager_factory
@@ -199,7 +201,7 @@ def image_tags(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
-def image(dbsession, request_inputs, bodycontent={}):
+def image(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
@@ -266,7 +268,8 @@ def image(dbsession, request_inputs, bodycontent={}):
                         if history:
                             image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, session=dbsession)
                         else:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
+                                                                               onlylatest=True, session=dbsession)
 
                         if image_records:
                             return_object = image_records
@@ -381,8 +384,7 @@ def image(dbsession, request_inputs, bodycontent={}):
 
     return(return_object, httpcode)
 
-def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
-    user_auth = request_inputs['auth']
+def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
     method = request_inputs['method']
     params = request_inputs['params']
     userId = request_inputs['userId']
@@ -398,7 +400,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
             if image_record:
                 httpcode = 200
-                return_object = [image_record]
+                return_object = image_record
             else:
                 httpcode = 404
                 raise Exception("image not found in DB")
@@ -445,7 +447,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent={}):
 
     return(return_object, httpcode)
 
-def image_import(dbsession, request_inputs, bodycontent={}):
+def image_import(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
@@ -785,56 +787,6 @@ def events_eventId(dbsession, request_inputs, eventId):
     return(return_object, httpcode)
 
 
-def archive(dbsession, request_inputs, bucket, archiveid, bodycontent=None):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
-
-    return_object = {}
-    httpcode = 500
-
-    try:
-        if method == 'GET':
-            try:
-                return_object = json.loads(archive_sys.get(userId, bucket, archiveid))
-                httpcode = 200
-            except Exception as err:
-                httpcode = 404
-                raise err
-
-        elif method == 'POST':
-            try:
-                jsondata = bodycontent
-                rc = archive_sys.put(userId, bucket, archiveid, json.dumps(jsondata))
-                
-                service_records = db_services.get_byname('catalog', session=dbsession)
-                if service_records:
-                    service_record = service_records[0]
-                    resource_url = service_record['base_url'] + "/" + service_record['version'] + "/archive/" + bucket + "/" + archiveid
-                else:
-                    resource_url = "N/A"
-
-                return_object = resource_url
-                httpcode = 200
-            except Exception as err:
-                httpcode = 500
-                raise err
-        elif method == 'DELETE':
-            try:
-                rc = archive_sys.delete(userId, bucket, archiveid)
-                httpcode = 200
-                return_object = None
-            except Exception as err:
-                httpcode = 500
-                raise err
-
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-       
-    return(return_object, httpcode)
-
-
 def system(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -1120,7 +1072,10 @@ def system_subscriptions(dbsession, request_inputs):
 
 def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, force_refresh=False):
     # prepare inputs
+    obj_store = None
     try:
+        obj_store = anchore_engine.subsys.object_store.manager.get_manager()
+
         mgr = manager_factory.for_session(dbsession)
         system_user_auth = mgr.get_system_credentials()
         system_userId = system_user_auth[0]
@@ -1162,7 +1117,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         last_vuln_result = {}
         try:
-            last_vuln_result = archive_sys.get_document(userId, 'vulnerability_scan', scantag)
+            last_vuln_result = obj_store.get_document(userId, 'vulnerability_scan', scantag)
         except:
             pass
 
@@ -1173,7 +1128,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if last_vuln_result and curr_vuln_result:
             vdiff = anchore_utils.process_cve_status(old_cves_result=last_vuln_result['legacy_report'], new_cves_result=curr_vuln_result['legacy_report'])
 
-        archive_sys.put_document(userId, 'vulnerability_scan', scantag, curr_vuln_result)
+        obj_store.put_document(userId, 'vulnerability_scan', scantag, curr_vuln_result)
 
         try:
             if vdiff and (vdiff['updated'] or vdiff['added'] or vdiff['removed']):
@@ -1205,7 +1160,10 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None, interactive=False, newest_only=False):
     ret = {}
     # prepare inputs
+    obj_store = None
+
     try:
+        obj_store = anchore_engine.subsys.object_store.manager.get_manager()
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
 
         annotations = {}
@@ -1219,7 +1177,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
             policyId = policy_record['policyId']
 
-        policy_bundle = archive_sys.get_document(userId, 'policy_bundles', policyId)
+        policy_bundle = obj_store.get_document(userId, 'policy_bundles', policyId)
             
         if not evaltag:
             raise Exception("must supply an evaltag")
@@ -1271,12 +1229,12 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             last_final_action = None
             if last_evaluation_record:
                 try:
-                    last_evaluation_result = archive_sys.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
+                    last_evaluation_result = obj_store.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
                     last_final_action = last_evaluation_result['final_action'].upper()
                 except:
                     logger.warn("no last eval record - skipping")
 
-            archive_sys.put_document(userId, 'policy_evaluations', evalId, curr_evaluation_result)
+            obj_store.put_document(userId, 'policy_evaluations', evalId, curr_evaluation_result)
             db_policyeval.tsadd(policyId, userId, imageDigest, fulltag, curr_final_action, curr_evaluation_record, session=dbsession)
 
             # compare last with newest evaluation
@@ -1311,6 +1269,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
     ret = []
 
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
+    obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
     # input to this section is imageId, list of digests and list of tags (full dig/tag strings with reg/repo[:@]bleh)
     image_ids = {}
@@ -1371,7 +1330,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                         new_image_record['image_status'] = taskstate.init_state('image_status', None)
 
                         if anchore_data:
-                            rc =  archive_sys.put_document(userId, 'analysis_data', imageDigest, anchore_data)
+                            rc =  obj_store.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
                             image_content_data = {}
                             for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
@@ -1381,7 +1340,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                                     image_content_data[content_type] = {}
                             if image_content_data:
                                 logger.debug("adding image content data to archive")
-                                rc = archive_sys.put_document(userId, 'image_content_data', imageDigest, image_content_data)
+                                rc = obj_store.put_document(userId, 'image_content_data', imageDigest, image_content_data)
 
                             try:
                                 logger.debug("adding image analysis data to image_record")
@@ -1394,7 +1353,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                             new_image_record['analysis_status'] = taskstate.init_state('analyze', None)
 
                         try:
-                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                            rc = obj_store.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                             rc = db_catalog_image.add_record(new_image_record, session=dbsession)
                             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
@@ -1441,7 +1400,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                                 logger.debug("could not prepare annotations for store - exception: " + str(err))
 
                         try:
-                            rc = archive_sys.put_document(userId, 'manifest_data', imageDigest, manifest)
+                            rc = obj_store.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                             rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
                             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
@@ -1463,6 +1422,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
 def do_image_delete(userId, image_record, dbsession, force=False):
     return_object = False
     httpcode = 500
+
+    obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
     try:
         imageDigest = image_record['imageDigest']
@@ -1517,7 +1478,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
 
             for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data']:
                 logger.debug("DELETEing image from archive " + str(bucket) + "/" + str(imageDigest))
-                rc = archive_sys.delete(userId, bucket, imageDigest)
+                rc = obj_store.delete(userId, bucket, imageDigest)
 
             logger.debug("DELETEing image from policy_engine")
 
@@ -1603,9 +1564,10 @@ def do_evaluation_delete(userId, eval_record, dbsession, force=False):
 def do_archive_delete(userId, archive_document, session, force=False):
     return_object = False
     httpcode = 500
-    
-    try:        
-        rc = archive_sys.delete(userId, archive_document['bucket'], archive_document['archiveId'])
+
+    try:
+        obj_store = anchore_engine.subsys.object_store.manager.get_manager()
+        rc = obj_store.delete(userId, archive_document['bucket'], archive_document['archiveId'])
         if not rc:
             raise Exception("archive delete failed")
 

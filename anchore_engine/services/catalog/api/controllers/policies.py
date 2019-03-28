@@ -15,7 +15,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 
 from anchore_engine.db import db_policybundle, db_policyeval
-from anchore_engine.subsys import archive
+from anchore_engine.subsys import object_store
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()
@@ -30,6 +30,8 @@ def list_policies(active=None):
 
     # set up the filter based on input
     try:
+
+        object_storage_mgr = object_store.get_manager()
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
@@ -43,12 +45,12 @@ def list_policies(active=None):
             for record in records:
                 record['policybundle'] = {}
                 try:
-                    policybundle = archive.get_document(user_id, 'policy_bundles', record['policyId'])
+                    policybundle = object_storage_mgr.get_document(user_id, 'policy_bundles', record['policyId'])
                     if policybundle:
                         record['policybundle'] = policybundle
 
                         record['policybundlemeta'] = {}
-                        meta = archive.get_document_meta(user_id, 'policy_bundles', record['policyId'])
+                        meta = object_storage_mgr.get_document_meta(user_id, 'policy_bundles', record['policyId'])
                         if meta:
                             record['policybundlemeta'] = meta
 
@@ -74,6 +76,8 @@ def get_policy(policyId):
     :return:
     """
     try:
+        object_storage_mgr = object_store.get_manager()
+
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
         user_id = request_inputs['userId']
 
@@ -83,12 +87,12 @@ def get_policy(policyId):
         if record:
             record['policybundle'] = {}
             try:
-                policybundle = archive.get_document(user_id, 'policy_bundles', record['policyId'])
+                policybundle = object_storage_mgr.get_document(user_id, 'policy_bundles', record['policyId'])
                 if policybundle:
                     record['policybundle'] = policybundle
 
                     record['policybundlemeta'] = {}
-                    meta = archive.get_document_meta(user_id, 'policy_bundles', record['policyId'])
+                    meta = object_storage_mgr.get_document_meta(user_id, 'policy_bundles', record['policyId'])
                     if meta:
                         record['policybundlemeta'] = meta
 
@@ -218,8 +222,9 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
     :return:
     """
 
+    object_store_mgr = object_store.get_manager()
     try:
-        if archive.put_document(user_id, 'policy_bundles', policyId, policy_bundle):
+        if object_store_mgr.put_document(user_id, 'policy_bundles', policyId, policy_bundle):
             rc = db_policybundle.update(policyId, user_id, active, policy_bundle, session=dbsession)
         else:
             rc = False

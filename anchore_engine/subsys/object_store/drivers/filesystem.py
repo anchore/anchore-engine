@@ -94,6 +94,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             raise err
 
         with open(archive_file, 'wb') as OFH:
+            data = utils.ensure_bytes(data)
             OFH.write(data)
             return True
 

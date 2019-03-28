@@ -4,7 +4,7 @@ from .entities.common import get_thread_scoped_session
 from .entities.common import end_session, get_session
 
 from .entities.catalog import Anchore
-from .entities.catalog import ArchiveDocument
+from .entities.catalog import LegacyArchiveDocument
 from .entities.catalog import CatalogImage
 from .entities.catalog import CatalogImageDocker
 from .entities.catalog import Event
@@ -18,8 +18,15 @@ from .entities.catalog import Service
 from .entities.catalog import Subscription
 from .entities.catalog import User
 from .entities.catalog import Lease
-from .entities.catalog import ArchiveMetadata
+from .entities.catalog import ObjectStorageMetadata
 from .entities.catalog import ObjectStorageRecord
+
+from .entities.catalog import ArchivedImage
+from .entities.catalog import ArchivedImageDocker
+from .entities.catalog import ArchiveTransitionRule
+from .entities.catalog import ArchiveTransitionHistoryEntry
+from .entities.catalog import ArchiveTransitions
+from .entities.catalog import TransitionHistoryState
 
 # Identity types
 from .entities.identity import AccountTypes

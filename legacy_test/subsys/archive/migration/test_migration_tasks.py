@@ -1,6 +1,6 @@
 import unittest
 from anchore_engine.subsys import archive
-from anchore_engine.subsys.archive import migration
+from anchore_engine.subsys.object_store import migration
 from anchore_engine.subsys import logger
 
 logger.enable_bootstrap_logging('testing')
@@ -56,11 +56,11 @@ class TestArchiveMigrations(unittest.TestCase):
 
         """
         conf = cls.setup_engine_config(connect_str)
-        from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord, ArchiveMetadata, ArchiveMigrationTask, Task
+        from anchore_engine.db import initialize, LegacyArchiveDocument, Anchore, ObjectStorageRecord, ObjectStorageMetadata, ArchiveMigrationTask, Task
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
         initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf) #, bootstrap_db=do_bootstrap)
-        do_create(specific_tables=[ArchiveDocument.__table__, ArchiveMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__, Task.__table__, ArchiveMigrationTask.__table__])
+        do_create(specific_tables=[LegacyArchiveDocument.__table__, ObjectStorageMetadata.__table__, Anchore.__table__, ObjectStorageRecord.__table__, Task.__table__, ArchiveMigrationTask.__table__])
 
     @classmethod
     def setUpClass(cls):
@@ -68,26 +68,28 @@ class TestArchiveMigrations(unittest.TestCase):
 
     def add_data(self):
         print('Adding data')
+        archive_mgr = archive.get_archive()
         for i in range(0, 100):
             archiveId = 'doc-{}'.format(i)
             print(('Adding document: {}'.format(archiveId)))
-            archive.put_document(userId='test1', bucket='testing', archiveId=archiveId, data='TESTINGBUCKETDATASMALL'.join([str(x) for x in range(100)]))
+            archive_mgr.put_document(userId='test1', bucket='testing', archiveId=archiveId, data='TESTINGBUCKETDATASMALL'.join([str(x) for x in range(100)]))
 
     def flush_data(self):
         print('Flushing data')
+        archive_mgr = archive.get_archive()
         for i in range(0, 100):
             archiveId = 'doc-{}'.format(i)
             print(('Deleting document: {}'.format(archiveId)))
-            archive.delete_document(userId='test1', bucket='testing', archiveid=archiveId)
+            archive_mgr.delete_document(userId='test1', bucket='testing', archiveid=archiveId)
 
     def run_test(self, src_client_config, dest_client_config):
         """
         Common test path for all configs to test against
         :return:
         """
-
         print(('Running migration test from {} to {}'.format(src_client_config['name'], dest_client_config['name'])))
-        archive.initialize({'services': {'catalog': {'archive': {'compression': {'enabled': False}, 'storage_driver': src_client_config}}}})
+        archive.initialize(archive.DEFAULT_ARCHIVE_ID, {'services': {'catalog': {'archive': {'compression': {'enabled': False}, 'storage_driver': src_client_config}}}})
+        archive_mgr = archive.get_archive()
         self.add_data()
 
         src_config = {

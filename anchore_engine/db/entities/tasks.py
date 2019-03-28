@@ -4,7 +4,7 @@ Entities for task management.
 
 import datetime
 
-from sqlalchemy import Column, Integer, Enum, DateTime, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Enum, DateTime, String, ForeignKey, Boolean, JSON
 
 from anchore_engine.db.entities.common import Base, UtilMixin
 
@@ -44,3 +44,30 @@ class ArchiveMigrationTask(Task):
     __mapper_args__ = {
         'polymorphic_identity': 'archivemigrationtask'
     }
+
+# TODO: finish this, scheduled tasks instead of queues make things *much* easier in many cases (e.g. internal monitors)
+#
+# class AnalysisArchiveTransitionTask(Task):
+#     __tablename__ = 'analysis_archive_transition_tasks'
+#
+#     id = Column(Integer, ForeignKey('tasks.id'), primary_key=True)
+#     account = Column(String)
+#     transition_rules = Column(JSON)
+#
+#
+# class TaskSchedule(object):
+#     __tablename__ = 'task_schedules'
+#
+#     schedule_id = Column(Integer, primary_key=True, autoincrement=True)
+#     task_type = Column(String)
+#     interval_count = Column(Integer) # Number of intervals of the specified unit between task executions
+#     interval_unit = Column(Enum['seconds', 'minutes', 'hours', 'days'])
+#
+#     last_execution_at = Column(DateTime)
+#     last_task_id = Column(Integer)
+#
+#     next_execution_at = Column(DateTime)
+#     task_in_progress = Column(Integer)
+#
+#     created_at = Column(DateTime)
+#     last_updated = Column(DateTime)

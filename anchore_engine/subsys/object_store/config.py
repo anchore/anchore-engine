@@ -4,10 +4,12 @@ from anchore_engine.subsys import logger
 COMPRESSION_LEVEL = 3
 
 DEFAULT_DRIVER = 'db'
+DEFAULT_OBJECT_STORE_MANAGER_ID='object_store'
+ALT_OBJECT_STORE_CONFIG_KEY = 'archive'
 
-# Config Keys
 DEFAULT_MIN_COMPRESSION_LIMIT_KB = 100
-MAIN_CONFIG_KEY = 'archive'
+ANALYSIS_ARCHIVE_MANAGER_ID = 'analysis_archive'
+
 COMPRESSION_SECTION_KEY = 'compression'
 COMPRESSION_ENABLED_KEY = 'enabled'
 COMPRESSION_MIN_SIZE_KEY = 'min_size_kbytes'
@@ -29,30 +31,50 @@ default_config = {
 }
 
 
-def normalize_config(service_config):
+def extract_config(service_config, config_keys):
+    """
+    Extract the exact config from the config dict, may be None if none is found in any of the config_keys items
+
+    :param service_config: the config dict to extract from
+    :param config_keys: tuple/list of dict keys to use in order of precedence
+    :return: the configuration dict if found, or None
+    """
+
+    for key in config_keys:
+        config_key = key
+        obj_store_config = service_config.get(config_key)
+        if obj_store_config:
+            return obj_store_config
+    else:
+        return None
+
+
+def normalize_config(obj_store_config, legacy_fallback=False, service_config=None):
     """
     Given a top-level catalog service config, validate and return the normalized config (for legacy support)
-    :param service_config:
-    :return: archive configuration normalized to the current format
+
+    :param obj_store_config: the extracted object store configuration
+    :param legacy_fallback: boolean, if set and no config found in obj_store_config, try to create one from the service_config
+    :param service_config: optional full service config if legacy_fallback is enabled.
+    :return:
     """
 
     global default_config
 
-    archive_config = service_config.get(MAIN_CONFIG_KEY)
+    #obj_store_config = extract_config(service_config, config_keys)
 
-    if not archive_config:
-        logger.warn("no '{}' section found in service config, using legacy configuration options".format(MAIN_CONFIG_KEY))
-        archive_config = {}
+    if legacy_fallback and not obj_store_config:
+        logger.warn("no current object storage configuration found in service config, using legacy configuration options")
+        obj_store_config = {}
         bkwd = _parse_legacy_config(service_config)
-        archive_config.update(bkwd)
+        obj_store_config.update(bkwd)
 
     new_conf = copy.deepcopy(default_config)
-    if DRIVER_SECTION_KEY in archive_config:
-        new_conf[DRIVER_SECTION_KEY].update(archive_config[DRIVER_SECTION_KEY])
-    if COMPRESSION_SECTION_KEY in archive_config:
-        new_conf[COMPRESSION_SECTION_KEY].update(archive_config[COMPRESSION_SECTION_KEY])
+    if DRIVER_SECTION_KEY in obj_store_config:
+        new_conf[DRIVER_SECTION_KEY].update(obj_store_config[DRIVER_SECTION_KEY])
+    if COMPRESSION_SECTION_KEY in obj_store_config:
+        new_conf[COMPRESSION_SECTION_KEY].update(obj_store_config[COMPRESSION_SECTION_KEY])
 
-    validate_config(new_conf)
     return new_conf
 
 

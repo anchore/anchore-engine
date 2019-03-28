@@ -91,7 +91,7 @@ def imagepolicywebhook(bodycontent):
                 for el in incoming['spec']['containers']:
                     image = el['image']
                     logger.debug("found image in request: " + str(image))
-                    image_records = catalog.get_image(tag=image)
+                    image_records = catalog.list_images(tag=image)
                     if not image_records:
                         raise Exception("could not find requested image ("+str(image)+") in anchore service DB")
 

@@ -123,6 +123,7 @@ class BaseService(object, metaclass=ServiceMeta):
     __service_api_version__ = 'v1'
     __lifecycle_handlers__ = {}
     __require_system_user__ = True
+    __task_handlers_enabled__ = True
 
     def __init__(self, options=None):
         self.name = self.__service_name__
@@ -140,6 +141,8 @@ class BaseService(object, metaclass=ServiceMeta):
         self.monitor_fn = self.__monitor_fn__
         self.monitor_kwargs = {}
         self.monitor_threads = {}
+        self.service_record = {}
+        self.task_handlers_enabled = self.__task_handlers_enabled__
 
     @property
     def is_enabled(self):
@@ -223,6 +226,16 @@ class BaseService(object, metaclass=ServiceMeta):
         except Exception as err:
             logger.error('cannot detect versions of service: exception - ' + str(err))
             raise err
+
+        self.task_handlers_enabled = self.configuration.get('task_handlers_enabled', True)
+        env_setting = not os.environ.get('ANCHORE_ENGINE_DISABLE_MONITORS', 'false').lower() == 'true'
+        self.task_handlers_enabled = self.task_handlers_enabled and env_setting
+
+        if not self.task_handlers_enabled:
+            if env_setting:
+                logger.warn('Task handlers disabled by setting ANCHORE_ENGINE_DISABLE_MONITORS in environment')
+            else:
+                logger.warn('Task handlers disabled by configuration file value')
 
         try:
             kick_timer = int(self.configuration['cycle_timer_seconds'])
@@ -395,6 +408,7 @@ class BaseService(object, metaclass=ServiceMeta):
                     }
                     my_service_record.update(service_template)
                     servicestatus.set_my_service_record(my_service_record)
+                    self.service_record = my_service_record
                 except Exception as err:
                     logger.warn('could not set local service information - exception: {}'.format(str(err)))
 
@@ -443,12 +457,15 @@ class BaseService(object, metaclass=ServiceMeta):
         :return:
         """
 
-        if monitor_thread_wrapper:
-            t = monitor_thread_wrapper(self.monitor_fn, **self.monitor_kwargs)
-        else:
-            t = threading.Thread(target=self.monitor_fn, kwargs=self.monitor_kwargs)
+        if self.task_handlers_enabled:
+            if monitor_thread_wrapper:
+                t = monitor_thread_wrapper(self.monitor_fn, **self.monitor_kwargs)
+            else:
+                t = threading.Thread(target=self.monitor_fn, kwargs=self.monitor_kwargs)
 
-        return t
+            return t
+        else:
+            return None
 
 
 class ApiService(BaseService):

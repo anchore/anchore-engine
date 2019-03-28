@@ -4,13 +4,12 @@ import sys
 import yaml
 import click
 import datetime
-import os
 from prettytable import PrettyTable, PLAIN_COLUMNS
 
 from anchore_engine.subsys import archive
 from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import load_config, get_config
-from anchore_engine.subsys.archive import migration, operations
+from anchore_engine.subsys.object_store import migration, config as obj_config
 from anchore_engine.db import db_tasks, ArchiveMigrationTask, session_scope
 from anchore_manager.cli import utils
 
@@ -100,7 +99,8 @@ def check(configfile):
         logger.error('No configuration file or content available. Cannot test archive driver configuration')
         utils.doexit(2)
 
-    archive.initialize(service_config)
+    archive.initialize(archive.DEFAULT_ARCHIVE_ID, service_config)
+    archive_mgr = archive.get_archive()
 
     test_user_id = 'test'
     test_bucket = 'anchorecliconfigtest'
@@ -109,20 +109,20 @@ def check(configfile):
 
     logger.info('Checking existence of test document with user_id = {}, bucket = {} and archive_id = {}'.format(test_user_id, test_bucket,
                                                                                              test_archive_id))
-    if archive.exists(test_user_id, test_bucket, test_archive_id):
+    if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
         test_archive_id = 'cliconfigtest2'
-        if archive.exists(test_user_id, test_bucket, test_archive_id):
+        if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
             logger.error('Found existing records for archive doc to test, aborting test to avoid overwritting any existing data')
             utils.doexit(1)
 
     logger.info('Creating test document with user_id = {}, bucket = {} and archive_id = {}'.format(test_user_id, test_bucket,
                                                                                              test_archive_id))
-    result = archive.put(test_user_id, test_bucket, test_archive_id, data=test_data)
+    result = archive_mgr.put(test_user_id, test_bucket, test_archive_id, data=test_data)
     if not result:
         logger.warn('Warning: Got empty response form archive PUT operation: {}'.format(result))
 
     logger.info('Checking document fetch')
-    loaded = str(archive.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
+    loaded = str(archive_mgr.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
     if not loaded:
         logger.error('Failed retrieving the written document. Got: {}'.format(loaded))
         utils.doexit(5)
@@ -132,9 +132,9 @@ def check(configfile):
         utils.doexit(5)
 
     logger.info('Removing test object')
-    archive.delete(test_user_id, test_bucket, test_archive_id)
+    archive_mgr.delete(test_user_id, test_bucket, test_archive_id)
 
-    if archive.exists(test_user_id, test_bucket, test_archive_id):
+    if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
         logger.error('Found archive object after it should have been removed')
         utils.doexit(5)
 
@@ -173,8 +173,8 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
         to_raw = copy.deepcopy(load_config(configfile=to_driver_configpath))
         get_config().clear()
 
-        from_config = operations.normalize_config(from_raw['services']['catalog'])
-        to_config = operations.normalize_config(to_raw['services']['catalog'])
+        from_config = obj_config.normalize_config(from_raw['services']['catalog'])
+        to_config = obj_config.operations.normalize_config(to_raw['services']['catalog'])
 
         logger.info('Migration from config: {}'.format(json.dumps(from_config, indent=2)))
         logger.info('Migration to config: {}'.format(json.dumps(to_config, indent=2)))

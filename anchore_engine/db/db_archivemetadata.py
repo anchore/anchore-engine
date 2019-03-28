@@ -7,7 +7,7 @@ Operations for CRUD on document references and metadata. Actual document content
 import time
 import urllib.parse
 from anchore_engine import db
-from anchore_engine.db import ArchiveMetadata
+from anchore_engine.db import ObjectStorageMetadata
 from anchore_engine.subsys import logger
 
 
@@ -15,7 +15,7 @@ def add(userId, bucket, archiveId, documentName, content_url=None, metadata=None
     if not session:
         session = db.Session
 
-    doc_record = ArchiveMetadata(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName, content_url=content_url, document_metadata=metadata, is_compressed=is_compressed, digest=content_digest, size=size)
+    doc_record = ObjectStorageMetadata(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName, content_url=content_url, document_metadata=metadata, is_compressed=is_compressed, digest=content_digest, size=size)
     merged_result = session.merge(doc_record)
     return (True)
 
@@ -26,7 +26,7 @@ def get_all(session=None):
 
     ret = []
 
-    our_results = session.query(ArchiveMetadata)
+    our_results = session.query(ObjectStorageMetadata)
     for result in our_results:
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
@@ -37,7 +37,7 @@ def get_all(session=None):
 def get(userId, bucket, archiveId, session=None):
     ret = {}
 
-    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = session.query(ObjectStorageMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.update(obj)
@@ -51,7 +51,7 @@ def get_onlymeta(userId, bucket, archiveId, session=None):
 
     ret = {}
 
-    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = session.query(ObjectStorageMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     return result.to_dict()
 
 
@@ -61,7 +61,7 @@ def get_byname(userId, documentName, session=None):
 
     ret = {}
 
-    result = session.query(ArchiveMetadata).filter_by(userId=userId, documentName=documentName).first()
+    result = session.query(ObjectStorageMetadata).filter_by(userId=userId, documentName=documentName).first()
 
     if result:
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
@@ -85,7 +85,7 @@ def exists(userId, bucket, archiveId, session=None):
 
     ret = {}
 
-    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = session.query(ObjectStorageMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     return result is not None
 
 
@@ -95,8 +95,7 @@ def list_schemas(session=None):
 
     found_schemas = []
 
-    for record in session.query(ArchiveMetadata.content_url):
-        logger.info('Got record: {}'.format(record))
+    for record in session.query(ObjectStorageMetadata.content_url):
         parsed = urllib.parse.urlparse(record[0])
         found_schemas.append(parsed.scheme)
 
@@ -106,7 +105,7 @@ def list_schemas(session=None):
 def list_all_notempty(session=None):
     ret = []
 
-    results = session.query(ArchiveMetadata).filter(ArchiveMetadata.content_url != None)
+    results = session.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url != None)
     for result in results:
         obj = {}
         for i in range(0, len(list(result.keys()))):
@@ -123,7 +122,7 @@ def list_all(session=None, **dbfilter):
         session = db.Session
     ret = []
 
-    results = session.query(ArchiveMetadata).filter_by(**dbfilter)
+    results = session.query(ObjectStorageMetadata).filter_by(**dbfilter)
 
     for result in results:
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
@@ -147,7 +146,7 @@ def list_all_byuserId(userId, limit=None, session=None, **dbfilter):
 
     dbfilter['userId'] = userId
 
-    results = session.query(ArchiveMetadata).filter_by(**dbfilter)
+    results = session.query(ObjectStorageMetadata).filter_by(**dbfilter)
 
     if limit:
         results = results.limit(int(limit))
@@ -175,7 +174,7 @@ def delete_byfilter(userId, remove=True, session=None, **dbfilter):
 
     ret = False
 
-    results = session.query(ArchiveMetadata).filter_by(**dbfilter)
+    results = session.query(ObjectStorageMetadata).filter_by(**dbfilter)
     if results:
         for result in results:
             if remove:
@@ -191,7 +190,7 @@ def delete(userId, bucket, archiveId, remove=True, session=None):
     if not session:
         session = db.Session
 
-    result = session.query(ArchiveMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = session.query(ObjectStorageMetadata).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
     if result:
         if remove:
             session.delete(result)

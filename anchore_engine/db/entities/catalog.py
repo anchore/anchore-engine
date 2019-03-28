@@ -3,9 +3,11 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 
 """
 import datetime
-
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, LargeBinary, Index
+import enum
+import time
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, LargeBinary, Index, JSON, Enum
 from sqlalchemy import inspect
+from sqlalchemy.orm import relationship
 
 from .common import Base, anchore_now, anchore_uuid, UtilMixin, StringJSON, anchore_now_datetime
 
@@ -27,7 +29,7 @@ class Anchore(Base, UtilMixin):
         self.service_version, self.db_version, self.scanner_version)
 
 
-class ArchiveMetadata(Base, UtilMixin):
+class ObjectStorageMetadata(Base, UtilMixin):
     __tablename__ = 'archive_metadata'
 
     bucket = Column(String, primary_key=True)
@@ -45,7 +47,7 @@ class ArchiveMetadata(Base, UtilMixin):
     record_state_val = Column(String)
 
 
-class ArchiveDocument(Base, UtilMixin):
+class LegacyArchiveDocument(Base, UtilMixin):
     __tablename__ = 'archive_document'
 
     bucket = Column(String, primary_key=True)
@@ -57,6 +59,7 @@ class ArchiveDocument(Base, UtilMixin):
     record_state_key = Column(String, default="active")
     record_state_val = Column(String)
     jsondata = Column(String)
+    b64_encoded = Column(Boolean, default=False)
 
     def __repr__(self):
         return "userId='%s'" % (self.userId)
@@ -76,6 +79,7 @@ class ObjectStorageRecord(Base, UtilMixin):
     content = Column(LargeBinary)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+
 
 # This will be migrated to the Account table
 class User(Base, UtilMixin):
@@ -320,8 +324,169 @@ class CatalogImageDocker(Base, UtilMixin):
         return (ret)
 
     def __repr__(self):
-        return "digest='%s'" % (self.digest)
+        return '<{} {}/{}:{},digest={},detected_at={}>'.format(super().__repr__(), self.registry, self.repo, self.tag, self.imageDigest, self.tag_detected_at)
 
+
+class ArchivedImage(Base, UtilMixin):
+    """
+    Archive equivalent of CatalogImage, shortened for efficiency and to help manage lifecycle
+
+    """
+    __tablename__ = "catalog_archived_images"
+
+    account = Column(String, primary_key=True)
+    imageDigest = Column(String, primary_key=True)
+    parentDigest = Column(String)
+    image_record_created_at = Column(Integer)  # The created_at from the original image record
+    image_record_last_updated = Column(Integer)  # The last_updated from the original image record
+    analyzed_at = Column(Integer)
+    status = Column(String)
+
+    # Use same def for now, but move this and all other annotation types to a more general and searchable format (e.g. join table)
+    annotations = Column(JSON)
+
+    # Location of the archive manifest within the archive object store (used to located the other artifacts)
+    manifest_bucket = Column(String)
+    manifest_key = Column(String)
+    archive_size_bytes = Column(BigInteger)
+
+    # Timestamps for this archive record itself
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+
+    record_state_key = Column(String, default="active")
+    record_state_val = Column(String)
+
+    _tags = relationship("ArchivedImageDocker", primaryjoin="and_(ArchivedImage.account == foreign(ArchivedImageDocker.account), ArchivedImage.imageDigest == foreign(ArchivedImageDocker.imageDigest))", lazy='joined', back_populates='_image', cascade='all, delete-orphan')
+
+    def tags(self):
+        return self._tags
+
+    def __repr__(self):
+        return "<{} account={},imageDigest={}>".format(super().__repr__(), self.account, self.imageDigest)
+
+    @classmethod
+    def from_catalog_image(cls, catalog_img_dict, cascade=True):
+        i = ArchivedImage()
+        i.account = catalog_img_dict['userId']
+        i.imageDigest = catalog_img_dict['imageDigest']
+        i.analyzed_at = catalog_img_dict['analyzed_at']
+        i.parentDigest = catalog_img_dict['parentDigest']
+        i.annotations = catalog_img_dict['annotations']
+        i.image_record_created_at = catalog_img_dict['created_at']
+        i.image_record_last_updated = catalog_img_dict['last_updated']
+        i.status = 'archiving'
+
+        details = []
+        if cascade:
+            for detail in catalog_img_dict['image_detail']:
+                d = ArchivedImageDocker()
+                d.imageDigest = i.imageDigest
+                d.account = i.account
+                d.tag = detail['tag']
+                d.repository = detail['repo']
+                d.registry = detail['registry']
+                d.tag_detected_at = detail['tag_detected_at']
+                d.imageId = detail['imageId']
+                details.append(d)
+            i._tags = details
+        return i
+
+
+class ArchivedImageDocker(Base, UtilMixin):
+    """
+    Archived equivalent of a catalog_image_docker, but with some data removed to keep the records small since most metadata is in the archive objects themselves.
+
+    """
+    __tablename__ = "catalog_archived_images_docker"
+
+    account = Column(String, primary_key=True)
+    imageDigest = Column(String, primary_key=True)
+    registry = Column(String, primary_key=True)
+    repository = Column(String, primary_key=True)
+    tag = Column(String, primary_key=True)
+    imageId = Column(String)
+
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    tag_detected_at = Column(Integer, default=anchore_now)
+    record_state_key = Column(String, default="active")
+    record_state_val = Column(String)
+
+    _image = relationship("ArchivedImage", primaryjoin="and_(foreign(ArchivedImageDocker.account) == ArchivedImage.account, foreign(ArchivedImageDocker.imageDigest) == ArchivedImage.imageDigest)", lazy='joined', back_populates='_tags')
+
+    @property
+    def repo(self):
+        """
+        alias for self.repository. Use for interface compat with CatalogImageDocker
+        :return:
+        """
+        return self.repository
+
+    def parent_image(self):
+        return self._image
+
+    def __repr__(self):
+        return "digest='%s'" % (self.imageDigest)
+
+
+class ArchiveTransitions(enum.Enum):
+    archive = 'archive'
+    delete = 'delete'
+
+
+class TransitionHistoryState(enum.Enum):
+    pending = 'pending'
+    complete = 'complete'
+
+
+class ArchiveTransitionRule(Base, UtilMixin):
+    __tablename__ = "catalog_archive_transition_rules"
+
+    account = Column(String, primary_key=True)
+    rule_id = Column(String, primary_key=True)
+    transition = Column(Enum(ArchiveTransitions, name='archive_transitions'))
+    selector_registry = Column(String)
+    selector_repository = Column(String)
+    selector_tag = Column(String)
+    tag_versions_newer = Column(Integer)
+    analysis_age_days = Column(Integer)
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    # system_global = Column(Boolean, default=False) TODO: add for global rule support
+
+    def __repr__(self):
+        return '<ArchiveTransitionRule account={},rule_id={}>'.format(self.account, self.rule_id)
+
+
+class ArchiveTransitionHistoryEntry(Base, UtilMixin):
+    """
+    An entry in the transition history log. One digest may match multiple rules in a single task (e.g. multiple rules that cumulatively match all tags for an image).
+    """
+
+    __tablename__ = "catalog_archive_transition_history"
+
+    transition_task_id = Column(String, primary_key=True)
+    account = Column(String, primary_key=True)
+    rule_id = Column(String, primary_key=True)
+    image_digest = Column(String, primary_key=True)
+    transition = Column(Enum(ArchiveTransitions, name='archive_transitions'), primary_key=True)
+    transition_state = Column(Enum(TransitionHistoryState, name='archive_transition_history_state'))
+    created_at = Column(Integer, default=anchore_now)
+    last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+
+    #_matches = relationship("TransitionRuleMatch", primaryjoin="and_(ArchiveTransitionHistoryEntry.rule_id == foreign(TransitionRuleMatch.rule_id), ArchiveTransitionHistoryEntry.task_id == foreign(TransitionMatch.task_id))", lazy='joined', back_populates='_image', cascade='all, delete-orphan')
+
+
+# class TransitionRuleMatch(Base, UtilMixin):
+#     task_id = Column(String, primary_key=True)
+#     rule_id = Column(String, primary_key=True)
+#     image_digest = Column(String, primary_key=True)
+#     registry = Column(String, primary_key=True)
+#     repository = Column(String, primary_key=True)
+#     tag = Column(String, primary_key=True)
+#     created_at = Column(Integer, default=anchore_now)
+#
 
 class PolicyBundle(Base, UtilMixin):
     __tablename__ = 'policy_bundle'

@@ -8,15 +8,13 @@ import json
 from contextlib import contextmanager
 import anchore_engine.db.entities.common
 from anchore_engine.utils import get_threadbased_id
-from anchore_engine.db import session_scope, ArchiveMetadata
+from anchore_engine.db import session_scope, ObjectStorageMetadata
 from anchore_engine.db import ArchiveMigrationTask
 
 from anchore_engine.subsys import logger
-from anchore_engine.subsys import object_store
 from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
 
-from .config import normalize_config
-from .manager import ArchiveManager
+from anchore_engine.subsys.object_store.manager import ObjectStorageManager
 
 from collections import namedtuple
 
@@ -35,10 +33,10 @@ def migration_context(from_archive_config, to_archive_config, do_lock=True):
     """
 
     logger.info('Initializing source archive: {}'.format(from_archive_config))
-    from_archive = ArchiveManager(from_archive_config)
+    from_archive = ObjectStorageManager(from_archive_config)
 
     logger.info('Initializing dest archive: {}'.format(to_archive_config))
-    to_archive = ArchiveManager(to_archive_config)
+    to_archive = ObjectStorageManager(to_archive_config)
 
     if do_lock:
         engine = anchore_engine.db.entities.common.get_engine()
@@ -67,7 +65,7 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
     with migration_context(from_config, to_config, do_lock=do_lock) as context:
         with session_scope() as db:
             # Load all metadata
-            to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in db.query(ArchiveMetadata).filter(ArchiveMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'))]
+            to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'))]
 
             task_record = ArchiveMigrationTask()
             task_record.archive_documents_to_migrate = len(to_migrate)

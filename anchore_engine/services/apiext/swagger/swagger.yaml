@@ -2043,6 +2043,187 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  # Data archives
+  /archives:
+    get:
+      operationId: list_archives
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: listArchives
+      responses:
+        200:
+          description: Archive summary listing
+          schema:
+            $ref: "#/definitions/ArchiveSummary"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /archives/rules:
+    get:
+      operationId: list_analysis_archive_rules
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: listArchiveTransitions
+      responses:
+        200:
+          description: Archive transition rules
+          schema:
+            $ref: "#/definitions/AnalysisArchiveRules"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    post:
+      operationId: create_analysis_archive_rule
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: createArchiveTransition
+      parameters:
+        - name: rule
+          in: body
+          schema:
+            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+          required: True
+      responses:
+        200:
+          description: Archive transition rule
+          schema:
+            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /archives/rules/{ruleId}:
+    get:
+      operationId: get_analysis_archive_rule
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: getArchiveTransition
+      parameters:
+        - name: ruleId
+          type: string
+          required: true
+          in: path
+      responses:
+        200:
+          description: Archive transition rule
+          schema:
+            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    delete:
+      operationId: delete_analysis_archive_rule
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: deleteArchiveTransition
+      parameters:
+        - name: ruleId
+          type: string
+          required: true
+          in: path
+      responses:
+        200:
+          description: Archive transition rule
+          schema:
+            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /archives/rules/{ruleId}/history:
+    get:
+      operationId: get_analysis_archive_rule_history
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: getArchiveTransitionHistory
+      parameters:
+        - name: ruleId
+          type: string
+          required: true
+          in: path
+      responses:
+        200:
+          description: Archive transition rule history of actions
+          schema:
+            $ref: "#/definitions/AnalysisArchiveTransitionHistory"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /archives/images:
+    get:
+      operationId: list_analysis_archive
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: listArchivedImageAnalysis
+      responses:
+        200:
+          description: Image analysis archive listing for the requesting account (not the whole system)
+          schema:
+            $ref: "#/definitions/ArchivedAnalyses"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    post:
+      operationId: archive_image_analysis
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: createArchivedImageAnalysis
+      parameters:
+        - name: imageReferences
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ImageAnalysisReferences"
+      responses:
+        200:
+          description: Archive statuses
+          schema:
+            $ref: "#/definitions/AddAnalysisArchiveResult"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /archives/images/{imageDigest}:
+    get:
+      description: Returns the archive metadata record identifying the image and tags for the analysis in the archive.
+      operationId: get_archived_analysis
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: getArchivedImageAnalysis
+      parameters:
+        - name: imageDigest
+          in: path
+          required: true
+          type: string
+          description: The image digest to identify the image analysis
+      responses:
+        200:
+          description: Archived Image
+          schema:
+            $ref: "#/definitions/ArchivedAnalysis"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+    delete:
+      description: Performs a synchronous archive deletion
+      operationId: delete_archived_analysis
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+      x-anchore-authz-action: deleteArchivedImageAnalysis
+      parameters:
+        - name: imageDigest
+          in: path
+          required: true
+          type: string
+        - name: force
+          in: query
+          required: false
+          type: boolean
+      responses:
+        200:
+          description: ArchivdImageAnalysis record but with status 'deleted'
+          schema:
+            $ref: "#/definitions/ArchivedAnalysis"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
 definitions:
   PaginationProperties:
     type: object
@@ -2209,29 +2390,73 @@ definitions:
     description: Pagination wrapped list of images that match some filter
   ImageAnalysisRequest:
     type: object
-    description: A request to add an image to be watched and analyzed by the engine. Optionally include the dockerfile content. Either digest or tag must be present
-    required:
-    - tag
+    description: A request to add an image to be watched and analyzed by the engine. Optionally include the dockerfile content. Either source, digest or tag must be present.
     properties:
       dockerfile:
         type: string
-        description: Content of the dockerfile for the image, if available
+        description: Content of the dockerfile for the image, if available. Deprecated in favor of the 'source' field.
       digest:
         type: string
-        description: "A full pullable digest reference for an image. e.g. docker.io/nginx@sha256:abc123"
+        description: "A full pullable digest reference for an image. e.g. docker.io/nginx@sha256:abc123. Deprecated in favor of the 'source' field"
       tag:
         type: string
-        description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest"
+        description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest. Deprecated in favor of the 'source' field"
       created_at:
         type: string
         format: "date-time"
-        description: "Optional override of the image creation time, only honored when both tag and digest are also supplied  e.g. 2018-10-17T18:14:00Z"
+        description: "Optional override of the image creation time, only honored when both tag and digest are also supplied  e.g. 2018-10-17T18:14:00Z. Deprecated in favor of the 'source' field"
       image_type:
         type: string
-        description: The type of image this is adding, defaults to "docker"
+        description: Optional. The type of image this is adding, defaults to "docker". This can be ommitted until multiple image types are supported.
       annotations:
         type: object
         description: Annotations to be associated with the added image in key/value form
+      source:
+        $ref: "#/definitions/ImageSource"
+  ImageSource:
+    type: object
+    description: A set of analysis source types. Only one may be set in any given request.
+    properties:
+      tag:
+        $ref: "#/definitions/RegistryTagSource"
+      digest:
+        $ref: "#/definitions/RegistryDigestSource"
+      archive:
+        $ref: "#/definitions/AnalysisArchiveSource"
+  RegistryTagSource:
+    type: object
+    description: An image reference using a tag in a registry, this is the most common source type.
+    properties:
+      pullstring:
+        type: string
+        description: A docker pull string (e.g. docker.io/nginx:latest, or docker.io/nginx@sha256:abd) to retrieve the image
+      dockerfile:
+        type: string
+        description: Content of the dockerfile used to build the image, if available.
+  RegistryDigestSource:
+    type: object
+    description: An image reference using a digest in a registry, includes some extra tag and timestamp info in addition to the pull string to allow proper tag history reconstruction.
+    properties:
+      pullstring:
+        type: string
+        description: A digest-based pullstring (e.g. docker.io/nginx@sha256:123abc)
+      tag:
+        type: string
+        description: A docker pull string (e.g. docker.io/nginx:latest, or docker.io/nginx@sha256:abd) to retrieve the image
+      creation_timestamp_override:
+        type: string
+        format: date-time
+        description: Optional override of the image creation time to support proper tag history construction in cases of out-of-order analysis compared to registry history for the tag
+      dockerfile:
+        type: string
+        description: Content of the dockerfile used to build the image, if available.
+  AnalysisArchiveSource:
+    type: object
+    description: An image reference in the analysis archive for the purposes of loading analysis from the archive into th working set
+    properties:
+      digest:
+        type: string
+        description: The image digest identify the analysis. Archived analyses are based on digest, tag records are restored as analysis is restored.
   PolicyBundle:
     description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
     type: object
@@ -2465,7 +2690,7 @@ definitions:
         type: string
         format: "date-time"
       fulltag:
-        description: "Full docker-pullalbe tag string referencing the image"
+        description: "Full docker-pullable tag string referencing the image"
         type: string
       fulldigest:
         description: "Full docker-pullable digest string including the registry url and repository necessary get the image"
@@ -3231,3 +3456,169 @@ definitions:
           schema_version:
             type: string
             description: Semantic version of the db schema
+  ArchiveSummary:
+    type: object
+    description: A summarization of the available archives, a place to for long-term storage of audit, analysis, or other data to remove it from the system's working set but keep it available.
+    properties:
+      images:
+        $ref: "#/definitions/AnalysisArchiveSummary"
+      rules:
+        $ref: "#/definitions/AnalysisArchiveRulesSummary"
+  AnalysisArchiveSummary:
+    type: object
+    description: A summarization of the analysis archive, including size, counts, etc. This archive stores image analysis only, never the actual image content or layers.
+    properties:
+      total_image_count:
+        type: integer
+        description: The number of unique images (digests) in the archive
+      total_tag_count:
+        type: integer
+        description: The number of tag records (registry/repo:tag pull strings) in the archive. This may include repeated tags but will always have a unique tag->digest mapping per record.
+      total_data_bytes:
+        type: integer
+        description: The total sum of all the bytes stored to the backing storage. Accounts for anchore-applied compression, but not compression by the underlying storage system.
+      last_updated:
+        type: string
+        description: The timestamp of the most recent archived image
+        format: date-time
+  AnalysisArchiveRulesSummary:
+    type: object
+    description: Summary of the transition rule set
+    properties:
+      count:
+        type: integer
+        description: The number of rules for this account
+      last_updated:
+        type: string
+        description: The newest last_updated timestamp from the set of rules
+        format: date-time
+  ImageAnalysisReferences:
+    type: array
+    description: List of image digests to archive
+    items:
+      type: string
+      description: Image digest
+  AddAnalysisArchiveResult:
+    type: array
+    description: List of analysis archive add results
+    items:
+      $ref: "#/definitions/AnalysisArchiveAddResult"
+  AnalysisArchiveAddResult:
+    type: object
+    description: The result of adding a single digest to the archive
+    properties:
+      digest:
+        type: string
+        description: The image digest requested to be added
+      status:
+        type: string
+        description: The status of the archive add operation. Typically either 'archived' or 'error'
+        enum:
+          - archived
+          - archiving
+          - error
+      detail:
+        type: string
+        description: Details on the status, e.g. the error message
+  ArchivedAnalyses:
+    type: array
+    description: List of archived analyses
+    items:
+      $ref: "#/definitions/ArchivedAnalysis"
+  ArchivedAnalysis:
+    type: object
+    properties:
+      imageDigest:
+        type: string
+        description: The image digest (digest of the manifest describing the image, per docker spec)
+      parentDigest:
+        type: string
+        description: The digest of a parent manifest (for manifest-list images)
+      annotations:
+        type: object
+        description: User provided annotations as key-value pairs
+      status:
+        description: The archival status
+        type: string
+        enum:
+        - archiving
+        - archived
+        - deleting
+        - deleted
+      image_detail:
+        description: List of tags associated with the image digest
+        type: array
+        items:
+          $ref: "#/definitions/TagEntry"
+      created_at:
+        type: string
+        format: date-time
+      last_updated:
+        type: string
+        format: date-time
+      analyzed_at:
+        type: string
+        format: date-time
+      archive_size_bytes:
+        type: integer
+        description: The size, in bytes, of the analysis archive file
+  AnalysisArchiveRules:
+    type: array
+    description: Rule set for automatic archiving of system objects and flushing of archived objects (permament delete).
+    items:
+      $ref: "#/definitions/AnalysisArchiveTransitionRule"
+  AnalysisArchiveTransitionRule:
+    type: object
+    description: A rule for auto-archiving image analysis by time and/or tag-history
+    required:
+      - transition
+    properties:
+      selector:
+        $ref: "#/definitions/ImageSelector"
+      tag_versions_newer:
+        type: integer
+        description: Number of images mapped to the tag that are newer
+      analysis_age_days:
+        type: integer
+        description: Matches if the analysis is strictly older than this number of days
+      transition:
+        type: string
+        description: The type of transition to make. If "archive", then archive an image from the working set and remove it from the working set. If "delete", then match against archived images and delete from the archive if match.
+        enum:
+          - archive
+          - delete
+  AnalysisArchiveTransitionHistory:
+    type: object
+    description: A rule for auto-archiving image analysis by time and/or tag-history
+    properties:
+      transition_task_id:
+        type: string
+        description: The task that created & updated this entry
+      rule_id:
+        type: string
+      imageDigest:
+        type: string
+      transition:
+        type: string
+        enum:
+          - archive
+          - delete
+      created_at:
+        type: string
+        format: date-time
+      last_updated:
+        type: string
+        format: date-time
+  ImageSelector:
+    description: A set of selection criteria to match an image by a tagged pullstring based on its components, with regex support in each field
+    type: object
+    properties:
+      registry:
+        type: string
+        description: The registry section of a pull string. e.g. with "docker.io/anchore/anchore-engine:latest", this is "docker.io"
+      repository:
+        type: string
+        description: The repository section of a pull string. e.g. with "docker.io/anchore/anchore-engine:latest", this is "anchore/anchore-engine"
+      tag:
+        type: string
+        description: The tag-only section of a pull string. e.g. with "docker.io/anchore/anchore-engine:latest", this is "latest"

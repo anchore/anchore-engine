@@ -41,7 +41,7 @@ class CatalogClient(InternalServiceClient):
     def add_repo(self, regrepo=None, autosubscribe=False, lookuptag=None):
         return self.call_api(http.anchy_post, 'repo', query_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
 
-    def add_image(self, tag=None, digest=None, dockerfile=None, annotations=None, created_at=None):
+    def add_image(self, tag=None, digest=None, dockerfile=None, annotations=None, created_at=None, from_archive=False):
         payload = {}
         if dockerfile:
             payload['dockerfile'] = dockerfile
@@ -49,26 +49,31 @@ class CatalogClient(InternalServiceClient):
         if annotations:
             payload['annotations'] = annotations
 
-        return self.call_api(http.anchy_post, 'image', query_params={'tag': tag, 'digest': digest, 'created_at': created_at}, body=json.dumps(payload))
+        return self.call_api(http.anchy_post, 'images', query_params={'tag': tag, 'digest': digest, 'created_at': created_at, 'from_archive': from_archive}, body=json.dumps(payload))
 
     def get_imagetags(self):
         return self.call_api(http.anchy_get, 'summaries/imagetags')
 
-    def get_image(self, tag=None, digest=None, imageId=None, imageDigest=None, registry_lookup=False, history=False):
-        if imageDigest:
-            return self.call_api(http.anchy_get, 'image/{imageDigest}', path_params={'imageDigest': imageDigest})
-        else:
-            return self.call_api(http.anchy_get, 'image', query_params={'tag': tag, 'history': history, 'registry_lookup': registry_lookup, 'digest': digest, 'imageId': imageId})
+    def get_image(self, imageDigest):
+        return self.call_api(http.anchy_get, 'images/{imageDigest}', path_params={'imageDigest': imageDigest})
+
+    def get_image_by_id(self, imageId):
+        return self.call_api(http.anchy_get, 'images', query_params={'imageId': imageId})
+
+    def list_images(self, tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
+        return self.call_api(http.anchy_get, 'images',
+                             query_params={'tag': tag, 'history': history, 'registry_lookup': registry_lookup,
+                                           'digest': digest, 'imageId': imageId})
 
     def update_image(self, imageDigest, image_record=None):
         payload = {}
         if image_record:
             payload.update(image_record)
 
-        return self.call_api(http.anchy_put, 'image/{imageDigest}', path_params={'imageDigest': imageDigest}, body=json.dumps(payload))
+        return self.call_api(http.anchy_put, 'images/{imageDigest}', path_params={'imageDigest': imageDigest}, body=json.dumps(payload))
 
     def delete_image(self, imageDigest, force=False):
-        return self.call_api(http.anchy_delete, 'image/{imageDigest}', path_params={'imageDigest': imageDigest}, query_params={'force': force})
+        return self.call_api(http.anchy_delete, 'images/{imageDigest}', path_params={'imageDigest': imageDigest}, query_params={'force': force})
 
     def import_image(self, anchore_data):
         return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
@@ -159,8 +164,9 @@ class CatalogClient(InternalServiceClient):
     def get_subscription_types(self):
         return self.call_api(http.anchy_get, 'system/subscriptions')
 
+    # Document operations (formerly the archive ops)
     def get_document(self, bucket, name):
-        resp = self.call_api(http.anchy_get, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
+        resp = self.call_api(http.anchy_get, 'objects/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
         return resp['document']
 
     def put_document(self, bucket, name, inobj):
@@ -168,10 +174,21 @@ class CatalogClient(InternalServiceClient):
             'document': inobj
         }
 
-        return self.call_api(http.anchy_post, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name}, body=json.dumps(payload))
+        return self.call_api(http.anchy_post, 'objects/{bucket}/{name}', path_params={'bucket': bucket, 'name': name}, body=json.dumps(payload))
 
     def delete_document(self, bucket, name):
-        return self.call_api(http.anchy_delete, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
+        return self.call_api(http.anchy_delete, 'objects/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
+
+    # New archive obj-store operations (old /archive is now /objects)
+    # def get_archive(self, bucket, name):
+    #     resp = self.call_api(http.anchy_get, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
+    #     return resp
+    #
+    # def put_archive(self, bucket, name, data):
+    #     return self.call_api(http.anchy_post, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name}, body=data)
+    #
+    # def delete_archive(self, bucket, name):
+    #     return self.call_api(http.anchy_delete, 'archive/{bucket}/{name}', path_params={'bucket': bucket, 'name': name})
 
     def get_service(self, servicename=None, hostid=None):
         if servicename:
@@ -283,3 +300,34 @@ class CatalogClient(InternalServiceClient):
     #
     # def dectivate_account(self, name):
     #     return self.call_api(http.anchy_post, 'accounts/{name}/deactivate', path_params={'name': name})
+
+    # Analysis archive operations
+    def list_archives(self):
+        return self.call_api(http.anchy_get, 'archives')
+
+    def list_archived_analyses(self):
+        return self.call_api(http.anchy_get, 'archives/images')
+
+    def archive_analyses(self, digests):
+        return self.call_api(http.anchy_post, 'archives/images', body=json.dumps(digests))
+
+    def delete_archived_analysis(self, imageDigest):
+        return self.call_api(http.anchy_delete, 'archives/images/{imageDigest}', path_params={'imageDigest': imageDigest})
+
+    def get_archived_analysis(self, imageDigest):
+        return self.call_api(http.anchy_get, 'archives/images/{imageDigest}', path_params={'imageDigest': imageDigest})
+
+    def list_analysis_archive_rules(self):
+        return self.call_api(http.anchy_get, 'archives/rules')
+
+    def add_analysis_archive_rule(self, rule):
+        return self.call_api(http.anchy_post, 'archives/rules', body=json.dumps(rule))
+
+    def get_analysis_archive_rule(self, rule_id):
+        return self.call_api(http.anchy_get, 'archives/rules/{ruleId}', path_params={'ruleId': rule_id})
+
+    def get_analysis_archive_rule_history(self, rule_id):
+        return self.call_api(http.anchy_get, 'archives/rules/{ruleId}/history', path_params={'ruleId': rule_id})
+
+    def delete_analysis_archive_rule(self, rule_id):
+        return self.call_api(http.anchy_delete, 'archives/rules/{ruleId}', path_params={'ruleId': rule_id})

@@ -21,9 +21,8 @@ import anchore_engine.clients.services.common
 from anchore_engine.clients import docker_registry
 from anchore_engine import db
 from anchore_engine.db import db_catalog_image, db_policybundle, db_queues, db_registries, db_subscriptions, \
-    db_accounts, \
-    db_anchore, db_services, db_events, AccountStates, AccountTypes
-from anchore_engine.subsys import notifications, taskstate, logger, archive
+    db_accounts, db_anchore, db_services, db_events, AccountStates, AccountTypes, ArchiveTransitionRule
+from anchore_engine.subsys import notifications, taskstate, logger, archive, object_store
 from anchore_engine.services.catalog import catalog_impl
 import anchore_engine.subsys.events as events
 from anchore_engine.utils import AnchoreException
@@ -31,8 +30,8 @@ from anchore_engine.services.catalog.exceptions import TagManifestParseError, Ta
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.subsys.identities import manager_factory
-
-
+from anchore_engine.services.catalog import archiver
+from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ANALYSIS_ARCHIVE_MANAGER_ID
 
 ##########################################################
 
@@ -494,6 +493,8 @@ def handle_image_watcher(*args, **kwargs):
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
 
+    obj_mgr = object_store.get_manager()
+
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
         accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
@@ -571,12 +572,12 @@ def handle_image_watcher(*args, **kwargs):
                     raise Exception("could not prepare db filter for complete lookup check - exception: " + str(err))
 
                 try:
-                    stored_manifest = json.loads(archive.get_document(userId, 'manifest_data', image_info['digest']))
+                    stored_manifest = json.loads(obj_mgr.get_document(userId, 'manifest_data', image_info['digest']))
                     if not stored_manifest:
                         raise Exception("stored manifest is empty")
                 except Exception as err:
                     logger.debug("found empty/invalid stored manifest, storing new: " + str(err))
-                    rc = archive.put_document(userId, 'manifest_data', image_info['digest'], manifest)
+                    rc = obj_mgr.put_document(userId, 'manifest_data', image_info['digest'], manifest)
 
                 logger.debug("checking image: looking up image in db using dbfilter: " + str(dbfilter))
                 with db.session_scope() as dbsession:
@@ -832,6 +833,9 @@ def handle_analyzer_queue(*args, **kwargs):
     logger.debug("FIRING: " + str(watcher))
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    obj_mgr = object_store.get_manager()
+
     try:
         max_working_time = int(localconfig['image_analyze_timeout_seconds'])
     except:
@@ -897,7 +901,7 @@ def handle_analyzer_queue(*args, **kwargs):
                 if image_record['analysis_status'] == taskstate.base_state('analyze'):
                     logger.debug("image in base state - " + str(imageDigest))
                     try:
-                        manifest = archive.get_document(userId, 'manifest_data', image_record['imageDigest'])
+                        manifest = obj_mgr.get_document(userId, 'manifest_data', image_record['imageDigest'])
                     except Exception as err:
                         logger.debug("failed to get manifest - {}".format(str(err)))
                         manifest = {}
@@ -1116,6 +1120,61 @@ def handle_metrics(*args, **kwargs):
         time.sleep(cycle_timer)
 
 
+def handle_archive_tasks(*args, **kwargs):
+    """
+
+    Handles periodic scan tasks for archive rule processing
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    cycle_timer = kwargs['mythread']['cycle_timer']
+    queuename = 'archive_tasks'
+
+    while True:
+        # q_client = internal_client_for(SimpleQueueClient, userId=None)
+        # msg = q_client.dequeue(queuename)
+        # while msg is not None:
+        #     logger.info('Working on task {}'.format(msg))
+        #
+        #
+        #
+        #     if t:
+        #         try:
+        #             t.initiated = datetime.datetime.fromisoformat(task_msg['initiated'])
+        #             t.run()
+        #         except Exception as ex:
+        #             logger.exception('Exception caught in execution of archive task: {}'.format(task_msg))
+        #     else:
+        #         logger.error('Unsupported message type: {}. Dropping message'.format(task_msg['type']))
+        #
+        #     q_client.delete_message(queuename, task_msg['receipt_handle'])
+        #     msg = q_client.dequeue(queuename)
+
+        try:
+            with db.session_scope() as session:
+                # Get accounts that have rules
+                accounts = session.query(ArchiveTransitionRule.account).distinct(ArchiveTransitionRule.account).all()
+                if accounts:
+                    accounts = [x[0] for x in accounts]
+                logger.debug('Found accounts {} with transition rules'.format(accounts))
+
+            for account in accounts:
+                logger.debug('Processing archive transition rules for account {}'.format(account))
+
+                task = archiver.ArchiveTransitionTask(account)
+                logger.info('Starting archive transition task {}'.format(task.task_id))
+                task.run()
+                logger.info('Archive transition task {} complete'.format(task.task_id))
+
+        except Exception as ex:
+            logger.exception('Caught unexpected exception')
+        finally:
+            logger.debug('Sleeping until next cycle since no messages to process')
+            time.sleep(cycle_timer)
+
+
 click = 0
 running = False
 last_run = 0
@@ -1313,14 +1372,23 @@ class CatalogService(ApiService):
     def _register_instance_handlers(self):
         super()._register_instance_handlers()
 
-        self.register_handler(LifeCycleStages.post_db, self._init_archive, {})
+        self.register_handler(LifeCycleStages.post_db, self._init_object_storage, {})
         self.register_handler(LifeCycleStages.post_register, self._init_policies, {})
 
-    def _init_archive(self):
+    def _init_object_storage(self):
+        try:
+            did_init = object_store.initialize(self.configuration, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID], allow_legacy_fallback=True)
+            if not did_init:
+                logger.warn('Unexpectedly found the object store already initialized. This is not an expected condition. Continuting with driver: {}'.format(object_store.get_manager().primary_client.__config_name__))
+        except Exception as err:
+            logger.exception("Error initializing the object store: check catalog configuration")
+            raise err
+
         try:
             archive.initialize(self.configuration)
+
         except Exception as err:
-            logger.exception("Error initializing archive: check catalog configuration")
+            logger.exception("Error initializing analysis archive: check catalog configuration")
             raise err
 
     def _init_policies(self):
@@ -1328,6 +1396,8 @@ class CatalogService(ApiService):
         Ensure all accounts have a default policy in place
         :return:
         """
+
+        obj_mgr = object_store.get_manager()
 
         with db.session_scope() as dbsession:
             mgr = manager_factory.for_session(dbsession)
@@ -1347,7 +1417,7 @@ class CatalogService(ApiService):
                                 with open(config['default_bundle_file'], 'r') as FH:
                                     default_bundle = json.loads(FH.read())
                                 if default_bundle:
-                                    bundle_url = archive.put_document(userId, 'policy_bundles', default_bundle['id'],
+                                    bundle_url = obj_mgr.put_document(userId, 'policy_bundles', default_bundle['id'],
                                                                       default_bundle)
                                     policy_record = make_policy_record(userId, default_bundle, active=True)
                                     rc = db_policybundle.add(policy_record['policyId'], userId, True, policy_record,
@@ -1394,6 +1464,9 @@ watchers = {
     'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [],
                        'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0,
                        'last_return': False, 'initialized': False},
+    'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 30,
+                           'min_cycle_timer': 10, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False,
+                           'initialized': False},
 }
 
 watcher_task_template = {

@@ -24,7 +24,7 @@ class TestArchiveDriverMixin(object):
     driver_cls = None
     driver_config = None
 
-    test_obj1 = 'testingdata123'
+    test_obj1 = b'testingdata123' # raw interface for obj store is bytes
     test_json_obj1 = {'key1': 'value1'}
     test_user1 = 'testuser1'
     test_user2 = 'testuser2'
@@ -98,11 +98,11 @@ class TestRDBMSArchiveDriver(TestArchiveDriverMixin, unittest.TestCase):
         :return:
         """
         conf = TestRDBMSArchiveDriver.setup_engine_config(connect_str)
-        from anchore_engine.db import initialize, ArchiveDocument, Anchore, ObjectStorageRecord
+        from anchore_engine.db import initialize, LegacyArchiveDocument, Anchore, ObjectStorageRecord
         from anchore_engine.db.entities.common import do_create
         from anchore_engine.version import version, db_version
         initialize(versions={'service_version': version, 'db_version': db_version}, localconfig=conf)
-        do_create(specific_tables=[ArchiveDocument.__table__,  Anchore.__table__, ObjectStorageRecord.__table__])
+        do_create(specific_tables=[LegacyArchiveDocument.__table__, Anchore.__table__, ObjectStorageRecord.__table__])
 
     @classmethod
     def setUpClass(cls):

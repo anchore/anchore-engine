@@ -34,6 +34,7 @@ def do_request_prep(request, default_params=None):
 
             ret['params'][param] = val
 
+        # TODO: move this to pre-request processing in the flask pipeline
         query_signature = copy.deepcopy(ret)
         query_signature['path'] = request.path
         query_signature.get('params', {}).pop('page', None)

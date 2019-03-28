@@ -1,5 +1,5 @@
 """
-Exception types for the archive drivers to normalize errors
+Exception types for the object storage drivers to normalize errors
 
 """
 
@@ -77,3 +77,13 @@ class DriverNotInitializedError(Exception):
 class DriverBackendNotAvailableError(Exception):
     pass
 
+
+class ObjectNotFound(Exception):
+    def __init__(self, bucket, key):
+        super().__init__()
+        self.bucket = bucket
+        self.key = key
+        self.message = 'ObjectNotFound: {}/{}'.format(self.bucket, self.key)
+
+    def __str__(self):
+        return self.message

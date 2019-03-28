@@ -52,3 +52,17 @@ class UnavailableError(AnchoreApiError):
 
 class BadGatewayError(AnchoreApiError):
     __response_code__ = 502
+
+
+class MissingRequiredField(BadRequest):
+    def __init__(self, required_property, because_of_properties=None):
+        if because_of_properties:
+            super().__init__(message='Request missing required property: {}'.format(required_property), detail={'Required property': required_property, 'Required because of properties': because_of_properties})
+
+        self.required = required_property
+        self.because_of = because_of_properties
+
+
+class InvalidDateFormat(BadRequest):
+    def __init__(self, property_name, property_value):
+        super().__init__(message='Invalid formatted date', detail={'Property': property_name, 'Value': property_value})

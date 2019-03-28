@@ -186,12 +186,13 @@ class WsgiApiServiceMaker(object):
             self.twistd_service = service.MultiService()
             self.twistd_service.setServiceParent(application)
 
-            if not os.environ.get('ANCHORE_ENGINE_DISABLE_MONITORS'):
+            if self.anchore_service.task_handlers_enabled:
                 logger.info('Starting monitor thread')
                 lc = self._get_api_monitor(self.anchore_service)
                 lc.start(1)
             else:
-                logger.warn('Skipped start of monitor threads due to ANCHORE_ENGINE_DISABLE_MONITORS set in environment')
+                logger.warn('Skipped start of monitor threads due to task_handlers_enabled=false in config, or found ANCHORE_ENGINE_DISABLE_MONITORS in env')
+
 
             logger.info('Building api handlers')
             s = self._build_api_service()

@@ -3,6 +3,7 @@ import time
 from sqlalchemy import Column, Integer, String, BigInteger, DateTime
 
 import anchore_engine.db.entities.common
+import anchore_engine.subsys.object_store.manager
 from anchore_engine.db.entities.common import StringJSON
 import anchore_engine.common.helpers
 from anchore_engine.db.entities.exceptions import is_table_not_found
@@ -380,32 +381,32 @@ def archive_data_upgrade_005_006():
     :return:
     """
 
-    from anchore_engine.db import ArchiveDocument, session_scope, ArchiveMetadata
-    from anchore_engine.subsys import archive
-    from anchore_engine.subsys.archive import operations
+    from anchore_engine.db import LegacyArchiveDocument, session_scope, ObjectStorageMetadata
+    from anchore_engine.subsys import object_store
+    from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY
     from anchore_engine.configuration import localconfig
 
     config = localconfig.get_config()
-    archive.initialize(config.get('services', {}).get('catalog', {}))
-    client = operations.get_archive().primary_client
+    object_store.initialize(config.get('services', {}).get('catalog', {}), manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=(DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY), allow_legacy_fallback=True)
+    client = anchore_engine.subsys.object_store.manager.get_manager().primary_client
 
     session_counter = 0
     max_pending_session_size = 10000
 
     with session_scope() as db_session:
-        for doc in db_session.query(ArchiveDocument.userId, ArchiveDocument.bucket, ArchiveDocument.archiveId, ArchiveDocument.documentName, ArchiveDocument.created_at, ArchiveDocument.last_updated, ArchiveDocument.record_state_key, ArchiveDocument.record_state_val):
-            meta = ArchiveMetadata(userId=doc[0],
-                                   bucket=doc[1],
-                                   archiveId=doc[2],
-                                   documentName=doc[3],
-                                   is_compressed=False,
-                                   document_metadata=None,
-                                   content_url=client.uri_for(userId=doc[0], bucket=doc[1], key=doc[2]),
-                                   created_at=doc[4],
-                                   last_updated=doc[5],
-                                   record_state_key=doc[6],
-                                   record_state_val=doc[6]
-                                   )
+        for doc in db_session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.documentName, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated, LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val):
+            meta = ObjectStorageMetadata(userId=doc[0],
+                                         bucket=doc[1],
+                                         archiveId=doc[2],
+                                         documentName=doc[3],
+                                         is_compressed=False,
+                                         document_metadata=None,
+                                         content_url=client.uri_for(userId=doc[0], bucket=doc[1], key=doc[2]),
+                                         created_at=doc[4],
+                                         last_updated=doc[5],
+                                         record_state_key=doc[6],
+                                         record_state_val=doc[6]
+                                         )
 
             db_session.add(meta)
 
@@ -532,7 +533,7 @@ def db_upgrade_007_008():
     user_account_upgrades_007_008()
 
 def catalog_upgrade_007_008():
-    from anchore_engine.db import session_scope, CatalogImage
+    from anchore_engine.db import session_scope
 
     log.err("performing catalog table upgrades")
     engine = anchore_engine.db.entities.common.get_engine()
@@ -809,7 +810,7 @@ def db_upgrade_008_009():
     :return:
     """
 
-    from anchore_engine.db import session_scope, ImageNpm, ImageGem
+    from anchore_engine.db import session_scope
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
 
@@ -838,6 +839,27 @@ def db_upgrade_008_009():
             engine.execute(command)
             cmdcount = cmdcount + 1
 
+def db_upgrade_009_010():
+    """
+    Runs upgrade on ImageGems and ImageNpms to add the column that was retrofitted for the 0.0.8 upgrade. This function ensures that
+    users that already ran that upgrade end up with a 0.0.9 db that has the same schema.
+    :return:
+    """
+
+    from anchore_engine.db import session_scope
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    exec_commands = [
+        "ALTER TABLE archive_document ADD COLUMN IF NOT EXISTS b64_encoded boolean"
+    ]
+
+    cmdcount = 1
+    for command in exec_commands:
+        log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
+        engine.execute(command)
+        cmdcount = cmdcount + 1
+
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
@@ -850,5 +872,6 @@ upgrade_functions = (
     (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ]),
     (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ]),
     (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ]),
-    (('0.0.8', '0.0.9'), [ db_upgrade_008_009 ])
+    (('0.0.8', '0.0.9'), [ db_upgrade_008_009 ]),
+    (('0.0.9', '0.0.10'), [ db_upgrade_009_010 ])
 )
