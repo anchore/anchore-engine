@@ -194,6 +194,12 @@ class WsgiApiServiceMaker(object):
             else:
                 logger.warn('Skipped start of monitor threads due to ANCHORE_ENGINE_DISABLE_MONITORS set in environment')
 
+            thread_stats_interval = int(self.service_config.get('debug_thread_stats_dump_interval', 0))
+            if thread_stats_interval > 0:
+                logger.info('Based on service config, starting the thread stats dumper')
+                monitor = LoopingCall(dump_stats)
+                monitor.start(thread_stats_interval)
+
             logger.info('Building api handlers')
             s = self._build_api_service()
             s.setServiceParent(self.twistd_service)
@@ -298,3 +304,12 @@ class WsgiApiServiceMaker(object):
         except Exception as err:
             logger.error("rewrite exception: " + str(err))
             raise err
+
+
+def dump_stats():
+    """
+    Dump some basic stats about the reactor pool and threads at info level
+    :return:
+    """
+
+    logger.info('Reactor queue stats: {}'.format(reactor.getThreadPool()._team.statistics().__dict__))
