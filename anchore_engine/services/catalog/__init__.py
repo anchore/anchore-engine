@@ -216,9 +216,9 @@ def handle_service_watcher(*args, **kwargs):
     # global latest_service_records
 
     cycle_timer = kwargs['mythread']['cycle_timer']
-    max_service_heartbeat_timer = 100#300
-    max_service_orphaned_timer = 200#3600
-    max_service_cleanup_timer = 300#86400
+    max_service_heartbeat_timer = 300
+    max_service_orphaned_timer = 3600
+    max_service_cleanup_timer = 86400
 
     while (True):
         logger.debug("FIRING: service watcher")
