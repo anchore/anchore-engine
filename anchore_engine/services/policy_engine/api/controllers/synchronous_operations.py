@@ -189,10 +189,10 @@ def delete_image(user_id, image_id):
         return (None, 204)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
         log.exception('Error processing DELETE request for image {}/{}'.format(user_id, image_id))
         db.rollback()
-        abort(500)
+        return make_response_error('Error deleting image {}/{}: {}'.format(user_id, image_id, e), in_httpcode=500), 500
 
 
 def problem_from_exception(eval_exception, severity=None):
@@ -425,11 +425,11 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         try:
             img_obj = db.query(Image).get((image_id, user_id))
         except:
-            abort(Response(response='Image not found', status=404))
+            return make_response_error('Image not found', in_httpcode=404), 404
 
         if not img_obj:
             log.info('Request for evaluation of image that cannot be found: user_id = {}, image_id = {}'.format(user_id, image_id))
-            abort(Response(response='Image not found', status=404))
+            return make_response_error('Image not found', in_httpcode=404), 404
 
         if evaluation_cache_enabled:
             timer2 = time.time()
@@ -480,8 +480,8 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             try:
                 eval_result = executable_bundle.execute(img_obj, tag, ExecutionContext(db_session=db, configuration={}))
             except Exception as e:
-                log.exception('Error executing policy bundle {} against image {} w/tag {}: {}'.format(bundle['id'], image_id, tag, e.message))
-                abort(Response(response='Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e.message), status=500))
+                log.exception('Error executing policy bundle {} against image {} w/tag {}: {}'.format(bundle['id'], image_id, tag, e))
+                return make_response_error('Internal bundle evaluation error', detail='Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e), in_httpcode=500), 500
         else:
             # Construct a failure eval with details on the errors and mappings to send to client
             eval_result = build_empty_error_execution(img_obj, tag, executable_bundle, errors=problems, warnings=[])
@@ -530,7 +530,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
     except Exception as e:
         db.rollback()
         log.exception('Failed processing bundle evaluation: {}'.format(e))
-        abort(Response('Unexpected internal error', 500))
+        return make_response_error('Unexpected internal error', detail=str(e), in_httpcode=500), 500
     finally:
         db.close()
 
@@ -593,7 +593,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 except Exception as e:
                     log.exception('Error refreshing cve matches for image {}/{}'.format(user_id, image_id))
                     db.rollback()
-                    abort(Response('Error refreshing vulnerability listing for image.', 500))
+                    return make_response_error('Error refreshing vulnerability listing for image.', in_httpcode=500)
 
                 db = get_session()
                 db.refresh(img)

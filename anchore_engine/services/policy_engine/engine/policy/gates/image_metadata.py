@@ -1,8 +1,9 @@
 import re
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.gates.util import CheckOperation
-from anchore_engine.services.policy_engine.engine.policy.params import EnumStringParameter, TypeValidator, TriggerParameter
+from anchore_engine.services.policy_engine.engine.policy.params import EnumStringParameter, TypeValidator, TriggerParameter, LinkedValidator, RegexParamValidator, IntegerValidator
 from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.utils import convert_bytes_size, BYTES_REGEX
 
 log = get_logger()
 
@@ -27,18 +28,23 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
     }
 
     __valid_attributes__ = {
-        'size': lambda x: x.size,
-        'architecture': lambda x: x.docker_data_json.get('Architecture') if x.docker_data_json else None,
-        'os_type': lambda x: x.docker_data_json.get('Os', x.docker_data_json.get('os')) if x.docker_data_json else None,
-        'distro': lambda x: x.distro_name,
-        'distro_version': lambda x: x.distro_version,
-        'like_distro': lambda x: x.like_distro,
-        'layer_count': lambda x: len(x.layers_json) if x.layers_json else 0
+        'size': (lambda x: x.size, RegexParamValidator(regex=BYTES_REGEX.pattern)),
+        'architecture': (lambda x: x.docker_data_json.get('Architecture') if x.docker_data_json else None, TypeValidator('string')),
+        'os_type': (lambda x: x.docker_data_json.get('Os', x.docker_data_json.get('os')) if x.docker_data_json else None, TypeValidator('string')),
+        'distro': (lambda x: x.distro_name, TypeValidator('string')),
+        'distro_version': (lambda x: x.distro_version, TypeValidator('string')),
+        'like_distro': (lambda x: x.like_distro, TypeValidator('string')),
+        'layer_count': (lambda x: len(x.layers_json) if x.layers_json else 0, IntegerValidator())
     }
 
     attribute = EnumStringParameter(name='attribute', example_str='size', description='Attribute name to be checked.', enum_values=list(__valid_attributes__.keys()), is_required=True, sort_order=1)
     check = EnumStringParameter(name='check', example_str='>', description='The operation to perform the evaluation.', enum_values=list(__ops__.keys()), is_required=True, sort_order=2)
-    check_value = TriggerParameter(name='value', example_str='1073741824', description='Value used in comparison.', validator=TypeValidator('string'), is_required=False, sort_order=3)
+
+    _check_value_validator = LinkedValidator(discriminator_parameter='attribute', default_validator=TypeValidator('string'), value_map={k: v[1] for k, v in __valid_attributes__.items()})
+    check_value = TriggerParameter(name='value',
+                                   example_str='1073741824',
+                                   description='Value used in comparison.',
+                                   validator=_check_value_validator, is_required=False, sort_order=3)
 
     def evaluate(self, image_obj, context):
         attr = self.attribute.value()
@@ -53,10 +59,13 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
             # Raise exception or fall thru
             return
 
-        img_val = self.__valid_attributes__[attr](image_obj)
+        img_val = self.__valid_attributes__[attr][0](image_obj)
         # Make consistent types (specifically for int/float/str)
-        if type(img_val) in [str, int, float, str]:
-            rval = type(img_val)(rval)
+        if type(img_val) in [int, float, str]:
+            if attr == 'size':
+                rval = convert_bytes_size(rval)
+            else:
+                rval = type(img_val)(rval)
 
         if op.eval_function(img_val, rval):
             self._fire(msg="Attribute check for attribute: '{}' check: '{}' check_value: '{}' matched image value: '{}'".format(attr, check, (str(rval) if rval is not None else ''), img_val))

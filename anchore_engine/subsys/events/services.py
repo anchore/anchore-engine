@@ -18,7 +18,16 @@ class ServiceDownEvent(Event):
     __resource_type__ = _service_resource_type
 
     def __init__(self, user_id, name, host, url, cause):
-        super(ServiceOrphanedEvent, self).__init__(user_id=user_id, level='ERROR', message='Service down', resource_id=url,
+        super(ServiceDownEvent, self).__init__(user_id=user_id, level='ERROR', message='Service down', resource_id=url,
+                                                   details={'service_name': name, 'host_id': host, 'cause': cause})
+
+
+class ServiceRemovedEvent(Event):
+    __event_type__ = 'service_removed'
+    __resource_type__ = _service_resource_type
+
+    def __init__(self, user_id, name, host, url, cause):
+        super(ServiceRemovedEvent, self).__init__(user_id=user_id, level='ERROR', message='Service removed', resource_id=url,
                                                    details={'service_name': name, 'host_id': host, 'cause': cause})
 
 
