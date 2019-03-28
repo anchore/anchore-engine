@@ -1092,6 +1092,7 @@ def query_vulnerabilities(dbsession, request_inputs):
         pn_hash = {}
 
         # order_by ascending timestamp will result in dedup hash having only the latest information stored for return, if there are duplicate records for NVD
+
         vulnerabilities = dbsession.query(NvdMetadata).filter(NvdMetadata.name==id).order_by(asc(NvdMetadata.created_at)).all()
         if vulnerabilities:
             dedupped_return_hash = {}
