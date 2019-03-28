@@ -7,6 +7,7 @@ import copy
 import json
 import os
 import sys
+import datetime
 from twisted import web
 from twisted.application import service
 from twisted.application.internet import TimerService, StreamServerEndpointService
@@ -25,6 +26,20 @@ from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
 from anchore_engine import utils
+import faulthandler
+
+# For the debug CLI, require a code modification to enable it. This allows on-host edits of the script and restart, but no accidental config from env vars or config.
+enable_dangerous_debug_cli = False
+
+# Thread dumper is safer since read-only and only on local-host, so allow it to configure from env var
+enable_thread_dumper = (os.getenv('ANCHORE_ENABLE_DANGEROUS_THREAD_DUMP_API', 'false').lower() == 'true')
+
+if enable_dangerous_debug_cli or enable_thread_dumper:
+    from twisted.application import internet, service
+    from twisted.conch.insults import insults
+    from twisted.conch.manhole import ColoredManhole
+    from twisted.conch.telnet import TelnetTransport, TelnetBootstrapProtocol
+    from twisted.internet import protocol
 
 
 class CommonOptions(usage.Options):
@@ -47,6 +62,26 @@ class EmptyResource(Resource):
 
     def render_GET(self, request):
         return b''
+
+
+class ThreadDumperResource(Resource):
+    isLeaf = True
+
+    def __init__(self):
+        super().__init__()
+        logger.info("Initializing thread dumper resource")
+
+    def render_GET(self, request):
+        logger.info("Handling thread dump request")
+
+        try:
+            with open('/var/log/anchore/pid_{}_thread_dump-{}'.format(os.getpid(), datetime.datetime.now().isoformat()), 'w') as dest:
+                faulthandler.dump_traceback(dest, all_threads=True)
+        except:
+            logger.exception('Error dumping thread frames')
+            return b'Failed'
+
+        return b'Sucess'
 
 
 # simple twisted resource for version check route
@@ -164,6 +199,22 @@ class WsgiApiServiceMaker(object):
     def _get_api_monitor(self, service):
         return service.get_monitor_thread(monitor_thread_wrapper=LoopingCall)
 
+    def makeDebugCLIService(self, args):
+        """
+        This is dangerous, and should only ever be enabled by explicit user config and only for non-production use
+
+        :param args:
+        :return:
+        """
+
+        f = protocol.ServerFactory()
+        f.protocol = lambda: TelnetTransport(TelnetBootstrapProtocol,
+                                             insults.ServerProtocol,
+                                             args['protocolFactory'],
+                                             *args.get('protocolArgs', ()),
+                                             **args.get('protocolKwArgs', {}))
+        return internet.TCPServer(args['telnet'], f)
+
     def makeService(self, options):
 
         try:
@@ -204,6 +255,13 @@ class WsgiApiServiceMaker(object):
             s = self._build_api_service()
             s.setServiceParent(self.twistd_service)
 
+            if enable_dangerous_debug_cli:
+                logger.warn('Loading *dangerous* debug/telnet service as specified by debug config')
+                self.makeDebugCLIService({'protocolFactory': ColoredManhole,
+                                  'protocolArgs': (None,),
+                                  'telnet': 6023,
+                                  }).setServiceParent(self.twistd_service)
+
             return self.twistd_service
 
         except Exception as err:
@@ -237,6 +295,11 @@ class WsgiApiServiceMaker(object):
         logger.debug('Thread pool size stats. Min={}, Max={}'.format(reactor.getThreadPool().min, reactor.getThreadPool().max))
 
         self._add_resource(self.anchore_service.__service_api_version__.encode('utf-8'), wsgi_site)
+
+        if enable_thread_dumper:
+            logger.warn("Adding thread dump route for debugging since debug flag is set. This is dangerous and should not be done in normal production")
+            self._add_resource(b'threads', ThreadDumperResource())
+
         self.root_resource = web.resource.Resource()
 
         # Add nodes
@@ -298,7 +361,7 @@ class WsgiApiServiceMaker(object):
         try:
             if request.postpath:
                 #if request.postpath[0] != b'health' and request.postpath[0] != self._api_version_bytes:
-                if request.postpath[0] not in [b'health', b'version'] and request.postpath[0] != self._api_version_bytes:
+                if request.postpath[0] not in self.resource_nodes.keys() and request.postpath[0] != self._api_version_bytes:
                     request.postpath.insert(0, self._api_version_bytes)
                     request.path = b'/' + self._api_version_bytes + request.path
         except Exception as err:
