@@ -191,7 +191,7 @@ class RegexParamValidator(JsonSchemaValidator):
 
 
 class DelimitedStringValidator(RegexParamValidator):
-    __regex__ = '^\s*(\s*({item})\s*{delim})*\s*({item}){mult}\s*$'
+    __regex__ = r'^\s*(\s*({item})\s*{delim})*\s*({item}){mult}\s*$'
     __validator_description__ = 'A string of character delimited values validated by a regex'
     __validator_type__ = 'DelimitedString'
     __item_regex__ = '.*'
@@ -216,7 +216,7 @@ class DelimitedStringValidator(RegexParamValidator):
 
 
 class CommaDelimitedNumberListValidator(DelimitedStringValidator):
-    __item_regex__ = '\d+'
+    __item_regex__ = r'\d+'
     __validator_type__ = 'CommaDelimitedStringOfNumbers'
     __validator_description__ = 'Comma delimited list of numbers'
 
@@ -224,26 +224,26 @@ class CommaDelimitedNumberListValidator(DelimitedStringValidator):
 class NameVersionListValidator(DelimitedStringValidator):
     __validator_description__ = 'Comma delimited list of name/version strings of format: name|version.'
     __validator_type__ = 'CommaDelimitedStringOfNameVersionPairs'
-    __item_regex__ = '[^|,]+\|[^|,]+'
+    __item_regex__ = r'[^|,]+\|[^|,]+'
     __delim__ = ','
 
 
 class CommaDelimitedStringListValidator(DelimitedStringValidator):
-    __item_regex__ = '[^,]+'
+    __item_regex__ = r'[^,]+'
     __delim__ = ','
     __validator_type__ = 'CommaDelimitedStringList'
     __validator_description__ = 'Comma delimited list of strings'
 
 
 class PipeDelimitedStringListValidator(DelimitedStringValidator):
-    __item_regex__ = '[^|]+'
-    __delim__ = '\|'
+    __item_regex__ = r'[^|]+'
+    __delim__ = r'\|'
     __validator_type__ = 'PipeDelimitedStringList'
     __validator_description__ = 'Pipe delimited list of strings'
 
 
 class IntegerValidator(RegexParamValidator):
-    __regex__ = '^\s*[\d]+\s*$'
+    __regex__ = r'^\s*[\d]+\s*$'
     __validator_type__ = 'IntegerString'
     __validator_description__ = 'Single integer number as a string'
 
@@ -267,7 +267,7 @@ class EnumValidator(JsonSchemaValidator):
 
 class DelimitedEnumStringValidator(RegexParamValidator):
     __enums__ = []
-    __regex__ = '^\s*(({enums})\s*{delim}\s*)*({enums})\s*$'
+    __regex__ = r'^\s*(({enums})\s*{delim}\s*)*({enums})\s*$'
     __validator_type__ = 'DelimitedEnumString'
 
     def __init__(self, enum_choices, delimiter=','):
