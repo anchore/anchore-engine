@@ -80,8 +80,16 @@ class InternalServiceClient(object):
         :return:
         """
         try:
-            self._connect_timeout = connect_timeout
-            self._read_timeout = read_timeout
+            if connect_timeout is not None and connect_timeout > 0:
+                self._connect_timeout = connect_timeout
+            else:
+                self._connect_timeout = None
+
+            if read_timeout is not None and read_timeout > 0:
+                self._read_timeout = read_timeout
+            else:
+                self._read_timeout = None
+
             yield self
         finally:
             self._connect_timeout = None
