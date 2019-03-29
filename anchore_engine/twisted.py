@@ -44,7 +44,7 @@ if enable_dangerous_debug_cli or enable_thread_dumper:
 
 class CommonOptions(usage.Options):
     """
-    Default Anchroe CLI options for the twistd plugins
+    Default Anchore CLI options for the twistd plugins
     """
 
     optParameters = [
