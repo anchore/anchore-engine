@@ -366,8 +366,8 @@ class EvaluationCacheManager(object):
 
     def _inputs_changed(self, cache_timestamp):
         # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
-        feed_synced = max([group.last_sync if group.last_sync is not None else datetime.datetime.utcfromtimestamp(0) for feed in
-                DataFeeds.instance().list_metadata() for group in feed.groups]) > cache_timestamp
+        feed_group_updated_list = [group.last_sync if group.last_sync is not None else datetime.datetime.utcfromtimestamp(0) for feed in DataFeeds.instance().list_metadata() for group in feed.groups]
+        feed_synced = max(feed_group_updated_list) > cache_timestamp if feed_group_updated_list else False
 
         image_updated = self.image.last_modified > cache_timestamp
 
