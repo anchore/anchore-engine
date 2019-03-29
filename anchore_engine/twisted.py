@@ -244,6 +244,21 @@ class WsgiApiServiceMaker(object):
         site = server.Site(root)
         listen = self.anchore_service.configuration['listen']
 
+        # Disable the twisted access logging by overriding the log function as it uses a raw 'write' and cannot otherwise be disabled, iff enable_access_logging is set to False in either the service or global config
+        try:
+            eal = True
+            if "enable_access_logging" in self.anchore_service.configuration:
+                eal = self.anchore_service.configuration.get("enable_access_logging", True)
+            elif "enable_access_logging" in self.configuration:
+                eal = self.configuration.get("enable_access_logging", True)
+
+            if not eal:
+                def _null_logger(request):
+                    pass
+                site.log = _null_logger
+
+        except:
+            pass
 
         if str(self.anchore_service.configuration.get('ssl_enable', '')).lower() == 'true':
             try:
