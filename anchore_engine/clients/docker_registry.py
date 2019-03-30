@@ -161,6 +161,8 @@ def ping_docker_registry(registry_record):
 
     try:
         registry = registry_record['registry']
+        registry = registry.split('/', 1)[0]
+
         verify = registry_record['registry_verify']
         if registry in ['docker.io']:
             url = "https://index.docker.io"
@@ -188,7 +190,7 @@ def get_repo_tags(userId, image_info, registry_creds=None):
 
     registry = image_info['registry']
     try:
-        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, registry_creds=registry_creds)
+        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, image_info['repo'], registry_creds=registry_creds)
     except Exception as err:
         raise err    
 
@@ -218,7 +220,7 @@ def get_image_manifest(userId, image_info, registry_creds):
 
     registry = image_info['registry']
     try:
-        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, registry_creds=registry_creds)
+        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, image_info['repo'], registry_creds=registry_creds)
     except Exception as err:
         raise err    
 

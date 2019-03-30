@@ -1019,8 +1019,11 @@ def refresh_registry_creds(registry_records, dbsession):
                         dorefresh =False
 
                 if dorefresh:
+                    registry_parts = registry_record['registry'].split('/', 1)
+                    registry = registry_parts[0]
+
                     logger.debug("refreshing ecr registry: " + str(registry_record['userId']) + " : " + str(registry_record['registry']))
-                    ecr_data = aws_ecr.refresh_ecr_credentials(registry_record['registry'], registry_record['registry_user'], registry_record['registry_pass'])
+                    ecr_data = aws_ecr.refresh_ecr_credentials(registry, registry_record['registry_user'], registry_record['registry_pass'])
                     registry_record['registry_meta'] = json.dumps(ecr_data)
                     db_registries.update_record(registry_record, session=dbsession)
 

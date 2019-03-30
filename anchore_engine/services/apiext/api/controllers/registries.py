@@ -114,10 +114,10 @@ def create_registry(registrydata, validate=True):
         try:
             input_registry = registrydata.get('registry', None)
 
-            if input_registry:
-                # do some input string checking
-                if re.match(".*\/.*", input_registry):
-                    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
+            # if input_registry:
+            #     # do some input string checking
+            #     if re.match(".*\/.*", input_registry):
+            #         raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
 
         except Exception as err:
             httpcode = 409
@@ -161,8 +161,8 @@ def update_registry(registry, registrydata, validate=True):
                     raise Exception("registry name in path does not equal registry name in body")
 
                 # do some input string checking
-                if re.match(".*\/.*", input_registry):
-                    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
+                #if re.match(".*\/.*", input_registry):
+                #    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
         except Exception as err:
             httpcode = 409
             raise err
