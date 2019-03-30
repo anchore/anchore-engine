@@ -320,7 +320,7 @@ def make_response_policyeval(eval_record, params, catalog_client):
     return (ret)
 
 
-def make_response_image(image_record, include_detail=False):
+def make_response_image(image_record, include_detail=True):
     ret = image_record
 
     image_content = {'metadata': {}}
@@ -1145,188 +1145,6 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
         raise err
 
 
-def images(request_inputs):
-    """
-    DEPRECATED! Use the more granular functions above (list_images, analyze_image)
-
-    :param request_inputs:
-    :return:
-    """
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs.get('params', {})
-
-    return_object = {}
-    httpcode = 500
-
-    username, pw = user_auth
-    userId = request_inputs['userId']
-    fulltag = digest = tag = imageId = imageDigest = dockerfile = annotations = created_at_override = None
-
-    history = False
-    force = False
-    autosubscribe = True
-    query_fulltag = None
-
-
-    if params:
-        if 'history' in params:
-            history = params['history']
-
-        if 'force' in params:
-            force = params['force']
-
-        if 'autosubscribe' in params:
-            autosubscribe = params['autosubscribe']
-
-        if 'fulltag' in params:
-            query_fulltag = params['fulltag']
-
-    if bodycontent:
-        jsondata = json.loads(bodycontent)
-
-        digest = jsondata.get('digest')
-        tag = jsondata.get('tag')
-        dockerfile = jsondata.get('dockerfile')
-        annotations = jsondata.get('annotations')
-        archive_digest = jsondata.get('archive_digest')
-
-        ts = jsondata.get('created_at')
-        if ts:
-            try:
-                created_at_override = utils.rfc3339str_to_epoch(ts)
-            except Exception as err:
-                logger.debug("operation exception: " + str(err))
-
-                return_object = make_response_error(err, in_httpcode=500)
-                httpcode = return_object['httpcode']
-                return(return_object, httpcode)
-
-        autosubscribes = ['analysis_update']
-        if autosubscribe:
-            autosubscribes.append("tag_update")
-
-    client = internal_client_for(CatalogClient, request_inputs['userId'])
-
-    try:
-        if method == 'GET':
-            logger.debug("handling GET: ")
-            try:
-                return_object = []
-
-                # Query param fulltag has precedence for search
-                if query_fulltag:
-                    tag = query_fulltag
-                    imageId = imageDigest = digest = None
-                    image_records = client.list_images(tag=tag, history=history)
-                else:
-                    image_records = client.list_images(digest=digest, tag=tag, imageId=imageId, history=history)
-
-                for image_record in image_records:
-                    return_object.append(make_response_image(image_record, include_detail=params.get('detail')))
-                httpcode = 200
-            except Exception as err:
-                raise err
-
-        elif method == 'POST':
-            logger.debug("handling POST: input_tag={} input_digest={} input_force={}".format(tag, digest, force))
-            # if not, add it and set it up to be analyzed
-
-            if archive_digest:
-                # Do an archive restore, not a new analysis. Ignore all other fields.
-                restore_resp = client.restore_image(digest=archive_digest)
-                return restore_resp
-
-            if not tag:
-                # dont support digest add, yet
-                httpcode = 400
-                raise Exception("tag is required for image add")
-
-            if digest and tag:
-                if force:
-                    try:
-                        image_check = client.get_image(digest)
-                    except Exception as err:
-                        httpcode = 400
-                        raise Exception("image digest must already exist to force re-analyze using tag+digest")
-                elif not created_at_override:
-                    httpcode = 400
-                    raise Exception("must supply created_at override when adding a new image by tag+digest")
-
-            # add the image to the catalog
-            image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations, created_at=created_at_override)
-            imageDigest = image_record['imageDigest']
-
-            # finally, do any state updates and return
-            if image_record:
-                logger.debug("added image: " + str(imageDigest))
-
-                # auto-subscribe for NOW
-                for image_detail in image_record['image_detail']:
-                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-
-                    foundtypes = []
-                    try:
-                        subscription_records = client.get_subscription(subscription_key=fulltag)
-                    except Exception as err:
-                        subscription_records = []
-
-                    for subscription_record in subscription_records:
-                        if subscription_record['subscription_key'] == fulltag:
-                            foundtypes.append(subscription_record['subscription_type'])
-
-                    sub_types = anchore_engine.common.subscription_types
-                    for sub_type in sub_types:
-                        if sub_type in ['repo_update']:
-                            continue
-                        if sub_type not in foundtypes:
-                            try:
-                                default_active = False
-                                if sub_type in autosubscribes:
-                                    logger.debug("auto-subscribing image: " + str(sub_type))
-                                    default_active = True
-                                client.add_subscription({'active': default_active, 'subscription_type': sub_type, 'subscription_key': fulltag})
-                            except:
-                                try:
-                                    client.update_subscription({'subscription_type': sub_type, 'subscription_key': fulltag})
-                                except:
-                                    pass
-
-                # set the state of the image appropriately
-                currstate = image_record['analysis_status']
-                if not currstate:
-                    newstate = taskstate.init_state('analyze', None)
-                elif force or currstate == taskstate.fault_state('analyze'):
-                    newstate = taskstate.reset_state('analyze')
-                elif image_record['image_status'] == 'deleted':
-                    newstate = taskstate.reset_state('analyze')
-                else:
-                    newstate = currstate
-
-                if (currstate != newstate) or (force):
-                    logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
-                    image_record.update({'image_status': 'active', 'analysis_status': newstate})
-                    updated_image_record = client.update_image(imageDigest, image_record)
-                    if updated_image_record:
-                        image_record = updated_image_record[0]
-                else:
-                    logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
-
-                httpcode = 200
-                return_object = [make_response_image(image_record, include_detail=params.get('detail'))]
-            else:
-                httpcode = 500
-                raise Exception("failed to add image")
-
-    except Exception as err:
-        logger.debug("operation exception: " + str(err))
-        return_object = make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
-
-
 def images_imageDigest(request_inputs, imageDigest):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -1347,7 +1165,11 @@ def images_imageDigest(request_inputs, imageDigest):
 
             image_record = client.get_image(imageDigest)
             if image_record:
-                return_object = make_response_image(image_record, include_detail=params.get('detail'))
+                if 'detail' in params and not params.get('detail'):
+                    detail = False
+                else:
+                    detail = True
+                return_object = [make_response_image(image_record, include_detail=detail)]
                 httpcode = 200
             else:
                 httpcode = 404
