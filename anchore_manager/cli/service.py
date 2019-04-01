@@ -17,8 +17,7 @@ from watchdog.events import RegexMatchingEventHandler
 
 from anchore_engine.subsys import logger
 import anchore_engine.db.entities.common
-from anchore_engine.db.entities.exceptions import TableNotFoundError
-from anchore_engine.db.entities.exceptions import is_table_not_found
+#from anchore_engine.db.entities.exceptions import TableNotFoundError
 
 import anchore_manager.cli.utils
 
@@ -278,8 +277,8 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
         try:
             logger.info("Loading DB routines from module ({})".format(module_name))
             module = importlib.import_module(module_name + ".db.entities.upgrade")
-        except TableNotFoundError as ex:
-            logger.info("Initialized DB not found.")
+#        except TableNotFoundError as ex:
+#            logger.info("Initialized DB not found.")
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 

@@ -6,8 +6,6 @@ import importlib
 import time
 
 import anchore_engine.db.entities.common
-from anchore_engine.db.entities.exceptions import TableNotFoundError
-from anchore_engine.db.entities.exceptions import is_table_not_found
 from anchore_engine.subsys import logger
 
 import anchore_manager.cli.utils

@@ -7,27 +7,36 @@ NOTE: these are PostgreSQL specific, so any dialect change will require updates 
 
 from sqlalchemy.exc import ProgrammingError
 
+try:
+    from anchore_engine.subsys import logger, identities
+    # Separate logger for use during bootstrap when logging may not be fully configured
+    from twisted.python import log
+except:
+    import logging
+    logger = logging.getLogger(__name__)
+    log = logger
+
 PG_UNIQUE_CONSTRAINT_VIOLATION_CODE = '23505'
 PG_COULD_NOT_GET_ROWLOCK_CODE = '55P03'
 PG_RELATION_NOT_FOUND_CODE = '42P01'
 
 from anchore_engine.subsys import logger
 
-class AnchoreDbError(Exception):
-    pass
 
+def _get_pgcode_from_ex(ex):
+    pgcode = None
+    try:
+        pgcode = ex.orig.pgcode
+    except:
+        try:
+            pgcode = ex.orig.args[2]
+        except:
+            pass
 
-class DuplicateKeyError(AnchoreDbError):
-    pass
+    if not pgcode:
+        logger.warn("cannot extract PG code from driver exception - exception details: {}".format(ex))
 
-
-class LockAcquisitionError(AnchoreDbError):
-    pass
-
-
-class TableNotFoundError(AnchoreDbError):
-    pass
-
+    return(pgcode)
 
 def is_unique_violation(ex):
     """
@@ -36,7 +45,12 @@ def is_unique_violation(ex):
     :param ex: Exception object
     :return: Boolean
     """
-    return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_UNIQUE_CONSTRAINT_VIOLATION_CODE
+    ret = False
+    pgcode = _get_pgcode_from_ex(ex)
+    if pgcode and pgcode == PG_UNIQUE_CONSTRAINT_VIOLATION_CODE:
+        ret = True
+    return(ret)
+    #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_UNIQUE_CONSTRAINT_VIOLATION_CODE
 
 
 def is_lock_acquisition_error(ex):
@@ -46,8 +60,18 @@ def is_lock_acquisition_error(ex):
     :param ex: Exception object
     :return: Boolean
     """
-    return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_COULD_NOT_GET_ROWLOCK_CODE
+    ret = False
+    pgcode = _get_pgcode_from_ex(ex)
+    if pgcode and pgcode == PG_COULD_NOT_GET_ROWLOCK_CODE:
+        ret = True
+    return(ret)
+    #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_COULD_NOT_GET_ROWLOCK_CODE
 
 
 def is_table_not_found(ex):
-    return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and (str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE or str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE)
+    ret = False
+    pgcode = _get_pgcode_from_ex(ex)
+    if pgcode and pgcode == PG_RELATION_NOT_FOUND_CODE:
+        ret = True
+    return(ret)
+    #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and (str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE or str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE)
