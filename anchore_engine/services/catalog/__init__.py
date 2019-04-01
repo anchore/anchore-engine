@@ -308,7 +308,7 @@ def handle_service_watcher(*args, **kwargs):
                                                                            cause='no heartbeat from service in ({}) seconds'.format(
                                                                                max_service_cleanup_timer))
                                     except Exception as err:
-                                        logger.warn("attempt to remove service {}/{} failed - exception: {}".format(err))
+                                        logger.warn("attempt to remove service {}/{} failed - exception: {}".format(service.get('hostid'), service.get('servicename'), err))
                                     
                                 elif time.time() - service['heartbeat'] > max_service_orphaned_timer:
                                     # transition down service to orphaned
