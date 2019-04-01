@@ -39,6 +39,7 @@ from anchore_engine.subsys import logger as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.clients.services import internal_client_for, catalog
+from anchore_engine.apis.context import ApiRequestContextProxy
 
 authorizer = get_authorizer()
 
@@ -47,6 +48,9 @@ from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
 TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version', 'CVES']
+
+DEFAULT_CACHE_CONN_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
+DEFAULT_CACHE_READ_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for first byte timeout for policy eval cache
 
 # Toggle of lock usage, primarily for testing and debugging usage
 feed_sync_locking_enabled = True
@@ -174,11 +178,12 @@ def delete_image(user_id, image_id):
             #for pkg_vuln in img.java_vulnerabilities():
             #    db.delete(pkg_vuln)
             try:
-                mgr = EvaluationCacheManager(img, None, None)
+                conn_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_conn_timeout', DEFAULT_CACHE_CONN_TIMEOUT)
+                read_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_read_timeout', DEFAULT_CACHE_READ_TIMEOUT)
+                mgr = EvaluationCacheManager(img, None, None, conn_timeout, read_timeout)
                 mgr.flush()
             except Exception as ex:
                 log.exception("Could not delete evaluations for image {}/{} in the cache. May be orphaned".format(user_id, image_id))
-
 
             db.delete(img)
             db.commit()
@@ -234,7 +239,7 @@ class EvaluationCacheManager(object):
 
     __cache_bucket__ = 'policy-engine-evaluation-cache'
 
-    def __init__(self, image_object, tag, bundle):
+    def __init__(self, image_object, tag, bundle, storage_conn_timeout=-1, storage_read_timeout=-1):
         self.image = image_object
         self.tag = tag
         if bundle:
@@ -253,6 +258,8 @@ class EvaluationCacheManager(object):
             self.bundle_digest = None
 
         self._catalog_client = internal_client_for(catalog.CatalogClient, userId=self.image.user_id)
+        self._default_catalog_conn_timeout = storage_conn_timeout
+        self._default_catalog_read_timeout = storage_read_timeout
 
     def _digest_for_bundle(self):
         return hashlib.sha256(utils.ensure_bytes(json.dumps(self.bundle, sort_keys=True))).hexdigest()
@@ -281,7 +288,8 @@ class EvaluationCacheManager(object):
             if match.is_archive_ref():
                 bucket, key = match.archive_tuple()
                 try:
-                    data = self._catalog_client.get_document(bucket, key)
+                    with self._catalog_client.timeout_context(self._default_catalog_conn_timeout, self._default_catalog_read_timeout) as timeout_client:
+                        data = timeout_client.get_document(bucket, key)
                 except:
                     log.exception('Unexpected error getting document {}/{} from archive'.format(bucket, key))
                     data = None
@@ -300,7 +308,8 @@ class EvaluationCacheManager(object):
             retry = 3
             while retry > 0:
                 try:
-                    resp = self._catalog_client.delete_document(bucket, key)
+                    with self._catalog_client.timeout_context(self._default_catalog_conn_timeout, self._default_catalog_read_timeout) as timeout_client:
+                        resp = timeout_client.delete_document(bucket, key)
                     break
                 except:
                     log.exception('Could not delete policy eval from cache, will retry. Bucket={}, Key={}'.format(bucket, key))
@@ -339,7 +348,9 @@ class EvaluationCacheManager(object):
 
         # Send to archive
         key = 'sha256:' + hashlib.sha256(utils.ensure_bytes(str(eval.key_tuple()))).hexdigest()
-        resp = self._catalog_client.put_document(self.__cache_bucket__, key, result)
+        with self._catalog_client.timeout_context(self._default_catalog_conn_timeout, self._default_catalog_read_timeout) as timeout_client:
+            resp = timeout_client.put_document(self.__cache_bucket__, key, result)
+
         if not resp:
             raise Exception('Failed cache write to archive store')
 
@@ -355,8 +366,8 @@ class EvaluationCacheManager(object):
 
     def _inputs_changed(self, cache_timestamp):
         # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
-        feed_synced = max([group.last_sync if group.last_sync is not None else datetime.datetime.utcfromtimestamp(0) for feed in
-                DataFeeds.instance().list_metadata() for group in feed.groups]) > cache_timestamp
+        feed_group_updated_list = [group.last_sync if group.last_sync is not None else datetime.datetime.utcfromtimestamp(0) for feed in DataFeeds.instance().list_metadata() for group in feed.groups]
+        feed_synced = max(feed_group_updated_list) > cache_timestamp if feed_group_updated_list else False
 
         image_updated = self.image.last_modified > cache_timestamp
 
@@ -399,6 +410,7 @@ class EvaluationCacheManager(object):
 
         return True
 
+
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def check_user_image_inline(user_id, image_id, tag, bundle):
@@ -435,7 +447,9 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
             timer2 = time.time()
             try:
                 try:
-                    cache_mgr = EvaluationCacheManager(img_obj, tag, bundle)
+                    conn_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_conn_timeout', DEFAULT_CACHE_CONN_TIMEOUT)
+                    read_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_read_timeout', DEFAULT_CACHE_READ_TIMEOUT)
+                    cache_mgr = EvaluationCacheManager(img_obj, tag, bundle, conn_timeout, read_timeout)
                 except ValueError as err:
                     log.warn('Could not leverage cache due to error in bundle data: {}'.format(err))
                     cache_mgr = None
@@ -704,7 +718,9 @@ def ingress_image(ingress_request):
     req = ImageIngressRequest.from_dict(ingress_request)
     try:
         # Try this synchronously for now to see how slow it really is
-        t = ImageLoadTask(req.user_id, req.image_id, url=req.fetch_url)
+        conn_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_conn_timeout', DEFAULT_CACHE_CONN_TIMEOUT)
+        read_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_read_timeout', DEFAULT_CACHE_READ_TIMEOUT)
+        t = ImageLoadTask(req.user_id, req.image_id, url=req.fetch_url, content_conn_timeout=conn_timeout, content_read_timeout=read_timeout)
         result = t.execute()
         resp = ImageIngressResponse()
         if not result:
@@ -867,7 +883,8 @@ def _get_imageId_to_record(userId, dbsession=None):
             }
 
     return(imageId_to_record)
-        
+
+
 def query_images_by_package(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -957,7 +974,9 @@ def query_images_by_package(dbsession, request_inputs):
     return(return_object, httpcode)
 
 
-advisory_cache={}
+advisory_cache = {}
+
+
 def check_no_advisory(image):
     phash = hashlib.sha256(json.dumps([image.pkg_name, image.pkg_version, image.vulnerability_namespace_name]).encode('utf-8')).hexdigest()
     if phash not in advisory_cache:
@@ -1066,6 +1085,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
+
 def query_vulnerabilities(dbsession, request_inputs):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
@@ -1154,6 +1174,7 @@ def query_vulnerabilities(dbsession, request_inputs):
 
     return(return_object, httpcode)
 
+
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
     try:
@@ -1167,6 +1188,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
         session.close()
 
     return (return_object, httpcode)    
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_images_by_package_get(user_id, name=None, version=None, package_type=None):

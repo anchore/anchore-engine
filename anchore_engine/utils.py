@@ -380,7 +380,6 @@ rfc3339_date_input_fmts = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m
 
 def rfc3339str_to_epoch(rfc3339_str):
     return int(rfc3339str_to_datetime(rfc3339_str).timestamp())
-    #return int(dt.replace(tzinfo=datetime.timezone.utc).timestamp())
 
 def rfc3339str_to_datetime(rfc3339_str):
     """

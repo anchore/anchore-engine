@@ -394,7 +394,7 @@ class ImageLoadTask(IAsyncTask):
 
     __loader_class__ = ImageLoader
 
-    def __init__(self, user_id, image_id, url=None, force_reload=False):
+    def __init__(self, user_id, image_id, url=None, force_reload=False, content_conn_timeout=None, content_read_timeout=None):
         self.image_id = image_id
         self.user_id = user_id
         self.start_time = None
@@ -404,6 +404,8 @@ class ImageLoadTask(IAsyncTask):
         self.received_at = None,
         self.created_at = datetime.datetime.utcnow()
         self.force_reload = force_reload
+        self.content_conn_timeout = content_conn_timeout
+        self.content_read_timeout = content_read_timeout
 
     def json(self):
         return {
@@ -533,7 +535,8 @@ class ImageLoadTask(IAsyncTask):
             # Add auth if necessary
             try:
                 catalog_client = internal_client_for(CatalogClient, userId)
-                doc = catalog_client.get_document(bucket, name)
+                with catalog_client.timeout_context(self.content_conn_timeout, self.content_read_timeout) as timeout_client:
+                    doc = timeout_client.get_document(bucket, name)
                 return doc
             except:
                 log.exception('Error retrieving analysis json from the catalog service')
