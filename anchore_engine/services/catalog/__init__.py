@@ -5,6 +5,8 @@ import threading
 import time
 import pkg_resources
 
+from sqlalchemy.exc import IntegrityError
+
 # anchore modules
 import anchore_engine.clients.anchoreio
 import anchore_engine.common.helpers
@@ -1450,9 +1452,15 @@ class CatalogService(ApiService):
                                     if not rc:
                                         raise Exception("policy bundle DB add failed")
                             except Exception as err:
-                                logger.error("could not load up default bundle for user - exception: " + str(err))
+                                if isinstance(err, IntegrityError):
+                                    logger.warn("another process has already initialized, continuing")
+                                else:
+                                    logger.error("could not load up default bundle for user - exception: " + str(err))
                 except Exception as err:
-                    raise Exception("unable to initialize default user data - exception: " + str(err))
+                    if isinstance(err, IntegrityError):
+                        logger.warn("another process has already initialized, continuing")
+                    else:
+                        raise Exception("unable to initialize default user data - exception: " + str(err))
 
 
 watchers = {

@@ -4,6 +4,8 @@ import pkg_resources
 import os
 import retrying
 
+from sqlalchemy.exc import IntegrityError
+
 # anchore modules
 import anchore_engine.clients.services.common
 import anchore_engine.subsys.servicestatus
@@ -126,6 +128,7 @@ def _init_distro_mappings():
     # set up any data necessary at system init
     try:
         logger.info('Checking policy engine db initialization. Checking initial set of distro mappings')
+
         with session_scope() as dbsession:
             distro_mappings = dbsession.query(DistroMapping).all()
 
@@ -136,7 +139,11 @@ def _init_distro_mappings():
 
         logger.info('Distro mapping initialization complete')
     except Exception as err:
-        raise Exception("unable to initialize default distro mappings - exception: " + str(err))
+
+        if isinstance(err, IntegrityError):
+            logger.warn("another process has already initialized, continuing")
+        else:
+            raise Exception("unable to initialize default distro mappings - exception: " + str(err))
 
     return True
 
