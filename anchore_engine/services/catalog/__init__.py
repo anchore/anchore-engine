@@ -228,7 +228,7 @@ def handle_service_watcher(*args, **kwargs):
 
         with db.session_scope() as dbsession:
             mgr = manager_factory.for_session(dbsession)
-            userId, password = mgr.get_system_credentials()
+            event_account = anchore_engine.configuration.localconfig.ADMIN_ACCOUNT_NAME
 
             anchore_services = db_services.get_all(session=dbsession)
             # update the global latest service record dict in services.common
@@ -273,7 +273,7 @@ def handle_service_watcher(*args, **kwargs):
                                         max_service_heartbeat_timer)
 
                                     # Trigger an event to log the down service
-                                    event = events.ServiceDownEvent(user_id=userId, name=service['servicename'],
+                                    event = events.ServiceDownEvent(user_id=event_account, name=service['servicename'],
                                                                         host=service['hostid'],
                                                                         url=service['base_url'],
                                                                         cause='no heartbeat from service in ({}) seconds'.format(
@@ -302,7 +302,7 @@ def handle_service_watcher(*args, **kwargs):
                                         service_update_record = None
                                         
                                         # Trigger an event to log the orphaned service, only on transition
-                                        event = events.ServiceRemovedEvent(user_id=userId, name=removed_servicename,
+                                        event = events.ServiceRemovedEvent(user_id=event_account, name=removed_servicename,
                                                                            host=removed_hostid,
                                                                            url=removed_base_url,
                                                                            cause='no heartbeat from service in ({}) seconds'.format(
@@ -322,7 +322,7 @@ def handle_service_watcher(*args, **kwargs):
 
                                     if service['status_message'] != taskstate.orphaned_state('service_status'): 
                                         # Trigger an event to log the orphaned service, only on transition
-                                        event = events.ServiceOrphanedEvent(user_id=userId, name=service['servicename'],
+                                        event = events.ServiceOrphanedEvent(user_id=event_account, name=service['servicename'],
                                                                             host=service['hostid'],
                                                                             url=service['base_url'],
                                                                             cause='no heartbeat from service in ({}) seconds'.format(
