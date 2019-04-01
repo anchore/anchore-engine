@@ -1149,6 +1149,7 @@ paths:
         type: string
         description: "registry Id object to get"
         required: true
+        format: path
       produces:
       - "application/json"
       responses:
@@ -1169,6 +1170,7 @@ paths:
         type: string
         description: "registry Id object to delete"
         required: true
+        format: path
       produces:
       - "application/json"
       responses:
@@ -1189,6 +1191,7 @@ paths:
         type: string
         description: "registry Id of object to update"
         required: true
+        format: path
       - name: 'validate'
         in: query
         type: boolean

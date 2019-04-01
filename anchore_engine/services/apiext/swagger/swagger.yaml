@@ -1115,6 +1115,7 @@ paths:
         in: path
         required: true
         type: string
+        format: path
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -1134,6 +1135,7 @@ paths:
         in: path
         required: true
         type: string
+        format: path
       - name: 'validate'
         in: query
         type: boolean
@@ -1167,6 +1169,7 @@ paths:
         in: path
         required: true
         type: string
+        format: path
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -3045,7 +3048,7 @@ definitions:
         description: Type of registry
       registry:
         type: string
-        description: hostname:port string for accessing the registry, as would be used in a docker pull operation
+        description: hostname:port string for accessing the registry, as would be used in a docker pull operation. May include some or all of a repository and wildcards (e.g. docker.io/library/* or gcr.io/myproject/myrepository)
       registry_verify:
         type: boolean
         description: Use TLS/SSL verification for the registry URL
