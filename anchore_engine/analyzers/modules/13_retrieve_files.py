@@ -36,18 +36,18 @@ if len(files_to_store) <= 0:
 outputdata = {}
 with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='r', format=tarfile.PAX_FORMAT) as tfl:
     for name in files_to_store:
-        #thefile = '/'.join([rootfsdir, name])
         thefile = re.sub("^/+", "", name)
-        member = tfl.getmember(thefile)
-        #if os.path.isfile(thefile):
-        if member.isreg():
+        try:
+            member = tfl.getmember(thefile)
+        except:
+            member = None
+
+        if member and member.isreg():
             b64buf = ""
             try:
-                #with open(thefile, 'r') as FH:
                 with tfl.extractfile(member) as FH:
                     buf = FH.read()
                     b64buf = anchore_engine.utils.ensure_str(base64.b64encode(buf))
-                    #b64buf = str(base64.b64encode(buf.encode('utf-8')), 'utf-8')
                 outputdata[name] = b64buf
             except Exception as err:
                 print ("WARN: exception while reading/encoding file {} - exception: {}".format(name, err))
