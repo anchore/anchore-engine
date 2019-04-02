@@ -541,7 +541,7 @@ def _init_policy(accountname, config):
     if len(policies) == 0:
         logger.debug("Account {} has no policy bundle - installing default".format(accountname))
 
-        if 'default_bundle_file' in config and os.path.exists(config['default_bundle_file']):
+        if config.get('default_bundle_file', None) and os.path.exists(config['default_bundle_file']):
             logger.info("loading def bundle: " + str(config['default_bundle_file']))
             try:
                 default_bundle = {}
