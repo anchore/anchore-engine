@@ -466,7 +466,6 @@ class ImageLoader(object):
         md5_checksums = analysis_report_json.get('file_checksums', {}).get('files.md5sums', {}).get('base', {})
         sha256_checksums = analysis_report_json.get('file_checksums', {}).get('files.sha256sums', {}).get('base', {})
         sha1_checksums = analysis_report_json.get('file_checksums', {}).get('files.sha1sums', {}).get('base', {})
-        non_pkged = analysis_report_json.get('file_list', {}).get('files.nonpkged', {}).get('base', {})
         suids = analysis_report_json.get('file_suids', {}).get('files.suids', {}).get('base', {})
         pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', {})
 

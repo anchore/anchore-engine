@@ -73,7 +73,7 @@ elif distrodict['flavor'] == "DEB":
         print("WARN: failed to get package list from DPKG: " + str(err))
 
     try:
-        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles(dpkgdbdir)
+        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles_from_squashtar(dpkgdbdir, squashtar)
         for pkgfile in list(dpkgfiles.keys()):
             pkgfilesall[pkgfile] = "DPKGFILE"
 

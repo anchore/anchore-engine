@@ -203,97 +203,6 @@ def get_distro_from_squashtar(squashtar):
 
     return(meta)
 
-def get_distro_from_path(inpath):
-
-    meta = {
-        'DISTRO':None,
-        'DISTROVERS':None,
-        'LIKEDISTRO':None
-    }
-
-    if os.path.exists('/'.join([inpath,"/etc/os-release"])):
-        with open('/'.join([inpath,"/etc/os-release"]), 'r') as FH:
-            for l in FH.readlines():
-                l = l.strip()
-                #l = l.decode('utf8')
-                try:
-                    (key, val) = l.split("=")
-                    val = re.sub(r'"', '', val)
-                    if key == "ID":
-                        meta['DISTRO'] = val
-                    elif key == "VERSION_ID":
-                        meta['DISTROVERS'] = val
-                    elif key == "ID_LIKE":
-                        meta['LIKEDISTRO'] = ','.join(val.split())
-                except:
-                    pass
-
-    elif os.path.exists('/'.join([inpath, "/etc/system-release-cpe"])):
-
-        with open('/'.join([inpath, "/etc/system-release-cpe"]), 'r') as FH:
-            for l in FH.readlines():
-                l = l.strip()
-                #l = l.decode('utf8')
-                try:
-                    distro = l.split(':')[2]
-                    vers = l.split(':')[4]
-                    meta['DISTRO'] = distro
-                    meta['DISTROVERS'] = vers
-                except:
-                    pass
-
-    elif os.path.exists('/'.join([inpath, "/etc/redhat-release"])):
-        with open('/'.join([inpath, "/etc/redhat-release"]), 'r') as FH:
-            for l in FH.readlines():
-                l = l.strip()
-                #l = l.decode('utf8')
-                try:
-                    distro = vers = None
-                    patt = re.match(".*CentOS.*", l)
-                    if patt:
-                        distro = 'centos'
-
-                    patt = re.match(".*(\d+\.\d+).*", l)
-                    if patt:
-                        vers = patt.group(1)
-
-                    if distro:
-                        meta['DISTRO'] = distro
-                    if vers:
-                        meta['DISTROVERS'] = vers
-                except:
-                    pass
-
-    elif os.path.exists('/'.join([inpath, "/bin/busybox"])):
-        meta['DISTRO'] = "busybox"
-        try:
-            sout = subprocess.check_output(['/'.join([inpath, "/bin/busybox"])])
-            fline = str(sout.splitlines(True)[0], 'utf-8')
-            slist = fline.split()
-            meta['DISTROVERS'] = slist[1]
-        except:
-            meta['DISTROVERS'] = "0"
-
-    if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and os.path.exists('/'.join([inpath, "/etc/debian_version"])):
-        with open('/'.join([inpath, "/etc/debian_version"]), 'r') as FH:
-            meta['DISTRO'] = 'debian'
-            for line in FH.readlines():
-                line = line.strip()
-                patt = re.match("(\d+)\..*", line)
-                if patt:
-                    meta['DISTROVERS'] = patt.group(1)
-                elif re.match(".*sid.*", line):
-                    meta['DISTROVERS'] = 'unstable'
-
-    if not meta['DISTRO']:
-        meta['DISTRO'] = "Unknown"
-    if not meta['DISTROVERS']:
-        meta['DISTROVERS'] = "0"
-    if not meta['LIKEDISTRO']:
-        meta['LIKEDISTRO'] = meta['DISTRO']
-
-    return(meta)
-
 def grouper(inlist, chunksize):
     return (inlist[pos:pos + chunksize] for pos in range(0, len(inlist), chunksize))
 
@@ -498,7 +407,7 @@ def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
 
     return(allfiles)
         
-def get_files_from_squashtar(squashtar, inpath=None):
+def get_files_from_squashtar(squashtar):
 
     filemap = {}
     allfiles = {}
@@ -517,7 +426,7 @@ def get_files_from_squashtar(squashtar, inpath=None):
 
                 finfo = {}
                 finfo['name'] = filename
-                finfo['fullpath'] = filename #re.sub("^{}".format(inpath), "", os.path.normpath(osfilename))
+                finfo['fullpath'] = filename 
                 finfo['size'] = member.size
                 #finfo['mode'] = member.mode
                 modemask = 0o00000000
@@ -567,7 +476,7 @@ def get_files_from_squashtar(squashtar, inpath=None):
                         dstlist = finfo['linkdst'].split('/')
                         srclist = finfo['name'].split('/')
                         srcpath = srclist[0:-1]
-                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], osfilename)) #re.sub("^{}".format(inpath), "", os.path.normpath(os.path.join(finfo['linkdst'], osfilename)))
+                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], osfilename)) 
                     finfo['linkdst_fullpath'] = fullpath
 
                 fullpath = finfo['fullpath']
@@ -603,94 +512,6 @@ def get_files_from_squashtar(squashtar, inpath=None):
 
     return(filemap, allfiles)
 
-def get_files_from_path(inpath):
-    filemap = {}
-    allfiles = {}
-    real_root = os.open('/', os.O_RDONLY)
-
-    try:
-        #os.chroot(inpath)
-        #for root, dirs, files in os.walk('/', followlinks=True):
-        #for root, dirs, files in os.walk('/', followlinks=False):
-        for root, dirs, files in os.walk(inpath, followlinks=False):
-            for name in dirs + files:
-                filename = re.sub("^{}".format(inpath), "", os.path.join(root, name)) #.decode('utf8')
-                osfilename = os.path.join(root, name)
-
-                fstat = os.lstat(osfilename)
-
-                finfo = {}
-                finfo['name'] = filename
-                finfo['fullpath'] = re.sub("^{}".format(inpath), "", os.path.normpath(osfilename))
-                finfo['size'] = fstat.st_size
-                finfo['mode'] = fstat.st_mode
-                finfo['uid'] = fstat.st_uid
-                finfo['gid'] = fstat.st_gid
-                
-                mode = finfo['mode']
-                finfo['linkdst'] = None
-                finfo['linkdst_fullpath'] = None
-                if S_ISREG(mode):
-                    finfo['type'] = 'file'
-                elif S_ISDIR(mode):
-                    finfo['type'] = 'dir'
-                elif S_ISLNK(mode):
-                    finfo['type'] = 'slink'
-                    finfo['linkdst'] = re.sub("^{}".format(inpath), "", os.readlink(osfilename))
-                elif S_ISCHR(mode) or S_ISBLK(mode):
-                    finfo['type'] = 'dev'
-                else:
-                    finfo['type'] = 'UNKNOWN'
-
-                if finfo['type'] == 'slink' or finfo['type'] == 'hlink':
-                    if re.match("^/", finfo['linkdst']):
-                        fullpath = finfo['linkdst']
-                    else:
-                        dstlist = finfo['linkdst'].split('/')
-                        srclist = finfo['name'].split('/')
-                        srcpath = srclist[0:-1]
-                        fullpath = re.sub("^{}".format(inpath), "", os.path.normpath(os.path.join(finfo['linkdst'], osfilename)))
-                    finfo['linkdst_fullpath'] = fullpath
-
-                fullpath = re.sub("^{}".format(inpath), "", os.path.realpath(osfilename))
-
-                finfo['othernames'] = {}
-                for f in [fullpath, finfo['linkdst_fullpath'], finfo['linkdst'], finfo['name']]:
-                    if f:
-                        finfo['othernames'][f] = True
-
-                allfiles[finfo['name']] = finfo
-
-        # first pass, set up the basic file map
-        for name in list(allfiles.keys()):
-            finfo = allfiles[name]
-            finfo['othernames'][name] = True
-
-            filemap[name] = finfo['othernames']
-            for oname in finfo['othernames']:
-                filemap[oname] = finfo['othernames']
-
-        # second pass, include second order
-        newfmap = {}
-        count = 0
-        while newfmap != filemap or count > 5:
-            count += 1
-            filemap.update(newfmap)
-            newfmap.update(filemap)
-            for mname in list(newfmap.keys()):
-                for oname in list(newfmap[mname].keys()):
-                    newfmap[oname].update(newfmap[mname])
-
-    except Exception as err:
-        traceback.print_exc()
-        print(str(err))
-        pass
-    finally:
-        #os.fchdir(real_root)
-        #os.chroot('.')
-        pass
-
-    return(filemap, allfiles)
 
 ### Package helpers
 
@@ -713,23 +534,6 @@ def rpm_get_all_packages_from_squashtar(unpackdir, squashtar):
         raise ValueError("could not get package list from RPM database: " + str(err))
 
     return(rpms, rpmdbdir) 
-
-def rpm_get_all_packages(unpackdir):
-    rpms = {}
-    rpmdbdir = rpm_prepdb(unpackdir)
-    try:
-        sout = subprocess.check_output(['rpm', '--dbpath='+rpmdbdir, '--queryformat', '%{NAME} %{VERSION} %{RELEASE} %{ARCH}\n', '-qa'], stderr=subprocess.STDOUT)
-        for l in sout.splitlines():
-            l = l.strip()
-            l = str(l, 'utf-8')
-            #l = l.decode('utf8')
-            (name, vers, rel, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4)
-            rpms[name] = {'version':vers, 'release':rel, 'arch':arch}
-    except Exception as err:
-        print(err.output)
-        raise ValueError("could not get package list from RPM database: " + str(err))
-
-    return(rpms)
 
 def rpm_get_all_pkgfiles(unpackdir):
     rpmfiles = {}
@@ -969,43 +773,11 @@ def dpkg_get_all_packages_from_squashtar(unpackdir, squashtar):
     ret = (all_packages, actual_packages, other_packages, dpkgdbdir)
     return(ret)
 
-def dpkg_get_all_packages(unpackdir):
-    actual_packages = {}
-    all_packages = {}
-    other_packages = {}
-    cmd = ["dpkg-query", "--admindir={}".format(unpackdir), "-W", "-f="+"${Package} ${Version} ${source:Package} ${source:Version} ${Architecture}\\n"]
-    try:
-        sout = subprocess.check_output(cmd)
-        for l in sout.splitlines(True):
-            l = l.strip()
-            l = str(l, 'utf-8')
-            (p, v, sp, sv, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4, 5)
-            if p and v:
-                if p not in actual_packages:
-                    actual_packages[p] = {'version':v, 'arch':arch}
-                if p not in all_packages:
-                    all_packages[p] = {'version':v, 'arch':arch}
-            if sp and sv:
-                if sp not in all_packages:
-                    all_packages[sp] = {'version':sv, 'arch':arch}
-            if p and v and sp and sv:
-                if p == sp and v != sv:
-                    other_packages[p] = [{'version':sv, 'arch':arch}]
-
-    except Exception as err:
-        print("Could not run command: " + str(cmd))
-        print("Exception: " + str(err))
-        print("Please ensure the command 'dpkg' is available and try again")
-        raise err
-
-    ret = (all_packages, actual_packages, other_packages)
-    return(ret)
-
-def dpkg_get_all_pkgfiles(unpackdir):
+def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     allfiles = {}
 
     try:
-        (allpkgs, actpkgs, othpkgs) = dpkg_get_all_packages(unpackdir)    
+        (allpkgs, allpkgs_simple, actpkgs, othpkgs, dpkgdbdir) = dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar)
         cmd = ["dpkg-query", "--admindir={}".format(os.path.join(unpackdir)), "-L"] + list(actpkgs.keys())
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines():
@@ -1032,7 +804,6 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
 
-    #cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}-${source:Version}|ANCHORETOK|${Maintainer}\\n"]
     cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}\\n"]
     try:
         sout = subprocess.check_output(cmd)
@@ -1693,63 +1464,6 @@ def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
         raise Exception("WARN: could not parse apk DB file, looking for file checksums - exception: " + str(err))
 
     return(result)
-
-
-def verify_file_packages(unpackdir, flavor):
-    if flavor == 'RHEL':
-        return(rpm_verify_file_packages(unpackdir))
-    else:
-        return(generic_verify_file_packages(unpackdir))
-            
-def generic_verify_file_packages(unpackdir):
-    return({}, None, "", "", 255)
-
-def rpm_verify_file_packages(unpackdir):
-
-    rootfs = os.path.join(unpackdir, 'rootfs')
-    verify_output = verify_error = ""
-    verify_exitcode = 255
-
-    tmpdbpath = prepdbpath = None
-    try:
-
-        prepdbpath = rpm_prepdb(unpackdir)
-        if not os.path.exists(prepdbpath):
-            raise Exception("no prepdbpath created ("+str(prepdbpath)+")")
-
-        tmpdbpath = os.path.join(rootfs, 'tmprpmdb')
-        shutil.copytree(prepdbpath, tmpdbpath)
-        if not os.path.exists(tmpdbpath):
-            raise Exception("no tmpdbpath created ("+str(tmpdbpath)+")")
-
-    except:
-        if tmpdbpath and os.path.exists(tmpdbpath):
-            shutil.rmtree(tmpdbpath)
-        raise Exception("failed to prep environment for rpm verify - exception: " + str(err))
-
-    try:
-        verify_cmd = 'rpm --root=' + rootfs + ' --dbpath=/tmprpmdb/' + ' --verify -a'
-        pipes = subprocess.Popen(verify_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        o, e = pipes.communicate()
-        verify_exitcode = pipes.returncode
-        verify_output = str(o, 'utf-8')
-        verify_error = str(e, 'utf-8')
-    except Exception as err:
-        raise ValueError("could not perform verify against RPM database: " + str(err))
-    finally:
-        if os.path.exists(tmpdbpath):
-            shutil.rmtree(tmpdbpath)
-
-    verify_hash = {}
-    for line in verify_output.splitlines():
-        el = line.split()
-        file = el[-1]
-        vresult = el[0]
-        verify_hash[file] = vresult
-
-    return(verify_hash, verify_cmd, verify_output, verify_error, verify_exitcode)
-
-
 
 
 ##### File IO helpers
