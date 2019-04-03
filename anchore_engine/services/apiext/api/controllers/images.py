@@ -1056,7 +1056,8 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
         elif source.get('digest'):
             # Do digest-based add
             tag = source['digest']['tag']
-            digest = source['digest']['pullstring']
+            digest_info = anchore_engine.utils.parse_dockerimage_string(source['digest']['pullstring'])
+            digest = digest_info['digest']
 
             ts = source.get('creation_timestamp_override')
             if ts:
@@ -1068,7 +1069,6 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
             if force:
                 # Grab the trailing digest sha section and ensure it exists
                 try:
-                    digest = digest.rsplit('@')[1]
                     image_check = client.get_image(digest)
                 except Exception as err:
                     raise Exception("image digest must already exist to force re-analyze using tag+digest")
