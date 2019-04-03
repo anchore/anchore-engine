@@ -82,7 +82,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
                     logger.exception(e)
                     raise e
             else:
-                raise e
+                raise DriverConfigurationError(e)
 
     def _build_key(self, userId, usrBucket, key):
         return self._key_format.format(prefix=self.prefix, userid=userId, container=usrBucket, key=key)

@@ -1,0 +1,1 @@
+[{"Vulnerability": {"NamespaceName": "ubuntu:16.10", "Severity": "Low", "Link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2015-8239", "Name": "CVE-2015-8239", "Description": "race condition checking digests/checksums in sudoers"}}]

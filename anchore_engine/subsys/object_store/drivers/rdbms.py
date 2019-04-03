@@ -149,6 +149,7 @@ class DbDriver(ObjectStorageDriver):
                 result = db_objectstorage.get(userId, bucket, key, session=dbsession)
                 if result and 'content' in result:
                     data = result.get('content')
+                    # Clean return of empty
                     if data is None:
                         return b''
                     else:

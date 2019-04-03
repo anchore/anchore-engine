@@ -5,7 +5,7 @@ import urllib.parse
 from anchore_engine import utils
 from anchore_engine.subsys import logger
 from .interface import ObjectStorageDriver
-from anchore_engine.subsys.object_store.exc import DriverConfigurationError, ObjectKeyNotFoundError, BadCredentialsError
+from anchore_engine.subsys.object_store.exc import DriverConfigurationError, ObjectKeyNotFoundError, BadCredentialsError, BucketNotFoundError
 
 class S3ObjectStorageDriver(ObjectStorageDriver):
     """
@@ -62,7 +62,11 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         if not self.bucket_name:
             raise ValueError('Cannot configure s3 driver with out a provided bucket to use')
 
-        self._check_creds()
+        try:
+            self._check_creds()
+        except BucketNotFoundError:
+            pass
+
         self._check_bucket()
 
         self.prefix = self.config.get('prefix', '')
@@ -71,15 +75,27 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         try:
             self.s3_client.get_bucket_location(Bucket=self.bucket_name)
         except Exception as ex:
-            if type(ex).__name__ == 'ClientError' and hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [403, 401]:
+            if hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [403, 401]:
+                # Permission denied
                 raise BadCredentialsError(creds_dict=self.session.get_credentials().__dict__, endpoint=self.s3_client._endpoint, cause=ex)
+            elif hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [400]:
+                # Signature mismatch error (bad request), usually a wrong secret key for a valid access key
+                raise BadCredentialsError(creds_dict=self.session.get_credentials().__dict__, endpoint=self.s3_client._endpoint, cause=ex)
+            elif hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [404]:
+                raise BucketNotFoundError(self.bucket_name)
+            else:
+                logger.error('Got cred check error: {}'.format(ex.response.get('ResponseMetadata')))
+                raise ex
 
     def _check_bucket(self):
         try:
             self.s3_client.get_bucket_location(Bucket=self.bucket_name)
         except Exception as ex:
-            if type(ex).__name__ == 'NoSuchBucket' and self.create_bucket:
-                self.s3_client.create_bucket(Bucket=self.bucket_name)
+            if hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [404]:
+                if self.create_bucket:
+                    self.s3_client.create_bucket(Bucket=self.bucket_name)
+                else:
+                    raise BucketNotFoundError(self.bucket_name)
             else:
                 logger.error(
                     'Error checking configured bucket for location during driver preflight check. Bucket = {}. Error = {}'.format(

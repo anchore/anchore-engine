@@ -22,6 +22,35 @@ log_level = None
 _log_to_db = None
 _log_to_stdout = False
 
+
+def enable_test_logging(level='WARN', outfile=None):
+    """
+    Use the bootstrap logger for logging in test code (as root logger), for intercept by pytest etc. This code should *only* ever be called in code from test/
+
+    :return:
+    """
+    global bootstrap_logger_enabled, bootstrap_logger, log_level
+
+    if log_level:
+        level = [x for x in list(log_level_map.items()) if x[1] == log_level]
+        # now select the right element of the tuple
+        if level:
+            level = level[0][0]
+            if level == 'SPEW':
+                level = 'DEBUG'
+    else:
+        level = 'INFO'
+
+    prefix = 'test'
+    if outfile:
+        logging.basicConfig(level=level, filename=outfile, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+    else:
+        logging.basicConfig(level=level, stream=sys.stdout, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+
+    bootstrap_logger = logging.getLogger()
+    bootstrap_logger_enabled = True
+
+
 def enable_bootstrap_logging(service_name=None):
     """
     Turn on the bootstrap logger, which provides basic stdout logs until the main twisted logger is online and ready.

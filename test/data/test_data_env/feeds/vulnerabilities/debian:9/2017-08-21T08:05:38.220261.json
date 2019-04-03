@@ -1,0 +1,1 @@
+[{"Vulnerability": {"FixedIn": [{"VersionFormat": "dpkg", "NamespaceName": "debian:9", "Version": "None", "Name": "openjpeg2"}], "NamespaceName": "debian:9", "Link": "https://security-tracker.debian.org/tracker/CVE-2017-12982", "Name": "CVE-2017-12982", "Severity": "Unknown"}}]

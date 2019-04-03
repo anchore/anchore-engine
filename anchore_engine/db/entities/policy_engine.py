@@ -137,8 +137,7 @@ class NpmMetadata(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     def __repr__(self):
-        return '<{} name={}, sourcepkg={}, created_at={}>'.format(self.__class__, self.name, self.sourcepkg,
-                                                                              self.created_at.isoformat())
+        return '<{} name={}, sourcepkg={}, created_at={}>'.format(self.__class__, self.name, self.sourcepkg, self.created_at)
 
     def key_tuple(self):
         return self.name
@@ -528,7 +527,7 @@ class ImagePackage(Base):
         props = {}
         for line in filebuf.splitlines():
             #line = anchore_engine.utils.ensure_str(line)
-            if not re.match("\s*(#.*)?$", line):
+            if not re.match(r"\s*(#.*)?$", line):
                 kv = line.split('=')
                 key = kv[0].strip()
                 value = '='.join(kv[1:]).strip()
@@ -1186,13 +1185,13 @@ class VersionPreservingDistroMapper(IDistroMapper):
         """
 
         # Parse down to major, minor only if has a subminor
-        patt = re.match('(\d+)\.(\d+)\.(\d+)', distro_version)
+        patt = re.match(r'(\d+)\.(\d+)\.(\d+)', distro_version)
         if patt:
             major, minor, subminor = patt.groups()
             return [distro_version, '{}.{}'.format(major, minor), '{}'.format(major)]
 
         # Parse dow to only major
-        patt = re.match('(\d+)\.(\d+)', distro_version)
+        patt = re.match(r'(\d+)\.(\d+)', distro_version)
         if patt:
             major, minor = patt.groups()
             return [distro_version, '{}.{}'.format(major, minor), '{}'.format(major)]

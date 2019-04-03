@@ -162,7 +162,7 @@ class FeedClient(IFeedClient):
             raise e
 
 
-def get_client(feeds_url=None, token_url=None, client_url=None, user=tuple(), conn_timeout=None, read_timeout=None):
+def get_client(feeds_url=None, token_url=None, client_url=None, user=tuple(), conn_timeout=None, read_timeout=None, ssl_verify=None):
     """
     Returns a configured client based on the local config. Reads configuration from the loaded system configuration.
 
@@ -178,6 +178,17 @@ def get_client(feeds_url=None, token_url=None, client_url=None, user=tuple(), co
         if not conf:
             logger.error('No configuration available. Cannot initialize feed client')
             raise ValueError('None for local config')
+    else:
+        conf = {
+            'feeds': {
+                'connection_timeout_seconds': conn_timeout,
+                'read_timeout_seconds': read_timeout,
+                'url': feeds_url,
+                'token_url': token_url,
+                'client_url': client_url,
+                'ssl_verify': ssl_verify
+            }
+        }
 
     if not conn_timeout:
         conn_timeout = conf.get('feeds', {}).get('connection_timeout_seconds')

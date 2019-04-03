@@ -1,0 +1,149 @@
+{
+  "comment": "Default policy bundle based on default policy in Anchore CLI",
+  "name": "AnchoreUserDefault",
+  "created_at": 1493412994,
+  "id": "bad_policy_id",
+  "whitelists": [
+    {
+      "comment": "Default Global Whitelist",
+      "items": [],
+      "version": "1_0",
+      "name": "Global Whitelist",
+      "id": "912937b6-05fb-472f-bfbe-834c3562f32d"
+    }
+  ],
+  "version": "1_0",
+  "last_modified": 1493412994,
+  "policies": [
+    {
+      "comment": "Default policy from Anchore CLI",
+      "rules": [
+        {
+          "action": "STOP",
+          "gate": "DOCKERFILECHECK",
+          "trigger": "NOFROM",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "DOCKERFILECHECK",
+          "trigger": "NOTAG",
+          "params": []
+        },
+        {
+          "action": "GO",
+          "gate": "DOCKERFILECHECK",
+          "trigger": "FROMSCRATCH",
+          "params": []
+        },
+        {
+          "action": "GO",
+          "gate": "DOCKERFILECHECK",
+          "trigger": "SUDO",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "DOCKERFILECHECK",
+          "trigger": "EXPOSE",
+          "params": [
+            {
+              "name": "DENIEDPORTS",
+              "value": "22"
+            }
+          ]
+        },
+        {
+          "action": "WARN",
+          "gate": "PKGDIFF",
+          "trigger": "PKGADD",
+          "params": []
+        },
+        {
+          "action": "WARN",
+          "gate": "PKGDIFF",
+          "trigger": "PKGDEL",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "PKGDIFF",
+          "trigger": "PKGVERSIONDIFF",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "SUIDDIFF",
+          "trigger": "SUIDMODEDIFF",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "SUIDDIFF",
+          "trigger": "SUIDFILEADD",
+          "params": []
+        },
+        {
+          "action": "GO",
+          "gate": "SUIDDIFF",
+          "trigger": "SUIDFILEDEL",
+          "params": []
+        },
+        {
+          "action": "GO",
+          "gate": "ANCHORESEC",
+          "trigger": "VULNUNKNOWN",
+          "params": []
+        },
+        {
+          "action": "GO",
+          "gate": "ANCHORESEC",
+          "trigger": "VULNLOW",
+          "params": []
+        },
+        {
+          "action": "WARN",
+          "gate": "ANCHORESEC",
+          "trigger": "VULNMEDIUM",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "ANCHORESEC",
+          "trigger": "VULNHIGH",
+          "params": []
+        },
+        {
+          "action": "STOP",
+          "gate": "ANCHORESEC",
+          "trigger": "VULNCRITICAL",
+          "params": []
+        },
+        {
+          "action": "WARN",
+          "gate": "ANCHORESEC",
+          "trigger": "UNSUPPORTEDDISTRO",
+          "params": []
+        }
+      ],
+      "version": "1_0",
+      "name": "default",
+      "id": "7dcbe180-2914-4723-89d4-20b6657f66eb"
+    }
+  ],
+  "mappings": [
+    {
+      "name": "default",
+      "repository": "*",
+      "image": {
+        "type": "tag",
+        "value": "*"
+      },
+      "whitelist_ids": [
+        "912937b6-05fb-472f-bfbe-834c3562f32d"
+      ],
+      "registry": "*",
+      "policy_id": "notarealid"
+    }
+  ]
+}

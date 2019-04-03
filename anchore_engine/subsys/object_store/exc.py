@@ -78,6 +78,11 @@ class DriverBackendNotAvailableError(Exception):
     pass
 
 
+class BucketNotFoundError(DriverConfigurationError):
+    def __init__(self, bucket):
+        self.bucket = bucket
+        self.message = 'Bucket {} not found in backing storage'.format(self.bucket)
+
 class ObjectNotFound(Exception):
     def __init__(self, bucket, key):
         super().__init__()
