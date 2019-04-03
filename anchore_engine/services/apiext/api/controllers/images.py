@@ -1061,15 +1061,15 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
             ts = source.get('creation_timestamp_override')
             if ts:
                 try:
-                    created_at_override = utils.rfc3339str_to_epoch(ts)
+                    ts = utils.rfc3339str_to_epoch(ts)
                 except Exception as err:
                     raise api_exceptions.InvalidDateFormat('source.creation_timestamp_override', ts)
 
             if force:
                 # Grab the trailing digest sha section and ensure it exists
                 try:
-                    digest_ref = digest.rsplit('@')[1]
-                    image_check = client.get_image(digest_ref)
+                    digest = digest.rsplit('@')[1]
+                    image_check = client.get_image(digest)
                 except Exception as err:
                     raise Exception("image digest must already exist to force re-analyze using tag+digest")
             elif not ts:
