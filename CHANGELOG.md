@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.4 (2019-04-04)
+
++ Added - support for specifying registry credentials for specific repositories or sets of repos using wildcards. Implements #142.
++ Added - new configuration option enable_access_logging to control whether twisted access log lines are included in anchore service logs. Implements #155.
++ Added - implement orphaned service record autocleanup in the catalog services handler. Implements #145.
++ Fix - make system service events owned by the system admin account. Existing system events can be flushed via the api with context-set for anchore-system, and all future events will be in the admin account. Fixes #152.
++ Fix - added timeout support for client calls to catalog from policy engine disabled by default but configurable. Adds configurable service thread pool sizes and bumps default count from 20 to 50 threads max size. Fixes #154.
++ Fix - remove duplicates from the query/vulnerabilities records for NVD, ensuring that each namespace only has a unique and latest record for a given vulnerability ID. Fixes #166.
++ Fix - updates to policy validation and eval error handling and adds size unit support for image size check. Fixes #124.
++ Fix - cleaned up docker-compose so that mounted volume doesn't have yml extension
++ Improved - more consistent logging/event handling in service health monitor
++ Minor bug fixes and improvements
+	
 ## 0.3.3 (2019-02-22)
 
 + Added - new ssl_verify option in feeds section of default/example config yamls and related environment settings in Dockerfile, to handle cases where default feed endpoint (ancho.re) is behind proxy with site-specific cert. Fixes #141
