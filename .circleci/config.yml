@@ -29,7 +29,7 @@ var_2: &attach_workspace
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1.2.0
+  anchore: anchore/anchore-engine@1.2.1
 commands:
   run_tox_tests:
     description: Pass path to tests to be run with tox
@@ -40,8 +40,9 @@ commands:
     - checkout
     - restore_cache:
         keys:
-        - v1-dependencies-{{ checksum "requirements.txt" }}
+        - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
         # fallback to using the latest cache if no exact match is found
+        - v1-dependencies-{{ .Branch }}-
         - v1-dependencies-
     - run:
         name: install dependencies
@@ -51,22 +52,19 @@ commands:
     - run:
         name: run tests
         command: |
-          mkdir logs
-          tox << parameters.test_path >> | tee logs/report_$(echo "<< parameters.test_path >>" | sed 's|/|-|').log
+          tox << parameters.test_path >> | tee tox.log
     - save_cache:
         paths:
-          - ./tox
-        key: v1-dependencies-{{ checksum "requirements.txt" }}
+          - ~/project/.tox
+        key: v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
     - store_artifacts:
-        path: logs/
+        path: tox.log
 
 jobs:
   unit_tests:
-    working_directory: ~/build/anchore-engine
     docker:
     - image: circleci/python:3.6
     steps:
-    - checkout
     - run_tox_tests:
         test_path: "test/unit"
   
@@ -209,6 +207,9 @@ jobs:
         name: Push to Dockerhub
         command: |
           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+          export DEV_IMG_TAG="anchore/anchore-engine-dev:${CIRCLE_SHA1:0:10}"
+          docker tag "${IMAGE_NAME}:ci" "$DEV_IMG_TAG"
+          docker push "$DEV_IMG_TAG"
           if [ "$CIRCLE_BRANCH" == "master" ]; then
             echo "${IMAGE_NAME}:${IMAGE_TAG}"
             docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:${IMAGE_TAG}"
@@ -221,8 +222,6 @@ jobs:
             echo "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
             docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
             docker push "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
-          else
-            false
           fi
 
   trigger_downstream:
@@ -237,6 +236,7 @@ jobs:
           else
             echo 'Skipping downstream push because pushed image is not anchore-engine:dev'
           fi
+
 workflows:
   default_workflow:
     jobs:
@@ -252,6 +252,7 @@ workflows:
             - 'master'
             - '0.3'
             - '0.2'
+            - 'create_rc_images'
     - compose_tests:
         requires:
         - build
