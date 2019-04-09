@@ -12,6 +12,7 @@ RUN set -ex && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
     make binary-local && \
     make install
+
 COPY ./requirements.txt /requirements.txt
 
 # Build the wheels from the requirements
@@ -19,13 +20,28 @@ RUN pip3 wheel --wheel-dir=/wheels -r /requirements.txt
 
 # Do the final build
 FROM ubuntu:18.04
+
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-LABEL anchore_cli_commit=$CLI_COMMIT
-LABEL anchore_commit=$ANCHORE_COMMIT
-ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
+ARG ANCHORE_ENGINE_VERSION="0.4.0"
+ARG ANCHORE_ENGINE_RELEASE="dev"
 
-#VOLUME /analysis_scratch
+# Container metadata section
+
+MAINTAINER dev@anchore.com
+
+LABEL anchore_cli_commit=$CLI_COMMIT \
+      anchore_commit=$ANCHORE_COMMIT \
+      name="anchore-engine" \
+      maintainer="dev@anchore.com" \
+      vendor="Anchore Inc." \
+      version=$ANCHORE_ENGINE_VERSION \
+      release=$ANCHORE_ENGINE_RELEASE \
+      summary="Anchore Engine - container image scanning service for policy-based security, best-practice and compliance enforcement." \
+      description="Anchore is an open platform for container security and compliance that allows developers, operations, and security teams to discover, analyze, and certify container images on-premises or in the cloud. Anchore Engine is the on-prem, OSS, API accessible service that allows ops and developers to perform detailed analysis, run queries, produce reports and define policies on container images that can be used in CI/CD pipelines to ensure that only containers that meet your organization’s requirements are deployed into production."
+
+# Environment variables to be present in running environment
+ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 # Default values overrideable at runtime of the container
 ENV ANCHORE_CONFIG_DIR=/config \
@@ -59,8 +75,12 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_FEEDS_CLIENT_URL="https://ancho.re/v1/account/users" \
     ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token"
 
+# Container run environment settings
 
+#VOLUME /analysis_scratch
 EXPOSE ${ANCHORE_SERVICE_PORT}
+
+# Build dependencies
 
 RUN set -ex && \
     apt-get -y update && \
@@ -71,18 +91,23 @@ RUN set -ex && \
     apt-get clean && \
     apt-get -y autoremove
 
-# Skopeo stuff
+# Copy skopeo artifacts from build step
 COPY --from=wheelbuilder /usr/bin/skopeo /usr/bin/skopeo
 COPY --from=wheelbuilder /etc/containers/policy.json /etc/containers/policy.json
 
-# Anchore Stuff
+# Copy python artifacts from build step
 COPY --from=wheelbuilder /wheels /wheels
 COPY . /anchore-engine
 
+# Setup container default configs and directories
+
 WORKDIR /anchore-engine
+
 RUN set -ex && \
     mkdir ${ANCHORE_SERVICE_DIR} && \
     mkdir /config && \
+    mkdir /licenses && \
+    cp LICENSE /licenses/ && \
     cp conf/default_config.yaml /config/config.yaml && \
     md5sum /config/config.yaml > /config/build_installed && \
     cp docker-compose.yaml /docker-compose.yaml && \
@@ -90,10 +115,14 @@ RUN set -ex && \
     cp docker-entrypoint.sh /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 
+# Perform the anchore-engine build and install
+
 RUN set -ex && \
     pip3 install --no-index --find-links=/wheels -r requirements.txt && \
     pip3 install . && \
     rm -rf /anchore-engine /root/.cache /wheels
+
+# Setup anchore user and permissions
 
 RUN set -ex && \
     groupadd --gid 1000 anchore && \
@@ -101,7 +130,10 @@ RUN set -ex && \
     mkdir -p /var/log/anchore && chown -R anchore:anchore /var/log/anchore && \
     mkdir -p /var/run/anchore && chown -R anchore:anchore /var/run/anchore && \
     mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
+    mkdir -p /workspace && chown -R anchore:anchore /workspace && \
     mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service
+
+# Container runtime instructions
 
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
