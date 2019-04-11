@@ -1371,6 +1371,23 @@ paths:
             items:
               $ref: "#/definitions/GateSpec"
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+  /system/error_codes:
+    get:
+      summary: Describe anchore engine error codes.
+      description: Describe anchore engine error codes.
+      operationId: describe_error_codes
+      x-anchore-authz-action: None
+      tags:
+      - System
+      responses:
+        200:
+          description: Error Codes Description
+          schema:
+            type: array
+            description: List of Error Code Descriptions
+            items:
+              $ref: "#/definitions/AnchoreErrorCode"
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
   /events:
     get:
       tags:
@@ -3139,6 +3156,16 @@ definitions:
         type: string
       digest:
         type: string
+  AnchoreErrorCode:
+    type: object
+    description: A description of an anchore error code (name, description)
+    properties:
+      name:
+        type: string
+        description: Error code name
+      description:
+        type: string
+        description: Description of the error code 
   GateSpec:
     type: object
     description: A description of the set of gates available in this engine and the triggers and parameters supported

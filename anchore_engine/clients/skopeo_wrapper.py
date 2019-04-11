@@ -271,6 +271,10 @@ class SkopeoError(AnchoreException):
                 self.error_code = AnchoreError.REGISTRY_PERMISSION_DENIED.name
             elif "manifest unknown" in self.stderr:
                 self.error_code = AnchoreError.REGISTRY_IMAGE_NOT_FOUND.name
+            elif "connection refused" in self.stderr or "no route to host" in self.stderr:
+                self.error_code = AnchoreError.REGISTRY_NOT_ACCESSIBLE.name
+            elif "error pinging registry" in self.stderr:
+                self.error_code = AnchoreError.REGISTRY_NOT_SUPPORTED.name
             else:
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
         except:
