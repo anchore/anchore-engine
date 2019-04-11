@@ -268,8 +268,9 @@ def parse_dockerimage_string(instr):
 
     logger.debug("input string to parse: {}".format(instr))
     instr = instr.strip()
-    if re.match(r".*[^a-zA-Z0-9@:/_\.\-]", instr):
-        raise Exception("bad character in dockerimage string input ({})".format(instr))
+    bad_chars = re.findall(r"[^a-zA-Z0-9@:/_\.\-]", instr)
+    if bad_chars:
+        raise ValueError("bad character(s) {} in dockerimage string input ({})".format(bad_chars, instr))
 
     if re.match("^sha256:.*", instr):
         registry = 'docker.io'
