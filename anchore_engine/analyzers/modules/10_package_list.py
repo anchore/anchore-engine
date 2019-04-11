@@ -51,7 +51,6 @@ if distrodict['flavor'] == "RHEL":
 
 elif distrodict['flavor'] == "DEB":
     try:
-        #(all_packages, actual_packages, other_packages, dpkgdbdir) = anchore_engine.analyzers.utils.dpkg_get_all_packages_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
         (all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir) = anchore_engine.analyzers.utils.dpkg_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
     
         for p in list(actual_packages.keys()):

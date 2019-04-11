@@ -736,43 +736,6 @@ def rpm_prepdb(unpackdir):
 
     return(ret)
 
-def dpkg_get_all_packages_from_squashtar(unpackdir, squashtar):
-    actual_packages = {}
-    all_packages = {}
-    other_packages = {}
-
-    dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
-    dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
-    dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
-
-    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package} ${Version} ${source:Package} ${source:Version} ${Architecture}\\n"]
-    try:
-        sout = subprocess.check_output(cmd)
-        for l in sout.splitlines(True):
-            l = l.strip()
-            l = str(l, 'utf-8')
-            (p, v, sp, sv, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4, 5)
-            if p and v:
-                if p not in actual_packages:
-                    actual_packages[p] = {'version':v, 'arch':arch}
-                if p not in all_packages:
-                    all_packages[p] = {'version':v, 'arch':arch}
-            if sp and sv:
-                if sp not in all_packages:
-                    all_packages[sp] = {'version':sv, 'arch':arch}
-            if p and v and sp and sv:
-                if p == sp and v != sv:
-                    other_packages[p] = [{'version':sv, 'arch':arch}]
-
-    except Exception as err:
-        print("Could not run command: " + str(cmd))
-        print("Exception: " + str(err))
-        print("Please ensure the command 'dpkg' is available and try again")
-        raise err
-
-    ret = (all_packages, actual_packages, other_packages, dpkgdbdir)
-    return(ret)
-
 def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     allfiles = {}
 
@@ -804,13 +767,18 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
 
-    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}\\n"]
+    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}|ANCHORETOK|${db:Status-Abbrev}\\n"]
     try:
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
             l = str(l, 'utf-8')
-            (p, v, arch, rawsize, sp, sv, vendor) = l.split("|ANCHORETOK|")
+            (p, v, arch, rawsize, sp, sv, vendor, status) = l.split("|ANCHORETOK|")
+
+            if status and not status.startswith("ii"):
+                # skip this package if the status is returned, and is not reporting as explicitly installed (ii*)
+                continue
+
             if sp and sv:
                 source = "{}-{}".format(sp, sv)
             else:
