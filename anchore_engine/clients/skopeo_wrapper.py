@@ -256,18 +256,29 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
 
     return(manifest, digest, topdigest)
 
-
 class SkopeoError(AnchoreException):
 
     def __init__(self, cmd=None, rc=None, err=None, out=None, msg='Error encountered in skopeo operation'):
+        from anchore_engine.common.errors import AnchoreError
+
         self.cmd = ' '.join(cmd) if isinstance(cmd, list) else cmd
         self.exitcode = rc
         self.stderr = str(err).replace('\r', ' ').replace('\n', ' ').strip() if err else None
         self.stdout = str(out).replace('\r', ' ').replace('\n', ' ').strip() if out else None
         self.msg = msg
+        try:
+            if "unauthorized" in self.stderr:
+                self.error_code = AnchoreError.REGISTRY_PERMISSION_DENIED.name
+            elif "manifest unknown" in self.stderr:
+                self.error_code = AnchoreError.REGISTRY_IMAGE_NOT_FOUND.name
+            else:
+                self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
+        except:
+            self.error_code = AnchoreError.UNKNOWN.name
+        
 
     def __repr__(self):
-        return '{}. cmd={}, rc={}, stdout={}, stderr={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr)
+        return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)
 
     def __str__(self):
-        return '{}. cmd={}, rc={}, stdout={}, stderr={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr)
+        return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)

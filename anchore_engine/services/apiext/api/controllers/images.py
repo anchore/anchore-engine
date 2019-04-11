@@ -620,6 +620,7 @@ def list_imagetags():
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
 
+    httpcode = 500
     try:
         #request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
         #return_object, httpcode = images(request_inputs)
@@ -629,8 +630,9 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
         return_object = make_response_error(err, in_httpcode=err.__response_code__)
         httpcode = err.__response_code__
     except Exception as err:
-        httpcode = 500
-        return_object = str(err)
+        logger.debug("operation exception: " + str(err))
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
 
     return return_object, httpcode
 
@@ -638,6 +640,7 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_image(image, force=False, autosubscribe=False):
 
+    httpcode = 500
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
         #return_object, httpcode = images(request_inputs)
@@ -688,8 +691,9 @@ def add_image(image, force=False, autosubscribe=False):
         httpcode = err.__response_code__
         return_object = make_response_error(str(err), in_httpcode=httpcode)
     except Exception as err:
-        httpcode = 500
-        return_object = str(err)
+        logger.debug("operation exception: {}".format(str(err)))
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
 
     return return_object, httpcode
 

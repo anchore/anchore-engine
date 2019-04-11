@@ -263,4 +263,7 @@ def get_image_manifest(userId, image_info, registry_creds):
         return(manifest, digest, parentdigest)
 
     logger.error("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
-    raise Exception("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
+    if err:
+        raise err
+    else:
+        raise Exception("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
