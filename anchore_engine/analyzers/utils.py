@@ -40,8 +40,6 @@ def init_analyzer_cmdline(argv, name):
         if anchore_analyzer_config and name in anchore_analyzer_config:
             ret['analyzer_config'] = anchore_analyzer_config[name]
 
-    #ret['anchore_config'] = anchore_conf.data
-
     ret['name'] = name
     
     with open(argv[0], 'r') as FH:
@@ -109,6 +107,18 @@ def run_tarfile_function(tarfile, func=None, *args, **kwargs):
 
     return(ret)
 
+def _search_tarfilenames_for_file(tarfilenames, searchfile):
+    ret = None
+    if searchfile in tarfilenames:
+        ret = searchfile
+    elif "./{}".format(searchfile) in tarfilenames:
+        ret = "./{}".format(searchfile)
+    elif "/{}".format(searchfile) in tarfilenames:
+        ret = "/{}".format(searchfile)
+    elif re.sub("^/", "", searchfile) in tarfilenames:
+        ret = re.sub("^/", "", searchfile)
+    return(ret)
+
 def get_distro_from_squashtar(squashtar):
     meta = {
         'DISTRO':None,
@@ -118,8 +128,17 @@ def get_distro_from_squashtar(squashtar):
 
     with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
         tarfilenames = tfl.getnames()
-        if "etc/os-release" in tarfilenames: 
-            with tfl.extractfile(tfl.getmember("etc/os-release")) as FH:
+
+        metamap = {
+            "os-release": _search_tarfilenames_for_file(tarfilenames, "etc/os-release"),
+            "system-release-cpe": _search_tarfilenames_for_file(tarfilenames, "etc/system-release-cpe"),
+            "redhat-release": _search_tarfilenames_for_file(tarfilenames, "etc/redhat-release"),
+            "busybox": _search_tarfilenames_for_file(tarfilenames, "bin/busybox"),
+            "debian_version": _search_tarfilenames_for_file(tarfilenames, "etc/debian_version"),
+        }
+
+        if metamap['os-release'] in tarfilenames:
+            with tfl.extractfile(tfl.getmember(metamap['os-release'])) as FH:
                 for l in FH.readlines():
                     l = anchore_engine.utils.ensure_str(l)
                     l = l.strip()
@@ -135,8 +154,8 @@ def get_distro_from_squashtar(squashtar):
                     except Exception as err:
                         pass
 
-        elif "etc/system-release-cpe" in tarfilenames: 
-            with tfl.extractfile(tfl.getmember("etc/system-release-cpe")) as FH:
+        elif metamap['system-release-cpe'] in tarfilenames: 
+            with tfl.extractfile(tfl.getmember(metamap['system-release-cpe'])) as FH:
                 for l in FH.readlines():
                     l = anchore_engine.utils.ensure_str(l)
                     l = l.strip()
@@ -148,8 +167,8 @@ def get_distro_from_squashtar(squashtar):
                     except:
                         pass
 
-        elif "etc/redhat-release" in tarfilenames: 
-            with tfl.extractfile(tfl.getmember("etc/redhat-release")) as FH:
+        elif metamap["redhat-release"] in tarfilenames: 
+            with tfl.extractfile(tfl.getmember(metamap["redhat-release"])) as FH:
                 for l in FH.readlines():
                     l = anchore_engine.utils.ensure_str(l)
                     l = l.strip()
@@ -170,11 +189,11 @@ def get_distro_from_squashtar(squashtar):
                     except:
                         pass
         
-        elif "bin/busybox" in tarfilenames:
+        elif metamap["busybox"] in tarfilenames:
             meta['DISTRO'] = "busybox"
             meta['DISTROVERS'] = "0"
             try:
-                with tfl.extractfile(tfl.getmember("bin/busybox")) as FH:
+                with tfl.extractfile(tfl.getmember(metamap["busybox"])) as FH:
                     for line in FH.readlines():
                         patt = re.match(b".*BusyBox (v[\d|\.]+) \(.*", line)
                         if patt:
@@ -182,8 +201,8 @@ def get_distro_from_squashtar(squashtar):
             except Exception as err:
                 meta['DISTROVERS'] = "0"
 
-        if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and "etc/debian_version" in tarfilenames: 
-            with tfl.extractfile(tfl.getmember("etc/debian_version")) as FH:
+        if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and metamap["debian_version"] in tarfilenames: 
+            with tfl.extractfile(tfl.getmember(metamap["debian_version"])) as FH:
                 meta['DISTRO'] = 'debian'
                 for line in FH.readlines():
                     line = anchore_engine.utils.ensure_str(line)
@@ -365,10 +384,6 @@ def _checksum_member_function(tfl, member, csums=['sha256', 'md5']):
         'md5': hashlib.md5,
     }
 
-    filename = member.name
-    if filename[0] != '/':
-        filename = "/{}".format(filename)
-
     if member.isreg():
         extractable_member = member
     elif member.islnk():
@@ -415,14 +430,11 @@ def get_files_from_squashtar(squashtar):
     tfl = None
     try:
         with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
-            #for filename in tfl.getnames():
-            #    member = tfl.getmember(filename)
             for member in tfl.getmembers():
                 filename = member.name
-
+                filename = re.sub("^\./", "/", filename)
                 if not re.match("^/", filename):
                     filename = "/{}".format(filename)
-                osfilename = filename
 
                 finfo = {}
                 finfo['name'] = filename
@@ -476,7 +488,7 @@ def get_files_from_squashtar(squashtar):
                         dstlist = finfo['linkdst'].split('/')
                         srclist = finfo['name'].split('/')
                         srcpath = srclist[0:-1]
-                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], osfilename)) 
+                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], filename)) 
                     finfo['linkdst_fullpath'] = fullpath
 
                 fullpath = finfo['fullpath']
@@ -629,11 +641,6 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
                     candidate = os.path.dirname(filename)
                     if candidate not in candidates:
                         candidates[candidate] = True
-                        #pymembers.append(tfl.getmember(candidate))
-                        #for pymember in tfl.getmembers():
-                        #    pyfilename = pymember.name
-                        #    if re.match("^{}/".format(candidate), pyfilename):
-                        #        pymembers.append(pymember)
 
             for member in tfl.getmembers():
                 filename = member.name
@@ -659,9 +666,11 @@ def apk_prepdb_from_squashtar(unpackdir, squashtar):
 
     if not os.path.exists(os.path.join(ret, 'lib', 'apk', 'db', 'installed')):
         with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
-            filename = "lib/apk/db/installed"
+            tarfilenames = tfl.getnames()
+            apkdbfile = _search_tarfilenames_for_file(tarfilenames, "lib/apk/db/installed")
+
             apkmembers = []
-            apkmembers.append(tfl.getmember(filename))
+            apkmembers.append(tfl.getmember(apkdbfile))
             tfl.extractall(path=os.path.join(apktmpdir, "rootfs"), members=apkmembers)
         ret = os.path.join(apktmpdir, "rootfs")
 
@@ -683,6 +692,7 @@ def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
             dpkgmembers = []
             for member in tfl.getmembers():
                 filename = member.name
+                filename = re.sub("^\./|^/", "", filename)
                 if filename.startswith("var/lib/dpkg") or filename.startswith("usr/share/doc"):
                     dpkgmembers.append(member)
             tfl.extractall(path=os.path.join(dpkgtmpdir, "rootfs"), members=dpkgmembers)
@@ -706,6 +716,7 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
             rpmmembers = []
             for member in tfl.getmembers():
                 filename = member.name
+                filename = re.sub("^\./|^/", "", filename)
                 if filename.startswith("var/lib/rpm"):
                     rpmmembers.append(member)
 
@@ -734,43 +745,6 @@ def rpm_prepdb(unpackdir):
         except:
             pass
 
-    return(ret)
-
-def dpkg_get_all_packages_from_squashtar(unpackdir, squashtar):
-    actual_packages = {}
-    all_packages = {}
-    other_packages = {}
-
-    dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
-    dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
-    dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
-
-    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package} ${Version} ${source:Package} ${source:Version} ${Architecture}\\n"]
-    try:
-        sout = subprocess.check_output(cmd)
-        for l in sout.splitlines(True):
-            l = l.strip()
-            l = str(l, 'utf-8')
-            (p, v, sp, sv, arch) = re.match('(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)', l).group(1, 2, 3, 4, 5)
-            if p and v:
-                if p not in actual_packages:
-                    actual_packages[p] = {'version':v, 'arch':arch}
-                if p not in all_packages:
-                    all_packages[p] = {'version':v, 'arch':arch}
-            if sp and sv:
-                if sp not in all_packages:
-                    all_packages[sp] = {'version':sv, 'arch':arch}
-            if p and v and sp and sv:
-                if p == sp and v != sv:
-                    other_packages[p] = [{'version':sv, 'arch':arch}]
-
-    except Exception as err:
-        print("Could not run command: " + str(cmd))
-        print("Exception: " + str(err))
-        print("Please ensure the command 'dpkg' is available and try again")
-        raise err
-
-    ret = (all_packages, actual_packages, other_packages, dpkgdbdir)
     return(ret)
 
 def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
@@ -804,13 +778,18 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
 
-    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}\\n"]
+    cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}|ANCHORETOK|${db:Status-Abbrev}\\n"]
     try:
         sout = subprocess.check_output(cmd)
         for l in sout.splitlines(True):
             l = l.strip()
             l = str(l, 'utf-8')
-            (p, v, arch, rawsize, sp, sv, vendor) = l.split("|ANCHORETOK|")
+            (p, v, arch, rawsize, sp, sv, vendor, status) = l.split("|ANCHORETOK|")
+
+            if status and not status.startswith("ii"):
+                # skip this package if the status is returned, and is not reporting as explicitly installed (ii*)
+                continue
+
             if sp and sv:
                 source = "{}-{}".format(sp, sv)
             else:
@@ -970,7 +949,9 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     ret = {}
     with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
         try:
-            member = tfl.getmember("lib/apk/db/installed")
+            tarfilenames = tfl.getnames()
+            apkdbfile = _search_tarfilenames_for_file(tarfilenames, "lib/apk/db/installed")
+            member = tfl.getmember(apkdbfile)
             memberfd = tfl.extractfile(member)
             ret = apkg_parse_apkdb(memberfd)
         except Exception as err:

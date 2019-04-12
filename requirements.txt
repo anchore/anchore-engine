@@ -12,7 +12,7 @@ Flask==1.0.2
 idna==2.7
 inflection==0.3.1
 itsdangerous==0.24
-Jinja2==2.10
+Jinja2==2.10.1
 jmespath==0.9.3
 jsonschema==2.6.0
 MarkupSafe==1.0

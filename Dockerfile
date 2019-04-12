@@ -131,7 +131,7 @@ RUN set -ex && \
     mkdir -p /var/run/anchore && chown -R anchore:anchore /var/run/anchore && \
     mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
     mkdir -p /workspace && chown -R anchore:anchore /workspace && \
-    mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service
+    mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore ${ANCHORE_SERVICE_DIR}
 
 # Container runtime instructions
 

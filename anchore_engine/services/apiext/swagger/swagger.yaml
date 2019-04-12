@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.9"
+  version: "0.1.10"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -42,6 +42,8 @@ tags:
   description: Manage Accounts, Users, and Credentials
 - name: Identity
   description: Get and operate on the authenticated user's identity
+- name: Archives
+  description: Data Archiving Management
 basePath: "/"
 schemes:
 - "http"
@@ -2066,6 +2068,8 @@ paths:
   # Data archives
   /archives:
     get:
+      tags:
+      - Archives
       operationId: list_archives
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: listArchives
@@ -2080,6 +2084,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /archives/rules:
     get:
+      tags:
+      - Archives
       operationId: list_analysis_archive_rules
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: listArchiveTransitions
@@ -2093,6 +2099,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     post:
+      tags:
+      - Archives
       operationId: create_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: createArchiveTransition
@@ -2113,6 +2121,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /archives/rules/{ruleId}:
     get:
+      tags:
+      - Archives
       operationId: get_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: getArchiveTransition
@@ -2131,6 +2141,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     delete:
+      tags:
+      - Archives
       operationId: delete_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: deleteArchiveTransition
@@ -2150,6 +2162,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /archives/rules/{ruleId}/history:
     get:
+      tags:
+      - Archives
       operationId: get_analysis_archive_rule_history
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: getArchiveTransitionHistory
@@ -2169,6 +2183,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /archives/images:
     get:
+      tags:
+      - Archives
       operationId: list_analysis_archive
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: listArchivedImageAnalysis
@@ -2182,6 +2198,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     post:
+      tags:
+      - Archives
       operationId: archive_image_analysis
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
       x-anchore-authz-action: createArchivedImageAnalysis
@@ -2202,6 +2220,8 @@ paths:
             $ref: "#/definitions/ApiErrorResponse"
   /archives/images/{imageDigest}:
     get:
+      tags:
+      - Archives
       description: Returns the archive metadata record identifying the image and tags for the analysis in the archive.
       operationId: get_archived_analysis
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
@@ -2222,6 +2242,8 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
     delete:
+      tags:
+      - Archives
       description: Performs a synchronous archive deletion
       operationId: delete_archived_analysis
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
