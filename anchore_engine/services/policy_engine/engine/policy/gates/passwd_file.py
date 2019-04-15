@@ -1,3 +1,4 @@
+from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import CommaDelimitedNumberListParameter, CommaDelimitedStringListParameter, TriggerParameter, TypeValidator
 from anchore_engine.db import AnalysisArtifact
@@ -156,7 +157,7 @@ class FileparsePasswordGate(Gate):
         if content_matches:
             try:
                 pentries = {}
-                for line in str(content_matches.binary_value).splitlines():
+                for line in ensure_str(content_matches.binary_value).splitlines():
                     line = line.strip()
                     pentry = line.split(':')
                     pentries[pentry[0]] = pentry[1:]
