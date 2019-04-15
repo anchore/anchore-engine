@@ -31,7 +31,7 @@ def make_response_error(errmsg, in_httpcode=None, **kwargs):
                 ret.update(errmsg.__dict__['anchore_error_json'])
 
             try:
-                if errmsg.__dict__['anchore_error_json'].get('error_code', None):
+                if set(['error_code']).issubset(set(errmsg.__dict__['anchore_error_json'])) and errmsg.__dict__['anchore_error_json'].get('error_code', None):
                     if 'error_codes' not in ret['detail']:
                         ret['detail']['error_codes'] = []
                     ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))
