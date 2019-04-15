@@ -13,7 +13,8 @@ from anchore_engine.subsys import logger
 
 init_test_logging()
 
-prefix = os.environ['PWD']
+prefix = os.getcwd()
+
 service_swaggers = [
     'anchore_engine/services/apiext/swagger/swagger.yaml',
     'anchore_engine/services/catalog/swagger/swagger.yaml',

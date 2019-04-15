@@ -28,7 +28,7 @@ def large_whitelist():
         default_bundle = json.load(f)
 
 
-def test_basic_whitelist_evaluation(large_whitelist, setup_test_env):
+def test_basic_whitelist_evaluation(large_whitelist, test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
     built = build_bundle(default_bundle, for_tag=test_tag)
@@ -36,7 +36,7 @@ def test_basic_whitelist_evaluation(large_whitelist, setup_test_env):
     logger.info(('Got: {}'.format(built)))
 
     db = get_session()
-    img_obj = db.query(Image).get((setup_test_env.get_images_named('node')[0][0], '0'))
+    img_obj = db.query(Image).get((test_data_env_with_images_loaded.get_images_named('node')[0][0], '0'))
 
     assert img_obj is not None, 'Failed to get an image object to test'
     evaluation = built.execute(img_obj, tag=test_tag,
@@ -47,7 +47,7 @@ def test_basic_whitelist_evaluation(large_whitelist, setup_test_env):
     logger.info((json.dumps(evaluation.as_table_json(), indent=2)))
 
 
-def test_whitelists(large_whitelist, setup_test_env):
+def test_whitelists(large_whitelist, test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
 
@@ -57,7 +57,7 @@ def test_whitelists(large_whitelist, setup_test_env):
     logger.info(('Got: {}'.format(built)))
 
     db = get_session()
-    img_obj = db.query(Image).get((setup_test_env.get_images_named('node')[0][0], '0'))
+    img_obj = db.query(Image).get((test_data_env_with_images_loaded.get_images_named('node')[0][0], '0'))
     assert img_obj is not None
     t = time.time()
     evaluation = built.execute(img_obj, tag=test_tag,
@@ -88,7 +88,7 @@ def test_whitelists(large_whitelist, setup_test_env):
 
 
 @pytest.mark.skip('Need to update the logic here to be non-CVE dependent or lock the cve matches to make it reliable')
-def test_regexes(large_whitelist, setup_test_env):
+def test_regexes(large_whitelist, test_data_env_with_images_loaded):
     """
     Test regular expressions in the trigger_id part of the WL rule
     :return:
@@ -109,7 +109,7 @@ def test_regexes(large_whitelist, setup_test_env):
         {'gate': 'ANCHORESEC', 'trigger_id': '*binutils*', 'id': 'testinserted1'})
 
     db = get_session()
-    img_obj = db.query(Image).get((setup_test_env.get_images_named('node')[0][0], '0'))
+    img_obj = db.query(Image).get((test_data_env_with_images_loaded.get_images_named('node')[0][0], '0'))
     assert img_obj is not None
 
     ExecutableWhitelist._use_indexes = True

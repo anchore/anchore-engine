@@ -4,8 +4,8 @@ Tests Feed mapping objects
 
 import pytest
 from anchore_engine.services.policy_engine.engine.feeds import Vulnerability, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, GemMetadata, NpmMetadata, DataFeeds
-from .fixtures import anchore_db
-from integration.services.policy_engine.fixtures import test_data_env
+from test.fixtures import anchore_db
+from test.integration.services.policy_engine.fixtures import test_data_env
 
 test_cve = {
     'Vulnerability': {
@@ -125,7 +125,7 @@ def test_vuln_overflow():
     assert len(r.description) < 1024*64
 
 
-def test_vuln_full_data(feeds_test_env):
+def test_vuln_full_data(test_data_env):
     c = DataFeeds.instance().vulnerabilities.source
     for g in c.list_feed_groups('vulnerabilities'):
         print(('Group: {}'.format(g.name)))
@@ -204,7 +204,7 @@ def test_npms_invalid():
             pytest.fail('Should have raised exception on {}'.format(e))
 
 
-def test_npms_full_data(feeds_test_env):
+def test_npms_full_data(test_data_env):
     c = DataFeeds.instance().vulnerabilities.source
     count = 1
     for v in c.get_feed_group_data('packages', 'npm'):
@@ -218,7 +218,7 @@ def _npm_validator(n):
     assert n.name, 'Name cannot be null or empty: {}'.format(n.name)
 
 
-def test_gems_full_data(feeds_test_env):
+def test_gems_full_data(test_data_env):
     count = 1
     c = DataFeeds.instance().vulnerabilities.source
     for v in c.get_feed_group_data('packages', 'gem'):

@@ -1,0 +1,66 @@
+[
+  {
+    "Vulnerability": {
+      "FixedIn": [
+        {
+          "VersionFormat": "dpkg",
+          "NamespaceName": "debian:8",
+          "Version": "None",
+          "Name": "mercurial"
+        }
+      ],
+      "NamespaceName": "debian:8",
+      "Link": "https://fake.cve.testing/tracker/CVE-TEST-TEST0",
+      "Name": "CVE-TEST-TEST0",
+      "Severity": "Low"
+    }
+  },
+  {
+    "Vulnerability": {
+      "FixedIn": [
+        {
+          "VersionFormat": "dpkg",
+          "NamespaceName": "debian:8",
+          "Version": "3.1.2-2+deb8u3",
+          "Name": "mercurial"
+        }
+      ],
+      "NamespaceName": "debian:8",
+      "Link": "https://fake.cve.testing/tracker/CVE-TEST-TEST1",
+      "Name": "CVE-TEST-TEST1",
+      "Severity": "Medium"
+    }
+  },
+  {
+    "Vulnerability": {
+      "FixedIn": [
+        {
+          "VersionFormat": "dpkg",
+          "NamespaceName": "debian:8",
+          "Version": "3.1.1-2+deb8u3",
+          "Name": "mercurial"
+        }
+      ],
+      "NamespaceName": "debian:8",
+      "Link": "https://fake.cve.testing/tracker/CVE-TEST-TEST2",
+      "Name": "CVE-TEST-TEST2",
+      "Severity": "High"
+    }
+  },
+  {
+    "Vulnerability": {
+      "FixedIn": [
+        {
+          "VersionFormat": "dpkg",
+          "NamespaceName": "debian:8",
+          "Version": "3.1.3-2+deb8u3",
+          "Name": "mercurial"
+        }
+      ],
+      "NamespaceName": "debian:8",
+      "Link": "https://fake.cve.testing/tracker/CVE-TEST-TEST3",
+      "Name": "CVE-TEST-TEST4",
+      "Severity": "Critical"
+    }
+  }
+]

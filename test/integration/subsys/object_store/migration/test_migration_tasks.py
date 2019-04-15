@@ -1,9 +1,10 @@
 import pytest
-from anchore_engine.subsys import archive
-from anchore_engine.subsys.archive import migration
+from anchore_engine.subsys import object_store
+from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY
+from anchore_engine.subsys.object_store import migration
 from anchore_engine.subsys import logger
 from test.fixtures import anchore_db
-from test.integration.subsys.archive.fixtures import s3_bucket, swift_container, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key, test_s3_bucket, test_s3_region, test_s3_url, test_s3_key, test_s3_secret_key
+from test.integration.subsys.object_store.fixtures import s3_bucket, swift_container, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key, test_s3_bucket, test_s3_region, test_s3_url, test_s3_key, test_s3_secret_key
 
 logger.enable_test_logging()
 
@@ -23,17 +24,21 @@ test_bucket_id = 'testbucket1'
 
 def add_data():
     logger.info('Adding data')
+    mgr = object_store.get_manager()
     for i in range(0, 100):
         archiveId = 'doc-{}'.format(i)
         logger.info('Adding document: {}'.format(archiveId))
-        archive.put_document(userId='test1', bucket='testing', archiveId=archiveId, data='TESTINGBUCKETDATASMALL'.join([str(x) for x in range(100)]))
+        mgr.put_document(userId='test1', bucket='testing', archiveId=archiveId, data='TESTINGBUCKETDATASMALL'.join([str(x) for x in range(100)]))
+
 
 def flush_data():
     logger.info('Flushing data')
+    mgr = object_store.get_manager()
     for i in range(0, 100):
         archiveId = 'doc-{}'.format(i)
         logger.info('Deleting document: {}'.format(archiveId))
-        archive.delete_document(userId='test1', bucket='testing', archiveid=archiveId)
+        mgr.delete_document(userId='test1', bucket='testing', archiveid=archiveId)
+
 
 def run_test(src_client_config, dest_client_config):
     """
@@ -42,7 +47,9 @@ def run_test(src_client_config, dest_client_config):
     """
 
     logger.info(('Running migration test from {} to {}'.format(src_client_config['name'], dest_client_config['name'])))
-    archive.initialize({'services': {'catalog': {'archive': {'compression': {'enabled': False}, 'storage_driver': src_client_config}}}})
+    #config = {'services': {'catalog': {'archive': {'compression': {'enabled': False}, 'storage_driver': src_client_config}}}}
+    config = {'archive': src_client_config}
+    object_store.initialize(config, check_db=False, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY], allow_legacy_fallback=False, force=True)
     add_data()
 
     src_config = {

@@ -141,7 +141,7 @@ def _img_vulns(id):
         img = db.query(Image).filter_by(id=id, user_id='0').one_or_none()
         if not img:
             raise Exception('Not found')
-        total_vulns = [x.to_dict() for x in img.vulnerabilities()] + [y.to_dict() for y in img.cpe_vulnerabilities()]
+        total_vulns = [str(x) for x in img.vulnerabilities()] + [str(y) for y in img.cpe_vulnerabilities()]
         return total_vulns
     finally:
         db.rollback()

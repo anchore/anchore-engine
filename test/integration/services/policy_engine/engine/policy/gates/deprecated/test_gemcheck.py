@@ -1,10 +1,11 @@
-from integration.services.policy_engine.engine import GateUnitTest
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import get_thread_scoped_session, Image
 
 from anchore_engine.services.policy_engine.engine.policy.gates.deprecated.gem_check import GemCheckGate, NotOfficialTrigger, NotLatestTrigger, NoFeedTrigger, BadVersionTrigger, PkgFullMatchTrigger, PkgNameMatchTrigger
+import pytest
 
-
+@pytest.mark.skip
 class GemCheckGateTest(GateUnitTest):
     gate_clazz = GemCheckGate
     

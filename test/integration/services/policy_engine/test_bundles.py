@@ -19,17 +19,17 @@ def get_image_named(db, test_env, name):
     return img_obj
 
 
-def test_basic_evaluation(setup_test_env):
+def test_basic_evaluation(test_data_env_with_images_loaded):
     db = get_thread_scoped_session()
     logger.info('Session state: {}'.format(db.__dict__))
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/ruby:latest'
-    test_bundle = setup_test_env.get_bundle('multitest')
+    test_bundle = test_data_env_with_images_loaded.get_bundle('multitest')
     built = build_bundle(test_bundle, for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(built))
 
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -42,7 +42,7 @@ def test_basic_evaluation(setup_test_env):
 
 
     # Diff old an new defaults
-    multi_bundle = setup_test_env.get_bundle('multi_default')
+    multi_bundle = test_data_env_with_images_loaded.get_bundle('multi_default')
     multi_default = build_bundle(multi_bundle, for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(multi_default))
@@ -50,7 +50,7 @@ def test_basic_evaluation(setup_test_env):
     multi_default_evaluation = multi_default.execute(img_obj, tag=test_tag,
                                context=ExecutionContext(db_session=db, configuration={}))
 
-    default_built = build_bundle(setup_test_env.get_bundle('default'), for_tag=test_tag)
+    default_built = build_bundle(test_data_env_with_images_loaded.get_bundle('default'), for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(default_built))
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -60,15 +60,15 @@ def test_basic_evaluation(setup_test_env):
     assert multi_default_evaluation.as_table_json() == default_evaluation.as_table_json()
 
 
-def test_basic_legacy_evaluation(setup_test_env):
+def test_basic_legacy_evaluation(test_data_env_with_images_loaded):
     db = get_thread_scoped_session()
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/ruby:latest'
-    built = build_bundle(setup_test_env.get_bundle('default'), for_tag=test_tag)
+    built = build_bundle(test_data_env_with_images_loaded.get_bundle('default'), for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(built))
 
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -81,11 +81,11 @@ def test_basic_legacy_evaluation(setup_test_env):
 
     logger.info('Building executable bundle from old default bundle')
     test_tag = 'docker.io/library/ruby:latest'
-    built = build_bundle(setup_test_env.get_bundle('old_default'), for_tag=test_tag)
+    built = build_bundle(test_data_env_with_images_loaded.get_bundle('old_default'), for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(built))
 
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -97,7 +97,7 @@ def test_basic_legacy_evaluation(setup_test_env):
     logger.info(json.dumps(evaluation.as_table_json(), indent=2))
 
 
-def test_duplicate_rule_evaluation(setup_test_env):
+def test_duplicate_rule_evaluation(test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/ruby:latest'
     multi_gate_bundle = {
@@ -183,7 +183,7 @@ def test_duplicate_rule_evaluation(setup_test_env):
     logger.info('Got: {}'.format(built))
 
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -196,7 +196,7 @@ def test_duplicate_rule_evaluation(setup_test_env):
 
 
 
-def test_image_whitelist(setup_test_env):
+def test_image_whitelist(test_data_env_with_images_loaded):
     bundle = {
         'id': 'multigate1',
         'name': 'Multigate test1',
@@ -235,7 +235,7 @@ def test_image_whitelist(setup_test_env):
         'blacklisted_images': []
     }
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -257,7 +257,7 @@ def test_image_whitelist(setup_test_env):
     assert 'whitelisted' == evaluation.bundle_decision.reason
 
 
-def test_image_blacklist(setup_test_env):
+def test_image_blacklist(test_data_env_with_images_loaded):
     bundle = {
         'id': 'multigate1',
         'name': 'Multigate test1',
@@ -297,7 +297,7 @@ def test_image_blacklist(setup_test_env):
     }
 
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -373,14 +373,14 @@ def test_image_blacklist(setup_test_env):
     assert 'whitelisted' == evaluation.bundle_decision.reason
 
 
-def test_whitelists(setup_test_env):
+def test_whitelists(test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/ruby:latest'
-    built = build_bundle(setup_test_env.get_bundle('default'), for_tag=test_tag)
+    built = build_bundle(test_data_env_with_images_loaded.get_bundle('default'), for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(built))
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None, 'Failed to get an image object to test'
@@ -392,7 +392,7 @@ def test_whitelists(setup_test_env):
     logger.info(json.dumps(evaluation.as_table_json(), indent=2))
 
     to_whitelist = evaluation.bundle_decision.policy_decisions[0].decisions[0]
-    whitelist_bundle = copy.deepcopy(setup_test_env.get_bundle('default'))
+    whitelist_bundle = copy.deepcopy(test_data_env_with_images_loaded.get_bundle('default'))
     whitelist_bundle['whitelists'].append({
         'id': 'generated_whitelist1',
         'name': 'test_whitelist',
@@ -411,7 +411,7 @@ def test_whitelists(setup_test_env):
 
     logger.info('Got updated: {}'.format(built))
 
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     assert img_obj is not None
@@ -425,7 +425,7 @@ def test_whitelists(setup_test_env):
     assert to_whitelist.match.id not in [x.match.id if not (hasattr(x.match, 'is_whitelisted') and x.match.is_whitelisted) else None for x in evaluation.bundle_decision.policy_decisions[0].decisions]
 
 
-def test_error_evaluation(setup_test_env):
+def test_error_evaluation(test_data_env_with_images_loaded):
     bundle = {
         'id': 'someid',
         'version': '1_0',
@@ -440,7 +440,7 @@ def test_error_evaluation(setup_test_env):
     logger.info('Got: {}'.format(built))
 
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     evaluation = built.execute(img_obj, tag=test_tag,
@@ -453,7 +453,7 @@ def test_error_evaluation(setup_test_env):
                                    context=ExecutionContext(db_session=db, configuration={}))
 
 
-def test_deprecated_gate_evaluation_error(setup_test_env):
+def test_deprecated_gate_evaluation_error(test_data_env_with_images_loaded):
     """
     Test the policy build of deprecated gates with deprecated explicitly disallowed
     :return:
@@ -500,7 +500,7 @@ def test_deprecated_gate_evaluation_error(setup_test_env):
         built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=False)
         logger.info('Got: {}'.format(built))
 
-        img_obj = get_image_named(db, setup_test_env, 'ruby')
+        img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
         assert img_obj is not None,  'Failed to get an image object to test'
 
         evaluation = built.execute(img_obj, tag=test_tag,
@@ -508,7 +508,7 @@ def test_deprecated_gate_evaluation_error(setup_test_env):
 
 
 @pytest.mark.skip
-def testDeprecatedGateEvaluationOk(setup_test_env):
+def testDeprecatedGateEvaluationOk(test_data_env_with_images_loaded):
     """
     Test the policy build with deprecated explicitly allowed.
     :return:
@@ -556,7 +556,7 @@ def testDeprecatedGateEvaluationOk(setup_test_env):
     built = build_bundle(bundle, for_tag=test_tag, allow_deprecated=True)
     logger.info('Got: {}'.format(built))
 
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
 
     assert img_obj is not None,  'Failed to get an image object to test'
     evaluation = built.execute(img_obj, tag=test_tag,
@@ -567,9 +567,9 @@ def testDeprecatedGateEvaluationOk(setup_test_env):
     assert evaluation.warnings is not None
 
 
-def test_policy_init_error(setup_test_env):
+def test_policy_init_error(test_data_env_with_images_loaded):
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
 
     ruby_tag = 'dockerhub/library/ruby:latest'
 
@@ -688,7 +688,7 @@ def test_policy_init_error(setup_test_env):
     assert type(f.value.causes[0]) == UnsupportedVersionError
 
 
-def test_multi_policy_missing_errors(setup_test_env):
+def test_multi_policy_missing_errors(test_data_env_with_images_loaded):
     """
     Test entries in policy_ids that are not found in bundle
 
@@ -742,7 +742,7 @@ def test_multi_policy_missing_errors(setup_test_env):
         built.execute(image_object=Image(), context=None, tag=ruby_tag)
 
 
-def test_multi_policy_invalid_errors(setup_test_env):
+def test_multi_policy_invalid_errors(test_data_env_with_images_loaded):
     """
     Test validation of policies in multi-policy mapping
     :return:
@@ -794,7 +794,7 @@ def test_multi_policy_invalid_errors(setup_test_env):
         built.execute(image_object=Image(), context=None, tag=ruby_tag)
 
 
-def test_multi_policy_mix_use_errors(setup_test_env):
+def test_multi_policy_mix_use_errors(test_data_env_with_images_loaded):
     """
     Test validation of policies in multi-policy mapping
     :return:
@@ -892,7 +892,7 @@ def test_multi_policy_mix_use_errors(setup_test_env):
 
 
 @pytest.mark.skip
-def test_no_policy_in_mapping_errors(setup_test_env):
+def test_no_policy_in_mapping_errors(test_data_env_with_images_loaded):
     """
     Test validation of policies in multi-policy mapping
     :return:
@@ -943,24 +943,24 @@ def test_no_policy_in_mapping_errors(setup_test_env):
         built.execute(image_object=Image(), context=None, tag=ruby_tag)
 
 
-def test_policy_not_found(setup_test_env):
+def test_policy_not_found(test_data_env_with_images_loaded):
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     with pytest.raises(InitializationError) as f:
-        built = build_bundle(setup_test_env.get_bundle('bad_policy_id'))
+        built = build_bundle(test_data_env_with_images_loaded.get_bundle('bad_policy_id'))
         built.execute(image_object=img_obj, context=None, tag='dockerhub/library/ruby:latest')
         logger.info('Expected Initialization error: {}'.format(f.exception))
 
 
-def test_invalid_actions(setup_test_env):
+def test_invalid_actions(test_data_env_with_images_loaded):
     db = get_thread_scoped_session()
-    img_obj = get_image_named(db, setup_test_env, 'ruby')
+    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
     assert img_obj is not None
 
     with pytest.raises(InitializationError) as f:
-        built = build_bundle(setup_test_env.get_bundle('bad_bundle1'))
+        built = build_bundle(test_data_env_with_images_loaded.get_bundle('bad_bundle1'))
         built.execute(image_object=img_obj, context=None, tag='dockerhub/library/ruby:latest')
         built.execute(image_object=img_obj, context=None, tag='test')
 

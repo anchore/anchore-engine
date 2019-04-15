@@ -1,8 +1,8 @@
 """
 Gate Unit tests
 """
-
-from test.integration.services.policy_engine.engine import GateUnitTest
+import pytest
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import Image
 
@@ -36,7 +36,7 @@ dockerfile_sudo = 'FROM library/centos\nRUN sudo apt-get install\nCMD echo hello
 dockerfile_volume = 'FROM library/centos\nRUN sudo apt-get install\nVOLUME /var/log\nCMD echo helloworld\n'
 dockerfile_expose = 'FROM library/centos\nRUN sudo apt-get install\nEXPOSE 8000\nVOLUME /var/log\nCMD echo helloworld\n'
 
-
+@pytest.mark.skip
 class DockerfileGateTest(GateUnitTest):
     gate_clazz = DockerfileGate
 

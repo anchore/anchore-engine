@@ -1,7 +1,8 @@
 """
 Gate Unit tests
 """
-from integration.services.policy_engine.engine import GateUnitTest
+import pytest
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import Image
 
@@ -119,7 +120,7 @@ test_image.docker_data_json = {
                         "Size": 665664130
                     }
 
-
+@pytest.mark.skip
 class ImageMetadataGateTest(GateUnitTest):
     gate_clazz = ImageMetadataGate
 

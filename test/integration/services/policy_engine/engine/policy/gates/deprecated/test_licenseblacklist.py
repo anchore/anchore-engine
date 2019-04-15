@@ -1,10 +1,11 @@
-from integration.services.policy_engine.engine import GateUnitTest
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import get_thread_scoped_session
 
 from anchore_engine.services.policy_engine.engine.policy.gates.deprecated.license_blacklist import LicenseBlacklistGate, FullMatchTrigger, SubstringMatchTrigger
+import pytest
 
-
+@pytest.mark.skip
 class LicenseBlacklistGateTest(GateUnitTest):
     gate_clazz = LicenseBlacklistGate
 

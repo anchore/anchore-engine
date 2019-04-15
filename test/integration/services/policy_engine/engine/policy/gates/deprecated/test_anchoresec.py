@@ -10,8 +10,9 @@ from anchore_engine.services.policy_engine.engine.policy.gates.deprecated.anchor
 
 from anchore_engine.db import Image, get_thread_scoped_session
 from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
+import pytest
 
-
+@pytest.mark.skip
 class AnchoreSecGateTest(GateUnitTest):
     gate_clazz = AnchoreSecGate
 

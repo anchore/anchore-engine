@@ -1,9 +1,10 @@
-from integration.services.policy_engine.engine import GateUnitTest
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.gates.deprecated.npm_check import NpmCheckGate, NotOfficialTrigger, NotLatestTrigger, NoFeedTrigger, BadVersionTrigger, PkgFullMatchTrigger, PkgNameMatchTrigger
+import pytest
 
-
+@pytest.mark.skip
 class NpmCheckGateTest(GateUnitTest):
     gate_clazz = NpmCheckGate
     

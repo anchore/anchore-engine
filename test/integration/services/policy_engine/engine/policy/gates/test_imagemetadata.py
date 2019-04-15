@@ -7,7 +7,7 @@ from anchore_engine.db import Image
 from anchore_engine.subsys import logger
 
 from anchore_engine.services.policy_engine.engine.policy.gates.image_metadata import ImageMetadataGate, ImageMetadataAttributeCheckTrigger
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, anchore_db, cls_test_data_env, cls_no_feeds_test_env
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_anchore_db, cls_test_data_env2, cls_no_feeds_test_env
 
 logger.enable_test_logging()
 
@@ -123,7 +123,7 @@ test_image.docker_data_json = {
                         "Size": 665664130
                     }
 
-@pytest.mark.usefixtures('cls_test_data_env')
+@pytest.mark.usefixtures('cls_test_data_env2')
 class ImageMetadataGateTest(GateUnitTest):
     gate_clazz = ImageMetadataGate
 

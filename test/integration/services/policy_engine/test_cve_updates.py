@@ -7,7 +7,7 @@ import sqlalchemy.exc
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, ImagePackage, Vulnerability, VulnerableArtifact, FixedArtifact
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
-from test.integration.services.policy_engine.fixtures import test_data_env
+from test.integration.services.policy_engine.fixtures import anchore_db, test_data_env
 from anchore_engine.subsys import logger
 
 
