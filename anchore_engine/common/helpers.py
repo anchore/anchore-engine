@@ -30,10 +30,16 @@ def make_response_error(errmsg, in_httpcode=None, **kwargs):
             if set(['message', 'httpcode', 'detail']).issubset(set(errmsg.__dict__['anchore_error_json'])):
                 ret.update(errmsg.__dict__['anchore_error_json'])
 
-            if errmsg.__dict__['anchore_error_json'].get('error_code', None):
-                if 'error_codes' not in ret['detail']:
-                    ret['detail']['error_codes'] = []
-                ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))
+            try:
+                if errmsg.__dict__['anchore_error_json'].get('error_code', None):
+                    if 'error_codes' not in ret['detail']:
+                        ret['detail']['error_codes'] = []
+                    ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))
+            except Exception as err:
+                try:
+                    logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
+                except:
+                    pass
     return(ret)
 
 

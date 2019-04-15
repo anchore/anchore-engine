@@ -1400,7 +1400,7 @@ class CatalogService(ApiService):
 
     def _init_object_storage(self):
         try:
-            did_init = object_store.initialize(self.configuration, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID], allow_legacy_fallback=True)
+            did_init = object_store.initialize(self.configuration, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY], allow_legacy_fallback=True)
             if not did_init:
                 logger.warn('Unexpectedly found the object store already initialized. This is not an expected condition. Continuting with driver: {}'.format(object_store.get_manager().primary_client.__config_name__))
         except Exception as err:
