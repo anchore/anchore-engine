@@ -33,7 +33,7 @@ from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.services.catalog import archiver
-from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ANALYSIS_ARCHIVE_MANAGER_ID
+from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ANALYSIS_ARCHIVE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY
 
 ##########################################################
 
