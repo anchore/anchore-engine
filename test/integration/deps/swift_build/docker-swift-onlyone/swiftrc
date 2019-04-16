@@ -1,0 +1,15 @@
+
+# If you change the user name or password or project you'd have to
+# change it here as well.
+alias sw="swift -A http://127.0.0.1:12345/auth/v1.0 -U test:tester -K testing"
+
+# Make a container available via public html web page.
+function web {
+  if [ -z "$1" ]; then
+    echo "USAGE: web container_name"
+  else
+    echo "INFO: Making $1 a listable web index container"
+    sw post -r '.r:*' -m 'web-index:index.html' -m 'web-listings: true' $1
+  fi
+}
+

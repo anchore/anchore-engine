@@ -21,7 +21,7 @@ def _load_images(test_env):
     try:
         for img_id, path in test_env.image_exports():
             logger.info('Loading {}'.format(img_id))
-            file_url = 'file:///' + path
+            file_url = 'file://' + path
             i = ImageLoadTask(user_id='0', image_id=img_id, url=file_url).execute()
             if not i:
                 logger.info('Could not load image {}, already in system, ot an exception'.format(img_id))

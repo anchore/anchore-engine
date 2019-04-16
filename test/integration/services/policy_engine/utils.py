@@ -84,6 +84,8 @@ class LocalTestDataEnvironment(object):
         self.root_dir = data_dir if data_dir else os.curdir
         self.src = load_from_file
 
+        logger.info('Using local test data dir: {}'.format(self.root_dir))
+
         if self.src:
             raise NotImplementedError('Load from tarball not yet implemented')
 

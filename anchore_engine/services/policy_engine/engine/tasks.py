@@ -528,7 +528,8 @@ class ImageLoadTask(IAsyncTask):
 
         split_url = urllib.parse.splittype(url)
         if split_url[0] == 'file':
-            return self._get_file(split_url[1])
+            path = split_url[1][2:] # Strip the leading '//'
+            return self._get_file(path)
         elif split_url[0] == 'catalog':
             userId, bucket, name = split_url[1][2:].split('/')
 

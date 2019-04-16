@@ -56,7 +56,7 @@ def test_image_load(test_data_env):
             logger.info('Using image id: ' + image_id)
 
         t = time.time()
-        task = ImageLoadTask(user_id='0', image_id=image_id, url='file:///' + f[1], force_reload=True)
+        task = ImageLoadTask(user_id='0', image_id=image_id, url='file://' + f[1], force_reload=True)
         load_result = task.execute()
         load_duration = time.time() - t
         logger.info('Load complete for {}. Took: {} sec for db load. Result: {}'.format(f, load_duration, load_result))

@@ -65,32 +65,85 @@ jobs:
     working_directory: ~/build/anchore-engine
     docker:
     - image: circleci/python:3.6
-    - image: circleci/postgres:9.6
     steps:
     - checkout
     - run_tox_tests:
         test_path: "test/unit"
   
   integration_tests:
-    machine: true
-      working_directory: ~/build/anchore-engine
-      steps:
-        - checkout
-        - restore_cache:
-            keys:
-              - v1-dependencies-{{ checksum "requirements.txt" }}
-              # fallback to using the latest cache if no exact match is found
-              - v1-dependencies-
-        - run:
-            name: install dependencies
-            command: |
-              pip install --upgrade pip
-              pip install --upgrade tox
-              pip install --upgrade docker-compose
-        - run:
-            name: run integration test
-            command: |
-              scripts/tests/test_with_deps.sh test/integration/
+    docker:
+      - image: circleci/python:3.6
+      - image: anchore/test-infra-minio:latest
+        command:
+          - server
+          - /data
+      - image: anchore/test-infra-swift:latest
+      - image: circleci/postgres:9.6
+    working_directory: ~/build/anchore-engine
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: install dependencies
+          command: |
+            sudo pip install --upgrade pip
+            sudo pip install --upgrade tox
+      - run:
+          name: run integration test
+          environment:
+            ANCHORE_TEST_S3_ACCESS_KEY: "9EB92C7W61YPFQ6QLDOU"
+            ANCHORE_TEST_S3_SECRET_KEY: "TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s"
+            ANCHORE_TEST_S3_URL: "http://localhost:9000"
+            ANCHORE_TEST_S3_BUCKET: "testarchivebucket"
+
+            ANCHORE_TEST_SWIFT_AUTH_URL: "http://localhost:8080/auth/v1.0"
+            ANCHORE_TEST_SWIFT_KEY: "testing"
+            ANCHORE_TEST_SWIFT_USER: "test:tester"
+            ANCHORE_TEST_SWIFT_CONTAINER: "testarchive"
+
+            ANCHORE_TEST_DB_URL: "postgresql+pg8000://postgres@localhost:5432/circle_test"
+            ANCHORE_TEST_DB_USER: "postgres"
+            ANCHORE_TEST_DB_PASS: "postgres"
+            ANCHORE_TEST_DATA_ENV_DIR: "test/data/test_data_env"
+          command: |
+            mkdir logs
+            tox test/integration | tee logs/report_test-integration.log
+      - store_artifacts:
+          path: logs/
+
+#  integration_tests:
+#    machine:
+#      image: ubuntu-1604:201903-01
+#    working_directory: ~/build/anchore-engine
+#    steps:
+#      - checkout
+#      - restore_cache:
+#          keys:
+#            - v1-dependencies-{{ checksum "requirements.txt" }}
+#            # fallback to using the latest cache if no exact match is found
+#            - v1-dependencies-
+#      - run:
+#          name: Install py3 and deps
+#          command: |
+#            sudo apt-get update -y
+#            sudo apt-get install -y python3 python3-dev python3-pip
+#      - run:
+#          name: install dependencies
+#          command: |
+#            sudo pip install --upgrade pip
+#            sudo pip install --upgrade tox
+#            sudo pip install --upgrade docker-compose
+#      - run:
+#          name: run integration test
+#          command: |
+#            ./scripts/tests/test_with_deps.sh test/integration/
+
   build:
     docker:
     - image: docker:stable-git

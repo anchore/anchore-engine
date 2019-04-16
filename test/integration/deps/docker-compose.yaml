@@ -1,25 +1,28 @@
+# Uncomment the build steps to get a fresh build locally
 version: '3'
 services:
-        db:
-                image: postgres:9
-                container_name: postgres
-                ports:
-                        - "5432:5432"
-        swift:
-                build:
-                        context: ./swift_build/docker-swift-onlyone
-                        dockerfile: Dockerfile
-                container_name: swift
-                ports:
-                        - "8080:8080"
-        minio:
-                image: minio/minio:latest
-                container_name: minio
-                ports:
-                        - "9000:9000"
-                volumes:
-                        - ./minio/config/config.json:/root/.minio/config.json
-                command:
-                        - server
-                        - /data
+  db:
+    image: postgres:9
+    container_name: postgres
+    ports:
+      - "5432:5432"
+  swift:
+    image: anchore/test-infra-swift:latest
+#    build:
+#      context: ./swift_build/docker-swift-onlyone
+#      dockerfile: Dockerfile
+    container_name: swift
+    ports:
+      - "8080:8080"
+  minio:
+    image: anchore/test-infra-minio:latest
+#    build:
+#      context: ./minio_build
+#      dockerfile: Dockerfile
+    container_name: minio
+    ports:
+      - "9000:9000"
+    command:
+      - server
+      - /data
 
