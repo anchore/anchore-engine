@@ -1220,7 +1220,7 @@ def watcher_func(*args, **kwargs):
             logger.info("simplequeue service not yet ready, will retry")
         else:
             q_client = internal_client_for(SimpleQueueClient, userId=None)
-
+            lease_id = None
             try:
                 logger.debug("attempting dequeue")
                 qobj = q_client.dequeue('watcher_tasks', max_wait_seconds=30)
@@ -1247,6 +1247,9 @@ def watcher_func(*args, **kwargs):
 
                 else:
                     logger.debug("nothing in queue")
+            except simplequeue.LeaseAcquisitionFailedError as e:
+                logger.debug('Lease acquisition could not complete, but this is probably due to another process with the lease: {}'.format(e))
+                logger.info('SKipping executing task because lease {} already taken, so another process is running the task'.format(lease_id))
             except Exception as err:
                 logger.warn("failed to process task this cycle: " + str(err))
         logger.debug("generic watcher done")

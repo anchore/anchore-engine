@@ -194,14 +194,16 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
                             except Exception as e:
                                 logger.exception('Error updating lease {}'.format(lease['id']))
                         else:
-                            logger.warn('Lease refresh failed to succeed after retries. Lease {} may be lost due to timeout'.format(lease_id))
+                            logger.debug('Lease refresh failed to succeed after retries. Lease {} may be lost due to timeout'.format(lease_id))
 
                     handler_thread.join(timeout=1)
             else:
                 handler_thread.join()
 
             logger.debug('Target thread returned')
-
+    except LeaseAcquisitionFailedError as e:
+        logger.debug('Could not acquire lease, but this may be normal: {}'.format(e))
+        raise e
     except Exception as e:
         logger.warn('Attempting to get lease {} failed: {}'.format(lease_id, e))
         raise e
