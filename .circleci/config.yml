@@ -207,7 +207,7 @@ jobs:
         name: Push to Dockerhub
         command: |
           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-          export DEV_IMG_TAG="anchore/anchore-engine-dev:${CIRCLE_SHA1:0:10}"
+          export DEV_IMG_TAG="anchore/anchore-engine-dev:${CIRCLE_SHA1}"
           docker tag "${IMAGE_NAME}:ci" "$DEV_IMG_TAG"
           docker push "$DEV_IMG_TAG"
           if [ "$CIRCLE_BRANCH" == "master" ]; then
@@ -225,17 +225,17 @@ jobs:
           fi
 
   trigger_downstream:
-    machine: true
+    docker:
+      - image: anchore/test-infra:latest
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
     - run:
-        name: Trigger Downstream Builds
+        name: Trigger release candidate builds
         command: |
-          if [ "$IMAGE_NAME" == "docker.io/anchore/anchore-engine" ] && [ "$IMAGE_TAG" == "dev" ]; then
-            echo 'Triggering downstream build'
-            curl -X POST -H "Content-Type: application/json" -d '{"branch": "master"}' "$DOWNSTREAM_TRIGGER_URL"
-          else
-            echo 'Skipping downstream push because pushed image is not anchore-engine:dev'
-          fi
+          source ci_utils.sh
+          trigger_artifact_build anchore-engine
 
 workflows:
   default_workflow:
@@ -261,6 +261,7 @@ workflows:
         requires:
         - compose_tests
     - trigger_downstream:
+        context: release_candidates
         requires:
         - push_dockerhub
     - anchore/image_scan:
