@@ -95,7 +95,7 @@ class ObjectStorageManager(object):
 
         archive_document = self.get(userId, bucket, archiveId)
         if archive_document is not None:
-            return json.loads(archive_document).get('document')
+            return json.loads(utils.ensure_str(archive_document)).get('document')
         else:
             return None
 
