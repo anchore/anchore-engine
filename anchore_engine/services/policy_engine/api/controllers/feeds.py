@@ -1,5 +1,6 @@
 from flask import jsonify
 
+from anchore_engine.common.errors import AnchoreError
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.clients.services.simplequeue import LeaseAcquisitionFailedError
 from anchore_engine.common.helpers import make_response_error
@@ -66,10 +67,10 @@ def sync_feeds(sync=True, force_flush=False):
             result = FeedsUpdateTask.run_feeds_update(force_flush=force_flush)
         except LeaseAcquisitionFailedError as e:
             log.exception('Could not acquire lock on feed sync, likely another sync already in progress')
-            return make_response_error('Failed to execute feed sync', in_httpcode=409,
-                                       detail='Could not acquire lock on feed sync, likely another sync already in progress'), 409
+            return make_response_error('Feed sync lock already held', in_httpcode=409,
+                                       details={'error_codes': [AnchoreError.FEED_SYNC_ALREADY_IN_PROGRESS.name], 'message': AnchoreError.FEED_SYNC_ALREADY_IN_PROGRESS.value}), 409
         except Exception as e:
             log.exception('Error executing feed update task')
-            return make_response_error('Failed to execute feed sync due to an internal error', in_httpcode=500), 500
+            return jsonify(make_response_error(e, in_httpcode=500)), 500
 
     return jsonify(['{}/{}'.format(x[0], x[1]) for x in result]), 200

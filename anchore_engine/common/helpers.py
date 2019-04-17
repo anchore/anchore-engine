@@ -9,7 +9,9 @@ import time
 from anchore_engine.subsys import logger
 
 
-def make_response_error(errmsg, in_httpcode=None, **kwargs):
+def make_response_error(errmsg, in_httpcode=None, details=None):
+    if details is None:
+        details = {}
     if not in_httpcode:
         httpcode = 500
     else:
@@ -20,18 +22,18 @@ def make_response_error(errmsg, in_httpcode=None, **kwargs):
     ret = {
         'message': msg,
         'httpcode': int(httpcode),
-        'detail': kwargs.get('detail', {})
+        'detail': details
     }
     if 'error_codes' not in ret['detail']:
         ret['detail']['error_codes'] = []
 
     if isinstance(errmsg, Exception):
         if 'anchore_error_json' in errmsg.__dict__:
-            if set(['message', 'httpcode', 'detail']).issubset(set(errmsg.__dict__['anchore_error_json'])):
+            if {'message', 'httpcode', 'detail'}.issubset(set(errmsg.__dict__['anchore_error_json'])):
                 ret.update(errmsg.__dict__['anchore_error_json'])
 
             try:
-                if set(['error_code']).issubset(set(errmsg.__dict__['anchore_error_json'])) and errmsg.__dict__['anchore_error_json'].get('error_code', None):
+                if {'error_code'}.issubset(set(errmsg.__dict__['anchore_error_json'])) and errmsg.__dict__['anchore_error_json'].get('error_code', None):
                     if 'error_codes' not in ret['detail']:
                         ret['detail']['error_codes'] = []
                     ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))

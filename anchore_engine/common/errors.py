@@ -7,3 +7,4 @@ class AnchoreError(enum.Enum):
     REGISTRY_NOT_SUPPORTED = "Anchore cannot access the specified registry as supporting the v2 registry API"
     SKOPEO_UNKNOWN_ERROR = "The skopeo command has failed due to an error that is not explicitly handled, see the command output/error for more information"
     UNKNOWN = "An unknown error has occurred, please consult the anchore service logs for more information"
+    FEED_SYNC_ALREADY_IN_PROGRESS = "Feed sync lock held by another process"
