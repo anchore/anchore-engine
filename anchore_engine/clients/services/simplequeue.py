@@ -8,7 +8,16 @@ from anchore_engine.utils import get_threadbased_id
 from anchore_engine.clients.services.internal import InternalServiceClient
 import retrying
 
+class LeaseUnavailableError(Exception):
+    """
+    A lease is held by another thread and was not freed within the timeout
+    """
+    pass
+
 class LeaseAcquisitionFailedError(Exception):
+    """
+    A lease could not be acquired due to errors, not simply it being held by another thread
+    """
     pass
 
 
@@ -165,47 +174,49 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
     lease = None
     try:
         my_id = get_threadbased_id() if client_id is None else client_id
-        lease = client.acquire_lease(lease_id, client_id=my_id, ttl=ttl)
+        try:
+            lease = client.acquire_lease(lease_id, client_id=my_id, ttl=ttl)
+            if not lease:
+                raise LeaseUnavailableError('Another owner holds lease {}, and did not release within timeout {}'.format(lease_id, ttl))
 
-        if not lease:
-            logger.debug('No lease returned from service, cannot proceed with task execution. Will retry on next cycle. Lease_id: {}'.format(lease_id))
-            raise LeaseAcquisitionFailedError('Could not acquire lease {} within timeout'.format(lease_id))
+        except Exception as e:
+            raise LeaseAcquisitionFailedError('Error during lease acquisition: {}'.format(e))
+
+        logger.debug('Got lease: {}'.format(lease))
+
+        t = time.time()
+        logger.debug('Starting target={} with lease={} and client_id={}'.format(target.__name__, lease_id, lease['held_by']))
+        handler_thread.start()
+
+        if autorefresh:
+            # Run the task thread and monitor it, refreshing the task lease as needed
+            while handler_thread.isAlive():
+                # If we're halfway to the timeout, refresh to have a safe buffer
+                if time.time() - t > (ttl / 2):
+                    # refresh the lease
+                    for i in range(3):
+                        try:
+                            resp = client.refresh_lease(lease_id=lease['id'], client_id=lease['held_by'], epoch=lease['epoch'], ttl=ttl)
+                            logger.debug('Lease {} refreshed with response: {}'.format(lease_id, resp))
+                            if resp:
+                                lease = resp
+                                t = time.time()
+                                break
+                        except Exception as e:
+                            logger.exception('Error updating lease {}'.format(lease['id']))
+                    else:
+                        logger.debug('Lease refresh failed to succeed after retries. Lease {} may be lost due to timeout'.format(lease_id))
+
+                handler_thread.join(timeout=1)
         else:
-            logger.debug('Got lease: {}'.format(lease))
+            handler_thread.join()
 
-            t = time.time()
-            logger.debug('Starting target={} with lease={} and client_id={}'.format(target.__name__, lease_id, lease['held_by']))
-            handler_thread.start()
-
-            if autorefresh:
-                # Run the task thread and monitor it, refreshing the task lease as needed
-                while handler_thread.isAlive():
-                    # If we're halfway to the timeout, refresh to have a safe buffer
-                    if time.time() - t > (ttl / 2):
-                        # refresh the lease
-                        for i in range(3):
-                            try:
-                                resp = client.refresh_lease(lease_id=lease['id'], client_id=lease['held_by'], epoch=lease['epoch'], ttl=ttl)
-                                logger.debug('Lease {} refreshed with response: {}'.format(lease_id, resp))
-                                if resp:
-                                    lease = resp
-                                    t = time.time()
-                                    break
-                            except Exception as e:
-                                logger.exception('Error updating lease {}'.format(lease['id']))
-                        else:
-                            logger.debug('Lease refresh failed to succeed after retries. Lease {} may be lost due to timeout'.format(lease_id))
-
-                    handler_thread.join(timeout=1)
-            else:
-                handler_thread.join()
-
-            logger.debug('Target thread returned')
-    except LeaseAcquisitionFailedError as e:
+        logger.debug('Target thread returned')
+    except (LeaseAcquisitionFailedError, LeaseUnavailableError) as e:
         logger.debug('Could not acquire lease, but this may be normal: {}'.format(e))
         raise e
     except Exception as e:
-        logger.warn('Attempting to get lease {} failed: {}'.format(lease_id, e))
+        logger.debug('Attempting to get lease {} failed: {}'.format(lease_id, e))
         raise e
     finally:
         try:

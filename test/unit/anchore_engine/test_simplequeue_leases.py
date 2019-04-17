@@ -1,0 +1,148 @@
+"""
+Tests for the internal simplequeue client lease convenience functions.
+"""
+import pytest
+from anchore_engine.subsys import logger
+from anchore_engine.clients.services.simplequeue import run_target_with_lease, run_target_with_queue_ttl, SimpleQueueClient
+
+logger.enable_test_logging()
+
+lease_id = 'test1'
+test_id = 'test_client'
+epoch = 0
+do_ok = True
+ttl = 60
+
+def acquire_lease_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called acquire')
+        if not fail:
+            global lease_id, test_id, epoch
+            epoch += 1
+            return {
+                'id': lease_id,
+                'held_by': test_id,
+                'epoch': epoch,
+                'ttl': ttl
+            }
+        else:
+            return None
+    return fn
+
+def release_lease_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called release')
+        if not fail:
+            global lease_id, test_id, epoch
+            epoch += 1
+            return {
+                'id': lease_id,
+                'held_by': None,
+                'epoch': epoch,
+                'ttl': ttl
+            }
+        else:
+            return None
+    return fn
+
+
+def refresh_lease_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called refresh')
+        if not fail:
+            global lease_id, test_id, epoch
+            epoch += 1
+            return {
+                'id': lease_id,
+                'held_by': test_id,
+                'epoch': epoch,
+                'ttl': ttl
+            }
+        else:
+            return None
+    return fn
+
+
+def list_leases_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called list')
+        if not fail:
+            global lease_id, test_id, epoch
+            return [{
+                'id': lease_id,
+                'held_by': test_id,
+                'epoch': epoch,
+                'ttl': ttl
+            }]
+        else:
+            return None
+    return fn
+
+
+def describe_lease_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called describe')
+        if not fail:
+            global lease_id, test_id, epoch
+            return {
+                'id': lease_id,
+                'held_by': test_id,
+                'epoch': epoch,
+                'ttl': ttl
+            }
+        else:
+            return None
+    return fn
+
+
+def create_lease_mock(fail):
+    def fn(*args, **kwargs):
+        logger.info('Called create')
+        if not fail:
+            global lease_id, test_id, epoch
+            return {
+                'id': lease_id,
+                'held_by': test_id,
+                'epoch': epoch,
+                'ttl': ttl
+            }
+        else:
+            return None
+    return fn
+
+
+def pass_target():
+    return True
+
+
+def fail_target():
+    raise Exception('Target failed')
+
+
+def test_run_target_with_lease_ok():
+    global SimpleQueueClient
+
+    SimpleQueueClient.acquire_lease = acquire_lease_mock(fail=False)
+    SimpleQueueClient.refresh_lease = refresh_lease_mock(fail=False)
+    SimpleQueueClient.describe_lease = describe_lease_mock(fail=False)
+    SimpleQueueClient.create_lease = create_lease_mock(fail=False)
+    SimpleQueueClient.release_lease = release_lease_mock(fail=False)
+
+    run_target_with_lease(('user', 'pass'), 'test_lease', pass_target, client_id='test1')
+
+
+
+def test_run_target_with_lease_conn_error():
+    global SimpleQueueClient
+
+    SimpleQueueClient.acquire_lease = acquire_lease_mock(fail=True)
+    SimpleQueueClient.refresh_lease = refresh_lease_mock(fail=True)
+    SimpleQueueClient.describe_lease = describe_lease_mock(fail=False)
+    SimpleQueueClient.create_lease = create_lease_mock(fail=False)
+    SimpleQueueClient.release_lease = release_lease_mock(fail=False)
+
+
+    with pytest.raises(Exception) as raised_ex:
+        run_target_with_lease(('user', 'pass'), 'test_lease', pass_target, client_id='test1')
+
+    logger.info('Caught: {}'.format(raised_ex))

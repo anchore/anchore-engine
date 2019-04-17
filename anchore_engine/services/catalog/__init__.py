@@ -1249,7 +1249,6 @@ def watcher_func(*args, **kwargs):
                     logger.debug("nothing in queue")
             except simplequeue.LeaseAcquisitionFailedError as e:
                 logger.debug('Lease acquisition could not complete, but this is probably due to another process with the lease: {}'.format(e))
-                logger.info('Skipping executing task because lease {} already taken, so another process is running the task'.format(lease_id))
             except Exception as err:
                 logger.warn("failed to process task this cycle: " + str(err))
         logger.debug("generic watcher done")
