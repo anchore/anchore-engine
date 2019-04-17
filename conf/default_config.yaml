@@ -72,7 +72,7 @@ default_admin_email: ${ANCHORE_ADMIN_EMAIL}
 
 credentials:
   database:
-    db_connect: 'postgresql+pg8000://${ANCHORE_DB_USER}:${ANCHORE_DB_PASSWORD}@${ANCHORE_DB_HOST}:${ANCHORE_DB_PORT}/${ANCHORE_DB_NAME}'
+    db_connect: 'postgresql://${ANCHORE_DB_USER}:${ANCHORE_DB_PASSWORD}@${ANCHORE_DB_HOST}:${ANCHORE_DB_PORT}/${ANCHORE_DB_NAME}'
     db_connect_args:
       timeout: 120
       ssl: false
