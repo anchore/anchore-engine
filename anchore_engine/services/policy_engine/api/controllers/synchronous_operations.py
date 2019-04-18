@@ -7,13 +7,11 @@ Async operations are handled by teh async_operations controller.
 import connexion
 import datetime
 import enum
-from flask import abort, Response
 import json
 import time
 import hashlib
 import os
 import re
-import collections
 from sqlalchemy import or_, and_, desc, asc
 from werkzeug.exceptions import HTTPException
 
@@ -597,7 +595,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         img = db.query(Image).get((image_id, user_id))
         vulns = []
         if not img:
-            abort(404)
+            return make_response_error('Image not found', in_httpcode=404), 404
         else:
             if force_refresh:
                 log.info('Forcing refresh of vulnerabiltiies for {}/{}'.format(user_id, image_id))
@@ -701,7 +699,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
     except Exception as e:
         log.exception('Error checking image {}, {} for vulnerabiltiies. Rolling back'.format(user_id, image_id))
         db.rollback()
-        abort(500)
+        return make_response_error(e, in_httpcode=500), 500
     finally:
         db.close()
 
@@ -712,8 +710,6 @@ def ingress_image(ingress_request):
     :param ingress_request json object specifying the identity of the image to sync
     :return: status result for image load
     """
-    if not connexion.request.is_json:
-        abort(400)
 
     req = ImageIngressRequest.from_dict(ingress_request)
     try:
@@ -730,7 +726,8 @@ def ingress_image(ingress_request):
             resp.status = 'loaded'
         return resp.to_dict(), 200
     except Exception as e:
-        abort(500, 'Internal error processing image analysis import')
+        log.exception('Error loading image into policy engine')
+        return make_response_error(e,in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -762,7 +759,7 @@ def validate_bundle(policy_bundle):
         raise
     except Exception as e:
         log.exception('Failed processing bundle evaluation: {}'.format(e))
-        abort(Response('Unexpected internal error', 500))
+        return make_response_error(e, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -839,7 +836,7 @@ def describe_policy():
 
     except Exception as e:
         log.exception('Error describing gate system')
-        abort(500, 'Internal error describing gate configuration')
+        return make_response_error(e, in_httpcode=500), 500
 
 def _get_imageId_to_record(userId, dbsession=None):
     imageId_to_record = {}
