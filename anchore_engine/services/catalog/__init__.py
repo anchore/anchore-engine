@@ -1247,7 +1247,7 @@ def watcher_func(*args, **kwargs):
 
                 else:
                     logger.debug("nothing in queue")
-            except simplequeue.LeaseAcquisitionFailedError as e:
+            except (simplequeue.LeaseAcquisitionFailedError, simplequeue.LeaseUnavailableError) as e:
                 logger.debug('Lease acquisition could not complete, but this is probably due to another process with the lease: {}'.format(e))
             except Exception as err:
                 logger.warn("failed to process task this cycle: " + str(err))
