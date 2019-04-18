@@ -25,7 +25,7 @@ def archived_img_to_msg(obj: ArchivedImage):
         'parentDigest': obj.parentDigest,
         'annotations': json.loads(obj.annotations) if obj.annotations else {},
         'status': obj.status,
-        'analyzed_at': obj.analyzed_at,
+        'analyzed_at': epoch_to_rfc3339(obj.analyzed_at),
         'archive_size_bytes': obj.archive_size_bytes,
         'image_detail': [ archive_img_docker_to_msg(x) for x in obj.tags() ],
         'created_at': epoch_to_rfc3339(obj.created_at),
