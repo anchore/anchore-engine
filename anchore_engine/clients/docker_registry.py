@@ -70,11 +70,20 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
     try:
         # base_url is of the form 'https://index.docker.io' or 'https://mydocker.com:5000' <-- note: https only, no trailing slash, etc
         index_url = "{}/v2".format(base_url)
-        try:
-            r = requests.get(index_url, verify=verify, allow_redirects=True)
-        except Exception as err:
+
+        last_exception = None
+        for i_url in [index_url, "{}/".format(index_url)]:
+            try:
+                r = requests.get(i_url, verify=verify, allow_redirects=True)
+                index_url = i_url
+                last_exception = None
+            except Exception as err:
+                last_exception = Exception(err)
+
+        if last_exception:
             httpcode = 500
-            raise err
+            raise last_exception
+
         try:
             if r.status_code in [404]:
                 r = requests.get(index_url+'/', verify=verify, allow_redirects=True)
