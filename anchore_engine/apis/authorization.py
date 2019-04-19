@@ -208,6 +208,16 @@ class AuthorizationHandler(ABC):
         pass
 
 
+    @abstractmethod
+    def inline_authz(self, permission_s: list):
+        """
+        Function to invoke an inline authz, similar to requires_* functions but non-decorator.
+        :param permission_s:
+        :return:
+        """
+        pass
+
+
 class DbAuthorizationHandler(AuthorizationHandler):
     """
     Default authorization handler for service apis.
@@ -363,7 +373,6 @@ class DbAuthorizationHandler(AuthorizationHandler):
             logger.exception('Unexpected exception: {}'.format(ex))
             return make_response_error('Internal error', in_httpcode=500), 500
 
-
     def requires_account(self, with_names=None, with_types=None):
         """
         :param with_names: list of strings of names any of which is accepted
@@ -515,7 +524,6 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
         else:
             raise Exception('Internal authz check returned {}, External authz check returned {}'.format(internal_check, external_check))
 
-
     def notify(self, notification_type, notification_value):
         """
         No-Op for the default handler since permissions are ephemeral.
@@ -623,6 +631,7 @@ def auth_function_factory():
                             headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
 
     return do_auth
+
 
 def init_authz_handler(configuration=None):
     global _global_authorizer
