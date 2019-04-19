@@ -195,7 +195,7 @@ def list_analysis_archive():
     """
     try:
         with db.session_scope() as session:
-            return [archived_img_to_msg(img) for img in session.query(ArchivedImage).filter(ArchivedImage.account == ApiRequestContextProxy.namespace()).order_by(ArchivedImage.created_at.desc())], 200
+            return [archived_img_to_msg(img) for img in db_archived_images.list(session, ApiRequestContextProxy.namespace())], 200
 
     except Exception as err:
         logger.exception('Error listing archived images.')
