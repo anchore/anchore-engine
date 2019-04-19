@@ -63,7 +63,10 @@ def create_analysis_archive_rule(rule):
 
     # Permission check on the system_global field, only admins
     if rule.get('system_global'):
-        authorizer.inline_authz([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+        perm = ':'.join(['createArchiveTransitionRule', GLOBAL_RESOURCE_DOMAIN, '*'])
+
+        # Will raise exception if unauthorized
+        authorizer.authorize(ApiRequestContextProxy.identity(), [perm])
 
     client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
     try:

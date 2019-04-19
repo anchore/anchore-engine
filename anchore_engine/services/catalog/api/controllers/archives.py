@@ -125,10 +125,8 @@ def list_analysis_archive_rules(system_global=True):
     """
     try:
         with session_scope() as session:
-            logger.info('Getting rules: global {}'.format(system_global))
             if system_global:
                 qry = session.query(ArchiveTransitionRule).filter(or_(ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(), ArchiveTransitionRule.system_global == True))
-                logger.info('REMOVE: Query for rules: {}'.format(qry))
                 return [transition_rule_db_to_json(x) for x in qry], 200
             else:
                 return [transition_rule_db_to_json(x) for x in session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace())], 200
@@ -176,13 +174,13 @@ def get_analysis_archive_rule(rule_id):
     try:
         with session_scope() as session:
             rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
-            if not rule:
+            if rule is None:
                 # Allow users to get the system global rules
                 rule = session.query(ArchiveTransitionRule).filter_by(rule_id=rule_id, system_global=True).one_or_none()
-                if not rule:
+                if rule is None:
                     return make_response_error('Rule not found', in_httpcode=404), 404
-            else:
-                return transition_rule_db_to_json(rule), 200
+
+            return transition_rule_db_to_json(rule), 200
     except Exception as ex:
         return make_response_error(ex, in_httpcode=500), 500
 
@@ -196,7 +194,7 @@ def delete_analysis_archive_rule(rule_id):
     try:
         with session_scope() as session:
             rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
-            if rule:
+            if rule is not None:
                 session.delete(rule)
             else:
                 return make_response_error('Rule not found', in_httpcode=404), 404
@@ -204,6 +202,7 @@ def delete_analysis_archive_rule(rule_id):
         return None, 200
     except Exception as ex:
         return make_response_error(ex, in_httpcode=500), 500
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_analysis_archive_rule_history(rule_id):
@@ -217,6 +216,7 @@ def get_analysis_archive_rule_history(rule_id):
             return [transition_history_to_json(x) for x in session.query(ArchiveTransitionHistoryEntry).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id)], 200
     except Exception as ex:
         return make_response_error(ex, in_httpcode=500), 500
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_analysis_archive():
@@ -249,8 +249,6 @@ def archive_image_analysis(imageReferences):
         results = []
 
         for digest in imageReferences:
-            logger.info('Archive processing {}'.format(digest))
-
             try:
                 # Do synchronous part to start the state transition
                 task = ArchiveImageTask(account=ApiRequestContextProxy.namespace(), image_digest=digest)
