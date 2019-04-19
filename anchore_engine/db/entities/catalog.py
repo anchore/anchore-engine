@@ -451,9 +451,9 @@ class ArchiveTransitionRule(Base, UtilMixin):
     selector_tag = Column(String)
     tag_versions_newer = Column(Integer)
     analysis_age_days = Column(Integer)
+    system_global = Column(Boolean, default=False)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
-    # system_global = Column(Boolean, default=False) TODO: add for global rule support
 
     def __repr__(self):
         return '<ArchiveTransitionRule account={},rule_id={}>'.format(self.account, self.rule_id)

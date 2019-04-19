@@ -1152,50 +1152,35 @@ def handle_archive_tasks(*args, **kwargs):
     :param kwargs:
     :return:
     """
-    cycle_timer = kwargs['mythread']['cycle_timer']
-    queuename = 'archive_tasks'
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
 
-    while True:
-        # q_client = internal_client_for(SimpleQueueClient, userId=None)
-        # msg = q_client.dequeue(queuename)
-        # while msg is not None:
-        #     logger.info('Working on task {}'.format(msg))
-        #
-        #
-        #
-        #     if t:
-        #         try:
-        #             t.initiated = datetime.datetime.fromisoformat(task_msg['initiated'])
-        #             t.run()
-        #         except Exception as ex:
-        #             logger.exception('Exception caught in execution of archive task: {}'.format(task_msg))
-        #     else:
-        #         logger.error('Unsupported message type: {}. Dropping message'.format(task_msg['type']))
-        #
-        #     q_client.delete_message(queuename, task_msg['receipt_handle'])
-        #     msg = q_client.dequeue(queuename)
+    start_time = time.time()
+    logger.debug("FIRING: " + str(watcher))
+    task_id = None
+    try:
+        logger.info('Starting analysis archive transition rule processor')
+        with db.session_scope() as session:
+            # Get accounts that have rules
+            accounts = session.query(ArchiveTransitionRule.account).distinct(ArchiveTransitionRule.account).all()
+            if accounts:
+                accounts = [x[0] for x in accounts]
+            logger.debug('Found accounts {} with transition rules'.format(accounts))
 
-        try:
-            with db.session_scope() as session:
-                # Get accounts that have rules
-                accounts = session.query(ArchiveTransitionRule.account).distinct(ArchiveTransitionRule.account).all()
-                if accounts:
-                    accounts = [x[0] for x in accounts]
-                logger.debug('Found accounts {} with transition rules'.format(accounts))
+        for account in accounts:
+            task = archiver.ArchiveTransitionTask(account)
+            task_id = task.task_id
+            logger.info('Starting archive transition task {} for account {}'.format(task.task_id, account))
+            task.run()
+            logger.info('Archive transition task {} complete'.format(task.task_id))
 
-            for account in accounts:
-                logger.debug('Processing archive transition rules for account {}'.format(account))
+    except Exception as ex:
+        logger.exception('Caught unexpected exception')
+    finally:
+        logger.debug('Analysis archive task {} execution time: {} seconds'.format(task_id, time.time() - start_time))
+        logger.debug('Sleeping until next cycle since no messages to process')
 
-                task = archiver.ArchiveTransitionTask(account)
-                logger.info('Starting archive transition task {}'.format(task.task_id))
-                task.run()
-                logger.info('Archive transition task {} complete'.format(task.task_id))
-
-        except Exception as ex:
-            logger.exception('Caught unexpected exception')
-        finally:
-            logger.debug('Sleeping until next cycle since no messages to process')
-            time.sleep(cycle_timer)
+    return True
 
 
 click = 0
@@ -1495,8 +1480,8 @@ watchers = {
     'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [],
                        'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0,
                        'last_return': False, 'initialized': False},
-    'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': False, 'taskType': None, 'args': [], 'cycle_timer': 30,
-                           'min_cycle_timer': 10, 'max_cycle_timer': 60, 'last_queued': 0, 'last_return': False,
+    'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': 'archive_transitions', 'taskType': 'handle_archive_tasks', 'args': [], 'cycle_timer': 30,
+                           'min_cycle_timer': 10, 'max_cycle_timer': 86400, 'last_queued': 0, 'last_return': False,
                            'initialized': False},
 }
 

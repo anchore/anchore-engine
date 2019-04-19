@@ -2088,7 +2088,13 @@ paths:
       - Archives
       operationId: list_analysis_archive_rules
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: listArchiveTransitions
+      x-anchore-authz-action: listArchiveTransitionRules
+      parameters:
+        - name: system_global
+          in: query
+          required: false
+          type: boolean
+          description: If true include system global rules (owned by admin) even for non-admin users. Defaults to true if not set. Can be set to false to exclude globals
       responses:
         200:
           description: Archive transition rules
@@ -2103,7 +2109,7 @@ paths:
       - Archives
       operationId: create_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: createArchiveTransition
+      x-anchore-authz-action: createArchiveTransitionRule
       parameters:
         - name: rule
           in: body
@@ -2125,7 +2131,7 @@ paths:
       - Archives
       operationId: get_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: getArchiveTransition
+      x-anchore-authz-action: getArchiveTransitionRule
       parameters:
         - name: ruleId
           type: string
@@ -2145,7 +2151,7 @@ paths:
       - Archives
       operationId: delete_analysis_archive_rule
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: deleteArchiveTransition
+      x-anchore-authz-action: deleteArchiveTransitionRule
       parameters:
         - name: ruleId
           type: string
@@ -2166,7 +2172,7 @@ paths:
       - Archives
       operationId: get_analysis_archive_rule_history
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: getArchiveTransitionHistory
+      x-anchore-authz-action: getArchiveTransitionRuleHistory
       parameters:
         - name: ruleId
           type: string
@@ -3639,6 +3645,15 @@ definitions:
         enum:
           - archive
           - delete
+      system_global:
+        type: boolean
+        description: True if the rule applies to all accounts in the system. This is only available to admin users to update/modify, but all users with permission to list rules can see them
+      created_at:
+        type: string
+        format: date-time
+      last_updated:
+        type: string
+        format: date-time
   AnalysisArchiveTransitionHistory:
     type: object
     description: A rule for auto-archiving image analysis by time and/or tag-history

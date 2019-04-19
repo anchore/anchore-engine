@@ -327,8 +327,8 @@ class CatalogClient(InternalServiceClient):
     def get_archived_analysis(self, imageDigest):
         return self.call_api(http.anchy_get, 'archives/images/{imageDigest}', path_params={'imageDigest': imageDigest})
 
-    def list_analysis_archive_rules(self):
-        return self.call_api(http.anchy_get, 'archives/rules')
+    def list_analysis_archive_rules(self, system_global=True):
+        return self.call_api(http.anchy_get, 'archives/rules', query_params={'system_global': system_global})
 
     def add_analysis_archive_rule(self, rule):
         return self.call_api(http.anchy_post, 'archives/rules', body=json.dumps(rule))

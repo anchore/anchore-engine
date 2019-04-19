@@ -5,9 +5,12 @@ API controller for /archives routes
 import datetime
 import json
 import uuid
+from sqlalchemy import or_, and_
 from anchore_engine import db
+from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 from anchore_engine.db import session_scope, db_catalog_image, ArchivedImage, ArchivedImageDocker, CatalogImage, db_archived_images, ArchiveTransitionRule, ArchiveTransitionHistoryEntry, ArchiveTransitions
-from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
+from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer, Permission
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.utils import datetime_to_rfc3339, epoch_to_rfc3339
@@ -56,6 +59,7 @@ def transition_rule_db_to_json(db_rule: ArchiveTransitionRule):
         'analysis_age_days': db_rule.analysis_age_days,
         'tag_versions_newer': db_rule.tag_versions_newer,
         'transition': db_rule.transition.value,
+        'system_global': db_rule.system_global,
         'created_at': epoch_to_rfc3339(db_rule.created_at),
         'last_updated': epoch_to_rfc3339(db_rule.last_updated)
     }
@@ -80,19 +84,22 @@ def list_archives():
 
     :return:
     """
-    with session_scope() as session:
-        imgs = db_archived_images.summarize(session)
-        rules = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace()).all()
-        rule_count = len(rules)
-        newest = max(map(lambda x: x.last_updated, rules))
+    try:
+        with session_scope() as session:
+            imgs = db_archived_images.summarize(session)
+            rules = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace()).all()
+            rule_count = len(rules)
+            newest = max(map(lambda x: x.last_updated, rules))
 
-    return {
-        'images': imgs,
-        'rules': {
-            'count': rule_count,
-            'last_updated': epoch_to_rfc3339(newest)
+        return {
+            'images': imgs,
+            'rules': {
+                'count': rule_count,
+                'last_updated': epoch_to_rfc3339(newest)
+            }
         }
-    }
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -102,25 +109,37 @@ def get_image_analysis_archive():
 
     :return:
     """
-    with session_scope() as session:
-        response_obj = db_archived_images.summarize(session)
-    return response_obj, 200
+    try:
+        with session_scope() as session:
+            response_obj = db_archived_images.summarize(session)
+        return response_obj, 200
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def list_analysis_archive_rules():
+def list_analysis_archive_rules(system_global=True):
     """
-    GET /archives/images/rules
+    GET /archives/rules
     :return:
     """
-    with session_scope() as session:
-        return [transition_rule_db_to_json(x) for x in session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace())], 200
+    try:
+        with session_scope() as session:
+            logger.info('Getting rules: global {}'.format(system_global))
+            if system_global:
+                qry = session.query(ArchiveTransitionRule).filter(or_(ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(), ArchiveTransitionRule.system_global == True))
+                logger.info('REMOVE: Query for rules: {}'.format(qry))
+                return [transition_rule_db_to_json(x) for x in qry], 200
+            else:
+                return [transition_rule_db_to_json(x) for x in session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace())], 200
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def create_analysis_archive_rule(rule):
     """
-    POST /archives/images/rules
+    POST /archives/rules
 
     :return:
     """
@@ -136,11 +155,13 @@ def create_analysis_archive_rule(rule):
             r.analysis_age_days = int(rule.get('analysis_age_days', -1))
             r.tag_versions_newer = int(rule.get('tag_versions_newer', -1))
             r.transition = ArchiveTransitions(rule.get('transition'))
+            r.system_global = rule.get('system_global', False)
             session.add(r)
             session.flush()
             return transition_rule_db_to_json(r), 200
 
     except Exception as ex:
+        logger.exception('Exception in add')
         return make_response_error('Error adding rule: {}'.format(ex), in_httpcode=500), 500
 
 
@@ -152,12 +173,18 @@ def get_analysis_archive_rule(rule_id):
     :param rule_id:
     :return:
     """
-    with session_scope() as session:
-        rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
-        if not rule:
-            return make_response_error('Rule not found', in_httpcode=404), 404
-        else:
-            return transition_rule_db_to_json(rule), 200
+    try:
+        with session_scope() as session:
+            rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
+            if not rule:
+                # Allow users to get the system global rules
+                rule = session.query(ArchiveTransitionRule).filter_by(rule_id=rule_id, system_global=True).one_or_none()
+                if not rule:
+                    return make_response_error('Rule not found', in_httpcode=404), 404
+            else:
+                return transition_rule_db_to_json(rule), 200
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -166,15 +193,17 @@ def delete_analysis_archive_rule(rule_id):
     DELETE /archives/rule/{rule_id}
     :return:
     """
-    with session_scope() as session:
-        rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
-        if rule:
-            session.delete(rule)
-        else:
-            return make_response_error('Rule not found', in_httpcode=404), 404
+    try:
+        with session_scope() as session:
+            rule = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id).one_or_none()
+            if rule:
+                session.delete(rule)
+            else:
+                return make_response_error('Rule not found', in_httpcode=404), 404
 
-    return None, 200
-
+        return None, 200
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_analysis_archive_rule_history(rule_id):
@@ -183,9 +212,11 @@ def get_analysis_archive_rule_history(rule_id):
 
     :return:
     """
-    with session_scope() as session:
-        return [transition_history_to_json(x) for x in session.query(ArchiveTransitionHistoryEntry).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id)], 200
-
+    try:
+        with session_scope() as session:
+            return [transition_history_to_json(x) for x in session.query(ArchiveTransitionHistoryEntry).filter_by(account=ApiRequestContextProxy.namespace(), rule_id=rule_id)], 200
+    except Exception as ex:
+        return make_response_error(ex, in_httpcode=500), 500
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_analysis_archive():
@@ -199,7 +230,7 @@ def list_analysis_archive():
 
     except Exception as err:
         logger.exception('Error listing archived images.')
-        return str(err), 500
+        return make_response_error(err, in_httpcode=500), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
