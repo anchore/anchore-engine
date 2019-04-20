@@ -28,6 +28,6 @@ def main_entry(ctx, debug, json, configdir):
     ctx.obj = config
 
 main_entry.add_command(db.db)
-main_entry.add_command(archivestorage.archivestorage)
+main_entry.add_command(archivestorage.objectstorage)
 main_entry.add_command(service.service)
 main_entry.add_command(analyzers.analyzers)

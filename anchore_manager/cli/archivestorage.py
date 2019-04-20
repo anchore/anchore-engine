@@ -6,10 +6,11 @@ import click
 import datetime
 from prettytable import PrettyTable, PLAIN_COLUMNS
 
-from anchore_engine.subsys import archive
+from anchore_engine.subsys import object_store
 from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import load_config, get_config
 from anchore_engine.subsys.object_store import migration, config as obj_config
+from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY, ANALYSIS_ARCHIVE_MANAGER_ID
 from anchore_engine.db import db_tasks, ArchiveMigrationTask, session_scope
 from anchore_manager.cli import utils
 
@@ -17,15 +18,15 @@ config = {}
 localconfig = None
 module = None
 
-@click.group(name='archivestorage', short_help='Archive Storage operations')
-@click.option('--configfile', type=click.Path(exists=True))
+
+@click.group(name='objectstorage', short_help='Object Storage operations')
 @click.option("--db-connect", nargs=1, required=True, help="DB connection string override.")
 @click.option("--db-use-ssl", is_flag=True, help="Set if DB connection is using SSL.")
 @click.option("--db-retries", nargs=1, default=1, type=int, help="If set, the tool will retry to connect to the DB the specified number of times at 5 second intervals.")
 @click.option("--db-timeout", nargs=1, default=30, type=int, help="Number of seconds to wait for DB call to complete before timing out.")
 @click.option("--db-connect-timeout", nargs=1, default=120, type=int, help="Number of seconds to wait for initial DB connection before timing out.")
 @click.pass_obj
-def archivestorage(ctx_config , configfile, db_connect, db_use_ssl, db_retries, db_timeout, db_connect_timeout):
+def objectstorage(ctx_config, db_connect, db_use_ssl, db_retries, db_timeout, db_connect_timeout):
     global config, localconfig
     config = ctx_config
 
@@ -58,15 +59,17 @@ def archivestorage(ctx_config , configfile, db_connect, db_use_ssl, db_retries, 
         sys.exit(2)
 
 
-@archivestorage.command(name="list-drivers", short_help="Show a list of available drivers that can be a source or destination for conversion.")
+@objectstorage.command(name="list-drivers", short_help="Show a list of available drivers that can be a source or destination for conversion.")
 def list_drivers():
     """
+    List the available drivers installed locally
     """
+
     ecode = 0
 
     try:
-        drivers = archive.get_driver_list()
-        logger.info("Supported convertable drivers: " + str(drivers))
+        drivers = object_store.manager.get_driver_list()
+        logger.info("Supported object storage drivers: " + str(drivers))
     except Exception as err:
         logger.error(utils.format_error_output(config, 'dbupgrade', {}, err))
         if not ecode:
@@ -75,9 +78,10 @@ def list_drivers():
     utils.doexit(ecode)
 
 
-@archivestorage.command(name='check')
+@objectstorage.command(name='check')
 @click.argument("configfile", type=click.Path(exists=True))
-def check(configfile):
+@click.option('--analysis-archive', is_flag=True, default=False, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
+def check(configfile, analysis_archive):
     """
     Test the configuration in the expected anchore-engine config location or override that and use the configuration file provided as an option.
 
@@ -96,11 +100,20 @@ def check(configfile):
         service_config = None
 
     if not service_config:
-        logger.error('No configuration file or content available. Cannot test archive driver configuration')
+        logger.info('No configuration file or content available. Cannot test archive driver configuration')
         utils.doexit(2)
 
-    archive.initialize(archive.DEFAULT_ARCHIVE_ID, service_config)
-    archive_mgr = archive.get_archive()
+    if analysis_archive:
+        try:
+            object_store.initialize(service_config, manager_id=ANALYSIS_ARCHIVE_MANAGER_ID, config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID])
+        except:
+            logger.error('No "analysis_archive" configuration section found in the configuration. To check a config that uses the default backend for analysis archive data, use the regular object storage check')
+            utils.doexit(2)
+
+        mgr = object_store.get_manager(ANALYSIS_ARCHIVE_MANAGER_ID)
+    else:
+        object_store.initialize(service_config, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY])
+        mgr = object_store.get_manager()
 
     test_user_id = 'test'
     test_bucket = 'anchorecliconfigtest'
@@ -109,20 +122,20 @@ def check(configfile):
 
     logger.info('Checking existence of test document with user_id = {}, bucket = {} and archive_id = {}'.format(test_user_id, test_bucket,
                                                                                              test_archive_id))
-    if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
+    if mgr.exists(test_user_id, test_bucket, test_archive_id):
         test_archive_id = 'cliconfigtest2'
-        if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
+        if mgr.exists(test_user_id, test_bucket, test_archive_id):
             logger.error('Found existing records for archive doc to test, aborting test to avoid overwritting any existing data')
             utils.doexit(1)
 
     logger.info('Creating test document with user_id = {}, bucket = {} and archive_id = {}'.format(test_user_id, test_bucket,
                                                                                              test_archive_id))
-    result = archive_mgr.put(test_user_id, test_bucket, test_archive_id, data=test_data)
+    result = mgr.put(test_user_id, test_bucket, test_archive_id, data=test_data)
     if not result:
-        logger.warn('Warning: Got empty response form archive PUT operation: {}'.format(result))
+        logger.warn('Got empty response form archive PUT operation: {}'.format(result))
 
     logger.info('Checking document fetch')
-    loaded = str(archive_mgr.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
+    loaded = str(mgr.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
     if not loaded:
         logger.error('Failed retrieving the written document. Got: {}'.format(loaded))
         utils.doexit(5)
@@ -132,21 +145,22 @@ def check(configfile):
         utils.doexit(5)
 
     logger.info('Removing test object')
-    archive_mgr.delete(test_user_id, test_bucket, test_archive_id)
+    mgr.delete(test_user_id, test_bucket, test_archive_id)
 
-    if archive_mgr.exists(test_user_id, test_bucket, test_archive_id):
+    if mgr.exists(test_user_id, test_bucket, test_archive_id):
         logger.error('Found archive object after it should have been removed')
         utils.doexit(5)
 
     logger.info('Archive config check completed successfully')
 
 
-@archivestorage.command(name='migrate', short_help="Convert between archive storage driver formats.")
+@objectstorage.command(name='migrate', short_help="Convert between archive storage driver formats.")
 @click.argument("from-driver-configpath", type=click.Path(exists=True))
 @click.argument("to-driver-configpath", type=click.Path(exists=True))
+@click.option('--analysis-archive', is_flag=True, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
 @click.option('--nodelete', is_flag=True, help='If set, leaves the document in the source driver location rather than removing after successful migration. May require manual removal of the data after migration.')
 @click.option("--dontask", is_flag=True, help="Perform conversion (if necessary) without prompting.")
-def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontask=False):
+def migrate(from_driver_configpath, to_driver_configpath, analysis_archive=False, nodelete=False, dontask=False):
     """
     Migrate the objects in the document archive from one driver backend to the other. This may be a long running operation depending on the number of objects and amount of data to migrate.
 
@@ -173,8 +187,15 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
         to_raw = copy.deepcopy(load_config(configfile=to_driver_configpath))
         get_config().clear()
 
-        from_config = obj_config.normalize_config(from_raw['services']['catalog'])
-        to_config = obj_config.operations.normalize_config(to_raw['services']['catalog'])
+        if analysis_archive:
+            # Only use the specific key for the source
+            from_config = obj_config.normalize_config(obj_config.extract_config(from_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID]))
+
+            # But for dest, use whatever the configuration specifies would be used, including the defaults
+            to_config = obj_config.normalize_config(obj_config.extract_config(to_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID, DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
+        else:
+            from_config = obj_config.normalize_config(obj_config.extract_config(from_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
+            to_config = obj_config.normalize_config(obj_config.extract_config(to_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
 
         logger.info('Migration from config: {}'.format(json.dumps(from_config, indent=2)))
         logger.info('Migration to config: {}'.format(json.dumps(to_config, indent=2)))
@@ -195,7 +216,7 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
             if 'archive_data_dir' in to_config:
                 logger.info("\tNOTE: for archive_data_dir, the value must be set to the location that is accessible within your anchore-engine container")
 
-            print((yaml.dump(to_config, default_flow_style=False)))
+            logger.info((yaml.dump(to_config, default_flow_style=False)))
         else:
             logger.info("Skipping conversion.")
     except Exception as err:
@@ -205,7 +226,8 @@ def migrate(from_driver_configpath, to_driver_configpath, nodelete=False, dontas
 
     utils.doexit(ecode)
 
-@archivestorage.command(name='list-migrations', short_help="List any previous migrations and their results/status")
+
+@objectstorage.command(name='list-migrations', short_help="List any previous migrations and their results/status")
 def list_migrations():
 
     with session_scope() as db:
@@ -240,4 +262,4 @@ def list_migrations():
     for t in tasks:
         tbl.add_row([t[x] for x in fields])
 
-    print((tbl.get_string(sortby='id')))
+    logger.info((tbl.get_string(sortby='id')))
