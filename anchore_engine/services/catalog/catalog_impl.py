@@ -206,7 +206,7 @@ def image(dbsession, request_inputs, bodycontent=None):
     method = request_inputs['method']
     params = request_inputs['params']
     userId = request_inputs['userId']
-
+    
     return_object = {}
     httpcode = 500
 
@@ -304,7 +304,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                     dockerfile_mode = "Actual"
                 except Exception as err:
                     raise Exception("input dockerfile data must be base64 encoded - exception on decode: " + str(err))
-
+                
             annotations = {}
             if 'annotations' in jsondata:
                 annotations = jsondata['annotations']
@@ -1262,7 +1262,6 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
 def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
     ret = []
-
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
@@ -1398,6 +1397,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                             rc = obj_store.put_document(userId, 'manifest_data', imageDigest, manifest)
 
                             rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
+
+                            # TODO - update policy engine 
+
                             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                             if not manifest:
                                 manifest = json.dumps({})
@@ -1406,11 +1408,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
 
                     addlist[imageDigest] = image_record
 
-    #logger.debug("final dict of image(s) to add: " + json.dumps(addlist, indent=4))
     for imageDigest in list(addlist.keys()):
         ret.append(addlist[imageDigest])
 
-    #logger.debug("returning: " + json.dumps(ret, indent=4))
     return(ret)
 
 

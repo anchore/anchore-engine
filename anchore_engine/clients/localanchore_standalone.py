@@ -785,6 +785,7 @@ def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, i
                         'docker_history': docker_history,
                         'dockerfile_mode': dockerfile_mode,
                         'dockerfile_contents': dockerfile_contents,
+                        #'dockerfile': utils.ensure_str(base64.encodebytes(dockerfile_contents.encode('utf-8'))),
                         'layers': layers,
                         'familytree': familytree,
                         'docker_data': {

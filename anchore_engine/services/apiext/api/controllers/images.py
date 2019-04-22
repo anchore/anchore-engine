@@ -1045,6 +1045,7 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
     digest = None
     ts = None
     is_from_archive = False
+    dockerfile = None
     try:
         logger.debug("handling POST: source={}, force={}, enable_subscriptions={}, annotations={}".format(source, force, enable_subscriptions, annotations))
 
@@ -1056,12 +1057,14 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
         elif source.get('tag'):
             # Do tag-based add
             tag = source['tag']['pullstring']
+            dockerfile = source['tag'].get('dockerfile')
 
         elif source.get('digest'):
             # Do digest-based add
             tag = source['digest']['tag']
             digest_info = anchore_engine.utils.parse_dockerimage_string(source['digest']['pullstring'])
             digest = digest_info['digest']
+            dockerfile = source['tag'].get('dockerfile')
 
             ts = source.get('creation_timestamp_override')
             if ts:
@@ -1082,7 +1085,7 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
 
         # add the image to the catalog
-        image_record = client.add_image(tag=tag, digest=digest, dockerfile=source.get('dockerfile'), annotations=annotations,
+        image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
                                         created_at=ts, from_archive=is_from_archive)
 
         imageDigest = image_record['imageDigest']
