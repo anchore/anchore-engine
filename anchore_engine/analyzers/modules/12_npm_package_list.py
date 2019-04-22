@@ -29,21 +29,19 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
             allfiles = json.loads(FH.read())
     else:
-        #fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
         fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
     with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='r', format=tarfile.PAX_FORMAT) as tfl:
+        memberhash = anchore_engine.analyzers.utils.get_memberhash(tfl)
         for tfile in list(allfiles.keys()):
             patt = re.match(".*package\.json$", tfile)
             if patt:
-                #thefile = '/'.join([unpackdir, 'rootfs', tfile])
                 thefile = re.sub("^/+", "", tfile)
                 try:
-                    #with open(thefile, 'rb') as FH:
-                    basemember = tfl.getmember(thefile)
-                    member = anchore_engine.analyzers.utils._get_extractable_member(tfl, basemember)
+                    basemember = memberhash.get(thefile)
+                    member = anchore_engine.analyzers.utils._get_extractable_member(tfl, basemember, memberhash=memberhash)
                     with tfl.extractfile(member) as FH:
                         pbuf = str(FH.read(), 'utf-8')
                         pdata = json.loads(pbuf)
@@ -52,6 +50,8 @@ try:
                             record = precord[k]
                             pkglist[tfile] = json.dumps(record)
                 except Exception as err:
+                    import traceback
+                    traceback.print_exc()
                     print("WARN: found package.json but cannot parse (" + str(tfile) +") - exception: " + str(err))
 
 except Exception as err:

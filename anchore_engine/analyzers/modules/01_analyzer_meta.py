@@ -3,6 +3,7 @@
 import sys
 import os
 import shutil
+import json
 import anchore_engine.analyzers.utils
 
 analyzer_name = "analyzer_meta"
@@ -20,7 +21,6 @@ outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
 try:
-    #meta = anchore_engine.analyzers.utils.get_distro_from_path(os.path.join(unpackdir, "rootfs"))
     meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
 
     dockerfile_contents = None
@@ -30,7 +30,9 @@ try:
     if meta:
         ofile = os.path.join(outputdir, 'analyzer_meta')
         anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, meta)
-        shutil.copy(ofile, unpackdir + "/analyzer_meta")
+        #shutil.copy(ofile, unpackdir + "/analyzer_meta")
+        with open(os.path.join(unpackdir, 'analyzer_meta.json'), 'w') as OFH:
+            OFH.write(json.dumps(meta))
     else:
         raise Exception("could not analyze/store basic metadata about image")
 

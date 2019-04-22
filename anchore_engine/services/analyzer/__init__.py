@@ -67,7 +67,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
         raise Exception("failed to extract requisite information from image_record - exception: " + str(err))
         
     timer = int(time.time())
-    logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
+    logger.spew("timing: analyze start: " + str(int(time.time()) - timer))
     logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
 
     logger.debug("obtaining anchorelock..." + str(pullstring))

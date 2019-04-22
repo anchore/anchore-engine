@@ -28,8 +28,7 @@ outfiles_sha1 = {}
 outfiles_md5 = {}
 outfiles_sha256 = {}
 
-#meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir)
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 if distrodict['flavor'] == "ALPINE":
     dosha1 = True
@@ -39,6 +38,7 @@ try:
     csums = ['sha256', 'md5']
     if dosha1:
         csums.append('sha1')
+
     allfiles = anchore_engine.analyzers.utils.get_checksums_from_squashtar(os.path.join(unpackdir, "squashed.tar"), csums=csums)
         
     for filename in allfiles.keys():

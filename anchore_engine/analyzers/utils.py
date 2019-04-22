@@ -87,7 +87,10 @@ def run_tarfile_member_function(tarfilename, *args, member_regexp=None, func=_de
 
     ret = {}
     with tarfile.open(tarfilename, mode='r', format=tarfile.PAX_FORMAT) as tfl:
-        for member in tfl.getmembers():
+        memberhash = get_memberhash(tfl)
+        kwargs['memberhash'] = memberhash
+        #for member in tfl.getmembers():
+        for member in list(memberhash.values()):
             if not memberpatt or memberpatt.match(member.name):
                 if ret.get(member.name):
                     print("WARN: duplicate member name when preparing return from run_tarfile_member_function() - {}".format(member.name))
@@ -119,7 +122,17 @@ def _search_tarfilenames_for_file(tarfilenames, searchfile):
         ret = re.sub("^/", "", searchfile)
     return(ret)
 
-def get_distro_from_squashtar(squashtar):
+def get_memberhash(tfl):
+    memberhash = {}
+    for member in tfl.getmembers():
+        memberhash[member.name] = member
+    return(memberhash)
+
+def get_distro_from_squashtar(squashtar, unpackdir=None):
+    if unpackdir and os.path.exists(os.path.join(unpackdir, 'analyzer_meta.json')):
+        with open(os.path.join(unpackdir, 'analyzer_meta.json'), 'r') as FH:
+            return(json.loads(FH.read()))
+
     meta = {
         'DISTRO':None,
         'DISTROVERS':None,
@@ -286,12 +299,15 @@ def get_distro_flavor(distro, version, likedistro=None):
 
     return(ret)
 
-def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}):
+def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memberhash={}):
     ret = None
 
     if member.isreg():
         return(member)
 
+    if not memberhash:
+        memberhash = get_memberhash(tfl)
+        
     if deref_symlink and member.issym():
         if not alltfiles:
             alltfiles = {}
@@ -310,17 +326,20 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}):
             
             # attempt to get the softlink destination
             if nmember.linkname[1:] in alltfiles:
-                newmember = tfl.getmember(nmember.linkname[1:])
+                #newmember = tfl.getmember(nmember.linkname[1:])
+                newmember = memberhash.get(nmember.linkname[1:])
             else:
                 if nmember.linkname in alltfiles:
-                    newmember = tfl.getmember(nmember.linkname)
+                    #newmember = tfl.getmember(nmember.linkname)
+                    newmember = memberhash.get(nmember.linkname)
                 else:
                     normpath = os.path.normpath(os.path.join(os.path.dirname(nmember.name), nmember.linkname))
                     if normpath in alltfiles:
-                        newmember = tfl.getmember(normpath)
+                        #newmember = tfl.getmember(normpath)
+                        newmember = memberhash.get(normpath)
 
             if not newmember:
-                print("WARN: exception while looking for symlink destination for symlink file {} -> {}".format(member.name, member.linkname))
+                print("skipping file: looking for symlink destination for symlink file {} -> {}".format(member.name, member.linkname))
                 done=True
             else:
                 nmember = newmember
@@ -351,7 +370,8 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}):
 
         while not done and count < max_links:
             try:
-                nmember = tfl.getmember(nmember.linkname)
+                #nmember = tfl.getmember(nmember.linkname)
+                nmember = memberhash.get(nmember.linkname)
                 if nmember.islnk():
                     if nmember.name not in namehistory:
                         # do it all again
@@ -375,7 +395,7 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}):
 
     return(ret)
 
-def _checksum_member_function(tfl, member, csums=['sha256', 'md5']):
+def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={}):
     ret = {}
 
     funcmap = {
@@ -387,7 +407,9 @@ def _checksum_member_function(tfl, member, csums=['sha256', 'md5']):
     if member.isreg():
         extractable_member = member
     elif member.islnk():
-        extractable_member = _get_extractable_member(tfl, member)
+        if not memberhash:
+            memberhash = get_memberhash(tfl)
+        extractable_member = _get_extractable_member(tfl, member, memberhash=memberhash)
     else:
         extractable_member = None
 
@@ -422,7 +444,7 @@ def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
 
     return(allfiles)
         
-def get_files_from_squashtar(squashtar):
+def get_files_from_squashtar(squashtar, unpackdir=None):
 
     filemap = {}
     allfiles = {}
@@ -430,7 +452,9 @@ def get_files_from_squashtar(squashtar):
     tfl = None
     try:
         with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
-            for member in tfl.getmembers():
+            memberhash = get_memberhash(tfl)
+            #for member in tfl.getmembers():
+            for member in list(memberhash.values()):
                 filename = member.name
                 filename = re.sub("^\./", "/", filename)
                 if not re.match("^/", filename):
@@ -475,7 +499,7 @@ def get_files_from_squashtar(squashtar):
                     finfo['type'] = 'dev'
                 elif member.islnk():
                     finfo['type'] = 'file'
-                    extractable_member = _get_extractable_member(tfl, member)
+                    extractable_member = _get_extractable_member(tfl, member, memberhash=memberhash)
                     if extractable_member:
                         finfo['size'] = extractable_member.size
                 else:

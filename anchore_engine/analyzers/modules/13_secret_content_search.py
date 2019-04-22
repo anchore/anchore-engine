@@ -79,19 +79,23 @@ with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='r', format=tarf
     for name in alltnames:
         alltfiles[name] = True
 
-    for member in tfl.getmembers():
+    memberhash = anchore_engine.analyzers.utils.get_memberhash(tfl)
+    #for member in tfl.getmembers():
+    for member in list(memberhash.values()):
         name = "/{}".format(member.name)
         if member.islnk() or member.issym():
-            emember = anchore_engine.analyzers.utils._get_extractable_member(tfl, member, deref_symlink=True, alltfiles=alltfiles)
+            emember = anchore_engine.analyzers.utils._get_extractable_member(tfl, member, deref_symlink=True, alltfiles=alltfiles, memberhash=memberhash)
             if emember:
                 member = emember
 
         if member.isreg():
-            dochecks = True
-
             for sub_analyzer_name in sub_analyzer_names:
-                
+                dochecks = True
+
                 if params[sub_analyzer_name]['maxfilesize'] and int(member.size) > params[sub_analyzer_name]['maxfilesize']:
+                    dochecks = False
+
+                if not regexps[sub_analyzer_name]:
                     dochecks = False
 
                 if dochecks:

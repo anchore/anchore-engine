@@ -286,7 +286,6 @@ def image(dbsession, request_inputs, bodycontent=None):
         elif method == 'POST':
             timer = time.time()
 
-            logger.debug("MARK0: " + str(time.time() - timer))
             if input_type == 'digest':
                 raise Exception("catalog add requires a tag string to determine registry/repo")
 
@@ -310,7 +309,6 @@ def image(dbsession, request_inputs, bodycontent=None):
             if 'annotations' in jsondata:
                 annotations = jsondata['annotations']
 
-            logger.debug("MARK1: " + str(time.time() - timer))
 
             image_record = {}
             try:
@@ -319,8 +317,6 @@ def image(dbsession, request_inputs, bodycontent=None):
                     refresh_registry_creds(registry_creds, dbsession)
                 except Exception as err:
                     logger.warn("failed to refresh registry credentials - exception: " + str(err))
-
-                logger.debug("MARK2: " + str(time.time() - timer))
 
                 image_info_overrides = {}
 
@@ -347,7 +343,6 @@ def image(dbsession, request_inputs, bodycontent=None):
                         image_info.update(image_info_overrides)
 
                     logger.debug("INPUT FINAL IMAGE INFO: {}".format(image_info))
-                    logger.debug("MARK3: " + str(time.time() - timer))
 
                     manifest = None
                     try:
@@ -358,11 +353,8 @@ def image(dbsession, request_inputs, bodycontent=None):
                     except Exception as err:
                         raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
-                    logger.debug("MARK4: " + str(time.time() - timer))
-
                     logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
                     image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
-                    logger.debug("MARK5: " + str(time.time() - timer))
                     if image_records:
                         image_record = image_records[0]
 

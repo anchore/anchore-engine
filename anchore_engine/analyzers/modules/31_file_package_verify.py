@@ -24,13 +24,11 @@ outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 squashtar = os.path.join(unpackdir, "squashed.tar")
 
-#meta = anchore_engine.analyzers.utils.get_distro_from_path('/'.join([unpackdir, "rootfs"]))
-meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(squashtar)
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(squashtar, unpackdir=unpackdir)
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 flavor = distrodict['flavor']
 
 # gather file metadata from installed packages
-
 
 result = {}
 resultlist = {}

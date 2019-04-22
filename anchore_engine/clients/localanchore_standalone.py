@@ -8,6 +8,7 @@ import uuid
 import shutil
 import tarfile
 import copy 
+import time
 
 import yaml
 from pkg_resources import resource_filename
@@ -221,6 +222,7 @@ def squash(unpackdir, cachedir, layers):
     whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
 
     tarfiles = {}
+    tarfiles_members = {}
     fhistory = {}
     try:
         logger.debug("Layers to process: {}".format(layers))
@@ -239,7 +241,9 @@ def squash(unpackdir, cachedir, layers):
 
                 logger.debug("processing layer {} - {}".format(l, layertar))
                 tarfiles[l] = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
+                tarfiles_members[l] = {}
                 for member in tarfiles[l].getmembers():
+                    tarfiles_members[l][member.name] = member
                     filename = member.name
                     if filename not in lfhistory:
                         lfhistory[filename] = {}
@@ -322,7 +326,8 @@ def squash(unpackdir, cachedir, layers):
             for filename in fhistory.keys():
                 if fhistory[filename]['exists']:
                     l = fhistory[filename]['latest_layer_tar']
-                    member = tarfiles[l].getmember(filename)
+                    #member = tarfiles[l].getmember(filename)
+                    member = tarfiles_members[l].get(filename)
                     if member.isreg():
                         memberfd = tarfiles[l].extractfile(member)
                         oltf.addfile(member, fileobj=memberfd)
@@ -339,7 +344,8 @@ def squash(unpackdir, cachedir, layers):
 
             for filename in deferred_hardlinks.keys():
                 l = fhistory[filename]['latest_layer_tar']
-                member = tarfiles[l].getmember(filename)
+                #member = tarfiles[l].getmember(filename)
+                member = tarfiles_members[l].get(filename)
                 logger.debug("deferred hardlink {}".format(fhistory[filename]))
                 try:
                     logger.debug("attempt to lookup deferred {} content source".format(filename))
@@ -347,7 +353,8 @@ def squash(unpackdir, cachedir, layers):
                     content_filename = fhistory[filename]['hl_target_name']
 
                     logger.debug("attempt to extract deferred {} from layer {} (for lnk {})".format(content_filename, content_layer, filename))
-                    content_member = tarfiles[content_layer].getmember(content_filename)
+                    #content_member = tarfiles[content_layer].getmember(content_filename)
+                    content_member = tarfiles_members[content_layer].get(content_filename)
                     content_memberfd = tarfiles[content_layer].extractfile(content_member)
                     
                     logger.debug("attempt to construct new member for deferred {}".format(filename))
@@ -368,7 +375,8 @@ def squash(unpackdir, cachedir, layers):
                         logger.debug("caught dangling hardlink, attempting to handle: {} -> {}".format(filename, member.linkname))
                         if member.linkname in fhistory:
                             newl = fhistory[member.linkname]['latest_layer_tar']
-                            newmember = tarfiles[l].getmember(member.linkname)
+                            #newmember = tarfiles[l].getmember(member.linkname)
+                            newmember = tarfiles_members[l].get(member.linkname)
                             newmemberfd = tarfiles[l].extractfile(member.linkname)
                             newmember.name = filename
                             oltf.addfile(newmember, fileobj=newmemberfd)
@@ -713,15 +721,12 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     configdir = localconfig['service_dir']
 
     # run analyzers
-    #anchore_module_root = resource_filename("anchore", "anchore-modules")
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
     for f in list_analyzers():
-    #for f in os.listdir(analyzer_root):
-    #    thecmd = os.path.join(analyzer_root, f)
-    #    if re.match(".*\.py$", thecmd):
         cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
         if True:
+            timer = time.time()
             try:
                 rc, sout, serr = utils.run_command(cmdstr)
                 sout = utils.ensure_str(sout)
@@ -732,7 +737,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
-                #raise err
+            logger.debug("timing: specific analyzer time: {} - {}".format(f, time.time() - timer))
 
     analyzer_report = {}
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
@@ -868,17 +873,22 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
 
         familytree = layers
 
+        timer = time.time()
         try:
             imageSize = unpack(staging_dirs, layers)
         except Exception as err:
             raise ImageUnpackError(cause=err, pull_string=pullstring, tag=fulltag)
+        logger.debug("timing: total unpack time: {} - {}".format(pullstring, time.time() - timer))
 
         familytree = layers
 
+        timer = time.time()
         try:
             analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
         except Exception as err:
             raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
+        logger.debug("timing: total analyzer time: {} - {}".format(pullstring, time.time() - timer))
+
 
         try:
             image_report = generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, pullstring, analyzer_manifest)

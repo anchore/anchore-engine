@@ -22,7 +22,7 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir)
 distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 simplefiles = {}
