@@ -46,7 +46,7 @@ def migration_context(from_archive_config, to_archive_config, do_lock=True):
         yield MigrationContext(from_archive=from_archive, to_archive=to_archive)
 
 
-def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=True):
+def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=True, buckets_to_migrate=None):
     """
     Start a migration operation from one config to another, with optionally removing the data on the source and optionally using a global lock.
 
@@ -56,6 +56,7 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
     :param to_config:
     :param remove_on_source:
     :param do_lock:
+    :param buckets_to_migrate: list or tuple of bucket names to migrate. Must be the anchore bucket name, not the external storage bucket name (e.g. use image_content_data, or analysis_archive)
     :return:
     """
 
@@ -65,7 +66,12 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
     with migration_context(from_config, to_config, do_lock=do_lock) as context:
         with session_scope() as db:
             # Load all metadata
-            to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'))]
+            if not buckets_to_migrate:
+                to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in
+                              db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'))]
+            else:
+                to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in
+                              db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'), ObjectStorageMetadata.bucket.in_(buckets_to_migrate))]
 
             task_record = ArchiveMigrationTask()
             task_record.archive_documents_to_migrate = len(to_migrate)
@@ -83,7 +89,7 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
             logger.info('Migration Task Id: {}'.format(task_id))
 
         logger.info('Entering main migration loop')
-        logger.info('Migrating {} documents'.format(len(to_migrate)))
+        logger.info('Migrating {} documents in {}'.format(len(to_migrate), ' buckets: {}'.format(buckets_to_migrate) if buckets_to_migrate else 'all'))
         counter = 0
         result_state = 'failed'
 

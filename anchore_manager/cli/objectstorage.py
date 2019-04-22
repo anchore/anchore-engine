@@ -150,7 +150,8 @@ def check(configfile, analysis_archive):
 @click.option('--to-analysis-archive', is_flag=True, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
 @click.option('--nodelete', is_flag=True, help='If set, leaves the document in the source driver location rather than removing after successful migration. May require manual removal of the data after migration.')
 @click.option("--dontask", is_flag=True, help="Perform conversion (if necessary) without prompting.")
-def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=False, to_analysis_archive=False, nodelete=False, dontask=False):
+@click.option('--bucket', multiple=True, help="A specific logical bucket of data to migrate. Can be specified multiple times for multiple buckets. Note: this is NOT the bucket name on the backend, only the internal logical bucket anchore uses to organize its data. This should not usually be needed and should be used very carefully. E.g. analysis_archive, manifest_data, image_content_data, ...")
+def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=False, to_analysis_archive=False, nodelete=False, dontask=False, bucket=None):
     """
     Migrate the objects in the document archive from one driver backend to the other. This may be a long running operation depending on the number of objects and amount of data to migrate.
 
@@ -218,7 +219,7 @@ def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=
                 do_migrate = True
 
         if do_migrate:
-            migration.initiate_migration(from_config, to_config, remove_on_source=(not nodelete), do_lock=True)
+            migration.initiate_migration(from_config, to_config, remove_on_source=(not nodelete), do_lock=True, buckets_to_migrate=bucket)
             logger.info("After this migration, your anchore-engine config.yaml MUST have the following configuration options added before starting up again:")
             if 'archive_data_dir' in to_config:
                 logger.info("\tNOTE: for archive_data_dir, the value must be set to the location that is accessible within your anchore-engine container")

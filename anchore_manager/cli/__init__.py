@@ -1,7 +1,7 @@
 import click
 import logging
 
-from . import db, archivestorage, service, analyzers
+from . import db, objectstorage, service, analyzers
 from anchore_manager import version
 from . import utils
 
@@ -28,6 +28,6 @@ def main_entry(ctx, debug, json, configdir):
     ctx.obj = config
 
 main_entry.add_command(db.db)
-main_entry.add_command(archivestorage.objectstorage)
+main_entry.add_command(objectstorage.objectstorage)
 main_entry.add_command(service.service)
 main_entry.add_command(analyzers.analyzers)
