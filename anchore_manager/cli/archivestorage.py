@@ -8,14 +8,13 @@ from prettytable import PrettyTable, PLAIN_COLUMNS
 
 from anchore_engine.subsys import object_store
 from anchore_engine.subsys import logger
-from anchore_engine.configuration.localconfig import load_config, get_config
+from anchore_engine.configuration.localconfig import load_config, get_config, localconfig
 from anchore_engine.subsys.object_store import migration, config as obj_config
 from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY, ANALYSIS_ARCHIVE_MANAGER_ID
 from anchore_engine.db import db_tasks, ArchiveMigrationTask, session_scope
 from anchore_manager.cli import utils
 
 config = {}
-localconfig = None
 module = None
 
 
@@ -27,22 +26,12 @@ module = None
 @click.option("--db-connect-timeout", nargs=1, default=120, type=int, help="Number of seconds to wait for initial DB connection before timing out.")
 @click.pass_obj
 def objectstorage(ctx_config, db_connect, db_use_ssl, db_retries, db_timeout, db_connect_timeout):
-    global config, localconfig
+    global config
     config = ctx_config
 
     try:
         # do some DB connection/pre-checks here
         try:
-            localconfig = {
-                'services': {
-                    'catalog': {
-                        'use_db': True,
-                        'archive_driver': 'db',
-                        'archive_data_dir': None
-                    }
-                }
-            }
-
             log_level = 'INFO'
             if config['debug']:
                 log_level = 'DEBUG'
@@ -55,7 +44,7 @@ def objectstorage(ctx_config, db_connect, db_use_ssl, db_retries, db_timeout, db
             raise err
 
     except Exception as err:
-        logger.error(utils.format_error_output(config, 'archivestorage', {}, err))
+        logger.error(utils.format_error_output(config, 'objectstorage', {}, err))
         sys.exit(2)
 
 
@@ -71,7 +60,7 @@ def list_drivers():
         drivers = object_store.manager.get_driver_list()
         logger.info("Supported object storage drivers: " + str(drivers))
     except Exception as err:
-        logger.error(utils.format_error_output(config, 'dbupgrade', {}, err))
+        logger.error(utils.format_error_output(config, 'list-drivers', {}, err))
         if not ecode:
             ecode = 2
 
@@ -157,10 +146,11 @@ def check(configfile, analysis_archive):
 @objectstorage.command(name='migrate', short_help="Convert between archive storage driver formats.")
 @click.argument("from-driver-configpath", type=click.Path(exists=True))
 @click.argument("to-driver-configpath", type=click.Path(exists=True))
-@click.option('--analysis-archive', is_flag=True, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
+@click.option('--from-analysis-archive', is_flag=True, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
+@click.option('--to-analysis-archive', is_flag=True, help="Migrate using the analysis archive sections of the configuration files, not the object store. This is intended to migrate the analysis archive itself")
 @click.option('--nodelete', is_flag=True, help='If set, leaves the document in the source driver location rather than removing after successful migration. May require manual removal of the data after migration.')
 @click.option("--dontask", is_flag=True, help="Perform conversion (if necessary) without prompting.")
-def migrate(from_driver_configpath, to_driver_configpath, analysis_archive=False, nodelete=False, dontask=False):
+def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=False, to_analysis_archive=False, nodelete=False, dontask=False):
     """
     Migrate the objects in the document archive from one driver backend to the other. This may be a long running operation depending on the number of objects and amount of data to migrate.
 
@@ -175,7 +165,6 @@ def migrate(from_driver_configpath, to_driver_configpath, analysis_archive=False
     5. Start anchore-engine again
 
     """
-    global localconfig
 
     ecode = 0
     do_migrate = False
@@ -185,20 +174,38 @@ def migrate(from_driver_configpath, to_driver_configpath, analysis_archive=False
         get_config().clear()
 
         to_raw = copy.deepcopy(load_config(configfile=to_driver_configpath))
-        get_config().clear()
 
-        if analysis_archive:
-            # Only use the specific key for the source
-            from_config = obj_config.normalize_config(obj_config.extract_config(from_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID]))
-
-            # But for dest, use whatever the configuration specifies would be used, including the defaults
-            to_config = obj_config.normalize_config(obj_config.extract_config(to_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID, DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
+        if from_analysis_archive:
+            # Only use the specific key for the source, fail if not found
+            from_config = obj_config.extract_config(from_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID])
         else:
-            from_config = obj_config.normalize_config(obj_config.extract_config(from_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
-            to_config = obj_config.normalize_config(obj_config.extract_config(to_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY]))
+            from_config = obj_config.extract_config(from_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY])
 
-        logger.info('Migration from config: {}'.format(json.dumps(from_config, indent=2)))
-        logger.info('Migration to config: {}'.format(json.dumps(to_config, indent=2)))
+        if from_config:
+            from_config = obj_config.normalize_config(from_config, legacy_fallback=False)
+            logger.info('Migration from config: {}'.format(json.dumps(from_config, indent=2)))
+        else:
+            if from_analysis_archive:
+                config_key = ANALYSIS_ARCHIVE_MANAGER_ID
+            else:
+                config_key = '"' + DEFAULT_OBJECT_STORE_MANAGER_ID + '" or "' + ALT_OBJECT_STORE_CONFIG_KEY + '"'
+            raise Exception('No valid source configuration found. Needed a configuration section with key {} in the catalog service key'.format(config_key))
+
+        if to_analysis_archive:
+            # Only use the specific key if set, fail if not found
+            to_config = obj_config.extract_config(to_raw['services']['catalog'], config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID])
+        else:
+            to_config = obj_config.extract_config(to_raw['services']['catalog'], config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY])
+
+        if to_config:
+            logger.info('Migration to config: {}'.format(json.dumps(to_config, indent=2)))
+            to_config = obj_config.normalize_config(to_config, legacy_fallback=False)
+        else:
+            if to_analysis_archive:
+                config_key = '"' + ANALYSIS_ARCHIVE_MANAGER_ID + '"'
+            else:
+                config_key = '"' + DEFAULT_OBJECT_STORE_MANAGER_ID + '" or "' + ALT_OBJECT_STORE_CONFIG_KEY + '"'
+            raise Exception('No valid destination configuration found. Needed a configuration section with key {} in the catalog service key'.format(config_key))
 
         if dontask:
             do_migrate = True

@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import json
@@ -129,7 +130,7 @@ def load_defaults(configdir=None):
     if not configdir:
         configdir = os.path.join("{}".format(os.getenv("HOME", "/tmp/anchoretmp")), ".anchore_engine")
 
-    localconfig.update(DEFAULT_CONFIG)
+    localconfig.update(copy.deepcopy(DEFAULT_CONFIG))
     localconfig['service_dir'] = configdir
 
     return (localconfig)
