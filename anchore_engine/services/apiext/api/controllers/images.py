@@ -643,12 +643,15 @@ def add_image(image, force=False, autosubscribe=False):
     httpcode = 500
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
-        #return_object, httpcode = images(request_inputs)
 
         source = {}
         if not image.get('source'):
             # use legacy fields and normalize to a source
             if image.get('digest'):
+                # Do inline checks here before normalization to ensure the error messages are accurate for the request, not the normalized version
+                if image.get('tag') and image.get('digest') and not image.get('created_at') and not force:
+                    raise api_exceptions.BadRequest('Must provide a timestamp override to analyze by tag and digest', detail={'created_at': image.get('created_at')})
+
                 source['digest'] = {
                     'pullstring': image.get('digest'),
                     'tag': image.get('tag'),
@@ -662,21 +665,18 @@ def add_image(image, force=False, autosubscribe=False):
                     'dockerfile': image.get('dockerfile')
                 }
             else:
-                return make_response_error('Request must include "tag", or "source" properties set in body', in_httpcode=400), 400
+                raise api_exceptions.BadRequest('Must include tag or source properties in body', detail={'tag': image.get('tag'), 'source': image.get('source')})
         else:
             source = image.get('source')
+
+            # Validate the source config using specific error messages for this path
+            if source.get('digest') and source.get('digest', {}).get('tag') and source.get('digest', {}).get('digest') and not source('digest', {}).get('created_at') and not force:
+                raise api_exceptions.BadRequest('Must provide a timestamp override to analyze by tag and digest', detail={'created_at': image.get('created_at')})
 
         # Ensure only one source is set
         if sum([1 if source.get('tag') else 0, 1 if source.get('digest') else 0,
                 1 if source.get('archive') else 0]) > 1:
-            return make_response_error('Source must have only one of ["tag", "digest", "archive"] set to a non-null value', in_httpcode=400), 400
-
-        # Validate source formats
-        # if source.get('digest'):
-            # if not digest_re.match(source['digest'].get('pullstring')):
-            #     raise Exception('Invalid pullstring for digest. Must match regex: {}'.format(digest_re))
-            # if not tag_re.match(source['digest'].get('tag')):
-            #     raise Exception('Invalid tag string. Must match regex: {}'.format(tag_re))
+            raise api_exceptions.BadRequest('Can have only one of tag, digest, archive set to non-null in the source property', detail={'tag': source.get('tag'), 'digest': source.get('digest'), 'archive': source.get('archive')})
 
         enable_subscriptions = [
             'analysis_update'
@@ -689,7 +689,10 @@ def add_image(image, force=False, autosubscribe=False):
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
         httpcode = err.__response_code__
-        return_object = make_response_error(str(err), in_httpcode=httpcode)
+        return_object = make_response_error(err.message, details=err.detail, in_httpcode=httpcode)
+    except ValueError as err:
+        httpcode = 400
+        return_object = make_response_error(str(err), in_httpcode=400)
     except Exception as err:
         logger.debug("operation exception: {}".format(str(err)))
         return_object = make_response_error(err, in_httpcode=httpcode)
@@ -1027,12 +1030,41 @@ def do_list_images(account, filter_tag=None, filter_digest=None, history=False):
 
 def analyze_image(account, source, force=False, enable_subscriptions=None, annotations=None):
     """
+    Analyze an image from a source where a source can be one of:
 
-    :param account:
-    :param source:
-    :param force:
-    :param autosubscribe:
-    :param dockerfile: String dockerfile content. Optional.
+                    source['digest'] = {
+                    'pullstring': image.get('digest'),
+                    'tag': image.get('tag'),
+                    'creation_timestamp_override': image.get('created_at'),
+                    'dockerfile': image.get('dockerfile')
+                }
+
+            elif image.get('tag'):
+                source['tag'] = {
+                    'pullstring': image.get('tag'),
+                    'dockerfile': image.get('dockerfile')
+                }
+
+    'digest': {
+      'pullstring': str, (digest or tag, e.g docker.io/alpine@sha256:abc),
+      'tag': str, the tag itself to associate (e.g. docker.io/alpine:latest),
+      'creation_timestamp_override: str, rfc3339 format. necessary only if not doing a force re-analysis of existing image,
+      'dockerfile': str, the base64 encoded dockerfile content to associate with this tag at analysis time. optional
+    }
+
+    'tag': {
+      'pullstring': str, the full tag-style pull string for docker (e.g. docker.io/nginx:latest),
+      'dockerfile': str optional base-64 encoded dockerfile content to associate with this tag at analysis time. optional
+    }
+
+    'archive': {
+      'digest': str, the digest to restore from the analysis archive
+    }
+
+    :param account: str account id
+    :param source: dict source object with keys: 'tag', 'digest', and 'archive', with associated config for pulling source from each. See the api spec for schema details
+    :param force: bool, if true re-analyze existing image
+    :param enable_subscriptions: the list of subscriptions to enable at add time. Optional
     :param annotations: Dict of k/v annotations. Optional.
     :return: resulting image record
     """
@@ -1046,27 +1078,32 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
     ts = None
     is_from_archive = False
     dockerfile = None
+    image_check = None
     try:
         logger.debug("handling POST: source={}, force={}, enable_subscriptions={}, annotations={}".format(source, force, enable_subscriptions, annotations))
 
         # if not, add it and set it up to be analyzed
         if source.get('archive'):
+            img_source = source.get('archive')
             # Do archive-based add
-            digest = source['archive']['digest']
+            digest = img_source['digest']
             is_from_archive = True
         elif source.get('tag'):
             # Do tag-based add
-            tag = source['tag']['pullstring']
-            dockerfile = source['tag'].get('dockerfile')
+            img_source= source.get('tag')
+            tag = img_source['pullstring']
+            dockerfile = img_source.get('dockerfile')
 
         elif source.get('digest'):
             # Do digest-based add
-            tag = source['digest']['tag']
-            digest_info = anchore_engine.utils.parse_dockerimage_string(source['digest']['pullstring'])
-            digest = digest_info['digest']
-            dockerfile = source['tag'].get('dockerfile')
+            img_source = source.get('digest')
 
-            ts = source.get('creation_timestamp_override')
+            tag = img_source['tag']
+            digest_info = anchore_engine.utils.parse_dockerimage_string(img_source['pullstring'])
+            digest = digest_info['digest']
+            dockerfile = img_source.get('dockerfile')
+
+            ts = img_source.get('creation_timestamp_override')
             if ts:
                 try:
                     ts = utils.rfc3339str_to_epoch(ts)
@@ -1077,12 +1114,32 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                 # Grab the trailing digest sha section and ensure it exists
                 try:
                     image_check = client.get_image(digest)
+                    if not image_check:
+                        raise Exception('No image found for digest {}'.format(digest))
                 except Exception as err:
-                    raise Exception("image digest must already exist to force re-analyze using tag+digest")
+                    raise ValueError("image digest must already exist to force re-analyze using tag+digest")
             elif not ts:
-                raise Exception("must supply creation_timestamp_override when adding a new image by tag+digest")
+                # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history properly
+                raise ValueError("must supply creation_timestamp_override when adding a new image by tag+digest")
         else:
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
+
+        if dockerfile and not force:
+            # Grab the trailing digest sha section and ensure it exists
+            # Try if not already done in another path
+            if not image_check:
+                try:
+                    image_check = client.list_images(tag=tag, digest=digest)
+                except Exception as err:
+                    # handle 404...even though this should be a 200 with empty response if none found
+                    if hasattr(err, 'httpcode') and err.httpcode == 404:
+                        image_check = None
+                    else:
+                        raise err
+
+            if image_check:
+                raise ValueError('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis')
+
 
         # add the image to the catalog
         image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
