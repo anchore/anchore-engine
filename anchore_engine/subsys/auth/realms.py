@@ -100,7 +100,7 @@ class AnchoreNativeRealm(AccountStoreRealm):
         except ValueError:
             msg3 = ("No permissions found for identifiers [{0}].  "
                     "Returning None.".format(identifier))
-            logger.warning(msg3)
+            logger.debug(msg3)
 
         except AttributeError:
             # this means the cache_handler isn't configured
