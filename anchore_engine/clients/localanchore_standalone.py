@@ -430,6 +430,31 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
 
     return(ret)
 
+def _rmtree_error_handler(infunc, inpath, inerr):
+    (cls, exc, trace) = inerr
+    try:
+        # attempt to change the permissions and then retry removal
+        os.chmod(inpath, 0o777)
+    except Exception as err:
+        logger.warn("unable to change permissions in error handler for path {} in shutil.rmtree".format(inpath))
+    finally:
+        try:
+            infunc(inpath)
+        except Exception as err:
+            logger.debug("unable to remove in error handler for path {} - this will be retried".format(err))
+
+
+def rmtree_force(inpath):
+
+    if os.path.exists(inpath):
+        try:
+            shutil.rmtree(inpath, False, _rmtree_error_handler)
+        finally:
+            if os.path.exists(inpath):
+                shutil.rmtree(inpath)
+
+    return(True)
+
 def delete_staging_dirs(staging_dirs):
     for k in list(staging_dirs.keys()):
         if k == 'cachedir':
@@ -441,7 +466,7 @@ def delete_staging_dirs(staging_dirs):
             try:
                 if os.path.exists(staging_dirs[k]):
                     logger.debug("removing dir: " + k + " : " + str(staging_dirs[k]))
-                    shutil.rmtree(staging_dirs[k])
+                    rmtree_force(staging_dirs[k])
             except Exception as err:
                 raise Exception("unable to delete staging directory - exception: " + str(err))
         else:
