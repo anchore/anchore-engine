@@ -149,7 +149,7 @@ def startup_service(service, configdir):
     logger.info("cleaning up service: {}".format(str(service)))
     terminate_service(service, flush_pidfile=True)
 
-    twistd_cmd = '/bin/twistd'
+    twistd_cmd = 'twistd'
     for f in ['/bin/twistd', '/usr/local/bin/twistd']:
         if os.path.exists(f):
             twistd_cmd = f
