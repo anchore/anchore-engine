@@ -522,7 +522,7 @@ class ArchivedAnalysisDeleter(ImageAnalysisArchiver):
             logger.info('Archiving image {}/{}', self.account, img_digest)
             try:
                 if not DRY_RUN_MODE:
-                    t = DeleteArchivedImageTask(account=self.account, image_digest=img_digest)
+                    t = DeleteArchivedImageTask(account=self.account, image_digest=img_digest, parent_task_id=self.task_id)
                     status, msg = t.run()
                     logger.info('Archive deletion task result: status={}, detail={}'.format(status, msg))
                 else:
