@@ -9,6 +9,12 @@ from .feeds import FeedSyncFail
 from .images import AnalyzeImageFail
 from .images import ArchiveAnalysisFail
 from .images import LoadAnalysisFail
+from .images import ImageArchived
+from .images import ImageArchiveDeleted
+from .images import ImageRestored
+from .images import ImageRestoreFailed
+from .images import ImageArchiveDeleteFailed
+from .images import ImageArchivingFailed
 from .repositories import ListTagsFail
 from .tags import TagManifestParseFail
 from .policies import PolicyBundleSyncFail

@@ -24,12 +24,50 @@ from anchore_engine.db import db_catalog_image, db_catalog_image_docker, db_poli
 from anchore_engine.db.entities import exceptions as db_exceptions
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.catalog.catalog_impl import image_imageDigest
+from anchore_engine.subsys.events import ImageArchiveDeleted, ImageRestored, ImageArchived, ImageArchiveDeleteFailed, ImageArchivingFailed, ImageRestoreFailed
+
 
 # Json serialization stuff...
 from marshmallow import fields, post_load
 
 DRY_RUN_ENV_VAR = 'ANCHORE_ANALYSIS_ARCHIVE_DRYRUN_ENABLED'
 DRY_RUN_MODE = (os.getenv(DRY_RUN_ENV_VAR, 'false').lower() == 'true')
+
+_add_event_fn = None
+from threading import RLock
+event_init_lock = RLock()
+
+
+def init_events(handler_fn=None):
+    """
+    Indirection to allow injection of different handler for testing and delay the binding to catalog specific code unless invoked
+
+    :param handler_fn: a callable that takes two args: event (type Event) and quiet (bool)
+    :return:
+    """
+
+    global _add_event_fn, event_init_lock
+    with event_init_lock:
+        if not handler_fn and _add_event_fn is None:
+            from anchore_engine.services.catalog import _add_event
+            _add_event_fn = _add_event
+
+
+def add_event(event):
+    """
+    Adds an event to the system. Will swallow all exceptions to ensure clean exit even in finally blocks
+    :param event:
+    :return:
+    """
+
+    global _add_event_fn
+    # Unsafe check but the init call is safe so at most this is redundant but safe and only impacts init
+    try:
+        if _add_event_fn is None:
+            init_events()
+        return _add_event_fn(event)
+    except Exception as ex:
+        logger.exception('Uncaught exception from event emitter: {}'.format(event))
 
 
 class ArtifactNotFound(Exception):
@@ -637,7 +675,7 @@ class LifecycleAction(object):
 
 
 class DeleteArchivedImageTask(object):
-    def __init__(self, account=None, image_digest=None):
+    def __init__(self, account=None, image_digest=None, parent_task_id=None):
         self.initiated = datetime.datetime.utcnow()
         self.started = None
         self.stopped = None
@@ -645,6 +683,8 @@ class DeleteArchivedImageTask(object):
         self.image_digest = image_digest
         self.archive_record = None
         self.archive_detail_records = None
+        self.parent_task_id = parent_task_id
+        self.id = uuid.uuid4().hex
 
     def run(self):
         logger.debug("Starting archive deletion process for image {}".format(self.image_digest))
@@ -652,8 +692,10 @@ class DeleteArchivedImageTask(object):
 
         try:
             self._execute()
-        except:
+            add_event(ImageArchiveDeleted(self.account, self.image_digest, self.id))
+        except Exception as err:
             logger.exception('Failed archive deletion execution')
+            add_event(ImageArchiveDeleteFailed(self.account, self.image_digest, task_id=self.id, err=str(err)))
             raise
         finally:
             self.stopped = datetime.datetime.utcnow()
@@ -713,8 +755,10 @@ class RestoreArchivedImageTask(object):
         try:
             self._execute()
             logger.debug('Cleanly executed archive execute function')
+            add_event(ImageRestored(self.account, self.image_digest))
         except:
             logger.exception('Error executing restore of image analysis from archive')
+            add_event(ImageRestoreFailed(self.account, self.image_digest))
             raise
         finally:
             self.stopped = datetime.datetime.utcnow()
@@ -901,6 +945,7 @@ class ArchiveImageTask(object):
                     img = session.add(img)
 
         except Exception as ex:
+            add_event(ImageArchivingFailed(self.account, self.image_digest, self.id, err=str(ex)))
             return 'error', str(ex)
 
         try:

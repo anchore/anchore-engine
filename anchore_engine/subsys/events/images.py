@@ -28,21 +28,35 @@ class LoadAnalysisFail(Event):
 
 
 class ImageArchived(Event):
-    __event_type__ = 'image_archived'
+    __event_type__ = 'image_analysis_archived'
     __resource_type__ = _image_digest_resource_type
 
     def __init__(self, user_id, image_digest, task_id=None):
-        super(ImageArchived, self).__init__(user_id=user_id, level='INFO', message='Analyzed image migrated to archive', resource_id=image_digest, details='Archived by task {}'.format(task_id) if task_id else 'Archived by API request')
+        super().__init__(user_id=user_id, level='INFO', message='Analyzed image added to archive', resource_id=image_digest, details='Archived by task {}'.format(task_id) if task_id else 'Archived by API request')
+
+
+class ImageArchivingFailed(Event):
+    __event_type__ = 'image_analysis_archiving_failed'
+    __resource_type__ = _image_digest_resource_type
+
+    def __init__(self, user_id, image_digest, task_id=None, err=None):
+        super().__init__(user_id=user_id, level='ERROR', message='Analyzed image migration to archive failed', resource_id=image_digest, details='Archiving failed due to {} {}'.format(err, 'in task {}'.format(task_id if task_id else 'by API request')))
 
 
 class ImageRestored(Event):
-    __event_type__ = 'image_restored'
+    __event_type__ = 'archived_image_restored'
     __resource_type__ = _image_digest_resource_type
 
     def __init__(self, user_id, image_digest):
-        super(ImageRestored, self).__init__(user_id=user_id, level='INFO',
-                                               message='Archived image restored to active images',
-                                               resource_id=image_digest, details='Restored by API request')
+        super().__init__(user_id=user_id, level='INFO', message='Archived image restored to active images', resource_id=image_digest, details='Restored by API request')
+
+
+class ImageRestoreFailed(Event):
+    __event_type__ = 'archived_image_restore_failed'
+    __resource_type__ = _image_digest_resource_type
+
+    def __init__(self, user_id, image_digest, err=None):
+        super().__init__(user_id=user_id, level='ERROR', message='Archived image restore to active images failed', resource_id=image_digest, details='Restore failed due to {}'.format(err))
 
 
 class ImageArchiveDeleted(Event):
@@ -50,6 +64,12 @@ class ImageArchiveDeleted(Event):
     __resource_type__ = _image_digest_resource_type
 
     def __init__(self, user_id, image_digest, task_id=None):
-        super(ImageArchiveDeleted, self).__init__(user_id=user_id, level='INFO',
-                                               message='Archived image analysis deleted',
-                                               resource_id=image_digest, details='Deleted by task {}'.format(task_id) if task_id else 'Archived by API request')
+        super().__init__(user_id=user_id, level='INFO', message='Archived image analysis deleted', resource_id=image_digest, details='Deleted by task {}'.format(task_id if task_id else 'Archived by API request'))
+
+
+class ImageArchiveDeleteFailed(Event):
+    __event_type__ = 'archived_image_delete_failed'
+    __resource_type__ = _image_digest_resource_type
+
+    def __init__(self, user_id, image_digest, task_id=None, err=None):
+        super().__init__(user_id=user_id, level='ERROR', message='Archived image analysis deletion failed', resource_id=image_digest, details='Deletion by {} failed due to: {}'.format('task {}'.format(task_id if task_id else 'API request'), err))
