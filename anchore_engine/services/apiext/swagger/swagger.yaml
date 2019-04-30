@@ -343,30 +343,30 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /imageimport:
-    post:
-      tags:
-      - Images
-      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
-      operationId: import_image
-      x-anchore-authz-action: importImage
-      summary: Import and image analysis directly
-      parameters:
-      - name: analysis_report
-        in: body
-        required: true
-        schema:
-          $ref: "#/definitions/ImageAnalysisReport"
-      - $ref: "#/parameters/AsAccountParameter"
-      responses:
-        200:
-          description: Import task accepted
-          schema:
-            $ref: "#/definitions/AnchoreImageList"
-        500:
-          description: Internal error
-          schema:
-            $ref: "#/definitions/ApiErrorResponse"
+#  /imageimport:
+#    post:
+#      tags:
+#      - Images
+#      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+#      operationId: import_image
+#      x-anchore-authz-action: importImage
+#      summary: Import and image analysis directly
+#      parameters:
+#      - name: analysis_report
+#        in: body
+#        required: true
+#        schema:
+#          $ref: "#/definitions/ImageAnalysisReport"
+#      - $ref: "#/parameters/AsAccountParameter"
+#      responses:
+#        200:
+#          description: Import task accepted
+#          schema:
+#            $ref: "#/definitions/AnchoreImageList"
+#        500:
+#          description: Internal error
+#          schema:
+#            $ref: "#/definitions/ApiErrorResponse"
   /summaries/imagetags:
     get:
       tags:
