@@ -2166,27 +2166,27 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /archives/rules/{ruleId}/history:
-    get:
-      tags:
-      - Archives
-      operationId: get_analysis_archive_rule_history
-      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
-      x-anchore-authz-action: getArchiveTransitionRuleHistory
-      parameters:
-        - name: ruleId
-          type: string
-          required: true
-          in: path
-      responses:
-        200:
-          description: Archive transition rule history of actions
-          schema:
-            $ref: "#/definitions/AnalysisArchiveTransitionHistory"
-        500:
-          description: Internal error
-          schema:
-            $ref: "#/definitions/ApiErrorResponse"
+#  /archives/rules/{ruleId}/history:
+#    get:
+#      tags:
+#      - Archives
+#      operationId: get_analysis_archive_rule_history
+#      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.archive
+#      x-anchore-authz-action: getArchiveTransitionRuleHistory
+#      parameters:
+#        - name: ruleId
+#          type: string
+#          required: true
+#          in: path
+#      responses:
+#        200:
+#          description: Archive transition rule history of actions
+#          schema:
+#            $ref: "#/definitions/AnalysisArchiveTransitionHistory"
+#        500:
+#          description: Internal error
+#          schema:
+#            $ref: "#/definitions/ApiErrorResponse"
   /archives/images:
     get:
       tags:
