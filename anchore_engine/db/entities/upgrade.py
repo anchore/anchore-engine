@@ -839,10 +839,34 @@ def db_upgrade_008_009():
             engine.execute(command)
             cmdcount = cmdcount + 1
 
-def db_upgrade_009_010():
+
+def cpe_vulnerability_upgrade_009_010():
     """
-    Runs upgrade on ImageGems and ImageNpms to add the column that was retrofitted for the 0.0.8 upgrade. This function ensures that
-    users that already ran that upgrade end up with a 0.0.9 db that has the same schema.
+    Runs upgrade on CpeVulnerability to create an index using foreign key columns vulnerability_id, namespace_name, severity in that order
+
+    :return:
+    """
+    from anchore_engine.db import session_scope
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    exec_commands = [
+        "CREATE INDEX IF NOT EXISTS ix_feed_data_cpe_vulnerabilities_fk on feed_data_cpe_vulnerabilities (vulnerability_id, namespace_name, severity)"
+    ]
+
+    log.err('Creating index ix_feed_data_cpe_vulnerabilities_fk on table feed_data_cpe_vulnerabilities')
+
+    cmdcount = 1
+    for command in exec_commands:
+        log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
+        engine.execute(command)
+        cmdcount = cmdcount + 1
+
+
+def archive_document_upgrade_009_010():
+    """
+    Runs upgrade on LegacyArchiveDocument to add b64_encoded column
+
     :return:
     """
 
@@ -859,6 +883,12 @@ def db_upgrade_009_010():
         log.err("running update operation {} of {}: {}".format(cmdcount, len(exec_commands), command))
         engine.execute(command)
         cmdcount = cmdcount + 1
+
+
+def db_upgrade_009_010():
+    archive_document_upgrade_009_010()
+    cpe_vulnerability_upgrade_009_010()
+
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here

@@ -431,6 +431,7 @@ class CpeVulnerability(Base):
     __table_args__ = (
         ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
         Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
+        Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
         {}
     )
 
