@@ -1,50 +1,24 @@
-# example docker-compose file for anchore-engine - to use:
 #
-# Pre-requisites
-# - recommend that anchore-cli is installed
+#  IMPORTANT NOTE - for anchore-engine 0.4.0 and latest, we have moved
+#  to a new docker-compose method and approach for deploying
+#  anchore-engine with docker-compose, which more accurately reflects
+#  production deployment setups.
 #
-# Set up persistent volume for anchore-engine (do this once)
-# - create a directory ~/aevolume
-# - create a directory ~/aevolume/db
-# - create a directory ~/aevolume/config
-# - place this file as ~/aevolume/docker-compose.yaml
-# - copy the example (./scripts/docker-compose/config.yaml) to ~/aevolume/config/config.yaml
-# - edit ~/aevolume/config/config.yaml and save (only if you need to make changes - not required)
-# - review ~/aevolume/docker-compose.yaml
+#  Please refer to the latest documentation for running anchore-engine
+#  with docker-compose:
 #
-# - OPTIONAL: to enable prometheus metrics
-# - copy the example (./scripts/docker-compose/anchore-promethesus.yaml) to ~/aevolume/config/anchore-promethesus.yaml
-# - edit ~/aevolume/docker-compose.yaml and uncomment the anchore-prometheus service section
-# - edit ~/aevolume/config.yaml and uncomment the 'metrics' section
+#  https://docs.anchore.com/2.0/docs/engine/engine_installation/docker_compose/
 #
-#
-# Run, use, stop, restart the anchore-engine with docker-compose
-# - run: docker-compose up -d
-#
-# - interact with anchore-engine with anchore-cli:
-#   - export ANCHORE_CLI_URL=http://localhost:8228/v1
-#   - export ANCHORE_CLI_USER=admin
-#   - export ANCHORE_CLI_PASS=foobar
-#   - export ANCHORE_CLI_SSL_VERIFY=n
-#   - anchore-cli image list
-#   - anchore-cli image add alpine
-#   - anchore-cli image get alpine
-#   - ...
-#
-# - stop: docker-compose down --volumes
-#
-# Notes:
-# - to start up again, run the same docker-compose up -d as above
-# - to reset the DB, stop anchore engine with docker-compose down --volumes as above, then remove all files/directories in ~/aevolume/db/*, and restart
-# - if you enable SSL for any services, make sure to do so across the board in your config.yaml, and change the ANCHORE_CLI_URL to use https instead of http
-# - if you change the admin password in config.yaml, make sure to update your ANCHORE_CLI_PASS export as well
-# - if you change the DB password in this file, make sure to also change it in your config.yaml 'db_connect' setting
+#  The following docker-compose.yaml has been altered to reference the
+#  latest 0.3 series release of anchore-engine for continuity, but
+#  note that both this and the associated config.yaml in this
+#  directory will be removed in the future.
 #
 
 version: '2'
 services:
   anchore-engine:
-    image: docker.io/anchore/anchore-engine:latest
+    image: docker.io/anchore/anchore-engine:v0.3.4
     #privileged: true
     depends_on:
      - anchore-db
