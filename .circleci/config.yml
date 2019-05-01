@@ -29,7 +29,7 @@ var_2: &attach_workspace
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1.2.0
+  anchore: anchore/anchore-engine@1.2.1
 commands:
   run_tox_tests:
     description: Pass path to tests to be run with tox
@@ -40,8 +40,9 @@ commands:
     - checkout
     - restore_cache:
         keys:
-        - v1-dependencies-{{ checksum "requirements.txt" }}
+        - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
         # fallback to using the latest cache if no exact match is found
+        - v1-dependencies-{{ .Branch }}-
         - v1-dependencies-
     - run:
         name: install dependencies
@@ -51,40 +52,85 @@ commands:
     - run:
         name: run tests
         command: |
-          mkdir logs
-          tox << parameters.test_path >> | tee logs/report_$(echo "<< parameters.test_path >>" | sed 's|/|-|').log
+          tox << parameters.test_path >> | tee tox.log
     - save_cache:
         paths:
-          - ./tox
-        key: v1-dependencies-{{ checksum "requirements.txt" }}
+          - ~/project/.tox
+        key: v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
     - store_artifacts:
-        path: logs/
+        path: tox.log
 
 jobs:
   unit_tests:
-    working_directory: ~/build/anchore-engine
     docker:
     - image: circleci/python:3.6
-    - image: circleci/postgres:9.6
     steps:
-    - checkout
     - run_tox_tests:
         test_path: "test/unit"
   
   integration_tests:
-    working_directory: ~/build/anchore-engine
     docker:
-    - image: circleci/python:3.6
-    - image: circleci/postgres:9.6
+      - image: circleci/python:3.6
+      - image: anchore/test-infra-minio:latest
+        command:
+          - server
+          - /data
+      - image: anchore/test-infra-swift:latest
+      - image: circleci/postgres:9.6
+    environment:
+      ANCHORE_TEST_S3_ACCESS_KEY: "9EB92C7W61YPFQ6QLDOU"
+      ANCHORE_TEST_S3_SECRET_KEY: "TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s"
+      ANCHORE_TEST_S3_URL: "http://localhost:9000"
+      ANCHORE_TEST_S3_BUCKET: "testarchivebucket"
+
+      ANCHORE_TEST_SWIFT_AUTH_URL: "http://localhost:8080/auth/v1.0"
+      ANCHORE_TEST_SWIFT_KEY: "testing"
+      ANCHORE_TEST_SWIFT_USER: "test:tester"
+      ANCHORE_TEST_SWIFT_CONTAINER: "testarchive"
+
+      ANCHORE_TEST_DB_URL: "postgresql+pg8000://postgres@localhost:5432/circle_test"
+      ANCHORE_TEST_DB_USER: "postgres"
+      ANCHORE_TEST_DB_PASS: "postgres"
+      ANCHORE_TEST_DATA_ENV_DIR: "test/data/test_data_env"
     steps:
-    - checkout
-    - run_tox_tests:
-        test_path: "test/integration"
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run_tox_tests:
+          test_path: "test/integration"
+
+#  integration_tests:
+#    machine:
+#      image: ubuntu-1604:201903-01
+#    working_directory: ~/build/anchore-engine
+#    steps:
+#      - checkout
+#      - restore_cache:
+#          keys:
+#            - v1-dependencies-{{ checksum "requirements.txt" }}
+#            # fallback to using the latest cache if no exact match is found
+#            - v1-dependencies-
+#      - run:
+#          name: Install py3 and deps
+#          command: |
+#            sudo apt-get update -y
+#            sudo apt-get install -y python3 python3-dev python3-pip
+#      - run:
+#          name: install dependencies
+#          command: |
+#            sudo pip install --upgrade pip
+#            sudo pip install --upgrade tox
+#            sudo pip install --upgrade docker-compose
+#      - run:
+#          name: run integration test
+#          command: |
+#            ./scripts/tests/test_with_deps.sh test/integration/
 
   build:
     docker:
-    - image: docker:stable-git
-    working_directory: ~/build
+    - image: anchore/test-infra:latest
+      auth:
+        username: $DOCKER_USER
+        password: $DOCKER_PASS
     steps:
     - checkout
     - setup_remote_docker:
@@ -92,22 +138,24 @@ jobs:
     - run:
         name: build Docker image
         command: |
-          export ANCHORE_CLI_COMMIT=`git ls-remote git@github.com:anchore/anchore-cli "refs/heads/${CIRCLE_BRANCH}" | awk '{ print $1 }'`
-          docker build --build-arg ANCHORE_COMMIT="$CIRCLE_SHA1" --build-arg CLI_COMMIT="$ANCHORE_CLI_COMMIT" -t "${IMAGE_NAME}:ci" -f ./Dockerfile .
+          source ci_utils.sh
+          gather_artifacts anchore-engine
+          docker build --build-arg ANCHORE_COMMIT="$CIRCLE_SHA1" --build-arg CLI_COMMIT="$anchore_cli_SHA" -t "${IMAGE_NAME}:ci" -f ./Dockerfile .
     - run:
         name: Save Docker image
         command: |
           rm -rf /home/circleci/workspace/caches/
           mkdir -p /home/circleci/workspace/caches/
+          cp artifacts.txt /home/circleci/workspace/artifacts.txt
           docker save -o "/home/circleci/workspace/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar" "${IMAGE_NAME}:ci"
     - persist_to_workspace:
         root: /home/circleci/workspace/
         paths:
         - caches/*
+        - artifacts.txt
 
   compose_tests:
     machine: true
-    working_directory: ~/build
     steps:
     - checkout
     - <<: *attach_workspace
@@ -131,9 +179,10 @@ jobs:
           docker exec anchore-cli anchore-cli system wait --feedsready ""
           docker-compose logs engine-api
           docker exec anchore-cli anchore-cli system status
-          cd ~/build/scripts/tests/
+          pushd scripts/tests/
           python aetest.py docker.io/alpine:latest anchore-cli
           python aefailtest.py docker.io/alpine:latest anchore-cli
+          popd
 
   push_dockerhub:
     docker:
@@ -146,6 +195,9 @@ jobs:
         name: Push to Dockerhub
         command: |
           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+          export DEV_IMG_TAG="anchore/anchore-engine-dev:${CIRCLE_SHA1}"
+          docker tag "${IMAGE_NAME}:ci" "$DEV_IMG_TAG"
+          docker push "$DEV_IMG_TAG"
           if [ "$CIRCLE_BRANCH" == "master" ]; then
             echo "${IMAGE_NAME}:${IMAGE_TAG}"
             docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:${IMAGE_TAG}"
@@ -158,28 +210,30 @@ jobs:
             echo "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
             docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
             docker push "${IMAGE_NAME}:v0.3-${IMAGE_TAG}"
-          else
-            false
           fi
 
   trigger_downstream:
-    machine: true
+    docker:
+      - image: anchore/test-infra:latest
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
+    - <<: *attach_workspace
     - run:
-        name: Trigger Downstream Builds
+        name: Trigger release candidate builds
         command: |
-          if [ "$IMAGE_NAME" == "docker.io/anchore/anchore-engine" ] && [ "$IMAGE_TAG" == "dev" ]; then
-            echo 'Triggering downstream build'
-            curl -X POST -H "Content-Type: application/json" -d '{"branch": "master"}' "$DOWNSTREAM_TRIGGER_URL"
-          else
-            echo 'Skipping downstream push because pushed image is not anchore-engine:dev'
-          fi
+          cp /home/circleci/workspace/artifacts.txt ./artifacts.txt
+          source ci_utils.sh
+          trigger_artifact_build anchore-engine
+
 workflows:
   default_workflow:
     jobs:
     - unit_tests
     - integration_tests
     - build:
+        context: dockerhub
         requires:
         - unit_tests
         - integration_tests
@@ -197,6 +251,7 @@ workflows:
         requires:
         - compose_tests
     - trigger_downstream:
+        context: release_candidates
         requires:
         - push_dockerhub
     - anchore/image_scan:
