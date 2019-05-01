@@ -1024,8 +1024,8 @@ class ArchiveImageTask(object):
                     record.archive_size_bytes = size
                     record.status = 'archived'
 
+                    add_event(ImageArchived(self.account, self.image_digest, self.id))
                     return record.status, 'Completed successfully'
-
             except Exception as ex:
                 record.status = 'error'
 
@@ -1038,6 +1038,7 @@ class ArchiveImageTask(object):
                         logger.warn('Could not delete the analysis archive tarball in storage. May have leaked. Err: {}'.format(ex))
 
                 session.delete(record)
+                add_event(ImageArchivingFailed(self.account, self.image_digest, self.id, err=str(ex)))
                 return 'error', str(ex)
 
     def archive_required(self, src_mgr: ObjectStorageManager, artifacts: list, img_archive: ImageArchive) -> list:
