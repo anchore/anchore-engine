@@ -1480,8 +1480,8 @@ watchers = {
     'handle_metrics': {'handler': handle_metrics, 'task_lease_id': False, 'taskType': None, 'args': [],
                        'cycle_timer': 60, 'min_cycle_timer': 60, 'max_cycle_timer': 60, 'last_queued': 0,
                        'last_return': False, 'initialized': False},
-    'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': 'archive_transitions', 'taskType': 'handle_archive_tasks', 'args': [], 'cycle_timer': 30,
-                           'min_cycle_timer': 10, 'max_cycle_timer': 86400, 'last_queued': 0, 'last_return': False,
+    'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': 'archive_transitions', 'taskType': 'handle_archive_tasks', 'args': [], 'cycle_timer': 43200,
+                           'min_cycle_timer': 60, 'max_cycle_timer': 86400 * 5, 'last_queued': 0, 'last_return': False,
                            'initialized': False},
 }
 
