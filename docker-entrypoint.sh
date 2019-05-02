@@ -6,6 +6,8 @@ echo "Setting ANCHORE_HOST_ID to ${HOSTNAME}"
 export ANCHORE_HOST_ID=${HOSTNAME}
 fi
 
-export PATH=${PATH}:/usr/local/bin
+if [ -f "/opt/rh/rh-python36/enable" ]; then
+    source /opt/rh/rh-python36/enable
+fi
 
 exec "$@"
