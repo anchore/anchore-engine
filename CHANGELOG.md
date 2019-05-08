@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0 (2019-05-09)
+
++ Added - Image Analysis Archive Subsystem. See #165.
++ Added - All anchore-engine services now run (by default) as non-root, including the analyzer (with new analyzer implementation)
++ Added - optional policy parameter for vulnerabilities older than N days. Implements #156. Contribution by i845783 <dan.wilson01@sap.com>
++ Added - new facility to carry anchore error codes through to API error response envelope.  Addresses #150 and will extend in future for richer error information in API responses.
++ Added - /system/error_codes route to describe possible anchore error codes.
++ Added - Re-platformed anchore engine and CLI container image on Red Hat Universal Base Image (UBI)
++ Fix - improved handling of case where default_bundle_file key is unset internally for initializers that reference that configuration key. Fixes #113.
++ Fix - skip dpkg results that are not in the explicit installed (ii) state.  Fixes #169.
++ Fix - bug in passwd_file gate's context setup that was parsing entries incorrectly.
++ Fix - bytes decode issue in the object store manager interface that is masked in py3.6 but exposed in py3.5
++ Fix - update to handle redirect for quay.io when trailing slash is omitted, during initial registry ping in validation routine.  Fixes #175.
++ Improved - cleanup feed sync error path where another sync is in progress. use the new anchore error code mechanism
++ Improved - support for psycopg2 SQL Alchemy Driver
++ Improved - new docker-compose quickstart method
++ Improved - combined analyzer module functionality
++ Improved - error message from parse_dockerimage_string. Contributed by Nicolas Simonds <nisimond@cisco.com>
++ Improved - re-introduce many integration tests and integration testing framework
++ Improved - remove more verbose logging around lease ops in monitor function of catalog
++ Improved - update workspace analyzer directory deletion to handle nested permissions errors using onerror shutil.rmtree handler, to avoid permission denied possibilities from rootless analyzer
++ Many performance, log cleanup and improvements, and other minor bugfixes
+	
 ## 0.3.4 (2019-04-04)
 
 + Added - support for specifying registry credentials for specific repositories or sets of repos using wildcards. Implements #142.
