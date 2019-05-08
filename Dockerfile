@@ -40,7 +40,7 @@ FROM registry.access.redhat.com/ubi7/ubi
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
 ARG ANCHORE_ENGINE_VERSION="0.4.0"
-ARG ANCHORE_ENGINE_RELEASE="dev"
+ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Container metadata section
 
