@@ -165,6 +165,7 @@ jobs:
         command: |
           pip install --upgrade pip
           pip install --upgrade docker-compose
+          pip install --upgrade anchorecli
     - run:
         name: docker compose
         command: |
@@ -175,13 +176,15 @@ jobs:
     - run:
         name: run test
         command: |
-          docker run -td --net=host --name anchore-cli -e ANCHORE_CLI_USER=admin -e ANCHORE_CLI_PASS=foobar docker.io/anchore/engine-cli:latest tail -f /dev/null
-          docker exec anchore-cli anchore-cli system wait --feedsready '""'
+          #docker run -td --net=host --name anchore-cli -e ANCHORE_CLI_USER=admin -e ANCHORE_CLI_PASS=foobar docker.io/anchore/engine-cli:latest tail -f /dev/null
+          #docker exec anchore-cli anchore-cli system wait --feedsready '""'
+          anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
           docker-compose logs engine-api
-          docker exec anchore-cli anchore-cli system status
+          #docker exec anchore-cli anchore-cli system status
+          anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
           pushd scripts/tests/
-          python aetest.py docker.io/alpine:latest anchore-cli
-          python aefailtest.py docker.io/alpine:latest anchore-cli
+          python aetest.py docker.io/alpine:latest
+          python aefailtest.py docker.io/alpine:latest
           popd
 
   push_dockerhub:

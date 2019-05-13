@@ -18,8 +18,8 @@ try:
 except:
     aecontainer = "qadc_anchore-engine_1"
 
-precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
-#precmd = "anchore-cli --json --u admin --p foobar --url https://localhost:80/v1 --insecure "
+#precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+precmd = "anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
 
 reg = user = pw = None
 try:
