@@ -176,7 +176,7 @@ jobs:
         name: run test
         command: |
           docker run -td --net=host --name anchore-cli -e ANCHORE_CLI_USER=admin -e ANCHORE_CLI_PASS=foobar docker.io/anchore/engine-cli:latest tail -f /dev/null
-          docker exec anchore-cli anchore-cli system wait --feedsready ""
+          docker exec anchore-cli anchore-cli system wait --feedsready '""'
           docker-compose logs engine-api
           docker exec anchore-cli anchore-cli system status
           pushd scripts/tests/
