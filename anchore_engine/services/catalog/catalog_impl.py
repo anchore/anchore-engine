@@ -1100,6 +1100,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if imageId and imageId not in imageIds:
             imageIds.append(imageId)
 
+    archiveId = scantag + image_record["imageDigest"]
 
     for imageId in imageIds:
         # do the image load, just in case it was missed in analyze...
@@ -1112,7 +1113,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         last_vuln_result = {}
         try:
-            last_vuln_result = obj_store.get_document(userId, 'vulnerability_scan', scantag)
+            last_vuln_result = obj_store.get_document(userId, 'vulnerability_scan', archiveId)
         except:
             pass
 
@@ -1123,7 +1124,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if last_vuln_result and curr_vuln_result:
             vdiff = anchore_utils.process_cve_status(old_cves_result=last_vuln_result['legacy_report'], new_cves_result=curr_vuln_result['legacy_report'])
 
-        obj_store.put_document(userId, 'vulnerability_scan', scantag, curr_vuln_result)
+        obj_store.put_document(userId, 'vulnerability_scan', archiveId, curr_vuln_result)
 
         try:
             if vdiff and (vdiff['updated'] or vdiff['added'] or vdiff['removed']):
