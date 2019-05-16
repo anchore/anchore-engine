@@ -163,8 +163,14 @@ class CatalogClient(InternalServiceClient):
         return self.call_api(http.anchy_delete, 'subscriptions/{id}', path_params={'id': subscription_id})
 
     def update_subscription(self, subscriptiondata, subscription_type=None, subscription_key=None, subscription_id=None):
-        if subscription_key and subscription_type:
+        if subscription_id:
+            pass
+        elif subscription_key and subscription_type:
             subscription_id = hashlib.md5('+'.join([self.request_namespace, subscription_key, subscription_type]).encode('utf8')).hexdigest()
+        elif subscriptiondata.get('subscription_key', None) and subscriptiondata.get('subscription_type', None):
+            subscription_id = hashlib.md5('+'.join([self.request_namespace, subscriptiondata.get('subscription_key'), subscriptiondata.get('subscription_type')]).encode('utf8')).hexdigest()
+        else:
+            raise Exception("cannot calculate a subscription ID without input subscription id, or input subscription_key and subscription_type")
 
         return self.call_api(http.anchy_put, 'subscriptions/{id}', path_params={'id': subscription_id}, body=json.dumps(subscriptiondata))
 

@@ -1182,6 +1182,9 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                                 client.update_subscription({'subscription_type': sub_type, 'subscription_key': fulltag})
                             except:
                                 pass
+                    else:
+                        if enable_subscriptions and sub_type in enable_subscriptions:
+                            client.update_subscription({'active': True, 'subscription_type': sub_type, 'subscription_key': fulltag})
 
             # set the state of the image appropriately
             currstate = image_record['analysis_status']
