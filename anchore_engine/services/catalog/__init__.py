@@ -179,21 +179,27 @@ def handle_vulnerability_scan(*args, **kwargs):
                 with db.session_scope() as dbsession:
                     image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
                                                                        onlylatest=False, session=dbsession)
-                try:
-                    subscription_value = json.loads(value)
-                    digests = set(subscription_value['digests'])
-                except Exception as err:
+                if value:
+                    try:
+                        subscription_value = json.loads(value)
+                        digests = set(subscription_value['digests'])
+                    except Exception as err:
+                        digests = set()
+                else:
                     digests = set()
+
                 # always add latest version of the image
                 if len(image_records) > 0:
                     digests.add(image_records[0]['imageDigest'])
+                    current_imageDigest = image_records[0]['imageDigest']
+
                 for image_record in image_records:
                     if image_record['analysis_status'] == taskstate.complete_state('analyze'):
                         imageDigest = image_record['imageDigest']
 
                         if imageDigest not in digests:
                             continue
-
+                            
                         fulltag = dbfilter['registry'] + "/" + dbfilter['repo'] + ":" + dbfilter['tag']
 
                         doperform = True
@@ -201,8 +207,7 @@ def handle_vulnerability_scan(*args, **kwargs):
                             logger.debug("calling vuln scan perform: " + str(fulltag) + " : " + str(imageDigest))
                             with db.session_scope() as dbsession:
                                 try:
-                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession,
-                                                                                 scantag=fulltag, force_refresh=False)
+                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=fulltag, force_refresh=False, is_current=(imageDigest==current_imageDigest))
                                 except Exception as err:
                                     logger.warn("vulnerability scan failed - exception: " + str(err))
 
@@ -823,11 +828,15 @@ def handle_policyeval(*args, **kwargs):
                 with db.session_scope() as dbsession:
                     image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
                                                                        onlylatest=False, session=dbsession)
-                try:
-                    subscription_value = json.loads(value)
-                    digests = set(subscription_value['digests'])
-                except Exception as err:
+                if value:
+                    try:
+                        subscription_value = json.loads(value)
+                        digests = set(subscription_value['digests'])
+                    except Exception as err:
+                        digests = set()
+                else:
                     digests = set()
+
                 # always add latest version of the image
                 if len(image_records) > 0:
                     digests.add(image_records[0]['imageDigest'])
