@@ -1,4 +1,4 @@
-from yosai.core.authc.abcs import CredentialsVerifier, AuthenticationToken, Authenticator
+from yosai.core.authc.abcs import CredentialsVerifier
 from yosai.core.authc.authc import UsernamePasswordToken, IncorrectCredentialsException, TokenError
 from anchore_engine.subsys import logger
 from anchore_engine.utils import ensure_bytes
@@ -7,13 +7,7 @@ from anchore_engine.utils import ensure_bytes
 class SimpleVerifier(CredentialsVerifier):
 
     def __init__(self, settings):
-        self.samlVerifier = SAMLVerifier(settings)
-
-        self.token_resolver = {
-            UsernamePasswordToken: self,
-            SAMLToken: self.samlVerifier
-        }
-
+        self.token_resolver = {UsernamePasswordToken: self}
         self.supported_tokens = self.token_resolver.keys()
 
     def verify_credentials(self, authc_token, authc_info):
@@ -43,34 +37,3 @@ class SimpleVerifier(CredentialsVerifier):
         except KeyError:
             msg = "{0} is required but unavailable from authc_info".format(cred_type)
             raise KeyError(msg)
-
-
-class SAMLToken(AuthenticationToken):
-    def __init__(self, saml_token, remember_me=False):
-        """
-        :param saml_token: the SAML XML content
-        :type saml_token: str
-        """
-        self.saml_doc = saml_token
-        self.is_remember_me = remember_me
-
-    @property
-    def credentials(self):
-        return self._credentials
-
-    @credentials.setter
-    def credentials(self, credentials):
-        self._credentials = credentials
-
-
-
-class SAMLVerifier(CredentialsVerifier):
-    """
-    Verifies the validity of a saml token
-    """
-    def __init__(self, settings):
-        self.token_resolver = { SAMLToken: self }
-
-    def verify_credentials(self, authc_token, account):
-        logger.info("Verifying SAML token")
-        return True
