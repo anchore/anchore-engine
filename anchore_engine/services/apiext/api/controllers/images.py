@@ -622,9 +622,13 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
 
     httpcode = 500
     try:
-        #request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
-        #return_object, httpcode = images(request_inputs)
-        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_tag=fulltag, history=history)
+        if image_to_get and not fulltag:
+            fulltag = image_to_get.get('tag')
+            digest = image_to_get.get('digest')
+        else:
+            digest = None
+
+        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history)
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
         return_object = make_response_error(err, in_httpcode=err.__response_code__)
