@@ -581,19 +581,27 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
         elif method == 'PUT':
             subscriptiondata = bodycontent if bodycontent is not None else {}
 
-            subscription_key = subscription_type = None
-            if 'subscription_key' in subscriptiondata:
-                subscription_key=subscriptiondata['subscription_key']
-            if 'subscription_type' in subscriptiondata:
-                subscription_type=subscriptiondata['subscription_type']
+            subscription_record = subscription_key = subscription_type = None
+            dbfilter = {}
+            if subscriptionId:
+                subscription_record = db_subscriptions.get(userId, subscriptionId, session=dbsession)
 
-            
-            if not subscription_key or not subscription_type:
-                httpcode = 500
-                raise Exception("body does not contain both subscription_key and subscription_type")
+                subscription_key = subscription_record['subscription_key']
+                subscription_type = subscription_record['subscription_type']
 
-            dbfilter = {'subscription_key':subscription_key, 'subscription_type':subscription_type}
-            subscription_record = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                dbfilter['subscription_id'] = subscriptionId
+            else:
+                if 'subscription_key' in subscriptiondata:
+                    subscription_key=subscriptiondata['subscription_key']
+                if 'subscription_type' in subscriptiondata:
+                    subscription_type=subscriptiondata['subscription_type']
+
+                if not subscription_key or not subscription_type:
+                    raise Exception("body does not contain both subscription_key and subscription_type")
+
+                dbfilter = {'subscription_key':subscription_key, 'subscription_type':subscription_type}
+                subscription_record = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+
             if not subscription_record:
                 httpcode = 404
                 raise Exception("subscription to update does not exist in DB")
