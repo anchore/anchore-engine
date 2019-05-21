@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.10"
+  version: "0.1.11"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -1257,6 +1257,8 @@ paths:
       responses:
         200:
           description: "Feeds operation success"
+          schema:
+            $ref: "#/definitions/FeedSyncResults"
         500:
           description: Internal Error
           schema:
@@ -3689,3 +3691,49 @@ definitions:
       tag:
         type: string
         description: The tag-only section of a pull string. e.g. with "docker.io/anchore/anchore-engine:latest", this is "latest"
+  FeedSyncResults:
+    description: An array of feed sync summaries representing the result of an explicit feed sync operation
+    type: array
+    items:
+      $ref: "#/definitions/FeedSyncResult"
+  FeedSyncResult:
+    description: The result of a sync of a single feed
+    type: object
+    properties:
+      feed:
+        type: string
+        description: The name of the feed synced
+      status:
+        type: string
+        description: The result of the sync operations, either co
+        enum:
+          - success
+          - failure
+      total_time_seconds:
+        type: number
+        description: The duratin, in seconds, of the sync of the feed, the sum of all the group syncs
+      groups:
+        type: array
+        description: Array of group sync results
+        items:
+          $ref: "#/definitions/GroupSyncResult"
+  GroupSyncResult:
+    type: object
+    properties:
+      group:
+        type: string
+        description: The name of the group
+      status:
+        type: string
+        enum:
+          - success
+          - failure
+      updated_image_count:
+        type: integer
+        description: The number of images updated by the this group sync, across all accounts. This is typically only non-zero for vulnerability feeds which update images' vulnerability results during the sync.
+      updated_record_count:
+        type: integer
+        description: The number of feed data records synced down as either updates or new records
+      total_time_seconds:
+        type: number
+        description: The duration of the group sync in seconds

@@ -73,4 +73,4 @@ def sync_feeds(sync=True, force_flush=False):
             log.exception('Error executing feed update task')
             return jsonify(make_response_error(e, in_httpcode=500)), 500
 
-    return jsonify(['{}/{}'.format(x[0], x[1]) for x in result]), 200
+    return jsonify(result), 200

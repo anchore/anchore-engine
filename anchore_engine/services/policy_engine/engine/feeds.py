@@ -26,6 +26,14 @@ log = get_logger()
 feed_list_cache = threading.local()
 
 
+def build_group_sync_result():
+    return {'group': None, 'status': None, 'total_time_seconds': 0, 'updated_record_count': 0, 'updated_image_count': 0}
+
+
+def build_feed_sync_results():
+    return {'feed': None, 'status': None, 'total_time_seconds': 0, 'groups': []}
+
+
 def get_feeds_config(full_config):
     """
     Returns the feeds-specifc portion of the global config. To centralized this logic.
@@ -797,7 +805,10 @@ class AnchoreServiceFeed(DataFeed):
         :return:
         """
         sync_time = time.time()
-        updated_images = set()
+        total_updated_count = 0
+        result = build_group_sync_result()
+        result['group'] = group_obj.name
+
         db = get_session()
         if full_flush:
             last_sync = None
@@ -816,11 +827,13 @@ class AnchoreServiceFeed(DataFeed):
                 log.info('Group data fetch took {} sec'.format(fetch_time))
                 log.info('Merging {} records from group {}'.format(len(new_data_deduped), group_obj.name))
                 db_time = time.time()
+
                 for rec in new_data_deduped:
                     merged = db.merge(rec)
                     #db.add(merged)
                 db.flush()
                 log.info('Db merge took {} sec'.format(time.time() - db_time))
+                total_updated_count += len(new_data_deduped)
 
             group_obj.last_sync = datetime.datetime.utcnow()
             db.add(group_obj)
@@ -833,7 +846,11 @@ class AnchoreServiceFeed(DataFeed):
             sync_time = time.time() - sync_time
             log.info('Syncing group took {} sec'.format(sync_time))
 
-        return updated_images
+        result['updated_record_count'] = total_updated_count
+        result['status'] = 'success'
+        result['total_time_seconds'] = sync_time
+        result['updated_image_count'] = 0
+        return result
 
     def _flush_group(self, group_obj, flush_helper_fn=None):
         """
@@ -936,8 +953,14 @@ class AnchoreServiceFeed(DataFeed):
 
         self.init_feed_meta_and_groups()
 
-        updated_records = {}
+        result = build_feed_sync_results()
+        result['status'] = 'failure'
+        result['feed'] = self.__feed_name__
+
+        failed_count = 0
+
         # Each group update is a unique session and can roll itself back.
+        t = time.time()
         for g in self.metadata.groups:
             log.info('Processing group: {}'.format(g.name))
             if not group or g.name == group:
@@ -947,12 +970,14 @@ class AnchoreServiceFeed(DataFeed):
 
                 try:
                     new_data = self._sync_group(g, full_flush=full_flush)  # Each group sync is a transaction
-                    updated_records[g.name] = new_data
+                    result['groups'].append(new_data)
                 except Exception as e:
                     log.exception('Failed syncing group data for {}/{}'.format(self.__feed_name__, g.name))
+                    failed_count += 1
             else:
                 log.info('Skipping group {} since not selected'.format(g))
 
+        sync_time = time.time() - t
         db = get_session()
         try:
             # Update timestamps
@@ -965,7 +990,9 @@ class AnchoreServiceFeed(DataFeed):
             db.rollback()
             raise
 
-        return updated_records
+        result['total_time_seconds'] = sync_time
+        result['status'] = 'success' if failed_count == 0 else 'failure'
+        return result
 
     def group_by_name(self, group_name):
         return [x for x in self.metadata.groups if x.name == group_name] if self.metadata else []
@@ -1024,7 +1051,10 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         :return:
         """
         sync_time = time.time()
-        updated_images = set() # A set
+        result = build_group_sync_result()
+        result['status'] = 'failure'
+        result['group'] = group_obj.name
+
         db = get_session()
 
         if full_flush:
@@ -1032,6 +1062,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         else:
             last_sync = group_obj.last_sync
 
+        total_updated_count = 0
+        updated_images = set()
         try:
             next_token = ''
             while next_token is not None:
@@ -1042,6 +1074,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 fetch_time = time.time() - fetch_time
                 log.debug('Group data fetch took {} sec'.format(fetch_time))
                 log.debug('Merging {} records from group {}'.format(len(new_data_deduped), group_obj.name))
+                total_updated_count += len(new_data_deduped)
+
                 db_time = time.time()
                 for rec in new_data_deduped:
                     # Make any updates and changes within this single transaction scope
@@ -1061,7 +1095,11 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             sync_time = time.time() - sync_time
             log.info('Syncing group took {} sec'.format(sync_time))
 
-        return updated_images
+        result['total_time_seconds'] = sync_time
+        result['status'] = 'success'
+        result['updated_image_count'] = len(list(updated_images))
+        result['updated_record_count'] = total_updated_count
+        return result
 
     @staticmethod
     def _are_match_equivalent(vulnerability_a, vulnerability_b):
@@ -1168,7 +1206,14 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         self.init_feed_meta_and_groups()
 
-        updated_records = {}
+        result = {
+            'feed': self.__feed_name__,
+            'status': 'sync_failed',
+            'total_time_seconds': -1,
+            'groups': []
+        }
+
+        groups_failed = 0
 
         # Setup the group name cache
         feed_list_cache.vuln_group_list = [x.name for x in self.metadata.groups]
@@ -1183,14 +1228,21 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
                     try:
                         new_data = self._sync_group(g, vulnerability_processing_fn=item_processing_fn, full_flush=full_flush)
-                        updated_records[g.name] = new_data
+                        #updated_records[g.name] = new_data
+                        result['groups'].append(new_data)
                     except Exception as e:
                         log.exception('Failed syncing group data for {}/{}'.format(self.__feed_name__, g.name))
+                        groups_failed += 1
                 else:
                     log.info('Group not selected for sync: {}. Skipping.'.format(g.name))
 
             self._update_last_sync_timestamp()
-            return updated_records
+            if groups_failed > 0:
+                result['status'] = 'failure'
+            else:
+                result['status'] = 'success'
+            return result
+
         finally:
             feed_list_cache.vuln_group_list = None
 
@@ -1279,6 +1331,21 @@ class NvdFeed(AnchoreServiceFeed):
             return db.query(NvdMetadata).get((key, group))
         except Exception as e:
             log.exception('Could not retrieve nvd vulnerability by key:')
+
+    # TODO: fix this in follow up commit.
+    # def _flush_group(self, group_obj, flush_helper_fn=None):
+    #
+    #     db = get_session()
+    #     flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+    #
+    #     count = db.query(CpeVulnerability).filter(CpeVulnerability.namespace_name == group_obj.name).delete()
+    #     log.info('Flushed {} fix records'.format(count))
+    #     # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
+    #     # log.info('Flushed {} vuln_in records'.format(count))
+    #     count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
+    #     log.info('Flushed {} vulnerability records'.format(count))
+    #
+    #     db.flush()
 
     def _dedup_data_key(self, item):
         return item.name
@@ -1458,7 +1525,6 @@ class DataFeeds(object):
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for snyk feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
-
     def sync(self, to_sync=None, full_flush=False):
         """
         Sync all feeds.
@@ -1467,7 +1533,7 @@ class DataFeeds(object):
 
         all_success = True
 
-        updated_records = {}
+        result = []
         log.info('Performing feed sync of feeds: {}'.format('all' if to_sync is None else to_sync))
 
         # Initialize the feed metadata and groups first
@@ -1516,41 +1582,62 @@ class DataFeeds(object):
         # Perform the feed sync next
 
         if vuln_feed:
+            t = time.time()
             try:
                 log.info('Syncing vulnerability feed')
-                updated_records['vulnerabilities'] = vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
+
+                result.append(vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn))
             except:
                 log.exception('Failure updating the vulnerabilities feed')
                 all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = vuln_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
 
         if pkgs_feed:
+            t = time.time()
             try:
                 log.info('Syncing packages feed')
-                updated_records['packages'] = pkgs_feed.sync()
+                result.append(pkgs_feed.sync())
             except:
                 log.exception('Failure updating the packages feed')
                 all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = pkgs_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
 
         if nvd_feed:
+            t = time.time()
             try:
                 log.info('Syncing nvd feed')
-                updated_records['nvd'] = nvd_feed.sync()
+                result.append(nvd_feed.sync())
             except:
                 log.exception('Failure updating the nvd feed')
                 all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = nvd_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
 
         if snyk_feed:
+            t = time.time()
             try:
                 log.info('Syncing snyk feed')
-                updated_records['snyk'] = snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn)
+                result.append(snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn))
             except:
                 log.exception('Failure updating the snyk feed')
                 all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = snyk_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
 
         if not all_success:
             raise Exception("one or more feeds failed to sync")
 
-        return updated_records
+        return result
 
     def bulk_sync(self, to_sync=None, only_if_unsynced=True):
         """

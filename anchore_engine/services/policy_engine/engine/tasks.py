@@ -204,7 +204,6 @@ class FeedsUpdateTask(IAsyncTask):
         start_time = datetime.datetime.utcnow()
         try:
             f = DataFeeds.instance()
-            updated = []
             start_time = datetime.datetime.utcnow()
 
             f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
@@ -212,21 +211,20 @@ class FeedsUpdateTask(IAsyncTask):
 
             updated_dict = f.sync(to_sync=self.feeds, full_flush=self.full_flush)
 
-            # Response is dict with feed name and dict for each group mapped to list of images updated
-            log.info('Updated: {}'.format(updated_dict))
-            for feed in updated_dict:
-                for updated_imgs in list(updated_dict[feed].values()):
-                    updated += updated_imgs
-
-            log.info('Feed sync complete')
-            return updated
+            log.info('Feed sync complete. Results = {}'.format(updated_dict))
+            return updated_dict
         except:
             log.exception('Failure refreshing and syncing feeds')
             raise
         finally:
             end_time = datetime.datetime.utcnow()
-            self.rescan_images_created_between(from_time=start_time, to_time=end_time)
-            end_session()
+            try:
+                self.rescan_images_created_between(from_time=start_time, to_time=end_time)
+            except:
+                log.exception('Unexpected exception rescanning vulns for images added during the feed sync')
+                raise
+            finally:
+                end_session()
 
     def rescan_images_created_between(self, from_time, to_time):
         """
@@ -253,7 +251,6 @@ class FeedsUpdateTask(IAsyncTask):
             log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]'))
         finally:
             db.rollback()
-
 
         retry_max = 3
         for img in imgs:
