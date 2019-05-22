@@ -1312,6 +1312,24 @@ class PackagesFeed(AnchoreServiceFeed):
         finally:
             db.rollback()
 
+    def _flush_group(self, group_obj, flush_helper_fn=None):
+        db = get_session()
+        if flush_helper_fn:
+            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        if group_obj.name == 'npm':
+            ent_cls = NpmMetadata
+        elif group_obj.name == 'gem':
+            ent_cls = GemMetadata
+        else:
+            log.info('Unknown group name {}. Nothing to flush'.format(group_obj.name))
+            return
+
+        count = db.query(ent_cls).delete()
+        log.info('Flushed {} {} records'.format(count, group_obj.name))
+
+        db.flush()
+
 
 class NvdFeed(AnchoreServiceFeed):
     """
@@ -1332,20 +1350,18 @@ class NvdFeed(AnchoreServiceFeed):
         except Exception as e:
             log.exception('Could not retrieve nvd vulnerability by key:')
 
-    # TODO: fix this in follow up commit.
-    # def _flush_group(self, group_obj, flush_helper_fn=None):
-    #
-    #     db = get_session()
-    #     flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
-    #
-    #     count = db.query(CpeVulnerability).filter(CpeVulnerability.namespace_name == group_obj.name).delete()
-    #     log.info('Flushed {} fix records'.format(count))
-    #     # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
-    #     # log.info('Flushed {} vuln_in records'.format(count))
-    #     count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
-    #     log.info('Flushed {} vulnerability records'.format(count))
-    #
-    #     db.flush()
+    def _flush_group(self, group_obj, flush_helper_fn=None):
+
+        db = get_session()
+        if flush_helper_fn:
+            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        count = db.query(CpeVulnerability).filter(CpeVulnerability.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} CpeVuln records'.format(count))
+        count = db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} Nvd records'.format(count))
+
+        db.flush()
 
     def _dedup_data_key(self, item):
         return item.name
@@ -1363,7 +1379,7 @@ class NvdFeed(AnchoreServiceFeed):
         finally:
             db.rollback()
 
-#class SnykFeed(AnchoreServiceFeed):
+
 class SnykFeed(VulnerabilityFeed):
     """
     Feed for package data, served from the anchore feed service backend
@@ -1599,7 +1615,7 @@ class DataFeeds(object):
             t = time.time()
             try:
                 log.info('Syncing packages feed')
-                result.append(pkgs_feed.sync())
+                result.append(pkgs_feed.sync(full_flush=full_flush))
             except:
                 log.exception('Failure updating the packages feed')
                 all_success = False
@@ -1612,7 +1628,7 @@ class DataFeeds(object):
             t = time.time()
             try:
                 log.info('Syncing nvd feed')
-                result.append(nvd_feed.sync())
+                result.append(nvd_feed.sync(full_flush=full_flush))
             except:
                 log.exception('Failure updating the nvd feed')
                 all_success = False
