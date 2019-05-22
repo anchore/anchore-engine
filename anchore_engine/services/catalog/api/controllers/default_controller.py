@@ -130,14 +130,14 @@ def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, hist
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def add_image(image_metadata=None, tag=None, digest=None, created_at=None, from_archive=False):
+def add_image(image_metadata=None, tag=None, digest=None, created_at=None, from_archive=False, allow_dockerfile_update=False):
     try:
         if image_metadata is None:
             image_metadata = {}
 
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
                                                              default_params={'tag': tag, 'digest': digest,
-                                                                             'created_at': created_at})
+                                                                             'created_at': created_at, 'allow_dockerfile_update': allow_dockerfile_update})
         if from_archive:
             task = archiver.RestoreArchivedImageTask(account=ApiRequestContextProxy.namespace(), image_digest=digest)
             task.start()

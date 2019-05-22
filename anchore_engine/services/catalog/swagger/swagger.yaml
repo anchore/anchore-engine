@@ -245,6 +245,11 @@ paths:
         in: query
         type: boolean
         description: If set, add the image from the image archive rather than running a new analysis. In this case, other params such as metadata and tag are ignored and only the digest is used.
+      - name: allow_dockerfile_update
+        in: query
+        type: boolean
+        description: Explicitly allow the update of a dockerfile for an image that has already been analyzed (similar to the 'force' option in the external api call, but scoped only to the dockerfile). Defaults to false.
+        required: false
       - name: image_metadata
         in: body
         schema:

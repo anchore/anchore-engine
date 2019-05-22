@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.subsys.identities import manager_factory
+from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
 
 def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
     """
@@ -289,6 +290,8 @@ def image(dbsession, request_inputs, bodycontent=None):
             if input_type == 'digest':
                 raise Exception("catalog add requires a tag string to determine registry/repo")
 
+            allow_dockerfile_update = params.get('allow_dockerfile_update', False)
+
             # body
             jsondata = {}
             if bodycontent:
@@ -354,10 +357,19 @@ def image(dbsession, request_inputs, bodycontent=None):
                         raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
                     logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
+
+                    # Check for dockerfile updates to an existing image
+                    if not allow_dockerfile_update and dockerfile and dockerfile_mode.lower() == 'actual':
+                        found_img = db_catalog_image.get(imageDigest=image_info['digest'], userId=userId, session=dbsession)
+                        if found_img:
+                            raise BadRequest('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis', detail={'digest': image_info['digest'], 'tag': image_info['fulltag']})
+
                     image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
                     if image_records:
                         image_record = image_records[0]
 
+            except AnchoreApiError:
+                raise
             except Exception as err:
                 logger.exception('Error adding image')
                 httpcode = 404
@@ -370,6 +382,10 @@ def image(dbsession, request_inputs, bodycontent=None):
                 httpcode = 404
                 raise Exception("could not add input image")
 
+    except AnchoreApiError as err:
+        logger.exception('Error processing image request')
+        return_object = anchore_engine.common.helpers.make_response_error(err.message, in_httpcode=err.__response_code__)
+        httpcode = err.__response_code__
     except Exception as err:
         logger.exception('Error processing image request')
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)

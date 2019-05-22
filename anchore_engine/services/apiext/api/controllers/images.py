@@ -1128,26 +1128,9 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
         else:
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
 
-        if dockerfile and not force:
-            # Grab the trailing digest sha section and ensure it exists
-            # Try if not already done in another path
-            if not image_check:
-                try:
-                    image_check = client.list_images(tag=tag, digest=digest)
-                except Exception as err:
-                    # handle 404...even though this should be a 200 with empty response if none found
-                    if hasattr(err, 'httpcode') and err.httpcode == 404:
-                        image_check = None
-                    else:
-                        raise err
-
-            if image_check:
-                raise ValueError('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis')
-
-
         # add the image to the catalog
         image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
-                                        created_at=ts, from_archive=is_from_archive)
+                                        created_at=ts, from_archive=is_from_archive, allow_dockerfile_update=force)
 
         imageDigest = image_record['imageDigest']
 
