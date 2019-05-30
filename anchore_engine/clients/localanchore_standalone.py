@@ -825,7 +825,19 @@ def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, i
     )
     return(image_report)
 
-def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None):
+def get_manifest_from_staging(staging_dirs):
+    copydir = staging_dirs['copydir']
+    ret = ""
+    with open(os.path.join(copydir, 'index.json'), 'r') as FH:
+        idata = json.loads(FH.read())
+        d_digest = idata['manifests'][0]['digest'].split(":", 1)[1]
+        dfile = os.path.join(copydir, 'blobs', 'sha256', d_digest)
+        with open(dfile, 'r') as FFH:
+            ret = FFH.read()
+
+    return(ret)
+
+def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None, image_source='registry', image_source_meta=None):
     # need all this
 
     imageId = None
@@ -849,19 +861,6 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
 
     try:
         imageDigest = image_record['imageDigest']
-        try:
-            manifest_data = json.loads(manifest)
-            manifest_schema_version = manifest_data['schemaVersion']
-            if manifest_schema_version == 1:
-                dest_type = 'dir'
-            else:
-                dest_type = 'oci'
-
-            #analyzer_manifest = {}
-            #analyzer_manifest.update(manifest_data)
-
-        except Exception as err:
-            raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
 
         if image_record['dockerfile_mode']:
             dockerfile_mode = image_record['dockerfile_mode']
@@ -880,11 +879,30 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         except Exception as err:
             raise err
 
-        try:
-            rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, dest_type=dest_type)
-        except Exception as err:
-            raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
+        if image_source == 'docker-archive':
+            try:
+                rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(image_source_meta, staging_dirs['copydir'])
+            except Exception as err:
+                raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
+            manifest = get_manifest_from_staging(staging_dirs)
+
+        try:
+            manifest_data = json.loads(manifest)
+            manifest_schema_version = manifest_data['schemaVersion']
+            if manifest_schema_version == 1:
+                dest_type = 'dir'
+            else:
+                dest_type = 'oci'
+        except Exception as err:
+            raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
+
+        if image_source != 'docker-archive':
+            try:
+                rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, dest_type=dest_type)
+            except Exception as err:
+                raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
+        
         try:
             if manifest_data['schemaVersion'] == 1:
                 docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch = get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents=dockerfile_contents, dockerfile_mode=dockerfile_mode)
@@ -934,7 +952,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
     if not image_report:
         raise Exception("failed to analyze")
 
-    return(image_report)
+    return(image_report, manifest)
 
 
 class AnalysisError(AnchoreException):

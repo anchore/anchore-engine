@@ -44,6 +44,20 @@ def manifest_to_digest_shellout(rawmanifest):
 
     return(ret)
 
+def copy_image_from_docker_archive(source_archive, dest_dir):
+    cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(source_archive, dest_dir)
+    cmd = cmdstr.split()
+    try:
+        rc, sout, serr = run_command_list(cmd)
+        if rc != 0:
+            raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+        else:
+            logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+
+    except Exception as err:
+        logger.error("command failed with exception - " + str(err))
+        raise err
+
 def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None, dest_type='oci'):
     try:
         proc_env = os.environ.copy()
