@@ -1,4 +1,6 @@
-FROM registry.access.redhat.com/ubi7/ubi as wheelbuilder
+FROM registry.access.redhat.com/ubi7/ubi as anchore-engine-builder
+
+######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
@@ -8,39 +10,65 @@ ENV GO_VERSION=1.12.4
 ENV GO_CHECKSUM=d7d1f1f88ddfe55840712dc1747f37a790cbcaa448f6c9cf51bbe10aa65442f5
 ENV PATH=${PATH}:/usr/local/go/bin
 
+COPY . /buildsource
+WORKDIR /buildsource
+
+RUN set -ex && \
+    mkdir -p /build_output /build_output/deps /build_output/configs /build_output/wheels
+
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
-    yum install -y gcc make rh-python36 rh-python36-python-wheel rh-python36-python-pip git && \
+    yum install -y gcc make rh-python36 rh-python36-python-wheel rh-python36-python-pip git
+
+# create anchore binaries
+RUN set -ex && \
+    echo "installing anchore" && \
+    source /opt/rh/rh-python36/enable && \
+    pip3 wheel --wheel-dir=/build_output/wheels . && \
+    pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
+    cp ./LICENSE /build_output/ && \
+    cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
+    cp ./docker-compose.yaml /build_output/configs/docker-compose.yaml && \
+    cp ./docker-compose-dev.yaml /build_output/configs/docker-compose-dev.yaml && \
+    cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh 
+
+# stage anchore dependency binaries
+RUN set -ex && \
     echo "installing GO" && \
     mkdir -p /go && \
     echo "${GO_CHECKSUM} -" > /tmp/go_checksum && \
     curl -fLs https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | tee /tmp/go${GO_VERSION}.linux-amd64.tar.gz | sha256sum -c /tmp/go_checksum && \
-    tar -C /usr/local -xzf /tmp/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go${GO_VERSION}.linux-amd64.tar.gz 
+
+RUN set -ex && \
     echo "installing Skopeo" && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
     make binary-local DISABLE_CGO=1 && \
     make install-binary && \
-    mkdir -p /etc/containers && \
-    cp default-policy.json /etc/containers/policy.json
+    cp /usr/bin/skopeo /build_output/deps/ && \
+    cp default-policy.json /build_output/configs/skopeo-policy.json
 
-COPY ./requirements.txt /requirements.txt
+# stage RPM dependency binaries
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg
 
-# Build the wheels from the requirements
-
-RUN source /opt/rh/rh-python36/enable && \
-    pip3 wheel --wheel-dir=/wheels -r /requirements.txt
-
-# Do the final build
+RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi7/ubi
+FROM registry.access.redhat.com/ubi7/ubi as anchore-engine-final
+
+######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
+
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.4.0"
-ARG ANCHORE_ENGINE_RELEASE="r0"
+ARG ANCHORE_ENGINE_VERSION="0.4.1"
+ARG ANCHORE_ENGINE_RELEASE="dev"
+
+# Copy skopeo artifacts from build step
+COPY --from=anchore-engine-builder /build_output /build_output
 
 # Container metadata section
 
@@ -100,20 +128,7 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
     yum update -y && \
-    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
-    yum install -y rh-python36 rh-python36-python-wheel rh-python36-python-pip git procps dpkg
-
-RUN set -ex && \
-    source /opt/rh/rh-python36/enable && \
-    pip3 install git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli
-
-# Copy skopeo artifacts from build step
-COPY --from=wheelbuilder /usr/bin/skopeo /usr/bin/skopeo
-COPY --from=wheelbuilder /etc/containers/policy.json /etc/containers/policy.json
-
-# Copy python artifacts from build step
-COPY --from=wheelbuilder /wheels /wheels
-COPY . /anchore-engine
+    yum install -y rh-python36 rh-python36-python-wheel rh-python36-python-pip git procps psmisc
 
 # Setup container default configs and directories
 
@@ -132,11 +147,11 @@ RUN set -ex && \
     mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
     mkdir -p /workspace && chown -R anchore:anchore /workspace && \
     mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service && \
-    cp LICENSE /licenses/ && \
-    cp conf/default_config.yaml /config/config.yaml && \
-    cp docker-compose.yaml /docker-compose.yaml && \
-    cp docker-compose-dev.yaml /docker-compose-dev.yaml && \
-    cp docker-entrypoint.sh /docker-entrypoint.sh && \
+    cp /build_output/LICENSE /licenses/ && \
+    cp /build_output/configs/default_config.yaml /config/config.yaml && \
+    cp /build_output/configs/docker-compose.yaml /docker-compose.yaml && \
+    cp /build_output/configs/docker-compose-dev.yaml /docker-compose-dev.yaml && \
+    cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
 
@@ -153,9 +168,12 @@ RUN echo -e '#!/usr/bin/env bash\n\nsource /opt/rh/rh-python36/enable' > /etc/pr
 
 RUN set -ex && \
     source /opt/rh/rh-python36/enable && \
-    pip3 install --no-index --find-links=/wheels -r requirements.txt && \
-    pip3 install . && \
-    rm -rf /anchore-engine /root/.cache /wheels
+    pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
+    cp /build_output/deps/skopeo /usr/bin/skopeo && \
+    mkdir -p /etc/containers && \
+    cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
+    yum install -y /build_output/deps/dpkg*.rpm && \
+    rm -rf /build_output /root/.cache
 
 # Container runtime instructions
 
