@@ -403,7 +403,6 @@ def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={
         'sha1': hashlib.sha1,
         'md5': hashlib.md5,
     }
-
     if member.isreg():
         extractable_member = member
     elif member.islnk():
@@ -435,7 +434,7 @@ def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
         results = anchore_engine.analyzers.utils.run_tarfile_member_function(squashtar, func=_checksum_member_function, csums=csums)
         for filename in results.keys():
             fkey = filename
-            if fkey[0] != '/':
+            if not fkey or fkey[0] != '/':
                 fkey = "/{}".format(filename)
             if fkey not in allfiles:
                 allfiles[fkey] = results[filename]        
@@ -457,9 +456,11 @@ def get_files_from_squashtar(squashtar, unpackdir=None):
             for member in list(memberhash.values()):
                 filename = member.name
                 filename = re.sub("^\./", "/", filename)
+                if not filename:
+                    filename = "/"
                 if not re.match("^/", filename):
                     filename = "/{}".format(filename)
-
+                
                 finfo = {}
                 finfo['name'] = filename
                 finfo['fullpath'] = filename 

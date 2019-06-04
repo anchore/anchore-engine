@@ -17,7 +17,6 @@ import anchore_engine.configuration
 import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
-#from anchore.anchore_utils import read_kvfile_todict
 import anchore_engine.common.images
 from anchore_engine.analyzers.utils import read_kvfile_todict
 from anchore_engine.utils import AnchoreException
@@ -220,6 +219,8 @@ def squash(unpackdir, cachedir, layers):
 
     whpatt = re.compile("\.wh\..*")
     whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
+    #slashprefixpatt = re.compile("^[\./|/]+")
+    slashprefixpatt = re.compile("^/+|\.+/+")
 
     tarfiles = {}
     tarfiles_members = {}
@@ -243,8 +244,18 @@ def squash(unpackdir, cachedir, layers):
                 tarfiles[l] = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
                 tarfiles_members[l] = {}
                 for member in tarfiles[l].getmembers():
+                    # clean up any prefix on the member names for history tracking purposes
+                    tarfilename = member.name
+                    member.name = slashprefixpatt.sub("", member.name)
+                    if member.islnk() and member.linkname:
+                        member.linkname = slashprefixpatt.sub("", member.linkname)
+                        member.linkpath = member.linkname
+                    member.pax_headers['path'] = member.name
+
+                    # regular processing starts here
                     tarfiles_members[l][member.name] = member
                     filename = member.name
+
                     if filename not in lfhistory:
                         lfhistory[filename] = {}
 
@@ -261,12 +272,10 @@ def squash(unpackdir, cachedir, layers):
 
                         for other_filename in fhistory.keys():
                             if re.match("^{}/".format(re.escape(fsub)), other_filename):
-                                #fhistory[other_filename]['exists'] = False
                                 if other_filename not in lfhistory:
                                     lfhistory[other_filename] = {}
                                     lfhistory[other_filename].update(fhistory[other_filename])
                                 lfhistory[other_filename]['exists'] = False
-
 
                     elif whpatt.match(os.path.basename(filename)):
                         # never include the wh itself
@@ -281,7 +290,6 @@ def squash(unpackdir, cachedir, layers):
 
                         for other_filename in fhistory.keys():
                             if re.match("^{}/".format(re.escape(fsub)), other_filename):
-                                #fhistory[other_filename]['exists'] = False
                                 if other_filename not in lfhistory:
                                     lfhistory[other_filename] = {}
                                     lfhistory[other_filename].update(fhistory[other_filename])
@@ -312,7 +320,6 @@ def squash(unpackdir, cachedir, layers):
                                 lfhistory[el['filename']]['hl_replace'] = True
 
                 fhistory.update(lfhistory)
-
             except Exception as err:
                 logger.error("layer handler failure - exception: {}".format(err))
                 raise(err)
@@ -326,8 +333,8 @@ def squash(unpackdir, cachedir, layers):
             for filename in fhistory.keys():
                 if fhistory[filename]['exists']:
                     l = fhistory[filename]['latest_layer_tar']
-                    #member = tarfiles[l].getmember(filename)
                     member = tarfiles_members[l].get(filename)
+
                     if member.isreg():
                         memberfd = tarfiles[l].extractfile(member)
                         oltf.addfile(member, fileobj=memberfd)
@@ -344,7 +351,6 @@ def squash(unpackdir, cachedir, layers):
 
             for filename in deferred_hardlinks.keys():
                 l = fhistory[filename]['latest_layer_tar']
-                #member = tarfiles[l].getmember(filename)
                 member = tarfiles_members[l].get(filename)
                 logger.debug("deferred hardlink {}".format(fhistory[filename]))
                 try:
@@ -353,7 +359,6 @@ def squash(unpackdir, cachedir, layers):
                     content_filename = fhistory[filename]['hl_target_name']
 
                     logger.debug("attempt to extract deferred {} from layer {} (for lnk {})".format(content_filename, content_layer, filename))
-                    #content_member = tarfiles[content_layer].getmember(content_filename)
                     content_member = tarfiles_members[content_layer].get(content_filename)
                     content_memberfd = tarfiles[content_layer].extractfile(content_member)
                     
@@ -369,24 +374,6 @@ def squash(unpackdir, cachedir, layers):
                     import traceback
                     traceback.print_exc()
                     logger.warn("failed to store hardlink ({} -> {}) - exception: {}".format(member.name, member.linkname, err))
-
-                if False:
-                    if member.linkname not in added_members:
-                        logger.debug("caught dangling hardlink, attempting to handle: {} -> {}".format(filename, member.linkname))
-                        if member.linkname in fhistory:
-                            newl = fhistory[member.linkname]['latest_layer_tar']
-                            #newmember = tarfiles[l].getmember(member.linkname)
-                            newmember = tarfiles_members[l].get(member.linkname)
-                            newmemberfd = tarfiles[l].extractfile(member.linkname)
-                            newmember.name = filename
-                            oltf.addfile(newmember, fileobj=newmemberfd)
-                            added_members[filename] = fhistory[filename]
-                            logger.debug("handled dangling hardlink: {} -> {}".format(filename, member.linkname))
-                        else:
-                            logger.warn("failed to handle dangling hardlink, skipping inclusion in final: {} -> {}".format(filename, member.linkname))
-                    else:
-                        oltf.addfile(member)
-                        added_members[filename] = fhistory[filename]
 
     finally:
         logger.debug("Pass 3: closing layer tarfiles")

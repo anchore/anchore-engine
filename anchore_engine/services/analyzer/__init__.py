@@ -157,7 +157,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
                         try:
                             image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=manifest)
-                        except:
+                        except Exception as err:
+                            logger.warn("ERR: {}".format(err))
                             image_content_data[content_type] = {}
 
                     if image_content_data:
