@@ -161,7 +161,7 @@ def handle_vulnerability_scan(*args, **kwargs):
             # vulnerability scans
 
             doperform = False
-            vuln_sub_tags = []
+            vuln_subs = []
             for subscription_type in ['vuln_update']:
                 dbfilter = {'subscription_type': subscription_type}
                 with db.session_scope() as dbsession:
@@ -172,16 +172,34 @@ def handle_vulnerability_scan(*args, **kwargs):
                             'subscription_key'], registry_lookup=False, registry_creds=(None, None))
                         dbfilter = {'registry': image_info['registry'], 'repo': image_info['repo'],
                                     'tag': image_info['tag']}
-                        if dbfilter not in vuln_sub_tags:
-                            vuln_sub_tags.append(dbfilter)
+                        if (dbfilter, subscription_record['subscription_value']) not in vuln_subs:
+                            vuln_subs.append((dbfilter, subscription_record['subscription_value']))
 
-            for dbfilter in vuln_sub_tags:
+            for (dbfilter, value) in vuln_subs:
                 with db.session_scope() as dbsession:
                     image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
-                                                                       onlylatest=True, session=dbsession)
+                                                                       onlylatest=False, session=dbsession)
+                if value:
+                    try:
+                        subscription_value = json.loads(value)
+                        digests = set(subscription_value['digests'])
+                    except Exception as err:
+                        digests = set()
+                else:
+                    digests = set()
+
+                # always add latest version of the image
+                if len(image_records) > 0:
+                    digests.add(image_records[0]['imageDigest'])
+                    current_imageDigest = image_records[0]['imageDigest']
+
                 for image_record in image_records:
                     if image_record['analysis_status'] == taskstate.complete_state('analyze'):
                         imageDigest = image_record['imageDigest']
+
+                        if imageDigest not in digests:
+                            continue
+                            
                         fulltag = dbfilter['registry'] + "/" + dbfilter['repo'] + ":" + dbfilter['tag']
 
                         doperform = True
@@ -189,8 +207,7 @@ def handle_vulnerability_scan(*args, **kwargs):
                             logger.debug("calling vuln scan perform: " + str(fulltag) + " : " + str(imageDigest))
                             with db.session_scope() as dbsession:
                                 try:
-                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession,
-                                                                                 scantag=fulltag, force_refresh=False)
+                                    rc = catalog_impl.perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=fulltag, force_refresh=False, is_current=(imageDigest==current_imageDigest))
                                 except Exception as err:
                                     logger.warn("vulnerability scan failed - exception: " + str(err))
 
@@ -793,7 +810,7 @@ def handle_policyeval(*args, **kwargs):
             # policy evaluations
 
             doperform = False
-            policy_sub_tags = []
+            policy_subs = []
             for subscription_type in ['policy_eval']:
                 dbfilter = {'subscription_type': subscription_type}
                 with db.session_scope() as dbsession:
@@ -804,16 +821,32 @@ def handle_policyeval(*args, **kwargs):
                             'subscription_key'], registry_lookup=False, registry_creds=(None, None))
                         dbfilter = {'registry': image_info['registry'], 'repo': image_info['repo'],
                                     'tag': image_info['tag']}
-                        if dbfilter not in policy_sub_tags:
-                            policy_sub_tags.append(dbfilter)
+                        if (dbfilter, subscription_record['subscription_value']) not in policy_subs:
+                            policy_subs.append((dbfilter, subscription_record['subscription_value']))
 
-            for dbfilter in policy_sub_tags:
+            for (dbfilter, value) in policy_subs:
                 with db.session_scope() as dbsession:
                     image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
-                                                                       onlylatest=True, session=dbsession)
+                                                                       onlylatest=False, session=dbsession)
+                if value:
+                    try:
+                        subscription_value = json.loads(value)
+                        digests = set(subscription_value['digests'])
+                    except Exception as err:
+                        digests = set()
+                else:
+                    digests = set()
+
+                # always add latest version of the image
+                if len(image_records) > 0:
+                    digests.add(image_records[0]['imageDigest'])
                 for image_record in image_records:
                     if image_record['analysis_status'] == taskstate.complete_state('analyze'):
                         imageDigest = image_record['imageDigest']
+
+                        if imageDigest not in digests:
+                            continue
+
                         fulltag = dbfilter['registry'] + "/" + dbfilter['repo'] + ":" + dbfilter['tag']
 
                         # TODO - checks to avoid performing eval if nothing has changed

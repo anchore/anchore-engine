@@ -597,19 +597,27 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
         elif method == 'PUT':
             subscriptiondata = bodycontent if bodycontent is not None else {}
 
-            subscription_key = subscription_type = None
-            if 'subscription_key' in subscriptiondata:
-                subscription_key=subscriptiondata['subscription_key']
-            if 'subscription_type' in subscriptiondata:
-                subscription_type=subscriptiondata['subscription_type']
+            subscription_record = subscription_key = subscription_type = None
+            dbfilter = {}
+            if subscriptionId:
+                subscription_record = db_subscriptions.get(userId, subscriptionId, session=dbsession)
 
-            
-            if not subscription_key or not subscription_type:
-                httpcode = 500
-                raise Exception("body does not contain both subscription_key and subscription_type")
+                subscription_key = subscription_record['subscription_key']
+                subscription_type = subscription_record['subscription_type']
 
-            dbfilter = {'subscription_key':subscription_key, 'subscription_type':subscription_type}
-            subscription_record = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                dbfilter['subscription_id'] = subscriptionId
+            else:
+                if 'subscription_key' in subscriptiondata:
+                    subscription_key=subscriptiondata['subscription_key']
+                if 'subscription_type' in subscriptiondata:
+                    subscription_type=subscriptiondata['subscription_type']
+
+                if not subscription_key or not subscription_type:
+                    raise Exception("body does not contain both subscription_key and subscription_type")
+
+                dbfilter = {'subscription_key':subscription_key, 'subscription_type':subscription_type}
+                subscription_record = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+
             if not subscription_record:
                 httpcode = 404
                 raise Exception("subscription to update does not exist in DB")
@@ -1081,7 +1089,7 @@ def system_subscriptions(dbsession, request_inputs):
 
 ################################################################################
 
-def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, force_refresh=False):
+def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, force_refresh=False, is_current=False):
     # prepare inputs
     obj_store = None
     try:
@@ -1116,6 +1124,14 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if imageId and imageId not in imageIds:
             imageIds.append(imageId)
 
+            
+    archiveId = "{}/{}".format(image_record["imageDigest"], scantag)
+    compare_archiveId = archiveId
+    # if the call was made indicating that this scan is against the latest digest/tag mapping, then compare the result to the tag-only last result
+    if is_current:
+        compare_archiveId = scantag
+
+    logger.debug("archiveId={} compare_archiveId={}".format(archiveId, compare_archiveId))
 
     for imageId in imageIds:
         # do the image load, just in case it was missed in analyze...
@@ -1128,7 +1144,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
         last_vuln_result = {}
         try:
-            last_vuln_result = obj_store.get_document(userId, 'vulnerability_scan', scantag)
+            last_vuln_result = obj_store.get_document(userId, 'vulnerability_scan', compare_archiveId)
         except:
             pass
 
@@ -1139,7 +1155,9 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
         if last_vuln_result and curr_vuln_result:
             vdiff = anchore_utils.process_cve_status(old_cves_result=last_vuln_result['legacy_report'], new_cves_result=curr_vuln_result['legacy_report'])
 
-        obj_store.put_document(userId, 'vulnerability_scan', scantag, curr_vuln_result)
+        obj_store.put_document(userId, 'vulnerability_scan', archiveId, curr_vuln_result)
+        if archiveId != compare_archiveId:
+            obj_store.put_document(userId, 'vulnerability_scan', compare_archiveId, curr_vuln_result)
 
         try:
             if vdiff and (vdiff['updated'] or vdiff['added'] or vdiff['removed']):
@@ -1441,6 +1459,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
         dodelete = False
         msgdelete = "could not make it though delete checks"
         image_ids = []
+        image_fulltags = []
 
         if True:
             # do some checking before delete
@@ -1453,6 +1472,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
                 # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
                 for image_detail in image_record['image_detail']:
                     fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                    image_fulltags.append(fulltag)
 
                     if 'imageId' in image_detail and image_detail['imageId']:
                         image_ids.append(image_detail['imageId'])
@@ -1487,9 +1507,18 @@ def do_image_delete(userId, image_record, dbsession, force=False):
             logger.debug("DELETEing image from catalog")
             rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
 
+            # digest-based archiveId buckets
             for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data']:
-                logger.debug("DELETEing image from archive " + str(bucket) + "/" + str(imageDigest))
-                rc = obj_store.delete(userId, bucket, imageDigest)
+                archiveId = imageDigest
+                logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
+                rc = obj_store.delete(userId, bucket, archiveId)
+
+            # digest/tag-based archiveId buckets
+            for bucket in ['vulnerability_scan']:
+                for fulltag in image_fulltags:
+                    archiveId = "{}/{}".format(imageDigest, fulltag)
+                    logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
+                    rc = obj_store.delete(userId, bucket, archiveId)
 
             logger.debug("DELETEing image from policy_engine")
 
