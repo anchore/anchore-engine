@@ -321,3 +321,18 @@ def delete_archived_analysis(imageDigest, force=False):
     except Exception as ex:
         logger.exception('Failed deleting archived image')
         return make_response_error('Error deleting image archive: {}'.format(ex), in_httpcode=500), 500
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def import_archive(imageDigest, archive_file):
+    from anchore_engine.services.catalog import archiver
+
+    try:
+        digest = imageDigest 
+        task = archiver.RestoreArchivedImageTaskFromArchiveTarfile(account=ApiRequestContextProxy.namespace(), fileobj=archive_file, image_digest=digest)
+        task.start()
+    except Exception as ex:
+        logger.exception('Failed to import image archive')
+        return make_response_error('Error importing image archive: {}'.format(ex), in_httpcode=500), 500
+    
+    return("Success", 200)

@@ -1546,28 +1546,33 @@ paths:
 #        200:
 #          description: "success"
 #      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.analysis_archive"
-#  /archives/images/data/{imageDigest}/import:
-#    post:
-#      summary: Import a previously exported archive tarball into the system.
-#      description: Load an archive into the system. If the imageDigest does not exist in the archive already, it is added. If the digest is already archived, an error is returned unless the 'force' parameter is set. If the digest exists in the catalog but is not archived, an error is returned regardless of 'force' status.
-#      operationId: import_archive
-#      x-swagger-router-controller: anchore_engine.services.catalog.api.controllers.analysis_archive
-#      consumes:
-#        - multipart/form-data
-#      produces:
-#        - application/json
-#      parameters:
-#        - name: archive_file
-#          in: formData
-#          description: The gzipped-tarball, .tar.gz, to be loaded
-#          type: file
-#          required: true
-#        responses:
-#          200:
-#            description: "Loaded"
-#            schema:
-#              # TODO: replace with proper model
-#              type: object
+  /archives/images/data/{imageDigest}/import:
+    post:
+      summary: Import a previously exported archive tarball into the system.
+      description: Load an archive into the system. If the imageDigest does not exist in the archive already, it is added. If the digest is already archived, an error is returned unless the 'force' parameter is set. If the digest exists in the catalog but is not archived, an error is returned regardless of 'force' status.
+      operationId: import_archive
+      x-swagger-router-controller: anchore_engine.services.catalog.api.controllers.archives
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      parameters:
+        - name: archive_file
+          in: formData
+          description: The gzipped-tarball, .tar.gz, to be loaded
+          type: file
+          required: true
+        - name: 'imageDigest'
+          in: path
+          type: string
+          description: "imageDigest of image to import"
+          required: true
+      responses:
+        200:
+          description: "Loaded"
+          schema:
+            # TODO: replace with proper model
+            type: object
 definitions:
   ImageAddMetadata:
     description: Additional data to add to an image record when an image is ingressed, such as dockerfile and annotations

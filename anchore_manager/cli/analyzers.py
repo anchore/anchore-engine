@@ -5,6 +5,7 @@ import time
 import base64
 import re
 import random
+import os
 
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
@@ -82,10 +83,20 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
     try:
         imageDigest = None
         manifest_data = None
+        rawmanifest = None
+
+        if (not manifest and not digest) or (manifest and digest):
+            raise Exception("must supply either an image digest, or a valid manifest, but not both")
+
+        if os.path.exists(anchore_archive):
+            raise Exception("the supplied anchore archive file ({}) already exists, please remove and try again".format(anchore_archive))
+
         if manifest:
             with open(manifest, 'r') as FH:
+                # TODO implement manifest validator for anchore requirements, specifically
                 rawmanifest = FH.read()
-                manifest_data = json.loads(rawmanifest)
+                input_manifest_data = json.loads(rawmanifest)
+                #manifest_data = json.loads(rawmanifest)
                 imageDigest = manifest_to_digest(rawmanifest)
 
         if not imageDigest:
@@ -111,7 +122,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
             else:
                 raise ValueError("input user_id does not validate")
         else:
-            # this could be improved to generate imageId from configuration hash
+            # TODO this could be improved to generate imageId from configuration hash
             imageId = "{}".format(''.join([random.choice('0123456789abcdef') for x in range(0,64)]))
 
         if account_id:
@@ -175,13 +186,12 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
 
     # perform analysis
     try:
-        
-        image_data, manifest_data = analyze_image(userId, manifest_data, image_record, workspace_root, config, registry_creds=[], use_cache_dir=None, image_source='docker-archive', image_source_meta=docker_archive)
+        image_data, analyzed_manifest_data = analyze_image(userId, rawmanifest, image_record, workspace_root, config, registry_creds=[], use_cache_dir=None, image_source='docker-archive', image_source_meta=docker_archive)
 
         image_content_data = {}
         for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
             try:
-                image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=manifest_data)
+                image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=input_manifest_data)
             except:
                 image_content_data[content_type] = {}
 
@@ -204,22 +214,30 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
                 'image_record': json.dumps(image_record, sort_keys=True)
             }
 
-            data = ensure_bytes(json.dumps(image_data, sort_keys=True))
+            pack_data = {'document': image_data}
+            data = ensure_bytes(json.dumps(pack_data, sort_keys=True))
             img_archive.add_artifact('analysis', source=ObjectStoreLocation(bucket='analysis_data', key=imageDigest), data=data, metadata=None)
 
-            data = ensure_bytes(json.dumps(image_content_data, sort_keys=True))
+            pack_data = {'document': image_content_data}
+            data = ensure_bytes(json.dumps(pack_data, sort_keys=True))
             img_archive.add_artifact('image_content', source=ObjectStoreLocation(bucket='image_content_data', key=imageDigest), data=data, metadata=None)
 
-            data = ensure_bytes(json.dumps(manifest_data, sort_keys=True))
+            pack_data = {'document': input_manifest_data}
+            data = ensure_bytes(json.dumps(pack_data, sort_keys=True))
             img_archive.add_artifact('image_manifest', source=ObjectStoreLocation(bucket='manifest_data', key=imageDigest), data=data, metadata=None)
     except Exception as err:
         # archive tarball generate fail
         raise err
-    finally:
-        try:
-            os.remove(archive_file)
-        except:
-            pass
+    
+    click.echo("Analysis complete - archive file is located at {}".format(archive_file))
+#    finally:
+#        try:
+#            if os.path.exists(archive_file):
+#                os.remove(archive_file)
+#        except:
+#            pass
+
+
 
 @analyzers.command()
 @click.argument('tag')

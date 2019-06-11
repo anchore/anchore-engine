@@ -457,6 +457,30 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/import:
+    post:
+      tags:
+      - Images
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: import_image_archive
+      x-anchore-authz-action: importImageArchive
+      summary: Upload an anchore image tar archive file.
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: 'imageDigest'
+          in: path
+          type: string
+          description: "imageDigest of image to import"
+          required: true
+        - in: formData
+          name: archive_file
+          type: file
+          description: anchore image tar archive.
+          required: true
+      responses:
+        200:
+          description: import respose
   /images/{imageDigest}:
     get:
       tags:

@@ -618,6 +618,26 @@ def list_imagetags():
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def import_image_archive(imageDigest, archive_file):
+
+    httpcode = 500
+    try:
+        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
+        digest = imageDigest 
+        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        return_object = client.import_archive(digest, archive_file)
+        httpcode = 200
+    except api_exceptions.AnchoreApiError as err:
+        return_object = make_response_error(err, in_httpcode=err.__response_code__)
+        httpcode = err.__response_code__
+    except Exception as err:
+        logger.debug("operation exception: " + str(err))
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
 
     httpcode = 500

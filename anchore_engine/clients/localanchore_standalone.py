@@ -873,7 +873,6 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
                 raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
             manifest = get_manifest_from_staging(staging_dirs)
-
         try:
             manifest_data = json.loads(manifest)
             manifest_schema_version = manifest_data['schemaVersion']

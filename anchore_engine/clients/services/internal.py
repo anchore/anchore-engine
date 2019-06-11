@@ -95,7 +95,7 @@ class InternalServiceClient(object):
             self._connect_timeout = None
             self._read_timeout = None
 
-    def call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None):
+    def call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None, files=None):
         """
         Invoke the api against a single service instance
 
@@ -117,9 +117,9 @@ class InternalServiceClient(object):
         if not read_timeout and self._read_timeout:
             read_timeout = self._read_timeout
 
-        return self.dispatch(base_url, method, path, path_params, query_params, extra_headers, body, connect_timeout, read_timeout)
+        return self.dispatch(base_url, method, path, path_params, query_params, extra_headers, body, connect_timeout, read_timeout, files)
 
-    def dispatch(self, base_url: str, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None):
+    def dispatch(self, base_url: str, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None, files=None):
         """
         Execute the request and return the response
 
@@ -139,7 +139,11 @@ class InternalServiceClient(object):
         else:
             final_url = '/'.join([base_url, path])
 
+        # default is to use the application/json content type, but if 'files' is specified, let requests handle headers for multipart/formdata 
         request_headers = copy.copy(self.__headers__)
+        if files:
+            request_headers = {}
+
         if self.request_namespace:
             request_headers['x-anchore-account'] = self.request_namespace
 
@@ -152,16 +156,17 @@ class InternalServiceClient(object):
         else:
             filtered_qry_params = None
 
-        logger.debug('Dispatching: url={url}, headers={headers}, body={body}, params={params}, timeout=({conn_timeout}, {read_timeout})'.format(url=final_url,
-                                                                                                         headers=request_headers, 
-                                                                                                         body=body[:512] + ('...' if len(body) > 512 else '') if body else body,
-                                                                                                         params=filtered_qry_params, conn_timeout=connect_timeout, read_timeout=read_timeout))
-
+        logger.debug('Dispatching: url={url}, headers={headers}, body={body}, params={params}, timeout=({conn_timeout}, {read_timeout}), files={files}'.format(url=final_url,
+                                                                                                                                                               headers=request_headers, 
+                                                                                                                                                               body=body[:512] + ('...' if len(body) > 512 else '') if body else body,
+                                                                                                                                                               params=filtered_qry_params, conn_timeout=connect_timeout, read_timeout=read_timeout,
+                                                                                                                                                               files=files.keys() if files else files))
+        
         try:
             if connect_timeout or read_timeout:
-                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout))
+                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
             else:
-                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl)
+                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, files=files)
         except Exception as e:
             logger.error('Failed client call to service {} for url: {}. Response: {}'.format(self.__service__, final_url, e.__dict__))
             raise e

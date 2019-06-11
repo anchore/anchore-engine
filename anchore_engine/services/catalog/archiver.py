@@ -877,6 +877,59 @@ class RestoreArchivedImageTask(object):
             logger.exception("Error flushing policy engine state for image")
             raise ex
 
+class RestoreArchivedImageTaskFromArchiveTarfile(RestoreArchivedImageTask):
+    def __init__(self, account=None, image_digest=None, fileobj=None, parent_task_id=None):
+        self.id = uuid.uuid4().hex
+        self.parent_id = parent_task_id
+        self.initiated = datetime.datetime.utcnow()
+        self.started = None
+        self.stopped = None
+        self.account = account
+        self.image_digest = image_digest
+        self.fileobj = fileobj
+
+    def _execute(self):
+        # if image record already exists, exit.
+
+        with session_scope() as session:
+            if db_catalog_image.get(self.image_digest, self.account, session):
+                logger.info('Image archive restore found existing image records already. Aborting restore.')
+                raise Exception('Conflict: Image already exists in system. No restore possible')
+
+            #rec = db_archived_images.get(session, self.account, self.image_digest)
+            #if not rec:
+            #    raise MetadataNotFound('/'.join([str(self.account), str(self.image_digest)]))
+
+            #self.archive_record = rec.to_dict()
+            #self.archive_detail_records = [x.to_dict() for x in rec.tags()]
+
+        #src_archive_mgr = archive.get_manager()
+        dest_obj_mgr = object_store.get_manager()
+
+        # Load the archive manifest
+        #m = src_archive_mgr.get(self.account, self.archive_record['manifest_bucket'], self.archive_record['manifest_key'])
+        m = self.fileobj.read()
+
+        if m:
+            tf = tempfile.NamedTemporaryFile(prefix='analysis_archive_{}'.format(self.image_digest), dir=localconfig.get_config()['tmp_dir'], delete=False)
+            try:
+                tf.write(ensure_bytes(m))
+                tf.close()
+
+                # Load the archive from the temp file
+                with ImageArchive.for_reading(tf.name) as img_archive:
+
+                    logger.debug('Using manifest: {}'.format(img_archive.manifest))
+
+                    self.restore_artifacts(img_archive, dest_obj_mgr)
+                    self.restore_records(img_archive.manifest)
+                    self._reload_policy_engine(img_archive.manifest)
+            finally:
+                os.remove(tf.name)
+
+        else:
+            raise Exception('No archive manifest found in archive record. Cannot restore')        
+
 
 class ArchiveImageTask(object):
     """

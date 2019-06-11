@@ -347,3 +347,7 @@ class CatalogClient(InternalServiceClient):
 
     def delete_analysis_archive_rule(self, rule_id):
         return self.call_api(http.anchy_delete, 'archives/rules/{ruleId}', path_params={'ruleId': rule_id})
+
+    def import_archive(self, imageDigest, fileobj):
+        files = {'archive_file': ('archive_file', fileobj.read())}
+        return self.call_api(http.anchy_post, 'archives/images/data/{imageDigest}/import', path_params={'imageDigest': imageDigest}, files=files)
