@@ -221,18 +221,18 @@ def registry_lookup(tag=None, digest=None):
 
 
 # @api.route('/import', methods=['POST'])
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_import(bodycontent):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
-        with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_import(session, request_inputs, bodycontent=bodycontent)
-
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
+#@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+#def image_import(bodycontent):
+#    try:
+#        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+#        with db.session_scope() as session:
+#            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_import(session, request_inputs, bodycontent=bodycontent)
+#
+#    except Exception as err:
+#        httpcode = 500
+#        return_object = str(err)
+#
+#    return (return_object, httpcode)
 
 
 

@@ -343,30 +343,6 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-#  /imageimport:
-#    post:
-#      tags:
-#      - Images
-#      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
-#      operationId: import_image
-#      x-anchore-authz-action: importImage
-#      summary: Import and image analysis directly
-#      parameters:
-#      - name: analysis_report
-#        in: body
-#        required: true
-#        schema:
-#          $ref: "#/definitions/ImageAnalysisReport"
-#      - $ref: "#/parameters/AsAccountParameter"
-#      responses:
-#        200:
-#          description: Import task accepted
-#          schema:
-#            $ref: "#/definitions/AnchoreImageList"
-#        500:
-#          description: Internal error
-#          schema:
-#            $ref: "#/definitions/ApiErrorResponse"
   /summaries/imagetags:
     get:
       tags:
@@ -457,22 +433,17 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /images/{imageDigest}/import:
+  /import/images:
     post:
       tags:
-      - Images
+      - Import
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
       operationId: import_image_archive
-      x-anchore-authz-action: importImageArchive
-      summary: Upload an anchore image tar archive file.
+      x-anchore-authz-action: importImage
+      summary: Import an anchore image tar.gz archive file.
       consumes:
         - multipart/form-data
       parameters:
-        - name: 'imageDigest'
-          in: path
-          type: string
-          description: "imageDigest of image to import"
-          required: true
         - in: formData
           name: archive_file
           type: file
@@ -480,7 +451,13 @@ paths:
           required: true
       responses:
         200:
-          description: import respose
+          description: Successfully imported image to the engine
+          schema:
+            $ref: "#/definitions/AnchoreImageList"
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
   /images/{imageDigest}:
     get:
       tags:

@@ -85,8 +85,8 @@ class CatalogClient(InternalServiceClient):
     def delete_image(self, imageDigest, force=False):
         return self.call_api(http.anchy_delete, 'images/{imageDigest}', path_params={'imageDigest': imageDigest}, query_params={'force': force})
 
-    def import_image(self, anchore_data):
-        return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
+#    def import_image(self, anchore_data):
+#        return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
 
     def add_policy(self, bundle, active=False):
         try:

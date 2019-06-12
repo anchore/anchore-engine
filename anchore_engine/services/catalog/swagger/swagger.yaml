@@ -363,28 +363,28 @@ paths:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
 
-  /import:
-    post:
-      tags:
-      - "catalog"
-      summary: "Import raw anchore image record into DB"
-      description: ""
-      operationId: "image_import"
-      parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "image record to update"
-        required: true
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "success"
-          schema:
-            type: object
-      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+#  /import:
+#    post:
+#      tags:
+#      - "catalog"
+#      summary: "Import raw anchore image record into DB"
+#      description: ""
+#      operationId: "image_import"
+#      parameters:
+#      - name: 'bodycontent'
+#        in: body
+#        schema:
+#          type: object
+#        description: "image record to update"
+#        required: true
+#      produces:
+#      - "application/json"
+#      responses:
+#        200:
+#          description: "success"
+#          schema:
+#            type: object
+#      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
 
   /policies:
     get:

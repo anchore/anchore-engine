@@ -229,14 +229,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
         # archive tarball generate fail
         raise err
     
-    click.echo("Analysis complete - archive file is located at {}".format(archive_file))
-#    finally:
-#        try:
-#            if os.path.exists(archive_file):
-#                os.remove(archive_file)
-#        except:
-#            pass
-
+    click.echo("Analysis complete for image {} - archive file is located at {}".format(imageDigest, archive_file))
 
 
 @analyzers.command()

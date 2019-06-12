@@ -455,71 +455,71 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
 
     return(return_object, httpcode)
 
-def image_import(dbsession, request_inputs, bodycontent=None):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
-
-    return_object = {}
-    httpcode = 500
-
-    try:
-        jsondata = {}
-        if bodycontent:
-            try:
-                jsondata = bodycontent
-            except Exception as err:
-                raise err
-
-        anchore_data = [jsondata]
-
-        try:
-            # extract necessary input from anchore analysis data
-            a = anchore_data[0]
-            imageId = a['image']['imageId']
-            docker_data = a['image']['imagedata']['image_report']['docker_data']
-
-            digests = []
-            islocal = False
-            if not docker_data['RepoDigests']:
-                islocal = True
-            else:
-                for digest in docker_data['RepoDigests']:
-                    digests.append(digest)
-
-            tags = []
-            for tag in docker_data['RepoTags']:
-                image_info = anchore_engine.utils.parse_dockerimage_string(tag)
-                if islocal:
-                    image_info['registry'] = 'localbuild'
-                    digests.append(image_info['registry'] + "/" + image_info['repo'] + "@local:" + imageId)
-                fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + image_info['tag']
-                tags.append(fulltag)
-                
-            # add the image w input anchore_analysis, as already analyzed
-            logger.debug("ADDING/UPDATING IMAGE IN IMAGE IMPORT: " + str(imageId))
-            ret_list = add_or_update_image(dbsession, userId, imageId, tags=tags, digests=digests, anchore_data=anchore_data)
-
-            client = internal_client_for(PolicyEngineClient, userId)
-            for image_report in ret_list:
-                imageDigest = image_report['imageDigest']
-                try:
-                    resp = policy_engine_image_load(client, userId, imageId, imageDigest)
-                except Exception as err:
-                    logger.warn("failed to load image data into policy engine: " + str(err))
-            # return the new image:
-            return_object = ret_list
-            httpcode = 200
-        except Exception as err:
-            httpcode = 500
-            raise err
-
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-
-
-    return(return_object, httpcode)
+#def image_import(dbsession, request_inputs, bodycontent=None):
+#    user_auth = request_inputs['auth']
+#    method = request_inputs['method']
+#    params = request_inputs['params']
+#    userId = request_inputs['userId']
+#
+#    return_object = {}
+#    httpcode = 500
+#
+#    try:
+#        jsondata = {}
+#        if bodycontent:
+#            try:
+#                jsondata = bodycontent
+#            except Exception as err:
+#                raise err
+#
+#        anchore_data = [jsondata]
+#
+#        try:
+#            # extract necessary input from anchore analysis data
+#            a = anchore_data[0]
+#            imageId = a['image']['imageId']
+#            docker_data = a['image']['imagedata']['image_report']['docker_data']
+#
+#            digests = []
+#            islocal = False
+#            if not docker_data['RepoDigests']:
+#                islocal = True
+#            else:
+#                for digest in docker_data['RepoDigests']:
+#                    digests.append(digest)
+#
+#            tags = []
+#            for tag in docker_data['RepoTags']:
+#                image_info = anchore_engine.utils.parse_dockerimage_string(tag)
+#                if islocal:
+#                    image_info['registry'] = 'localbuild'
+#                    digests.append(image_info['registry'] + "/" + image_info['repo'] + "@local:" + imageId)
+#                fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + image_info['tag']
+#                tags.append(fulltag)
+#                
+#            # add the image w input anchore_analysis, as already analyzed
+#            logger.debug("ADDING/UPDATING IMAGE IN IMAGE IMPORT: " + str(imageId))
+#            ret_list = add_or_update_image(dbsession, userId, imageId, tags=tags, digests=digests, anchore_data=anchore_data)
+#
+#            client = internal_client_for(PolicyEngineClient, userId)
+#            for image_report in ret_list:
+#                imageDigest = image_report['imageDigest']
+#                try:
+#                    resp = policy_engine_image_load(client, userId, imageId, imageDigest)
+#                except Exception as err:
+#                    logger.warn("failed to load image data into policy engine: " + str(err))
+#            # return the new image:
+#            return_object = ret_list
+#            httpcode = 200
+#        except Exception as err:
+#            httpcode = 500
+#            raise err
+#
+#    except Exception as err:
+#        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+#
+#
+#    return(return_object, httpcode)
 
 def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=None):
     user_auth = request_inputs['auth']
