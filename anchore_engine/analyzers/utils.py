@@ -150,81 +150,117 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
             "debian_version": _search_tarfilenames_for_file(tarfilenames, "etc/debian_version"),
         }
 
-        if metamap['os-release'] in tarfilenames:
-            with tfl.extractfile(tfl.getmember(metamap['os-release'])) as FH:
-                for l in FH.readlines():
-                    l = anchore_engine.utils.ensure_str(l)
-                    l = l.strip()
-                    try:
-                        (key, val) = l.split("=")
-                        val = re.sub(r'"', '', val)
-                        if key == "ID":
-                            meta['DISTRO'] = val
-                        elif key == "VERSION_ID":
-                            meta['DISTROVERS'] = val
-                        elif key == "ID_LIKE":
-                            meta['LIKEDISTRO'] = ','.join(val.split())
-                    except Exception as err:
-                        pass
-
-        elif metamap['system-release-cpe'] in tarfilenames: 
-            with tfl.extractfile(tfl.getmember(metamap['system-release-cpe'])) as FH:
-                for l in FH.readlines():
-                    l = anchore_engine.utils.ensure_str(l)
-                    l = l.strip()
-                    try:
-                        distro = l.split(':')[2]
-                        vers = l.split(':')[4]
-                        meta['DISTRO'] = distro
-                        meta['DISTROVERS'] = vers
-                    except:
-                        pass
-
-        elif metamap["redhat-release"] in tarfilenames: 
-            with tfl.extractfile(tfl.getmember(metamap["redhat-release"])) as FH:
-                for l in FH.readlines():
-                    l = anchore_engine.utils.ensure_str(l)
-                    l = l.strip()
-                    try:
-                        distro = vers = None
-                        patt = re.match(".*CentOS.*", l)
-                        if patt:
-                            distro = 'centos'
-
-                        patt = re.match(".*(\d+\.\d+).*", l)
-                        if patt:
-                            vers = patt.group(1)
-
-                        if distro:
-                            meta['DISTRO'] = distro
-                        if vers:
-                            meta['DISTROVERS'] = vers
-                    except:
-                        pass
         
-        elif metamap["busybox"] in tarfilenames:
-            meta['DISTRO'] = "busybox"
-            meta['DISTROVERS'] = "0"
+        success = False
+        if not success and metamap['os-release'] in tarfilenames:
             try:
-                with tfl.extractfile(tfl.getmember(metamap["busybox"])) as FH:
-                    for line in FH.readlines():
-                        patt = re.match(b".*BusyBox (v[\d|\.]+) \(.*", line)
-                        if patt:
-                            meta['DISTROVERS'] = anchore_engine.utils.ensure_str(patt.group(1))
-            except Exception as err:
+                with tfl.extractfile(tfl.getmember(metamap['os-release'])) as FH:
+                    for l in FH.readlines():
+                        l = anchore_engine.utils.ensure_str(l)
+                        l = l.strip()
+                        try:
+                            (key, val) = l.split("=")
+                            val = re.sub(r'"', '', val)
+                            if key == "ID":
+                                meta['DISTRO'] = val
+                            elif key == "VERSION_ID":
+                                meta['DISTROVERS'] = val
+                            elif key == "ID_LIKE":
+                                meta['LIKEDISTRO'] = ','.join(val.split())
+                        except Exception as err:
+                            pass
+                success = True
+            except:
+                success = False
+
+        if not success and metamap['system-release-cpe'] in tarfilenames: 
+            try:
+                with tfl.extractfile(tfl.getmember(metamap['system-release-cpe'])) as FH:
+                    for l in FH.readlines():
+                        l = anchore_engine.utils.ensure_str(l)
+                        l = l.strip()
+                        try:
+                            vendor = l.split(':')[2]
+                            distro = l.split(':')[3]
+                            vers = l.split(':')[4]
+                            if re.match(".*fedora.*", vendor.lower()):
+                                distro = 'fedora'
+                            elif re.match(".*redhat.*", vendor.lower()):
+                                distro = 'rhel'
+                            meta['DISTRO'] = distro
+                            meta['DISTROVERS'] = vers
+                        except:
+                            pass
+                success = True
+            except:
+                success = False
+
+        if not success and metamap["redhat-release"] in tarfilenames: 
+            try:
+                with tfl.extractfile(tfl.getmember(metamap["redhat-release"])) as FH:
+                    for l in FH.readlines():
+                        l = anchore_engine.utils.ensure_str(l)
+                        l = l.strip()
+                        try:
+                            distro = vers = None
+
+                            if re.match(".*centos.*", l.lower()):
+                                distro = 'centos'
+                            elif re.match(".*redhat.*", l.lower()):
+                                distro = 'rhel'
+                            elif re.match(".*fedora.*", l.lower()):
+                                distro = 'fedora'
+
+                            patt = re.match(".*(\d+\.\d+).*", l)
+                            if patt:
+                                vers = patt.group(1)
+
+                            if not vers:
+                                patt = re.match(".*(\d+).*", l)
+                                if patt:
+                                    vers = patt.group(1)
+
+                            if distro:
+                                meta['DISTRO'] = distro
+                            if vers:
+                                meta['DISTROVERS'] = vers
+                        except:
+                            pass
+                success = True
+            except:
+                success = False
+
+        if not success and metamap["busybox"] in tarfilenames:
+            try:
+                meta['DISTRO'] = "busybox"
                 meta['DISTROVERS'] = "0"
+                try:
+                    with tfl.extractfile(tfl.getmember(metamap["busybox"])) as FH:
+                        for line in FH.readlines():
+                            patt = re.match(b".*BusyBox (v[\d|\.]+) \(.*", line)
+                            if patt:
+                                meta['DISTROVERS'] = anchore_engine.utils.ensure_str(patt.group(1))
+                except Exception as err:
+                    meta['DISTROVERS'] = "0"
+                success = True
+            except:
+                success = False
 
         if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and metamap["debian_version"] in tarfilenames: 
-            with tfl.extractfile(tfl.getmember(metamap["debian_version"])) as FH:
-                meta['DISTRO'] = 'debian'
-                for line in FH.readlines():
-                    line = anchore_engine.utils.ensure_str(line)
-                    line = line.strip()
-                    patt = re.match("(\d+)\..*", line)
-                    if patt:
-                        meta['DISTROVERS'] = patt.group(1)
-                    elif re.match(".*sid.*", line):
-                        meta['DISTROVERS'] = 'unstable'
+            try:
+                with tfl.extractfile(tfl.getmember(metamap["debian_version"])) as FH:
+                    meta['DISTRO'] = 'debian'
+                    for line in FH.readlines():
+                        line = anchore_engine.utils.ensure_str(line)
+                        line = line.strip()
+                        patt = re.match("(\d+)\..*", line)
+                        if patt:
+                            meta['DISTROVERS'] = patt.group(1)
+                        elif re.match(".*sid.*", line):
+                            meta['DISTROVERS'] = 'unstable'
+                success = True
+            except:
+                success = False
 
     if not meta['DISTRO']:
         meta['DISTRO'] = "Unknown"

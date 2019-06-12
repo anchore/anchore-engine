@@ -1,4 +1,4 @@
-Twisted[tls]==18.9.0
+Twisted[tls]==19.2.1
 pg8000==1.10.6
 psycopg2-binary==2.7.6.1
 boto3==1.9.134
