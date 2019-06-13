@@ -117,7 +117,9 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_CLI_URL="http://localhost:8228" \
     ANCHORE_FEEDS_URL="https://ancho.re/v1/service/feeds" \
     ANCHORE_FEEDS_CLIENT_URL="https://ancho.re/v1/account/users" \
-    ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token"
+    ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token" \
+    ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT=0 \
+    ANCHORE_GLOBAL_CLIENT_CONNECT_TIMEOUT=0
 
 # Container run environment settings
 

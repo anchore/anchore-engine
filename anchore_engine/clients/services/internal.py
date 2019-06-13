@@ -12,6 +12,7 @@ from anchore_engine.clients.services.common import get_service_endpoint, get_ser
 from anchore_engine.subsys import logger
 from contextlib import contextmanager
 
+
 class InternalServiceUrlProvider(object):
     """
     Lookup handler for IoC pattern with the client
@@ -53,16 +54,44 @@ class InternalServiceClient(object):
         self.request_namespace = as_account
         self.user = user
         self.password = password
+        self.verify_ssl = True
+        self._read_timeout = 0.0
+        self._connect_timeout = 0.0
+
         if config_provider_fn:
             try:
-                self.verify_ssl = config_provider_fn()['internal_ssl_verify']
+                cfg = config_provider_fn()
             except:
-                # Default to verify ssl if not set
-                self.verify_ssl = True
+                logger.debug_exception('Unexpected exception loading configuration from the config provider function')
+                raise
+
+            if cfg:
+                try:
+                    self.verify_ssl = cfg.get('internal_ssl_verify', True)
+
+                    try:
+                        self._read_timeout = float(cfg.get('global_client_read_timeout', 0.0))
+                    except ValueError:
+                        logger.error('Invalid value type found in config for "global_client_read_timeout", expected int or float, found {}'.format(type(cfg.get('global_client_read_timeout'))))
+                        pass
+
+                    try:
+                        self._connect_timeout = float(cfg.get('global_client_connect_timeout', 0.0))
+                    except ValueError:
+                        logger.error('Invalid value type found in config for "global_client_connect_timeout", expected int or float, found {}'.format(type(cfg.get('global_client_connect_timeout'))))
+                        pass
+
+                    if self._read_timeout < 0:
+                        self._read_timeout = 0.0
+
+                    if self._connect_timeout < 0:
+                        self._connect_timeout = 0.0
+                except:
+                    # Default to verify ssl if not set
+                    logger.debug_exception('Could not initialize ssl verification and client timeouts from config due to error')
+                    raise
 
         self.service_url_provider = url_provider
-        self._read_timeout = None
-        self._connect_timeout = None
 
     @contextmanager
     def timeout_context(self, connect_timeout=None, read_timeout=None):
@@ -79,21 +108,24 @@ class InternalServiceClient(object):
         :param read_timeout:
         :return:
         """
+        original_conn_timeout = self._connect_timeout
+        original_read_timeout = self._read_timeout
+
         try:
             if connect_timeout is not None and connect_timeout > 0:
                 self._connect_timeout = connect_timeout
             else:
-                self._connect_timeout = None
+                self._connect_timeout = 0
 
             if read_timeout is not None and read_timeout > 0:
                 self._read_timeout = read_timeout
             else:
-                self._read_timeout = None
+                self._read_timeout = 0
 
             yield self
         finally:
-            self._connect_timeout = None
-            self._read_timeout = None
+            self._connect_timeout = original_conn_timeout
+            self._read_timeout = original_read_timeout
 
     def call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None, files=None):
         """
@@ -163,6 +195,11 @@ class InternalServiceClient(object):
                                                                                                                                                                files=files.keys() if files else files))
         
         try:
+            if connect_timeout and connect_timeout <= 0:
+                connect_timeout = None
+            if read_timeout and read_timeout <= 0:
+                read_timeout = None
+
             if connect_timeout or read_timeout:
                 return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
             else:

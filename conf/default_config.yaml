@@ -17,6 +17,10 @@ cleanup_images: true
 allow_awsecr_iam_auto: true
 host_id: "${ANCHORE_HOST_ID}"
 internal_ssl_verify: ${ANCHORE_INTERNAL_SSL_VERIFY}
+
+global_client_connect_timeout: ${ANCHORE_GLOBAL_CLIENT_CONNECT_TIMEOUT}
+global_client_read_timeout: ${ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT}
+
 auto_restart_services: false
 
 metrics:

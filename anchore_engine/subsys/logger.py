@@ -18,7 +18,7 @@ log_level_map = {
     'DEBUG': 4,
     'SPEW': 99
 }
-log_level = None
+log_level = None # int level for logging
 _log_to_db = None
 _log_to_stdout = False
 
@@ -162,6 +162,21 @@ def error(msg_string):
 def exception(msg_string):
     import traceback
     traceback.print_exc()
+    return (_msg(msg_string, msg_log_level='ERROR'))
+
+
+@bootstrap_logger_intercept('EXCEPTION')
+def debug_exception(msg_string):
+    """
+    Same as an exception, but only dumps stack at debug level, otherwise just an error
+
+    :param msg_string:
+    :return:
+    """
+    if log_level >= log_level_map.get('DEBUG'):
+        import traceback
+        traceback.print_exc()
+
     return (_msg(msg_string, msg_log_level='ERROR'))
 
 
