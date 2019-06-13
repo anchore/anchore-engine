@@ -108,6 +108,9 @@ class InternalServiceClient(object):
         :param read_timeout:
         :return:
         """
+        original_conn_timeout = self._connect_timeout
+        original_read_timeout = self._read_timeout
+
         try:
             if connect_timeout is not None and connect_timeout > 0:
                 self._connect_timeout = connect_timeout
@@ -121,8 +124,8 @@ class InternalServiceClient(object):
 
             yield self
         finally:
-            self._connect_timeout = None
-            self._read_timeout = None
+            self._connect_timeout = original_conn_timeout
+            self._read_timeout = original_read_timeout
 
     def call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None, connect_timeout=None, read_timeout=None):
         """
