@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1 (2019-06-XX)
+
++ Added - Store a set of digests in a subscription record, allowing engine to run vuln_update/policy_eval checks over specified digests as well as latest. Contribution by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
++ Added - New debug_exception logger function to dump stack only at debug or higher log level, otherwise just print error.
++ Added - Adds global internal client timeouts configurable in the config.yaml file. Fixes #210 add annotations key to AnchoreImage response definition type in.
++ Fix - GET /images?history=true not returning full history list. Fixes #215
++ Fix - Allow distro discovery routine to handle case where system os metadata files are broken softlinks inside the container image. Fixes #213
++ Fix - Update to analyzer code, to keep a consistent map of files regardless of any file name slash and dot prefixes that may be present in the layer tars.  Fixes #209
++ Fix - Add input validation for registry add to prevent trailing slash and prefix schema in the registry input string. Fixes #208
++ Fix - Implement dockerfile update check to invoke on only the specific digest, not tag. Fixes #201
++ Fix - Incorrect 500 response on successful feed sync call. Fixes #198
++ Fix - On image add, ensure that subscriptions are (re)activated based on API input. Fixes #195
++ Fix - Use of body in GET /images to filter by tag and/or digest rather than only using query param
++ Fix - Don't require type and key on PUT /subscriptions, reconciling code behavior with swagger spec. Contribution by by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
++ Fix - Add missing 'annotations' key to AnchoreImage response definition type in swagger spec.
++ Improved - Update Dockerfile using multi-stage model
+
 ## 0.4.0 (2019-05-09)
 
 + Added - Image Analysis Archive Subsystem. See #165.
