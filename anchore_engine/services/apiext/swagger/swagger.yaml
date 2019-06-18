@@ -2806,6 +2806,8 @@ definitions:
         type: string
       userId:
         type: string
+      annotations:
+        type: object
       image_status:
         type: string
         description: State of the image
