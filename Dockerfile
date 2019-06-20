@@ -2,6 +2,8 @@ FROM registry.access.redhat.com/ubi7/ubi:7.6-123 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
+ARG CLI_COMMIT
+
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 ENV GOPATH=/go
