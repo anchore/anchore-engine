@@ -7,7 +7,7 @@
 #  Please refer to the latest documentation for running anchore-engine
 #  with docker-compose:
 #
-#  https://docs.anchore.com/2.0/docs/engine/engine_installation/docker_compose/
+#  https://docs.anchore.com/current/docs/engine/engine_installation/docker_compose/
 #
 #  The following docker-compose.yaml has been altered to reference the
 #  latest 0.3 series release of anchore-engine for continuity, but
