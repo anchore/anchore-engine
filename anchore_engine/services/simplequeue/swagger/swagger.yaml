@@ -208,7 +208,6 @@ paths:
         required: true
       responses:
         200:
-          description: "success"
           description: "Queue element"
           schema:
             type: object
