@@ -704,11 +704,12 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
                         candidates[candidate] = True
 
             for member in tfl.getmembers():
-                filename = member.name
-                for candidate in candidates.keys():
-                    if filename == candidate or filename.startswith(candidate):
-                        pymembers.append(member)
-                        break
+                if member.isfile() or member.isdir():
+                    filename = member.name
+                    for candidate in candidates.keys():
+                        if filename == candidate or filename.startswith(candidate):
+                            pymembers.append(member)
+                            break
 
             tfl.extractall(path=os.path.join(pytmpdir, "rootfs"), members=pymembers)
         ret = os.path.join(pytmpdir, "rootfs")
