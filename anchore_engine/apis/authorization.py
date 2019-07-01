@@ -48,8 +48,8 @@ class AccountStateError(UnauthorizedError):
 
 
 class UnauthorizedAccountError(Exception):
-    def __init__(self, account_names, account_types):
-        super(UnauthorizedAccountError, self).__init__('Not authorized. Requires account name in {} or type in {}'.format(account_names, account_types))
+    def __init__(self, account_types):
+        super(UnauthorizedAccountError, self).__init__('Not authorized. Requires callers account of type {}'.format(account_types))
 
 
 class UnauthenticatedError(Exception):
@@ -383,12 +383,12 @@ class DbAuthorizationHandler(AuthorizationHandler):
                     (with_types is None or account_type in with_types):
                 return True
             else:
-                raise UnauthorizedAccountError(account_names=','.join(with_names if with_names else []), account_types=','.join(with_types if with_types else []))
+                raise UnauthorizedAccountError(account_types=','.join(with_types if with_types else []))
         except UnauthorizedAccountError as ex:
             raise
         except Exception as e:
             logger.exception('Error doing authz: {}'.format(e))
-            raise UnauthorizedAccountError(account_names=','.join(with_names if with_names else []), account_types=','.join(with_types if with_types else []))
+            raise UnauthorizedAccountError(account_types=','.join(with_types if with_types else []))
 
     def inline_authz(self, permission_s: list):
         """
