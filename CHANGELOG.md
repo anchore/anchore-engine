@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 (2019-06-XX)
+## 0.4.1 (2019-07-01)
 
 + Added - Store a set of digests in a subscription record, allowing engine to run vuln_update/policy_eval checks over specified digests as well as latest. Contribution by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
 + Added - New debug_exception logger function to dump stack only at debug or higher log level, otherwise just print error.
@@ -15,6 +15,7 @@
 + Fix - Use of body in GET /images to filter by tag and/or digest rather than only using query param
 + Fix - Don't require type and key on PUT /subscriptions, reconciling code behavior with swagger spec. Contribution by by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
 + Fix - Add missing 'annotations' key to AnchoreImage response definition type in swagger spec.
++ Fix - Add correct DB filter on userId to prevent images deleted from one user account from resulting in deletions of images in other accounts, when Image Digests align across accounts.  Fixes #224.
 + Improved - Update Dockerfile using multi-stage model
 
 ## 0.4.0 (2019-05-09)
