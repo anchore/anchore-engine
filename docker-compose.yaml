@@ -10,7 +10,7 @@ volumes:
 services:
   # The primary API endpoint service
   engine-api:
-    image: anchore/anchore-engine:v0.4.0
+    image: anchore/anchore-engine:v0.4.1
     depends_on:
     - anchore-db
     - engine-catalog
@@ -28,7 +28,7 @@ services:
 
   # Catalog is the primary persistence and state manager of the system
   engine-catalog:
-    image: anchore/anchore-engine:v0.4.0
+    image: anchore/anchore-engine:v0.4.1
     depends_on:
     - anchore-db
     logging:
@@ -43,7 +43,7 @@ services:
     - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
-    image: anchore/anchore-engine:v0.4.0
+    image: anchore/anchore-engine:v0.4.1
     depends_on:
     - anchore-db
     - engine-catalog
@@ -59,7 +59,7 @@ services:
     - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "simplequeue"]
   engine-policy-engine:
-    image: anchore/anchore-engine:v0.4.0
+    image: anchore/anchore-engine:v0.4.1
     depends_on:
     - anchore-db
     - engine-catalog
@@ -75,7 +75,7 @@ services:
     - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
-    image: anchore/anchore-engine:v0.4.0
+    image: anchore/anchore-engine:v0.4.1
     depends_on:
     - anchore-db
     - engine-catalog
@@ -106,7 +106,7 @@ services:
         max-size: 100m
   # Kubernetes handler webhook. Uncomment to use, not typically needed for docker-compose installs
 #  kubehook:
-#    image: anchore/anchore-engine:v0.4.0
+#    image: anchore/anchore-engine:v0.4.1
 #    depends_on:
 #    - anchore-db
 #    - engine-catalog
