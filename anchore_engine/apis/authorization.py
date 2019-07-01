@@ -152,7 +152,7 @@ class AuthorizationHandler(ABC):
         pass
 
     @abstractmethod
-    def authorize(self, identity: IdentityContext, permission_list):
+    def authorize(self, identity: IdentityContext, namespace: str, permission_list):
         """
         Authorize the described permissions (all must pass) for the identity
         Where domain = account | 'system'
@@ -189,8 +189,7 @@ class AuthorizationHandler(ABC):
     def requires_account(self, with_names=None, with_types=None):
         """
         Requires a specific role name. This is typically use for internal services where the role name is the account name of the caller
-        :param name: optional account name str to match against
-        :param account_type:
+        :param with_types: a list of AccountType objects that define the acceptable account types
         :return:
         """
         pass
@@ -283,7 +282,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
             logger.debug('Anon auth complete')
             return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_state=None)
 
-    def authorize(self, identity: IdentityContext, permission_list):
+    def authorize(self, identity: IdentityContext, namespace: str, permission_list):
         logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
 
         subject = Yosai.get_current_subject()
@@ -300,7 +299,22 @@ class DbAuthorizationHandler(AuthorizationHandler):
         except (ValueError, auth_exceptions.UnauthorizedException) as ex:
             raise UnauthorizedError(required_permissions=permission_list)
 
+        # Check only after the perms check to ensure no namespace info is leaked
+        self._check_enabled_namespace(namespace, identity)
+
         logger.debug('Passed check permission: {}'.format(permission_list))
+
+    def _check_enabled_namespace(self, namespace, identity):
+        """
+        Verify that the namespace is enabled or else the calling identity is a user in the system admin group
+        """
+
+        with session_scope() as session:
+            identities = idp_factory.for_session(session)
+            n = identities.lookup_account(namespace)
+            if n and n['state'] != AccountStates.enabled and identity.user_account_type not in [AccountTypes.admin, AccountTypes.service]:
+                logger.debug('Denying operation in namespace that is disabled by non-admin account user')
+                raise AccountStateError()
 
     def _check_account(self, account_name, account_type, with_names, with_types):
         try:
@@ -353,7 +367,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
                     # Do the authz on the bound permissions
                     try:
-                        self.authorize(identity, permissions_final)
+                        self.authorize(ApiRequestContextProxy.identity(), ApiRequestContextProxy.namespace(), permissions_final)
                     except UnauthorizedError as ex:
                         raise ex
                     except Exception as e:
@@ -466,7 +480,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
                             # Do the authz on the bound permissions
                             try:
-                                self.authorize(identity, permissions_final)
+                                self.authorize(ApiRequestContextProxy().identity(), ApiRequestContextProxy.namespace(), permissions_final)
                             except UnauthorizedError as ex:
                                 raise ex
                             except Exception as e:

@@ -66,7 +66,7 @@ def create_analysis_archive_rule(rule):
         perm = ':'.join(['createArchiveTransitionRule', GLOBAL_RESOURCE_DOMAIN, '*'])
 
         # Will raise exception if unauthorized
-        authorizer.authorize(ApiRequestContextProxy.identity(), [perm])
+        authorizer.authorize(ApiRequestContextProxy.identity(), ApiRequestContextProxy.namespace(), [perm])
 
     client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
     try:
