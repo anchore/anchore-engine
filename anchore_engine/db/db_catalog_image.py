@@ -252,7 +252,8 @@ def delete(imageDigest, userId, session=None):
     if not session:
         session = db.Session
 
-    our_results = session.query(CatalogImage).filter(or_(CatalogImage.imageDigest==imageDigest, CatalogImage.parentDigest==imageDigest), userId==userId)
+    our_results = session.query(CatalogImage).filter(or_(CatalogImage.imageDigest==imageDigest, CatalogImage.parentDigest==imageDigest), CatalogImage.userId==userId)
+
     for result in our_results:
         imageDigest = result.imageDigest
         session.delete(result)

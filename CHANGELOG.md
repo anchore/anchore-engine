@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5 (2019-07-01)
+
++ Fix - Add correct DB filter on userId	to prevent images deleted from one user	account	from resulting in deletions of images in other accounts, when Image Digests align across accounts.  Fixes #224.
+
 ## 0.3.4 (2019-04-04)
 
 + Added - support for specifying registry credentials for specific repositories or sets of repos using wildcards. Implements #142.
