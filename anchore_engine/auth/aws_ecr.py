@@ -54,7 +54,11 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
         elif access_key_id == '_iam_role':
             try:
                 sts = boto3.client('sts')
-                session = sts.assume_role(RoleArn=secret_access_key, RoleSessionName=str(int(time.time())))
+                role_arn, external_id = secret_access_key.split(";") # pass = "role_arn;external_id"
+                if external_id:
+                    session = sts.assume_role(RoleArn=role_arn, RoleSessionName=str(int(time.time())), ExternalId=external_id)
+                else:
+                    session = sts.assume_role(RoleArn=role_arn, RoleSessionName=str(int(time.time())))
                 access_key_id = session['Credentials']['AccessKeyId']
                 secret_access_key = session['Credentials']['SecretAccessKey']
                 session_token = session['Credentials']['SessionToken']
