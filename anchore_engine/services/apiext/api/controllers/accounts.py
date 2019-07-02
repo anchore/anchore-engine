@@ -14,7 +14,7 @@ from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission, NotificationTypes
+from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission, NotificationTypes, RequestingAccountValue
 from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, PROTECTED_ACCOUNT_NAMES, RESERVED_ACCOUNT_NAMES, get_config
 
 
@@ -124,7 +124,7 @@ def verify_user(username, accountname, mgr):
     return usr
 
 
-@authorizer.requires([])
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_users_account():
     """
     GET /account
@@ -135,7 +135,7 @@ def get_users_account():
     try:
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
-            account = mgr.get_account(ApiRequestContextProxy.identity().user_account)
+            account = mgr.get_account(ApiRequestContextProxy.namespace())
             return account_db_to_msg(account), 200
     except Exception as ex:
         logger.exception('API Error')

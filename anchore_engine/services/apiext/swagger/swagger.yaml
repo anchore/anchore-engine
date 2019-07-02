@@ -2001,7 +2001,7 @@ paths:
       - Identity
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.accounts
       operationId: get_users_account
-      x-anchore-authz-action: None
+      x-anchore-authz-action: getAccount
       summary: List the account for the authenticated user
       responses:
         200:

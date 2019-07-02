@@ -33,16 +33,15 @@ class UnauthorizedError(Exception):
         if type(required_permissions) != list:
             required_permissions = [required_permissions]
 
-        required_permissions = [ perm.split(':') for perm in required_permissions]
-        perm_str = ','.join('domain={} action={} target={}'.format(perm[0], perm[1], '*' if len(perm) == 2 else perm[2]) for perm in required_permissions)
+        perm_str = ','.join('domain={} action={} target={}'.format(perm.domain, perm.action, '*' if perm.target is None else perm.target) for perm in required_permissions)
         super(UnauthorizedError, self).__init__('Not authorized. Requires permissions: {}'.format(perm_str))
         self.required_permissions = required_permissions
 
 
 class AccountStateError(UnauthorizedError):
-    def __init__(self):
+    def __init__(self, account):
         super(AccountStateError, self).__init__([])
-        self.msg = 'Not authorized. Account not enabled.'
+        self.msg = 'Not authorized. Account {} not enabled.'.format(account)
 
     def __str__(self):
         return self.msg
@@ -152,7 +151,7 @@ class AuthorizationHandler(ABC):
         pass
 
     @abstractmethod
-    def authorize(self, identity: IdentityContext, namespace: str, permission_list):
+    def authorize(self, identity: IdentityContext, permission_list):
         """
         Authorize the described permissions (all must pass) for the identity
         Where domain = account | 'system'
@@ -231,7 +230,6 @@ class DbAuthorizationHandler(AuthorizationHandler):
             DbAuthorizationHandler._yosai = Yosai(file_path=conf_path)
             # Disable sessions, since the APIs are not session-based
             DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
-            DbAuthorizationHandler._yosai.security_manager
 
     def notify(self, notification_type, notification_value):
         """
@@ -282,7 +280,61 @@ class DbAuthorizationHandler(AuthorizationHandler):
             logger.debug('Anon auth complete')
             return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_state=None)
 
-    def authorize(self, identity: IdentityContext, namespace: str, permission_list):
+    def _check_calling_user_account_state(self, identity):
+        """
+        Raise an exception if the calling identity is a member of a non-enabled account.
+
+        :param identity:
+        :return:
+        """
+        # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
+        if not identity.user_account_state or identity.user_account_state != AccountStates.enabled:
+            logger.debug('Failing perm check based on account state')
+            raise AccountStateError(identity.user_account)
+
+    def _disabled_domains(self, permissions):
+        """
+        Return the account state of all domains in the permission set. If a domain is the global domain or system domain then it
+        is enabled by default. Else, if domain is not found in the account list, it is considered not-enabled.
+
+        :param permissions: list of Permission objects
+        :return: list(str) returns a tuple of enabled and non-enable domains from the permissions list
+        """
+
+        non_enabled_domains = []
+
+        for p in permissions:
+            if p.domain in [localconfig.SYSTEM_ACCOUNT_NAME, localconfig.GLOBAL_RESOURCE_DOMAIN]:
+                # System and global domains are always enabled
+                continue
+            else:
+                state = self._get_account_state(p.domain)
+                if state is None or state != AccountStates.enabled:
+                    non_enabled_domains.append(p.domain)
+
+        return list(set(non_enabled_domains))
+
+    def _exec_permission_check(self, subject, permission_list):
+        """
+        Normalize the permission list and execute the checks
+
+        :param permission_list: list of Permission objects
+        :return:
+        """
+        logger.debug('Checking permission: {}'.format(permission_list))
+        try:
+            stringified_permissions = []
+            for perm in permission_list:
+                domain = perm.domain if perm.domain else '*'
+                action = perm.action if perm.action else '*'
+                target = perm.target if perm.target else '*'
+                stringified_permissions.append(':'.join([domain, action, target]))
+            subject.check_permission(stringified_permissions, logical_operator=all)
+
+        except (ValueError, auth_exceptions.UnauthorizedException) as ex:
+            raise UnauthorizedError(required_permissions=permission_list)
+
+    def authorize(self, identity: IdentityContext, permission_list):
         logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
 
         subject = Yosai.get_current_subject()
@@ -290,31 +342,34 @@ class DbAuthorizationHandler(AuthorizationHandler):
             raise UnauthorizedError(permission_list)
 
         # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
-        if not identity.user_account_state or identity.user_account_state != AccountStates.enabled:
-            raise AccountStateError()
+        self._check_calling_user_account_state(identity)
 
-        logger.debug('Checking permission: {}'.format(permission_list))
-        try:
-            subject.check_permission(permission_list, logical_operator=all)
-        except (ValueError, auth_exceptions.UnauthorizedException) as ex:
-            raise UnauthorizedError(required_permissions=permission_list)
+        self._exec_permission_check(subject, permission_list)
 
-        # Check only after the perms check to ensure no namespace info is leaked
-        self._check_enabled_namespace(namespace, identity)
+        # Check only after the perms check. Match any allowed permissions that use the namespace as the domain for the authz request
+        non_enabled_domains = self._disabled_domains(permission_list)
+
+        logger.debug('Found disabled domains in permission set: {}'.format(non_enabled_domains))
+
+        # If found domains not enabled and the caller is not a system service or system admin, disallow
+        if non_enabled_domains and identity.user_account_type not in [AccountTypes.admin, AccountTypes.service]:
+            logger.debug('Failing otherwise passing perm check due to domain state')
+            raise AccountStateError(non_enabled_domains[0])
 
         logger.debug('Passed check permission: {}'.format(permission_list))
 
-    def _check_enabled_namespace(self, namespace, identity):
+    def _get_account_state(self, account):
         """
         Verify that the namespace is enabled or else the calling identity is a user in the system admin group
         """
 
         with session_scope() as session:
             identities = idp_factory.for_session(session)
-            n = identities.lookup_account(namespace)
-            if n and n['state'] != AccountStates.enabled and identity.user_account_type not in [AccountTypes.admin, AccountTypes.service]:
-                logger.debug('Denying operation in namespace that is disabled by non-admin account user')
-                raise AccountStateError()
+            n = identities.lookup_account(account)
+            if n:
+                return n['state']
+            else:
+                return None
 
     def _check_account(self, account_name, account_type, with_names, with_types):
         try:
@@ -340,7 +395,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
         Non-decorator impl of the @requires() decorator for isolated and inline invocation.
         Returns None on success or raises an exception
 
-        :param permission_s:
+        :param permission_s: list of Permission objects
         :return:
         """
         try:
@@ -362,12 +417,11 @@ class DbAuthorizationHandler(AuthorizationHandler):
                         domain = perm.domain if perm.domain else '*'
                         action = perm.action if perm.action else '*'
                         target = perm.target if perm.target else '*'
-
-                        permissions_final.append(':'.join([domain, action, target]))
+                        permissions_final.append(Permission(domain, action, target))
 
                     # Do the authz on the bound permissions
                     try:
-                        self.authorize(ApiRequestContextProxy.identity(), ApiRequestContextProxy.namespace(), permissions_final)
+                        self.authorize(ApiRequestContextProxy.identity(), permissions_final)
                     except UnauthorizedError as ex:
                         raise ex
                     except Exception as e:
@@ -476,11 +530,12 @@ class DbAuthorizationHandler(AuthorizationHandler):
                                     target.bind(operation=f, kwargs=kwargs)
                                     target = target.value
 
-                                permissions_final.append(':'.join([domain, action, target]))
+                                #permissions_final.append(':'.join([domain, action, target]))
+                                permissions_final.append(Permission(domain, action, target))
 
                             # Do the authz on the bound permissions
                             try:
-                                self.authorize(ApiRequestContextProxy().identity(), ApiRequestContextProxy.namespace(), permissions_final)
+                                self.authorize(ApiRequestContextProxy().identity(), permissions_final)
                             except UnauthorizedError as ex:
                                 raise ex
                             except Exception as e:
