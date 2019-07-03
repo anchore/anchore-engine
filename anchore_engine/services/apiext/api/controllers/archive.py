@@ -2,7 +2,7 @@ import re
 from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN, ADMIN_ACCOUNT_NAME
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission, RequestingAccountValue, AccountTypes
+from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission, RequestingAccountValue, AccountTypes, Permission
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -63,7 +63,7 @@ def create_analysis_archive_rule(rule):
 
     # Permission check on the system_global field, only admins
     if rule.get('system_global'):
-        perm = ':'.join(['createArchiveTransitionRule', GLOBAL_RESOURCE_DOMAIN, '*'])
+        perm = Permission(GLOBAL_RESOURCE_DOMAIN, 'createArchiveTransitionRule', '*')
 
         # Will raise exception if unauthorized
         authorizer.authorize(ApiRequestContextProxy.identity(), [perm])
