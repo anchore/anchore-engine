@@ -503,8 +503,9 @@ class ArchivedAnalysisDeleter(ImageAnalysisArchiver):
 
     def run(self):
         with session_scope() as session:
-            logger.debug('Running archive deletion rules')
+            logger.debug('Evaluating archive deletion rules for account: {}'.format(self.account))
             rules = session.query(ArchiveTransitionRule).filter_by(account=self.account, transition=ArchiveTransitions.delete).all()
+
             def lookup_archived_tags(account, digest):
                 img = session.query(ArchivedImage).filter_by(account=account, imageDigest=digest).one_or_none()
                 return img.tags()
@@ -513,13 +514,13 @@ class ArchivedAnalysisDeleter(ImageAnalysisArchiver):
 
             for rule in rules:
                 matches = self._find_candidates(session, rule)
-                logger.info('Rule: {} matches {}'.format(rule, matches))
+                logger.info('Rule: {} matches {}'.format(rule, [x[0] for x in matches]))
                 delete_merger.add_rule_result(rule, matches)
 
             to_delete = delete_merger.full_matched_digests()
 
         for img_digest in to_delete:
-            logger.info('Archiving image {}/{}', self.account, img_digest)
+            logger.info('Deleting archived image analysis {}/{}'.format(self.account, img_digest))
             try:
                 if not DRY_RUN_MODE:
                     t = DeleteArchivedImageTask(account=self.account, image_digest=img_digest, parent_task_id=self.task_id)
@@ -531,6 +532,7 @@ class ArchivedAnalysisDeleter(ImageAnalysisArchiver):
                             DRY_RUN_ENV_VAR, self.account, img_digest))
             except Exception as ex:
                 logger.exception('Caught unhandled exception in archive deletion task')
+
 
     def _find_candidates(self, session: Session, rule: ArchiveTransitionRule):
         """
@@ -691,8 +693,9 @@ class DeleteArchivedImageTask(object):
         self.started = datetime.datetime.utcnow()
 
         try:
-            self._execute()
+            result = self._execute()
             add_event(ImageArchiveDeleted(self.account, self.image_digest, self.id))
+            return result
         except Exception as err:
             logger.exception('Failed archive deletion execution')
             add_event(ImageArchiveDeleteFailed(self.account, self.image_digest, task_id=self.id, err=str(err)))
@@ -707,7 +710,7 @@ class DeleteArchivedImageTask(object):
         The final record delete (the ArchivedImage records) are deleted later with gc passes to leave them in the 'deleted' state
         for a while so users can see the transition.
 
-        :return:
+        :return: (status, msg) tuple
         """
         with session_scope() as session:
             rec = db_archived_images.get(session, self.account, self.image_digest)
@@ -730,6 +733,8 @@ class DeleteArchivedImageTask(object):
         with session_scope() as session:
             logger.debug('Deleting archive records for {}/{}'.format(self.account, self.image_digest))
             db_archived_images.delete(session, self.account, [self.image_digest])
+
+        return 'deleted', 'Archive deleted successfully'
 
 
 class RestoreArchivedImageTask(object):
@@ -876,6 +881,7 @@ class RestoreArchivedImageTask(object):
         except Exception as ex:
             logger.exception("Error flushing policy engine state for image")
             raise ex
+
 
 class RestoreArchivedImageTaskFromArchiveTarfile(RestoreArchivedImageTask):
     def __init__(self, account=None, image_digest=None, fileobj=None, parent_task_id=None):

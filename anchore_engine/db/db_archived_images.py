@@ -3,7 +3,7 @@ Provides a unified abstraction of the ArchivedImage and ArchivedImageDocker tabl
 
 """
 
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 from sqlalchemy.orm import Session, lazyload
 
 from anchore_engine.db import ArchivedImage, ArchivedImageDocker
@@ -123,7 +123,7 @@ def get_tag_histories(session, account, registries=None, repositories=None, tags
         ArchivedImageDocker.tag_detected_at.desc()
     ]
 
-    qry = session.query(*select_fields).join(ArchivedImage).filter(ArchivedImage.account==account).order_by(*order_by_fields)
+    qry = session.query(*select_fields).join(ArchivedImage, and_(ArchivedImageDocker.account == ArchivedImage.account, ArchivedImageDocker.imageDigest == ArchivedImage.imageDigest)).filter(ArchivedImage.account==account).order_by(*order_by_fields)
 
     for field, filters in [(ArchivedImageDocker.registry, registries), (ArchivedImageDocker.repository, repositories), (ArchivedImageDocker.tag, tags)]:
         if filters:
