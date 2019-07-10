@@ -7,7 +7,7 @@ import zlib
 from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
-    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence
+    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func
 from sqlalchemy.orm import relationship
 
 from anchore_engine.utils import ensure_str, ensure_bytes
@@ -971,7 +971,7 @@ class Image(Base):
         db = get_thread_scoped_session()
         cpe_vulnerabilities = db.query(ImageCpe, CpeVulnerability).filter(ImageCpe.image_id == self.id,
                                                                               ImageCpe.image_user_id == self.user_id,
-                                                                              ImageCpe.name == CpeVulnerability.name,
+                                                                              func.lower(ImageCpe.name) == CpeVulnerability.name,
                                                                               ImageCpe.version == CpeVulnerability.version).all()
         return cpe_vulnerabilities
 
