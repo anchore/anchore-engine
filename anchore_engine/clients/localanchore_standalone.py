@@ -329,25 +329,21 @@ def squash(unpackdir, cachedir, layers):
         with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='w', format=tarfile.PAX_FORMAT) as oltf:
             imageSize = 0
             deferred_hardlinks = {}
-            added_members = {}
-            for filename in fhistory.keys():
-                if fhistory[filename]['exists']:
-                    l = fhistory[filename]['latest_layer_tar']
-                    member = tarfiles_members[l].get(filename)
 
-                    if member.isreg():
-                        memberfd = tarfiles[l].extractfile(member)
-                        oltf.addfile(member, fileobj=memberfd)
-                        added_members[filename] = fhistory[filename]
-                    elif member.islnk():
-                        if fhistory[filename]['hl_replace']:
-                            deferred_hardlinks[filename] = fhistory[filename]
+            for l in tarfiles_members.keys():
+                for filename in tarfiles_members[l].keys():
+                    if fhistory[filename]['exists'] and fhistory[filename]['latest_layer_tar'] == l:
+                        member = tarfiles_members[l].get(filename)
+                        if member.isreg():
+                            memberfd = tarfiles[l].extractfile(member)
+                            oltf.addfile(member, fileobj=memberfd)
+                        elif member.islnk():
+                            if fhistory[filename]['hl_replace']:
+                                deferred_hardlinks[filename] = fhistory[filename]
+                            else:
+                                oltf.addfile(member)
                         else:
                             oltf.addfile(member)
-                            added_members[filename] = fhistory[filename]                        
-                    else:
-                        oltf.addfile(member)
-                        added_members[filename] = fhistory[filename]
 
             for filename in deferred_hardlinks.keys():
                 l = fhistory[filename]['latest_layer_tar']

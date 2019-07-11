@@ -183,10 +183,14 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
                             vendor = l.split(':')[2]
                             distro = l.split(':')[3]
                             vers = l.split(':')[4]
+
                             if re.match(".*fedora.*", vendor.lower()):
                                 distro = 'fedora'
                             elif re.match(".*redhat.*", vendor.lower()):
                                 distro = 'rhel'
+                            elif re.match(".*centos.*", vendor.lower()):
+                                distro = 'centos'
+
                             meta['DISTRO'] = distro
                             meta['DISTROVERS'] = vers
                         except:
