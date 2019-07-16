@@ -86,7 +86,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
     try:
         try:
             imageDigest = None
-            manifest_data = None
+            input_manifest_data = None
             rawmanifest = None
 
             if (not manifest and not digest) or (manifest and digest):
@@ -105,14 +105,17 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
                 except Exception as err:
                     raise ValueError("cannot calculate digest from supplied manifest - exception: {}".format(err))
 
-            if not re.match("^sha256:[\d|a-f]{64}$", imageDigest):
-                raise ValueError("input digest does not validate - must be sha256:<64 hex characters>")
+            if digest:
+                if re.match("^sha256:[\d|a-f]{64}$", digest):
+                    imageDigest = digest
+                else:
+                    raise ValueError("input digest does not validate - must be sha256:<64 hex characters>")
 
             if parent_digest:
                 if re.match("^sha256:[\d|a-f]{64}$", parent_digest):
                     parentDigest = parent_digest
                 else:
-                    raise ValueError("input parent_digest does not validate")
+                    raise ValueError("input parent_digest does not validate - must be sha256:<64 hex characters>")
             else:
                 parentDigest = imageDigest
 
