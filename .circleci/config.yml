@@ -29,7 +29,7 @@ var_2: &attach_workspace
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1.2.1
+  anchore: anchore/anchore-engine@1.5.0
 commands:
   run_tox_tests:
     description: Pass path to tests to be run with tox
@@ -41,9 +41,6 @@ commands:
     - restore_cache:
         keys:
         - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
-        # fallback to using the latest cache if no exact match is found
-        - v1-dependencies-{{ .Branch }}-
-        - v1-dependencies-
     - run:
         name: install dependencies
         command: |
@@ -127,10 +124,7 @@ jobs:
 
   build:
     docker:
-    - image: anchore/test-infra:latest
-      auth:
-        username: $DOCKER_USER
-        password: $DOCKER_PASS
+    - image: circleci/python:3.6
     steps:
     - checkout
     - setup_remote_docker:
@@ -138,21 +132,18 @@ jobs:
     - run:
         name: build Docker image
         command: |
-          source ci_utils.sh
-          gather_artifacts anchore-engine
-          docker build --build-arg ANCHORE_COMMIT="$CIRCLE_SHA1" --build-arg CLI_COMMIT="$anchore_cli_SHA" -t "${IMAGE_NAME}:ci" -f ./Dockerfile .
+          CLI_COMMIT=$(git ls-remote git@github.com:anchore/anchore-cli "refs/heads/${CIRCLE_BRANCH}" | awk '{ print $1 }')
+          docker build --build-arg ANCHORE_COMMIT="$CIRCLE_SHA1" --build-arg CLI_COMMIT="$CLI_COMMIT" -t "${IMAGE_NAME}:ci" -f ./Dockerfile .
     - run:
         name: Save Docker image
         command: |
           rm -rf /home/circleci/workspace/caches/
           mkdir -p /home/circleci/workspace/caches/
-          cp artifacts.txt /home/circleci/workspace/artifacts.txt
           docker save -o "/home/circleci/workspace/caches/${CIRCLE_PROJECT_REPONAME}-ci.tar" "${IMAGE_NAME}:ci"
     - persist_to_workspace:
         root: /home/circleci/workspace/
         paths:
         - caches/*
-        - artifacts.txt
 
   compose_tests:
     machine: true
@@ -176,11 +167,8 @@ jobs:
     - run:
         name: run test
         command: |
-          #docker run -td --net=host --name anchore-cli -e ANCHORE_CLI_USER=admin -e ANCHORE_CLI_PASS=foobar docker.io/anchore/engine-cli:latest tail -f /dev/null
-          #docker exec anchore-cli anchore-cli system wait --feedsready '""'
           anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
           docker-compose logs engine-api
-          #docker exec anchore-cli anchore-cli system status
           anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
           pushd scripts/tests/
           python aetest.py docker.io/alpine:latest
@@ -226,11 +214,9 @@ jobs:
           username: $DOCKER_USER
           password: $DOCKER_PASS
     steps:
-    - <<: *attach_workspace
     - run:
         name: Trigger release candidate builds
         command: |
-          cp /home/circleci/workspace/artifacts.txt ./artifacts.txt
           source ci_utils.sh
           trigger_artifact_build anchore-engine
 
@@ -263,7 +249,9 @@ workflows:
         requires:
         - push_dockerhub
     - anchore/image_scan:
+        context: dockerhub
         requires:
         - push_dockerhub
-        image_name: 'anchore/anchore-engine:dev'
-        timeout: '500'
+        image_name: 'anchore/anchore-engine-dev:${CIRCLE_SHA1}'
+        private_registry: true
+        timeout: '1500'
