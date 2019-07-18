@@ -585,6 +585,7 @@ class Registry(Base, UtilMixin):
     record_state_val = Column(String)
     registry_type = Column(String)
 
+    registry_name = Column(String)
     registry_user = Column(String)
     registry_pass = Column(String)
     registry_verify = Column(Boolean)

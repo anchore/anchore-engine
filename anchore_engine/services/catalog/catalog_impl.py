@@ -943,6 +943,9 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                     httpcode = 406
                     raise Exception("cannot ping supplied registry with supplied credentials - exception: {}".format(str(err)))
 
+            if not registrydata.get('registry_name', None):
+                registrydata['registry_name'] = registry
+
             rc = db_registries.add(registry, userId, registrydata, session=dbsession)
             registry_records = db_registries.get(registry, userId, session=dbsession)
 
