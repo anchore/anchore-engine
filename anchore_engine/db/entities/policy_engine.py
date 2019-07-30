@@ -8,7 +8,7 @@ from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 
 from anchore_engine.utils import ensure_str, ensure_bytes
 
@@ -172,10 +172,6 @@ class Vulnerability(Base):
                 return(json.loads(self.metadata_json))
             return(self.metadata_json)
         return(None)
-        #if self.metadata_json:
-        #    return json.loads(self.metadata_json)
-        #else:
-        #    return None
 
     @additional_metadata.setter
     def additional_metadata(self, value):
@@ -224,6 +220,39 @@ class Vulnerability(Base):
             sev = "Unknown"
         return(sev)
 
+    def get_nvd_vulnerabilities(self, cvss_version=3):
+        ret = []
+
+        db = get_thread_scoped_session()
+        (_nvd_cls, _cpe_cls) = select_nvd_classes(db)
+
+        try:
+            if self.id.startswith('CVE-'):
+                cves = [self.id]
+            else:
+                cves = []
+
+            if self.metadata_json.get("CVE", []):
+                for cve_el in self.metadata_json.get("CVE", []):
+                    if type(cve_el) == dict:
+                        # RHSA and ELSA internal elements are dicts
+                        cve_id = cve_el.get('Name', None)
+                    elif type(cve_el) == str:
+                        # ALAS internal elements are just CVE ids
+                        cve_id = cve_el
+
+                    if cve_id and cve_id not in cves:
+                        cves.append(cve_id)
+
+            nvd_records = db.query(_nvd_cls).filter(_nvd_cls.name.in_(cves)).all()
+        except Exception as err:
+            log.warn("failed to gather NVD information for vulnerability due to exception: {}".format(str(err)))
+            nvd_records = None
+
+        if nvd_records:
+            ret = nvd_records
+
+        return(ret)
 
 class VulnerableArtifact(Base):
     """
@@ -388,22 +417,134 @@ class NvdMetadata(Base):
     def __repr__(self):
         return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
 
-    def get_severity(self):
-        sev = "Unknown"
+    def get_baseScore(self, cvss_version=3):
+
+        ret = -1.0
+
+        score = None
+        if cvss_version == 3:
+            score = None
+        elif cvss_version == 2:
+            score = self.cvss.get('base_metrics', {}).get('score', None)
+        else:
+            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            score = None
+            
+        if score is None:
+            ret = -1.0
+        else:
+            try:
+                ret = float(score)
+            except:
+                ret = -1.0
+
+        return(ret)
+
+    def get_exploitabilityScore(self, cvss_version=3):
+        return(-1.0)
+
+    def get_impactScore(self, cvss_version=3):
+        return(-1.0)
+
+    def key_tuple(self):
+        return self.name
+
+class NvdV2Metadata(Base):
+    __tablename__ = 'feed_data_nvdv2_vulnerabilities'
+
+    name = Column(String(vuln_id_length), primary_key=True)
+    namespace_name = Column(String(namespace_length), primary_key=True)  # e.g. nvddb:2018"
+    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    vulnerable_configuration = Column(StringJSON)
+    vulnerable_software = Column(StringJSON)
+    summary = Column(String)
+    cvssv2 = Column(StringJSON)
+    cvssv3 = Column(StringJSON)
+    
+    vulnerable_cpes = relationship('CpeV2Vulnerability', back_populates='parent', cascade='all, delete-orphan')
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
+
+    def get_baseScore(self, cvss_version=3):
+
+        ret = -1.0
+        score = None
+        if cvss_version == 3:
+            score = self.cvssv3.get('cvssV3', {}).get('baseScore', None)
+        elif cvss_version == 2:
+            score = self.cvssv2.get('cvssV2', {}).get('baseScore', None)
+        else:
+            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            score = None
+            
+        if score is None:
+            ret = -1.0
+        else:
+            try:
+                ret = float(score)
+            except:
+                ret = -1.0
+
+        return(ret)
+
+    def get_exploitabilityScore(self, cvss_version=3):
+
+        ret = -1.0
+        score = None
+        if cvss_version == 3:
+            score = self.cvssv3.get('exploitabilityScore', None)
+        elif cvss_version == 2:
+            score = self.cvssv2.get('exploitabilityScore', None)
+        else:
+            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            score = None
+            
+        if score is None:
+            ret = -1.0
+        else:
+            try:
+                ret = float(score)
+            except:
+                ret = -1.0
+
+        return(ret)
+
+    def get_impactScore(self, cvss_version=3):
+
+        ret = -1.0
+        score = None
+        if cvss_version == 3:
+            score = self.cvssv3.get('impactScore', None)
+        elif cvss_version == 2:
+            score = self.cvssv2.get('impactScore', None)
+        else:
+            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            score = None
+            
+        if score is None:
+            ret = -1.0
+        else:
+            try:
+                ret = float(score)
+            except:
+                ret = -1.0
+
+        return(ret)
+
+    def get_cvssScores(self, cvss_version=3):
         try:
-            cvss_json = json.loads(self.cvss)
-            score = float(cvss_json['base_metrics']['score'])
-            if score <= 3.9:
-                sev = "Low"
-            elif score <= 6.9:
-                sev = "Medium"
-            elif score <= 10.0:
-                sev = "High"
-            else:
-                sev = "Unknown"
+            ret = {
+                'baseScore': self.get_baseScore(cvss_version=cvss_version),
+                'exploitabilityScore': self.get_exploitabilityScore(cvss_version=cvss_version),
+                'impactScore': self.get_impactScore(cvss_version=cvss_version),
+            }
         except:
-            sev = "Unknown"
-        return(sev)
+            ret = {}
+
+        return(ret)
 
     def key_tuple(self):
         return self.name
@@ -448,6 +589,78 @@ class CpeVulnerability(Base):
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.meta
+            ret = ':'.join(final_cpe)
+        except:
+            ret = None
+
+        return(ret)
+
+class CpeV2Vulnerability(Base):
+    __tablename__ = 'feed_data_cpev2_vulnerabilities'
+
+    feed_name = Column(String(feed_name_length), primary_key=True)
+    namespace_name = Column(String(namespace_length), primary_key=True)
+    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
+    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    part = Column(String(pkg_name_length), primary_key=True)
+    vendor = Column(String(pkg_name_length), primary_key=True)
+    product = Column(String(pkg_name_length), primary_key=True)
+    name = synonym("product")
+    version = Column(String(pkg_version_length), primary_key=True)
+    update = Column(String(pkg_version_length), primary_key=True)
+    edition = Column(String(pkg_version_length), primary_key=True)
+    language = Column(String(pkg_name_length), primary_key=True)
+    sw_edition = Column(String(pkg_name_length), primary_key=True)
+    target_sw = Column(String(pkg_name_length), primary_key=True)
+    target_hw = Column(String(pkg_name_length), primary_key=True)
+    other = Column(String(pkg_name_length), primary_key=True)
+    link = Column(String(link_length), nullable=True)
+    parent = relationship('NvdV2Metadata', back_populates='vulnerable_cpes')
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # This is necessary for ensuring correct FK behavior against a composite foreign key
+    __table_args__ = (
+        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdV2Metadata.name, NvdV2Metadata.namespace_name, NvdV2Metadata.severity]),
+        Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
+        Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
+        {}
+    )
+
+    def __repr__(self):
+        return '<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.product, self.version, self.created_at.isoformat())
+
+    def get_cpestring(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe[1] = "/" + self.part
+            final_cpe[2] = self.vendor
+            final_cpe[3] = self.product
+            final_cpe[4] = self.version
+            final_cpe[5] = self.update
+            final_cpe[6] = self.other
+            ret = ':'.join(final_cpe)
+        except:
+            ret = None
+
+        return(ret)
+
+    def get_cpe23string(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
+            final_cpe[2] = self.part
+            final_cpe[3] = self.vendor
+            final_cpe[4] = self.product
+            final_cpe[5] = self.version
+            final_cpe[6] = self.update
+            final_cpe[7] = self.edition
+            final_cpe[8] = self.language
+            final_cpe[9] = self.sw_edition
+            final_cpe[10] = self.target_sw
+            final_cpe[11] = self.target_hw
+            final_cpe[12] = self.other
             ret = ':'.join(final_cpe)
         except:
             ret = None
@@ -799,6 +1012,25 @@ class ImageCpe(Base):
 
         return(ret)
 
+    def get_cpe23string(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
+            final_cpe[2] = self.cpetype[1]
+            final_cpe[3] = self.vendor
+            final_cpe[4] = self.name
+            final_cpe[5] = self.version
+            final_cpe[6] = self.update
+            #final_cpe[7] = self.edition
+            #final_cpe[8] = self.language
+            #final_cpe[9] = self.sw_edition
+            #final_cpe[10] = self.target_sw
+            #final_cpe[11] = self.target_hw
+            final_cpe[12] = self.meta
+            ret = ':'.join(final_cpe)
+        except:
+            ret = None
+        return(ret)
 
 class FilesystemAnalysis(Base):
     """
@@ -969,11 +1201,14 @@ class Image(Base):
         :return: list of (image_cpe, cpe_vulnerability) tuples
         """
         db = get_thread_scoped_session()
-        cpe_vulnerabilities = db.query(ImageCpe, CpeVulnerability).filter(ImageCpe.image_id == self.id,
-                                                                              ImageCpe.image_user_id == self.user_id,
-                                                                              func.lower(ImageCpe.name) == CpeVulnerability.name,
-                                                                              ImageCpe.version == CpeVulnerability.version).all()
+        (_nvd_cls, _cpe_cls) = select_nvd_classes(db)
+        cpe_vulnerabilities = db.query(ImageCpe, _cpe_cls).filter(ImageCpe.image_id == self.id,
+                                                                  ImageCpe.image_user_id == self.user_id,
+                                                                  func.lower(ImageCpe.name) == _cpe_cls.name,
+                                                                  ImageCpe.version == _cpe_cls.version).all()
+        
         return cpe_vulnerabilities
+
 
     def get_image_base(self):
         """
@@ -1019,6 +1254,7 @@ class ImagePackageVulnerability(Base):
         ForeignKeyConstraint(columns=[vulnerability_id, vulnerability_namespace_name], refcolumns=[Vulnerability.id, Vulnerability.namespace_name]),
         {}
     )
+
 
     def fixed_artifact(self):
         """
@@ -1361,3 +1597,17 @@ class CachedPolicyEvaluation(Base):
             return bucket, key
         else:
             raise ValueError('Result type is not an archive')
+
+def select_nvd_classes(db):
+    _nvd_cls = NvdMetadata
+    _cpe_cls = CpeVulnerability
+    try:
+        fmd = db.query(FeedMetadata).filter(FeedMetadata.name == 'nvdv2').first()
+        if fmd and fmd.last_full_sync:
+            _nvd_cls = NvdV2Metadata
+            _cpe_cls = CpeV2Vulnerability
+    except Exception as err:
+        log.warn("could not query for nvdv2 sync: {}".format(err))
+    
+    log.debug("selected {}/{} nvd classes".format(_nvd_cls, _cpe_cls))
+    return(_nvd_cls, _cpe_cls)

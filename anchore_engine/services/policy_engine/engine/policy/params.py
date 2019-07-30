@@ -247,6 +247,11 @@ class IntegerValidator(RegexParamValidator):
     __validator_type__ = 'IntegerString'
     __validator_description__ = 'Single integer number as a string'
 
+class FloatValidator(RegexParamValidator):
+    __regex__ = r'^\s*-*(\d)*(\.\d*)?\s*$'
+    __validator_type__ = 'FloatString'
+    __validator_description__ = 'Single float number as a string'
+
 
 class EnumValidator(JsonSchemaValidator):
     __enums__ = []
@@ -520,3 +525,17 @@ class IntegerStringParameter(TriggerParameter):
         """
 
         return int(self._param_value) if self._param_value is not None else None
+
+
+class FloatStringParameter(TriggerParameter):
+    __validator__ = FloatValidator()
+
+    def _output_value(self):
+
+        """
+        Return a python float if set
+
+        :return: float or None
+        """
+
+        return float(self._param_value) if self._param_value is not None else None

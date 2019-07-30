@@ -165,6 +165,34 @@ def make_response_content(content_type, content_data):
 
     return(ret)
 
+def make_cvss_scores(vulnerability_cves):
+    ret = []
+    for cve_el in vulnerability_cves:
+        try:
+            marshalled_el = {
+                'id': cve_el.get('id'),
+            }
+
+            for i in [3, 2]:
+                marshalled_el['cvssV{}'.format(i)] = {}
+
+                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('cvssV{}'.format(i), {}).get('baseScore', -1.0)
+                baseScore = float(tmp) if tmp else -1.0
+                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('exploitabilityScore', -1.0)
+                exploitabilityScore = float(tmp) if tmp else -1.0
+                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('impactScore', -1.0)
+                impactScore = float(tmp) if tmp else -1.0
+
+                marshalled_el['cvssV{}'.format(i)]['baseScore'] = baseScore
+                marshalled_el['cvssV{}'.format(i)]['exploitabilityScore'] = exploitabilityScore
+                marshalled_el['cvssV{}'.format(i)]['impactScore'] = impactScore
+
+            ret.append(marshalled_el)
+        except Exception as err:
+            logger.warn("failed to marshal cve element into api response element for nvd_data field - exception: {}".format(str(err)))
+
+    return(ret)
+
 def make_response_vulnerability(vulnerability_type, vulnerability_data):
     ret = []
 
@@ -182,9 +210,11 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'package_version': 'None',
         'package_type': 'None',
         'package_cpe': 'None',
+        'package_cpe23': 'None',
         'package_path': 'None',
         'feed': 'None',
         'feed_group': 'None',
+        'nvd_data': 'None',
     }
 
     osvulns = []
@@ -227,10 +257,15 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                 else:
                     nonosvulns.append(el)
 
+
+
+                el['nvd_data'] = []
                 if row[header.index('CVES')]:
-                    #id_cves_map[el.get('vuln')] = row[header.index('CVES')].split()
-                    for cve in row[header.index('CVES')].split():
-                        id_cves_map[cve] = el.get('vuln')
+                    el['nvd_data'] = make_cvss_scores(json.loads(row[header.index('CVES')]))
+                    for cve_el in el['nvd_data']:
+                        id_cves_map[cve_el['id']] = el.get('vuln')
+                    #for cve in row[header.index('CVES')].split():
+                    #    id_cves_map[cve] = el.get('vuln')
 
     except Exception as err:
         logger.warn("could not prepare query response - exception: " + str(err))
@@ -245,6 +280,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'package_path': 'pkg_path',
         'package_type': 'pkg_type',
         'package_cpe': 'cpe',
+        'package_cpe23': 'cpe23',
         'url': 'link',
         'feed': 'feed_name',
         'feed_group': 'feed_namespace',
@@ -258,6 +294,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             el[k] = vuln[keymap[k]]
 
         el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+        el['nvd_data'] = []
+        el['nvd_data'] = make_cvss_scores(vuln.get('nvd_data', []))
 
         nonosvulns.append(el)
 

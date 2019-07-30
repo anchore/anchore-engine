@@ -58,10 +58,13 @@ from .entities.policy_engine import FilesystemAnalysis
 from .entities.policy_engine import NpmMetadata
 from .entities.policy_engine import GemMetadata
 from .entities.policy_engine import NvdMetadata
+from .entities.policy_engine import NvdV2Metadata
 from .entities.policy_engine import CpeVulnerability
+from .entities.policy_engine import CpeV2Vulnerability
 from .entities.policy_engine import AnalysisArtifact
 from .entities.policy_engine import ImagePackageManifestEntry
 from .entities.policy_engine import CachedPolicyEvaluation
+from .entities.policy_engine import select_nvd_classes
 
 def Session():
     return get_session()

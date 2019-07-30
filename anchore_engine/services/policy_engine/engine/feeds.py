@@ -16,7 +16,7 @@ import traceback
 
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
-from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability
+from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, NvdV2Metadata, CpeV2Vulnerability
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 from anchore_engine.util.langpack import convert_langversionlist_to_semver
@@ -259,6 +259,136 @@ class NvdFeedDataMapper(FeedDataMapper):
 
             except Exception as err:
                 log.warn("failed to convert vulnerable-software-list into database CPE record - exception: " + str(err))
+
+        return db_rec
+
+class NvdV2FeedDataMapper(FeedDataMapper):
+    """
+    Maps an NVD record into an NvdMetadata ORM object
+    """
+    def map(self, record_json):
+        db_rec = NvdV2Metadata()
+
+        #log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
+        db_rec = NvdV2Metadata()
+        db_rec.name = record_json.get('cve', {}).get('CVE_data_meta', {}).get('ID', None)
+        db_rec.namespace_name = self.group
+        db_rec.summary = record_json.get('cve', {}).get('description', {}).get('description_data', [{}])[0].get('value', "")
+        db_rec.cvssv2 = record_json.get('impact', {}).get('baseMetricV2', {})
+        db_rec.cvssv3 = record_json.get('impact', {}).get('baseMetricV3', {})
+        if db_rec.cvssv3.get('cvssV3', {}).get('baseSeverity', None):
+            db_rec.severity = db_rec.cvssv3.get('cvssV3', {}).get('baseSeverity', "").lower().capitalize()
+        elif db_rec.cvssv2.get('severity', None):
+            db_rec.severity = db_rec.cvssv2.get('severity', "").lower().capitalize()
+        else:
+            db_rec.severity = "Unknown"
+
+        db_rec.vulnerable_cpes = []
+        for input_cpe in record_json.get('cpes', []):
+            #         "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
+
+            cpetoks = input_cpe.split(":")
+            newcpe = CpeV2Vulnerability()
+            newcpe.feed_name = 'nvdv2'
+            newcpe.part = cpetoks[2]
+            newcpe.vendor = cpetoks[3]
+            newcpe.product = cpetoks[4]
+            newcpe.version = cpetoks[5]
+            newcpe.update = cpetoks[6]
+            newcpe.edition = cpetoks[7]
+            newcpe.language = cpetoks[8]
+            newcpe.sw_edition = cpetoks[9]
+            newcpe.target_sw = cpetoks[10]
+            newcpe.target_hw = cpetoks[11]
+            newcpe.other = cpetoks[12]
+            newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
+            db_rec.vulnerable_cpes.append(newcpe)
+
+        if False:
+            db_rec = NvdMetadata()
+            db_rec.name = record_json['@id']
+            db_rec.namespace_name = self.group
+            db_rec.summary = record_json.get('summary', "")
+
+            rawvc = record_json.get('vulnerable-configuration', {})
+            db_rec.vulnerable_configuration = rawvc
+            #db_rec.vulnerable_configuration = json.dumps(rawvc)
+
+            rawvsw = record_json.get('vulnerable-software-list', {})
+            db_rec.vulnerable_software = rawvsw
+            #db_rec.vulnerable_software = json.dumps(rawvsw)
+
+            rawcvss = record_json.get('cvss', {})
+            db_rec.cvss = rawcvss
+            #db_rec.cvss = json.dumps(rawcvss)
+
+            sev = "Unknown"
+            try:
+                #cvss_json = json.loads(self.cvss)
+                score = float(rawcvss['base_metrics']['score'])
+                if score <= 3.9:
+                    sev = "Low"
+                elif score <= 6.9:
+                    sev = "Medium"
+                elif score <= 10.0:
+                    sev = "High"
+                else:
+                    sev = "Unknown"
+            except:
+                sev = "Unknown"
+            db_rec.severity = sev
+
+            db_rec.vulnerable_cpes = []
+
+            vswlist = []
+            try:
+                if isinstance(rawvsw['product'], list):
+                   vswlist = rawvsw['product']
+                else:
+                    vswlist = [rawvsw['product']]
+            except:
+                pass
+
+            # convert each vulnerable software list CPE into a DB record
+            all_cpes = {}
+            for vsw in vswlist:
+                try:
+
+                    # tokenize the input CPE
+                    toks = vsw.split(":")
+                    final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                    for i in range(1, len(final_cpe)):
+                        try:
+                            if toks[i]:
+                                final_cpe[i] = toks[i]
+                            else:
+                                final_cpe[i] = '-'
+                        except:
+                            final_cpe[i] = '-'
+
+                    if ':'.join(final_cpe) not in all_cpes:
+                        all_cpes[':'.join(final_cpe)] = True
+                        if final_cpe[1] == '/a':
+                            newcpe = CpeV2Vulnerability()
+                            newcpe.feed_name = 'nvdv2'
+                            newcpe.cpetype = final_cpe[1]
+                            newcpe.vendor = final_cpe[2]
+                            newcpe.product = final_cpe[3]
+                            newcpe.version = final_cpe[4]
+                            newcpe.update = final_cpe[5]
+                            themeta = final_cpe[6]
+                            if 'ruby' in final_cpe[6]:
+                                themeta = '~~~ruby~~'
+                            elif 'node.js' in final_cpe[6] or 'nodejs' in final_cpe[6]:
+                                themeta = '~~~node.js~~'
+                            elif 'python' in final_cpe[6]:
+                                themeta = '~~~python~~'
+                            newcpe.other = themeta
+                            newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
+                            db_rec.vulnerable_cpes.append(newcpe)
+
+                except Exception as err:
+                    log.warn("failed to convert vulnerable-software-list into database CPE record - exception: " + str(err))
 
         return db_rec
 
@@ -1379,6 +1509,54 @@ class NvdFeed(AnchoreServiceFeed):
         finally:
             db.rollback()
 
+class NvdV2Feed(AnchoreServiceFeed):
+    """
+    Feed for package data, served from the anchore feed service backend
+    """
+
+    __feed_name__ = 'nvdv2'
+    _cve_key = '@id'
+    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, NvdV2FeedDataMapper, _cve_key)
+
+    def query_by_key(self, key, group=None):
+        if not group:
+            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
+
+        db = get_session()
+        try:
+            return db.query(NvdV2Metadata).get((key, group))
+        except Exception as e:
+            log.exception('Could not retrieve nvd vulnerability by key:')
+
+    def _flush_group(self, group_obj, flush_helper_fn=None):
+
+        db = get_session()
+        if flush_helper_fn:
+            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        count = db.query(CpeV2Vulnerability).filter(CpeV2Vulnerability.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} CpeV2Vuln records'.format(count))
+        count = db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} NvdV2 records'.format(count))
+
+        db.flush()
+
+    def _dedup_data_key(self, item):
+        return item.name
+
+    def record_count(self, group_name):
+        db = get_session()
+        try:
+            if 'nvddb' in group_name:
+                return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
+            else:
+                return 0
+        except Exception as e:
+            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
+        finally:
+            db.rollback()
+
 
 class SnykFeed(VulnerabilityFeed):
     """
@@ -1425,6 +1603,7 @@ class FeedFactory(object):
         'vulnerabilities': VulnerabilityFeed,
         'packages': PackagesFeed,
         'nvd': NvdFeed,
+        'nvdv2': NvdV2Feed,
         'snyk': SnykFeed,
     }
 
@@ -1466,6 +1645,7 @@ class DataFeeds(object):
     _vulnerabilitiesFeed_cls = VulnerabilityFeed
     _packagesFeed_cls = PackagesFeed
     _nvdsFeed_cls = NvdFeed
+    _nvdV2sFeed_cls = NvdV2Feed
     _snyksFeed_cls = SnykFeed
 
     def __init__(self):
@@ -1507,6 +1687,8 @@ class DataFeeds(object):
             return self.packages.record_count(group_name)
         elif feed_name == 'nvd':
             return self.nvd.record_count(group_name)
+        elif feed_name == 'nvdv2':
+            return self.nvdV2.record_count(group_name)
         elif feed_name == 'snyk':
             return self.snyk.record_count(group_name)
         else:
@@ -1535,6 +1717,11 @@ class DataFeeds(object):
             self.nvd.refresh_groups()
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
+        try:
+            self.nvdV2.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for NvdV2 feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
         try:
             self.snyk.refresh_groups()
@@ -1583,6 +1770,16 @@ class DataFeeds(object):
             except:
                 log.exception('Cannot sync group metadata for nvd feed')
                 nvd_feed = None
+
+        nvdV2_feed = None
+        if to_sync is None or 'nvdv2' in to_sync:
+            try:
+                log.info('Syncing group metadata for nvdv2 feed')
+                nvdV2_feed = self.nvdV2
+                nvdV2_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Cannot sync group metadata for nvdV2 feed')
+                nvdV2_feed = None
 
         snyk_feed = None
         if to_sync is None or 'snyk' in to_sync:
@@ -1634,6 +1831,19 @@ class DataFeeds(object):
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = nvd_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
+
+        if nvdV2_feed:
+            t = time.time()
+            try:
+                log.info('Syncing nvdv2 feed')
+                result.append(nvdV2_feed.sync(full_flush=full_flush))
+            except:
+                log.exception('Failure updating the nvdv2 feed')
+                all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = nvdV2_feed.__feed_name__
                 fail_result['total_time_seconds'] = time.time() - t
                 result.append(fail_result)
 
@@ -1702,6 +1912,18 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
+        if to_sync is None or 'nvdv2' in to_sync:
+            if not only_if_unsynced or self.nvdV2.never_synced():
+                try:
+                    log.info('Syncing nvdV2 feed')
+                    updated_records['nvd'] = self.nvdV2.bulk_sync()
+                except Exception as err:
+                    log.exception('Failure updating the nvdV2 feed. Continuing with next feed')
+                    all_success = False
+
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
+
         if to_sync is None or 'snyk' in to_sync:
             if not only_if_unsynced or self.snyk.never_synced():
                 try:
@@ -1731,6 +1953,10 @@ class DataFeeds(object):
     @property
     def nvd(self):
         return self._nvdsFeed_cls()
+
+    @property
+    def nvdV2(self):
+        return self._nvdV2sFeed_cls()
 
     @property
     def snyk(self):
