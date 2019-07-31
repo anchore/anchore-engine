@@ -427,7 +427,6 @@ class NvdMetadata(Base):
         if cvss_version == 3:
             score = None
         elif cvss_version == 2:
-            log.debug("MEH: {}".format(self.cvss.get('base_metrics', {})))
             score = self.cvss.get('base_metrics', {}).get('score', None)
         else:
             log.warn("invalid cvss version specified as input ({})".format(cvss_version))
