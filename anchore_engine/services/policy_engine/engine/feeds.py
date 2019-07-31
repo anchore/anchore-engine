@@ -285,110 +285,27 @@ class NvdV2FeedDataMapper(FeedDataMapper):
 
         db_rec.vulnerable_cpes = []
         for input_cpe in record_json.get('cpes', []):
-            #         "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
-
-            cpetoks = input_cpe.split(":")
-            newcpe = CpeV2Vulnerability()
-            newcpe.feed_name = 'nvdv2'
-            newcpe.part = cpetoks[2]
-            newcpe.vendor = cpetoks[3]
-            newcpe.product = cpetoks[4]
-            newcpe.version = cpetoks[5]
-            newcpe.update = cpetoks[6]
-            newcpe.edition = cpetoks[7]
-            newcpe.language = cpetoks[8]
-            newcpe.sw_edition = cpetoks[9]
-            newcpe.target_sw = cpetoks[10]
-            newcpe.target_hw = cpetoks[11]
-            newcpe.other = cpetoks[12]
-            newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
-            db_rec.vulnerable_cpes.append(newcpe)
-
-        if False:
-            db_rec = NvdMetadata()
-            db_rec.name = record_json['@id']
-            db_rec.namespace_name = self.group
-            db_rec.summary = record_json.get('summary', "")
-
-            rawvc = record_json.get('vulnerable-configuration', {})
-            db_rec.vulnerable_configuration = rawvc
-            #db_rec.vulnerable_configuration = json.dumps(rawvc)
-
-            rawvsw = record_json.get('vulnerable-software-list', {})
-            db_rec.vulnerable_software = rawvsw
-            #db_rec.vulnerable_software = json.dumps(rawvsw)
-
-            rawcvss = record_json.get('cvss', {})
-            db_rec.cvss = rawcvss
-            #db_rec.cvss = json.dumps(rawcvss)
-
-            sev = "Unknown"
             try:
-                #cvss_json = json.loads(self.cvss)
-                score = float(rawcvss['base_metrics']['score'])
-                if score <= 3.9:
-                    sev = "Low"
-                elif score <= 6.9:
-                    sev = "Medium"
-                elif score <= 10.0:
-                    sev = "High"
-                else:
-                    sev = "Unknown"
-            except:
-                sev = "Unknown"
-            db_rec.severity = sev
-
-            db_rec.vulnerable_cpes = []
-
-            vswlist = []
-            try:
-                if isinstance(rawvsw['product'], list):
-                   vswlist = rawvsw['product']
-                else:
-                    vswlist = [rawvsw['product']]
-            except:
-                pass
-
-            # convert each vulnerable software list CPE into a DB record
-            all_cpes = {}
-            for vsw in vswlist:
-                try:
-
-                    # tokenize the input CPE
-                    toks = vsw.split(":")
-                    final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-                    for i in range(1, len(final_cpe)):
-                        try:
-                            if toks[i]:
-                                final_cpe[i] = toks[i]
-                            else:
-                                final_cpe[i] = '-'
-                        except:
-                            final_cpe[i] = '-'
-
-                    if ':'.join(final_cpe) not in all_cpes:
-                        all_cpes[':'.join(final_cpe)] = True
-                        if final_cpe[1] == '/a':
-                            newcpe = CpeV2Vulnerability()
-                            newcpe.feed_name = 'nvdv2'
-                            newcpe.cpetype = final_cpe[1]
-                            newcpe.vendor = final_cpe[2]
-                            newcpe.product = final_cpe[3]
-                            newcpe.version = final_cpe[4]
-                            newcpe.update = final_cpe[5]
-                            themeta = final_cpe[6]
-                            if 'ruby' in final_cpe[6]:
-                                themeta = '~~~ruby~~'
-                            elif 'node.js' in final_cpe[6] or 'nodejs' in final_cpe[6]:
-                                themeta = '~~~node.js~~'
-                            elif 'python' in final_cpe[6]:
-                                themeta = '~~~python~~'
-                            newcpe.other = themeta
-                            newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
-                            db_rec.vulnerable_cpes.append(newcpe)
-
-                except Exception as err:
-                    log.warn("failed to convert vulnerable-software-list into database CPE record - exception: " + str(err))
+                # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
+                # TODO - handle cpe inputs with escaped characters
+                cpetoks = input_cpe.split(":")
+                newcpe = CpeV2Vulnerability()
+                newcpe.feed_name = 'nvdv2'
+                newcpe.part = cpetoks[2]
+                newcpe.vendor = cpetoks[3]
+                newcpe.product = cpetoks[4]
+                newcpe.version = cpetoks[5]
+                newcpe.update = cpetoks[6]
+                newcpe.edition = cpetoks[7]
+                newcpe.language = cpetoks[8]
+                newcpe.sw_edition = cpetoks[9]
+                newcpe.target_sw = cpetoks[10]
+                newcpe.target_hw = cpetoks[11]
+                newcpe.other = cpetoks[12]
+                newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
+                db_rec.vulnerable_cpes.append(newcpe)
+            except Exception as err:
+                log.warn("failed to convert vulnerable-software-list into database CPEV2 record - exception: " + str(err))
 
         return db_rec
 

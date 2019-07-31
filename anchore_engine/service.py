@@ -507,12 +507,7 @@ class ApiService(BaseService):
             flask_app.before_request(self._inject_service)
 
             metrics.init_flask_metrics(flask_app, servicename=service_name)
-            if service_name == 'apiext':
-                self._application.add_api(Path(api_spec_file), validate_responses=True)
-            else:
-                self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
-
-
+            self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
 
             return self._application
         except Exception as err:
