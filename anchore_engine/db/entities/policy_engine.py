@@ -410,6 +410,8 @@ class NvdMetadata(Base):
     vulnerable_software = Column(StringJSON)
     summary = Column(String)
     cvss = Column(StringJSON)
+    cvssv3 = {}
+    cvssv2 = {}
     vulnerable_cpes = relationship('CpeVulnerability', back_populates='parent', cascade='all, delete-orphan')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -425,6 +427,7 @@ class NvdMetadata(Base):
         if cvss_version == 3:
             score = None
         elif cvss_version == 2:
+            log.debug("MEH: {}".format(self.cvss.get('base_metrics', {})))
             score = self.cvss.get('base_metrics', {}).get('score', None)
         else:
             log.warn("invalid cvss version specified as input ({})".format(cvss_version))
