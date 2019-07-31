@@ -12,7 +12,7 @@ import time
 import hashlib
 import os
 import re
-from sqlalchemy import or_, and_, desc, asc
+from sqlalchemy import or_, and_, desc, asc, func
 from werkzeug.exceptions import HTTPException
 
 
@@ -899,7 +899,7 @@ def query_images_by_package(dbsession, request_inputs):
     pkg_hash = {}
     try:
         ipm_query = dbsession.query(ImagePackage).filter(ImagePackage.name==pkg_name).filter(ImagePackage.image_user_id==userId)
-        cpm_query = dbsession.query(ImageCpe).filter(ImageCpe.name==pkg_name).filter(ImageCpe.image_user_id==userId)
+        cpm_query = dbsession.query(ImageCpe).filter(func.lower(ImageCpe.name)==func.lower(pkg_name)).filter(ImageCpe.image_user_id==userId)
 
         if pkg_version and pkg_version != 'None':
             ipm_query = ipm_query.filter(or_(ImagePackage.version==pkg_version, ImagePackage.fullversion==pkg_version))
@@ -1004,7 +1004,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         image_cpe_matches = []
 
         ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id).filter(ImagePackageVulnerability.pkg_user_id==userId)
-        icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(ImageCpe.name==CpeVulnerability.name).filter(ImageCpe.image_user_id==userId).filter(ImageCpe.version==CpeVulnerability.version)
+        icm_query = dbsession.query(ImageCpe,CpeVulnerability).filter(CpeVulnerability.vulnerability_id==id).filter(func.lower(ImageCpe.name)==CpeVulnerability.name).filter(ImageCpe.image_user_id==userId).filter(ImageCpe.version==CpeVulnerability.version)
 
         if severity_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability.has(severity=severity_filter))
@@ -1014,7 +1014,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
             icm_query = icm_query.filter(CpeVulnerability.namespace_name==namespace_filter)
         if affected_package_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.pkg_name==affected_package_filter)
-            icm_query = icm_query.filter(ImageCpe.name==affected_package_filter)
+            icm_query = icm_query.filter(func.lower(ImageCpe.name)==func.lower(affected_package_filter))
 
         image_package_matches = ipm_query#.all()
         image_cpe_matches = icm_query#.all()
