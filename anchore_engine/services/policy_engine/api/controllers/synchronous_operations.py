@@ -1150,8 +1150,10 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['nvd_data'] = [
                         {
                             'id': vulnerability.name,
-                            'cvssV3': vulnerability.get_cvssScores(cvss_version=3),
-                            'cvssV2': vulnerability.get_cvssScores(cvss_version=2),
+                            'cvss_scores': {
+                                'cvssV3': vulnerability.get_cvssScores(cvss_version=3),
+                                'cvssV2': vulnerability.get_cvssScores(cvss_version=2),
+                            },
                         }
                 ]
 
@@ -1185,8 +1187,10 @@ def query_vulnerabilities(dbsession, request_inputs):
                     namespace_el['nvd_data'].append(
                         {
                             'id': nvd_record.name,
-                            'cvssV3': nvd_record.get_cvssScores(cvss_version=3),
-                            'cvssV2': nvd_record.get_cvssScores(cvss_version=2),
+                            'cvss_scores': {
+                                'cvssV3': nvd_record.get_cvssScores(cvss_version=3),
+                                'cvssV2': nvd_record.get_cvssScores(cvss_version=2),
+                            }
                         }
                     )
                 

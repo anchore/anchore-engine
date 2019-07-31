@@ -2350,6 +2350,8 @@ definitions:
       link:
         type: string
         description: URL for the upstream CVE record in the reporting source (e.g. ubuntu security tracker)
+      nvd_data:
+        $ref: "#/definitions/NvdDataList"
     description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
   ImageReference:
     type: object
@@ -3172,6 +3174,52 @@ definitions:
       package_path:
         type: string
         description: The location (if applicable) of the vulnerable package in the container filesystem
+      nvd_data:
+        $ref: "#/definitions/NvdDataList"
+  NvdDataList:
+    type: array
+    description: List of Nvd Data objects
+    items:
+      $ref: "#/definitions/NvdDataObject"
+  NvdDataObject:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Vulnerability ID
+      cvss_scores:
+        $ref: "#/definitions/CVSSScores"
+  CVSSScores:
+    type: object
+    properties:
+      cvssV2:
+        $ref: "#/definitions/CVSSV2Scores"
+      cvssV3:
+        $ref: "#/definitions/CVSSV3Scores"
+  CVSSV2Scores:
+    type: object
+    properties:
+      baseScore:
+        type: number
+        x-nullable: True
+      exploitabilityScore:
+        type: number
+        x-nullable: True
+      impactScore:
+        type: number
+        x-nullable: True
+  CVSSV3Scores:
+    type: object
+    properties:
+      baseScore:
+        type: number
+        x-nullable: True
+      exploitabilityScore:
+        type: number
+        x-nullable: True
+      impactScore:
+        type: number
+        x-nullable: True
   VulnerabilityList:
     type: array
     description: List of Vulnerability objects

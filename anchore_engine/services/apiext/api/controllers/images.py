@@ -171,10 +171,11 @@ def make_cvss_scores(vulnerability_cves):
         try:
             marshalled_el = {
                 'id': cve_el.get('id'),
+                'cvss_scores': {},
             }
 
             for i in [3, 2]:
-                marshalled_el['cvssV{}'.format(i)] = {}
+                marshalled_el['cvss_scores']['cvssV{}'.format(i)] = {}
 
                 tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('cvssV{}'.format(i), {}).get('baseScore', -1.0)
                 baseScore = float(tmp) if tmp else -1.0
@@ -183,9 +184,9 @@ def make_cvss_scores(vulnerability_cves):
                 tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('impactScore', -1.0)
                 impactScore = float(tmp) if tmp else -1.0
 
-                marshalled_el['cvssV{}'.format(i)]['baseScore'] = baseScore
-                marshalled_el['cvssV{}'.format(i)]['exploitabilityScore'] = exploitabilityScore
-                marshalled_el['cvssV{}'.format(i)]['impactScore'] = impactScore
+                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['baseScore'] = baseScore
+                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['exploitabilityScore'] = exploitabilityScore
+                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['impactScore'] = impactScore
 
             ret.append(marshalled_el)
         except Exception as err:
