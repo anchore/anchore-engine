@@ -457,11 +457,9 @@ class NvdV2Metadata(Base):
     name = Column(String(vuln_id_length), primary_key=True)
     namespace_name = Column(String(namespace_length), primary_key=True)  # e.g. nvddb:2018"
     severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
-    vulnerable_configuration = Column(StringJSON)
-    vulnerable_software = Column(StringJSON)
     summary = Column(String)
-    cvssv2 = Column(StringJSON)
-    cvssv3 = Column(StringJSON)
+    cvssv2 = Column(JSON)
+    cvssv3 = Column(JSON)
     
     vulnerable_cpes = relationship('CpeV2Vulnerability', back_populates='parent', cascade='all, delete-orphan')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
