@@ -1048,7 +1048,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         start = time.time()
         if image_package_matches or image_cpe_matches:
             imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
-        
+            
             start = time.time()
             for image in image_package_matches:
                 if vendor_only and check_no_advisory(image):
