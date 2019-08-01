@@ -16,7 +16,7 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
         httpcode = 500
     else:
         httpcode = in_httpcode
-    detail = {}
+
     msg = str(errmsg)
 
     ret = {
