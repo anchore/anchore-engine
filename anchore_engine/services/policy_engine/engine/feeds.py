@@ -1464,7 +1464,7 @@ class NvdV2Feed(AnchoreServiceFeed):
     def record_count(self, group_name):
         db = get_session()
         try:
-            if 'nvddb' in group_name:
+            if 'cves' in group_name:
                 return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
             else:
                 return 0
