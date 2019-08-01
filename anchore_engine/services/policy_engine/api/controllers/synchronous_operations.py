@@ -493,7 +493,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
                 eval_result = executable_bundle.execute(img_obj, tag, ExecutionContext(db_session=db, configuration={}))
             except Exception as e:
                 log.exception('Error executing policy bundle {} against image {} w/tag {}: {}'.format(bundle['id'], image_id, tag, e))
-                return make_response_error('Internal bundle evaluation error', detail='Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e), in_httpcode=500), 500
+                return make_response_error('Internal bundle evaluation error', details={'message':'Cannot execute given policy against the image due to errors executing the policy bundle: {}'.format(e)}, in_httpcode=500), 500
         else:
             # Construct a failure eval with details on the errors and mappings to send to client
             eval_result = build_empty_error_execution(img_obj, tag, executable_bundle, errors=problems, warnings=[])
@@ -542,7 +542,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
     except Exception as e:
         db.rollback()
         log.exception('Failed processing bundle evaluation: {}'.format(e))
-        return make_response_error('Unexpected internal error', detail=str(e), in_httpcode=500), 500
+        return make_response_error('Unexpected internal error', details={'message': str(e)}, in_httpcode=500), 500
     finally:
         db.close()
 
