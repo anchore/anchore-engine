@@ -505,6 +505,7 @@ class ApiService(BaseService):
             self.init_auth()
 
             flask_app.before_request(self._inject_service)
+            flask_app.after_request(self._call_gc)
 
             metrics.init_flask_metrics(flask_app, servicename=service_name)
             self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
@@ -528,6 +529,12 @@ class ApiService(BaseService):
         :return:
         """
         g.service = self
+
+    def _call_gc(self, response):
+        import gc
+        gc.collect()
+        logger.debug("AFTER_REQUEST")
+        return(response)
 
     def initialize_api(self):
         """

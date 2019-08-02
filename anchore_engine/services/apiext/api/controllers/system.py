@@ -68,6 +68,13 @@ def version_noop():
     """
     return '', 200
 
+@authorizer.requires([]) # Any authenticated user
+def route0():
+    return "", 200
+
+
+def route1():
+    return "", 200
 
 @authorizer.requires([]) # Any authenticated user
 def get_status():

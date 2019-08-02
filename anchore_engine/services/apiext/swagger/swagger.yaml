@@ -1199,6 +1199,43 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /route0:
+    get:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: route0
+      x-anchore-authz-action: None
+      summary: Service status
+      description: Get the API service status
+      responses:
+        200:
+          description: Status listing
+          schema:
+            $ref: "#/definitions/StatusResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+
+  /route1:
+    get:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: route1
+      x-anchore-authz-action: None
+      summary: Service status
+      description: Get the API service status
+      responses:
+        200:
+          description: Status listing
+          schema:
+            $ref: "#/definitions/StatusResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
   /system:
     get:
       tags:
