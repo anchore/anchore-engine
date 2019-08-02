@@ -18,8 +18,8 @@ def test_anon_user():
                              token_url=token_url,
                              client_url=client_url,
                              user=('anon@ancho.re', 'pbiU2RYZ2XrmYQ'),
-                             conn_timeout=3,
-                             read_timeout=10)
+                             conn_timeout=10,
+                             read_timeout=30)
     for f in test_client.list_feeds().feeds:
         try:
             test_client.list_feed_groups(f.name)
@@ -34,8 +34,8 @@ def test_auth_error():
                                  token_url=token_url,
                                  client_url=client_url,
                                  user=('anon@ancho.re', 'foobar'),
-                                 conn_timeout=3,
-                                 read_timeout=10)
+                                 conn_timeout=10,
+                                 read_timeout=30)
         f = test_client.list_feeds()
 
 
@@ -44,8 +44,8 @@ def test_feed_sync():
                              token_url=token_url,
                              client_url=client_url,
                              user=('anon@ancho.re', 'pbiU2RYZ2XrmYQ'),
-                             conn_timeout=3,
-                             read_timeout=10)
+                             conn_timeout=10,
+                             read_timeout=30)
     for f in test_client.list_feeds().feeds:
         try:
             test_client.list_feed_groups(f.name)
