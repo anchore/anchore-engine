@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 (2019-08-01)
+
++ Fix - Update to CPE match DB query, to account for package names that are not reported as lowercase.  Fixes #227.
++ Fix - Update to fix incorrect arg passing for error message construction of "detail" property, on policy bundle add validation failures.
++ Improved - Update to image analysis speed for some images exhibiting long unpack times due to layer complications. Improves squashing speed by going through layer tarfiles sequentially.
+
 ## 0.4.1 (2019-07-01)
 
 + Added - Store a set of digests in a subscription record, allowing engine to run vuln_update/policy_eval checks over specified digests as well as latest. Contribution by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
