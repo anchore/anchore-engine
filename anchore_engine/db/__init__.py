@@ -60,8 +60,11 @@ from .entities.policy_engine import NpmMetadata
 from .entities.policy_engine import GemMetadata
 from .entities.policy_engine import NvdMetadata
 from .entities.policy_engine import NvdV2Metadata
+from .entities.policy_engine import VulnDBMetadata
 from .entities.policy_engine import CpeVulnerability
 from .entities.policy_engine import CpeV2Vulnerability
+from .entities.policy_engine import VulnDBAffectedCpe
+from .entities.policy_engine import VulnDBUnaffectedCpe
 from .entities.policy_engine import AnalysisArtifact
 from .entities.policy_engine import ImagePackageManifestEntry
 from .entities.policy_engine import CachedPolicyEvaluation

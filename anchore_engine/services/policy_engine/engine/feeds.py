@@ -7,19 +7,25 @@ data. Additionally, any new feed will require new code to be able to consume it 
 an update to the feed handling code is ok to be required as well.
 
 """
-import json
+import copy
 import datetime
+import math
 import re
 import threading
 import time
 import traceback
-
-from anchore_engine.db import get_thread_scoped_session as get_session
+from decimal import Decimal as D
+import operator
+from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, \
+    InvalidCredentialsError
+from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, \
+    NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBAffectedCpe, VulnDBUnaffectedCpe
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
-from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, NvdV2Metadata, CpeV2Vulnerability
+from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 from anchore_engine.util.langpack import convert_langversionlist_to_semver
+from anchore_engine.utils import CPE
+from dateutil import parser as dt_parser
 
 log = get_logger()
 
@@ -273,41 +279,115 @@ class NvdV2FeedDataMapper(FeedDataMapper):
         db_rec = NvdV2Metadata()
         db_rec.name = record_json.get('cve', {}).get('CVE_data_meta', {}).get('ID', None)
         db_rec.namespace_name = self.group
-        db_rec.summary = record_json.get('cve', {}).get('description', {}).get('description_data', [{}])[0].get('value', "")
-        db_rec.cvssv2 = record_json.get('impact', {}).get('baseMetricV2', {})
-        db_rec.cvssv3 = record_json.get('impact', {}).get('baseMetricV3', {})
-        if db_rec.cvssv3.get('cvssV3', {}).get('baseSeverity', None):
-            db_rec.severity = db_rec.cvssv3.get('cvssV3', {}).get('baseSeverity', "").lower().capitalize()
-        elif db_rec.cvssv2.get('severity', None):
-            db_rec.severity = db_rec.cvssv2.get('severity', "").lower().capitalize()
-        else:
-            db_rec.severity = "Unknown"
+        db_rec.description = record_json.get('cve', {}).get('description', {}).get('description_data', [{}])[0].get('value', "")
+        db_rec.cvss_v2 = record_json.get('cvss_v2', None)
+        db_rec.cvss_v3 = record_json.get('cvss_v3', None)
+        db_rec.impact = record_json.get('impact', None)
+        db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
+        db_rec.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
 
         db_rec.vulnerable_cpes = []
-        for input_cpe in record_json.get('cpes', []):
+        for input_cpe in record_json.get('vulnerable_cpes', []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 # TODO - handle cpe inputs with escaped characters
-                cpetoks = input_cpe.split(":")
+                # cpetoks = input_cpe.split(":")
+                cpe_obj = CPE.from_cpe23_fs(input_cpe)
                 newcpe = CpeV2Vulnerability()
-                newcpe.feed_name = 'nvdv2'
-                newcpe.part = cpetoks[2]
-                newcpe.vendor = cpetoks[3]
-                newcpe.product = cpetoks[4]
-                newcpe.version = cpetoks[5]
-                newcpe.update = cpetoks[6]
-                newcpe.edition = cpetoks[7]
-                newcpe.language = cpetoks[8]
-                newcpe.sw_edition = cpetoks[9]
-                newcpe.target_sw = cpetoks[10]
-                newcpe.target_hw = cpetoks[11]
-                newcpe.other = cpetoks[12]
-                newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
+                newcpe.feed_name = self.feed
+                newcpe.part = cpe_obj.part
+                newcpe.vendor = cpe_obj.vendor
+                newcpe.product = cpe_obj.product
+                newcpe.version = cpe_obj.version
+                newcpe.update = cpe_obj.update
+                newcpe.edition = cpe_obj.edition
+                newcpe.language = cpe_obj.language
+                newcpe.sw_edition = cpe_obj.sw_edition
+                newcpe.target_sw = cpe_obj.target_sw
+                newcpe.target_hw = cpe_obj.target_hw
+                newcpe.other = cpe_obj.other
                 db_rec.vulnerable_cpes.append(newcpe)
             except Exception as err:
                 log.warn("failed to convert vulnerable-software-list into database CPEV2 record - exception: " + str(err))
 
         return db_rec
+
+
+class VulnDBFeedDataMapper(FeedDataMapper):
+    """
+    Maps an VulnDB record into an ORM object
+    """
+
+    def map(self, record_json):
+        #log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
+        db_rec = VulnDBMetadata()
+        db_rec.name = record_json.get('id')
+        db_rec.namespace_name = self.group
+        db_rec.title = record_json.get('title', None)
+        db_rec.description = record_json.get('description', None)
+        db_rec.solution = record_json.get('solution', None)
+        db_rec.vendor_product_info = record_json.get('vendor_product_info', [])
+        db_rec.references = record_json.get('references', [])
+        db_rec.vulnerable_packages = record_json.get('vulnerable_packages', [])
+        db_rec.vulnerable_libraries = record_json.get('vulnerable_libraries', [])
+        db_rec.vendor_cvss_v2 = record_json.get('vendor_cvss_v2', [])
+        db_rec.vendor_cvss_v3 = record_json.get('vendor_cvss_v3', [])
+        db_rec.nvd = record_json.get('nvd', [])
+        db_rec.vuln_metadata = record_json.get('metadata', {})
+        db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
+
+        db_rec.vulnerable_cpes = []
+        for input_cpe in record_json.get('vulnerable_cpes', []):
+            try:
+                # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
+                cpe_obj = CPE.from_cpe23_fs(input_cpe)
+                newcpe = VulnDBAffectedCpe()
+                newcpe.feed_name = self.feed
+                # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
+                newcpe.part = cpe_obj.part
+                newcpe.vendor = cpe_obj.vendor.replace('\\', '')
+                newcpe.product = cpe_obj.product.replace('\\', '')
+                newcpe.version = cpe_obj.version.replace('\\', '')
+                newcpe.update = cpe_obj.update.replace('\\', '')
+                newcpe.edition = cpe_obj.edition.replace('\\', '')
+                newcpe.language = cpe_obj.language.replace('\\', '')
+                newcpe.sw_edition = cpe_obj.sw_edition.replace('\\', '')
+                newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
+                newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
+                newcpe.other = cpe_obj.other.replace('\\', '')
+
+                db_rec.vulnerable_cpes.append(newcpe)
+            except Exception as err:
+                log.warn("failed to convert vendor_product_info into database VulnDBVulnerabilityCpe record - exception: " + str(err))
+
+        db_rec.unaffected_cpes = []
+        for input_cpe in record_json.get('unaffected_cpes', []):
+            try:
+                # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
+                cpe_obj = CPE.from_cpe23_fs(input_cpe)
+                newcpe = VulnDBUnaffectedCpe()
+                newcpe.feed_name = self.feed
+                # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
+                newcpe.part = cpe_obj.part
+                newcpe.vendor = cpe_obj.vendor.replace('\\', '')
+                newcpe.product = cpe_obj.product.replace('\\', '')
+                newcpe.version = cpe_obj.version.replace('\\', '')
+                newcpe.update = cpe_obj.update.replace('\\', '')
+                newcpe.edition = cpe_obj.edition.replace('\\', '')
+                newcpe.language = cpe_obj.language.replace('\\', '')
+                newcpe.sw_edition = cpe_obj.sw_edition.replace('\\', '')
+                newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
+                newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
+                newcpe.other = cpe_obj.other.replace('\\', '')
+
+                db_rec.unaffected_cpes.append(newcpe)
+            except Exception as err:
+                log.warn(
+                    "failed to convert vendor_product_info into database VulnDBVulnerabilityCpe record - exception: " + str(
+                        err))
+
+        return db_rec
+
 
 class SnykFeedDataMapper(FeedDataMapper):
     """
@@ -1464,12 +1544,57 @@ class NvdV2Feed(AnchoreServiceFeed):
     def record_count(self, group_name):
         db = get_session()
         try:
-            if 'cves' in group_name:
-                return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
-            else:
-                return 0
+            return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
         except Exception as e:
             log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
+        finally:
+            db.rollback()
+
+
+class VulnDBFeed(AnchoreServiceFeed):
+    """
+    Feed for VulnDB data served from on-prem enterprise feed service
+    """
+
+    __feed_name__ = 'vulndb'
+    _cve_key = 'id'
+    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, VulnDBFeedDataMapper, _cve_key)
+
+    def query_by_key(self, key, group=None):
+        if not group:
+            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
+
+        db = get_session()
+        try:
+            return db.query(VulnDBMetadata).get((key, group))
+        except Exception as e:
+            log.exception('Could not retrieve nvd vulnerability by key:')
+
+    def _flush_group(self, group_obj, flush_helper_fn=None):
+
+        db = get_session()
+        if flush_helper_fn:
+            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        count = db.query(VulnDBAffectedCpe).filter(VulnDBAffectedCpe.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} VulnDBAffectedCpe records'.format(count))
+        count = db.query(VulnDBUnaffectedCpe).filter(VulnDBUnaffectedCpe.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} VulnDBUnaffectedCpe records'.format(count))
+        count = db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} VulnDBMetadata records'.format(count))
+
+        db.flush()
+
+    def _dedup_data_key(self, item):
+        return item.name
+
+    def record_count(self, group_name):
+        db = get_session()
+        try:
+            return db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_name).count()
+        except Exception as e:
+            log.exception('Error getting feed data group record count in vulndb feed for group: {}'.format(group_name))
             raise
         finally:
             db.rollback()
@@ -1522,6 +1647,7 @@ class FeedFactory(object):
         'nvd': NvdFeed,
         'nvdv2': NvdV2Feed,
         'snyk': SnykFeed,
+        'vulndb': VulnDBFeed,
     }
 
     default_mapping = AnchoreServiceFeed
@@ -1564,6 +1690,7 @@ class DataFeeds(object):
     _nvdsFeed_cls = NvdFeed
     _nvdV2sFeed_cls = NvdV2Feed
     _snyksFeed_cls = SnykFeed
+    _vulndbFeed_cls = VulnDBFeed
 
     def __init__(self):
         self.vuln_fn = None
@@ -1608,6 +1735,8 @@ class DataFeeds(object):
             return self.nvdV2.record_count(group_name)
         elif feed_name == 'snyk':
             return self.snyk.record_count(group_name)
+        elif feed_name == 'vulndb':
+            return self.vulndb.record_count(group_name)
         else:
             return 0
 
@@ -1644,6 +1773,11 @@ class DataFeeds(object):
             self.snyk.refresh_groups()
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for snyk feed due to insufficient access or invalid credentials: {}'.format(e.message))
+
+        try:
+            self.vulndb.refresh_groups()
+        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+            log.error('Cannot update group metadata for VulnDB feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
     def sync(self, to_sync=None, full_flush=False):
         """
@@ -1708,6 +1842,16 @@ class DataFeeds(object):
                 log.warn('Cannot sync group metadata for snyk feed, may not be available in the feed source')
                 log.debug(traceback.format_exc())
                 snyk_feed = None
+
+        vulndb_feed = None
+        if to_sync is None or 'vulndb' in to_sync:
+            try:
+                log.info('Syncing group metadata for vulndb feed')
+                vulndb_feed = self.vulndb
+                vulndb_feed.init_feed_meta_and_groups()
+            except:
+                log.exception('Cannot sync group metadata for vulndb feed')
+                vulndb_feed = None
 
         # Perform the feed sync next
 
@@ -1774,6 +1918,19 @@ class DataFeeds(object):
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = snyk_feed.__feed_name__
+                fail_result['total_time_seconds'] = time.time() - t
+                result.append(fail_result)
+
+        if vulndb_feed:
+            t = time.time()
+            try:
+                log.info('Syncing vulndb feed')
+                result.append(vulndb_feed.sync(full_flush=full_flush))
+            except:
+                log.exception('Failure updating the vulndb feed')
+                all_success = False
+                fail_result = build_feed_sync_results()
+                fail_result['feed'] = vulndb_feed.__feed_name__
                 fail_result['total_time_seconds'] = time.time() - t
                 result.append(fail_result)
 
@@ -1853,6 +2010,17 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
+        if to_sync is None or 'vulndb' in to_sync:
+            if not only_if_unsynced or self.vulndb.never_synced():
+                try:
+                    log.info('Syncing vulndb feed')
+                    updated_records['nvd'] = self.vulndb.bulk_sync()
+                except Exception as err:
+                    log.exception('Failure updating the vulndb feed. Continuing with next feed')
+                    all_success = False
+
+            else:
+                log.info('Skipping bulk sync since feed already initialized')
 
         if not all_success:
             raise Exception("one or more feeds failed to sync")
@@ -1878,3 +2046,7 @@ class DataFeeds(object):
     @property
     def snyk(self):
         return self._snyksFeed_cls()
+
+    @property
+    def vulndb(self):
+        return self._vulndbFeed_cls()

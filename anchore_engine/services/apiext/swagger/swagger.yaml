@@ -2369,6 +2369,8 @@ definitions:
         description: URL for the upstream CVE record in the reporting source (e.g. ubuntu security tracker)
       nvd_data:
         $ref: "#/definitions/NvdDataList"
+      vendor_data:
+        $ref: "#/definitions/VendorDataList"
     description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
   ImageReference:
     type: object
@@ -3193,6 +3195,8 @@ definitions:
         description: The location (if applicable) of the vulnerable package in the container filesystem
       nvd_data:
         $ref: "#/definitions/NvdDataList"
+      vendor_data:
+        $ref: "#/definitions/VendorDataList"
   NvdDataList:
     type: array
     description: List of Nvd Data objects
@@ -3203,38 +3207,48 @@ definitions:
     properties:
       id:
         type: string
-        description: Vulnerability ID
-      cvss_scores:
-        $ref: "#/definitions/CVSSScores"
-  CVSSScores:
+        description: NVD Vulnerability ID
+      cvss_v2:
+        $ref: "#/definitions/CVSSV2Scores"
+      cvss_v3:
+        $ref: "#/definitions/CVSSV3Scores"
+  VendorDataList:
+    type: array
+    description: List of Vendor Data objects
+    items:
+      $ref: "#/definitions/VendorDataObject"
+  VendorDataObject:
     type: object
     properties:
-      cvssV2:
+      id:
+        type: string
+        description: Vendor Vulnerability ID
+      cvss_v2:
         $ref: "#/definitions/CVSSV2Scores"
-      cvssV3:
+      cvss_v3:
         $ref: "#/definitions/CVSSV3Scores"
   CVSSV2Scores:
     type: object
     properties:
-      baseScore:
+      base_score:
         type: number
         x-nullable: True
-      exploitabilityScore:
+      exploitability_score:
         type: number
         x-nullable: True
-      impactScore:
+      impact_score:
         type: number
         x-nullable: True
   CVSSV3Scores:
     type: object
     properties:
-      baseScore:
+      base_score:
         type: number
         x-nullable: True
-      exploitabilityScore:
+      exploitability_score:
         type: number
         x-nullable: True
-      impactScore:
+      impact_score:
         type: number
         x-nullable: True
   VulnerabilityList:

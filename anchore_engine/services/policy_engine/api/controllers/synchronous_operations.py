@@ -25,7 +25,7 @@ from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, select_nvd_classes
+from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, VulnDBMetadata, VulnDBAffectedCpe, select_nvd_classes
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -620,6 +620,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             if not have_vulnerabilities_for(ns):
                 warns = ['No vulnerability data available for image distro: {}'.format(ns.namespace_name)]
 
+        # select the nvd class once and be done
+        _nvd_cls, _cpe_cls = select_nvd_classes(db)
 
         rows = []
         for vuln in vulns:
@@ -629,16 +631,13 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
             # rennovation this for new CVSS references
             cves = ''
-            cve_info = []
-            nvd_records = vuln.vulnerability.get_nvd_vulnerabilities()
+            nvd_list = []
+            all_data = {'nvd_data': nvd_list, 'vendor_data': []}
+            nvd_records = vuln.vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
             for nvd_record in nvd_records:
-                el = {
-                    'id': nvd_record.name,
-                    'baseMetricV3': nvd_record.cvssv3,
-                    'baseMetricV2': nvd_record.cvssv2,
-                }
-                cve_info.append(el)
-            cves = json.dumps(cve_info)
+                nvd_list.extend(nvd_record.get_cvss_data_nvd())
+
+            cves = json.dumps(all_data)
 
             #cves = ''
             #if vuln.vulnerability.additional_metadata:
@@ -677,7 +676,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
-            all_cpe_matches = img.cpe_vulnerabilities()
+            all_cpe_matches = img.cpe_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
             
             if not all_cpe_matches:
                 all_cpe_matches = []
@@ -686,8 +685,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             for image_cpe, vulnerability_cpe in all_cpe_matches:
                 cpe_vuln_el = {
                     'vulnerability_id': vulnerability_cpe.vulnerability_id,
-                    'severity': vulnerability_cpe.severity,
-                    'link': vulnerability_cpe.link,
+                    'severity': vulnerability_cpe.parent.severity,
+                    'link': vulnerability_cpe.parent.link,
                     'pkg_type': image_cpe.pkg_type,
                     'pkg_path': image_cpe.pkg_path,
                     'name': image_cpe.name,
@@ -696,13 +695,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     'cpe23': image_cpe.get_cpe23string(),
                     'feed_name': vulnerability_cpe.feed_name,
                     'feed_namespace': vulnerability_cpe.namespace_name,
-                    'nvd_data': [
-                        {
-                        'id': vulnerability_cpe.parent.name,
-                        'baseMetricV3': vulnerability_cpe.parent.cvssv3,
-                        'baseMetricV2': vulnerability_cpe.parent.cvssv2,
-                        },
-                    ]
+                    'nvd_data': vulnerability_cpe.parent.get_cvss_data_nvd(),
+                    'vendor_data': vulnerability_cpe.parent.get_cvss_data_vendor()
                 }
                 cpe_hash = hashlib.sha256(utils.ensure_bytes(json.dumps(cpe_vuln_el))).hexdigest()
                 if not cpe_hashes.get(cpe_hash, False):
@@ -1024,29 +1018,39 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         start = time.time()
         image_package_matches = []
         image_cpe_matches = []
+        image_cpe_vlndb_matches = []
 
         (_nvd_cls, _cpe_cls) = select_nvd_classes(dbsession)
 
         ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id).filter(ImagePackageVulnerability.pkg_user_id==userId)
         icm_query = dbsession.query(ImageCpe,_cpe_cls).filter(_cpe_cls.vulnerability_id==id).filter(func.lower(ImageCpe.name)==_cpe_cls.name).filter(ImageCpe.image_user_id==userId).filter(ImageCpe.version==_cpe_cls.version)
+        icm_vulndb_query = dbsession.query(ImageCpe, VulnDBAffectedCpe)\
+            .filter(VulnDBAffectedCpe.vulnerability_id == id)\
+            .filter(func.lower(ImageCpe.name) == VulnDBAffectedCpe.name)\
+            .filter(ImageCpe.image_user_id == userId)\
+            .filter(ImageCpe.version == VulnDBAffectedCpe.version)
 
         if severity_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability.has(severity=severity_filter))
-            icm_query = icm_query.filter(_cpe_cls.severity==severity_filter)
+            icm_query = icm_query.filter(_cpe_cls.parent.has(severity=severity_filter))  # might be slower than join
+            icm_vulndb_query = icm_vulndb_query.filter(_cpe_cls.parent.has(severity=severity_filter))  # might be slower than join
         if namespace_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability_namespace_name==namespace_filter)
             icm_query = icm_query.filter(_cpe_cls.namespace_name==namespace_filter)
+            icm_vulndb_query = icm_vulndb_query.filter(VulnDBAffectedCpe.namespace_name == namespace_filter)
         if affected_package_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.pkg_name==affected_package_filter)
             icm_query = icm_query.filter(func.lower(ImageCpe.name)==func.lower(affected_package_filter))
+            icm_vulndb_query = icm_vulndb_query.filter(func.lower(ImageCpe.name) == func.lower(affected_package_filter))
 
         image_package_matches = ipm_query#.all()
         image_cpe_matches = icm_query#.all()
+        image_cpe_vlndb_matches = icm_vulndb_query
 
         log.debug("QUERY TIME: {}".format(time.time() - start))
 
         start = time.time()
-        if image_package_matches or image_cpe_matches:
+        if image_package_matches or image_cpe_matches or image_cpe_vlndb_matches:
             imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
             
             start = time.time()
@@ -1070,25 +1074,26 @@ def query_images_by_vulnerability(dbsession, request_inputs):
                 ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
             log.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
 
-            start = time.time()
-            for image_cpe, vulnerability_cpe in image_cpe_matches:
-                imageId = image_cpe.image_id
-                if imageId not in ret_hash:
-                    ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
-                    pkg_hash[imageId] = {}
-                pkg_el = {
-                    'name': image_cpe.name,
-                    'version': image_cpe.version,
-                    'type': image_cpe.pkg_type,
-                    'namespace': "{}".format(vulnerability_cpe.namespace_name),
-                    'severity': "{}".format(vulnerability_cpe.severity),
-                }
-                phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
-                if not pkg_hash[imageId].get(phash, False):
-                    ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
-                pkg_hash[imageId][phash] = True
+            for cpe_matches in [image_cpe_matches, image_cpe_vlndb_matches]:
+                start = time.time()
+                for image_cpe, vulnerability_cpe in cpe_matches:
+                    imageId = image_cpe.image_id
+                    if imageId not in ret_hash:
+                        ret_hash[imageId] = {'image': imageId_to_record.get(imageId, {}), 'vulnerable_packages': []}
+                        pkg_hash[imageId] = {}
+                    pkg_el = {
+                        'name': image_cpe.name,
+                        'version': image_cpe.version,
+                        'type': image_cpe.pkg_type,
+                        'namespace': "{}".format(vulnerability_cpe.namespace_name),
+                        'severity': "{}".format(vulnerability_cpe.parent.severity),
+                    }
+                    phash = hashlib.sha256(json.dumps(pkg_el).encode('utf-8')).hexdigest()
+                    if not pkg_hash[imageId].get(phash, False):
+                        ret_hash[imageId]['vulnerable_packages'].append(pkg_el)
+                    pkg_hash[imageId][phash] = True
 
-            log.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
+                log.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
 
         start = time.time()
         vulnerable_images = list(ret_hash.values())
@@ -1126,7 +1131,10 @@ def query_vulnerabilities(dbsession, request_inputs):
             'severity': None,
             'link': None,
             'affected_packages': None,
+            'description': None,
+            'references': None,
             'nvd_data': None,
+            'vendor_data': None
         }
 
         pn_hash = {}
@@ -1135,6 +1143,10 @@ def query_vulnerabilities(dbsession, request_inputs):
         (_nvd_cls, _cpe_cls) = select_nvd_classes(dbsession)
 
         vulnerabilities = dbsession.query(_nvd_cls).filter(_nvd_cls.name==id).order_by(asc(_nvd_cls.created_at)).all()
+        vulnerabilities.extend(
+            dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name == id).order_by(asc(VulnDBMetadata.created_at)).all()
+        )
+
         if vulnerabilities:
             dedupped_return_hash = {}
             vulnerability_exists = True
@@ -1144,18 +1156,12 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['id'] = vulnerability.name
                 namespace_el['namespace'] = vulnerability.namespace_name
                 namespace_el['severity'] = vulnerability.severity
-                namespace_el['link'] = "https://nvd.nist.gov/vuln/detail/{}".format(vulnerability.name)
+                namespace_el['link'] = vulnerability.link
                 namespace_el['affected_packages'] = []
-
-                namespace_el['nvd_data'] = [
-                        {
-                            'id': vulnerability.name,
-                            'cvss_scores': {
-                                'cvssV3': vulnerability.get_cvssScores(cvss_version=3),
-                                'cvssV2': vulnerability.get_cvssScores(cvss_version=2),
-                            },
-                        }
-                ]
+                namespace_el['description'] = vulnerability.get_description()
+                namespace_el['references'] = vulnerability.get_references()
+                namespace_el['nvd_data'] = vulnerability.get_cvss_data_nvd()
+                namespace_el['vendor_data'] = vulnerability.get_cvss_data_vendor()
 
                 for v_pkg in vulnerability.vulnerable_cpes:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
@@ -1183,16 +1189,10 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['affected_packages'] = []
 
                 namespace_el['nvd_data'] = []
-                for nvd_record in vulnerability.get_nvd_vulnerabilities():
-                    namespace_el['nvd_data'].append(
-                        {
-                            'id': nvd_record.name,
-                            'cvss_scores': {
-                                'cvssV3': nvd_record.get_cvssScores(cvss_version=3),
-                                'cvssV2': nvd_record.get_cvssScores(cvss_version=2),
-                            }
-                        }
-                    )
+                namespace_el['vendor_data'] = []
+
+                for nvd_record in vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls):
+                    namespace_el['nvd_data'].extend(nvd_record.get_cvss_scores_nvd())
                 
                 for v_pkg in vulnerability.fixed_in:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):

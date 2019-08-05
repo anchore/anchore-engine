@@ -78,6 +78,7 @@ feeds:
       # Enabling snyk syncs snyk vulnerability data from an on-premise anchore enterprise feeds service. Please contact
       # anchore support for finding out more about this service
       snyk: false
+      vulndb: false
   anonymous_user_username: anon@ancho.re
   anonymous_user_password: pbiU2RYZ2XrmYQ
   url: ${ANCHORE_FEEDS_URL}

@@ -165,34 +165,74 @@ def make_response_content(content_type, content_data):
 
     return(ret)
 
-def make_cvss_scores(vulnerability_cves):
-    ret = []
-    for cve_el in vulnerability_cves:
-        try:
-            marshalled_el = {
-                'id': cve_el.get('id'),
-                'cvss_scores': {},
+def make_cvss_scores(metrics):
+    """
+     [
+        {
+          "cvss_v2": {
+            "base_metrics": {
+              ...
+            },
+            "vector_string": "AV:N/AC:L/Au:N/C:P/I:P/A:P",
+            "version": "2.0"
+          },
+          "cvss_v3": {
+            "base_metrics": {
+             ...
+            },
+            "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "version": "3.0"
+          },
+          "id": "CVE-2019-1234"
+        },
+        {
+          "cvss_v2": {
+            "base_metrics": {
+              ...
+            },
+            "vector_string": "AV:N/AC:L/Au:N/C:P/I:P/A:P",
+            "version": "2.0"
+          },
+          "cvss_v3": {
+            "base_metrics": {
+             ...
+            },
+            "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "version": "3.0"
+          },
+          "id": "CVE-2019-3134"
+        },
+     ]
+    :param metrics:
+    :return:
+    """
+    score_list = []
+
+    for metric in metrics:
+        new_score_packet = {
+            'id': metric.get('id'),
+        }
+        score_list.append(new_score_packet)
+
+        for i in [3, 2]:
+            cvss_dict = metric.get('cvss_v{}'.format(i), {})
+            base_metrics = cvss_dict.get('base_metrics', {}) if cvss_dict else {}
+
+            tmp = base_metrics.get('base_score', -1.0)
+            base_score = float(tmp) if tmp else -1.0
+            tmp = base_metrics.get('exploitability_score', -1.0)
+            exploitability_score = float(tmp) if tmp else -1.0
+            tmp = base_metrics.get('impact_score', -1.0)
+            impact_score = float(tmp) if tmp else -1.0
+
+            new_score_packet['cvss_v{}'.format(i)] = {
+                'base_score': base_score,
+                'exploitability_score': exploitability_score,
+                'impact_score': impact_score
             }
 
-            for i in [3, 2]:
-                marshalled_el['cvss_scores']['cvssV{}'.format(i)] = {}
+    return score_list
 
-                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('cvssV{}'.format(i), {}).get('baseScore', -1.0)
-                baseScore = float(tmp) if tmp else -1.0
-                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('exploitabilityScore', -1.0)
-                exploitabilityScore = float(tmp) if tmp else -1.0
-                tmp = cve_el.get('baseMetricV{}'.format(i), {}).get('impactScore', -1.0)
-                impactScore = float(tmp) if tmp else -1.0
-
-                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['baseScore'] = baseScore
-                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['exploitabilityScore'] = exploitabilityScore
-                marshalled_el['cvss_scores']['cvssV{}'.format(i)]['impactScore'] = impactScore
-
-            ret.append(marshalled_el)
-        except Exception as err:
-            logger.warn("failed to marshal cve element into api response element for nvd_data field - exception: {}".format(str(err)))
-
-    return(ret)
 
 def make_response_vulnerability(vulnerability_type, vulnerability_data):
     ret = []
@@ -216,6 +256,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'feed': 'None',
         'feed_group': 'None',
         'nvd_data': 'None',
+        'vendor_data': 'None'
     }
 
     osvulns = []
@@ -258,17 +299,19 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                 else:
                     nonosvulns.append(el)
 
-
-
                 el['nvd_data'] = []
+                el['vendor_data'] = []
                 if row[header.index('CVES')]:
-                    el['nvd_data'] = make_cvss_scores(json.loads(row[header.index('CVES')]))
-                    for cve_el in el['nvd_data']:
-                        id_cves_map[cve_el['id']] = el.get('vuln')
+                    all_data = json.loads(row[header.index('CVES')])  # {'nvd_data': [], 'vendor_data': []}
+                    el['nvd_data'] = make_cvss_scores(all_data.get('nvd_data', []))
+                    el['vendor_data'] = make_cvss_scores(all_data.get('vendor_data', []))
+                    for nvd_el in el['nvd_data']:
+                        id_cves_map[nvd_el.get('id')] = el.get('vuln')
                     #for cve in row[header.index('CVES')].split():
                     #    id_cves_map[cve] = el.get('vuln')
 
     except Exception as err:
+        logger.exception('could not prepare query response')
         logger.warn("could not prepare query response - exception: " + str(err))
         ret = []
 
@@ -288,6 +331,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     }
     scan_result = vulnerability_data['cpe_report']
     for vuln in scan_result:
+
         el = {}
         el.update(eltemplate)
 
@@ -295,8 +339,22 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
             el[k] = vuln[keymap[k]]
 
         el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+
+        # get nvd scores
         el['nvd_data'] = []
         el['nvd_data'] = make_cvss_scores(vuln.get('nvd_data', []))
+
+        # get vendor scores
+        el['vendor_data'] = []
+        el['vendor_data'] = make_cvss_scores(vuln.get('vendor_data', []))
+
+        # dedup logic for filtering nvd cpes that are referred by vulndb
+        if vuln.get('feed_name') == 'vulndb':
+            for nvd_item in vuln.get('nvd_data', []):
+                try:
+                    id_cves_map[nvd_item.get('id')] = el.get('vuln')
+                except Exception as err:
+                    logger.warn('failure during vulnerability dedup check (vulndbs over nvd) with {}'.format(err))
 
         nonosvulns.append(el)
 
