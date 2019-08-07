@@ -172,13 +172,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         fix = pkg_vuln.fixed_artifact()
                         if fix.version and fix.version != 'None':
                             if fix.fix_observed_at and calendar.timegm(fix.fix_observed_at.timetuple()) > fix_timeallowed:
-                                log.debug("MEHSKIP: {} - {}".format(pkg_vuln.vulnerability.id, fix.fix_observed_at))
                                 continue
                             else:
-                                log.debug("MEHTRIG: {} - {}".format(pkg_vuln.vulnerability.id, fix.fix_observed_at))
                                 fix_msg = '(fix available since {})'.format(fix.fix_observed_at)
                         else:
-                            log.debug("MEHTRIG_NOINFO: {}".format(pkg_vuln.vulnerability.id))
+                            pass
                         
                         vuln_cvss_baseScore = -1.0
                         vuln_cvss_exploitabilityScore = -1.0
