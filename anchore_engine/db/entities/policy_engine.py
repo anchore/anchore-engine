@@ -341,7 +341,7 @@ class FixedArtifact(Base):
 
     @staticmethod
     def _fix_observed_at_update(mapper, connection, target):
-        if not target.fix_observed_at and target.version and target.version != 'none':
+        if not target.fix_observed_at and target.version and target.version != 'None':
             target.fix_observed_at = datetime.datetime.utcnow()
 
     @classmethod
