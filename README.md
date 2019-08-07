@@ -41,7 +41,7 @@ Once the Engine is up and running, you can begin to interact with the system usi
 
 The [Anchore CLI](https://github.com/anchore/anchore-cli) is an easy way to control and interact with the Anchore Engine.
 
-The Anchore CLI can be installed using the Python pip command, or by running the CLI from the [Anchore Engine CLI](https://cloud.docker.com/u/anchore/repository/docker/anchore/engine-cli) container image.  See the [Anchore CLI](https://github.com/anchore/anchore-cli) project on github for code and more installation options and usage.
+The Anchore CLI can be installed using the Python pip command, or by running the CLI from the [Anchore Engine CLI](https://hub.docker.com/r/anchore/engine-cli) container image.  See the [Anchore CLI](https://github.com/anchore/anchore-cli) project on github for code and more installation options and usage.
 
 ## CLI Quick Start (TLDR)
 
