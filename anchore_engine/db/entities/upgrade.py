@@ -901,7 +901,6 @@ def registry_name_upgrade_010_011():
 
     engine = anchore_engine.db.entities.common.get_engine()
 
-    registry_name_length = 64
     new_columns = [
         {
             'table_name': 'registries',
@@ -926,8 +925,44 @@ def registry_name_upgrade_010_011():
     # populate new column
     rc = engine.execute("UPDATE registries set registry_name=registry where registry_name is null")
 
+def fixed_artifacts_upgrade_010_011():
+    """
+    Runs upgrade to add the 'fix_observed_at' column to fixed_artifacts records
+
+    :return:
+    """
+
+    from anchore_engine.db import session_scope
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    new_columns = [
+        {
+            'table_name': 'feed_data_vulnerabilities_fixed_artifacts',
+            'columns': [
+                Column('fix_observed_at', DateTime()),
+            ]
+        }
+    ]
+
+    log.err("creating new table columns")
+    for table in new_columns:
+        for column in table['columns']:
+            log.err("creating new column ({}) in table ({})".format(column.name, table.get('table_name', "")))
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+            except Exception as e:
+                log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+                raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+
+    # populate new column
+    rc = engine.execute("UPDATE feed_data_vulnerabilities_fixed_artifacts set fix_observed_at=updated_at where fix_observed_at is null and version!='None'")
+
 def db_upgrade_010_011():
     registry_name_upgrade_010_011()
+    fixed_artifacts_upgrade_010_011()
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.

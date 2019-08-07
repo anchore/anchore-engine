@@ -51,6 +51,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
     fix_available = BooleanStringParameter(name='fix_available', example_str='true', description='If present, the fix availability for the vulnerability record must match the value of this parameter.', is_required=False, sort_order=10)
     vendor_only = BooleanStringParameter(name='vendor_only', example_str='true', description='If True, an available fix for this CVE must not be explicitly marked as wont be addressed by the vendor', is_required=False, sort_order=11)
     max_days_since_creation = IntegerStringParameter(name='max_days_since_creation', example_str='7', description='If provided, this CVE must be older than the days provided to trigger.', is_required=False, sort_order=12)
+    max_days_since_fix = IntegerStringParameter(name='max_days_since_fix', example_str='30', description='If provided, this CVE must have a fix available, first observed more than the days provided, to trigger.', is_required=False, sort_order=13)
 
     def evaluate(self, image_obj, context):
         is_fix_available = self.fix_available.value()
@@ -71,6 +72,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
         if self.max_days_since_creation.value() is not None:
             timeallowed -= int(int(self.max_days_since_creation.value()) * 86400)
 
+        fix_timeallowed = time.time()
+        if self.max_days_since_fix.value() is not None:
+            fix_timeallowed -= int(int(self.max_days_since_fix.value()) * 86400)
+
+
         if not comparison_fn:
             pass
             #raise KeyError(self.severity_comparison)
@@ -83,9 +89,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         found_severity_idx = SEVERITY_ORDERING.index(sev.lower()) if sev else 0
                         if comparison_fn(found_severity_idx, comparison_idx):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:
-                                # Check if the vulnerability is to recent for this policy
+                                # Check if the vulnerability is too recent for this policy
                                 if calendar.timegm(vulnerability_cpe.created_at.timetuple()) > timeallowed:
                                     continue
+
+                                # TODO fix handler for CPE-based vuln matches (currently not enough info for fix available)
 
                                 cvss_msg = ''
                                 if cvss_baseScore is not None:
@@ -160,6 +168,18 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         if calendar.timegm(pkg_vuln.vulnerability.created_at.timetuple()) > timeallowed:
                             continue
 
+                        fix_msg = ''
+                        fix = pkg_vuln.fixed_artifact()
+                        if fix.version and fix.version != 'None':
+                            if fix.fix_observed_at and calendar.timegm(fix.fix_observed_at.timetuple()) > fix_timeallowed:
+                                log.debug("MEHSKIP: {} - {}".format(pkg_vuln.vulnerability.id, fix.fix_observed_at))
+                                continue
+                            else:
+                                log.debug("MEHTRIG: {} - {}".format(pkg_vuln.vulnerability.id, fix.fix_observed_at))
+                                fix_msg = '(fix available since {})'.format(fix.fix_observed_at)
+                        else:
+                            log.debug("MEHTRIG_NOINFO: {}".format(pkg_vuln.vulnerability.id))
+                        
                         vuln_cvss_baseScore = -1.0
                         vuln_cvss_exploitabilityScore = -1.0
                         vuln_cvss_impactScore = -1.0
@@ -204,16 +224,16 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             if is_fix_available == (fix_available_in is not None):
                                 # explicit fix state check matches fix availability
                                 if is_fix_available:
-                                    message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                    message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " " + fix_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
                                               pkg_vuln.pkg_name + " (fixed in: {}".format(fix_available_in) + ") - (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
                                 else:
-                                    message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                                    message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " " + fix_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
                                               pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
 
                                 self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
                         else:
                             # No fix status check since not specified by user
-                            message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
+                            message = pkg_vuln.vulnerability.severity.upper() + cvss_msg + " " + fix_msg + " Vulnerability found in os package type ("+pkg_vuln.pkg_type+") - " + \
                                       pkg_vuln.pkg_name + " (" + pkg_vuln.vulnerability_id + " - " + pkg_vuln.vulnerability.link + ")"
                             self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=message)
 

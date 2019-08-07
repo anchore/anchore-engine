@@ -7,7 +7,7 @@ import zlib
 from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
-    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func
+    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func, event
 from sqlalchemy.orm import relationship, synonym
 
 from anchore_engine.utils import ensure_str, ensure_bytes
@@ -315,6 +315,7 @@ class VulnerableArtifact(Base):
         # Newer or the same
         return False
 
+
 class FixedArtifact(Base):
     """
     A record indicating an artifact version that marks a fix for a vulnerability
@@ -333,9 +334,20 @@ class FixedArtifact(Base):
     fix_metadata = Column(StringJSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    fix_observed_at = Column(DateTime)
 
     __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name],
                                            refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
+
+    @staticmethod
+    def _fix_observed_at_update(mapper, connection, target):
+        if not target.fix_observed_at and target.version and target.version != 'none':
+            target.fix_observed_at = datetime.datetime.utcnow()
+
+    @classmethod
+    def __declare_last__(cls):
+        event.listen(cls, 'before_update', cls._fix_observed_at_update)
+        event.listen(cls, 'before_insert', cls._fix_observed_at_update)
 
     def __repr__(self):
         return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name, self.created_at)
