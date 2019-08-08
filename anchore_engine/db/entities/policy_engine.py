@@ -1621,5 +1621,4 @@ def select_nvd_classes(db):
     except Exception as err:
         log.warn("could not query for nvdv2 sync: {}".format(err))
     
-    log.debug("selected {}/{} nvd classes".format(_nvd_cls, _cpe_cls))
     return(_nvd_cls, _cpe_cls)
