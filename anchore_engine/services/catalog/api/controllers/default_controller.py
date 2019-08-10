@@ -193,7 +193,7 @@ def update_image(imageDigest, image):
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_image(imageDigest, force=False):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'force':False})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'force': False})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_imageDigest(session, request_inputs, imageDigest)
 

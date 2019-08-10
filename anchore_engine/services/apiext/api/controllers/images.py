@@ -527,6 +527,7 @@ def get_content(request_inputs, content_type, doformat=False):
         tag = params.pop('tag', None)
         imageDigest = params.pop('imageDigest', None)
         digest = params.pop('digest', None)
+        logger.debug('Request inputs: {}'.format(request_inputs))
         client = internal_client_for(CatalogClient, request_inputs['userId'])
         image_report = client.get_image(imageDigest)
 
@@ -1128,19 +1129,6 @@ def do_list_images(account, filter_tag=None, filter_digest=None, history=False):
 def analyze_image(account, source, force=False, enable_subscriptions=None, annotations=None):
     """
     Analyze an image from a source where a source can be one of:
-
-                    source['digest'] = {
-                    'pullstring': image.get('digest'),
-                    'tag': image.get('tag'),
-                    'creation_timestamp_override': image.get('created_at'),
-                    'dockerfile': image.get('dockerfile')
-                }
-
-            elif image.get('tag'):
-                source['tag'] = {
-                    'pullstring': image.get('tag'),
-                    'dockerfile': image.get('dockerfile')
-                }
 
     'digest': {
       'pullstring': str, (digest or tag, e.g docker.io/alpine@sha256:abc),

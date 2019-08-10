@@ -23,6 +23,26 @@ global_client_read_timeout: ${ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT}
 
 auto_restart_services: false
 
+# Locations for keys used for signing and encryption. Only one of 'secret' or 'public_key_path'/'private_key_path' needs to be set. If all are set then the keys take precedence over the secret value
+# Secret is for a shared secret and if set, all components in anchore should have the exact same value in their configs.
+#
+keys:
+  secret: ${ANCHORE_AUTH_SECRET}
+  public_key_path: ${ANCHORE_AUTH_PUBKEY}
+  private_key_path: ${ANCHORE_AUTH_PRIVKEY}
+
+# Configuring supported user authentication and credential management
+user_authentication:
+  oauth:
+    enabled: ${ANCHORE_OAUTH_ENABLED}
+    default_token_expiration_seconds: ${ANCHORE_OAUTH_TOKEN_EXPIRATION}
+
+  # Set this to True to enable storing user passwords only as secure hashes in the db. This can dramatically increase CPU usage if you
+  # don't also use oauth and tokens for internal communications (which requires keys/secret to be configured as well)
+  # WARNING: you should not change this after a system has been initialized as it may cause a mismatch in existing passwords
+  hashed_passwords: ${ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS}
+
+
 metrics:
   enabled: ${ANCHORE_ENABLE_METRICS}
 

@@ -5,7 +5,7 @@ Base types for all anchore engine services
 import copy
 import connexion
 import enum
-from flask import g
+from flask import g, jsonify
 import json
 import os
 from pathlib import Path
@@ -25,6 +25,9 @@ from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
 from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFail
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.apis.oauth import init_oauth
+from anchore_engine.apis.exceptions import AnchoreApiError
+from anchore_engine.common.helpers import make_response_error
 
 
 class LifeCycleStages(enum.IntEnum):
@@ -57,6 +60,15 @@ _default_lifecycle_handlers = {
             LifeCycleStages.pre_register: [],
             LifeCycleStages.post_register: []
     }
+
+
+def handle_api_exception(ex: AnchoreApiError):
+    """
+    Returns the proper json for marshalling an AnchoreApiError
+    :param ex:
+    :return:
+    """
+    return jsonify(make_response_error(ex.message, in_httpcode=ex.__response_code__, details=ex.detail if ex.detail else {})), ex.__response_code__
 
 
 class ServiceMeta(type):
@@ -294,16 +306,19 @@ class BaseService(object, metaclass=ServiceMeta):
         if self.require_system_user:
             gotauth = False
             max_retries = 60
+            self.global_configuration['system_user_auth'] = (None, None)
             for count in range(1, max_retries):
                 try:
                     with session_scope() as dbsession:
                         mgr = manager_factory.for_session(dbsession)
-                        self.global_configuration['system_user_auth'] = mgr.get_system_credentials()
-
-                    if self.global_configuration['system_user_auth'] != (None, None):
+                        logger.info('Checking system creds')
+                        c = mgr.get_system_credentials()
+                    if c is not None:
+                        logger.info('Found valid system creds')
                         gotauth = True
                         break
                     else:
+                        logger.info('Did not find valid system creds')
                         logger.error('cannot get system user auth credentials yet, retrying (' + str(count) + ' / ' + str(max_retries) + ')')
                         time.sleep(5)
                 except Exception as err:
@@ -497,14 +512,18 @@ class ApiService(BaseService):
             flask_app = self._application.app
             flask_app.url_map.strict_slashes = False
 
-            # Setup some debug logging
+            # Ensure jsonify() calls add whitespace for nice error responses
+            flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+
+            # Suppress some verbose logs in dependencies
             import logging as py_logging
             py_logging.basicConfig(level=py_logging.ERROR)
 
-            # Intialize the authentication system
+            # Initialize the authentication system
             self.init_auth()
 
             flask_app.before_request(self._inject_service)
+            flask_app.register_error_handler(AnchoreApiError, handle_api_exception)
 
             metrics.init_flask_metrics(flask_app, servicename=service_name)
             self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))

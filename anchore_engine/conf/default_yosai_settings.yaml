@@ -17,13 +17,18 @@ AUTHC_CONFIG:
 
 SECURITY_MANAGER_CONFIG:
   security_manager: yosai.core.NativeSecurityManager
+  authenticator: yosai.authc.authc.InvalidAuthenticator
   attributes:
     serializer: cbor
     realms:
-      anchore_engine.subsys.auth.realms.AnchoreNativeRealm:
+      anchore_engine.subsys.auth.realms.UsernamePasswordRealm:
         account_store: anchore_engine.subsys.auth.stores.basic.DbAccountStore
-        #authc_verifiers: yosai.core.PasslibVerifier
-        authc_verifiers: anchore_engine.subsys.auth.stores.verifier.SimpleVerifier
+        authc_verifiers:
+          - anchore_engine.subsys.auth.stores.verifier.ConfigurableVerifier
+      anchore_engine.subsys.auth.realms.JwtRealm:
+        account_store: anchore_engine.subsys.auth.stores.basic.TokenAccountStore
+        authc_verifiers:
+          - anchore_engine.subsys.auth.stores.verifier.BearerTokenVerifier
     cache_handler: anchore_engine.subsys.auth.util.caches.SimpleMemoryCache
     session_attributes: null
 

@@ -122,7 +122,15 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_FEEDS_CLIENT_URL="https://ancho.re/v1/account/users" \
     ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token" \
     ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT=0 \
-    ANCHORE_GLOBAL_CLIENT_CONNECT_TIMEOUT=0
+    ANCHORE_GLOBAL_CLIENT_CONNECT_TIMEOUT=0 \
+    ANCHORE_AUTH_PUBKEY=null \
+    ANCHORE_AUTH_PRIVKEY=null \
+    ANCHORE_AUTH_SECRET=null \
+    ANCHORE_OAUTH_ENABLED=false \
+    ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
+    ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
+    AUTHLIB_INSECURE_TRANSPORT=true
+# Insecure transport required in case for things like tls sidecars
 
 # Container run environment settings
 

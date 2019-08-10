@@ -35,6 +35,7 @@ from .entities.identity import Account
 from .entities.identity import AccountUser
 from .entities.identity import UserAccessCredentialTypes
 from .entities.identity import AccessCredential
+from .entities.identity import UserTypes
 
 # Task types
 from .entities.tasks import Task, ArchiveMigrationTask

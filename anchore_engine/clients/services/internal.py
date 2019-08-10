@@ -6,11 +6,23 @@ Internal service client base and common functions
 import copy
 import urllib
 import urllib.parse
+from requests.auth import AuthBase, HTTPBasicAuth
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.http import anchy_get
 from anchore_engine.clients.services.common import get_service_endpoint, get_service_endpoints
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.identities import AccessCredential, HttpBearerCredential, HttpBasicCredential
 from contextlib import contextmanager
+from anchore_engine.utils import ensure_str
+
+
+class BearerTokenAuth(AuthBase):
+    def __init__(self, token):
+        self.tok = token
+
+    def __call__(self, r):
+        r.headers['Authorization'] = 'Bearer {}'.format(ensure_str(self.tok).strip())
+        return r
 
 
 class InternalServiceUrlProvider(object):
@@ -44,16 +56,26 @@ class InternalServiceClient(object):
         'Content-Type': 'application/json'
     }
 
-    def __init__(self, user, password, as_account=None, url_provider=default_provider, config_provider_fn=localconfig.get_config):
+    def __init__(self, credential, as_account=None, url_provider=default_provider, config_provider_fn=localconfig.get_config):
         """
         Initializes a client for a specific account using the specified credentials (typically the system user credentials)
 
         :param as_account: The account for which to execute the call as
         """
 
+        # Assert the base type
         self.request_namespace = as_account
-        self.user = user
-        self.password = password
+        self.auth = None
+
+        if isinstance(credential, HttpBearerCredential):
+            token = credential.get_creds()
+            self.auth = BearerTokenAuth(token)
+
+        elif isinstance(credential, HttpBasicCredential):
+            self.auth = HTTPBasicAuth(credential.get_creds()[0], credential.get_creds()[1])
+        else:
+            raise TypeError('credential not of expected type')
+
         self.verify_ssl = True
         self._read_timeout = 0.0
         self._connect_timeout = 0.0
@@ -201,11 +223,11 @@ class InternalServiceClient(object):
                 read_timeout = None
 
             if connect_timeout or read_timeout:
-                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
+                return method(url=final_url, headers=request_headers, data=body, auth=self.auth, params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
             else:
-                return method(url=final_url, headers=request_headers, data=body, auth=(self.user, self.password), params=filtered_qry_params, verify=self.verify_ssl, files=files)
+                return method(url=final_url, headers=request_headers, data=body, auth=self.auth, params=filtered_qry_params, verify=self.verify_ssl, files=files)
         except Exception as e:
-            logger.error('Failed client call to service {} for url: {}. Response: {}'.format(self.__service__, final_url, e.__dict__))
+            logger.debug_exception('Failed client call to service {} for url: {}. Response: {}'.format(self.__service__, final_url, e.__dict__))
             raise e
 
     def round_robin_call_api(self, method: callable, path: str, path_params=None, query_params=None, extra_headers=None, body=None):

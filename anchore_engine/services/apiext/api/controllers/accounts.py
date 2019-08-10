@@ -15,7 +15,16 @@ from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import get_authorizer, ParameterBoundValue, ActionBoundPermission, NotificationTypes, RequestingAccountValue
-from anchore_engine.configuration.localconfig import ADMIN_USERNAME, SYSTEM_USERNAME, GLOBAL_RESOURCE_DOMAIN, PROTECTED_ACCOUNT_NAMES, RESERVED_ACCOUNT_NAMES, get_config
+from anchore_engine.configuration.localconfig import (
+    ADMIN_USERNAME,
+    SYSTEM_USERNAME,
+    GLOBAL_RESOURCE_DOMAIN,
+    USER_MOD_PROTECTED_ACCOUNT_NAMES,
+    RESERVED_ACCOUNT_NAMES,
+    get_config,
+    DELETE_PROTECTED_USER_NAMES,
+    DELETE_PROTECTED_ACCOUNT_TYPES
+)
 
 
 authorizer = get_authorizer()
@@ -85,9 +94,9 @@ def can_delete_user(user):
     :param user:
     :return:
     """
-    if user['username'] in PROTECTED_ACCOUNT_NAMES or \
-        user['account_name'] in PROTECTED_ACCOUNT_NAMES or \
-        user['account']['type'] not in [AccountTypes.user, AccountTypes.admin]:
+    if user['username'] in DELETE_PROTECTED_USER_NAMES or \
+        user['account_name'] in USER_MOD_PROTECTED_ACCOUNT_NAMES or \
+        user['account']['type'] in [AccountTypes.service]:
         return False
     else:
         return True
@@ -99,8 +108,8 @@ def can_delete_account(account):
     :param user:
     :return:
     """
-    if account['name'] in RESERVED_ACCOUNT_NAMES or \
-        account['type'] not in [AccountTypes.user]:
+    if account['name'] in USER_MOD_PROTECTED_ACCOUNT_NAMES or \
+        account['type'] in DELETE_PROTECTED_ACCOUNT_TYPES:
         return False
     else:
         return True

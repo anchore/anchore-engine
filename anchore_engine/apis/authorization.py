@@ -12,14 +12,17 @@ from connexion import request as request_proxy
 from flask import Response
 from anchore_engine.apis.context import ApiRequestContextProxy
 from yosai.core import Yosai, exceptions as auth_exceptions, UsernamePasswordToken
+from yosai.core.authc.authc import token_info
+from yosai.core.authc.abcs import AuthenticationToken
 from anchore_engine.db import session_scope, AccountTypes, AccountStates
 import pkg_resources
 import functools
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 from threading import RLock
-from anchore_engine.subsys.auth.realms import ExternalAuthzRealm
+from anchore_engine.subsys.auth.realms import UsernamePasswordRealm, ExternalAuthorizer
 from anchore_engine.configuration import localconfig
+from anchore_engine.subsys.auth.stores.verifier import JwtToken
 
 # Global authorizer configured
 _global_authorizer = None
@@ -207,10 +210,11 @@ class AuthorizationHandler(ABC):
 
 
     @abstractmethod
-    def inline_authz(self, permission_s: list):
+    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken=None):
         """
         Function to invoke an inline authz, similar to requires_* functions but non-decorator.
         :param permission_s:
+        :param authc_token: An AuthenticationToken object to authenticate with. If None, the authc will use the request context
         :return:
         """
         pass
@@ -231,6 +235,8 @@ class DbAuthorizationHandler(AuthorizationHandler):
             # Disable sessions, since the APIs are not session-based
             DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
 
+            token_info[JwtToken] = {'tier': 1, 'cred_type': 'jwt'}
+
     def notify(self, notification_type, notification_value):
         """
         No-Op for the default handler since permissions are ephemeral.
@@ -238,7 +244,6 @@ class DbAuthorizationHandler(AuthorizationHandler):
         :param notification_value:
         :return:
         """
-        logger.debug('no-op notification handler for event {} value {}'.format(notification_type, notification_type))
         return True
 
     def healthcheck(self):
@@ -254,31 +259,57 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
         return False
 
-    def authenticate(self, request):
-        logger.debug('Authenticating with native auth handler')
-        subject = Yosai.get_current_subject()
+    def get_authc_token(self, request):
+        authz_header = request.environ.get('HTTP_AUTHORIZATION')
+        authc_token = None
 
         if request.authorization:
+            # HTTP Basic/Digest Auth
             authc_token = UsernamePasswordToken(username=request.authorization.username,
                                                 password=request.authorization.password, remember_me=False)
+        elif authz_header:
+            # check for bearer auth
+            parts = authz_header.split()
+            if parts and len(parts) > 1:
+                auth_type = parts[0].lower()
+                if auth_type in ['bearer', 'jwt']:
+                    authc_token = JwtToken(parts[1])
 
-            subject.login(authc_token)
-            user = subject.primary_identifier
+        return authc_token
 
-            # Simple account lookup to ensure the context identity is complete
+    def authenticate_token(self, authc_token=None):
+        if authc_token:
+            subject = Yosai.get_current_subject()
             try:
-                with session_scope() as db_session:
-                    idp = self._idp_factory.for_session(db_session)
-                    identity, _ = idp.lookup_user(user)
-
-                    logger.debug('Authc complete')
-                    return identity
+                subject.login(authc_token)
             except:
-                logger.exception('Error looking up account for authenticated user')
-                return None
+                logger.debug_exception('Login failed')
+                raise
+
+            user = subject.primary_identifier
+            logger.debug('Login complete for user: {}'.format(user))
+            if isinstance(user, IdentityContext):
+                return user
+            else:
+                # Simple account lookup to ensure the context identity is complete
+                try:
+                    logger.debug('Loading identity context from username: {}'.format(user))
+                    with session_scope() as db_session:
+                        idp = self._idp_factory.for_session(db_session)
+                        identity, _ = idp.lookup_user(user)
+
+                        logger.debug('Authc complete for user: {}'.format(user))
+                        return identity
+                except:
+                    logger.debug_exception('Error looking up account for authenticated user')
+                    return None
         else:
             logger.debug('Anon auth complete')
             return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_state=None)
+
+    def authenticate(self, request):
+        authc_token = self.get_authc_token(request)
+        return self.authenticate_token(authc_token)
 
     def _check_calling_user_account_state(self, identity):
         """
@@ -335,10 +366,9 @@ class DbAuthorizationHandler(AuthorizationHandler):
             raise UnauthorizedError(required_permissions=permission_list)
 
     def authorize(self, identity: IdentityContext, permission_list):
-        logger.debug('Authorizing with native auth handler: {}'.format(permission_list))
-
         subject = Yosai.get_current_subject()
-        if subject.primary_identifier != identity.username:
+        if subject.primary_identifier != identity:
+            logger.debug('Mismatch between subject and provided identity for the authorization. Failing authz')
             raise UnauthorizedError(permission_list)
 
         # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
@@ -349,14 +379,11 @@ class DbAuthorizationHandler(AuthorizationHandler):
         # Check only after the perms check. Match any allowed permissions that use the namespace as the domain for the authz request
         non_enabled_domains = self._disabled_domains(permission_list)
 
-        logger.debug('Found disabled domains in permission set: {}'.format(non_enabled_domains))
+        logger.debug('Found disabled domains found: {}'.format(non_enabled_domains))
 
         # If found domains not enabled and the caller is not a system service or system admin, disallow
         if non_enabled_domains and identity.user_account_type not in [AccountTypes.admin, AccountTypes.service]:
-            logger.debug('Failing otherwise passing perm check due to domain state')
             raise AccountStateError(non_enabled_domains[0])
-
-        logger.debug('Passed check permission: {}'.format(permission_list))
 
     def _get_account_state(self, account):
         """
@@ -390,12 +417,13 @@ class DbAuthorizationHandler(AuthorizationHandler):
             logger.exception('Error doing authz: {}'.format(e))
             raise UnauthorizedAccountError(account_types=','.join(with_types if with_types else []))
 
-    def inline_authz(self, permission_s: list):
+    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken=None):
         """
         Non-decorator impl of the @requires() decorator for isolated and inline invocation.
         Returns None on success or raises an exception
 
         :param permission_s: list of Permission objects
+        :param authc_token: optional authc token to use for the authc portion, if omitted or None, the flask request context is used
         :return:
         """
         try:
@@ -403,9 +431,14 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 # Context Manager functions
                 try:
                     try:
-                        identity = self.authenticate(request_proxy)
+                        if not authc_token:
+                            identity = self.authenticate(request_proxy)
+                        else:
+                            identity = self.authenticate_token(authc_token)
+
                         if not identity.username:
                             raise UnauthenticatedError('Authentication Required')
+
                     except:
                         raise UnauthenticatedError('Authentication Required')
 
@@ -561,6 +594,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
 
 class ExternalAuthorizationHandler(DbAuthorizationHandler):
+    __external_authorizer__ = None
 
     def healthcheck(self):
         """
@@ -578,11 +612,11 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
             internal_check = False
 
         try:
-            if not ExternalAuthzRealm.__client__:
+            if not self.__external_authorizer__:
                 logger.warn('Attempted health check for external authz handler but no client configured yet')
                 return False
             else:
-                external_check = ExternalAuthzRealm.__client__.healthcheck()
+                external_check = self.__external_authorizer__.client.healthcheck()
         except Exception as e:
             logger.error('Healthcheck for external authz handler caught exception: {}'.format(e))
             external_check = False
@@ -604,18 +638,18 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
         retries = 3
 
         try:
-            if not ExternalAuthzRealm.__client__:
+            if not self.__external_authorizer__:
                 logger.warn('Got authz notification type: {} value:{}, but no client configured so nothing to do'.format(notification_type, notification_value))
                 return True
             else:
                 if NotificationTypes.domain_created == notification_type:
-                    fn = ExternalAuthzRealm.__client__.initialize_domain
+                    fn = self.__external_authorizer__.client.initialize_domain
                 elif NotificationTypes.domain_deleted == notification_type:
-                    fn = ExternalAuthzRealm.__client__.delete_domain
+                    fn = self.__external_authorizer__.client.delete_domain
                 elif NotificationTypes.principal_created == notification_type:
-                    fn = ExternalAuthzRealm.__client__.initialize_principal
+                    fn = self.__external_authorizer__.client.initialize_principal
                 elif NotificationTypes.principal_deleted == notification_type:
-                    fn = ExternalAuthzRealm.__client__.delete_principal
+                    fn = self.__external_authorizer__.client.delete_principal
                 else:
                     fn = None
 
@@ -650,22 +684,26 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
 
     def load(self, configuration):
         with ExternalAuthorizationHandler._config_lock:
-            conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/external_authz_yosai_settings.yaml')
+            logger.info('Initializing external authz realm')
+
+            self.external_authorizer = ExternalAuthorizer(configuration, enabled=True)
+            UsernamePasswordRealm.__external_authorizer__ = self.external_authorizer
+
+            #conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/external_authz_yosai_settings.yaml')
+            conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/default_yosai_settings.yaml')
             ExternalAuthorizationHandler._yosai = Yosai(file_path=conf_path)
 
             # Disable sessions, since the APIs are not session-based
             ExternalAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
 
-            logger.info('Initializing external authz realm')
-            ExternalAuthzRealm.init_realm(configuration, account_lookup_fn=lookup_account_type_from_identity)
-
+            token_info[JwtToken] = {'tier': 1, 'cred_type': 'jwt'}
             logger.info('External authz handler init complete')
 
 
+# TODO: address this, and fix it
 class InternalServiceAuthorizer(DbAuthorizationHandler):
     """
     Authz Handler optimized for internal services
-
     """
 
     def load(self, configuration):

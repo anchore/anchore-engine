@@ -1,7 +1,7 @@
 from yosai.core import account_abcs
-from anchore_engine.db import session_scope, AccountTypes, AccountStates
+from anchore_engine.db import session_scope, AccountTypes
 from anchore_engine.subsys import logger
-from anchore_engine.apis.authentication import idp_factory
+from anchore_engine.apis.authentication import idp_factory, IdentityContext
 import json
 
 
@@ -30,7 +30,6 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         }
 
     def __init__(self, settings=None):
-        logger.info('Initializing account store')
         self.settings = settings
 
     # CredentialAccountStore functions
@@ -41,7 +40,7 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         else:
             return self._generate_user_permissions(identity.user_account)
 
-    def get_authc_info(self, authc_token):
+    def get_authc_info(self, identifier):
         """
         Function defined in the interface. Returns a dict:
 
@@ -51,21 +50,22 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
           'account_id': <str>
         }
 
-        :param authc_token:
+        :param identifier:
         :return: populated dict defined above or empty structured dict above
         """
 
         result_account = {
             'account_locked': None,
-            'authc_info': [],
-            'account_id': None
+            'authc_info': {},
+            'account_id': None,
+            'anchore_identity': None # Used to transmit more than just username
         }
 
         with session_scope() as db:
             idp = idp_factory.for_session(db)
 
             try:
-                identity, creds = idp.lookup_user(authc_token)
+                identity, creds = idp.lookup_user(identifier)
             except:
                 logger.exception('Error looking up user')
                 identity = None
@@ -73,16 +73,15 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
 
             result_account['account_locked'] = False
 
+            if identity:
+                result_account['anchore_identity'] = identity
+
             if creds:
                 result_account['authc_info'] = {
                     cred.type.value: {'credential': cred.value, 'failed_attempts': []} for cred in creds
                 }
 
-                logger.debug('Returning found authc credentials for {}'.format(authc_token))
-                return result_account
-            else:
-                logger.debug('Found no authc info for token: {}'.format(authc_token))
-                return result_account
+            return result_account
 
     # Authz AccountStore functions
 
@@ -104,16 +103,18 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         :return: dict mapping a domain name to a list of permissions
         """
         with session_scope() as db:
-            idp = idp_factory.for_session(db)
-            identity, _ = idp.lookup_user(identifier)
+            if isinstance(identifier, IdentityContext):
+                # If already looked-up, use it
+                identity = identifier
+            else:
+                # Lookup the user identity
+                idp = idp_factory.for_session(db)
+                identity, _ = idp.lookup_user(identifier)
 
             if identity:
                 perms = self._build_permissions_for(identity)
-
-                logger.debug('Using perms: {}'.format(perms))
                 return perms
             else:
-                logger.debug("Found no account, so no perms")
                 return {}
 
     def get_authz_roles(self, identifier):
@@ -125,3 +126,50 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         :return: list of role names for the identifier
         """
         return []
+
+
+class TokenAccountStore(DbAccountStore):
+    """
+    Basic Anchore account management, uses the internal subsystem for accessing db objects.
+
+    Very simple data model: Accounts -> Users. Exactly one account and user is the system admin.
+
+    """
+
+    def get_authc_info(self, identifier):
+        """
+        Function defined in the interface. Returns a dict:
+
+        {
+          'account_locked': bool,
+          'authc_info': { '<str cred type>': { 'credential': <value>, 'failed_attempts': <int> } }
+          'account_id': <str>
+        }
+
+        :param identifier:
+        :return: populated dict defined above or empty structured dict above
+        """
+
+        result_account = {
+            'account_locked': None,
+            'authc_info': {},
+            'account_id': None,
+            'anchore_identity': None
+        }
+
+        with session_scope() as db:
+            idp = idp_factory.for_session(db)
+
+            try:
+                identity, creds = idp.lookup_user(identifier)
+            except:
+                logger.exception('Error looking up user')
+                identity = None
+                creds = None
+
+            result_account['account_locked'] = False
+            if identity:
+                result_account['anchore_identity'] = identity
+                result_account['authc_info']['jwt'] = {'credential': None, 'failed_attempts': []}
+
+            return result_account

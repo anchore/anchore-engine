@@ -5,12 +5,14 @@ from anchore_engine.clients.services import http
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.clients.services import internal_client_for
 
 def queue_notification(userId, subscription_key, subscription_type, payload):
     
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    system_user_auth = localconfig['system_user_auth']
-    q_client = SimpleQueueClient(user=system_user_auth[0], password=system_user_auth[1])
+    #localconfig = anchore_engine.configuration.localconfig.get_config()
+    #system_user_auth = localconfig['system_user_auth']
+    q_client = internal_client_for(SimpleQueueClient, None)
+
     rc = False
     try:
         nobj = {

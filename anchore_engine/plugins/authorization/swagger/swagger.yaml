@@ -2,7 +2,7 @@
 swagger: "2.0"
 
 info:
-  description: "Anchore Engine Authorization Plugin API. This is expected to be run securely (e.g. same host with no external connectivity"
+  description: "Anchore Engine Authorization Plugin API. This is expected to be run securely (e.g. same host with no external connectivity)"
   version: "0.1.0"
   title: "Authorization Plugin API"
   contact:

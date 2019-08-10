@@ -10,6 +10,7 @@ import shutil
 from pkg_resources import resource_filename
 
 from anchore_engine.subsys import logger
+from anchore_engine.db.entities.identity import AccountTypes
 
 DEFAULT_CONFIG = {
     'service_dir': os.path.join("{}".format(os.getenv("HOME", "/tmp/anchoretmp")), ".anchore_engine"),
@@ -30,6 +31,13 @@ DEFAULT_CONFIG = {
     'skopeo_global_timeout': 0,
     'global_client_read_timeout': 0,
     'global_client_connect_timeout': 0,
+    'user_authentication': {
+        'oauth': {
+            'enabled': False,
+        },
+        'hashed_passwords': False,
+    },
+    'keys': {},
     'feeds': {
         'anonymous_user_username': 'anon@ancho.re',
         'anonymous_user_password': 'pbiU2RYZ2XrmYQ',
@@ -71,19 +79,29 @@ RESERVED_ACCOUNT_NAMES = [
     ADMIN_ACCOUNT_NAME
 ]
 
-PROTECTED_ACCOUNT_NAMES = [
+# Account names that cannot have user modifications
+USER_MOD_PROTECTED_ACCOUNT_NAMES = [
     GLOBAL_RESOURCE_DOMAIN,
     SYSTEM_ACCOUNT_NAME
 ]
 
-PROTECTED_USER_NAMES = [
+# Users that cannot be deleted
+DELETE_PROTECTED_USER_NAMES = [
     SYSTEM_USERNAME,
     ADMIN_USERNAME
 ]
 
+# Accounts that cannot be deleted or disabled
+DELETE_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service, AccountTypes.admin]
+
+# Accounts that cannot have users modified by other users
+USER_MOD_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service]
+
 # Top-level config keys required to be present
 default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
 
+CRED_CACHE_TTL = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_TTL', 600))
+CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC', 3))
 
 def update_merge(base, override):
     if not isinstance(base, dict) or not isinstance(override, dict):
@@ -338,12 +356,60 @@ def validate_config(config, validate_params=None):
                 if 'webhooks' not in config or not config['webhooks']:
                     logger.warn("no webhooks defined in configuration file - notifications will be disabled")
 
+        if 'user_authentication' in validate_params and validate_params['user_authentication']:
+            validate_user_auth_config(config)
+            validate_key_config(config, required=False)
     except Exception as err:
         logger.error(str(err))
         raise err
 
     # raise Exception("TEST")
     return (ret)
+
+
+def validate_user_auth_config(config):
+    """
+    Validate the oauth configuration and keys
+
+    :param config:
+    :return:
+    """
+    if not config.get('user_authentication'):
+        raise Exception('user_authentication property in configuration must be present')
+    else:
+        oconf = config.get('user_authentication').get('oauth')
+
+    if oconf:
+        enabled = oconf.get('enabled')
+        if enabled is not None:
+            if type(enabled) != bool:
+                # Don't do coercion
+                raise Exception('oauth enabled flag must be a bool')
+
+            if enabled:
+                validate_key_config(config, required=True)
+
+                try:
+                    expiration = oconf['default_token_expiration_seconds']
+                    if type(expiration) != int or expiration < 0:
+                        raise TypeError("Expiration must be an integer >= 0")
+                except:
+                    raise Exception('oauth configuration object must contain "default_token_expiration_seconds" value that is an integer >= 0')
+        else:
+            # No oauth section configured
+            pass
+
+
+def validate_key_config(config, required=False):
+    kconf = config.get('keys')
+    if not kconf:
+        if required:
+            raise Exception('keys property in config not set')
+        else:
+            return
+
+    if not (kconf.get('secret') or (kconf.get('public_key_path') and kconf.get('public_key_path'))):
+        raise Exception('keys config must contain either a value for "secret" key or both the "public_key_path" and "private_key_path" set')
 
 
 def get_config():

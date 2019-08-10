@@ -1,6 +1,6 @@
 from .internal import InternalServiceClient
 from anchore_engine.subsys.identities import manager_factory
-
+from anchore_engine.db import session_scope
 
 def internal_client_for(internal_client_cls, userId):
     """
@@ -11,10 +11,12 @@ def internal_client_for(internal_client_cls, userId):
     :param session:
     :return:
     """
-    mgr = manager_factory.for_session(session=None)
-    sysuser, syspass = mgr.get_system_credentials()
 
-    if sysuser is None:
-        raise Exception('No cached system credentials found')
+    with session_scope() as session:
+        mgr = manager_factory.for_session(session=session)
+        credential = mgr.get_system_credentials()
 
-    return internal_client_cls(user=sysuser, password=syspass, as_account=userId)
+        if credential is None:
+            raise Exception('No cached system credentials found')
+
+        return internal_client_cls(credential=credential, as_account=userId)

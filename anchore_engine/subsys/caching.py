@@ -8,6 +8,9 @@ from anchore_engine.subsys import logger
 
 
 class TTLCache(object):
+    """
+    TTL cache, If you set any ttl < 0 it disables the ttl for the record
+    """
     def __init__(self, default_ttl_sec=60):
         self.cache = {}
         self.default_ttl = default_ttl_sec
@@ -15,11 +18,14 @@ class TTLCache(object):
     def cache_it(self, key, obj, ttl=None):
         if ttl is None:
             ttl = self.default_ttl
-        self.cache[key] = (datetime.datetime.now() + datetime.timedelta(seconds=ttl), obj)
+        if ttl >= 0:
+            self.cache[key] = (datetime.datetime.now() + datetime.timedelta(seconds=ttl), obj)
+        else:
+            self.cache[key] = (None, obj)
 
     def lookup(self, key):
         found = self.cache.get(key)
-        if found and found[0] >= datetime.datetime.now():
+        if found and (found[0] is None or found[0] >= datetime.datetime.now()):
             logger.spew('TTLCache {} hit for {}'.format(self.__hash__(), key))
             return found[1]
         elif found:

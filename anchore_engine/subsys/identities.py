@@ -1,9 +1,15 @@
+import datetime
 import re
-import anchore_engine.configuration
+import time
+
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates
+from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates, UserTypes
 from anchore_engine.db.db_accounts import AccountNotFoundError
+from anchore_engine.auth.oauth import token_manager
+from threading import RLock
+from anchore_engine.subsys.caching import TTLCache
+
 
 # Not currently used because upgrade...
 name_validator_regex = re.compile('^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$')
@@ -25,7 +31,6 @@ class IdentityBootstrapper(object):
 
         # system user
         try:
-
             if not self.mgr.get_account(localconfig.SYSTEM_ACCOUNT_NAME):
                 self.mgr.create_account(localconfig.SYSTEM_ACCOUNT_NAME, AccountTypes.service, 'system@system')
 
@@ -68,6 +73,8 @@ class IdentityBootstrapper(object):
         :param config_credentials: the 'credentials' section of the configuration
         :return:
         """
+
+        logger.info('Initializing user identities from config')
 
         try:
             if 'users' not in config_credentials:
@@ -122,10 +129,47 @@ class IdentityManagerFactory(object):
 
 manager_factory = IdentityManagerFactory(localconfig.get_config())
 
+
+class AccessCredential(object):
+    def get_creds(self):
+        pass
+
+    def is_expired(self):
+        pass
+
+
+class HttpBasicCredential(AccessCredential):
+    def __init__(self, username, password):
+        self.user = username
+        self.password = password
+
+    def get_creds(self):
+        return self.user, self.password
+
+    def is_expired(self):
+        return False
+
+
+class HttpBearerCredential(AccessCredential):
+    def __init__(self, token: str, expiration: datetime.datetime=None, refresh_token=None):
+        self.token = token
+        self.refresh_token = refresh_token
+        self.expires_at = expiration
+
+    def is_expired(self):
+        return self.expires_at is not None and datetime.datetime.utcnow() < self.expires_at
+
+    def get_creds(self):
+        return self.token
+
+
 class IdentityManager(object):
     """
     A db session-aware identity manager.
     """
+    _cache_lock = RLock()
+    _credential_cache = TTLCache(default_ttl_sec=-1)
+    _cache_lock_wait = localconfig.CRED_CACHE_LOCK_WAIT_SEC
 
     def __init__(self, session):
         """
@@ -134,26 +178,73 @@ class IdentityManager(object):
         self.session = session
 
     def _get_system_user_credentials(self):
-        rec = db_accounts.get(localconfig.SYSTEM_USERNAME, session=self.session)
-        if rec:
-            cred = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
-            return cred['username'], cred.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get(
-                'value')
-        else:
+        """
+        Returns an AccessCredential object representing the system user
 
-            return None, None
+        :return:
+        """
+        cred = None
+        exp = None # Credential expiration, if needed
+        logger.debug('Loading system user creds')
+
+        with IdentityManager._cache_lock:
+            cached_cred = IdentityManager._credential_cache.lookup(localconfig.SYSTEM_USERNAME)
+
+            if cached_cred is not None:
+                if cached_cred.is_expired():
+                    # Flush it
+                    IdentityManager._credential_cache.delete(localconfig.SYSTEM_USERNAME)
+                else:
+                    # Use it
+                    cred = cached_cred
+
+            if cred is None:
+                logger.debug('Doing refresh/initial system cred load')
+
+                # Generate one
+                if localconfig.get_config().get('user_authentication', {}).get('oauth', {}).get('enabled'):
+                    logger.debug('Generating a token for system creds')
+                    # Generate a token
+                    tok_mgr = token_manager()
+                    tok, exp = tok_mgr.generate_token(localconfig.SYSTEM_USERNAME, return_expiration=True)
+                    cred = HttpBearerCredential(tok, exp)
+                else:
+                    rec = db_accounts.get(localconfig.SYSTEM_USERNAME, session=self.session)
+                    usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
+
+                    if not rec or not usr:
+                        logger.error('Could not find a system account or user. This is not an expected state')
+                        raise Exception('No system account or user found')
+
+                    logger.debug('Using user/pass for system creds')
+
+                    # This will not work if the system admin has configured hashed passwords but not oauth. But, that should be caught at config validation.
+                    cred = HttpBasicCredential(usr['username'], usr.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value'))
+
+                if cred is not None:
+                    IdentityManager._credential_cache.cache_it(localconfig.SYSTEM_USERNAME, cred)
+
+        return cred
 
     def get_system_credentials(self):
         """
         Get system credentials, from the local cache if available first
         :return: (username, password) tuple
         """
+        lc = localconfig.get_config()
+        if 'system_user_auth' in lc and lc['system_user_auth'] != (None, None):
+            creds = lc['system_user_auth']
+            logger.debug('Using creds found in config: {}'.format(creds))
 
-        localconfig = anchore_engine.configuration.localconfig.get_config()
-        if 'system_user_auth' in localconfig and localconfig['system_user_auth'] != (None, None):
-            return localconfig['system_user_auth']
-        else:
-            return self._get_system_user_credentials()
+            if type(creds) in [tuple, list]:
+                return HttpBasicCredential(creds[0], creds[1])
+            elif type(creds) == str:
+                # Assume its a bearer token
+                return HttpBearerCredential(token=creds, expiration=None)
+            else:
+                return creds
+        # else:
+        return self._get_system_user_credentials()
 
     def get_credentials_for_userid(self, userId):
         """
@@ -202,21 +293,23 @@ class IdentityManager(object):
     def delete_account(self, account_name):
         return db_accounts.delete(account_name, session=self.session)
 
-    def create_user(self, account_name, username, password=None):
+    def create_user(self, account_name, username, password=None, user_type=UserTypes.native):
         """
         Create a new user as a unit-of-work (e.g. a single db transaction
 
-        :param account_name:
-        :param username:
-        :param access_type:
+        :param account_name: the str account name
+        :param username: the str username
+        :param password: the password to set
+        :param user_type: The type of user to create
         :return:
         """
 
+        assert (user_type in [UserTypes.internal, UserTypes.external] and password is None) or user_type == UserTypes.native
         account = db_accounts.get(account_name, session=self.session)
         if not account:
             raise AccountNotFoundError('Account does not exist')
 
-        usr_record = db_account_users.add(account_name=account_name, username=username,
+        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type,
                                           session=self.session)
 
         if password is not None:

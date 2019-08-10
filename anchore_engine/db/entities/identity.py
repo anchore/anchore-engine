@@ -1,11 +1,19 @@
 from collections import namedtuple
 import enum
+import datetime
+import time
 import re
 
-from sqlalchemy import Column, String, Boolean, Enum, Integer, ForeignKey
+from sqlalchemy import Column, String, Boolean, Enum, Integer, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
+
+from authlib.flask.oauth2.sqla import (
+    OAuth2ClientMixin,
+    OAuth2AuthorizationCodeMixin,
+    OAuth2TokenMixin, TokenMixin
+)
 
 
 class AccountTypes(enum.Enum):
@@ -17,13 +25,22 @@ class AccountTypes(enum.Enum):
     user = 'user'  # Regular user
     admin = 'admin'  # User admin, only one of these per system, the principal admin account for creating other accounts
     service = 'service'  # System internal accounts for things like services
-    external = 'external' # Identity managed by an external identity provider
+    external = 'external'  # Identity managed by an external identity provider
+
+
+class UserTypes(enum.Enum):
+    """
+    Types of user to distinguish expected authentication requirements
+    """
+    native = 'native'  # Users authenticated by the internal db (e.g. with passwords)
+    external = 'external'  # Users that exist in Anchore but are authenticated externally (e.g. SAML or LDAP)
+    internal = 'internal'  # Internal service users that may only authenticate via generated tokens by services themselves (e.g. jwt)
 
 
 class AccountStates(enum.Enum):
-    enabled = 'enabled' # Normal state, all functionality enabled
-    disabled = 'disabled' # No user within the account can authenticate, effectively locked
-    deleting = 'deleting' # Pending deletion. Holds the name in the namespace until all resources are flushed and then record is removed
+    enabled = 'enabled'  # Normal state, all functionality enabled
+    disabled = 'disabled'  # No user within the account can authenticate, effectively locked
+    deleting = 'deleting'  # Pending deletion. Holds the name in the namespace until all resources are flushed and then record is removed
 
 
 class Account(Base, UtilMixin):
@@ -51,8 +68,9 @@ class AccountUser(Base, UtilMixin):
     """
     __tablename__ = 'account_users'
 
-    username = Column(String, primary_key=True) # Enforce globally unique user names
+    username = Column(String, primary_key=True)  # Enforce globally unique user names
     account_name = Column(String, ForeignKey(Account.name), index=True)
+    type = Column(Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.internal)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
 
@@ -65,7 +83,7 @@ class AccountUser(Base, UtilMixin):
         :return: dictionary
         """
         value = super(AccountUser, self).to_dict()
-        value['credentials'] = { cred.type : cred.to_dict() for cred in self.credentials } if self.credentials else {}
+        value['credentials'] = {cred.type: cred.to_dict() for cred in self.credentials} if self.credentials else {}
         value['account'] = self.account.to_dict()
         return value
 
@@ -75,7 +93,7 @@ class AccountUser(Base, UtilMixin):
 
 class UserAccessCredentialTypes(enum.Enum):
     password = 'password'
-    token = 'token' # Reserved but not currently used
+    token = 'token'  # Reserved but not currently used
 
 
 class AccessCredential(Base, UtilMixin):
@@ -90,3 +108,41 @@ class AccessCredential(Base, UtilMixin):
     created_at = Column(Integer, default=anchore_now)
 
     user = relationship('AccountUser', back_populates='credentials', lazy='joined')
+
+
+# Entities needed by authlib for oauth2 support
+class OAuth2Client(Base, UtilMixin, OAuth2ClientMixin):
+    __tablename__ = 'oauth2_clients'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String)
+
+
+# TODO: probably move some of this to the AccessCredential type, use the 'value' field to encode the token
+class OAuth2Token(Base, UtilMixin, TokenMixin):
+    __tablename__ = 'oauth2_tokens'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String)
+    client_id = Column(String)
+    token_type = Column(String)
+    access_token = Column(String, unique=True, nullable=False)
+    refresh_token = Column(String, index=True)
+    scope = Column(Text, default='')
+    revoked = Column(Boolean, default=False)
+    issued_at = Column(
+        Integer, nullable=False, default=lambda: int(time.time())
+    )
+    expires_in = Column(Integer, nullable=False, default=0)
+
+    def get_scope(self):
+        return self.scope
+
+    def get_expires_in(self):
+        return self.expires_in
+
+    def get_expires_at(self):
+        return self.issued_at + self.expires_in
+
+    def is_refresh_token_expired(self):
+        return self.revoked

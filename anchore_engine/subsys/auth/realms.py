@@ -1,10 +1,13 @@
 from yosai.core.realm.realm import AccountStoreRealm
-from yosai.core.authz.authz import WildcardPermission, DefaultPermission
-import rapidjson
+from yosai.core.authz.authz import DefaultPermission
+from yosai.core.subject.identifier import SimpleIdentifierCollection
+from yosai.core.exceptions import IncorrectCredentialsException
 
 from anchore_engine.db import AccountTypes
 from anchore_engine.plugins.authorization.client import AuthzPluginHttpClient, Action
+from anchore_engine.apis.authentication import IdentityContext
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.auth.stores.verifier import JwtToken
 
 
 class CaseSensitivePermission(DefaultPermission):
@@ -21,12 +24,82 @@ class CaseSensitivePermission(DefaultPermission):
                           'target': set(parts.get('target', '*'))}
 
 
-class AnchoreNativeRealm(AccountStoreRealm):
+class UsernamePasswordRealm(AccountStoreRealm):
     """
-    Customized version of hte default AccountStoreRealm.
+    Anchore customized version of the default AccountStoreRealm from yosai.
 
-    This is required to get case-sensitive permission behavior, which is not supported by default.
+    Uses a username/password db store.
+
     """
+
+    __external_authorizer__ = None
+
+    # --------------------------------------------------------------------------
+    # Authentication
+    # --------------------------------------------------------------------------
+
+    def get_authentication_info(self, identifier):
+        """
+        The default authentication caching policy is to cache an account's
+        credentials that are queried from an account store, for a specific
+        user, so to facilitate any subsequent authentication attempts for
+        that user. Naturally, in order to cache one must have a CacheHandler.
+        If a user were to fail to authenticate, perhaps due to an
+        incorrectly entered password, during the the next authentication
+        attempt (of that user id) the cached account will be readily
+        available from cache and used to match credentials, boosting
+        performance.
+
+        :returns: an Account object
+        """
+        account_info = None
+        ch = self.cache_handler
+
+        def query_authc_info(self):
+            msg = ("Could not obtain cached credentials for [{0}].  "
+                   "Will try to acquire credentials from account store."
+                   .format(identifier))
+            logger.debug(msg)
+
+            # account_info is a dict
+            account_info = self.account_store.get_authc_info(identifier)
+
+            if account_info is None:
+                msg = "Could not get stored credentials for {0}".format(identifier)
+                raise ValueError(msg)
+
+            return account_info
+
+        try:
+            msg2 = ("Attempting to get cached credentials for [{0}]"
+                    .format(identifier))
+            logger.debug(msg2)
+
+            # account_info is a dict
+            account_info = ch.get_or_create(domain='authentication:' + self.name,
+                                            identifier=identifier,
+                                            creator_func=query_authc_info,
+                                            creator=self)
+
+        except AttributeError:
+            # this means the cache_handler isn't configured
+            account_info = query_authc_info(self)
+        except ValueError:
+            msg3 = ("No account credentials found for identifiers [{0}].  "
+                    "Returning None.".format(identifier))
+            logger.warn(msg3)
+
+        if account_info:
+            # Expect anchore to add the account_id already
+            accnt_id = account_info.get('anchore_identity', identifier)
+            account_info['account_id'] = SimpleIdentifierCollection(source_name=self.name,
+                                                                    identifier=accnt_id)
+        return account_info
+
+    @staticmethod
+    def _should_use_external(identity: IdentityContext):
+        # # If a service account or admin account user, use the default handler, not external calls
+        return identity.user_account_type not in [AccountTypes.service, AccountTypes.admin]
 
     def is_permitted(self, identifiers, permission_s):
         """
@@ -42,10 +115,25 @@ class AnchoreNativeRealm(AccountStoreRealm):
 
         :yields: tuple(Permission, Boolean)
         """
+
+        logger.debug('Identifiers for is_permitted: {}'.format(identifiers.__dict__))
+
         identifier = identifiers.primary_identifier
 
-        for required_perm in permission_s:
+        if self.__external_authorizer__ and self._should_use_external(identifier):
+            return self.__external_authorizer__.is_permitted(identifiers, permission_s)
+        else:
+            return self._check_internal_permitted(identifier, permission_s)
 
+    def _check_internal_permitted(self, identifier, permission_s):
+        """
+        Do an internal perm check
+
+        :param identifier:
+        :param permission_s:
+        :return:
+        """
+        for required_perm in permission_s:
             required_permission = CaseSensitivePermission(wildcard_string=required_perm)
 
             # get_authzd_permissions returns a list of DefaultPermission instances,
@@ -60,95 +148,35 @@ class AnchoreNativeRealm(AccountStoreRealm):
                     break
             yield (required_perm, is_permitted)
 
-    def get_authzd_permissions(self, identifier, perm_domain):
-        """
-        :type identifier:  str
-        :type domain:  str
 
-        :returns: a list of relevant DefaultPermission instances (permission_s)
-        """
-        permission_s = []
-        related_perms = []
-        keys = ['*', perm_domain]
-
-        def query_permissions(self):
-            msg = ("Could not obtain cached permissions for [{0}].  "
-                   "Will try to acquire permissions from account store."
-                   .format(identifier))
-            logger.debug(msg)
-
-            permissions = self.account_store.get_authz_permissions(identifier)
-            if not permissions:
-                msg = "Could not get permissions from account_store for {0}". \
-                    format(identifier)
-                raise ValueError(msg)
-            return permissions
-
-        try:
-            msg2 = ("Attempting to get cached authz_info for [{0}]"
-                    .format(identifier))
-            logger.debug(msg2)
-
-            domain = 'authorization:permissions:' + self.name
-
-            related_perms = self.cache_handler. \
-                hmget_or_create(domain=domain,
-                                identifier=identifier,
-                                keys=keys,
-                                creator_func=query_permissions,
-                                creator=self)
-        except ValueError:
-            msg3 = ("No permissions found for identifiers [{0}].  "
-                    "Returning None.".format(identifier))
-            logger.debug(msg3)
-
-        except AttributeError:
-            # this means the cache_handler isn't configured
-            queried_permissions = query_permissions(self)
-
-            related_perms = [queried_permissions.get('*'),
-                             queried_permissions.get(perm_domain)]
-
-        for perms in related_perms:
-            # must account for None values:
-            try:
-                for parts in rapidjson.loads(perms):
-                    permission_s.append(CaseSensitivePermission(parts=parts))
-            except (TypeError, ValueError):
-                pass
-
-        return permission_s
-
-
-class ExternalAuthzRealm(AnchoreNativeRealm):
+class ExternalAuthorizer(object):
     """
     A realm for doing external authz and internal authc
 
-    __client__ is the intialized http client for requesting authorization
+    __client__ is the initialized http client for requesting authorization
     __account_type_provider__ is a callable that takes a single parameter: username and returns the account type
 
     """
-    __client__ = None
-    __account_type_provider__ = None
 
-    @classmethod
-    def init_realm(cls, config, account_lookup_fn):
+    def __init__(self, config, enabled=False):
         logger.debug('Configuring realm with config: {}'.format(config))
-        cls.__client__ = AuthzPluginHttpClient(url=config.get('endpoint'), verify_ssl=config.get('verify_ssl'))
-        cls.__account_type_provider__ = account_lookup_fn
+        self.enabled = enabled
+        self.client = AuthzPluginHttpClient(url=config.get('endpoint'), verify_ssl=config.get('verify_ssl'))
 
     def is_permitted(self, identifiers, permission_s):
         """
         :type identifiers:  SimpleRealmCollection
         """
-        # If a service account or admin account user, use the default handler, not external calls
-        if ExternalAuthzRealm.__account_type_provider__ and callable(ExternalAuthzRealm.__account_type_provider__) and \
-                ExternalAuthzRealm.__account_type_provider__(identifiers.primary_identifier) in [AccountTypes.service, AccountTypes.admin]:
-            logger.debug('Detected admin or service account, using internal authz')
-            return super().is_permitted(identifiers, permission_s)
+        # Fail all if not configured
+        if not self.enabled or not self.client:
+            return [(p, False) for p in permission_s]
 
         result_list = [] # List of tuples (required_perm, is_permitted)
         identifier = identifiers.primary_identifier
+        if isinstance(identifier, IdentityContext):
+            username = identifier.username
+        else:
+            username = identifier
 
         actions = {}
         for required_perm in permission_s:
@@ -157,7 +185,7 @@ class ExternalAuthzRealm(AnchoreNativeRealm):
 
         if actions:
             try:
-                resp = self.__client__.authorize(principal=identifier, action_s=list(actions.keys()))
+                resp = self.client.authorize(principal=username, action_s=list(actions.keys()))
                 for i in resp.allowed:
                     result_list.append((actions[i], True))
 
@@ -165,7 +193,31 @@ class ExternalAuthzRealm(AnchoreNativeRealm):
                     result_list.append((actions[i], False))
             except Exception as e:
                 logger.exception('Unexpected error invoking authorization plugin via client: {}'.format(e))
-                logger.error('Authorization plugin invocation error. Could not perform a proper authz check. Please check configuration and/or authz service status: {}'.format(self.__client__.url))
+                logger.error('Authorization plugin invocation error. Could not perform a proper authz check. Please check configuration and/or authz service status: {}'.format(self.client.url))
                 raise e
 
         return result_list
+
+
+class JwtRealm(UsernamePasswordRealm):
+    """
+    Customized version of the UsernamePassword realm but for interacting with a TokenStore
+
+    """
+
+    def authenticate_account(self, authc_token: JwtToken):
+        try:
+            assert authc_token.identifier is not None
+
+            # Lookup the account info to verify the user identified by the token is still valid
+            authc_info = self.get_authentication_info(authc_token.identifier)
+
+            # Overwrite any creds found in db. Cleanup of token vs password is outside the scope of this handler.
+            if not authc_info['authc_info']:
+                # No user exists for the identifier
+                raise IncorrectCredentialsException
+
+            return authc_info
+        except:
+            logger.debug_exception('Could not authenticate token')
+            raise IncorrectCredentialsException()

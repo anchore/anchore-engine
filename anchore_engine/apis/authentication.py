@@ -8,8 +8,7 @@ from collections import namedtuple
 
 from anchore_engine.subsys.identities import manager_factory
 
-
-IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_state'])
+IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_state', 'user_type'])
 Credential = namedtuple('Credential', ['type', 'value'])
 
 
@@ -26,7 +25,7 @@ class IdentityProvider(object):
         """
         Load the user and account for the given username, includes credentials and source account
         :param username:
-        :return: (IndentityContext object, credential_list tuple)
+        :return: (IdentityContext object, credential_list tuple)
         """
         usr = self.mgr.get_user(username)
 
@@ -34,7 +33,8 @@ class IdentityProvider(object):
             ident = IdentityContext(username=username,
                                     user_account=usr['account_name'],
                                     user_account_type=usr['account']['type'],
-                                    user_account_state=usr['account']['state'])
+                                    user_account_state=usr['account']['state'],
+                                    user_type=usr['type'])
         else:
             # Handle the case where username doesn't match cleanly, rather than KeyError
             return None, None

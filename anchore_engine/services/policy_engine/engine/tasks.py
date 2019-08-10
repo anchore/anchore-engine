@@ -164,8 +164,7 @@ class FeedsUpdateTask(IAsyncTask):
 
             result = []
             if cls.locking_enabled:
-                # system_user = get_system_user_auth()
-                run_target_with_lease(user_auth=system_user, lease_id='feed_sync', ttl=90, target=lambda: result.append(task.execute()))
+                run_target_with_lease(account=None, lease_id='feed_sync', ttl=90, target=lambda: result.append(task.execute()))
                 # A bit of work-around for the lambda def to get result from thread execution
                 if result:
                     result = result[0]

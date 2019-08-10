@@ -3,8 +3,11 @@ Interface to the account_users table. Data format is dicts, not objects.
 """
 
 from passlib import pwd
+from passlib.context import CryptContext
 from anchore_engine.db import AccountUser, AccessCredential, UserAccessCredentialTypes
 from anchore_engine.db.entities.common import anchore_now
+from anchore_engine.configuration import localconfig
+from anchore_engine.subsys import logger
 
 
 class UserNotFoundError(Exception):
@@ -38,7 +41,42 @@ def _generate_password():
     return pwd.genword(entropy=48)
 
 
-def add(account_name, username, session):
+_hasher = None
+
+
+class PasswordHasher(object):
+    def __init__(self, config):
+        self.do_hash = config.get('user_authentication', {}).get('hashed_passwords', False)
+
+    def hash(self, password):
+        """
+        Hash the password to store it. If not configured for hashes, this is a no-op.
+
+        :param password:
+        :return:
+        """
+        logger.info('Checking hash on password')
+
+        if self.do_hash:
+            logger.info('Hashing password prior to storage')
+            context = dict(schemes=['argon2'])
+            cc = CryptContext(**context)
+            password = cc.hash(password)
+        else:
+            logger.info('No hash requirement set in config')
+
+        return password
+
+
+def get_hasher(config=None):
+    global _hasher
+    if _hasher is None:
+        conf = config if config is not None else localconfig.get_config()
+        _hasher = PasswordHasher(conf)
+    return _hasher
+
+
+def add(account_name, username, user_type, session):
     """
     Create a new user, raising error on conflict
 
@@ -57,6 +95,7 @@ def add(account_name, username, session):
         user_to_create.account_name = account_name
         user_to_create.username = username
         user_to_create.created_at = anchore_now()
+        user_to_create.type = user_type
         user_to_create.last_updated = anchore_now()
         session.add(user_to_create)
         session.flush()
@@ -86,17 +125,14 @@ def add_user_credential(username, credential_type=UserAccessCredentialTypes.pass
     credential.type = credential_type
     credential.created_at = anchore_now()
 
-    # TODO: pass thru the encrypter
+    if value is None:
+        value = _generate_password()
 
-    if value:
-        credential.value = value
-    else:
-        credential.value = _generate_password()
+    credential.value = get_hasher().hash(value) # This is a no-op if hashing is not configured
 
     session.add(credential)
 
     return credential.to_dict()
-
 
 def delete_user_credential(username, credential_type, session):
     cred = session.query(AccessCredential).filter_by(username=username, type=credential_type).one_or_none()

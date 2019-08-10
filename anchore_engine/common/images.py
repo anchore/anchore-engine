@@ -61,7 +61,7 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
             image_info['manifest'] = {}
 
     else:
-        raise Exception ("image type ("+str(image_type)+") not supported")
+        raise Exception("image type ("+str(image_type)+") not supported")
 
     return(ret)
 

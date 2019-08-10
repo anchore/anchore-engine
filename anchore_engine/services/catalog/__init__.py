@@ -1260,7 +1260,7 @@ def watcher_func(*args, **kwargs):
                             'No task lease defined for watcher {}, initiating without lock protection'.format(watcher))
                         rc = handler(*args, **kwargs)
                     else:
-                        rc = simplequeue.run_target_with_lease(system_user_auth, lease_id, handler,
+                        rc = simplequeue.run_target_with_lease(None, lease_id, handler,
                                                                ttl=default_lease_ttl, *args, **kwargs)
 
                 else:

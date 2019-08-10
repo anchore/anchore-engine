@@ -12,7 +12,7 @@ import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
 from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
-from anchore_engine.clients.services import simplequeue
+from anchore_engine.clients.services import simplequeue, internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.service import ApiService, LifeCycleStages
 
@@ -228,7 +228,7 @@ def run_feed_sync(system_user):
     else:
         try:
             # This has its own retry on the queue fetch, so wrap with catch block to ensure we don't double-retry on task exec
-            simplequeue.run_target_with_queue_ttl(system_user, queue=feed_sync_queuename, target=do_feed_sync,
+            simplequeue.run_target_with_queue_ttl(None, queue=feed_sync_queuename, target=do_feed_sync,
                                                   max_wait_seconds=30, visibility_timeout=180, retries=FEED_SYNC_RETRIES,
                                                   backoff_time=FEED_SYNC_RETRY_BACKOFF)
         except Exception as err:
@@ -277,7 +277,8 @@ def push_sync_task(system_user):
         logger.info("simplequeue service not yet ready, will retry")
         raise Exception("Simplequeue service not yet ready")
     else:
-        q_client = SimpleQueueClient(user=system_user[0], password=system_user[1])
+        #q_client = SimpleQueueClient(user=system_user[0], password=system_user[1])
+        q_client = internal_client_for(SimpleQueueClient, userId=None)
         if not q_client.is_inqueue(name=feed_sync_queuename, inobj=feed_sync_msg):
             try:
                 q_client.enqueue(name=feed_sync_queuename, inobj=feed_sync_msg)

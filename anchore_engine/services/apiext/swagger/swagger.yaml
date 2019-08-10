@@ -2275,6 +2275,23 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /oauth/token:
+    post:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.oauth
+      operationId: get_oauth_token
+      x-anchore-authz-action: None
+      description: Request a jwt token for subsequent operations, this request is authenticated with normal HTTP auth
+      consumes:
+        - application/x-www-form-urlencoded
+      responses:
+        200:
+          description: Resulting JWT token
+          schema:
+            $ref: "#/definitions/TokenResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
 definitions:
   PaginationProperties:
     type: object
@@ -3490,13 +3507,20 @@ definitions:
         description: The status of the account
   User:
     type: object
-    description: A username, password pair that can be used to authenticate with the service as a specific user
+    description: A username for authenticating with one or more types of credentials. User type defines the expected credentials allowed for the user. Native users have passwords, External users have no credential internally. Internal users are service/system users for inter-service communication.
     required:
     - username
     properties:
       username:
         description: The username to authenticate with
         type: string
+      type:
+        description: The user's type
+        type: string
+        enum:
+          - native
+          - internal
+          - external
       created_at:
         description: The timestampt the user record was created
         type: string
@@ -3794,3 +3818,11 @@ definitions:
       total_time_seconds:
         type: number
         description: The duration of the group sync in seconds
+  TokenResponse:
+    type: object
+    required:
+      - token
+    properties:
+      token:
+        type: string
+        description: The token content

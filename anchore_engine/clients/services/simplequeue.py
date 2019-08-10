@@ -6,6 +6,7 @@ from anchore_engine.clients.services import http
 from anchore_engine.subsys import logger
 from anchore_engine.utils import get_threadbased_id
 from anchore_engine.clients.services.internal import InternalServiceClient
+from anchore_engine.clients.services import internal_client_for
 import retrying
 
 class LeaseUnavailableError(Exception):
@@ -65,7 +66,7 @@ class SimpleQueueClient(InternalServiceClient):
         return self.round_robin_call_api(http.anchy_put, 'leases/{lease_id}/ttl', path_params={'lease_id': lease_id}, query_params={'client_id': client_id, 'ttl': ttl, 'epoch': epoch})
 
 
-def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_wait_seconds=0, autorefresh=True, retries=1, backoff_time=0, *args, **kwargs):
+def run_target_with_queue_ttl(account, queue, visibility_timeout, target, max_wait_seconds=0, autorefresh=True, retries=1, backoff_time=0, *args, **kwargs):
     """
     Run a target function with the message pulled from the queue. If autorefresh=True, then run target as a thread and periodically check
     for completion, updating the message visibility timeout to keep it fresh until the thread completes.
@@ -85,7 +86,9 @@ def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_
     :return:
     """
 
-    client = SimpleQueueClient(as_account=user_auth[0], user=user_auth[0], password=user_auth[1])
+    #client = SimpleQueueClient(as_account=user_auth[0], user=user_auth[0], password=user_auth[1])
+    client = internal_client_for(SimpleQueueClient, account)
+
     ex = None
     qobj = None
 
@@ -143,7 +146,7 @@ def run_target_with_queue_ttl(user_auth, queue, visibility_timeout, target, max_
         # Always delete the message. Other handlers will ensure things are queued ok.
 
 
-def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, autorefresh=True, *args, **kwargs):
+def run_target_with_lease(account, lease_id, target, ttl=60, client_id=None, autorefresh=True, *args, **kwargs):
     """
     Run a handler within the context of a lease that is auto-refreshed as long as the handler runs.
 
@@ -151,7 +154,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
 
     The leases are fairly slow to actuate, so expect to use this mechanism for longer running tasks where the lease duration should be > 10 sec
 
-    :param user_auth:
+    :param account: account to use for the q client, may be None for system user
     :param lease_id:
     :param target:
     :param args:
@@ -160,7 +163,7 @@ def run_target_with_lease(user_auth, lease_id, target, ttl=60, client_id=None, a
     """
     handler_thread = threading.Thread(target=target, args=args, kwargs=kwargs)
 
-    client = SimpleQueueClient(as_account=user_auth[0], user=user_auth[0], password=user_auth[1])
+    client = internal_client_for(SimpleQueueClient, account)
 
     # Ensure task lease exists for acquisition and create if not found
     lease_resp = client.describe_lease(lease_id)
