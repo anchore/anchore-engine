@@ -141,9 +141,7 @@ class FeedsUpdateTask(IAsyncTask):
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
-            system_user = mgr.get_system_credentials()
-
-        catalog_client = CatalogClient(user=system_user[0], password=system_user[1])
+            catalog_client = internal_client_for(CatalogClient, userId=None)
 
         try:
 
