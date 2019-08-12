@@ -219,7 +219,11 @@ class WsgiApiServiceMaker(object):
 
         try:
             logger.info('Initializing configuration')
-            self._init_config(options)
+            try:
+                self._init_config(options)
+            except Exception as e:
+                logger.error("Aborting service startup due to configuration error: {}".format(e))
+                raise e
 
             logger.info('Initializing logging')
             self._init_logging()

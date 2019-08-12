@@ -98,7 +98,7 @@ DELETE_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service, AccountTypes.admin]
 USER_MOD_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service]
 
 # Top-level config keys required to be present
-default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
+default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True, 'user_authentication': True}
 
 CRED_CACHE_TTL = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_TTL', 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC', 3))
@@ -358,7 +358,10 @@ def validate_config(config, validate_params=None):
 
         if 'user_authentication' in validate_params and validate_params['user_authentication']:
             validate_user_auth_config(config)
+
+        if 'keys' in validate_params and validate_params['keys']:
             validate_key_config(config, required=False)
+
     except Exception as err:
         logger.error(str(err))
         raise err
