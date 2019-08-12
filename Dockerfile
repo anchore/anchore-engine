@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi7/ubi:7.6-239 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi7/ubi:7.7-99 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -20,8 +20,6 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing OS dependencies" && \
-    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
-    yum remove -y subscription-manager && \
     yum update -y && \
     yum install -y gcc make rh-python36 rh-python36-python-wheel rh-python36-python-pip git
 
@@ -55,7 +53,8 @@ RUN set -ex && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
 # stage RPM dependency binaries
-RUN yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg
 
 RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
@@ -140,8 +139,6 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 # Build dependencies
 
 RUN set -ex && \
-    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
-    yum remove -y subscription-manager && \
     yum update -y && \
     yum install -y rh-python36 rh-python36-python-wheel rh-python36-python-pip git procps psmisc
 

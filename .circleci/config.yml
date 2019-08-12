@@ -254,4 +254,4 @@ workflows:
         - push_dockerhub
         image_name: 'anchore/anchore-engine-dev:${CIRCLE_SHA1}'
         private_registry: true
-        timeout: '1500'
+        timeout: '2000'
