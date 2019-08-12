@@ -118,25 +118,25 @@ def init_oauth(app):
     except Exception as e:
         logger.debug('Default client record init failed: {}'.format(e))
 
-
     app.config['OAUTH2_JWT_ENABLED'] = True
     app.config['OAUTH2_ACCESS_TOKEN_GENERATOR'] = generate_token
     app.config['OAUTH2_REFRESH_TOKEN_GENERATOR'] = True
-    # app.config['OAUTH2_TOKEN_EXPIRES_IN'] = {
-    #     'authorization_code': 864000,
-    #     'implicit': 3600,
-    #     'password': int(conf['user_authentication']['oauth'].get('default_token_expiration_seconds')),
-    #     'client_credentials': 864000
-    # }
+
+    # Only the password grant type is used, others can stay defaults
+    app.config['OAUTH2_TOKEN_EXPIRES_IN'] = {
+        'authorization_code': 864000,
+        'implicit': 3600,
+        'password': int(conf['user_authentication']['oauth'].get('default_token_expiration_seconds')),
+        'client_credentials': 864000
+    }
 
     tok_mgr = token_manager()
     app.config['OAUTH2_JWT_KEY'] = tok_mgr.default_issuer().signing_key
     app.config['OAUTH2_JWT_ISS'] = tok_mgr.default_issuer().issuer
     app.config['OAUTH2_JWT_ALG'] = tok_mgr.default_issuer().signing_alg
 
-    authz = AuthorizationServer(app, query_client=query_client, save_token=save_token)
-    authz.register_grant(grants.RefreshTokenGrant)
-    authz.register_grant(grants.ImplicitGrant)
+    authz = AuthorizationServer(app, query_client=query_client, save_token=do_not_save_token)
+    # Support only the password grant for now
     authz.register_grant(PasswordGrant)
 
     return authz
