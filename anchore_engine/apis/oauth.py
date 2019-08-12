@@ -70,33 +70,15 @@ def init_oauth(app):
 
     def query_client(client_id):
         logger.debug('Looking up client: {}'.format(client_id))
-
-        # if client_id == 'anonymous':
-        #    db = get_session()
-        #    c = db.query(OAuth2Client).filter_by(client_id=client_id).first()
-        #    logger.debug('Found client: {}'.format(c))
-        # else:
-        #    logger.debug('Using default user client')
-        #
-
-        # Return a default client to support implicit flows
-        c = OAuth2Client()
-        c.id = 0
-        c.client_id = client_id
-        c.user_id = client_id
-        c.client_secret = ''
-        c.issued_at = time.time() - 100
-        c.expires_at = time.time() + 1000
-        c.grant_type = 'password'
-        c.token_endpoint_auth_method = 'none'
-        c.client_name = 'default'
+        db = get_session()
+        c = db.query(OAuth2Client).filter_by(client_id=client_id).first()
+        logger.debug('Found client: {}'.format(c))
         return c
 
     def do_not_save_token(token, request):
         return None
 
     def save_token(token, request):
-        logger.debug('Saving token: {}'.format(token))
         try:
             if request.user:
                 user_id = request.user.username
