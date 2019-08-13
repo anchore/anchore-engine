@@ -57,12 +57,13 @@ class TokenIssuer(object):
     Creates oauth tokens signed by a specific private key
     """
 
-    def __init__(self, key: bytes, alg: str, issuer=ANCHORE_ISSUER):
+    def __init__(self, key: bytes, alg: str, expiration: int, issuer=ANCHORE_ISSUER):
         assert alg in SUPPORTED_ALGORITHMS
 
         self.signing_key = key
         self.signing_alg = alg
         self.issuer = issuer
+        self.expiration_seconds = expiration
 
     def generate_token(self, subject):
         """
@@ -78,17 +79,17 @@ class TokenIssuer(object):
             header = {'alg': self.signing_alg}
             ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 
-            expiration = ts + datetime.timedelta(seconds=86400)
+            expiration_ts = ts + datetime.timedelta(seconds=self.expiration_seconds)
 
             payload = {
                 'iss': self.issuer,
                 'sub': subject,
-                'exp': expiration,
+                'exp': expiration_ts,
                 'iat': ts,
                 'jti': uuid.uuid4().hex
             }
 
-            return jwt.encode(header=header, payload=payload, key=self.signing_key), expiration
+            return jwt.encode(header=header, payload=payload, key=self.signing_key), expiration_ts
 
 
 class TokenVerifier(object):
@@ -125,11 +126,12 @@ class TokenVerifier(object):
 
 
 class JwtTokenManager(object):
-    def __init__(self, config=None):
-        self.config = config
-        self.keys = load_keys(config)
-
-        self.issuers = {name: TokenIssuer(key, 'RS256') if name != 'secret' else TokenIssuer(key, 'HS256', issuer=ANCHORE_ISSUER) for name, key in self.keys.items() if name in ['private', 'secret']}
+    def __init__(self, oauth_config, keys_config):
+        self.config = oauth_config
+        self.keys_config = keys_config
+        self.keys = load_keys(keys_config)
+        expiration = int(self.config.get('default_token_expiration_seconds'))
+        self.issuers = {name: TokenIssuer(key, 'RS256', expiration) if name != 'secret' else TokenIssuer(key, 'HS256', expiration, issuer=ANCHORE_ISSUER) for name, key in self.keys.items() if name in ['private', 'secret']}
         self.verifiers = {name: TokenVerifier(key, 'RS256', issuers=[ANCHORE_ISSUER]) if name != 'secret' else TokenVerifier(key, 'HS256') for name, key in self.keys.items() if name in ['public', 'secret']}
 
         if 'public' in self.verifiers.keys():
@@ -142,12 +144,12 @@ class JwtTokenManager(object):
         else:
             self._default_private = 'secret'
 
-    def generate_token(self, username, with_key_name=None, return_expiration=False):
+    def generate_token(self, user_uuid, with_key_name=None, return_expiration=False):
         if not with_key_name:
             # If have priv key then use it, else use secret if available
-            tok, exp = self.issuers[self._default_private].generate_token(username)
+            tok, exp = self.issuers[self._default_private].generate_token(user_uuid)
         else:
-            tok, exp = self.issuers[with_key_name].generate_token(username)
+            tok, exp = self.issuers[with_key_name].generate_token(user_uuid)
 
         if return_expiration:
             return tok, exp
@@ -163,27 +165,26 @@ class JwtTokenManager(object):
     def default_issuer(self):
         return self.issuers[self._default_private]
 
-    @classmethod
-    def load(cls, config: dict):
-        return JwtTokenManager(config)
 
-
-def keys_config_loader():
+def oauth_config_loader():
     """
     Loads the key configuration from the default location
 
     :return:
     """
 
-    return localconfig.get_config().get('keys')
+    return localconfig.get_config().get('user_authentication', {}).get('oauth'), localconfig.get_config().get('keys')
 
 
 def token_manager(config=None):
     global _token_manager
     if _token_manager is None:
         if config is None:
-            config = keys_config_loader()
+            oauth_config, keys_config = oauth_config_loader()
+        else:
+            oauth_config = config.get('user_authentication', {}).get('oauth')
+            keys_config = config.get('keys')
 
-        _token_manager = JwtTokenManager.load(config)
+        _token_manager = JwtTokenManager(oauth_config, keys_config)
 
     return _token_manager

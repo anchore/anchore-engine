@@ -34,6 +34,7 @@ DEFAULT_CONFIG = {
     'user_authentication': {
         'oauth': {
             'enabled': False,
+            'default_token_expiration_seconds': 3600
         },
         'hashed_passwords': False,
     },

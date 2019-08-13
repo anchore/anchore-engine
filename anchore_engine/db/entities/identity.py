@@ -73,6 +73,7 @@ class AccountUser(Base, UtilMixin):
     type = Column(Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.internal)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
+    uuid = Column('uuid', String, unique=True, nullable=False, default=anchore_uuid, index=True)
 
     account = relationship('Account', back_populates='users', lazy='joined', innerjoin=True)
     credentials = relationship('AccessCredential', back_populates='user', lazy='joined', cascade='all, delete-orphan')

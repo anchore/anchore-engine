@@ -155,7 +155,8 @@ class BearerTokenVerifier(CredentialsVerifier):
         logger.debug('Verifying bearer token')
 
         if isinstance(authc_token, JwtToken):
-            if not authc_token.identifier or authc_token.is_expired():
+            # For a token the 'credentials' part is the uuid of the user
+            if not authc_token.identifier or authc_token.is_expired() or authc_token.identifier != authc_info.get('authc_info', {}).get('jwt', {}).get('credential'):
                 raise IncorrectCredentialsException
         else:
             logger.debug('Wrong type for bearer verify')

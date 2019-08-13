@@ -56,7 +56,6 @@ class IdentityBootstrapper(object):
                 self.mgr.add_user_credential(username=localconfig.ADMIN_USERNAME,
                                              credential_type=UserAccessCredentialTypes.password,
                                              value=init_password)
-
             return True
         except Exception as err:
             logger.exception('Error initializing system identities')
@@ -157,7 +156,7 @@ class HttpBearerCredential(AccessCredential):
         self.expires_at = expiration
 
     def is_expired(self):
-        return self.expires_at is not None and datetime.datetime.utcnow() < self.expires_at
+        return self.expires_at is not None and datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc) < self.expires_at
 
     def get_creds(self):
         return self.token
@@ -203,10 +202,11 @@ class IdentityManager(object):
 
                 # Generate one
                 if localconfig.get_config().get('user_authentication', {}).get('oauth', {}).get('enabled'):
-                    logger.debug('Generating a token for system creds')
                     # Generate a token
+                    usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
+                    system_user_uuid = usr['uuid']
                     tok_mgr = token_manager()
-                    tok, exp = tok_mgr.generate_token(localconfig.SYSTEM_USERNAME, return_expiration=True)
+                    tok, exp = tok_mgr.generate_token(system_user_uuid, return_expiration=True)
                     cred = HttpBearerCredential(tok, exp)
                 else:
                     rec = db_accounts.get(localconfig.SYSTEM_USERNAME, session=self.session)
@@ -215,8 +215,6 @@ class IdentityManager(object):
                     if not rec or not usr:
                         logger.error('Could not find a system account or user. This is not an expected state')
                         raise Exception('No system account or user found')
-
-                    logger.debug('Using user/pass for system creds')
 
                     # This will not work if the system admin has configured hashed passwords but not oauth. But, that should be caught at config validation.
                     cred = HttpBasicCredential(usr['username'], usr.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value'))
@@ -325,6 +323,9 @@ class IdentityManager(object):
 
     def get_user(self, username):
         return db_account_users.get(username, session=self.session)
+
+    def get_user_by_uuid(self, uuid):
+        return db_account_users.get_by_uuid(uuid, session=self.session)
 
     def list_users(self, account_name=None):
         if account_name:

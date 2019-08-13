@@ -7,14 +7,7 @@ from anchore_engine.db.entities.identity import OAuth2Client, OAuth2Token
 from authlib.flask.oauth2.authorization_server import AuthorizationServer
 from authlib.oauth2.rfc6749 import grants
 from anchore_engine.apis.authorization import get_authorizer
-from anchore_engine.auth.oauth import token_manager, ANCHORE_ISSUER
-
-
-# TODO: HACK REMOVE
-#import logging
-#logger.enable_test_logging()
-#l = logging.getLogger('authlib')
-#l.setLevel('DEBUG')
+from anchore_engine.auth.oauth import token_manager
 
 
 class User(object):
@@ -37,23 +30,21 @@ class PasswordGrant(grants.ResourceOwnerPasswordCredentialsGrant):
     def authenticate_user(self, username, password):
         try:
             authc_token = UsernamePasswordToken(username=username, password=password, remember_me=False)
+
             authorizer = get_authorizer()
-            authorizer.inline_authz([], authc_token=authc_token)
-            return User(username)
+            identity = authorizer.inline_authz([], authc_token=authc_token)
+            # Use the user's uuid as the username/subject for the token to avoid name conflicts over time
+            if identity is None:
+                raise Exception('Unknown user')
+            else:
+                return User(identity.user_uuid)
         except:
-            logger.exception('Error authenticating')
-            raise
+            logger.debug_exception('Error authenticating')
+            raise Exception('User authentication failed')
 
 
 def generate_token(client, grant_type, user, scope):
     tok_mgr = token_manager()
-    logger.info('Generating token: {}, {}, {}, {}'.format(client, grant_type, user, scope))
-    return str(tok_mgr.generate_token(user.username), 'utf-8')
-
-
-def generate_refresh_token(client, user, scope):
-    tok_mgr = token_manager()
-    logger.info('Generating refresh token: {}, {}, {}, {}'.format(client, 'refresh', user, scope))
     return str(tok_mgr.generate_token(user.username), 'utf-8')
 
 
@@ -64,7 +55,7 @@ def init_oauth(app):
     """
     logger.debug('Initializing oauth routes')
     conf = localconfig.get_config()
-    if not conf.get('oauth') or not conf.get('oauth', {}).get('enabled'):
+    if not conf.get('user_authentication', {}).get('oauth', {}).get('enabled'):
         # Not enabled in configuration
         return None
 
@@ -72,12 +63,13 @@ def init_oauth(app):
         logger.debug('Looking up client: {}'.format(client_id))
         db = get_session()
         c = db.query(OAuth2Client).filter_by(client_id=client_id).first()
-        logger.debug('Found client: {}'.format(c))
+        logger.debug('Found client record for client_id: {}'.format(client_id))
         return c
 
     def do_not_save_token(token, request):
         return None
 
+    # Don't use this (yet), due to token signing that allows system to verify without persistence
     def save_token(token, request):
         try:
             if request.user:
@@ -120,7 +112,7 @@ def init_oauth(app):
 
     app.config['OAUTH2_JWT_ENABLED'] = True
     app.config['OAUTH2_ACCESS_TOKEN_GENERATOR'] = generate_token
-    app.config['OAUTH2_REFRESH_TOKEN_GENERATOR'] = True
+    app.config['OAUTH2_REFRESH_TOKEN_GENERATOR'] = False
 
     # Only the password grant type is used, others can stay defaults
     app.config['OAUTH2_TOKEN_EXPIRES_IN'] = {
@@ -138,5 +130,6 @@ def init_oauth(app):
     authz = AuthorizationServer(app, query_client=query_client, save_token=do_not_save_token)
     # Support only the password grant for now
     authz.register_grant(PasswordGrant)
+    logger.debug('Oauth init complete')
 
     return authz

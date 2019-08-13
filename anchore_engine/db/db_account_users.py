@@ -131,8 +131,8 @@ def add_user_credential(username, credential_type=UserAccessCredentialTypes.pass
     credential.value = get_hasher().hash(value) # This is a no-op if hashing is not configured
 
     session.add(credential)
-
     return credential.to_dict()
+
 
 def delete_user_credential(username, credential_type, session):
     cred = session.query(AccessCredential).filter_by(username=username, type=credential_type).one_or_none()
@@ -148,6 +148,14 @@ def get_all(session):
 
 def get(username, session=None):
     usr = session.query(AccountUser).filter_by(username=username).one_or_none()
+    if usr:
+        return usr.to_dict()
+    else:
+        return None
+
+
+def get_by_uuid(uuid, session=None):
+    usr = session.query(AccountUser).filter_by(uuid=uuid).one_or_none()
     if usr:
         return usr.to_dict()
     else:

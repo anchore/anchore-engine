@@ -146,7 +146,10 @@ class TokenAccountStore(DbAccountStore):
           'account_id': <str>
         }
 
-        :param identifier:
+        This differs from the password-flow lookup in that it uses the users's uuid rather than username since tokens
+        are tied to the uuid to ensure lifecycle tied to a specific instance of a username.
+
+        :param identifier: the user's uuid as signed/encoded in the token
         :return: populated dict defined above or empty structured dict above
         """
 
@@ -161,7 +164,7 @@ class TokenAccountStore(DbAccountStore):
             idp = idp_factory.for_session(db)
 
             try:
-                identity, creds = idp.lookup_user(identifier)
+                identity, creds = idp.lookup_user_by_uuid(identifier)
             except:
                 logger.exception('Error looking up user')
                 identity = None
@@ -170,6 +173,6 @@ class TokenAccountStore(DbAccountStore):
             result_account['account_locked'] = False
             if identity:
                 result_account['anchore_identity'] = identity
-                result_account['authc_info']['jwt'] = {'credential': None, 'failed_attempts': []}
+                result_account['authc_info']['jwt'] = {'credential': identity.user_uuid, 'failed_attempts': []}
 
             return result_account

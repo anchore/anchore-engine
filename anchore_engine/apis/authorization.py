@@ -420,11 +420,11 @@ class DbAuthorizationHandler(AuthorizationHandler):
     def inline_authz(self, permission_s: list, authc_token: AuthenticationToken=None):
         """
         Non-decorator impl of the @requires() decorator for isolated and inline invocation.
-        Returns None on success or raises an exception
+        Returns authenticated user identity on success or raises an exception
 
         :param permission_s: list of Permission objects
         :param authc_token: optional authc token to use for the authc portion, if omitted or None, the flask request context is used
-        :return:
+        :return: IdentityContext object
         """
         try:
             with Yosai.context(self._yosai):
@@ -461,7 +461,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                         logger.exception('Error doing authz: {}'.format(e))
                         raise UnauthorizedError(permissions_final)
 
-                    return None
+                    return ApiRequestContextProxy.identity()
                 finally:
                     # Teardown the request context
                     ApiRequestContextProxy.set_identity(None)

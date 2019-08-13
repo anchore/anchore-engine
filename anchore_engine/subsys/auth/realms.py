@@ -213,11 +213,12 @@ class JwtRealm(UsernamePasswordRealm):
             authc_info = self.get_authentication_info(authc_token.identifier)
 
             # Overwrite any creds found in db. Cleanup of token vs password is outside the scope of this handler.
-            if not authc_info['authc_info']:
+            if not authc_info or not authc_info['authc_info']:
                 # No user exists for the identifier
                 raise IncorrectCredentialsException
+            else:
+                return authc_info
 
-            return authc_info
         except:
             logger.debug_exception('Could not authenticate token')
             raise IncorrectCredentialsException()
