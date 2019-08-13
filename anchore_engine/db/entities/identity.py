@@ -70,7 +70,7 @@ class AccountUser(Base, UtilMixin):
 
     username = Column(String, primary_key=True)  # Enforce globally unique user names
     account_name = Column(String, ForeignKey(Account.name), index=True)
-    type = Column(Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.internal)
+    type = Column(Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.native)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
     uuid = Column('uuid', String, unique=True, nullable=False, default=anchore_uuid, index=True)

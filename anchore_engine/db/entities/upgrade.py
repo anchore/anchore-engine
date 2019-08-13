@@ -966,7 +966,8 @@ def update_users_010_011():
     :return:
     """
     from anchore_engine.db import session_scope
-    from anchore_engine.db.entities.identity import UserTypes
+    from anchore_engine.db.entities.identity import UserTypes, anchore_uuid
+    from anchore_engine.configuration import localconfig
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -974,7 +975,8 @@ def update_users_010_011():
         {
             'table_name': 'account_users',
             'columns': [
-                Column('type', Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.internal)
+                Column('type', Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.native),
+                Column('uuid', String, unique=True, nullable=False, default=anchore_uuid, index=True)
             ]
         }
     ]
@@ -991,8 +993,21 @@ def update_users_010_011():
                 log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
                 raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
 
-    # populate with default value
-    rc = engine.execute("UPDATE account_users set type='internal' where type is null")
+    # populate with default for system user
+    rc = engine.execute("UPDATE account_users set type='internal' where username = '%s'" % localconfig.SYSTEM_USERNAME)
+
+    # populate with default for system user
+    rc = engine.execute("UPDATE account_users set type='native' where username <> '%s'" % localconfig.SYSTEM_USERNAME)
+
+    users = engine.execute("SELECT username from account_users where uuid is null")
+    for row in users:
+        username = row['username']
+        rc = engine.execute("UPDATE account_users set uuid='%s' where username='%s'" % (anchore_uuid(), username))
+
+    # Add constraints and index
+    rc = engine.execute("ALTER TABLE account_users ALTER COLUMN uuid set not null")
+    rc = engine.execute("ALTER TABLE account_users ALTER COLUMN type set not null")
+    rc = engine.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_account_users_uuid on account_users (uuid)")
 
 
 def db_upgrade_010_011():
