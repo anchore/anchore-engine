@@ -132,7 +132,8 @@ class LocalTestDataEnvironment(object):
         DataFeeds._packagesFeed_cls = LocalPackagesFeed
         DataFeeds._nvdsFeed_cls = LocalVulnerabilityFeed
         DataFeeds._snyksFeed_cls = LocalVulnerabilityFeed
-        DataFeeds._vulndbFeed_cls = LocalVulndbFeed
+        DataFeeds._nvdV2sFeed_cls = LocalVulnerabilityFeed
+        DataFeeds._vulndbFeed_cls = LocalVulnerabilityFeed
 
     def get_image_meta(self, img_id):
         return self.image_map.get(img_id)
@@ -351,13 +352,3 @@ class LocalSnykFeed(VulnerabilityFeed):
         if not src:
             src = self.__source_cls__(self.__data_path__)
         super(LocalSnykFeed, self).__init__(metadata=metadata, src=src)
-
-
-class LocalVulndbFeed(VulnerabilityFeed):
-    __source_cls__ = LocalFilesystemFeedClient
-    __data_path__ = None
-
-    def __init__(self, metadata=None, src=None):
-        if not src:
-            src = self.__source_cls__(self.__data_path__)
-        super(LocalVulndbFeed, self).__init__(metadata=metadata, src=src)

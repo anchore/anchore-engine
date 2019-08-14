@@ -127,7 +127,7 @@ class AnchoreSecGateTest(GateUnitTest):
         t, gate, test_context = self.get_initialized_trigger(VulnerabilityMatchTrigger.__trigger_name__, package_type='all', severity='medium', severity_comparison='>=')
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        logger.info(('Fired: {}'.format(t.fired)))
+        logger.info('Fired: {}'.format(t.fired))
         # CVE-TEST-TEST3, all others are either already fixed or < medium
         self.assertGreaterEqual(len(t.fired), 1)
 
@@ -135,13 +135,13 @@ class AnchoreSecGateTest(GateUnitTest):
         t, gate, test_context = self.get_initialized_trigger(VulnerabilityMatchTrigger.__trigger_name__, package_type='all', severity='medium', severity_comparison='>=', fix_available='True')
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        logger.info(('Fired: {}'.format(t.fired)))
+        logger.info('Fired: {}'.format(t.fired))
         # CVE-TEST-TEST3
         self.assertGreaterEqual(len(t.fired), 1)
 
         t, gate, test_context = self.get_initialized_trigger(VulnerabilityMatchTrigger.__trigger_name__, fix_available='False', severity='unknown', severity_comparison='>=', package_type='all')
         test_context = gate.prepare_context(self.test_image, test_context)
         t.evaluate(self.test_image, test_context)
-        logger.info(('Fired: {}'.format(t.fired)))
+        logger.info('Fired: {}'.format(t.fired))
         # CVE-TEST-TEST0
         self.assertGreaterEqual(len(t.fired), 1)

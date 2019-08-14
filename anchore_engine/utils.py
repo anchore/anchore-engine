@@ -4,16 +4,19 @@ Generic utilities
 import datetime
 import hashlib
 import json
-import os
 import platform
-import re
 import subprocess
-import threading
 import uuid
+import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 from operator import itemgetter
+import time
+import os
+import re
 
 from anchore_engine.subsys import logger
+
 
 K_BYTES = 1024
 M_BYTES = 1024 * K_BYTES

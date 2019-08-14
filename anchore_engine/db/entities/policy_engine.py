@@ -2,19 +2,20 @@ import datetime
 import hashlib
 import json
 import re
+import time
 import zlib
 from collections import namedtuple
-from anchore_engine.clients.services.common import get_service_endpoint
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func, event
 from sqlalchemy.orm import relationship, synonym
 
-from anchore_engine.util.apk import compare_versions as apkg_compare_versions
-from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
-from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
-from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.utils import ensure_str, ensure_bytes
+
+from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
+from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
+from anchore_engine.util.apk import compare_versions as apkg_compare_versions
+from anchore_engine.util.langpack import compare_versions as langpack_compare_versions, langpack_is_all
 
 try:
     from anchore_engine.subsys import logger as log
@@ -556,7 +557,6 @@ class NvdV2Metadata(Base):
     description = Column(String, nullable=True)
     cvss_v2 = Column(JSON, nullable=True)
     cvss_v3 = Column(JSON, nullable=True)
-    impact = Column(JSON, nullable=True)
     link = Column(String, nullable=True)
     references = Column(JSON, nullable=True)
     vulnerable_cpes = relationship('CpeV2Vulnerability', back_populates='parent', cascade='all, delete-orphan')
@@ -1028,7 +1028,7 @@ class VulnDBMetadata(Base):
 
     @property
     def link(self):
-        return get_service_endpoint('apiext').strip('/') + '/query/vulnerabilities?id={}'.format(self.name)
+        return None
 
     @property
     def vulnerable_cpes(self):

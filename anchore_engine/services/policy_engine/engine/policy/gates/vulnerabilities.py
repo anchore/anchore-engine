@@ -8,6 +8,8 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vu
 from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, select_nvd_classes
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter
+from anchore_engine.clients.services.common import get_service_endpoint
+
 log = get_logger()
 
 
@@ -140,6 +142,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
         vendor_cvss_v3_impact_score = self.vendor_cvss_v3_impact_score.value()
         vendor_cvss_v3_impact_score_comparison_fn = self.SEVERITY_COMPARISONS.get(self.vendor_cvss_v3_impact_score_comparison.value(default_if_none=">="))
 
+        api_endpoint = None  # for populating vulnerability links that point back to engine
+
         if self.package_type.value() in ['all', 'non-os']:
             cpevulns = context.data.get('loaded_cpe_vulnerabilities')
             if cpevulns:
@@ -209,7 +213,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                         # fix_available is set, but no fix is availble so skip
                                         continue
 
-                                parameter_data['link'] = vulnerability_cpe.parent.link
+                                if not vulnerability_cpe.parent.link:
+                                    if not api_endpoint:
+                                        api_endpoint = get_service_endpoint('apiext').strip('/')
+                                    parameter_data['link'] = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability_cpe.vulnerability_id)
+                                else:
+                                    parameter_data['link'] = vulnerability_cpe.parent.link
 
                                 fix_msg = ''
 

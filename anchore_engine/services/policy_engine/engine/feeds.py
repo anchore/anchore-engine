@@ -7,25 +7,20 @@ data. Additionally, any new feed will require new code to be able to consume it 
 an update to the feed handling code is ok to be required as well.
 
 """
-import copy
+import json
 import datetime
-import math
 import re
 import threading
 import time
 import traceback
-from decimal import Decimal as D
-import operator
-from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, \
-    InvalidCredentialsError
-from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, \
-    NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe
-from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
+
 from anchore_engine.db import get_thread_scoped_session as get_session
+from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
+from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe
 from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 from anchore_engine.util.langpack import convert_langversionlist_to_semver
 from anchore_engine.utils import CPE
-from dateutil import parser as dt_parser
 
 log = get_logger()
 
@@ -282,7 +277,6 @@ class NvdV2FeedDataMapper(FeedDataMapper):
         db_rec.description = record_json.get('cve', {}).get('description', {}).get('description_data', [{}])[0].get('value', "")
         db_rec.cvss_v2 = record_json.get('cvss_v2', None)
         db_rec.cvss_v3 = record_json.get('cvss_v3', None)
-        db_rec.impact = record_json.get('impact', None)
         db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
         db_rec.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
         db_rec.references = record_json.get('external_references', [])
@@ -328,7 +322,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
         db_rec.description = record_json.get('description', None)
         db_rec.solution = record_json.get('solution', None)
         db_rec.vendor_product_info = record_json.get('vendor_product_info', [])
-        db_rec.references = record_json.get('references', [])
+        db_rec.references = record_json.get('external_references', [])
         db_rec.vulnerable_packages = record_json.get('vulnerable_packages', [])
         db_rec.vulnerable_libraries = record_json.get('vulnerable_libraries', [])
         db_rec.vendor_cvss_v2 = record_json.get('vendor_cvss_v2', [])

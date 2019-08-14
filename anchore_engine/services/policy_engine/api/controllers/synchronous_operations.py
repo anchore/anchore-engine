@@ -25,7 +25,7 @@ from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, VulnDBMetadata, VulnDBCpe, select_nvd_classes
+from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, select_nvd_classes, VulnDBMetadata, VulnDBCpe
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -38,6 +38,7 @@ from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_A
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.clients.services import internal_client_for, catalog
 from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.clients.services.common import get_service_endpoint
 
 authorizer = get_authorizer()
 
@@ -682,11 +683,18 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 all_cpe_matches = []
 
             cpe_hashes = {}
+            api_endpoint = None
             for image_cpe, vulnerability_cpe in all_cpe_matches:
+                link = vulnerability_cpe.parent.link
+                if not link:
+                    if not api_endpoint:
+                        api_endpoint = get_service_endpoint('apiext').strip('/')
+                    link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability_cpe.vulnerability_id)
+
                 cpe_vuln_el = {
                     'vulnerability_id': vulnerability_cpe.vulnerability_id,
                     'severity': vulnerability_cpe.parent.severity,
-                    'link': vulnerability_cpe.parent.link,
+                    'link': link,
                     'pkg_type': image_cpe.pkg_type,
                     'pkg_path': image_cpe.pkg_path,
                     'name': image_cpe.name,
@@ -1152,13 +1160,20 @@ def query_vulnerabilities(dbsession, request_inputs):
         if vulnerabilities:
             dedupped_return_hash = {}
             vulnerability_exists = True
+            api_endpoint = None
             for vulnerability in vulnerabilities:
+                link = vulnerability.link
+                if not link:
+                    if not api_endpoint:
+                        api_endpoint = get_service_endpoint('apiext').strip('/')
+                    link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability.name)
+
                 namespace_el = {}
                 namespace_el.update(return_el_template)
                 namespace_el['id'] = vulnerability.name
                 namespace_el['namespace'] = vulnerability.namespace_name
                 namespace_el['severity'] = vulnerability.severity
-                namespace_el['link'] = vulnerability.link
+                namespace_el['link'] = link
                 namespace_el['affected_packages'] = []
                 namespace_el['description'] = vulnerability.description
                 namespace_el['references'] = vulnerability.references
