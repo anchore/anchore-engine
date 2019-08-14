@@ -150,13 +150,13 @@ class HttpBasicCredential(AccessCredential):
 
 
 class HttpBearerCredential(AccessCredential):
-    def __init__(self, token: str, expiration: datetime.datetime=None, refresh_token=None):
+    def __init__(self, token: str, expiration: datetime.datetime=None):
         self.token = token
-        self.refresh_token = refresh_token
         self.expires_at = expiration
 
     def is_expired(self):
-        return self.expires_at is not None and datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc) < self.expires_at
+        dt = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        return self.expires_at is not None and dt >= self.expires_at
 
     def get_creds(self):
         return self.token
@@ -184,6 +184,7 @@ class IdentityManager(object):
         """
         cred = None
         exp = None # Credential expiration, if needed
+
         logger.debug('Loading system user creds')
 
         with IdentityManager._cache_lock:
@@ -192,8 +193,10 @@ class IdentityManager(object):
             if cached_cred is not None:
                 if cached_cred.is_expired():
                     # Flush it
+                    logger.debug('Cached system credential is expired, flushing')
                     IdentityManager._credential_cache.delete(localconfig.SYSTEM_USERNAME)
                 else:
+                    logger.debug('Cached system credential still ok')
                     # Use it
                     cred = cached_cred
 
@@ -207,6 +210,7 @@ class IdentityManager(object):
                     system_user_uuid = usr['uuid']
                     tok_mgr = token_manager()
                     tok, exp = tok_mgr.generate_token(system_user_uuid, return_expiration=True)
+                    logger.debug('Generated token with expiration {}'.format(exp))
                     cred = HttpBearerCredential(tok, exp)
                 else:
                     rec = db_accounts.get(localconfig.SYSTEM_USERNAME, session=self.session)
@@ -220,6 +224,7 @@ class IdentityManager(object):
                     cred = HttpBasicCredential(usr['username'], usr.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value'))
 
                 if cred is not None:
+                    logger.debug('Caching system creds')
                     IdentityManager._credential_cache.cache_it(localconfig.SYSTEM_USERNAME, cred)
 
         return cred
@@ -241,7 +246,7 @@ class IdentityManager(object):
                 return HttpBearerCredential(token=creds, expiration=None)
             else:
                 return creds
-        # else:
+
         return self._get_system_user_credentials()
 
     def get_credentials_for_userid(self, userId):

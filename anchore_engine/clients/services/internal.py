@@ -56,7 +56,7 @@ class InternalServiceClient(object):
         'Content-Type': 'application/json'
     }
 
-    def __init__(self, credential, as_account=None, url_provider=default_provider, config_provider_fn=localconfig.get_config):
+    def __init__(self, credential_fn, as_account=None, url_provider=default_provider, config_provider_fn=localconfig.get_config):
         """
         Initializes a client for a specific account using the specified credentials (typically the system user credentials)
 
@@ -67,14 +67,7 @@ class InternalServiceClient(object):
         self.request_namespace = as_account
         self.auth = None
 
-        if isinstance(credential, HttpBearerCredential):
-            token = credential.get_creds()
-            self.auth = BearerTokenAuth(token)
-
-        elif isinstance(credential, HttpBasicCredential):
-            self.auth = HTTPBasicAuth(credential.get_creds()[0], credential.get_creds()[1])
-        else:
-            raise TypeError('credential not of expected type')
+        self.credential_provider_fn = credential_fn
 
         self.verify_ssl = True
         self._read_timeout = 0.0
@@ -114,6 +107,18 @@ class InternalServiceClient(object):
                     raise
 
         self.service_url_provider = url_provider
+
+    def _build_creds(self):
+        credential = self.credential_provider_fn()
+        if isinstance(credential, HttpBearerCredential):
+            token =credential.get_creds()
+            auth = BearerTokenAuth(token)
+
+        elif isinstance(credential, HttpBasicCredential):
+            auth = HTTPBasicAuth(credential.get_creds()[0], credential.get_creds()[1])
+        else:
+            raise TypeError('credential not of expected type')
+        return auth
 
     @contextmanager
     def timeout_context(self, connect_timeout=None, read_timeout=None):
@@ -215,7 +220,8 @@ class InternalServiceClient(object):
                                                                                                                                                                body=body[:512] + ('...' if len(body) > 512 else '') if body else body,
                                                                                                                                                                params=filtered_qry_params, conn_timeout=connect_timeout, read_timeout=read_timeout,
                                                                                                                                                                files=files.keys() if files else files))
-        
+
+        auth = self._build_creds()
         try:
             if connect_timeout and connect_timeout <= 0:
                 connect_timeout = None
@@ -223,9 +229,9 @@ class InternalServiceClient(object):
                 read_timeout = None
 
             if connect_timeout or read_timeout:
-                return method(url=final_url, headers=request_headers, data=body, auth=self.auth, params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
+                return method(url=final_url, headers=request_headers, data=body, auth=auth, params=filtered_qry_params, verify=self.verify_ssl, timeout=(connect_timeout, read_timeout), files=files)
             else:
-                return method(url=final_url, headers=request_headers, data=body, auth=self.auth, params=filtered_qry_params, verify=self.verify_ssl, files=files)
+                return method(url=final_url, headers=request_headers, data=body, auth=auth, params=filtered_qry_params, verify=self.verify_ssl, files=files)
         except Exception as e:
             logger.debug_exception('Failed client call to service {} for url: {}. Response: {}'.format(self.__service__, final_url, e.__dict__))
             raise e
