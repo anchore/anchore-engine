@@ -1,5 +1,4 @@
 import pytest
-from anchore_engine.subsys.auth.stores.verifier import JwtToken, BearerTokenVerifier
 from anchore_engine.subsys import logger
 from anchore_engine.auth.oauth import load_keys, TokenVerifier, TokenIssuer, JwtTokenManager
 from anchore_engine.utils import ensure_bytes, ensure_str
@@ -48,7 +47,7 @@ def test_token_issuer():
     key = b'abc123'
     alg = 'HS256'
 
-    t = TokenIssuer(key, alg)
+    t = TokenIssuer(key, alg, 60)
     tok, expiration = t.generate_token('admin123')
 
     assert tok is not None
@@ -63,7 +62,7 @@ def test_token_verifier():
     key = b'abc123'
     alg = 'HS256'
 
-    t = TokenIssuer(key, alg)
+    t = TokenIssuer(key, alg, 60)
     tok, expiration = t.generate_token('admin123')
     assert tok is not None
     logger.info('Generated token: {}'.format(tok))
@@ -72,7 +71,6 @@ def test_token_verifier():
 
     with pytest.raises(Exception) as ex:
         claims = v.verify_token(tok)
-
 
     v.claim_options['sub']['value'] = 'admin123'
     v.claim_options['iss']['value'] = t.issuer
@@ -89,7 +87,7 @@ def test_token_manager_secret():
     Test the token manager using a shared secret
     :return:
     """
-    mgr = JwtTokenManager(config={'secret': 'abc123'})
+    mgr = JwtTokenManager(oauth_config={'enabled': True, 'default_token_expiration_seconds': 180}, keys_config={'secret': 'abc123'})
 
     t = mgr.generate_token('testuser')
 
@@ -102,7 +100,7 @@ def test_token_manager_secret():
 
 
 def test_token_manager_keys():
-    mgr = JwtTokenManager(config={
+    mgr = JwtTokenManager(oauth_config={'enabled': True, 'default_token_expiration_seconds': 180}, keys_config={
         'public_key_path': 'test/data/certs/public.pem',
         'private_key_path': 'test/data/certs/private.pem'
     })
