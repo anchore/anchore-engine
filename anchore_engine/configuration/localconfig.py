@@ -99,7 +99,7 @@ DELETE_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service, AccountTypes.admin]
 USER_MOD_PROTECTED_ACCOUNT_TYPES = [AccountTypes.service]
 
 # Top-level config keys required to be present
-default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True, 'user_authentication': True}
+default_required_config_params = {'services': True, 'webhooks': True, 'credentials': True}
 
 CRED_CACHE_TTL = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_TTL', 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv('ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC', 3))
