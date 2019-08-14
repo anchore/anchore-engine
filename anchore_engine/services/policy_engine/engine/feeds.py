@@ -19,7 +19,7 @@ import operator
 from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, \
     InvalidCredentialsError
 from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMetadata, NvdMetadata, CpeVulnerability, \
-    NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBAffectedCpe, VulnDBUnaffectedCpe
+    NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe
 from anchore_engine.db import GenericFeedDataRecord, FeedMetadata, FeedGroupMetadata
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
@@ -285,6 +285,7 @@ class NvdV2FeedDataMapper(FeedDataMapper):
         db_rec.impact = record_json.get('impact', None)
         db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
         db_rec.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
+        db_rec.references = record_json.get('external_references', [])
 
         db_rec.vulnerable_cpes = []
         for input_cpe in record_json.get('vulnerable_cpes', []):
@@ -336,12 +337,12 @@ class VulnDBFeedDataMapper(FeedDataMapper):
         db_rec.vuln_metadata = record_json.get('metadata', {})
         db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
 
-        db_rec.vulnerable_cpes = []
+        db_rec.cpes = []
         for input_cpe in record_json.get('vulnerable_cpes', []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 cpe_obj = CPE.from_cpe23_fs(input_cpe)
-                newcpe = VulnDBAffectedCpe()
+                newcpe = VulnDBCpe()
                 newcpe.feed_name = self.feed
                 # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
                 newcpe.part = cpe_obj.part
@@ -355,17 +356,17 @@ class VulnDBFeedDataMapper(FeedDataMapper):
                 newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
                 newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
                 newcpe.other = cpe_obj.other.replace('\\', '')
+                newcpe.is_affected = True
 
-                db_rec.vulnerable_cpes.append(newcpe)
+                db_rec.cpes.append(newcpe)
             except Exception as err:
-                log.warn("failed to convert vendor_product_info into database VulnDBVulnerabilityCpe record - exception: " + str(err))
+                log.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
 
-        db_rec.unaffected_cpes = []
         for input_cpe in record_json.get('unaffected_cpes', []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 cpe_obj = CPE.from_cpe23_fs(input_cpe)
-                newcpe = VulnDBUnaffectedCpe()
+                newcpe = VulnDBCpe()
                 newcpe.feed_name = self.feed
                 # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
                 newcpe.part = cpe_obj.part
@@ -379,12 +380,11 @@ class VulnDBFeedDataMapper(FeedDataMapper):
                 newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
                 newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
                 newcpe.other = cpe_obj.other.replace('\\', '')
+                newcpe.is_affected = False
 
-                db_rec.unaffected_cpes.append(newcpe)
+                db_rec.cpes.append(newcpe)
             except Exception as err:
-                log.warn(
-                    "failed to convert vendor_product_info into database VulnDBVulnerabilityCpe record - exception: " + str(
-                        err))
+                log.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
 
         return db_rec
 
@@ -1577,10 +1577,8 @@ class VulnDBFeed(AnchoreServiceFeed):
         if flush_helper_fn:
             flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
-        count = db.query(VulnDBAffectedCpe).filter(VulnDBAffectedCpe.namespace_name == group_obj.name).delete()
-        log.info('Flushed {} VulnDBAffectedCpe records'.format(count))
-        count = db.query(VulnDBUnaffectedCpe).filter(VulnDBUnaffectedCpe.namespace_name == group_obj.name).delete()
-        log.info('Flushed {} VulnDBUnaffectedCpe records'.format(count))
+        count = db.query(VulnDBCpe).filter(VulnDBCpe.namespace_name == group_obj.name).delete()
+        log.info('Flushed {} VulnDBCpe records'.format(count))
         count = db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_obj.name).delete()
         log.info('Flushed {} VulnDBMetadata records'.format(count))
 

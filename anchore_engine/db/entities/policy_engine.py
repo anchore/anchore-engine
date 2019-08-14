@@ -53,6 +53,14 @@ hash_length = 80
 
 DistroTuple = namedtuple('DistroTuple', ['distro', 'version', 'flavor'])
 
+base_score_key = 'base_score'
+exploitability_score_key = 'exploitability_score'
+impact_score_key = 'impact_score'
+base_metrics_key = 'base_metrics'
+cvss_v3_key = 'cvss_v3'
+cvss_v2_key = 'cvss_v2'
+
+
 # Feeds
 class FeedMetadata(Base, UtilMixin):
     __tablename__ = 'feeds'
@@ -431,20 +439,19 @@ class NvdMetadata(Base):
     def __repr__(self):
         return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
 
-    def get_title(self):
-        return ''
-
-    def get_description(self):
+    @property
+    def description(self):
         return self.summary if self.summary else ''
 
-    def get_references(self):
+    @property
+    def references(self):
         return []
 
     def get_max_base_score_nvd(self, cvss_version=3):
         if cvss_version == 3:
             score = None
         elif cvss_version == 2:
-            score = self.cvss.get('base_metrics', {}).get('score', None)
+            score = self.cvss.get(base_metrics_key, {}).get('score', None)
         else:
             log.warn("invalid cvss version specified as input ({})".format(cvss_version))
             score = None
@@ -468,23 +475,23 @@ class NvdMetadata(Base):
     def get_max_cvss_score_nvd(self, cvss_version=3):
         if cvss_version == 3:
             ret = {
-                'base_score': -1.0,
-                'exploitability_score': -1.0,
-                'impact_score': -1.0,
+                base_score_key: -1.0,
+                exploitability_score_key: -1.0,
+                impact_score_key: -1.0,
             }
         elif cvss_version == 2:
             ret = {
-                'base_score': self.get_max_base_score_nvd(cvss_version),
-                'exploitability_score': -1.0,
-                'impact_score': -1.0,
+                base_score_key: self.get_max_base_score_nvd(cvss_version),
+                exploitability_score_key: -1.0,
+                impact_score_key: -1.0,
             }
 
         else:
             log.warn("invalid cvss version specified as input ({})".format(cvss_version))
             ret = {
-                'base_score': -1.0,
-                'exploitability_score': -1.0,
-                'impact_score': -1.0,
+                base_score_key: -1.0,
+                exploitability_score_key: -1.0,
+                impact_score_key: -1.0,
             }
 
         return ret
@@ -492,8 +499,8 @@ class NvdMetadata(Base):
     def get_cvss_scores_nvd(self):
         ret = [{
             'id': self.name,
-            'cvss_v2': self.get_max_cvss_score_nvd(cvss_version=2),
-            'cvss_v3': self.get_max_cvss_score_nvd(cvss_version=3)
+            cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
+            cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3)
         }]
 
         return ret
@@ -501,8 +508,8 @@ class NvdMetadata(Base):
     def get_cvss_data_nvd(self):
         ret = [{
             'id': self.name,
-            'cvss_v2': self.cvssv2 if self.cvssv2 else None,
-            'cvss_v3': self.cvssv3 if self.cvssv3 else None
+            cvss_v2_key: self.cvssv2 if self.cvssv2 else None,
+            cvss_v3_key: self.cvssv3 if self.cvssv3 else None
         }]
 
         return ret
@@ -520,9 +527,9 @@ class NvdMetadata(Base):
 
     def get_max_cvss_score_vendor(self, cvss_version=3):
         ret = {
-            'base_score': -1.0,
-            'exploitability_score': -1.0,
-            'impact_score': -1.0,
+            base_score_key: -1.0,
+            exploitability_score_key: -1.0,
+            impact_score_key: -1.0,
         }
         return ret
 
@@ -551,6 +558,7 @@ class NvdV2Metadata(Base):
     cvss_v3 = Column(JSON, nullable=True)
     impact = Column(JSON, nullable=True)
     link = Column(String, nullable=True)
+    references = Column(JSON, nullable=True)
     vulnerable_cpes = relationship('CpeV2Vulnerability', back_populates='parent', cascade='all, delete-orphan')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -558,18 +566,9 @@ class NvdV2Metadata(Base):
     def __repr__(self):
         return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
 
-    def get_title(self):
-        return ''
-
-    def get_description(self):
-        return self.description if self.description else ''
-
-    def get_references(self):
-        return []
-
     def _get_score(self, metric, score_key):
         if metric:
-            score = metric.get('base_metrics').get(score_key, -1.0)
+            score = metric.get(base_metrics_key).get(score_key, -1.0)
             try:
                 score = float(score)
             except:
@@ -592,22 +591,22 @@ class NvdV2Metadata(Base):
 
     def get_max_base_score_nvd(self, cvss_version=3):
         metric = self._get_metric(cvss_version)
-        return self._get_score(metric, 'base_score')
+        return self._get_score(metric, base_score_key)
 
     def get_max_exploitability_score_nvd(self, cvss_version=3):
         metric = self._get_metric(cvss_version)
-        return self._get_score(metric, 'exploitability_score')
+        return self._get_score(metric, exploitability_score_key)
 
     def get_max_impact_score_nvd(self, cvss_version=3):
         metric = self._get_metric(cvss_version)
-        return self._get_score(metric, 'impact_score')
+        return self._get_score(metric, impact_score_key)
 
     def get_max_cvss_score_nvd(self, cvss_version=3):
         metric = self._get_metric(cvss_version)
         ret = {
-            'base_score': self._get_score(metric, 'base_score'),
-            'exploitability_score': self._get_score(metric, 'exploitability_score'),
-            'impact_score': self._get_score(metric, 'impact_score'),
+            base_score_key: self._get_score(metric, base_score_key),
+            exploitability_score_key: self._get_score(metric, exploitability_score_key),
+            impact_score_key: self._get_score(metric, impact_score_key),
         }
 
         return ret
@@ -615,8 +614,8 @@ class NvdV2Metadata(Base):
     def get_cvss_scores_nvd(self):
         ret = [{
             'id': self.name,
-            'cvss_v2': self.get_max_cvss_score_nvd(cvss_version=2),
-            'cvss_v3': self.get_max_cvss_score_nvd(cvss_version=3)
+            cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
+            cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3)
         }]
 
         return ret
@@ -624,8 +623,8 @@ class NvdV2Metadata(Base):
     def get_cvss_data_nvd(self):
         ret = [{
             'id': self.name,
-            'cvss_v2': self._get_metric(cvss_version=2),
-            'cvss_v3': self._get_metric(cvss_version=3)
+            cvss_v2_key: self._get_metric(cvss_version=2),
+            cvss_v3_key: self._get_metric(cvss_version=3)
         }]
 
         return ret
@@ -643,9 +642,9 @@ class NvdV2Metadata(Base):
 
     def get_max_cvss_score_vendor(self, cvss_version=3):
         ret = {
-            'base_score': -1.0,
-            'exploitability_score': -1.0,
-            'impact_score': -1.0,
+            base_score_key: -1.0,
+            exploitability_score_key: -1.0,
+            impact_score_key: -1.0,
         }
         return ret
 
@@ -657,123 +656,6 @@ class NvdV2Metadata(Base):
 
     def key_tuple(self):
         return self.name
-
-
-class CpeVulnerability(Base):
-    __tablename__ = 'feed_data_cpe_vulnerabilities'
-
-    feed_name = Column(String(feed_name_length), primary_key=True)
-    namespace_name = Column(String(namespace_length), primary_key=True)
-    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
-    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
-    cpetype = Column(String(pkg_name_length), primary_key=True)
-    vendor = Column(String(pkg_name_length), primary_key=True)
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    update = Column(String(pkg_version_length), primary_key=True)
-    meta = Column(String(pkg_name_length), primary_key=True)
-    link = Column(String(link_length), nullable=True)
-    parent = relationship('NvdMetadata', back_populates='vulnerable_cpes')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-    # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
-        Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
-        Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
-        {}
-    )
-
-    def __repr__(self):
-        return '<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.name, self.version, self.created_at.isoformat())
-
-    def get_cpestring(self):
-        ret = None
-        try:
-            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-            final_cpe[1] = self.cpetype
-            final_cpe[2] = self.vendor
-            final_cpe[3] = self.name
-            final_cpe[4] = self.version
-            final_cpe[5] = self.update
-            final_cpe[6] = self.meta
-            ret = ':'.join(final_cpe)
-        except:
-            ret = None
-
-        return(ret)
-
-
-class CpeV2Vulnerability(Base):
-    __tablename__ = 'feed_data_cpev2_vulnerabilities'
-
-    feed_name = Column(String, primary_key=True)
-    namespace_name = Column(String, primary_key=True)
-    vulnerability_id = Column(String, primary_key=True)
-    part = Column(String, primary_key=True)
-    vendor = Column(String, primary_key=True)
-    product = Column(String, primary_key=True)
-    name = synonym("product")
-    version = Column(String, primary_key=True)
-    update = Column(String, primary_key=True)
-    edition = Column(String, primary_key=True)
-    language = Column(String, primary_key=True)
-    sw_edition = Column(String, primary_key=True)
-    target_sw = Column(String, primary_key=True)
-    target_hw = Column(String, primary_key=True)
-    other = Column(String, primary_key=True)
-    parent = relationship('NvdV2Metadata', back_populates='vulnerable_cpes')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-    # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[NvdV2Metadata.name, NvdV2Metadata.namespace_name]),
-        Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
-        Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name),
-        {}
-    )
-
-    def __repr__(self):
-        return '<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.product, self.version, self.created_at.isoformat())
-
-    def get_cpestring(self):
-        ret = None
-        try:
-            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-            final_cpe[1] = "/" + self.part
-            final_cpe[2] = self.vendor
-            final_cpe[3] = self.product
-            final_cpe[4] = self.version
-            final_cpe[5] = self.update
-            final_cpe[6] = self.other
-            ret = ':'.join(final_cpe)
-        except:
-            ret = None
-
-        return(ret)
-
-    def get_cpe23string(self):
-        ret = None
-        try:
-            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
-            final_cpe[2] = self.part
-            final_cpe[3] = self.vendor
-            final_cpe[4] = self.product
-            final_cpe[5] = self.version
-            final_cpe[6] = self.update
-            final_cpe[7] = self.edition
-            final_cpe[8] = self.language
-            final_cpe[9] = self.sw_edition
-            final_cpe[10] = self.target_sw
-            final_cpe[11] = self.target_hw
-            final_cpe[12] = self.other
-            ret = ':'.join(final_cpe)
-        except:
-            ret = None
-
-        return(ret)
 
 
 class VulnDBMetadata(Base):
@@ -795,35 +677,26 @@ class VulnDBMetadata(Base):
     vendor_cvss_v3 = Column(JSON, nullable=True)
     nvd = Column(JSON, nullable=True)
     vuln_metadata = Column(JSON, nullable=True)
-    vulnerable_cpes = relationship('VulnDBAffectedCpe', back_populates='parent', cascade='all, delete-orphan')
-    unaffected_cpes = relationship('VulnDBUnaffectedCpe', back_populates='parent', cascade='all, delete-orphan')
+    cpes = relationship('VulnDBCpe', back_populates='parent', cascade='all, delete-orphan')
+    # unaffected_cpes = relationship('VulnDBUnaffectedCpe', back_populates='parent', cascade='all, delete-orphan')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     def __repr__(self):
         return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
 
-    def get_title(self):
-        return self.title
-
-    def get_description(self):
-        return self.description
-
-    def get_references(self):
-        return self.references
-
     def _get_max_cvss_v3_metric_nvd(self):
         cvss_v3 = None
         if self.nvd:
             if len(self.nvd) == 1:
-                cvss_v3 = self.nvd[0].get('cvss_v3', None)
+                cvss_v3 = self.nvd[0].get(cvss_v3_key, None)
             else:
                 max_score = None
                 for nvd_item in self.nvd:
-                    if nvd_item.get('cvss_v3', None):
-                        if not max_score or nvd_item.get('cvss_v3').get('base_metrics').get('base_score') > max_score:
-                            max_score = nvd_item.get('cvss_v3').get('base_metrics').get('base_score')
-                            cvss_v3 = nvd_item.get('cvss_v3')
+                    if nvd_item.get(cvss_v3_key, None):
+                        if not max_score or nvd_item.get(cvss_v3_key).get(base_metrics_key).get(base_score_key) > max_score:
+                            max_score = nvd_item.get(cvss_v3_key).get(base_metrics_key).get(base_score_key)
+                            cvss_v3 = nvd_item.get(cvss_v3_key)
                         else:
                             continue
         return cvss_v3
@@ -832,14 +705,14 @@ class VulnDBMetadata(Base):
         cvss_v2 = None
         if self.nvd:
             if len(self.nvd) == 1:
-                cvss_v2 = self.nvd[0].get('cvss_v2', None)
+                cvss_v2 = self.nvd[0].get(cvss_v2_key, None)
             else:
                 max_score = None
                 for nvd_item in self.nvd:
-                    if nvd_item.get('cvss_v2', None):
-                        if not max_score or nvd_item.get('cvss_v2').get('base_metrics').get('base_score') > max_score:
-                            max_score = nvd_item.get('cvss_v2').get('base_metrics').get('base_score')
-                            cvss_v2 = nvd_item.get('cvss_v2')
+                    if nvd_item.get(cvss_v2_key, None):
+                        if not max_score or nvd_item.get(cvss_v2_key).get(base_metrics_key).get(base_score_key) > max_score:
+                            max_score = nvd_item.get(cvss_v2_key).get(base_metrics_key).get(base_score_key)
+                            cvss_v2 = nvd_item.get(cvss_v2_key)
                         else:
                             continue
         return cvss_v2
@@ -921,8 +794,8 @@ class VulnDBMetadata(Base):
             else:
                 max_score = None
                 for cvss_item in self.vendor_cvss_v3:
-                    if not max_score or cvss_item.get('base_metrics').get('base_score') > max_score:
-                        max_score = cvss_item.get('base_metrics').get('base_score')
+                    if not max_score or cvss_item.get(base_metrics_key).get(base_score_key) > max_score:
+                        max_score = cvss_item.get(base_metrics_key).get(base_score_key)
                         cvss_v3 = cvss_item
                     else:
                         continue
@@ -936,8 +809,8 @@ class VulnDBMetadata(Base):
             else:
                 max_score = None
                 for cvss_item in self.vendor_cvss_v2:
-                    if not max_score or cvss_item.get('base_metrics').get('base_score') > max_score:
-                        max_score = cvss_item.get('base_metrics').get('base_score')
+                    if not max_score or cvss_item.get(base_metrics_key).get(base_score_key) > max_score:
+                        max_score = cvss_item.get(base_metrics_key).get(base_score_key)
                         cvss_v2 = cvss_item
                     else:
                         continue
@@ -986,7 +859,7 @@ class VulnDBMetadata(Base):
 
     def _get_score(self, metric, score_key):
         if metric:
-            score = metric.get('base_metrics').get(score_key, -1.0)
+            score = metric.get(base_metrics_key).get(score_key, -1.0)
             try:
                 score = float(score)
             except:
@@ -1000,22 +873,22 @@ class VulnDBMetadata(Base):
 
     def get_max_base_score_nvd(self, cvss_version=3):
         metric = self._get_max_cvss_metric_nvd(cvss_version)
-        return self._get_score(metric, 'base_score')
+        return self._get_score(metric, base_score_key)
 
     def get_max_exploitability_score_nvd(self, cvss_version=3):
         metric = self._get_max_cvss_metric_nvd(cvss_version)
-        return self._get_score(metric, 'exploitability_score')
+        return self._get_score(metric, exploitability_score_key)
 
     def get_max_impact_score_nvd(self, cvss_version=3):
         metric = self._get_max_cvss_metric_nvd(cvss_version)
-        return self._get_score(metric, 'impact_score')
+        return self._get_score(metric, impact_score_key)
 
     def get_max_cvss_score_nvd(self, cvss_version=3):
         metric = self._get_max_cvss_metric_nvd(cvss_version)
         ret = {
-            'base_score': self._get_score(metric, 'base_score'),
-            'exploitability_score': self._get_score(metric, 'exploitability_score'),
-            'impact_score': self._get_score(metric, 'impact_score')
+            base_score_key: self._get_score(metric, base_score_key),
+            exploitability_score_key: self._get_score(metric, exploitability_score_key),
+            impact_score_key: self._get_score(metric, impact_score_key)
         }
 
         return ret
@@ -1051,19 +924,19 @@ class VulnDBMetadata(Base):
               }
             }
             """
-            cvss_v2_metric = nvd_cvss_item.get('cvss_v2', None)
-            cvss_v3_metric = nvd_cvss_item.get('cvss_v3', None)
+            cvss_v2_metric = nvd_cvss_item.get(cvss_v2_key, None)
+            cvss_v3_metric = nvd_cvss_item.get(cvss_v3_key, None)
             score_item = {
                 'id': nvd_cvss_item.get('id'),
-                'cvss_v2': {
-                    'base_score': self._get_score(cvss_v2_metric, 'base_score'),
-                    'exploitability_score': self._get_score(cvss_v2_metric, 'exploitability_score'),
-                    'impact_score': self._get_score(cvss_v2_metric, 'impact_score')
+                cvss_v2_key: {
+                    base_score_key: self._get_score(cvss_v2_metric, base_score_key),
+                    exploitability_score_key: self._get_score(cvss_v2_metric, exploitability_score_key),
+                    impact_score_key: self._get_score(cvss_v2_metric, impact_score_key)
                 },
-                'cvss_v3': {
-                    'base_score': self._get_score(cvss_v3_metric, 'base_score'),
-                    'exploitability_score': self._get_score(cvss_v3_metric, 'exploitability_score'),
-                    'impact_score': self._get_score(cvss_v3_metric, 'impact_score')
+                cvss_v3_key: {
+                    base_score_key: self._get_score(cvss_v3_metric, base_score_key),
+                    exploitability_score_key: self._get_score(cvss_v3_metric, exploitability_score_key),
+                    impact_score_key: self._get_score(cvss_v3_metric, impact_score_key)
                 }
             }
             result.append(score_item)
@@ -1075,22 +948,22 @@ class VulnDBMetadata(Base):
 
     def get_max_base_score_vendor(self, cvss_version=3):
         metric = self._get_max_cvss_metric_rbs(cvss_version)
-        return self._get_score(metric, 'base_score')
+        return self._get_score(metric, base_score_key)
 
     def get_max_exploitability_score_vendor(self, cvss_version=3):
         metric = self._get_max_cvss_metric_rbs(cvss_version)
-        return self._get_score(metric, 'exploitability_score')
+        return self._get_score(metric, exploitability_score_key)
 
     def get_max_impact_score_vendor(self, cvss_version=3):
         metric = self._get_max_cvss_metric_rbs(cvss_version)
-        return self._get_score(metric, 'impact_score')
+        return self._get_score(metric, impact_score_key)
 
     def get_max_cvss_score_vendor(self, cvss_version=3):
         metric = self._get_max_cvss_metric_rbs(cvss_version)
         ret = {
-            'base_score': self._get_score(metric, 'base_score'),
-            'exploitability_score': self._get_score(metric, 'exploitability_score'),
-            'impact_score': self._get_score(metric, 'impact_score')
+            base_score_key: self._get_score(metric, base_score_key),
+            exploitability_score_key: self._get_score(metric, exploitability_score_key),
+            impact_score_key: self._get_score(metric, impact_score_key)
         }
 
         return ret
@@ -1102,15 +975,15 @@ class VulnDBMetadata(Base):
             for cvss_v2_item in self.vendor_cvss_v2:
                 results.append({
                     'id': self.name,
-                    'cvss_v2': {
-                        'base_score': self._get_score(cvss_v2_item, 'base_score'),
-                        'exploitability_score': self._get_score(cvss_v2_item, 'exploitability_score'),
-                        'impact_score': self._get_score(cvss_v2_item, 'impact_score')
+                    cvss_v2_key: {
+                        base_score_key: self._get_score(cvss_v2_item, base_score_key),
+                        exploitability_score_key: self._get_score(cvss_v2_item, exploitability_score_key),
+                        impact_score_key: self._get_score(cvss_v2_item, impact_score_key)
                     },
-                    'cvss_v3': {
-                        'base_score': -1.0,
-                        'exploitability_score': -1.0,
-                        'impact_score': -1.0
+                    cvss_v3_key: {
+                        base_score_key: -1.0,
+                        exploitability_score_key: -1.0,
+                        impact_score_key: -1.0
                     }
                 })
 
@@ -1118,15 +991,15 @@ class VulnDBMetadata(Base):
             for cvss_v3_item in self.vendor_cvss_v3:
                 results.append({
                     'id': self.name,
-                    'cvss_v2': {
-                        'base_score': -1.0,
-                        'exploitability_score': -1.0,
-                        'impact_score': -1.0
+                    cvss_v2_key: {
+                        base_score_key: -1.0,
+                        exploitability_score_key: -1.0,
+                        impact_score_key: -1.0
                     },
-                    'cvss_v3': {
-                        'base_score': self._get_score(cvss_v3_item, 'base_score'),
-                        'exploitability_score': self._get_score(cvss_v3_item, 'exploitability_score'),
-                        'impact_score': self._get_score(cvss_v3_item, 'impact_score')
+                    cvss_v3_key: {
+                        base_score_key: self._get_score(cvss_v3_item, base_score_key),
+                        exploitability_score_key: self._get_score(cvss_v3_item, exploitability_score_key),
+                        impact_score_key: self._get_score(cvss_v3_item, impact_score_key)
                     }
                 })
 
@@ -1139,16 +1012,16 @@ class VulnDBMetadata(Base):
             for cvss_v2_item in self.vendor_cvss_v2:
                 results.append({
                     'id': self.name,
-                    'cvss_v2': cvss_v2_item,
-                    'cvss_v3': None
+                    cvss_v2_key: cvss_v2_item,
+                    cvss_v3_key: None
                 })
 
         if self.vendor_cvss_v3:
             for cvss_v3_item in self.vendor_cvss_v3:
                 results.append({
                     'id': self.name,
-                    'cvss_v2': None,
-                    'cvss_v3': cvss_v3_item
+                    cvss_v2_key: None,
+                    cvss_v3_key: cvss_v3_item
                 })
 
         return results
@@ -1157,12 +1030,61 @@ class VulnDBMetadata(Base):
     def link(self):
         return get_service_endpoint('apiext').strip('/') + '/query/vulnerabilities?id={}'.format(self.name)
 
+    @property
+    def vulnerable_cpes(self):
+        return [cpe for cpe in self.cpes if cpe.is_affected]
+
     def key_tuple(self):
         return self.name
 
 
-class VulnDBAffectedCpe(Base):
-    __tablename__ = 'feed_data_vulndb_affected_cpes'
+class CpeVulnerability(Base):
+    __tablename__ = 'feed_data_cpe_vulnerabilities'
+
+    feed_name = Column(String(feed_name_length), primary_key=True)
+    namespace_name = Column(String(namespace_length), primary_key=True)
+    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
+    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    cpetype = Column(String(pkg_name_length), primary_key=True)
+    vendor = Column(String(pkg_name_length), primary_key=True)
+    name = Column(String(pkg_name_length), primary_key=True)
+    version = Column(String(pkg_version_length), primary_key=True)
+    update = Column(String(pkg_version_length), primary_key=True)
+    meta = Column(String(pkg_name_length), primary_key=True)
+    link = Column(String(link_length), nullable=True)
+    parent = relationship('NvdMetadata', back_populates='vulnerable_cpes')
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # This is necessary for ensuring correct FK behavior against a composite foreign key
+    __table_args__ = (
+        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
+        Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
+        Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
+        {}
+    )
+
+    def __repr__(self):
+        return '<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.name, self.version, self.created_at.isoformat())
+
+    def get_cpestring(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe[1] = self.cpetype
+            final_cpe[2] = self.vendor
+            final_cpe[3] = self.name
+            final_cpe[4] = self.version
+            final_cpe[5] = self.update
+            final_cpe[6] = self.meta
+            ret = ':'.join(final_cpe)
+        except:
+            ret = None
+
+        return(ret)
+
+class CpeV2Vulnerability(Base):
+    __tablename__ = 'feed_data_cpev2_vulnerabilities'
 
     feed_name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)
@@ -1179,15 +1101,15 @@ class VulnDBAffectedCpe(Base):
     target_sw = Column(String, primary_key=True)
     target_hw = Column(String, primary_key=True)
     other = Column(String, primary_key=True)
-    parent = relationship('VulnDBMetadata', back_populates='vulnerable_cpes')
+    parent = relationship('NvdV2Metadata', back_populates='vulnerable_cpes')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[VulnDBMetadata.name, VulnDBMetadata.namespace_name]),
-        Index('ix_feed_data_vulndb_affected_cpes_product_version', product, version),
-        Index('ix_feed_data_vulndb_affected_cpes_fk', vulnerability_id, namespace_name),
+        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[NvdV2Metadata.name, NvdV2Metadata.namespace_name]),
+        Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
+        Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name),
         {}
     )
 
@@ -1197,55 +1119,43 @@ class VulnDBAffectedCpe(Base):
     def get_cpestring(self):
         ret = None
         try:
-            if self.sw_edition or self.target_sw or self.target_hw or self.other:
-                edition = '~{}~{}~{}~{}~{}'.format(self.edition, self.sw_edition, self.target_sw, self.target_hw, self.other)
-            else:
-                edition = self.edition
-
-            uri_parts = [
-                'cpe',
-                '/' + self.part,
-                self.vendor,
-                self.product,
-                self.version,
-                self.update,
-                edition,
-                self.language,
-            ]
-
-            uri = ':'.join(uri_parts)
-            ret = uri.strip(':')  # remove any trailing :
-        except:
-            ret = None
-
-        return ret
-
-    def get_cpe23string(self):
-        ret = None
-        try:
-            final_cpe = ['cpe',
-                         '2.3',
-                         self.part,
-                         self.vendor,
-                         self.product,
-                         self.version,
-                         self.update,
-                         self.edition,
-                         self.language,
-                         self.sw_edition,
-                         self.target_sw,
-                         self.target_hw,
-                         self.other]
-
+            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe[1] = "/" + self.part
+            final_cpe[2] = self.vendor
+            final_cpe[3] = self.product
+            final_cpe[4] = self.version
+            final_cpe[5] = self.update
+            final_cpe[6] = self.other
             ret = ':'.join(final_cpe)
         except:
             ret = None
 
-        return ret
+        return(ret)
+
+    def get_cpe23string(self):
+        ret = None
+        try:
+            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
+            final_cpe[2] = self.part
+            final_cpe[3] = self.vendor
+            final_cpe[4] = self.product
+            final_cpe[5] = self.version
+            final_cpe[6] = self.update
+            final_cpe[7] = self.edition
+            final_cpe[8] = self.language
+            final_cpe[9] = self.sw_edition
+            final_cpe[10] = self.target_sw
+            final_cpe[11] = self.target_hw
+            final_cpe[12] = self.other
+            ret = ':'.join(final_cpe)
+        except:
+            ret = None
+
+        return(ret)
 
 
-class VulnDBUnaffectedCpe(Base):
-    __tablename__ = 'feed_data_vulndb_unaffected_cpes'
+class VulnDBCpe(Base):
+    __tablename__ = 'feed_data_vulndb_cpes'
 
     feed_name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)
@@ -1262,15 +1172,16 @@ class VulnDBUnaffectedCpe(Base):
     target_sw = Column(String, primary_key=True)
     target_hw = Column(String, primary_key=True)
     other = Column(String, primary_key=True)
-    parent = relationship('VulnDBMetadata', back_populates='unaffected_cpes')
+    is_affected = Column(Boolean, primary_key=True)
+    parent = relationship('VulnDBMetadata', back_populates='cpes')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
         ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[VulnDBMetadata.name, VulnDBMetadata.namespace_name]),
-        Index('ix_feed_data_vulndb_unaffected_cpes_product_version', product, version),
-        Index('ix_feed_data_vulndb_unaffected_cpes_fk', vulnerability_id, namespace_name),
+        Index('ix_feed_data_vulndb_affected_cpes_product_version', product, version),
+        Index('ix_feed_data_vulndb_affected_cpes_fk', vulnerability_id, namespace_name),
         {}
     )
 
@@ -1869,11 +1780,12 @@ class Image(Base):
 
         # vulndb is similar to nvd cpes, add them here
         cpe_vulnerabilities.extend(
-            db.query(ImageCpe, VulnDBAffectedCpe).filter(
+            db.query(ImageCpe, VulnDBCpe).filter(
                 ImageCpe.image_id == self.id,
                 ImageCpe.image_user_id == self.user_id,
-                func.lower(ImageCpe.name) == VulnDBAffectedCpe.name,
-                ImageCpe.version == VulnDBAffectedCpe.version
+                func.lower(ImageCpe.name) == VulnDBCpe.name,
+                ImageCpe.version == VulnDBCpe.version,
+                VulnDBCpe.is_affected.is_(True)
             ).all()
         )
 

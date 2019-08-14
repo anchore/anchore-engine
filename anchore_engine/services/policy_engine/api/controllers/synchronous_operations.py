@@ -25,7 +25,7 @@ from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, 
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
     GateSpec, TriggerParamSpec, TriggerSpec
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
-from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, VulnDBMetadata, VulnDBAffectedCpe, select_nvd_classes
+from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, VulnDBMetadata, VulnDBCpe, select_nvd_classes
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
@@ -1024,11 +1024,13 @@ def query_images_by_vulnerability(dbsession, request_inputs):
 
         ipm_query = dbsession.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id==id).filter(ImagePackageVulnerability.pkg_user_id==userId)
         icm_query = dbsession.query(ImageCpe,_cpe_cls).filter(_cpe_cls.vulnerability_id==id).filter(func.lower(ImageCpe.name)==_cpe_cls.name).filter(ImageCpe.image_user_id==userId).filter(ImageCpe.version==_cpe_cls.version)
-        icm_vulndb_query = dbsession.query(ImageCpe, VulnDBAffectedCpe)\
-            .filter(VulnDBAffectedCpe.vulnerability_id == id)\
-            .filter(func.lower(ImageCpe.name) == VulnDBAffectedCpe.name)\
-            .filter(ImageCpe.image_user_id == userId)\
-            .filter(ImageCpe.version == VulnDBAffectedCpe.version)
+        icm_vulndb_query = dbsession.query(ImageCpe, VulnDBCpe).filter(
+            VulnDBCpe.vulnerability_id == id,
+            func.lower(ImageCpe.name) == VulnDBCpe.name,
+            ImageCpe.image_user_id == userId,
+            ImageCpe.version == VulnDBCpe.version,
+            VulnDBCpe.is_affected.is_(True)
+        )
 
         if severity_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability.has(severity=severity_filter))
@@ -1037,7 +1039,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         if namespace_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.vulnerability_namespace_name==namespace_filter)
             icm_query = icm_query.filter(_cpe_cls.namespace_name==namespace_filter)
-            icm_vulndb_query = icm_vulndb_query.filter(VulnDBAffectedCpe.namespace_name == namespace_filter)
+            icm_vulndb_query = icm_vulndb_query.filter(VulnDBCpe.namespace_name == namespace_filter)
         if affected_package_filter:
             ipm_query = ipm_query.filter(ImagePackageVulnerability.pkg_name==affected_package_filter)
             icm_query = icm_query.filter(func.lower(ImageCpe.name)==func.lower(affected_package_filter))
@@ -1158,8 +1160,8 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['severity'] = vulnerability.severity
                 namespace_el['link'] = vulnerability.link
                 namespace_el['affected_packages'] = []
-                namespace_el['description'] = vulnerability.get_description()
-                namespace_el['references'] = vulnerability.get_references()
+                namespace_el['description'] = vulnerability.description
+                namespace_el['references'] = vulnerability.references
                 namespace_el['nvd_data'] = vulnerability.get_cvss_data_nvd()
                 namespace_el['vendor_data'] = vulnerability.get_cvss_data_vendor()
 
@@ -1192,7 +1194,7 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['vendor_data'] = []
 
                 for nvd_record in vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls):
-                    namespace_el['nvd_data'].extend(nvd_record.get_cvss_scores_nvd())
+                    namespace_el['nvd_data'].extend(nvd_record.get_cvss_data_nvd())
                 
                 for v_pkg in vulnerability.fixed_in:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
