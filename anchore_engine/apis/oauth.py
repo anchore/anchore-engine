@@ -48,7 +48,7 @@ def generate_token(client, grant_type, user, scope):
     return str(tok_mgr.generate_token(user.username), 'utf-8')
 
 
-def init_oauth(app):
+def init_oauth(app, grant_types, expiration_config):
     """
     Configure the oauth routes and handlers via authlib
     :return:
@@ -115,12 +115,7 @@ def init_oauth(app):
     app.config['OAUTH2_REFRESH_TOKEN_GENERATOR'] = False
 
     # Only the password grant type is used, others can stay defaults
-    app.config['OAUTH2_TOKEN_EXPIRES_IN'] = {
-        'authorization_code': 864000,
-        'implicit': 3600,
-        'password': int(conf['user_authentication']['oauth'].get('default_token_expiration_seconds')),
-        'client_credentials': 864000
-    }
+    app.config['OAUTH2_TOKEN_EXPIRES_IN'] = expiration_config
 
     tok_mgr = token_manager()
     app.config['OAUTH2_JWT_KEY'] = tok_mgr.default_issuer().signing_key
@@ -129,7 +124,10 @@ def init_oauth(app):
 
     authz = AuthorizationServer(app, query_client=query_client, save_token=do_not_save_token)
     # Support only the password grant for now
-    authz.register_grant(PasswordGrant)
+    for grant in grant_types:
+        logger.debug('Registering oauth grant handler: {}'.format(getattr(grant, 'GRANT_TYPE', 'unknown')))
+        authz.register_grant(grant)
+
     logger.debug('Oauth init complete')
 
     return authz

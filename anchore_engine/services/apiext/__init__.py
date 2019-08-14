@@ -1,9 +1,9 @@
 import pkg_resources
 import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.apis.oauth import init_oauth
+from anchore_engine.apis.oauth import init_oauth, PasswordGrant
 from anchore_engine.service import ApiService, UserFacingApiService, LifeCycleStages
-
+from anchore_engine.configuration import localconfig
 
 class ExternalApiService(UserFacingApiService):
     __service_name__ = 'apiext'
@@ -30,5 +30,12 @@ class ExternalApiService(UserFacingApiService):
 
     def init_oauth(self):
         # Initialize the oauth stuff as needed.
-        self._oauth_app = init_oauth(self._application.app)
+        expiration_config = {
+            'authorization_code': 864000,
+            'implicit': 3600,
+            'password': int(localconfig.get_config()['user_authentication']['oauth'].get('default_token_expiration_seconds')),
+            'client_credentials': 864000
+        }
+
+        self._oauth_app = init_oauth(self._application.app, [PasswordGrant], expiration_config)
 
