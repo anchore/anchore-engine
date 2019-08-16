@@ -348,6 +348,9 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         el['vendor_data'] = []
         el['vendor_data'] = make_cvss_scores(vuln.get('vendor_data', []))
 
+        fixed_in = vuln.get('fixed_in', [])
+        el['fix'] = ', '.join(fixed_in) if fixed_in else 'None'
+
         # dedup logic for filtering nvd cpes that are referred by vulndb
         if vuln.get('feed_name') == 'vulndb':
             for nvd_item in vuln.get('nvd_data', []):

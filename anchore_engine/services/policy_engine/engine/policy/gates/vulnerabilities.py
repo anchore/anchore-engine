@@ -206,12 +206,22 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                                 if is_fix_available is not None:
                                     # Must do a fix_available check
-                                    fix_available_in = image_cpe.fixed_in()
-                                    if is_fix_available == (fix_available_in is not None):
-                                        pass
+                                    fix_available_in = vulnerability_cpe.get_fixed_in()
+
+                                    # explicit fix state check matches fix availability
+                                    if is_fix_available == (fix_available_in is not None and len(fix_available_in) > 0):
+                                        if is_fix_available:
+                                            parameter_data['fixed_version'] = ', '.join(fix_available_in)
                                     else:
-                                        # fix_available is set, but no fix is availble so skip
+                                        # if_fix_available is set but does not match is_fix_available check
                                         continue
+
+                                    if is_fix_available and fix_timeallowed is not None:
+                                        if fix_available_in:
+                                            if calendar.timegm(vulnerability_cpe.created_at.timetuple()) > fix_timeallowed:
+                                                continue
+                                            else:
+                                                parameter_data['max_days_since_fix'] = vulnerability_cpe.created_at.date()
 
                                 if not vulnerability_cpe.parent.link:
                                     if not api_endpoint:
@@ -221,6 +231,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                     parameter_data['link'] = vulnerability_cpe.parent.link
 
                                 fix_msg = ''
+                                if parameter_data.get('fixed_version', None):
+                                    fix_msg = "(fixed in: {})".format(parameter_data.get('fixed_version'))
 
                                 score_msg = ''
                                 score_tuples = []

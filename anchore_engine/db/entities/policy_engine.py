@@ -540,12 +540,12 @@ class NvdMetadata(Base):
     def get_cvss_data_vendor(self):
         return []
 
-    def key_tuple(self):
-        return self.name
-
     @property
     def link(self):
         return 'https://nvd.nist.gov/vuln/detail/{}'.format(self.name)
+
+    def key_tuple(self):
+        return self.name
 
 
 class NvdV2Metadata(Base):
@@ -1083,6 +1083,10 @@ class CpeVulnerability(Base):
 
         return(ret)
 
+    def get_fixed_in(self):
+        return []
+
+
 class CpeV2Vulnerability(Base):
     __tablename__ = 'feed_data_cpev2_vulnerabilities'
 
@@ -1152,6 +1156,9 @@ class CpeV2Vulnerability(Base):
             ret = None
 
         return(ret)
+
+    def get_fixed_in(self):
+        return []
 
 
 class VulnDBCpe(Base):
@@ -1236,6 +1243,10 @@ class VulnDBCpe(Base):
             ret = None
 
         return ret
+
+    def get_fixed_in(self):
+        return [cpe.version for cpe in self.parent.cpes
+                if not cpe.is_affected and cpe.product == self.product and cpe.vendor == self.vendor and cpe.part == self.part]
 
 
 # Analysis Data for Images

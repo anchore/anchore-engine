@@ -704,7 +704,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     'feed_name': vulnerability_cpe.feed_name,
                     'feed_namespace': vulnerability_cpe.namespace_name,
                     'nvd_data': vulnerability_cpe.parent.get_cvss_data_nvd(),
-                    'vendor_data': vulnerability_cpe.parent.get_cvss_data_vendor()
+                    'vendor_data': vulnerability_cpe.parent.get_cvss_data_vendor(),
+                    'fixed_in': vulnerability_cpe.get_fixed_in()
                 }
                 cpe_hash = hashlib.sha256(utils.ensure_bytes(json.dumps(cpe_vuln_el))).hexdigest()
                 if not cpe_hashes.get(cpe_hash, False):
