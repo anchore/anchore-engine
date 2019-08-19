@@ -52,7 +52,7 @@ DEFAULT_CONFIG = {
             'feeds': {
                 'vulnerabilities': True,
                 'packages': True,
-                'nvd': True,
+                'nvdv2': True,
                 'snyk': True,
                 'vulndb': True
             }

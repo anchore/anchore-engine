@@ -1506,7 +1506,7 @@ class NvdV2Feed(AnchoreServiceFeed):
     """
 
     __feed_name__ = 'nvdv2'
-    _cve_key = '@id'
+    _cve_key = 'id'
     __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, NvdV2FeedDataMapper, _cve_key)
 
     def query_by_key(self, key, group=None):
@@ -1751,10 +1751,11 @@ class DataFeeds(object):
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for packages feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
-        try:
-            self.nvd.refresh_groups()
-        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
-            log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
+        # don't sync nvd feeds anymore
+        # try:
+        #     self.nvd.refresh_groups()
+        # except (InsufficientAccessTierError, InvalidCredentialsError) as e:
+        #     log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
         try:
             self.nvdV2.refresh_groups()
@@ -1804,18 +1805,20 @@ class DataFeeds(object):
                 log.exception('Cannot sync group metadata for packages feed')
                 pkgs_feed = None
 
-        nvd_feed = None
-        if to_sync is None or 'nvd' in to_sync:
-            try:
-                log.info('Syncing group metadata for nvd feed')
-                nvd_feed = self.nvd
-                nvd_feed.init_feed_meta_and_groups()
-            except:
-                log.exception('Cannot sync group metadata for nvd feed')
-                nvd_feed = None
+        # don't sync nvd feeds anymore
+        # nvd_feed = None
+        # if to_sync is None or 'nvd' in to_sync:
+        #     try:
+        #         log.info('Syncing group metadata for nvd feed')
+        #         nvd_feed = self.nvd
+        #         nvd_feed.init_feed_meta_and_groups()
+        #     except:
+        #         log.exception('Cannot sync group metadata for nvd feed')
+        #         nvd_feed = None
 
+        # switch to nvdv2 whether nvd or nvdv2 is configured
         nvdV2_feed = None
-        if to_sync is None or 'nvdv2' in to_sync:
+        if to_sync is None or any(item in to_sync for item in ['nvd', 'nvdv2']):
             try:
                 log.info('Syncing group metadata for nvdv2 feed')
                 nvdV2_feed = self.nvdV2
@@ -1874,19 +1877,21 @@ class DataFeeds(object):
                 fail_result['total_time_seconds'] = time.time() - t
                 result.append(fail_result)
 
-        if nvd_feed:
-            t = time.time()
-            try:
-                log.info('Syncing nvd feed')
-                result.append(nvd_feed.sync(full_flush=full_flush))
-            except:
-                log.exception('Failure updating the nvd feed')
-                all_success = False
-                fail_result = build_feed_sync_results()
-                fail_result['feed'] = nvd_feed.__feed_name__
-                fail_result['total_time_seconds'] = time.time() - t
-                result.append(fail_result)
+        # don't sync nvd feeds anymore
+        # if nvd_feed:
+        #     t = time.time()
+        #     try:
+        #         log.info('Syncing nvd feed')
+        #         result.append(nvd_feed.sync(full_flush=full_flush))
+        #     except:
+        #         log.exception('Failure updating the nvd feed')
+        #         all_success = False
+        #         fail_result = build_feed_sync_results()
+        #         fail_result['feed'] = nvd_feed.__feed_name__
+        #         fail_result['total_time_seconds'] = time.time() - t
+        #         result.append(fail_result)
 
+        # switch to nvdv2 whether nvd or nvdv2 is configured
         if nvdV2_feed:
             t = time.time()
             try:
@@ -1966,19 +1971,21 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
-        if to_sync is None or 'nvd' in to_sync:
-            if not only_if_unsynced or self.nvd.never_synced():
-                try:
-                    log.info('Syncing nvd feed')
-                    updated_records['nvd'] = self.nvd.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the nvd feed. Continuing with next feed')
-                    all_success = False
+        # don't sync nvd feeds anymore
+        # if to_sync is None or 'nvd' in to_sync:
+        #     if not only_if_unsynced or self.nvd.never_synced():
+        #         try:
+        #             log.info('Syncing nvd feed')
+        #             updated_records['nvd'] = self.nvd.bulk_sync()
+        #         except Exception as err:
+        #             log.exception('Failure updating the nvd feed. Continuing with next feed')
+        #             all_success = False
+        #
+        #     else:
+        #         log.info('Skipping bulk sync since feed already initialized')
 
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-        if to_sync is None or 'nvdv2' in to_sync:
+        # switch to nvdv2 whether nvd or nvdv2 is configured
+        if to_sync is None or any(item in to_sync for item in ['nvd', 'nvdv2']):
             if not only_if_unsynced or self.nvdV2.never_synced():
                 try:
                     log.info('Syncing nvdV2 feed')

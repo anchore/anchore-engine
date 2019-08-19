@@ -74,10 +74,12 @@ feeds:
       # Warning: enabling the packages and nvd sync causes the service to require much
       #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
       packages: false
-      nvd: false
+      nvdv2: true
       # Enabling snyk syncs snyk vulnerability data from an on-premise anchore enterprise feeds service. Please contact
       # anchore support for finding out more about this service
       snyk: false
+      # Enabling vulndb syncs vulndb vulnerability data from an on-premise anchore enterprise feeds service. Please contact
+      # anchore support for finding out more about this service
       vulndb: false
   anonymous_user_username: anon@ancho.re
   anonymous_user_password: pbiU2RYZ2XrmYQ
