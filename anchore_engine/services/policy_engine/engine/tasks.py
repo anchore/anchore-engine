@@ -136,12 +136,7 @@ class FeedsUpdateTask(IAsyncTask):
 
         :return:
         """
-        error = None
         feeds = None
-
-        with session_scope() as session:
-            mgr = identities.manager_factory.for_session(session)
-            catalog_client = internal_client_for(CatalogClient, userId=None)
 
         try:
 
@@ -154,12 +149,6 @@ class FeedsUpdateTask(IAsyncTask):
             else:
                 task = FeedsUpdateTask(feeds_to_sync=feeds, flush=force_flush)
 
-            # Create feed task begin event
-            try:
-                catalog_client.add_event(FeedSyncStart(groups=feeds if feeds else 'all'))
-            except:
-                log.exception('Ignoring event generation error before feed sync')
-
             result = []
             if cls.locking_enabled:
                 run_target_with_lease(account=None, lease_id='feed_sync', ttl=90, target=lambda: result.append(task.execute()))
@@ -170,19 +159,9 @@ class FeedsUpdateTask(IAsyncTask):
                 result = task.execute()
 
             return result
-        except Exception as e:
-            error = e
+        except Exception:
             log.exception('Error executing feeds update')
-            raise e
-        finally:
-            # log feed sync event
-            try:
-                if error:
-                    catalog_client.add_event(FeedSyncFail(groups=feeds if feeds else 'all', error=error))
-                else:
-                    catalog_client.add_event(FeedSyncComplete(groups=feeds if feeds else 'all'))
-            except:
-                log.exception('Ignoring event generation error after feed sync')
+            raise
 
     def __init__(self, feeds_to_sync=None, flush=False):
         self.feeds = feeds_to_sync
@@ -198,6 +177,17 @@ class FeedsUpdateTask(IAsyncTask):
         # Feed syncs will update the images with any new cves that are pulled in for a the sync. As such, any images that are loaded while the sync itself is in progress need to be
         # re-scanned for cves since the transaction ordering can result in the images being loaded with data prior to sync but not included in the sync process itself.
 
+        # Create feed task begin event
+        error = None
+        with session_scope() as session:
+            mgr = identities.manager_factory.for_session(session)
+            catalog_client = internal_client_for(CatalogClient, userId=None)
+
+        try:
+            catalog_client.add_event(FeedSyncStart(groups=self.feeds if self.feeds else 'all'))
+        except:
+            log.exception('Ignoring event generation error before feed sync')
+
         start_time = datetime.datetime.utcnow()
         try:
             f = DataFeeds.instance()
@@ -210,11 +200,21 @@ class FeedsUpdateTask(IAsyncTask):
 
             log.info('Feed sync complete. Results = {}'.format(updated_dict))
             return updated_dict
-        except:
+        except Exception as e:
+            error = e
             log.exception('Failure refreshing and syncing feeds')
             raise
         finally:
             end_time = datetime.datetime.utcnow()
+            # log feed sync event
+            try:
+                if error:
+                    catalog_client.add_event(FeedSyncFail(groups=self.feeds if self.feeds else 'all', error=error))
+                else:
+                    catalog_client.add_event(FeedSyncComplete(groups=self.feeds if self.feeds else 'all'))
+            except:
+                log.exception('Ignoring event generation error after feed sync')
+
             try:
                 self.rescan_images_created_between(from_time=start_time, to_time=end_time)
             except:
