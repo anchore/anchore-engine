@@ -7,8 +7,8 @@ import datetime
 import uuid
 from authlib.jose import jwt
 from authlib.jose import JWTClaims
-
 from anchore_engine.configuration import localconfig
+from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
 from anchore_engine.utils import ensure_bytes
 from anchore_engine.subsys import logger
 
@@ -19,8 +19,15 @@ SUPPORTED_ALGORITHMS = ['HS256', 'HS512', 'RS256', 'RS512']
 
 _token_manager = None
 
-class NotConfigured(Exception):
-    pass
+
+def is_enabled():
+    """
+    Returns true if oauth is enabled via configuration on this host and has a valid configuration (e.g. keys/secret is present)
+
+    :return:
+    """
+    global _token_manager
+    return _token_manager is None
 
 
 def load_keys(config: dict):
@@ -36,15 +43,20 @@ def load_keys(config: dict):
     if config:
         if config.get('private_key_path'):
             priv_keypath = config.get('private_key_path')
+            try:
+                with open(priv_keypath, 'rb') as pem_fp:
+                    keys['private'] = pem_fp.read()
 
-            with open(priv_keypath, 'rb') as pem_fp:
-                keys['private'] = pem_fp.read()
+            except IOError as e:
+                raise Exception('Could not load private key file from path: {}. Error: {}'.format(priv_keypath, e))
 
-        # TODO add public x509 cert support to get the key from (DER, PEM formats)
         if config.get('public_key_path'):
             pub_keypath = config.get('public_key_path')
-            with open(pub_keypath, 'rb') as crt_fp:
-                keys['public'] = crt_fp.read()
+            try:
+                with open(pub_keypath, 'rb') as crt_fp:
+                    keys['public'] = crt_fp.read()
+            except IOError as e:
+                raise Exception('Could not load public key file from path: {}. Error: {}'.format(pub_keypath, e))
 
         elif config.get('secret'):
             keys['secret'] = ensure_bytes(config.get('secret'))
@@ -74,7 +86,7 @@ class TokenIssuer(object):
         """
 
         if not self.signing_key:
-            raise NotConfigured('SP not configured')
+            raise OauthNotConfiguredError('SP not configured')
         else:
             header = {'alg': self.signing_alg}
             ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
@@ -129,6 +141,8 @@ class JwtTokenManager(object):
     def __init__(self, oauth_config, keys_config):
         self.config = oauth_config
         self.keys_config = keys_config
+        self._validate_config()
+
         self.keys = load_keys(keys_config)
         expiration = int(self.config.get('default_token_expiration_seconds'))
         self.issuers = {name: TokenIssuer(key, 'RS256', expiration) if name != 'secret' else TokenIssuer(key, 'HS256', expiration, issuer=ANCHORE_ISSUER) for name, key in self.keys.items() if name in ['private', 'secret']}
@@ -143,6 +157,25 @@ class JwtTokenManager(object):
             self._default_private = 'private'
         else:
             self._default_private = 'secret'
+
+    def _validate_config(self):
+        logger.debug('Validating oauth config')
+        if not self.config.get('enabled'):
+            raise OauthNotConfiguredError('enabled = false')
+
+        if self.config.get('default_token_expiration_seconds') is None:
+            raise InvalidOauthConfigurationError('default_token_expiration_seconds missing')
+
+        if type(self.config.get('default_token_expiration_seconds')) not in [int, float]:
+            raise InvalidOauthConfigurationError('default_token_expiration_seconds wrong type, must be integer')
+
+        if not self.keys_config:
+            raise InvalidOauthConfigurationError('keys configuration required')
+
+        if not self.keys_config.get('secret') and not (self.keys_config.get('private_key_path') and self.keys_config.get('public_key_path')):
+            raise InvalidOauthConfigurationError('keys must have either "secret" set or both "public_key_path" and "private_key_path" set to valid pem files')
+
+        logger.debug('Oauth config ok')
 
     def generate_token(self, user_uuid, with_key_name=None, return_expiration=False):
         if not with_key_name:
@@ -166,25 +199,24 @@ class JwtTokenManager(object):
         return self.issuers[self._default_private]
 
 
-def oauth_config_loader():
+def oauth_config_loader(config: dict):
     """
     Loads the key configuration from the default location
 
     :return:
     """
-
-    return localconfig.get_config().get('user_authentication', {}).get('oauth'), localconfig.get_config().get('keys')
+    assert config is not None
+    return config.get('user_authentication', {}).get('oauth'), config.get('keys')
 
 
 def token_manager(config=None):
     global _token_manager
     if _token_manager is None:
         if config is None:
-            oauth_config, keys_config = oauth_config_loader()
-        else:
-            oauth_config = config.get('user_authentication', {}).get('oauth')
-            keys_config = config.get('keys')
+            config = localconfig.get_config()
 
+        assert config is not None
+        oauth_config, keys_config = oauth_config_loader(config)
         _token_manager = JwtTokenManager(oauth_config, keys_config)
 
     return _token_manager

@@ -6,7 +6,7 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates, UserTypes
 from anchore_engine.db.db_accounts import AccountNotFoundError
-from anchore_engine.auth.oauth import token_manager
+from anchore_engine.auth.oauth import token_manager, InvalidOauthConfigurationError, OauthNotConfiguredError
 from threading import RLock
 from anchore_engine.subsys.caching import TTLCache
 
@@ -203,12 +203,16 @@ class IdentityManager(object):
             if cred is None:
                 logger.debug('Doing refresh/initial system cred load')
 
+                try:
+                    tok_mgr = token_manager()
+                except OauthNotConfiguredError:
+                    tok_mgr = None
+
                 # Generate one
-                if localconfig.get_config().get('user_authentication', {}).get('oauth', {}).get('enabled'):
+                if tok_mgr:
                     # Generate a token
                     usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
                     system_user_uuid = usr['uuid']
-                    tok_mgr = token_manager()
                     tok, exp = tok_mgr.generate_token(system_user_uuid, return_expiration=True)
                     logger.debug('Generated token with expiration {}'.format(exp))
                     cred = HttpBearerCredential(tok, exp)

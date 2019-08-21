@@ -25,7 +25,7 @@ from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
 from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFail
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.apis.oauth import init_oauth
+from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
 from anchore_engine.apis.exceptions import AnchoreApiError
 from anchore_engine.common.helpers import make_response_error
 
@@ -321,6 +321,8 @@ class BaseService(object, metaclass=ServiceMeta):
                         logger.info('Did not find valid system creds')
                         logger.error('cannot get system user auth credentials yet, retrying (' + str(count) + ' / ' + str(max_retries) + ')')
                         time.sleep(5)
+                except InvalidOauthConfigurationError:
+                    raise
                 except Exception as err:
                     logger.exception('cannot get system-user auth credentials - service may not have system level access')
                     self.global_configuration['system_user_auth'] = (None, None)
