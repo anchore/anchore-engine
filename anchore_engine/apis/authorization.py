@@ -686,8 +686,8 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
         with ExternalAuthorizationHandler._config_lock:
             logger.info('Initializing external authz realm')
 
-            self.external_authorizer = ExternalAuthorizer(configuration, enabled=True)
-            UsernamePasswordRealm.__external_authorizer__ = self.external_authorizer
+            self.__external_authorizer__ = ExternalAuthorizer(configuration, enabled=True)
+            UsernamePasswordRealm.__external_authorizer__ = self.__external_authorizer__
 
             #conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/external_authz_yosai_settings.yaml')
             conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/default_yosai_settings.yaml')
