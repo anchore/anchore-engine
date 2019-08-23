@@ -730,7 +730,7 @@ def auth_function_factory():
                         return Response(json.dumps(resp[0]), status=resp[1], content_type='application/json')
                     else:
                         return Response(resp[0], status=resp[1])
-            return resp
+            return None
         except:
             logger.exception('Rejected')
             logger.info("Authc rejected!")
