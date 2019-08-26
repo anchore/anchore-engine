@@ -145,8 +145,12 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
             try:
                 inputTag = tag
                 image_info = parse_dockerimage_string(inputTag)
+                if not inputTag.startswith("docker.io/") and image_info.get('registry', '') == 'docker.io':
+                    # undo the auto-fill of 'docker.io' for input that doesn't specify registry
+                    image_info['registry'] = 'localbuild'
                 fulltag = "{}/{}:{}".format(image_info['registry'], image_info['repo'], image_info['tag'])
                 fulldigest = "{}/{}@{}".format(image_info['registry'], image_info['repo'], imageDigest)
+                logger.info("using fulltag={} fulldigest={}".format(fulltag, fulldigest))
             except Exception as err:
                 raise ValueError("input tag does not validate - exception: {}".format(err))
 
