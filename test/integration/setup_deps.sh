@@ -15,7 +15,7 @@ export ANCHORE_TEST_SWIFT_KEY="testing"
 export ANCHORE_TEST_SWIFT_USER="test:tester"
 export ANCHORE_TEST_SWIFT_CONTAINER="testarchive"
 
-export ANCHORE_TEST_DB_URL="postgresql+pg8000://postgres:postgres@localhost:5432/postgres"
+export ANCHORE_TEST_DB_URL="postgresql://postgres:postgres@localhost:5432/postgres"
 export ANCHORE_TEST_DB_USER="postgres"
 export ANCHORE_TEST_DB_PASS="postgres"
 export ANCHORE_TEST_DATA_ENV_DIR="${PWD}/../data/test_data_env"
