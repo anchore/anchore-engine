@@ -728,19 +728,21 @@ def auth_function_factory():
     :param authorizer_fetch_fn:
     :return:
     """
+
     def do_auth():
         try:
             resp = get_authorizer().inline_authz([])
-            if resp is not None:
-                if type(resp) == tuple:
-                    if type(resp[0]) == dict:
-                        return Response(json.dumps(resp[0]), status=resp[1], content_type='application/json')
-                    else:
-                        return Response(resp[0], status=resp[1])
-            return None
+            if isinstance(resp, IdentityContext):
+                return None
+            else:
+                if resp is not None:
+                    if type(resp) == tuple:
+                        if type(resp[0]) == dict:
+                            return Response(json.dumps(resp[0]), status=resp[1], content_type='application/json')
+                        else:
+                            return Response(resp[0], status=resp[1])
+                return resp
         except:
-            logger.exception('Rejected')
-            logger.info("Authc rejected!")
             return Response('Unauthorized', status=401,
                             headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
 

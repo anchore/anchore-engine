@@ -45,6 +45,7 @@ user_authentication:
 
 metrics:
   enabled: ${ANCHORE_ENABLE_METRICS}
+  auth_disabled: ${ANCHORE_DISABLE_METRICS_AUTH}
 
 # Uncomment if you have a local endpoint that can accept
 # notifications from the anchore-engine, as configured below
