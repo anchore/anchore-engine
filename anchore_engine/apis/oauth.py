@@ -56,7 +56,6 @@ def init_oauth(app, grant_types, expiration_config):
     """
     logger.debug('Initializing oauth routes')
     try:
-        logger.info('Config: {}'.format(localconfig.get_config()))
         tok_mgr = token_manager()
         logger.info('Initialized the token manager')
     except OauthNotConfiguredError:
@@ -67,10 +66,8 @@ def init_oauth(app, grant_types, expiration_config):
         raise
 
     def query_client(client_id):
-        logger.debug('Looking up client: {}'.format(client_id))
         db = get_session()
         c = db.query(OAuth2Client).filter_by(client_id=client_id).first()
-        logger.debug('Found client record for client_id: {}'.format(client_id))
         return c
 
     def do_not_save_token(token, request):
@@ -94,7 +91,6 @@ def init_oauth(app, grant_types, expiration_config):
             db = get_session()
             db.add(tok)
             db.commit()
-            logger.info('Saved new token')
         except:
             logger.exception('Exception saving token')
             raise
