@@ -291,7 +291,7 @@ def get_distro_flavor(distro, version, likedistro=None):
         'likeversion':version
     }
 
-    if distro in ['centos', 'rhel', 'redhat', 'fedora']:
+    if distro in ['centos', 'rhel', 'redhat', 'fedora', 'sles'] or distro.startswith('opensuse'):
         ret['flavor'] = "RHEL"
         ret['likedistro'] = 'centos'
     elif distro in ['debian', 'ubuntu']:
@@ -783,7 +783,7 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
             for member in tfl.getmembers():
                 filename = member.name
                 filename = re.sub("^\./|^/", "", filename)
-                if filename.startswith("var/lib/rpm"):
+                if filename.startswith("var/lib/rpm") or filename.startswith("usr/lib/sysimage/rpm"):
                     rpmmembers.append(member)
 
             tfl.extractall(path=os.path.join(rpmtmpdir, "rootfs"), members=rpmmembers)
