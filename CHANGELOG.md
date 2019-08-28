@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.5.0 (2019-XX-YY)
+
 ## 0.4.2 (2019-08-01)
 
 + Fix - Update to CPE match DB query, to account for package names that are not reported as lowercase.  Fixes #227.
