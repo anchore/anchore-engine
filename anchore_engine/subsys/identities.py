@@ -24,6 +24,7 @@ def is_valid_username(candidate):
     :param candidate:
     :return:
     """
+
     return name_validator_regex.match(candidate) is not None
 
 
@@ -302,6 +303,9 @@ class IdentityManager(object):
         :param email:
         :return: (account, user) tuple with the account and admin user for the account
         """
+        if not is_valid_accountname(account_name):
+            raise ValueError('Account name must match regex {}'.format(name_validator_regex))
+
         account = db_accounts.add(account_name, account_type=account_type, email=email, state=AccountStates.enabled, session=self.session)
         return account
 
@@ -330,6 +334,8 @@ class IdentityManager(object):
         :param user_type: The type of user to create
         :return:
         """
+        if not is_valid_username(username):
+            raise ValueError('username must match regex {}'.format(name_validator_regex))
 
         assert (user_type in [UserTypes.internal, UserTypes.external] and password is None) or user_type == UserTypes.native
         account = db_accounts.get(account_name, session=self.session)
