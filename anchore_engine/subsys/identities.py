@@ -12,9 +12,29 @@ from anchore_engine.subsys.caching import TTLCache
 
 
 # Not currently used because upgrade...
-name_validator_regex = re.compile('^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$')
-email_validator_regex = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+name_validator_regex = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9@.!#$+-=^_`~;]{1,126}[a-zA-Z0-9]$')
+email_validator_regex = re.compile(r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
 password_validator_regex = re.compile('.{6,128}$')
+
+
+def is_valid_username(candidate):
+    """
+    Check the candidate for validity against the acceptance for user names
+
+    :param candidate:
+    :return:
+    """
+    return name_validator_regex.match(candidate) is not None
+
+
+def is_valid_accountname(candidate):
+    """
+    Check the candidate for validity against the acceptance for account names
+    :param candidate:
+    :return:
+    """
+
+    return is_valid_username(candidate)
 
 
 class IdentityBootstrapper(object):
