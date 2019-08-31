@@ -400,7 +400,7 @@ def create_user(accountname, user):
         return make_response_error('Account not found', in_httpcode=404), 404
     except Exception as e:
         logger.exception('API Error')
-        return make_response_error('Internal error deleting account {}'.format(accountname)), 500
+        return make_response_error('Internal error adding user'), 500
 
 
 @authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])

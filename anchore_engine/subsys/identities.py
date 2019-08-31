@@ -324,7 +324,7 @@ class IdentityManager(object):
     def delete_account(self, account_name):
         return db_accounts.delete(account_name, session=self.session)
 
-    def create_user(self, account_name, username, password=None, user_type=UserTypes.native):
+    def create_user(self, account_name, username, password=None, user_type=UserTypes.native, user_source=None):
         """
         Create a new user as a unit-of-work (e.g. a single db transaction
 
@@ -332,17 +332,22 @@ class IdentityManager(object):
         :param username: the str username
         :param password: the password to set
         :param user_type: The type of user to create
-        :return:
+a        :return:
         """
         if not is_valid_username(username):
             raise ValueError('username must match regex {}'.format(name_validator_regex))
 
-        assert (user_type in [UserTypes.internal, UserTypes.external] and password is None) or user_type == UserTypes.native
+        if user_type in [UserTypes.external] and password is not None:
+            raise AssertionError('Cannot set password for external user type')
+
+        if user_type == UserTypes.external and user_source is None:
+            raise ValueError('user_source cannot be None with user_type = external')
+
         account = db_accounts.get(account_name, session=self.session)
         if not account:
             raise AccountNotFoundError('Account does not exist')
 
-        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type,
+        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type, user_source=user_source,
                                           session=self.session)
 
         if password is not None:

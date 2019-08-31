@@ -76,7 +76,7 @@ def get_hasher(config=None):
     return _hasher
 
 
-def add(account_name, username, user_type, session):
+def add(account_name, username, user_type, user_source, session):
     """
     Create a new user, raising error on conflict
 
@@ -96,6 +96,7 @@ def add(account_name, username, user_type, session):
         user_to_create.username = username
         user_to_create.created_at = anchore_now()
         user_to_create.type = user_type
+        user_to_create.source = user_source
         user_to_create.last_updated = anchore_now()
         session.add(user_to_create)
         session.flush()
