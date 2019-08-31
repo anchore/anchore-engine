@@ -3535,6 +3535,9 @@ definitions:
           - native
           - internal
           - external
+      source:
+        description: If the user is external, this is the source that the user was initialized from. All other user types have this set to null
+        type: string
       created_at:
         description: The timestampt the user record was created
         type: string

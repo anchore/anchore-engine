@@ -59,6 +59,8 @@ def user_db_to_msg(user):
 
     return {
         'username': user['username'],
+        'type': user['type'].value,
+        'source': user['source'],
         'created_at': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['created_at'])),
         'last_updated': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['last_updated']))
     }
