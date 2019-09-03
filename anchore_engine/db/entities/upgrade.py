@@ -976,7 +976,8 @@ def update_users_010_011():
             'table_name': 'account_users',
             'columns': [
                 Column('type', Enum(UserTypes, name='user_types'), nullable=False, default=UserTypes.native),
-                Column('uuid', String, unique=True, nullable=False, default=anchore_uuid, index=True)
+                Column('uuid', String, unique=True, nullable=False, default=anchore_uuid, index=True),
+                Column('source', String)
             ]
         }
     ]

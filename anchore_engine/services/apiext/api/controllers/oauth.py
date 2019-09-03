@@ -1,13 +1,12 @@
 from connexion import request
-from werkzeug.security import gen_salt
 from werkzeug.datastructures import ImmutableMultiDict
 
 
-from anchore_engine.apis.authorization import get_authorizer, make_response_error
-from anchore_engine.apis import ApiRequestContextProxy
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.subsys import logger
-from anchore_engine.db import session_scope, AccountTypes
-from anchore_engine.db.entities.identity import OAuth2Client
+from anchore_engine.auth.oauth import token_manager
+from anchore_engine.apis.exceptions import AccessDeniedError
 
 
 authorizer = get_authorizer()
@@ -26,11 +25,12 @@ def get_oauth_token():
     :return:
     """
 
-    authz = ApiRequestContextProxy.get_service()._oauth_app
-
-    if authz is None:
-        # oauth is not enabled and not supported based on configuration
-        return make_response_error(errmsg='Oauth not enabled in configuration', in_httpcode=500), 500
+    # Short-circuit if no oauth/token configured
+    try:
+        tok_mgr = token_manager()
+        authz = ApiRequestContextProxy.get_service()._oauth_app
+    except Exception as e:
+        raise AccessDeniedError('Oauth not enabled in configuration', detail={})
 
     # Add some default properties if not set in the request
     try:

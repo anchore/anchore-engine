@@ -8,6 +8,7 @@ from authlib.flask.oauth2.authorization_server import AuthorizationServer
 from authlib.oauth2.rfc6749 import grants
 from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.auth.oauth import token_manager
+from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
 
 
 class User(object):
@@ -54,16 +55,19 @@ def init_oauth(app, grant_types, expiration_config):
     :return:
     """
     logger.debug('Initializing oauth routes')
-    conf = localconfig.get_config()
-    if not conf.get('user_authentication', {}).get('oauth', {}).get('enabled'):
-        # Not enabled in configuration
+    try:
+        tok_mgr = token_manager()
+        logger.info('Initialized the token manager')
+    except OauthNotConfiguredError:
+        logger.info('OAuth support not configured, cannot initialize it')
         return None
+    except InvalidOauthConfigurationError:
+        logger.error('OAuth has invalid configuration, cannot initialize it')
+        raise
 
     def query_client(client_id):
-        logger.debug('Looking up client: {}'.format(client_id))
         db = get_session()
         c = db.query(OAuth2Client).filter_by(client_id=client_id).first()
-        logger.debug('Found client record for client_id: {}'.format(client_id))
         return c
 
     def do_not_save_token(token, request):
@@ -87,7 +91,6 @@ def init_oauth(app, grant_types, expiration_config):
             db = get_session()
             db.add(tok)
             db.commit()
-            logger.info('Saved new token')
         except:
             logger.exception('Exception saving token')
             raise
@@ -110,6 +113,7 @@ def init_oauth(app, grant_types, expiration_config):
     except Exception as e:
         logger.debug('Default client record init failed: {}'.format(e))
 
+
     app.config['OAUTH2_JWT_ENABLED'] = True
     app.config['OAUTH2_ACCESS_TOKEN_GENERATOR'] = generate_token
     app.config['OAUTH2_REFRESH_TOKEN_GENERATOR'] = False
@@ -117,7 +121,6 @@ def init_oauth(app, grant_types, expiration_config):
     # Only the password grant type is used, others can stay defaults
     app.config['OAUTH2_TOKEN_EXPIRES_IN'] = expiration_config
 
-    tok_mgr = token_manager()
     app.config['OAUTH2_JWT_KEY'] = tok_mgr.default_issuer().signing_key
     app.config['OAUTH2_JWT_ISS'] = tok_mgr.default_issuer().issuer
     app.config['OAUTH2_JWT_ALG'] = tok_mgr.default_issuer().signing_alg
@@ -129,5 +132,4 @@ def init_oauth(app, grant_types, expiration_config):
         authz.register_grant(grant)
 
     logger.debug('Oauth init complete')
-
     return authz

@@ -1,6 +1,7 @@
 import pytest
 from anchore_engine.subsys import logger
-from anchore_engine.auth.oauth import load_keys, TokenVerifier, TokenIssuer, JwtTokenManager
+from anchore_engine.auth.oauth import load_keys, TokenVerifier, TokenIssuer, JwtTokenManager, token_manager
+from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
 from anchore_engine.utils import ensure_bytes, ensure_str
 
 logger.enable_test_logging()
@@ -114,3 +115,22 @@ def test_token_manager_keys():
 
     with pytest.raises(Exception) as ex:
         mgr.verify_token(t2)
+
+
+def test_is_enabled():
+    conf1 = {'user_authentication': {'oauth': {'enabled': False}}, 'keys': {'secret': None, 'private_key_path': None, 'public_key_path': None}}
+
+    with pytest.raises(OauthNotConfiguredError):
+        token_manager(conf1)
+
+    conf1 = {'user_authentication': {'oauth': {'enabled': True, 'default_token_expiration': 1000}, 'keys': {'secret': None, 'private_key_path': None, 'public_key_path': None}}}
+    with pytest.raises(InvalidOauthConfigurationError):
+        token_manager(conf1)
+
+    conf1 = {'user_authentication': {'oauth': {'enabled': True, 'default_token_expiration': 'blah'}, 'keys': {'secret': 'asecret', 'private_key_path': None, 'public_key_path': None}}}
+    with pytest.raises(InvalidOauthConfigurationError):
+        token_manager(conf1)
+
+    conf1 = {'user_authentication': {'oauth': {'enabled': True, 'default_token_expiration': 1000}, 'keys': {}}}
+    with pytest.raises(InvalidOauthConfigurationError):
+        token_manager(conf1)

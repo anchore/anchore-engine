@@ -14,6 +14,8 @@ services:
     depends_on:
     - anchore-db
     - engine-catalog
+    #volumes:
+    #- ./config-engine.yaml:/config/config.yaml:z
     ports:
     - "8228:8228"
     logging:
@@ -24,6 +26,7 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-api
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_LOG_LEVEL=INFO
     command: ["anchore-manager", "service", "start", "apiext"]
 
   # Catalog is the primary persistence and state manager of the system
@@ -31,6 +34,8 @@ services:
     image: anchore/anchore-engine:v0.4.0
     depends_on:
     - anchore-db
+    #volumes:
+    #- ./config-engine.yaml:/config/config.yaml:z
     logging:
       driver: "json-file"
       options:
@@ -41,12 +46,15 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_LOG_LEVEL=INFO
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
     image: anchore/anchore-engine:v0.4.0
     depends_on:
     - anchore-db
     - engine-catalog
+    #volumes:
+    #- ./config-engine.yaml:/config/config.yaml:z
     expose:
     - 8228
     logging:
@@ -57,12 +65,15 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_LOG_LEVEL=INFO
     command: ["anchore-manager", "service", "start", "simplequeue"]
   engine-policy-engine:
     image: anchore/anchore-engine:v0.4.0
     depends_on:
     - anchore-db
     - engine-catalog
+    #volumes:
+    #- ./config-engine.yaml:/config/config.yaml:z
     expose:
     - 8228
     logging:
@@ -73,12 +84,15 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-policy-engine
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_LOG_LEVEL=INFO
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: anchore/anchore-engine:v0.4.0
     depends_on:
     - anchore-db
     - engine-catalog
+    #volumes:
+    #- ./config-engine.yaml:/config/config.yaml:z
     expose:
     - 8228
     logging:
@@ -89,6 +103,7 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_LOG_LEVEL=INFO
     volumes:
     - anchore-scratch:/analysis_scratch
     command: ["anchore-manager", "service", "start", "analyzer"]

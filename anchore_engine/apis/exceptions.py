@@ -57,7 +57,9 @@ class BadGatewayError(AnchoreApiError):
 class MissingRequiredField(BadRequest):
     def __init__(self, required_property, because_of_properties=None):
         if because_of_properties:
-            super().__init__(message='Request missing required property: {}'.format(required_property), detail={'Required property': required_property, 'Required because of properties': because_of_properties})
+            super().__init__(message='Request missing required property', detail={'Required property': required_property, 'Required because of properties': because_of_properties})
+        else:
+            super().__init__(message='Request missing required property', detail={'Required property': required_property})
 
         self.required = required_property
         self.because_of = because_of_properties

@@ -6,15 +6,36 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates, UserTypes
 from anchore_engine.db.db_accounts import AccountNotFoundError
-from anchore_engine.auth.oauth import token_manager
+from anchore_engine.auth.oauth import token_manager, InvalidOauthConfigurationError, OauthNotConfiguredError
 from threading import RLock
 from anchore_engine.subsys.caching import TTLCache
 
 
 # Not currently used because upgrade...
-name_validator_regex = re.compile('^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$')
-email_validator_regex = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+name_validator_regex = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9@.!#$+-=^_`~;]{1,126}[a-zA-Z0-9]$')
+email_validator_regex = re.compile(r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
 password_validator_regex = re.compile('.{6,128}$')
+
+
+def is_valid_username(candidate):
+    """
+    Check the candidate for validity against the acceptance for user names
+
+    :param candidate:
+    :return:
+    """
+
+    return name_validator_regex.match(candidate) is not None
+
+
+def is_valid_accountname(candidate):
+    """
+    Check the candidate for validity against the acceptance for account names
+    :param candidate:
+    :return:
+    """
+
+    return is_valid_username(candidate)
 
 
 class IdentityBootstrapper(object):
@@ -203,12 +224,16 @@ class IdentityManager(object):
             if cred is None:
                 logger.debug('Doing refresh/initial system cred load')
 
+                try:
+                    tok_mgr = token_manager()
+                except OauthNotConfiguredError:
+                    tok_mgr = None
+
                 # Generate one
-                if localconfig.get_config().get('user_authentication', {}).get('oauth', {}).get('enabled'):
+                if tok_mgr:
                     # Generate a token
                     usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
                     system_user_uuid = usr['uuid']
-                    tok_mgr = token_manager()
                     tok, exp = tok_mgr.generate_token(system_user_uuid, return_expiration=True)
                     logger.debug('Generated token with expiration {}'.format(exp))
                     cred = HttpBearerCredential(tok, exp)
@@ -278,6 +303,9 @@ class IdentityManager(object):
         :param email:
         :return: (account, user) tuple with the account and admin user for the account
         """
+        if not is_valid_accountname(account_name):
+            raise ValueError('Account name must match regex {}'.format(name_validator_regex))
+
         account = db_accounts.add(account_name, account_type=account_type, email=email, state=AccountStates.enabled, session=self.session)
         return account
 
@@ -296,7 +324,7 @@ class IdentityManager(object):
     def delete_account(self, account_name):
         return db_accounts.delete(account_name, session=self.session)
 
-    def create_user(self, account_name, username, password=None, user_type=UserTypes.native):
+    def create_user(self, account_name, username, password=None, user_type=UserTypes.native, user_source=None):
         """
         Create a new user as a unit-of-work (e.g. a single db transaction
 
@@ -304,15 +332,22 @@ class IdentityManager(object):
         :param username: the str username
         :param password: the password to set
         :param user_type: The type of user to create
-        :return:
+a        :return:
         """
+        if not is_valid_username(username):
+            raise ValueError('username must match regex {}'.format(name_validator_regex))
 
-        assert (user_type in [UserTypes.internal, UserTypes.external] and password is None) or user_type == UserTypes.native
+        if user_type in [UserTypes.external] and password is not None:
+            raise AssertionError('Cannot set password for external user type')
+
+        if user_type == UserTypes.external and user_source is None:
+            raise ValueError('user_source cannot be None with user_type = external')
+
         account = db_accounts.get(account_name, session=self.session)
         if not account:
             raise AccountNotFoundError('Account does not exist')
 
-        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type,
+        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type, user_source=user_source,
                                           session=self.session)
 
         if password is not None:

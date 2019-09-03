@@ -7,7 +7,7 @@ import os, json
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.apis import ApiRequestContextProxy
-from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, AccountStates
+from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, AccountStates, UserTypes
 from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError, InvalidStateError
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc3339
@@ -59,6 +59,8 @@ def user_db_to_msg(user):
 
     return {
         'username': user['username'],
+        'type': user['type'].value,
+        'source': user['source'],
         'created_at': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['created_at'])),
         'last_updated': datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(user['last_updated']))
     }
@@ -400,7 +402,7 @@ def create_user(accountname, user):
         return make_response_error('Account not found', in_httpcode=404), 404
     except Exception as e:
         logger.exception('API Error')
-        return make_response_error('Internal error deleting account {}'.format(accountname)), 500
+        return make_response_error('Internal error adding user'), 500
 
 
 @authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'), target=ParameterBoundValue('username'))])
@@ -417,6 +419,9 @@ def create_user_credential(accountname, username, credential):
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             user = verify_user(username, accountname, mgr)
+
+            if user['type'] != UserTypes.native:
+                return make_response_error("Users with type other than 'native' cannot have password credentials", in_httpcode=400), 400
 
             # For now, only support passwords via the api
             if credential['type'] != 'password':

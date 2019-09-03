@@ -19,6 +19,7 @@ import pkg_resources
 import functools
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
+from anchore_engine.apis.exceptions import AnchoreApiError
 from threading import RLock
 from anchore_engine.subsys.auth.realms import UsernamePasswordRealm, ExternalAuthorizer
 from anchore_engine.configuration import localconfig
@@ -470,6 +471,8 @@ class DbAuthorizationHandler(AuthorizationHandler):
         except UnauthenticatedError as ex:
             return Response(response='Unauthorized', status=401,
                             headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+        except AnchoreApiError:
+            raise
         except Exception as ex:
             logger.exception('Unexpected exception: {}'.format(ex))
             return make_response_error('Internal error', in_httpcode=500), 500
@@ -509,6 +512,8 @@ class DbAuthorizationHandler(AuthorizationHandler):
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
                     return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                except AnchoreApiError:
+                    raise
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500
@@ -584,6 +589,8 @@ class DbAuthorizationHandler(AuthorizationHandler):
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
                     return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                except AnchoreApiError:
+                    raise
                 except Exception as ex:
                     logger.exception('Unexpected exception: {}'.format(ex))
                     return make_response_error('Internal error', in_httpcode=500), 500

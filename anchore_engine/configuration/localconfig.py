@@ -170,10 +170,15 @@ def load_config(configdir=None, configfile=None, validate_params=None):
         raise Exception("config file (" + str(configfile) + ") not found")
     else:
         try:
-            confdata = read_config(configfile=configfile, validate_params=validate_params)
+            confdata = read_config(configfile=configfile)
             update_merge(localconfig, confdata)
         except Exception as err:
             raise err
+
+        try:
+            validate_config(localconfig, validate_params=validate_params)
+        except Exception as err:
+            raise Exception("invalid configuration: details - " + str(err))
 
     # setup service dir
     if not os.path.exists(os.path.join(localconfig['service_dir'])):
@@ -229,7 +234,7 @@ def load_config(configdir=None, configfile=None, validate_params=None):
     return (localconfig)
 
 
-def read_config(configfile=None, validate_params=None):
+def read_config(configfile=None):
     ret = {}
 
     if not configfile or not os.path.exists(configfile):
@@ -279,11 +284,6 @@ def read_config(configfile=None, validate_params=None):
         except Exception as err:
             raise err
 
-    try:
-        validate_config(ret, validate_params=validate_params)
-    except Exception as err:
-        raise Exception("invalid configuration: details - " + str(err))
-
     return (ret)
 
 
@@ -303,7 +303,7 @@ def validate_config(config, validate_params=None):
     try:
         # ensure there aren't any left over unset variables
         confbuf = json.dumps(config)
-        patt = re.match(".*(\${ANCHORE.*?}).*", confbuf, re.DOTALL)
+        patt = re.match(r".*(\${ANCHORE.*?}).*", confbuf, re.DOTALL)
         if patt:
             raise Exception("variable overrides found in configuration file that are unset ("+str(patt.group(1))+")")
 
@@ -430,3 +430,17 @@ def get_versions():
     ret['db_version'] = version.db_version
 
     return (ret)
+
+
+class OauthNotConfiguredError(Exception):
+    """
+    The configuration for the application does not have oauth enabled
+    """
+    pass
+
+
+class InvalidOauthConfigurationError(Exception):
+    """
+    Error when oauth is enabled, but sufficient configuration isn't provided. Typically this means the keys are present
+    """
+    pass
