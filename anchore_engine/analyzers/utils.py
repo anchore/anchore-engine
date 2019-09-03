@@ -291,9 +291,12 @@ def get_distro_flavor(distro, version, likedistro=None):
         'likeversion':version
     }
 
-    if distro in ['centos', 'rhel', 'redhat', 'fedora', 'sles'] or distro.startswith('opensuse'):
+    if distro in ['centos', 'rhel', 'redhat', 'fedora']:
         ret['flavor'] = "RHEL"
         ret['likedistro'] = 'centos'
+    elif distro in ['sles', 'opensuse', 'suse'] or distro.startswith('opensuse'):
+        ret['flavor'] = "RHEL"
+        ret['likedistro'] = 'suse'        
     elif distro in ['debian', 'ubuntu']:
         ret['flavor'] = "DEB"
     elif distro in ['busybox']:
@@ -323,19 +326,25 @@ def get_distro_flavor(distro, version, likedistro=None):
             if ret['flavor'] != 'Unknown':
                 break
 
-    patt = re.match("(\d*)\.*(\d*)", version)
+    patt = re.match("\d+", version)
+    if patt:
+        ret['version'] = version
+        ret['likeversion'] = version
+
+    patt = re.match("(\d*)\.+(\d*)", version)
     if patt:
         (vmaj, vmin) = patt.group(1,2)
         if vmaj:
             ret['version'] = vmaj
             ret['likeversion'] = vmaj
 
-    patt = re.match("(\d+)\.*(\d+)\.*(\d+)", version)
+    patt = re.match("(\d+)\.+(\d+)\.+(\d+)", version)
     if patt:
         (vmaj, vmin, submin) = patt.group(1,2,3)
         if vmaj and vmin:
             ret['version'] = vmaj + "." + vmin
             ret['likeversion'] = vmaj + "." + vmin
+
 
     return(ret)
 
