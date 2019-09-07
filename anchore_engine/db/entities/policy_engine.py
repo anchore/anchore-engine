@@ -8,7 +8,7 @@ from collections import namedtuple
 
 from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
     ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func, event
-from sqlalchemy.orm import relationship, synonym
+from sqlalchemy.orm import relationship, synonym, joinedload
 
 from anchore_engine.utils import ensure_str, ensure_bytes
 
@@ -1784,21 +1784,21 @@ class Image(Base):
         db = get_thread_scoped_session()
         if not _nvd_cls or not _cpe_cls:
             _nvd_cls, _cpe_cls = select_nvd_classes(db)
-        cpe_vulnerabilities = db.query(ImageCpe, _cpe_cls).filter(ImageCpe.image_id == self.id,
-                                                                  ImageCpe.image_user_id == self.user_id,
-                                                                  func.lower(ImageCpe.name) == _cpe_cls.name,
-                                                                  ImageCpe.version == _cpe_cls.version).all()
+        cpe_vulnerabilities = db.query(ImageCpe, _cpe_cls).filter(
+            ImageCpe.image_id == self.id,
+            ImageCpe.image_user_id == self.user_id,
+            func.lower(ImageCpe.name) == _cpe_cls.name,
+            ImageCpe.version == _cpe_cls.version
+        ).options(joinedload(_cpe_cls.parent, innerjoin=True)).all()
 
         # vulndb is similar to nvd cpes, add them here
         cpe_vulnerabilities.extend(
             db.query(ImageCpe, VulnDBCpe).filter(
-                ImageCpe.image_id == self.id,
-                ImageCpe.image_user_id == self.user_id,
+                ImageCpe.image_id == self.id, ImageCpe.image_user_id == self.user_id,
                 func.lower(ImageCpe.name) == VulnDBCpe.name,
                 ImageCpe.version == VulnDBCpe.version,
                 VulnDBCpe.is_affected.is_(True)
-            ).all()
-        )
+            ).options(joinedload(VulnDBCpe.parent, innerjoin=True)).all())
 
         return cpe_vulnerabilities
 
