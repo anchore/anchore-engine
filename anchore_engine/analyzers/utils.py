@@ -843,7 +843,10 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
+    dpkgstatusddir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg", "status.d")
 
+    package_tuples = []
+    
     cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}|ANCHORETOK|${db:Status-Abbrev}\\n"]
     try:
         sout = subprocess.check_output(cmd)
@@ -856,55 +859,89 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                 # skip this package if the status is returned, and is not reporting as explicitly installed (ii*)
                 continue
 
-            if sp and sv:
-                source = "{}-{}".format(sp, sv)
-            else:
-                source = ""
-
-            try:
-                size = str(int(rawsize) * 1000)
-            except:
-                size = str(0)
-            
-            sp = str(sp)
-            sv = str(sv)
-            vendor = str(vendor) + " (maintainer)"
-            arch = str(arch)
-            source = str(source)
-
-            try:
-                licfile = os.path.join(dpkgdocsdir, p, 'copyright')
-                if not os.path.exists(licfile):
-                    lic = "Unknown"
-                else:
-                    lics = deb_copyright_getlics(licfile)
-                    if len(list(lics.keys())) > 0:
-                        lic = ' '.join(lics)
-                    else:
-                        lic = "Unknown"
-            except:
-                lic = "Unknown"
-
-            all_packages[p] = {'version':v, 'release':'N/A', 'arch':arch, 'size':size, 'origin':vendor, 'license':lic, 'sourcepkg':source, 'type':'dpkg'}
-
-            if p and v:
-                if p not in actual_packages:
-                    actual_packages[p] = {'version':v, 'arch':arch}
-                if p not in all_packages_simple:
-                    all_packages_simple[p] = {'version':v, 'arch':arch}
-            if sp and sv:
-                if sp not in all_packages_simple:
-                    all_packages_simple[sp] = {'version':sv, 'arch':arch}
-            if p and v and sp and sv:
-                if p == sp and v != sv:
-                    other_packages[p] = [{'version':sv, 'arch':arch}]
+            package_tuples.append( (p,v,arch,rawsize,sp,sv,vendor,status) )
 
     except Exception as err:
-        import traceback
-        traceback.print_exc()
-        print("Could not run command: " + str(cmd))
-        print("Exception: " + str(err))
-        raise ValueError("Please ensure the command 'dpkg' is available and try again: " + str(err))
+        print("Could not run command: {} - exception: {}".format(str(cmd), err))
+
+
+    try:
+        if os.path.exists(dpkgstatusddir):
+            for f in os.listdir(dpkgstatusddir):
+                print ("HERE F {}".format(f))
+                with open(os.path.join(dpkgstatusddir, f), 'r') as FH:
+                    p = v = vendor = arch = size = sp = sv = status = None
+                    for line in FH.readlines():
+                        print ("HERE LINE: {}".format(line))
+                        line = line.strip()
+                        try:
+                            (pk, pv) = line.split(":", 1)
+                        except:
+                            pk = pv = None
+
+                        if pk == 'Package':
+                            p = pv.strip()
+                        elif pk == 'Version':
+                            v = pv.strip()
+                        elif pk == 'Maintainer':
+                            vendor = pv.strip()
+                        elif pk == 'Architecture':
+                            arch = pv.strip()
+                        elif pk == 'Installed-Size':
+                            rawsize = pv.strip()
+                        elif pk == 'Source':
+                            sp = pv.strip()
+                    if sp and v:
+                        sv = v
+                    package_tuples.append( (p,v,arch,rawsize,sp,sv,vendor,status) )
+    except Exception as err:
+        print ("Could not parse package metadata from {} - exception: {}".format(dpkgstatusddir, err))
+
+    for package_tuple in package_tuples:
+        (p, v, arch, rawsize, sp, sv, vendor, status) = package_tuple
+
+        if sp and sv:
+            source = "{}-{}".format(sp, sv)
+        else:
+            source = ""
+
+        try:
+            size = str(int(rawsize) * 1000)
+        except:
+            size = str(0)
+
+        sp = str(sp)
+        sv = str(sv)
+        vendor = str(vendor) + " (maintainer)"
+        arch = str(arch)
+        source = str(source)
+
+        try:
+            licfile = os.path.join(dpkgdocsdir, p, 'copyright')
+            if not os.path.exists(licfile):
+                lic = "Unknown"
+            else:
+                lics = deb_copyright_getlics(licfile)
+                if len(list(lics.keys())) > 0:
+                    lic = ' '.join(lics)
+                else:
+                    lic = "Unknown"
+        except:
+            lic = "Unknown"
+
+        all_packages[p] = {'version':v, 'release':'N/A', 'arch':arch, 'size':size, 'origin':vendor, 'license':lic, 'sourcepkg':source, 'type':'dpkg'}
+
+        if p and v:
+            if p not in actual_packages:
+                actual_packages[p] = {'version':v, 'arch':arch}
+            if p not in all_packages_simple:
+                all_packages_simple[p] = {'version':v, 'arch':arch}
+        if sp and sv:
+            if sp not in all_packages_simple:
+                all_packages_simple[sp] = {'version':sv, 'arch':arch}
+        if p and v and sp and sv:
+            if p == sp and v != sv:
+                other_packages[p] = [{'version':sv, 'arch':arch}]
 
     return(all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir)
 
