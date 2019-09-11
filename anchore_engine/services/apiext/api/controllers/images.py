@@ -748,10 +748,11 @@ def import_image_archive(archive_file):
                 httpcode = 409
                 raise Exception ("cannot extract/parse archive_manifest from archive file - exception: {}".format(err))
 
+        # removed the bloe validation check as the checks are now performed in the archiving subsystem, based on the authenticated account
         # perform verification that the account set in the archive matches the calling account namespace
-        if (not request_account or not archive_account) or (request_account != archive_account):
-            httpcode = 409
-            raise Exception ("account in import archive ({}) does not match API request account ({})".format(archive_account, request_account))
+        # if (not request_account or not archive_account) or (request_account != archive_account):
+        #     httpcode = 409
+        #     raise Exception ("account in import archive ({}) does not match API request account ({})".format(archive_account, request_account))
 
         # make the import call to the catalog
         client = internal_client_for(CatalogClient, request_inputs['userId'])
