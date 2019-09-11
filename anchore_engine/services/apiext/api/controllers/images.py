@@ -21,6 +21,7 @@ import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import taskstate, logger
 import anchore_engine.subsys.metrics
+from anchore_engine.utils import parse_dockerimage_string
 
 from anchore_engine.subsys.metrics import flask_metrics
 
@@ -796,14 +797,40 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
     return return_object, httpcode
 
 
+def validate_pullstring_is_tag(pullstring):
+    try:
+        parsed = parse_dockerimage_string(pullstring)
+        return parsed.get('tag') is not None
+    except Exception as e:
+        logger.debug_exception('Error parsing pullstring {}. Err = {}'.format(pullstring, e))
+        raise ValueError('Error parsing pullstring {}'.format(pullstring))
+
+
+def validate_pullstring_is_digest(pullstring):
+    try:
+        parsed = parse_dockerimage_string(pullstring)
+        return parsed.get('digest') is not None
+    except Exception as e:
+        logger.debug_exception('Error parsing pullstring {}. Err = {}'.format(pullstring, e))
+        raise ValueError('Error parsing pullstring {}'.format(pullstring))
+
+
+digest_regex = re.compile('sha256:[a-fA-F0-9]{64}')
+
+
+def validate_archive_digest(digest: str):
+    return digest is not None and digest_regex.match(digest.strip())
+
+
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_image(image, force=False, autosubscribe=False):
 
     httpcode = 500
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
-
         source = {}
+
+        # Normalize the input
         if not image.get('source'):
             # use legacy fields and normalize to a source
             if image.get('digest'):
@@ -819,6 +846,7 @@ def add_image(image, force=False, autosubscribe=False):
                 }
 
             elif image.get('tag'):
+
                 source['tag'] = {
                     'pullstring': image.get('tag'),
                     'dockerfile': image.get('dockerfile')
@@ -828,14 +856,21 @@ def add_image(image, force=False, autosubscribe=False):
         else:
             source = image.get('source')
 
-            # Validate the source config using specific error messages for this path
-            if source.get('digest') and source.get('digest', {}).get('tag') and source.get('digest', {}).get('digest') and not source.get('digest', {}).get('created_at') and not force:
-                raise api_exceptions.BadRequest('Must provide a timestamp override to analyze by tag and digest', detail={'created_at': image.get('created_at')})
-
+        # Validate the source fields
         # Ensure only one source is set
-        if sum([1 if source.get('tag') else 0, 1 if source.get('digest') else 0,
-                1 if source.get('archive') else 0]) > 1:
+        if not (source.get('tag') is not None) ^ (source.get('digest') is not None) ^ (source.get('archive') is not None):
             raise api_exceptions.BadRequest('Can have only one of tag, digest, archive set to non-null in the source property', detail={'tag': source.get('tag'), 'digest': source.get('digest'), 'archive': source.get('archive')})
+
+        if source.get('tag'):
+            if not validate_pullstring_is_tag(source.get('tag').get('pullstring')):
+                raise api_exceptions.BadRequest('Not properly formatted tag pull string: <host>:<port>/<repository>:<tagname>', detail={'invalid_value': source.get('tag').get('pullstring')})
+
+        if source.get('digest'):
+            if not validate_pullstring_is_digest(source.get('digest').get('pullstring')):
+                raise api_exceptions.BadRequest('Not properly formatted tag pull string: <host>:<port>/<repository>@<digest>', detail={'invalid_value': source.get('digest').get('pullstring')})
+
+            if not validate_pullstring_is_tag(source.get('digest').get('tag')):
+                raise api_exceptions.BadRequest('tag property is not properly formatted tag pull string: <host>:<port>/<repository>:<tagname>', detail={'invalid_value': source.get('digest').get('tag')})
 
         enable_subscriptions = [
             'analysis_update'
@@ -847,8 +882,9 @@ def add_image(image, force=False, autosubscribe=False):
         return_object = analyze_image(ApiRequestContextProxy.namespace(), source, force, enable_subscriptions, image.get('annotations'))
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
-        httpcode = err.__response_code__
-        return_object = make_response_error(err.message, details=err.detail, in_httpcode=httpcode)
+        raise err
+        # httpcode = err.__response_code__
+        # return_object = make_response_error(err.message, details=err.detail, in_httpcode=httpcode)
     except ValueError as err:
         httpcode = 400
         return_object = make_response_error(str(err), in_httpcode=400)
