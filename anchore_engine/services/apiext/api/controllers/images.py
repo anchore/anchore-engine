@@ -829,7 +829,7 @@ def add_image(image, force=False, autosubscribe=False):
             source = image.get('source')
 
             # Validate the source config using specific error messages for this path
-            if source.get('digest') and source.get('digest', {}).get('tag') and source.get('digest', {}).get('digest') and not source('digest', {}).get('created_at') and not force:
+            if source.get('digest') and source.get('digest', {}).get('tag') and source.get('digest', {}).get('digest') and not source.get('digest', {}).get('created_at') and not force:
                 raise api_exceptions.BadRequest('Must provide a timestamp override to analyze by tag and digest', detail={'created_at': image.get('created_at')})
 
         # Ensure only one source is set
