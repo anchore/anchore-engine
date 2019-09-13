@@ -33,6 +33,15 @@ def parse_registry_url(registry_url):
     (aid, dkr, ecr, region, rest) = host.split(".", 4) # We only care about the prefix bits to extract account and region
     return aid, region
 
+
+def parse_role(role_str):
+    components = role_str.split(';')  # pass = "role_arn;external_id"
+    if len(components) > 1 and components[1]:
+        return components[0], components[1]
+    else:
+        return components[0], None
+
+
 def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
     localconfig = anchore_engine.configuration.localconfig.get_config()
 
@@ -54,14 +63,12 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
         elif access_key_id == '_iam_role':
             try:
                 sts = boto3.client('sts')
-                components = secret_access_key.split(';') # pass = "role_arn;external_id"
-                role_arn = components[0]
-                if len(components) > 1:
-                    external_id = components[1]
+                role_arn, external_id = parse_role(secret_access_key)
                 if external_id:
                     session = sts.assume_role(RoleArn=role_arn, RoleSessionName=str(int(time.time())), ExternalId=external_id)
                 else:
                     session = sts.assume_role(RoleArn=role_arn, RoleSessionName=str(int(time.time())))
+
                 access_key_id = session['Credentials']['AccessKeyId']
                 secret_access_key = session['Credentials']['SecretAccessKey']
                 session_token = session['Credentials']['SessionToken']
