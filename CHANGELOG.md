@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.5.0 (2019-XX-YY)
+## 0.5.0 (2019-09-05)
+
++ Added - Support for local image analysis tool and process, including local analyzer operation in anchore_manager and new image analysis archive import API operation
++ Added - Switch NVD feed driver to consume normalized vulnerability data from latest NVD JSON 1.0 Schema
++ Added - New parameter to vulnerabilities gate to only trigger if a fix has been available for over a specified number of days
++ Added - New parameters in vulnerabilities gate to allow for triggers based on CVSSv3 scoring information. Implements #164.
++ Added - Structured CVSS scoring information throughout external API responses, where vulnerability information is returned (vulnerability scans, vulnerability queries). Implements #163, #160, #223.
++ Added - Optional support using hashed passwords on anchore user credential storage, and adds support token-based user authentication
++ Improved - More complete CPE version strings now available from latest NVD data feed, improving scope of non-os package vulnerability matches
++ Improved - Spelling, grammar and broken link updates to top level README. Contributions by Neil Levine <levine@yoyo.org> and MichaelSimons <msimons@microsoft.com>
++ Improved - Updated validation and improved error detail for user and account management API operations
++ Improved - Updates to quickstart/example docker-compose.yaml, and bootstrap entrypoint for better custom root CA inclusion
++ Many minor bug fixes and improvements
 
 ## 0.4.2 (2019-08-01)
 

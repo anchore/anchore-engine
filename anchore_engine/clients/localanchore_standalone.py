@@ -585,7 +585,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
         try:
             with open(os.path.join(copydir, imageId+".tar"), 'r') as FH:
                 configdata = json.loads(FH.read())
-                rawhistory = configdata['history']
+                rawhistory = configdata.get('history', None)
                 imageArch = configdata['architecture']
                 imageOs = configdata.get('os', None)
                 if imageOs in ['windows']:
@@ -616,7 +616,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
             if nfile:
                 with open(nfile, 'r') as FH:
                     configdata = json.loads(FH.read())
-                    rawhistory = configdata['history']
+                    rawhistory = configdata.get('history', None)
                     imageArch = configdata['architecture']
                     imageOs = configdata.get('os', None)
                     if imageOs in ['windows']:
@@ -627,9 +627,19 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
         except Exception as err:
             raise err
 
+        
     try:
         done=False
         idx = 0
+
+        # add support for cases where image metadata does not contain a history element at all
+        if rawhistory is None:
+            rawhistory = []
+            for l in rawlayers:
+                ldigest = l.get('digest', 'sha256:NA').split(':')[1]
+                if os.path.exists(os.path.join(blobdir, ldigest)):
+                    rawhistory.append({})
+
         while not done:
             if not rawhistory:
                 done = True
@@ -666,9 +676,9 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
                 )
 
         docker_history = hfinal
-        if hfinal:
-            with open(os.path.join(unpackdir, "docker_history.json"), 'w') as OFH:
-                OFH.write(json.dumps(hfinal))
+        with open(os.path.join(unpackdir, "docker_history.json"), 'w') as OFH:
+            OFH.write(json.dumps(docker_history))
+
     except Exception as err:
         raise err
 
