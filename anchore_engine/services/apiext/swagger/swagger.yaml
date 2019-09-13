@@ -2470,7 +2470,7 @@ definitions:
         pattern: "^[a-zA-Z0-9+/=]+$"
       digest:
         type: string
-        description: "A full pullable digest reference for an image. e.g. docker.io/nginx@sha256:abc123. Deprecated in favor of the 'source' field"
+        description: "A digest string for an image, maybe a pull string or just a digest. e.g. nginx@sha256:123 or sha256:abc123. If a pull string, it must have same regisry/repo as the tag field. Deprecated in favor of the 'source' field"
       tag:
         type: string
         description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest. Deprecated in favor of the 'source' field"

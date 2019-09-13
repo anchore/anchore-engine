@@ -22,6 +22,7 @@ import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import taskstate, logger
 import anchore_engine.subsys.metrics
 from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.services.apiext.api.controllers.utils import normalize_image_add_source, validate_image_add_source
 
 from anchore_engine.subsys.metrics import flask_metrics
 
@@ -825,52 +826,21 @@ def validate_archive_digest(digest: str):
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_image(image, force=False, autosubscribe=False):
 
+
+    # TODO: use for validation pass
+    spec = ApiRequestContextProxy.get_service().api_spec
+
     httpcode = 500
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'force': force})
-        source = {}
 
-        # Normalize the input
-        if not image.get('source'):
-            # use legacy fields and normalize to a source
-            if image.get('digest'):
-                # Do inline checks here before normalization to ensure the error messages are accurate for the request, not the normalized version
-                if image.get('tag') and image.get('digest') and not image.get('created_at') and not force:
-                    raise api_exceptions.BadRequest('Must provide a timestamp override to analyze by tag and digest', detail={'created_at': image.get('created_at')})
-
-                source['digest'] = {
-                    'pullstring': image.get('digest'),
-                    'tag': image.get('tag'),
-                    'creation_timestamp_override': image.get('created_at'),
-                    'dockerfile': image.get('dockerfile')
-                }
-
-            elif image.get('tag'):
-
-                source['tag'] = {
-                    'pullstring': image.get('tag'),
-                    'dockerfile': image.get('dockerfile')
-                }
-            else:
-                raise api_exceptions.BadRequest('Must include tag or source properties in body', detail={'tag': image.get('tag'), 'source': image.get('source')})
-        else:
-            source = image.get('source')
-
-        # Validate the source fields
-        # Ensure only one source is set
-        if not (source.get('tag') is not None) ^ (source.get('digest') is not None) ^ (source.get('archive') is not None):
-            raise api_exceptions.BadRequest('Can have only one of tag, digest, archive set to non-null in the source property', detail={'tag': source.get('tag'), 'digest': source.get('digest'), 'archive': source.get('archive')})
-
-        if source.get('tag'):
-            if not validate_pullstring_is_tag(source.get('tag').get('pullstring')):
-                raise api_exceptions.BadRequest('Not properly formatted tag pull string: <host>:<port>/<repository>:<tagname>', detail={'invalid_value': source.get('tag').get('pullstring')})
-
-        if source.get('digest'):
-            if not validate_pullstring_is_digest(source.get('digest').get('pullstring')):
-                raise api_exceptions.BadRequest('Not properly formatted tag pull string: <host>:<port>/<repository>@<digest>', detail={'invalid_value': source.get('digest').get('pullstring')})
-
-            if not validate_pullstring_is_tag(source.get('digest').get('tag')):
-                raise api_exceptions.BadRequest('tag property is not properly formatted tag pull string: <host>:<port>/<repository>:<tagname>', detail={'invalid_value': source.get('digest').get('tag')})
+        try:
+            normalized = normalize_image_add_source(analysis_request_dict=image)
+            validate_image_add_source(normalized, spec)
+        except api_exceptions.AnchoreApiError:
+            raise
+        except Exception as e:
+            raise api_exceptions.BadRequest('Could not validate request due to error', detail={'validation_error': str(e)})
 
         enable_subscriptions = [
             'analysis_update'
@@ -878,6 +848,8 @@ def add_image(image, force=False, autosubscribe=False):
 
         if autosubscribe:
             enable_subscriptions.append('tag_update')
+
+        source = normalized['source']
 
         return_object = analyze_image(ApiRequestContextProxy.namespace(), source, force, enable_subscriptions, image.get('annotations'))
         httpcode = 200

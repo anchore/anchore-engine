@@ -616,6 +616,7 @@ class UserFacingApiService(ApiService):
     def __init__(self, options=None):
         super().__init__(options)
         self._authz_actions = {}
+        self.api_spec = None
 
     def _register_instance_handlers(self):
         super()._register_instance_handlers()
@@ -654,8 +655,8 @@ class UserFacingApiService(ApiService):
 
     def _process_api_spec(self):
         try:
-            swagger_content = UserFacingApiService.parse_swagger(os.path.join(self.__spec_dir__, self.__spec_file__))
-            actions = UserFacingApiService.build_action_map(swagger_content)
+            self.api_spec = UserFacingApiService.parse_swagger(os.path.join(self.__spec_dir__, self.__spec_file__))
+            actions = UserFacingApiService.build_action_map(self.api_spec)
             missing = [x for x in filter(lambda x: x[1] is None, actions.items())]
             if missing:
                 raise Exception('API Spec validation error: All operations must have a x-anchore-authz-action label. Missing for: {}'.format(missing))
