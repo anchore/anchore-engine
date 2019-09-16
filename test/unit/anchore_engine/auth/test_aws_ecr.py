@@ -1,4 +1,4 @@
-from anchore_engine.auth.aws_ecr import parse_registry_url
+from anchore_engine.auth.aws_ecr import parse_registry_url, parse_role
 
 
 def test_parse_registry_url_parses_url():
@@ -16,3 +16,15 @@ def test_parse_registry_url_parses_url():
         print('Testing {} expected {}'.format(url, expected))
         assert(expected == parse_registry_url(url))
 
+
+def test_parse_role():
+    arns = [
+        ('arn:aws::1010101123:role/Somerole', ('arn:aws::1010101123:role/Somerole', None)),
+        ('arn:aws::1010101123:role/Somerole;', ('arn:aws::1010101123:role/Somerole', None)),
+        ('arn:aws::1010101123:role/Somerole;0101', ('arn:aws::1010101123:role/Somerole', '0101')),
+        ('arn:aws::1010101123:role/Somerole;0101;1', ('arn:aws::1010101123:role/Somerole', '0101')),
+        ('arn:aws::1010101123:role/Somerole;0101;;', ('arn:aws::1010101123:role/Somerole', '0101'))
+    ]
+
+    for a in arns:
+        assert a[1] == parse_role(a[0])

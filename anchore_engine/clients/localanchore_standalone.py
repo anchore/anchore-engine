@@ -217,10 +217,10 @@ def squash(unpackdir, cachedir, layers):
     if os.path.exists(unpackdir + "/squashed.tar"):
         return (True)
 
-    whpatt = re.compile("\.wh\..*")
-    whopqpatt = re.compile("\.wh\.\.wh\.\.opq")
-    #slashprefixpatt = re.compile("^[\./|/]+")
-    slashprefixpatt = re.compile("^/+|\.+/+")
+    whpatt = re.compile(r"\.wh\..*")
+    whopqpatt = re.compile(r"\.wh\.\.wh\.\.opq")
+    #slashprefixpatt = re.compile(r"^[\./|/]+")
+    slashprefixpatt = re.compile(r"^/+|\.+/+")
 
     tarfiles = {}
     tarfiles_members = {}
@@ -271,7 +271,7 @@ def squash(unpackdir, cachedir, layers):
                         fsub = re.sub("/+$","", fsub)
 
                         for other_filename in fhistory.keys():
-                            if re.match("^{}/".format(re.escape(fsub)), other_filename):
+                            if re.match(r"^{}/".format(re.escape(fsub)), other_filename):
                                 if other_filename not in lfhistory:
                                     lfhistory[other_filename] = {}
                                     lfhistory[other_filename].update(fhistory[other_filename])
@@ -289,7 +289,7 @@ def squash(unpackdir, cachedir, layers):
                         lfhistory[fsub]['exists'] = False
 
                         for other_filename in fhistory.keys():
-                            if re.match("^{}/".format(re.escape(fsub)), other_filename):
+                            if re.match(r"^{}/".format(re.escape(fsub)), other_filename):
                                 if other_filename not in lfhistory:
                                     lfhistory[other_filename] = {}
                                     lfhistory[other_filename].update(fhistory[other_filename])
@@ -549,7 +549,7 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
         # get dockerfile_contents (translate history to guessed DF)
         dockerfile_contents = "FROM scratch\n"
         for hel in docker_history:
-            patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
+            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
             if patt:
                 cmd = patt.group(1)
             elif hel['CreatedBy']:
@@ -686,7 +686,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
         # get dockerfile_contents (translate history to guessed DF)
         dockerfile_contents = "FROM scratch\n"
         for hel in docker_history:
-            patt = re.match("^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
+            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel['CreatedBy'])
             if patt:
                 cmd = patt.group(1)
             elif hel['CreatedBy']:
@@ -726,7 +726,7 @@ def list_analyzers():
     result = []
     for f in os.listdir(analyzer_root):
         thecmd = os.path.join(analyzer_root, f)
-        if re.match(".*\.py$", thecmd):
+        if re.match(r".*\.py$", thecmd):
             result.append(thecmd)
 
     result.sort()

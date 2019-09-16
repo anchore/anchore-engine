@@ -2466,10 +2466,11 @@ definitions:
     properties:
       dockerfile:
         type: string
-        description: Content of the dockerfile for the image, if available. Deprecated in favor of the 'source' field.
+        description: Base64 encoded content of the dockerfile for the image, if available. Deprecated in favor of the 'source' field.
+        pattern: "^[a-zA-Z0-9+/=]+$"
       digest:
         type: string
-        description: "A full pullable digest reference for an image. e.g. docker.io/nginx@sha256:abc123. Deprecated in favor of the 'source' field"
+        description: "A digest string for an image, maybe a pull string or just a digest. e.g. nginx@sha256:123 or sha256:abc123. If a pull string, it must have same regisry/repo as the tag field. Deprecated in favor of the 'source' field"
       tag:
         type: string
         description: "Full pullable tag reference for image. e.g. docker.io/nginx:latest. Deprecated in favor of the 'source' field"
@@ -2498,16 +2499,23 @@ definitions:
   RegistryTagSource:
     type: object
     description: An image reference using a tag in a registry, this is the most common source type.
+    required:
+      - pullstring
     properties:
       pullstring:
         type: string
         description: A docker pull string (e.g. docker.io/nginx:latest, or docker.io/nginx@sha256:abd) to retrieve the image
       dockerfile:
         type: string
-        description: Content of the dockerfile used to build the image, if available.
+        description: Base64 encoded content of the dockerfile used to build the image, if available.
+        pattern: "^[a-zA-Z0-9+/=]+$"
   RegistryDigestSource:
     type: object
     description: An image reference using a digest in a registry, includes some extra tag and timestamp info in addition to the pull string to allow proper tag history reconstruction.
+    required:
+      - pullstring
+      - tag
+      - creation_timestamp_override
     properties:
       pullstring:
         type: string
@@ -2521,14 +2529,18 @@ definitions:
         description: Optional override of the image creation time to support proper tag history construction in cases of out-of-order analysis compared to registry history for the tag
       dockerfile:
         type: string
-        description: Content of the dockerfile used to build the image, if available.
+        description: Base64 encoded content of the dockerfile used to build the image, if available.
+        pattern: "^[a-zA-Z0-9+/=]+$"
   AnalysisArchiveSource:
     type: object
     description: An image reference in the analysis archive for the purposes of loading analysis from the archive into th working set
+    required:
+      - digest
     properties:
       digest:
         type: string
         description: The image digest identify the analysis. Archived analyses are based on digest, tag records are restored as analysis is restored.
+        pattern: "^sha256:[a-fA-F0-9]{64}$"
   PolicyBundle:
     description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
     type: object
