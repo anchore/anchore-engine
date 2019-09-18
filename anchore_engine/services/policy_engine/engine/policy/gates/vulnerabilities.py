@@ -378,6 +378,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 # explicit fix state check matches fix availability
                                 if is_fix_available:
                                     parameter_data['fixed_version'] = fix_available_in
+                            else:
+                                continue
 
                         parameter_data['link'] = pkg_vuln.vulnerability.link
 
