@@ -49,43 +49,72 @@ def split_rpm_filename(rpm_filename):
     return name, version, release, epoch, arch
 
 
-def compare_versions(pkg_a, ver_a, pkg_b, ver_b):
+def split_version(version):
+    """
+    Splits version string into a tuple (epoch, version, release). Returns a null for epoch if the version string does not contain epoch.
+    Use this function for splitting versions already processed by anchore engine. For parsing info from rpm file name, use split_rpm_filename()
+
+    '2.27-34.base.el7' -> (null, '2.27', '34.base.el7')
+    '1:2.27-34.base.el7' -> ('1', '2.27', '34.base.el7')
+
+    :param version: Version string with or without an epoch prefix
+    :return: tuple (epoch, version, release)
+    """
+    ver_comp = version.rsplit('-', 1)
+
+    if len(ver_comp) > 1:
+        release = ver_comp.pop()
+    else:
+        release = None
+
+    epoch_comp = ver_comp[0].split(':', 1) if ver_comp else []
+
+    if len(epoch_comp) == 1:
+        epoch = None
+        version = epoch_comp[0]
+    elif len(epoch_comp) > 1:
+        epoch = epoch_comp[0]
+        version = epoch_comp[1]
+    else:
+        epoch = None
+        version = None
+
+    return epoch, version, release,
+
+
+def compare_versions(ver_a, ver_b):
     """
     Compare pkg and versions using rpm file name rules. Follows standard __cmp__ semantics of -1 iff a < b, 0 iff a == b, 1 iff a > b
     
-    :param pkg_a: 
-    :param ver_a: 
-    :param pkg_b: 
-    :param ver_b: 
+    :param ver_a:
+    :param ver_b:
     :return: 
     """
-    if pkg_a == pkg_b and ver_a == ver_b:
+    if ver_a == ver_b:
         return 0
-    file_b = pkg_b + "-" + ver_b + ".arch.rpm"
-    file_a = pkg_a + "-" + ver_a + ".arch.rpm"
-    (n1, v1, r1, e1, a1) = split_rpm_filename(file_a)
-    (n2, v2, r2, e2, a2) = split_rpm_filename(file_b)
 
-    if compare_labels(('1', v1, r1), ('1', v2, r2)) < 0:
-        return -1
-    else:
-        return 1
+    (e1, v1, r1) = split_version(ver_a)
+    (e2, v2, r2) = split_version(ver_b)
+
+    return compare_labels((e1, v1, r1), (e2, v2, r2))
 
 
 def compare_labels(evr_1, evr_2):
     """
-    Compare the EVR labels (epoch, version, release).    
-    :param evr_1: 
+    Compare the EVR label tuples (epoch, version, release).
+
+    :param evr_1:
     :param evr_2: 
-    :return: 
+    :return: -1, 0, 1 is standard __cmp__ semantics
     """
     epoch_1, ver_1, rel_1 = evr_1
     epoch_2, ver_2, rel_2 = evr_2
 
-    if epoch_1 > epoch_2:
-        return 1
-    if epoch_1 < epoch_2:
-        return -1
+    if epoch_1 is not None and epoch_2 is not None:  # compare only when both epochs are available. ignore otherwise
+        if epoch_1 > epoch_2:
+            return 1
+        if epoch_1 < epoch_2:
+            return -1
 
     cmp_result = rpm_ver_cmp(ver_1, ver_2)
 
@@ -105,6 +134,10 @@ def rpm_ver_cmp(a, b):
         0: a and b are the same version
        -1: b is newer than a
     """
+    if a is None:
+        a = ''
+    if b is None:
+        b = ''
 
     # Convert to a list of single chars
     l_a = list(a.strip())
@@ -205,7 +238,7 @@ def greedy_find_block(list_str, expected_digit=None):
 
 if __name__ == '__main__':
     import sys
-    print((compare_versions('pkg1', sys.argv[1],'pkg1', sys.argv[2])))
+    print((compare_versions(sys.argv[1], sys.argv[2])))
 
 
 

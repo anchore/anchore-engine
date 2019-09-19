@@ -14,7 +14,7 @@ compare_operators = {
 }
 
 # See dpkg lib/dpkg/version.h for the dpkg_version struct, which this mirrors
-# epoch will be zero if not present
+# epoch will be null if not present
 # version is the upstream part of the version
 # revision is the debian revision part of the version
 class DpkgVersion(object):
@@ -58,8 +58,9 @@ class DpkgVersion(object):
             version = version_comps[0]
             revision = version_comps[1]
 
-        if not epoch:
-            epoch = 0
+        # commenting this out to leave the epoch with a null value. helps distinguish between an absent and a real 0 epoch
+        # if not epoch:
+        #     epoch = 0
 
         return DpkgVersion(epoch=epoch, version=version, revision=revision)
 
@@ -72,17 +73,17 @@ class DpkgVersion(object):
         if not isinstance(other, DpkgVersion):
             raise TypeError('Can only compare other DpkVersion objects. Found: {}'.format(type(other)))
 
-        if self.epoch > other.epoch:
-            return 1
-        if self.epoch < other.epoch:
-            return 0
+        if self.epoch is not None and other.epoch is not None:  # compare only when both epochs are available. ignore otherwise
+            if self.epoch > other.epoch:
+                return 1
+            if self.epoch < other.epoch:
+                return 0
 
         ver_cmp = DpkgVersion._compare_version_str(self.version, other.version)
         if ver_cmp:
             return ver_cmp
 
         return DpkgVersion._compare_version_str(self.revision, other.revision)
-
 
     @staticmethod
     def _compare_version_str(ver_a, ver_b):
