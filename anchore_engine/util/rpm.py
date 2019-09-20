@@ -49,16 +49,18 @@ def split_rpm_filename(rpm_filename):
     return name, version, release, epoch, arch
 
 
-def split_version(version):
+def split_fullversion(version):
     """
-    Splits version string into a tuple (epoch, version, release). Returns a null for epoch if the version string does not contain epoch.
+    Splits version string into a tuple (epoch, version, release). Inbound version string is specific to anchore engine's
+    implementation of versions and may not compliant with the rpm spec.
+
     Use this function for splitting versions already processed by anchore engine. For parsing info from rpm file name, use split_rpm_filename()
 
     '2.27-34.base.el7' -> (null, '2.27', '34.base.el7')
     '1:2.27-34.base.el7' -> ('1', '2.27', '34.base.el7')
 
     :param version: Version string with or without an epoch prefix
-    :return: tuple (epoch, version, release)
+    :return: tuple (epoch, version, release). epoch is null if the inbound version does not contain epoch
     """
     ver_comp = version.rsplit('-', 1)
 
@@ -84,7 +86,7 @@ def split_version(version):
 
 def compare_versions(ver_a, ver_b):
     """
-    Compare pkg and versions using rpm file name rules. Follows standard __cmp__ semantics of -1 iff a < b, 0 iff a == b, 1 iff a > b
+    Compare pkg and versions using anchore engine rules. Follows standard __cmp__ semantics of -1 iff a < b, 0 iff a == b, 1 iff a > b
     
     :param ver_a:
     :param ver_b:
@@ -93,8 +95,8 @@ def compare_versions(ver_a, ver_b):
     if ver_a == ver_b:
         return 0
 
-    (e1, v1, r1) = split_version(ver_a)
-    (e2, v2, r2) = split_version(ver_b)
+    (e1, v1, r1) = split_fullversion(ver_a)
+    (e2, v2, r2) = split_fullversion(ver_b)
 
     return compare_labels((e1, v1, r1), (e2, v2, r2))
 
