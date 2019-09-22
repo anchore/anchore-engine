@@ -13,11 +13,12 @@ compare_operators = {
     'gt': lambda x: x > 0,
 }
 
-# See dpkg lib/dpkg/version.h for the dpkg_version struct, which this mirrors
-# epoch will be zero if not present
-# version is the upstream part of the version
-# revision is the debian revision part of the version
+
 class DpkgVersion(object):
+    """
+    See dpkg lib/dpkg/version.h for the dpkg_version struct, which this mirrors
+    """
+
     @classmethod
     def blank(cls):
         return DpkgVersion(0, None, None)
@@ -25,10 +26,31 @@ class DpkgVersion(object):
     @classmethod
     def from_string(cls, version_str):
         """
-        Parse a pkg version from a string
+        Parse a pkg version from a string as per dpkg spec.
+        Essentially a wrapper around non-compliant result to reset epoch to 0 if its null
+
+        Returns a tuple containing epoch, version and release:
+        epoch will be zero if not present
+        version is the upstream part of the version
+        revision is the debian revision part of the version
 
         :param version_str:
-        :return:
+        :return: tuple (epoch, version, release)
+        """
+        nc_version = DpkgVersion.non_compliant_parser(version_str)
+        if nc_version and nc_version.epoch is None:
+            nc_version.epoch = 0
+
+        return nc_version
+
+    @classmethod
+    def non_compliant_parser(cls, version_str):
+        """
+        Parse a pkg version as per anchore engine rules, which may not be compliant with dpkg spec.
+        Use the wrapper fn from_string() for dpkg compliant version parser
+
+        :param version_str:
+        :return: tuple (epoch, version, release). epoch is null if the inbound version does not contain epoc
         """
         version_str = version_str.strip()
 
@@ -58,8 +80,9 @@ class DpkgVersion(object):
             version = version_comps[0]
             revision = version_comps[1]
 
-        if not epoch:
-            epoch = 0
+        # commenting this out to leave the epoch with a null value. helps distinguish between an absent and a real 0 epoch
+        # if not epoch:
+        #     epoch = 0
 
         return DpkgVersion(epoch=epoch, version=version, revision=revision)
 
@@ -72,17 +95,17 @@ class DpkgVersion(object):
         if not isinstance(other, DpkgVersion):
             raise TypeError('Can only compare other DpkVersion objects. Found: {}'.format(type(other)))
 
-        if self.epoch > other.epoch:
-            return 1
-        if self.epoch < other.epoch:
-            return 0
+        if self.epoch is not None and other.epoch is not None:  # compare only when both epochs are available. ignore otherwise
+            if self.epoch > other.epoch:
+                return 1
+            if self.epoch < other.epoch:
+                return 0
 
         ver_cmp = DpkgVersion._compare_version_str(self.version, other.version)
         if ver_cmp:
             return ver_cmp
 
         return DpkgVersion._compare_version_str(self.revision, other.revision)
-
 
     @staticmethod
     def _compare_version_str(ver_a, ver_b):
@@ -166,7 +189,7 @@ class DpkgVersion(object):
             return 0
 
 
-def compare_versions(v1, op, v2):
+def strict_compare_versions(v1, op, v2):
     """
     Pure python impl of the dpkg version comparison code from: dpkg/lib/vercmp.c
 
@@ -198,6 +221,48 @@ def compare_versions(v1, op, v2):
 
     pkg1 = DpkgVersion.from_string(v1)
     pkg2 = DpkgVersion.from_string(v2)
+
+    try:
+        return eval_fn(pkg1.__cmp__(pkg2))
+    except Exception as e:
+        raise
+
+
+def compare_versions(v1, op, v2):
+    """
+    Anchore engine variation of dpkg comparison code.
+    Special handling for epoch - comparison of epochs is carried out only if both versions contain an epoch, otherwise
+    epoch is ignored
+
+    Returns standard boolean truth of op applied to v1 and v2, so if op == 'lt' and v1 < v2, return True.
+
+    Splits the version string into number and non-number components and does a component-wise comparison.
+
+    For a dpkg spec compliant comparison use strict_compare_versions()
+
+    E.g.
+
+    1.2.10 -> 1,2,10
+    1.15.1 -> 1,15,1
+
+    Thus 1.2.10 < 1.15.1.
+
+    values for op:
+    le, lt, eq, ne, ge, gt
+
+    :param v1: version string
+    :param op: string operator
+    :param v2: version string
+    :return:
+    """
+
+    if op not in compare_operators:
+        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, list(compare_operators.keys())))
+    else:
+        eval_fn = compare_operators[op]
+
+    pkg1 = DpkgVersion.non_compliant_parser(v1)
+    pkg2 = DpkgVersion.non_compliant_parser(v2)
 
     try:
         return eval_fn(pkg1.__cmp__(pkg2))

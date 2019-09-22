@@ -389,19 +389,18 @@ class FixedArtifact(Base):
             return True
 
         # Is the package older than the fix?
-        if flavor == 'RHEL':
-            if rpm_compare_versions(package_obj.name, package_obj.fullversion, fix_obj.name, fix_obj.epochless_version) < 0:
-                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+        if flavor == 'RHEL':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
+            if rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0:
+                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
                 return True
-        elif flavor == 'DEB':
-            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
-                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+        elif flavor == 'DEB':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
+            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version):
+                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
                 return True
-        elif flavor == 'ALPINE':
+        elif flavor == 'ALPINE':  # compare full package version with epochless fixed-in version
             if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
                 log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
                 return True
-
 
         if package_obj.pkg_type in ['java', 'maven', 'npm', 'gem', 'python', 'js']:
             if package_obj.pkg_type in ['java', 'maven']:
