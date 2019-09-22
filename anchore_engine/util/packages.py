@@ -1,6 +1,6 @@
 from .apk import compare_versions as apk_compare_versions
 from .deb import compare_versions as deb_compare_versions
-from .rpm import split_rpm_filename, compare_labels
+from .rpm import compare_versions as rpm_compare_versions
 
 
 def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
@@ -10,9 +10,9 @@ def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
 
     :param distro_flavor: (str) the package type/distro type for the comparison ("RHEL", "DEB", "ALPINE")
     :param pkg_a: (str) package A's name
-    :param: ver_a: (str) package A's version
-    :param: pkg_b: (str) package B's name
-    :param: ver_b: (str) package B's version
+    :param ver_a: (str) package A's version
+    :param pkg_b: (str) package B's name
+    :param ver_b: (str) package B's version
     :return: int comparison output -1, 0, or 1
     """
 
@@ -26,12 +26,7 @@ def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
         return (0)
 
     if distro_flavor == "RHEL":
-        fixfile = pkg_b + "-" + ver_b + ".arch.rpm"
-        imagefile = pkg_a + "-" + ver_a + ".arch.rpm"
-        (n1, v1, r1, e1, a1) = split_rpm_filename(imagefile)
-        (n2, v2, r2, e2, a2) = split_rpm_filename(fixfile)
-
-        if compare_labels(('1', v1, r1), ('1', v2, r2)) < 0:
+        if rpm_compare_versions(ver_a, ver_b) < 0:
             return -1
         else:
             return 1
