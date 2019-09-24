@@ -1,6 +1,7 @@
 import json
 import re
 import time
+import shlex
 
 import requests
 
@@ -103,9 +104,11 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
                         www_auth = r.headers.get(hkey)
                         (www_auth_type, www_auth_raw) = re.match("(.*?) +(.*)", www_auth).groups()
                         if www_auth_type == 'Bearer':
-                            raw_keyvals = www_auth_raw.split(",")
-                            for keyval in raw_keyvals:
-                                key, val = keyval.split('=', 2)
+                            keyvals = shlex.shlex(www_auth_raw, posix=True)
+                            keyvals.whitespace_split=True
+                            keyvals.whitespace=','
+                            for keyval in keyvals:
+                                (key,val) = keyval.split('=', 1)
                                 if key.lower() == 'realm':
                                     auth_url = val.replace('"', '')
                                 else:
