@@ -8,6 +8,7 @@
 #
 
 retrieve_files:
+  max_file_size_kb: 1000
   file_list:
     - '/etc/passwd'
 #    - '/etc/services'

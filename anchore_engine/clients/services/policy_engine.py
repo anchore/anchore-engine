@@ -55,6 +55,10 @@ class PolicyEngineClient(InternalServiceClient):
                                            'version': version,
                                            'package_type': package_type})
 
+    def list_image_analysis_artifacts(self, user_id, image_id, artifact_type):
+        return self.call_api(anchy_get, 'users/{user_id}/images/{image_id}/artifacts/{artifact_type}',
+                             path_params={'user_id': user_id, 'image_id': image_id, 'artifact_type': artifact_type})
+
     # Policy/Bundle operations
     def validate_bundle(self, bundle):
         return self.call_api(anchy_post, 'validate_bundle', body=json.dumps(bundle))
@@ -78,3 +82,4 @@ class PolicyEngineClient(InternalServiceClient):
 
     def sync_feeds(self, force_flush=False):
         return self.call_api(anchy_post, 'feeds', query_params={'force_flush': force_flush})
+

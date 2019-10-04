@@ -393,6 +393,38 @@ paths:
             $ref: "#/definitions/PolicyEvaluation"
         404:
           description: "User id not found in this service"
+  /users/{user_id}/images/{image_id}/artifacts/{artifact_type}:
+    get:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
+      operationId: list_artifacts
+      summary: Return a list of analyzer artifacts of the specified type
+      produces:
+      - application/json
+      parameters:
+      - name: "user_id"
+        in: "path"
+        type: string
+        description: "user id string of catalog user"
+        required: true
+      - name: "image_id"
+        in: path
+        type: string
+        required: true
+      - name: artifact_type
+        in: path
+        required: true
+        type: string
+        enum:
+          - retrieved_files
+          - secret_search
+          - file_content_search
+      responses:
+        200:
+          description: "List of file metadata objects"
+          schema:
+            $ref: "#/definitions/ArtifactList"
+        404:
+          description: "Image not found in this service"
   /validate_bundle:
     post:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
@@ -1149,3 +1181,8 @@ definitions:
       enabled:
         type: boolean
         description: Is evaluation caching enabled on this node
+  ArtifactList:
+    type: array
+    description: Simple array of RetrievedFileMetadata objects
+    items:
+      type: object

@@ -1691,7 +1691,7 @@ class AnalysisArtifact(Base):
     image_id = Column(String(image_id_length), primary_key=True)
     image_user_id = Column(String(user_id_length), primary_key=True)
     analyzer_id = Column(String(128), primary_key=True) # The name of the analyzer (e.g. layer_info)
-    analyzer_artifact = Column(String(128), primary_key=True) # The analyer artifact name (e.g. layers_to_dockerfile)
+    analyzer_artifact = Column(String(128), primary_key=True) # The analyzer artifact name (e.g. layers_to_dockerfile)
     analyzer_type = Column(String(128), primary_key=True) # The analyzer type (e.g. base, user, or extra)
     artifact_key = Column(String(256), primary_key=True)
     str_value = Column(Text)
