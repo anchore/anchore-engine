@@ -827,10 +827,12 @@ class RestoreArchivedImageTask(object):
                 details = []
 
             c = CatalogImage()
+            img_record['userId'] = self.account
             c.update(img_record)
             session.add(c)
 
             for detail in details:
+                detail['userId'] = self.account
                 tr = CatalogImageDocker()
                 tr.update(detail)
                 session.add(tr)
@@ -848,7 +850,8 @@ class RestoreArchivedImageTask(object):
                 if r_type == 'policy_evaluation':
                     try:
                         with session_scope() as session:
-                            db_policyeval.add_all_for_digest([record], session)
+                            record['userId'] = self.account
+                            db_policyeval.add_all_for_digest(self.account, [record], session)
                     except Exception as ex:
                         logger.warn('Could not insert records of type: {} due to exception: {}'.format(r_type, ex))
                         continue
@@ -896,24 +899,14 @@ class RestoreArchivedImageTaskFromArchiveTarfile(RestoreArchivedImageTask):
 
     def _execute(self):
         # if image record already exists, exit.
-
         with session_scope() as session:
             if db_catalog_image.get(self.image_digest, self.account, session):
                 logger.info('Image archive restore found existing image records already. Aborting restore.')
                 raise Exception('Conflict: Image already exists in system. No restore possible')
 
-            #rec = db_archived_images.get(session, self.account, self.image_digest)
-            #if not rec:
-            #    raise MetadataNotFound('/'.join([str(self.account), str(self.image_digest)]))
-
-            #self.archive_record = rec.to_dict()
-            #self.archive_detail_records = [x.to_dict() for x in rec.tags()]
-
-        #src_archive_mgr = archive.get_manager()
         dest_obj_mgr = object_store.get_manager()
 
         # Load the archive manifest
-        #m = src_archive_mgr.get(self.account, self.archive_record['manifest_bucket'], self.archive_record['manifest_key'])
         m = self.fileobj.read()
 
         if m:

@@ -166,7 +166,7 @@ def get_all_bydigest(userId, imageDigest, session):
 
     return(ret)
 
-def add_all_for_digest(records, session):
+def add_all_for_digest(userId, records, session):
     """
     Assumes these are all valid records.
 
@@ -177,6 +177,7 @@ def add_all_for_digest(records, session):
 
     recs = []
     for r in records:
+        r['userId'] = userId
         rec = PolicyEval()
         rec.update(r)
         recs.append(session.add(rec))
