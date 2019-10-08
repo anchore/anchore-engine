@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "Catalog service for anchore-engine"
-  version: "0.9.1"
+  version: "0.9.2"
   title: "Catalog"
   contact:
     email: "dev@anchore.com"
@@ -161,7 +161,9 @@ paths:
       parameters:
       - name: "id"
         in: "query"
-        type: string
+        type: array
+        items:
+          type: string
         required: true
       - name: "affected_package"
         in: "query"
@@ -170,6 +172,12 @@ paths:
       - name: "affected_package_version"
         in: "query"
         type: string
+        required: false
+      - name: namespace
+        in: query
+        type: array
+        items:
+          type: string
         required: false
       responses:
         200:
