@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.1 (2019-10-XX)
+
++ Added - Array support for the id param in /query/vulnerabilities and a namespace parameter for same route. Fixes #278.
++ Added - Support for images based on google distroless OS, including detection of base OS/version and installed OS dpkg packages.  Fixes #277.
++ Added - Ability to import an image analysis archive where the resulting image is owned by the account used to initiate the import. Fixes #269.
++ Added - New parameter to secret_search gate, which allows the user to specify whether to trigger if a match is found (default) or is not found (new behavior).  Fixes #264.
++ Added - New trigger in the 'files' gate to allow for checks against various file attributes - checksum and mode.  Fixes #262. Fixes #204.
++ Fix - Better parsing of www-authentiate response header when performing registry credential validation on registry add. Fixes #275.
++ Fix - Add fall-thru on fix_available check for os packages in vulnerbility gate, addressing duplicate trigger matches that are disregarded by policy. Fixes #273.
++ Fix - Addresses analysis failure in cases where image config document metadata does not contain a history element.  Fixes #260.
++ Fix - Addresses external_id reference before assignment error on ecr iam role usage. Fixes #259
++ Fix - Improvements and fixes within the version comparison implementation for dpkg and rpm. Fixes #274 and #265.
++ Improved - Enforce stricter api checks for "source" object in POST /images. Fixes #261
++ Many minor bug fixes and improvements, in API input validation, CPE-based CVE matching performance, and others
+
 ## 0.5.0 (2019-09-05)
 
 + Added - Support for local image analysis tool and process, including local analyzer operation in anchore_manager and new image analysis archive import API operation
