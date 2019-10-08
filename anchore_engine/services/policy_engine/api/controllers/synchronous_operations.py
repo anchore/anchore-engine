@@ -1133,7 +1133,11 @@ def query_vulnerabilities(dbsession, request_inputs):
     id = request_inputs.get('params', {}).get('id', None)
     package_name_filter = request_inputs.get('params', {}).get('affected_package', None)
     package_version_filter = request_inputs.get('params', {}).get('affected_package_version', None)
+    namespace = request_inputs.get('params', {}).get('namespace')
+
     vulnerability_exists = False
+
+    log.info('Vuln IDs: {}. Namespace = {}'.format(id, namespace))
 
     try:
         return_el_template = {
@@ -1153,10 +1157,23 @@ def query_vulnerabilities(dbsession, request_inputs):
         # order_by ascending timestamp will result in dedup hash having only the latest information stored for return, if there are duplicate records for NVD
         (_nvd_cls, _cpe_cls) = select_nvd_classes(dbsession)
 
-        vulnerabilities = dbsession.query(_nvd_cls).filter(_nvd_cls.name==id).order_by(asc(_nvd_cls.created_at)).all()
-        vulnerabilities.extend(
-            dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name == id).order_by(asc(VulnDBMetadata.created_at)).all()
-        )
+        if not namespace or (type(namespace) == list and 'nvdv2:cves' in namespace) or (namespace == 'nvdv2:cves'):
+            if isinstance(id, list):
+                qry = dbsession.query(_nvd_cls).filter(_nvd_cls.name.in_(id)).order_by(asc(_nvd_cls.created_at))
+                log.info('Using list in: {}'.format(qry))
+
+                vulnerabilities = qry.all()
+                vulnerabilities.extend(
+                    dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name.in_(id)).order_by(asc(VulnDBMetadata.created_at)).all()
+                )
+            else:
+                vulnerabilities = dbsession.query(_nvd_cls).filter(_nvd_cls.name == id).order_by(asc(_nvd_cls.created_at)).all()
+                vulnerabilities.extend(
+                    dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name == id).order_by(asc(VulnDBMetadata.created_at)).all()
+                )
+        else:
+            # Skip if the requested namespace was not 'nvd'
+            vulnerabilities = []
 
         if vulnerabilities:
             dedupped_return_hash = {}
@@ -1195,7 +1212,25 @@ def query_vulnerabilities(dbsession, request_inputs):
 
             return_object.extend(list(dedupped_return_hash.values()))
 
-        vulnerabilities = dbsession.query(Vulnerability).filter(Vulnerability.id==id).all()
+        if namespace and namespace == 'nvdv2:cves':
+            # Skip if requested was 'nvd'
+            vulnerabilities = []
+        else:
+            if isinstance(id, list):
+                qry = dbsession.query(Vulnerability).filter(Vulnerability.id.in_(id))
+            else:
+                qry = dbsession.query(Vulnerability).filter(Vulnerability.id == id)
+
+            if namespace:
+                log.info('Using namespace query: {}'.format(qry))
+                if type(namespace) == str:
+                    namespace = [namespace]
+
+                vulnerabilities = qry.filter(Vulnerability.namespace_name.in_(namespace)).all()
+            else:
+                log.info('Using query: {}'.format(qry))
+                vulnerabilities = qry.all()
+
         if vulnerabilities:
             for vulnerability in vulnerabilities:
                 namespace_el = {}
@@ -1237,10 +1272,16 @@ def query_vulnerabilities(dbsession, request_inputs):
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
+def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None, namespace=None):
+    log.info('Id: {}'.format(id))
     try:
         session = get_session()
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
+
+        # override to ensure we got the array version, not the string version
+        request_inputs['params']['id'] = id
+        request_inputs['params']['namespace'] = namespace
+        log.info('Params: {}'.format(request_inputs))
         return_object, httpcode = query_vulnerabilities(session, request_inputs)
     except Exception as err:
         httpcode = 500

@@ -32,13 +32,18 @@ def status():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None):
+def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None, namespace=None):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
+        # Override to ensure it's passed properly for array types
+        request_inputs.get('params', {})['namespace'] = namespace
+        request_inputs.get('params', {})['id'] = id
+
         client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
         resp = client.query_vulnerabilities(vuln_id=request_inputs.get('params',{}).get('id'),
                                             affected_package=request_inputs.get('params',{}).get('affected_package'),
-                                            affected_package_version=request_inputs.get('params',{}).get('affected_package_version'))
+                                            affected_package_version=request_inputs.get('params',{}).get('affected_package_version'),
+                                            namespace=request_inputs.get('params', {}).get('namespace'))
         code = 200
     except Exception as err:
         logger.exception('Error dispatching/receiving request from policy engine for vulnerability query')

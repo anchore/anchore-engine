@@ -21,8 +21,14 @@ class CatalogClient(InternalServiceClient):
 
         return self.call_api(http.anchy_get, 'registry_lookup', query_params={'digest': digest, 'tag': tag})
 
-    def query_vulnerabilities(self, id=None, affected_package=None, affected_package_version=None):
-        return self.call_api(http.anchy_get, 'query/vulnerabilities', query_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version})
+    def query_vulnerabilities(self, id=None, affected_package=None, affected_package_version=None, namespace=None):
+        if id and type(id) == list:
+            id = ','.join(id)
+
+        if namespace and type(namespace) == list:
+            namespace = ','.join(namespace)
+
+        return self.call_api(http.anchy_get, 'query/vulnerabilities', query_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
 
     def query_images_by_vulnerability(self, vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
         params = {

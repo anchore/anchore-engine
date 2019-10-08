@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is a policy evaluation service. It receives push-events from external systems for data updates and provides an api for requesting image policy checks"
-  version: "1.0.0"
+  version: "1.0.1"
   title: "anchore_engine.services.policy_engine"
   contact:
     email: "zach@anchore.com"
@@ -256,7 +256,9 @@ paths:
       parameters:
       - name: "id"
         in: "query"
-        type: string
+        type: array
+        items:
+          type: string
         required: true
       - name: "affected_package"
         in: "query"
@@ -265,6 +267,12 @@ paths:
       - name: "affected_package_version"
         in: "query"
         type: string
+        required: false
+      - name: namespace
+        in: query
+        type: array
+        items:
+          type: string
         required: false
       responses:
         200:
