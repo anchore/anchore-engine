@@ -7,6 +7,7 @@ import anchore_engine.common.pagination
 import anchore_engine.common.helpers
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
+from anchore_engine.subsys import logger
 from flask import request
 
 import anchore_engine.common
@@ -14,12 +15,18 @@ import anchore_engine.common
 authorizer = get_authorizer()
 
 @authorizer.requires([])
-def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, affected_package_version=None):
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'id': id, 'page': page, 'limit': limit, 'affected_package': affected_package, 'affected_package_version': None})
+def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, affected_package_version=None, namespace=None):
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'id': id, 'page': page, 'limit': limit, 'affected_package': affected_package, 'affected_package_version': None, 'namespace': namespace})
     method = request_inputs['method']
     bodycontent = request_inputs['bodycontent']
+
+    # override to ensure we got the array version, not the string version
+    request_inputs.get('params', {})['id'] = id
+    request_inputs.get('params', {})['namespace'] = namespace
+
     params = request_inputs.get('params', {})
 
+    logger.info('Params: {}'.format(params))
     return_object = {}
     httpcode = 500
 
@@ -34,7 +41,7 @@ def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, af
             result = anchore_engine.common.pagination.get_cached_pagination(query_digest=request_inputs['pagination_query_digest'])
         except Exception as err:
             timer = time.time()
-            result = client.query_vulnerabilities(id=id, affected_package=params.get('affected_package'), affected_package_version=params.get('affected_package_version'))
+            result = client.query_vulnerabilities(id=id, affected_package=params.get('affected_package'), affected_package_version=params.get('affected_package_version'), namespace=params.get('namespace'))
             catalog_call_time = time.time() - timer
 
         return_object = anchore_engine.common.pagination.make_response_paginated_envelope(result, envelope_key='vulnerabilities', page=page, limit=limit, dosort=True, sortfunc=lambda x: json.dumps(x), pagination_func=anchore_engine.common.pagination.do_cached_pagination, query_digest=request_inputs['pagination_query_digest'], ttl=max(30.0, catalog_call_time))

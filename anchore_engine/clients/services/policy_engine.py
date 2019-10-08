@@ -29,10 +29,16 @@ class PolicyEngineClient(InternalServiceClient):
     def get_image_vulnerabilities(self, user_id, image_id, force_refresh=False, vendor_only=None):
         return self.call_api(anchy_get, 'users/{user_id}/images/{image_id}/vulnerabilities', path_params={'user_id': user_id, 'image_id': image_id}, query_params={'force_refresh': force_refresh, 'vendor_only': vendor_only})
 
-    def query_vulnerabilities(self, vuln_id=None, affected_package=None, affected_package_version=None):
+    def query_vulnerabilities(self, vuln_id=None, affected_package=None, affected_package_version=None, namespace=None):
+        if vuln_id and type(vuln_id) == list:
+            vuln_id = ','.join(vuln_id)
+
+        if namespace and type(namespace) == list:
+            namespace = ','.join(namespace)
+
         return self.call_api(anchy_get, 'query/vulnerabilities',
                              query_params={'id': vuln_id, 'affected_package': affected_package,
-                                           'affected_package_version': affected_package_version})
+                                           'affected_package_version': affected_package_version, 'namespace': namespace})
 
     def query_images_by_vulnerability(self, user_id, vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=None):
         return self.call_api(anchy_get, 'users/{user_id}/query/images/by_vulnerability', path_params={'user_id': user_id},

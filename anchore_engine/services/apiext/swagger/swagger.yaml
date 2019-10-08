@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.12"
+  version: "0.1.13"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -1654,7 +1654,9 @@ paths:
       - name: id
         in: query
         required: true
-        type: string
+        type: array
+        items:
+          type: string
         description: The ID of the vulnerability (e.g. CVE-1999-0001)
       - name: affected_package
         in: query
@@ -1676,6 +1678,13 @@ paths:
         in: query
         type: integer
         description: Limit the number of records for the requested page. If omitted or set to 0, return all results in a single page
+        required: false
+      - name: namespace
+        in: query
+        type: array
+        items:
+          type: string
+        description: Namespace(s) to filter vulnerability records by
         required: false
       responses:
         200:
