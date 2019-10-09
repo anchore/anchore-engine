@@ -170,6 +170,11 @@ def test_normalization_and_validation():
             {'tag': 'docker.io/library/nginx:latest', 'digest': 'docker.io/library/nginx@{}'.format(test_digest), 'created_at': test_ts},
             {'source': {'digest': {'pullstring': 'docker.io/library/nginx@{}'.format(test_digest), 'tag': 'docker.io/library/nginx:latest', 'creation_timestamp_override': test_ts}}}
         ),
+        # Digest pullstring + Tag + ts
+        (
+            {'source': {'archive': {'digest': 'sha256:b9e8479820fb3a1a2f8ec426dd4ffc129e3a320392ce28dde6ae2d2d29ce2682'}}},
+            {'source': {'archive': {'digest': 'sha256:b9e8479820fb3a1a2f8ec426dd4ffc129e3a320392ce28dde6ae2d2d29ce2682'}}},
+        ),
     ]
 
     bad_requests = [
