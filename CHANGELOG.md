@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.1 (2019-10-XX)
+## 0.5.1 (2019-10-10)
 
 + Added - Array support for the id param in /query/vulnerabilities and a namespace parameter for same route. Fixes #278.
 + Added - Support for images based on google distroless OS, including detection of base OS/version and installed OS dpkg packages.  Fixes #277.
