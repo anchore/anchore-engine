@@ -32,7 +32,7 @@ class SecretContentChecksTrigger(BaseTrigger):
             matches = []
             matches_decoded = []
 
-        found=False
+        onefound=False        
         for thefile, regexps in list(context.data.get('secret_content_regexp', {}).items()):
             thefile = ensure_str(thefile)
 
@@ -41,6 +41,7 @@ class SecretContentChecksTrigger(BaseTrigger):
 
             if regexps and (not name_re or name_re.match(thefile)):
                 for regexp in list(regexps.keys()):
+                    found=False
                     decoded_regexp = ensure_str(base64.b64decode(ensure_bytes(regexp)))
 
                     try:
@@ -50,15 +51,16 @@ class SecretContentChecksTrigger(BaseTrigger):
                         theregexp = decoded_regexp
 
                     if not matches:
-                        found=True
+                        found=onefound=True
                     elif regexp in matches or theregexp in matches_decoded:
-                        found=True
+                        found=onefound=True
                     elif regexp_name and regexp_name in matches_decoded:
-                        found=True
+                        found=onefound=True
+                        
                     if found and match_type=='found':
                         self._fire(msg='Secret content search analyzer found regexp match in container: file={} regexp={}'.format(thefile, decoded_regexp))
 
-        if not found and match_type=='notfound':
+        if not onefound and match_type=='notfound':
             f_filter = name_filter
             if not f_filter:
                 f_filter = '*'
