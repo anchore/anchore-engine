@@ -278,7 +278,7 @@ def get_system_feeds():
         p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
         # do the p.e. feed get call
         return_object = p_client.list_feeds(include_counts=True)
-        if return_object:
+        if return_object is not None:
             httpcode = 200
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
