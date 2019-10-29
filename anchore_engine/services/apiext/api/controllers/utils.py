@@ -13,7 +13,7 @@ from anchore_engine.subsys import logger
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = 'RegistryTagSource'
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = 'RegistryDigestSource'
-REGISTRY_ARCHIVE_SOURCE_SCHEMA_DEFINITION_NAME = 'RegistryArchiveSource'
+REGISTRY_ARCHIVE_SOURCE_SCHEMA_DEFINITION_NAME = 'AnalysisArchiveSource'
 
 DIGEST_REGEX = re.compile(r'^\W*sha256:[a-fA-F0-9]{64}\W*$')
 
