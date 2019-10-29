@@ -235,6 +235,10 @@ def make_cvss_scores(metrics):
 
     return score_list
 
+def _get_unique_vulnerabilities(vulnerabilities):
+    seen = set()
+    # Remove duplicate vulnerabilities
+    return [seen.add(vuln['vuln']) or vuln for vuln in vulnerabilities if vuln['vuln'] not in seen]
 
 def make_response_vulnerability(vulnerability_type, vulnerability_data):
     ret = []
@@ -385,7 +389,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     else:
         ret = vulnerability_data
 
-    return (ret)
+    return (_get_unique_vulnerabilities(ret))
 
 
 def make_response_policyeval(eval_record, params, catalog_client):
