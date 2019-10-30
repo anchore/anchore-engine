@@ -116,18 +116,6 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.working_state('analyze')
             rc = catalog_client.update_image(imageDigest, image_record)
 
-            # disable the webhook call for image state transistion to 'analyzing'
-            #try:
-            #    for image_detail in image_record['image_detail']:
-            #        fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-            #        npayload = {
-            #            'last_eval': {'imageDigest': imageDigest, 'analysis_status': last_analysis_status},
-            #            'curr_eval': {'imageDigest': imageDigest, 'analysis_status': image_record['analysis_status']},
-            #        }
-            #        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
-            #except Exception as err:
-            #    logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
-
             # actually do analysis
             registry_creds = catalog_client.get_registry()
             try:
@@ -230,7 +218,17 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         if annotations:
                             npayload['annotations'] = annotations
 
-                        rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
+                        #original method
+                        #rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
+
+                        # new method
+                        npayload['subscription_type'] = 'analysis_update'
+                        success_event = events.AnalyzeImageSuccess(user_id=userId, full_tag=fulltag, data=npayload)
+                        try:
+                            catalog_client.add_event(success_event)
+                        except:
+                            logger.error('Ignoring error creating analysis success event')
+                            
                 except Exception as err:
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 

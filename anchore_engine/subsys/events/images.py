@@ -1,7 +1,31 @@
 from anchore_engine.subsys.events import Event
 
 _image_digest_resource_type = 'image_digest'
+_image_tag_resource_type = 'image_tag'
 
+class ImageVulnerabilityUpdate(Event):
+    __event_type__ = 'image_vuln_update'
+    __resource_type__ = _image_tag_resource_type
+
+    def __init__(self, user_id, full_tag, data={}):
+        super(ImageVulnerabilityUpdate, self).__init__(user_id=user_id, level='INFO', message='Vulnerability update detected for image', resource_id=full_tag, details=data)
+
+
+class ImagePolicyEvalUpdate(Event):
+    __event_type__ = 'image_policy_eval_update'
+    __resource_type__ = _image_tag_resource_type
+
+    def __init__(self, user_id, full_tag, data={}):
+        super(ImagePolicyEvalUpdate, self).__init__(user_id=user_id, level='INFO', message='Policy evaluation update detected for image', resource_id=full_tag, details=data)
+
+
+class AnalyzeImageSuccess(Event):
+    __event_type__ = 'analyze_image_success'
+    __resource_type__ = _image_tag_resource_type
+
+    def __init__(self, user_id, full_tag, data={}):
+        super(AnalyzeImageSuccess, self).__init__(user_id=user_id, level='INFO', message='Image successfully analyzed', resource_id=full_tag, details=data)
+    
 
 class AnalyzeImageFail(Event):
     __event_type__ = 'analyze_image_fail'

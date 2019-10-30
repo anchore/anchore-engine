@@ -26,6 +26,7 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
+import anchore_engine.subsys.events 
 
 def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
     """
@@ -1183,7 +1184,16 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
                 if annotations:
                     npayload['annotations'] = annotations
 
-                rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
+                # original method
+                #rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
+
+                # new method
+                npayload['subscription_type'] = 'vuln_update'
+                success_event = anchore_engine.subsys.events.ImageVulnerabilityUpdate(user_id=userId, full_tag=scantag, data=npayload)
+                try:
+                    _add_event(success_event, dbsession)
+                except:
+                    logger.warn('Ignoring error creating image vulnerability update event')
             except Exception as err:
                 logger.warn("failed to enqueue notification - exception: " + str(err))
 
@@ -1289,7 +1299,16 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                     if annotations:
                         npayload['annotations'] = annotations
 
-                    rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
+                    # original method    
+                    #rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
+
+                    # new method
+                    npayload['subscription_type'] = 'policy_eval'
+                    success_event = anchore_engine.subsys.events.ImagePolicyEvalUpdate(user_id=userId, full_tag=fulltag, data=npayload)
+                    try:
+                        _add_event(success_event, dbsession)
+                    except:
+                        logger.warn('Ignoring error creating image policy evaluation update event')
                 except Exception as err:
                     logger.warn("failed to enqueue notification - exception: " + str(err))
 
@@ -1640,6 +1659,18 @@ def do_registry_delete(userId, registry_record, dbsession, force=False):
     return(return_object, httpcode)
 
 
+def _add_event(event, dbsession, quiet=True):
+    try:
+        db_events.add(event.to_dict(), session=dbsession)
 
+        logger.debug("queueing event creation notification")
+        npayload = {'event': event.to_dict()}
+        rc = notifications.queue_notification(event.user_id, subscription_key=event.level,
+                                              subscription_type='event_log', payload=npayload)
+    except:
+        if quiet:
+            logger.exception('Ignoring error creating/notifying event: {}'.format(event))
+        else:
+            raise
 ################################################################################
 

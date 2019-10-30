@@ -1064,28 +1064,78 @@ def handle_notifications(*args, **kwargs):
                         try:
                             if userId == account['name']:
                                 notification_record = None
-                                if subscription_type in anchore_engine.common.subscription_types:
-                                    dbfilter = {'subscription_type': subscription_type,
-                                                'subscription_key': subscription_key}
-                                    subscription_records = db_subscriptions.get_byfilter(account['name'],
-                                                                                         session=dbsession, **dbfilter)
-                                    if subscription_records:
-                                        subscription = subscription_records[0]
-                                        if subscription and subscription['active']:
-                                            notification_record = notifications.make_notification(account,
-                                                                                                  subscription_type,
-                                                                                                  notification)
-                                elif subscription_type == event_log_type:  # handle event_log differently since its not a type of subscriptions
-                                    if notify_events and (
-                                            event_levels is None or subscription_key.lower() in event_levels):
-                                        notification.pop('subscription_key',
-                                                         None)  # remove subscription_key property from notification
-                                        notification_record = notifications.make_notification(account, subscription_type,
-                                                                                              notification)
 
+                                if False:
+                                    # original handling
+                                    if subscription_type in anchore_engine.common.subscription_types:
+                                        dbfilter = {'subscription_type': subscription_type,
+                                                    'subscription_key': subscription_key}
+                                        subscription_records = db_subscriptions.get_byfilter(account['name'],
+                                                                                             session=dbsession, **dbfilter)
+                                        if subscription_records:
+                                            subscription = subscription_records[0]
+                                            if subscription and subscription['active']:
+                                                notification_record = notifications.make_notification(account,
+                                                                                                      subscription_type,
+                                                                                                      notification)
+                                    elif subscription_type == event_log_type:  # handle event_log differently since its not a type of subscriptions
+                                        if notify_events and (
+                                                event_levels is None or subscription_key.lower() in event_levels):
+                                            notification.pop('subscription_key',
+                                                             None)  # remove subscription_key property from notification
+                                            notification_record = notifications.make_notification(account, subscription_type,
+                                                                                                  notification)
+                                else:
+                                    # new handling
+                                    subscription_type_actual = subscription_type
+
+                                    if subscription_type == event_log_type:
+                                        if notification.get('event', {}).get('details', {}).get('subscription_type', None) in anchore_engine.common.subscription_types:
+                                            subscription_type_actual = notification.get('event', {}).get('details', {}).get('subscription_type')
+                                            subscription_key_actual = notification.get('event', {}).get('resource', {}).get('id')
+                                            dbfilter = {
+                                                'subscription_type': subscription_type_actual,
+                                                'subscription_key': subscription_key_actual,
+                                            }
+                                            subscription_records = db_subscriptions.get_byfilter(account['name'],
+                                                                                                 session=dbsession, **dbfilter)
+                                            if subscription_records:
+                                                subscription = subscription_records[0]
+                                                if subscription and subscription['active']:
+                                                    notification_transform = {
+                                                        'notificationId': notification.get('notificationId'),
+                                                        'userId': notification.get('userId'),
+                                                        'subscription_key': subscription_key_actual,
+                                                    }
+                                                    notification_transform.update(notification.get('event', {}).get('details', {}))
+                                                    notification_record = notifications.make_notification(account,
+                                                                                                          subscription_type_actual,
+                                                                                                          notification_transform)
+                                            
+                                        else:
+                                            if notify_events and (
+                                                    event_levels is None or subscription_key.lower() in event_levels):
+                                                notification.pop('subscription_key',
+                                                                 None)  # remove subscription_key property from notification
+                                                notification_record = notifications.make_notification(account, subscription_type,
+                                                                                                      notification)                                            
+                                    else:
+                                        # temporary
+                                        #if subscription_type in anchore_engine.common.subscription_types:
+                                        #    dbfilter = {'subscription_type': subscription_type,
+                                        #                'subscription_key': subscription_key}
+                                        #    subscription_records = db_subscriptions.get_byfilter(account['name'],
+                                        #                                                         session=dbsession, **dbfilter)
+                                        #    if subscription_records:
+                                        #        subscription = subscription_records[0]
+                                        #        if subscription and subscription['active']:
+                                        #            notification_record = notifications.make_notification(account,
+                                        #                                                                  subscription_type,
+                                        #                                                                  notification)
+                                        pass
                                 if notification_record:
-                                    logger.spew("Storing NOTIFICATION: " + str(account) + str(notification_record))
-                                    db_queues.add(subscription_type, userId, notificationId, notification_record, 0,
+                                    logger.spew("Storing NOTIFICATION: {} - {} - {}".format(account, notification_record, subscription_type))
+                                    db_queues.add(subscription_type_actual, userId, notificationId, notification_record, 0,
                                                   int(time.time() + notification_timeout), session=dbsession)
                         except Exception as err:
                             import traceback
@@ -1097,7 +1147,7 @@ def handle_notifications(*args, **kwargs):
             for account in accounts:
                 notification_records = db_queues.get_all(subscription_type, account['name'], session=dbsession)
                 for notification_record in notification_records:
-                    logger.debug("drained to send: " + json.dumps(notification_record))
+                    logger.spew("drained to send: " + json.dumps(notification_record))
                     try:
                         rc = notifications.notify(account, notification_record)
                         if rc:
