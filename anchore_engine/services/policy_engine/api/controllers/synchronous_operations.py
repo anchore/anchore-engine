@@ -4,6 +4,7 @@ Controller for all synchronous web operations. These are handled by the main web
 Async operations are handled by teh async_operations controller.
 
 """
+import base64
 import connexion
 import datetime
 import enum
@@ -32,13 +33,14 @@ from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionCo
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
-from anchore_engine.db import DistroNamespace
+from anchore_engine.db import DistroNamespace, AnalysisArtifact
 from anchore_engine.subsys import logger as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
 from anchore_engine.clients.services import internal_client_for, catalog
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services.common import get_service_endpoint
+from anchore_engine.utils import ensure_str, ensure_bytes
 
 authorizer = get_authorizer()
 
@@ -1321,3 +1323,195 @@ def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=N
         session.close()
 
     return (return_object, httpcode)
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def list_artifacts(user_id, image_id, artifact_type):
+    db = get_session()
+    try:
+        log.info('Getting retrieved files from image {}/{}'.format(user_id, image_id))
+        img = db.query(Image).get((image_id, user_id))
+        if img:
+            handlers = artifact_handlers.get(artifact_type)
+            if not handlers:
+                # Bad request
+                return make_response_error('Invalid artifact type {}'.format(artifact_type), in_httpcode=400), 400
+
+            if not handlers.get('filter') or not handlers.get('mapper'):
+                raise Exception('incomplete artifact handler definition for {}'.format(artifact_type))
+
+            filter_fn = handlers['filter']
+            artifact_items = filter_fn(img).all()
+            map_fn = handlers['mapper']
+
+            artifact_listing = [map_fn(x) for x in artifact_items]
+            return artifact_listing, 200
+        else:
+            return None, 404
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception('Error processing GET request for artifacts on image {}/{}'.format(user_id, image_id))
+        return make_response_error('Error getting artifacts from image {}/{}: {}'.format(user_id, image_id, e), in_httpcode=500), 500
+    finally:
+        db.rollback()
+
+
+def retrieved_file_to_path(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    return artifact_record.artifact_key
+
+
+def retrieved_file_to_mgs(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    log.info("File value: {}".format(artifact_record.binary_value))
+
+    return {
+        "path": artifact_record.artifact_key,
+        "b64_content": ensure_str(base64.encodebytes(artifact_record.binary_value))
+    }
+
+
+def retrieved_files_filter(img_record):
+    """
+    Return the artifacts filter for retrieved files
+    :param img_record:
+    :return:
+    """
+    return img_record.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'retrieve_files', AnalysisArtifact.analyzer_artifact == 'file_content.all', AnalysisArtifact.analyzer_type == 'base')
+
+
+def secret_search_to_path(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    return artifact_record.artifact_key
+
+
+def secret_search_to_msg(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    return {
+        "path": artifact_record.artifact_key,
+        "matches": handle_search_json_value(artifact_record.json_value)
+    }
+
+
+def handle_search_json_value(search_json: dict):
+    """
+    Input is:
+    {
+      b64_key: [<line no for match>,...,]
+    }
+
+    ==>
+
+    [
+    {
+      "name": str,
+      "regex": str
+      "matched_lines": [<int>,..., <int>]
+    }
+    }
+
+    :param search_json:
+    :return: dict
+    """
+
+    matches = []
+
+    for (k, matched_lines) in search_json.items():
+        key = ensure_str(base64.b64decode(ensure_bytes(k)))
+        comps = key.split('=', 1)
+
+        if len(comps) == 2:
+            regex_name = comps[0]
+            regex_value = comps[1]
+        else:
+            regex_value = comps[0]
+            regex_name = ''
+
+        matches.append(
+            {
+                "name": regex_name,
+                "regex": regex_value,
+                "lines": matched_lines
+            }
+        )
+
+    return matches
+
+
+def secret_scans_filter(img_record):
+    """
+    Return the artifacts filter for retrieved files
+    :param img_record:
+    :return:
+    """
+    return img_record.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'secret_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base')
+
+
+def file_content_to_path(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    return artifact_record.artifact_key
+
+
+def file_content_to_msg(artifact_record):
+    """
+
+    :param artifact_record:
+    :return:
+    """
+
+    return {
+        "path": artifact_record.artifact_key,
+        "matches": handle_search_json_value(artifact_record.json_value)
+    }
+
+
+def file_content_filter(img_record):
+    """
+    Return the artifacts filter for retrieved files
+    :param img_record:
+    :return:
+    """
+    return img_record.analysis_artifacts.filter(AnalysisArtifact.analyzer_id == 'content_search', AnalysisArtifact.analyzer_artifact == 'regexp_matches.all', AnalysisArtifact.analyzer_type == 'base')
+
+
+# Filter functions by name as used in the api
+artifact_handlers = {
+    'retrieved_files': {
+        'filter': retrieved_files_filter,
+        'mapper': retrieved_file_to_mgs
+    },
+    'secret_search': {
+        'filter': secret_scans_filter,
+        'mapper': secret_search_to_msg
+    },
+    'file_content_search': {
+        'filter': file_content_filter,
+        'mapper': file_content_to_msg
+    }
+}

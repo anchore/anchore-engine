@@ -974,6 +974,66 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/artifacts/retrieved_files:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_retrieved_files
+      x-anchore-authz-action: getImage
+      summary: Return a list of analyzer artifacts of the specified type
+      produces:
+      - application/json
+      parameters:
+      - name: imageDigest
+        in: path
+        type: string
+        required: true
+      responses:
+        200:
+          description: "List of file metadata objects"
+          schema:
+            $ref: "#/definitions/RetrievedFileList"
+        404:
+          description: "Image not found in this service"
+  /images/{imageDigest}/artifacts/file_content_search:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_file_content_search_results
+      x-anchore-authz-action: getImage
+      summary: Return a list of analyzer artifacts of the specified type
+      produces:
+        - application/json
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          description: "List of file metadata objects"
+          schema:
+            $ref: "#/definitions/FileContentSearchList"
+        404:
+          description: "Image not found in this service"
+  /images/{imageDigest}/artifacts/secret_search:
+    get:
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: list_secret_search_results
+      x-anchore-authz-action: getImage
+      summary: Return a list of analyzer artifacts of the specified type
+      produces:
+        - application/json
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          description: "List of file metadata objects"
+          schema:
+            $ref: "#/definitions/SecretSearchList"
+        404:
+          description: "Image not found in this service"
   /images/{imageDigest}/metadata:
     get:
       tags:
@@ -3864,3 +3924,61 @@ definitions:
       token:
         type: string
         description: The token content
+  RetrievedFile:
+    type: object
+    description: The retrieved file entry including content (b64 encoded)
+    properties:
+      path:
+        type: string
+      b64_content:
+        type: string
+  RetrievedFileList:
+    type: array
+    description: Simple array of RetrievedFileMetadata objects
+    items:
+      $ref: "#/definitions/RetrievedFile"
+  SecretSearchResult:
+    type: object
+    description: The retrieved file entry including content (b64 encoded)
+    properties:
+      path:
+        type: string
+      matches:
+        type: array
+        items:
+          $ref: "#/definitions/RegexContentMatch"
+  SecretSearchList:
+    type: array
+    description: Simple array of RetrievedFileMetadata objects
+    items:
+      $ref: "#/definitions/SecretSearchResult"
+  FileContentSearchResult:
+    type: object
+    description: The retrieved file entry including content (b64 encoded)
+    properties:
+      path:
+        type: string
+      matches:
+        type: array
+        items:
+          $ref: "#/definitions/RegexContentMatch"
+  FileContentSearchList:
+    type: array
+    description: Simple array of RetrievedFileMetadata objects
+    items:
+      $ref: "#/definitions/FileContentSearchResult"
+  RegexContentMatch:
+    type: object
+    description: Match of a named regex on a file
+    properties:
+      name:
+        type: string
+        description: The name associated with the regular expression
+      regex:
+        type: string
+        description: The regular expression used for the match
+      lines:
+        type: array
+        description: A list of line numbers in the file that matched the regex
+        items:
+          type: integer
