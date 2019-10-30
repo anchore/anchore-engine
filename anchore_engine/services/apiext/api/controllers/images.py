@@ -1514,3 +1514,91 @@ def images_imageDigest_check(request_inputs, imageDigest):
 
     return (return_object, httpcode)
 
+
+
+def _get_image_ok(account, imageDigest):
+    """
+    Get the image id if the image exists and is analyzed, else raise error
+
+    :param account: 
+    :param imageDigest: 
+    :return: 
+    """
+    catalog_client = internal_client_for(CatalogClient, account)
+    image_report = catalog_client.get_image(imageDigest)
+
+    if image_report and image_report['analysis_status'] != taskstate.complete_state('analyze'):
+        raise api_exceptions.ResourceNotFound('artifacts', detail={"details": "image is not analyzed - analysis_status: " + image_report['analysis_status']})
+    elif not image_report:
+        raise api_exceptions.ResourceNotFound(imageDigest, detail={})
+
+    image_detail = image_report['image_detail'][0]
+    imageId = image_detail['imageId']
+
+    return imageId
+
+    
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def list_retrieved_files(imageDigest):
+    """
+    GET /images/{imageDigest}/artifacts/retrieved_files
+    :param imageDigest:
+    :param artifactType:
+    :return:
+    """
+
+    account = ApiRequestContextProxy.namespace()
+    try:
+        imageId = _get_image_ok(account, imageDigest)
+
+        client = internal_client_for(PolicyEngineClient, account)
+        resp = client.list_image_analysis_artifacts(user_id=account, image_id=imageId, artifact_type='retrieved_files')
+        return resp, 200
+    except api_exceptions.AnchoreApiError:
+        raise
+    except Exception as err:
+        raise api_exceptions.InternalError(str(err), detail={})
+
+
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def list_file_content_search_results(imageDigest):
+    """
+    GET /images/{imageDigest}/artifacts/file_content_search
+    :param imageDigest:
+    :param artifactType:
+    :return:
+    """
+
+    account = ApiRequestContextProxy.namespace()
+    try:
+        imageId = _get_image_ok(account, imageDigest)
+
+        client = internal_client_for(PolicyEngineClient, account)
+        resp = client.list_image_analysis_artifacts(user_id=account, image_id=imageId, artifact_type='file_content_search')
+        return resp, 200
+    except api_exceptions.AnchoreApiError:
+        raise
+    except Exception as err:
+        raise api_exceptions.InternalError(str(err), detail={})
+
+
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def list_secret_search_results(imageDigest):
+    """
+    GET /images/{imageDigest}/artifacts/secret_search
+    :param imageDigest:
+    :param artifactType:
+    :return:
+    """
+
+    account = ApiRequestContextProxy.namespace()
+    try:
+        imageId = _get_image_ok(account, imageDigest)
+
+        client = internal_client_for(PolicyEngineClient, account)
+        resp = client.list_image_analysis_artifacts(user_id=account, image_id=imageId, artifact_type='secret_search')
+        return resp, 200
+    except api_exceptions.AnchoreApiError:
+        raise
+    except Exception as err:
+        raise api_exceptions.InternalError(str(err), detail={})
