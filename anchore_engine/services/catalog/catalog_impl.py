@@ -1098,11 +1098,6 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
     try:
         obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
-        mgr = manager_factory.for_session(dbsession)
-        system_user_auth = mgr.get_system_credentials()
-        system_userId = system_user_auth[0]
-        system_password = system_user_auth[1]
-
         localconfig = anchore_engine.configuration.localconfig.get_config()
         verify = localconfig['internal_ssl_verify']
         image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
