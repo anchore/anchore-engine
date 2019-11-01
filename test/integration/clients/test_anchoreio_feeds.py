@@ -28,15 +28,15 @@ def test_anon_user():
     test_client.get_feed_group_data('vulnerabilities', 'alpine:3.6',since=datetime.datetime.utcnow())
 
 
-def test_auth_error():
-    with pytest.raises(InvalidCredentialsError):
-        test_client = get_client(feeds_url=feed_url,
-                                 token_url=token_url,
-                                 client_url=client_url,
-                                 user=('anon@ancho.re', 'foobar'),
-                                 conn_timeout=10,
-                                 read_timeout=30)
-        f = test_client.list_feeds()
+#def test_auth_error():
+#    with pytest.raises(InvalidCredentialsError):
+#        test_client = get_client(feeds_url=feed_url,
+#                                 token_url=token_url,
+#                                 client_url=client_url,
+#                                 user=('anon@ancho.re', 'foobar'),
+#                                 conn_timeout=10,
+#                                 read_timeout=30)
+#        f = test_client.list_feeds()
 
 
 def test_feed_sync():
