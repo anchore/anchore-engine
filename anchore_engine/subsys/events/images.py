@@ -2,6 +2,15 @@ from anchore_engine.subsys.events import Event
 
 _image_digest_resource_type = 'image_digest'
 _image_tag_resource_type = 'image_tag'
+_image_resource_type = 'image'
+
+class ImageRegistryLookupFail(Event):
+    __event_type__ = 'image_registry_lookup_fail'
+    __resource_type__ = _image_resource_type
+
+    def __init__(self, user_id, image_pull_string, data={}):
+        super(ImageRegistryLookupFail, self).__init__(user_id=user_id, level='ERROR', message='Registry lookup for image failed', resource_id=image_pull_string, details=data)    
+
 
 class ImageVulnerabilityUpdate(Event):
     __event_type__ = 'image_vuln_update'

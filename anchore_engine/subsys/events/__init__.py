@@ -6,6 +6,7 @@ from .common import Event
 from .feeds import FeedSyncStart
 from .feeds import FeedSyncComplete
 from .feeds import FeedSyncFail
+from .images import ImageRegistryLookupFail
 from .images import ImageVulnerabilityUpdate
 from .images import ImagePolicyEvalUpdate
 from .images import AnalyzeImageSuccess

@@ -447,9 +447,14 @@ def handle_repo_watcher(*args, **kwargs):
                         try:
                             fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + repotag
                             logger.debug("found new tag in repo: " + str(fulltag))
-                            new_image_info = anchore_engine.common.images.get_image_info(userId, "docker", fulltag,
-                                                                                         registry_lookup=True,
-                                                                                         registry_creds=registry_creds)
+                            try:
+                                new_image_info = anchore_engine.common.images.get_image_info(userId, "docker", fulltag,
+                                                                                             registry_lookup=True,
+                                                                                             registry_creds=registry_creds)
+                            except Exception as err:
+                                event = events.ImageRegistryLookupFail(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
+                                raise err
+
                             manifest = None
                             try:
                                 if 'manifest' in new_image_info:
@@ -582,9 +587,13 @@ def handle_image_watcher(*args, **kwargs):
             try:
                 logger.debug("checking image latest info from registry: " + fulltag)
 
-                image_info = anchore_engine.common.images.get_image_info(userId, "docker", fulltag,
-                                                                         registry_lookup=True,
-                                                                         registry_creds=registry_creds)
+                try:
+                    image_info = anchore_engine.common.images.get_image_info(userId, "docker", fulltag,
+                                                                             registry_lookup=True,
+                                                                             registry_creds=registry_creds)
+                except Exception as err:
+                    event = events.ImageRegistryLookupFail(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
+                    raise err
                 logger.spew("checking image: got registry info: " + str(image_info))
 
                 manifest = None

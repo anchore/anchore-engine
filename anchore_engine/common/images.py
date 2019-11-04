@@ -40,7 +40,6 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
             try:
                 manifest,digest,parentdigest = docker_registry.get_image_manifest(userId, image_info, registry_creds)
             except Exception as err:
-                # add event for image lookup here, will catch all manifest request errors
                 raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch image digest/manifest from registry", input_httpcode=400)
             image_info['digest'] = digest
             image_info['fulldigest'] = image_info['registry']+"/"+image_info['repo']+"@"+digest

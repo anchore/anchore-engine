@@ -246,7 +246,15 @@ def image(dbsession, request_inputs, bodycontent=None):
                             refresh_registry_creds(registry_creds, dbsession)
                         except Exception as err:
                             logger.warn("failed to refresh registry credentials - exception: " + str(err))
-                        image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
+                        try:
+                            image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
+                        except Exception as err:
+                            fail_event = anchore_engine.subsys.events.ImageRegistryLookupFail(user_id=userId, image_pull_string=input_string, data=err.__dict__)
+                            try:
+                                _add_event(fail_event, dbsession)
+                            except:
+                                logger.warn('Ignoring error creating image registry lookup event')
+                            raise err
                     except Exception as err:
                         httpcode = 404
                         raise Exception("cannot perform registry lookup - exception: " + str(err))
@@ -341,7 +349,15 @@ def image(dbsession, request_inputs, bodycontent=None):
                     logger.debug("INPUT STRING: {}".format(input_string))
                     logger.debug("INPUT IMAGE INFO: {}".format(image_info))
                     logger.debug("INPUT IMAGE INFO OVERRIDES: {}".format(image_info_overrides))
-                    image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                    try:
+                        image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                    except Exception as err:
+                        fail_event = anchore_engine.subsys.events.ImageRegistryLookupFail(user_id=userId, image_pull_string=input_string, data=err.__dict__)
+                        try:
+                            _add_event(fail_event, dbsession)
+                        except:
+                            logger.warn('Ignoring error creating image registry lookup event')
+                        raise err
 
                     if image_info_overrides:
                         image_info.update(image_info_overrides)
