@@ -1228,6 +1228,9 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
         if not policyId:
             policy_record = db_policybundle.get_active_policy(userId, session=dbsession)
+            if not policy_record:
+                raise Exception("no policy bundle is currently active")
+            
             policyId = policy_record['policyId']
 
         policy_bundle = obj_store.get_document(userId, 'policy_bundles', policyId)

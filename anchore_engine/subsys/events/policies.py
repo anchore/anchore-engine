@@ -9,3 +9,18 @@ class PolicyBundleSyncFail(Event):
 
     def __init__(self, user_id, error=None):
         super(PolicyBundleSyncFail, self).__init__(user_id=user_id, level='ERROR', message='Failed to sync policy bundle', details=error)
+
+class ActivePolicyBundleIdChange(Event):
+    __event_type__ = 'active_policy_bundle_id_change'
+    __resource_type__ = _policy_resource_type
+
+    def __init__(self, user_id, data={}):
+        super(ActivePolicyBundleIdChange, self).__init__(user_id=user_id, level='INFO', message='Active policy bundle ID changed', details=data)
+
+class ActivePolicyBundleContentChange(Event):
+    __event_type__ = 'active_policy_bundle_content_change'
+    __resource_type__ = _policy_resource_type
+
+    def __init__(self, user_id, data={}):
+        super(ActivePolicyBundleContentChange, self).__init__(user_id=user_id, level='INFO', message='Active policy bundle content changed', details=data)
+    

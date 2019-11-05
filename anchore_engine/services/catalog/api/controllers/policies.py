@@ -4,6 +4,8 @@ API Handlers for /policies routes
 """
 
 import connexion
+import hashlib
+import json
 
 import anchore_engine.apis
 import anchore_engine.common
@@ -13,10 +15,13 @@ import anchore_engine.services.catalog.catalog_impl
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
+import anchore_engine.utils
 
 from anchore_engine.db import db_policybundle, db_policyeval
 from anchore_engine.subsys import object_store
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+
+import anchore_engine.subsys.events
 
 authorizer = get_authorizer()
 
@@ -222,7 +227,31 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
     :return:
     """
 
+    try:
+        active_record = db_policybundle.get_active_policy(user_id, session=dbsession)
+        last_active_policyId = active_record.get('policyId', None)
+    except:
+        last_active_policyId = None
+
+        
     object_store_mgr = object_store.get_manager()
+
+    # if update is to currently active bundle, check if the bundle content is to be changed
+    if last_active_policyId == policyId:
+        try:
+            last_policy_bundle_content = object_store_mgr.get_document(user_id, 'policy_bundles', policyId)
+            if last_policy_bundle_content:
+                last_policy_bundle_digest = hashlib.sha256(anchore_engine.utils.ensure_bytes(json.dumps(last_policy_bundle_content, sort_keys=True))).hexdigest()
+                new_policy_bundle_digest = hashlib.sha256(anchore_engine.utils.ensure_bytes(json.dumps(policy_bundle, sort_keys=True))).hexdigest()            
+                if last_policy_bundle_digest != new_policy_bundle_digest:
+                    event = anchore_engine.subsys.events.ActivePolicyBundleContentChange(user_id=user_id, data={'policy_id': policyId, 'last_policy_bundle_digest': last_policy_bundle_digest, 'current_policy_bundle_digest': new_policy_bundle_digest})
+                    try:
+                        anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
+                    except:
+                        logger.warn('Ignoring error creating active policy content change event')
+        except Exception as err:
+            logger.warn("Could not evaluate bundle content different on save for active bundle - exception: {}".format(err))
+    
     try:
         if object_store_mgr.put_document(user_id, 'policy_bundles', policyId, policy_bundle):
             rc = db_policybundle.update(policyId, user_id, active, policy_bundle, session=dbsession)
@@ -238,6 +267,15 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
         if active:
             try:
                 rc = db_policybundle.set_active_policy(policyId, user_id, session=dbsession)
+                if rc:
+                    if policyId != last_active_policyId:
+                        # a new policy is now active
+                        event = anchore_engine.subsys.events.ActivePolicyBundleIdChange(user_id=user_id, data={'last_policy_bundle_id': last_active_policyId, 'current_policy_bundle_id': policyId})
+                        try:
+                            anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
+                        except:
+                            logger.warn('Ignoring error creating active policy id change event')
+                        
             except Exception as err:
                 raise Exception("could not set policy as active - exception: " + str(err))
 

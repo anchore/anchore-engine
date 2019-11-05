@@ -22,6 +22,8 @@ from .images import ImageArchivingFailed
 from .repositories import ListTagsFail
 from .tags import TagManifestParseFail
 from .policies import PolicyBundleSyncFail
+from .policies import ActivePolicyBundleIdChange
+from .policies import ActivePolicyBundleContentChange
 from .services import ServiceOrphanedEvent
 from .services import ServiceDownEvent
 from .services import ServiceRemovedEvent
