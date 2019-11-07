@@ -1022,6 +1022,7 @@ def handle_notifications(*args, **kwargs):
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
         localconfig = anchore_engine.configuration.localconfig.get_config()
+
         try:
             notification_timeout = int(localconfig['webhooks']['notification_retry_timeout'])
         except:
@@ -1074,77 +1075,41 @@ def handle_notifications(*args, **kwargs):
                             if userId == account['name']:
                                 notification_record = None
 
-                                if False:
-                                    # original handling
-                                    if subscription_type in anchore_engine.common.subscription_types:
-                                        dbfilter = {'subscription_type': subscription_type,
-                                                    'subscription_key': subscription_key}
-                                        subscription_records = db_subscriptions.get_byfilter(account['name'],
-                                                                                             session=dbsession, **dbfilter)
-                                        if subscription_records:
-                                            subscription = subscription_records[0]
-                                            if subscription and subscription['active']:
-                                                notification_record = notifications.make_notification(account,
-                                                                                                      subscription_type,
-                                                                                                      notification)
-                                    elif subscription_type == event_log_type:  # handle event_log differently since its not a type of subscriptions
-                                        if notify_events and (
-                                                event_levels is None or subscription_key.lower() in event_levels):
-                                            notification.pop('subscription_key',
-                                                             None)  # remove subscription_key property from notification
-                                            notification_record = notifications.make_notification(account, subscription_type,
-                                                                                                  notification)
-                                else:
-                                    # new handling
-                                    subscription_type_actual = subscription_type
+                                # new handling
+                                subscription_type_actual = subscription_type
 
-                                    if subscription_type == event_log_type:
-                                        if notification.get('event', {}).get('details', {}).get('subscription_type', None) in anchore_engine.common.subscription_types:
-                                            subscription_type_actual = notification.get('event', {}).get('details', {}).get('subscription_type')
-                                            subscription_key_actual = notification.get('event', {}).get('resource', {}).get('id')
-                                            dbfilter = {
-                                                'subscription_type': subscription_type_actual,
+                                if notification.get('event', {}).get('details', {}).get('subscription_type', None) in anchore_engine.common.subscription_types:
+                                    subscription_type_actual = notification.get('event', {}).get('details', {}).get('subscription_type')
+                                    subscription_key_actual = notification.get('event', {}).get('resource', {}).get('id')
+                                    dbfilter = {
+                                        'subscription_type': subscription_type_actual,
+                                        'subscription_key': subscription_key_actual,
+                                    }
+                                    subscription_records = db_subscriptions.get_byfilter(account['name'],
+                                                                                         session=dbsession, **dbfilter)
+                                    if subscription_records:
+                                        subscription = subscription_records[0]
+                                        if subscription and subscription['active']:
+                                            notification_transform = {
+                                                'notificationId': notification.get('notificationId'),
+                                                'userId': notification.get('userId'),
                                                 'subscription_key': subscription_key_actual,
                                             }
-                                            subscription_records = db_subscriptions.get_byfilter(account['name'],
-                                                                                                 session=dbsession, **dbfilter)
-                                            if subscription_records:
-                                                subscription = subscription_records[0]
-                                                if subscription and subscription['active']:
-                                                    notification_transform = {
-                                                        'notificationId': notification.get('notificationId'),
-                                                        'userId': notification.get('userId'),
-                                                        'subscription_key': subscription_key_actual,
-                                                    }
-                                                    notification_transform.update(notification.get('event', {}).get('details', {}))
-                                                    notification_record = notifications.make_notification(account,
-                                                                                                          subscription_type_actual,
-                                                                                                          notification_transform)
-                                            
-                                        else:
-                                            if notify_events and (
-                                                    event_levels is None or subscription_key.lower() in event_levels):
-                                                notification.pop('subscription_key',
-                                                                 None)  # remove subscription_key property from notification
-                                                notification_record = notifications.make_notification(account, subscription_type,
-                                                                                                      notification)                                            
-                                    else:
-                                        # temporary
-                                        #if subscription_type in anchore_engine.common.subscription_types:
-                                        #    dbfilter = {'subscription_type': subscription_type,
-                                        #                'subscription_key': subscription_key}
-                                        #    subscription_records = db_subscriptions.get_byfilter(account['name'],
-                                        #                                                         session=dbsession, **dbfilter)
-                                        #    if subscription_records:
-                                        #        subscription = subscription_records[0]
-                                        #        if subscription and subscription['active']:
-                                        #            notification_record = notifications.make_notification(account,
-                                        #                                                                  subscription_type,
-                                        #                                                                  notification)
-                                        pass
-                                if notification_record:
-                                    logger.spew("Storing NOTIFICATION: {} - {} - {}".format(account, notification_record, subscription_type))
-                                    db_queues.add(subscription_type_actual, userId, notificationId, notification_record, 0,
+                                            notification_transform.update(notification.get('event', {}).get('details', {}))
+                                            notification_record = notifications.make_notification(account,
+                                                                                                  subscription_type_actual,
+                                                                                                  notification_transform)
+
+                                else:
+                                    if notify_events and (
+                                            event_levels is None or subscription_key.lower() in event_levels):
+                                        notification.pop('subscription_key',
+                                                         None)  # remove subscription_key property from notification
+                                        notification_record = notifications.make_notification(account, subscription_type,
+                                                                                                  notification)                                            
+                            if notification_record:
+                                logger.spew("Storing NOTIFICATION: {} - {} - {}".format(account, notification_record, subscription_type))
+                                db_queues.add(subscription_type_actual, userId, notificationId, notification_record, 0,
                                                   int(time.time() + notification_timeout), session=dbsession)
                         except Exception as err:
                             import traceback
@@ -1387,6 +1352,8 @@ def monitor_func(**kwargs):
                         config_cycle_timer = int(kwargs['cycle_timers'][watcher])
                         if config_cycle_timer < 0:
                             the_cycle_timer = abs(int(config_cycle_timer))
+                        elif config_cycle_timer == 0:
+                            watchers[watcher]['enabled'] = False
                         elif config_cycle_timer < min_cycle_timer:
                             logger.warn("configured cycle timer for handler (" + str(
                                 watcher) + ") is less than the allowed min (" + str(
@@ -1407,25 +1374,27 @@ def monitor_func(**kwargs):
 
                 watchers[watcher]['initialized'] = True
 
-            if watcher not in watcher_threads:
-                if watchers[watcher]['taskType']:
-                    # spin up a generic task watcher
-                    logger.debug("starting generic task thread")
-                    watcher_threads[watcher] = threading.Thread(target=watcher_func, args=[watcher], kwargs={})
-                    watcher_threads[watcher].start()
-                else:
-                    # spin up a specific looping watcher thread
-                    watcher_threads[watcher] = threading.Thread(target=watchers[watcher]['handler'],
-                                                                args=watchers[watcher]['args'],
-                                                                kwargs={'mythread': watchers[watcher]})
-                    watcher_threads[watcher].start()
+            if watchers[watcher].get('enabled', True):
+                if watcher not in watcher_threads:
+                    if watchers[watcher]['taskType']:
+                        # spin up a generic task watcher
+                        logger.debug("starting generic task thread")
+                        watcher_threads[watcher] = threading.Thread(target=watcher_func, args=[watcher], kwargs={})
+                        watcher_threads[watcher].start()
+                    else:
+                        # spin up a specific looping watcher thread
+                        watcher_threads[watcher] = threading.Thread(target=watchers[watcher]['handler'],
+                                                                    args=watchers[watcher]['args'],
+                                                                    kwargs={'mythread': watchers[watcher]})
+                        watcher_threads[watcher].start()
 
-            all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
-            if not all_ready:
-                logger.info("simplequeue service not yet ready, will retry")
-            elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
-                rc = schedule_watcher(watcher)
-
+                all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
+                if not all_ready:
+                    logger.info("simplequeue service not yet ready, will retry")
+                elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
+                    rc = schedule_watcher(watcher)
+            else:
+                logger.debug("watcher '{}' explicitly disabled in config".format(watcher))    
     except Exception as err:
         logger.error(str(err))
     finally:
@@ -1476,7 +1445,7 @@ class CatalogService(ApiService):
 
         self.register_handler(LifeCycleStages.post_db, self._init_object_storage, {})
         self.register_handler(LifeCycleStages.post_register, self._init_policies, {})
-
+        
     def _init_object_storage(self):
         try:
             did_init = object_store.initialize(self.configuration, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY], allow_legacy_fallback=True)

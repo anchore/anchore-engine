@@ -55,6 +55,8 @@ def default_monitor_func(**kwargs):
                         config_cycle_timer = int(kwargs['cycle_timers'][monitor_name])
                         if config_cycle_timer < 0:
                             the_cycle_timer = abs(int(config_cycle_timer))
+                        elif config_cycle_timer == 0:
+                            my_monitors[monitor_name]['enabled'] = False
                         elif config_cycle_timer < min_cycle_timer:
                             logger.warn("configured cycle timer for handler ("+str(monitor_name)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
                             the_cycle_timer = min_cycle_timer
@@ -72,19 +74,22 @@ def default_monitor_func(**kwargs):
 
         # handle the thread (re)starters here
         for monitor_name in list(my_monitors.keys()):
-            start_thread = False
-            if monitor_name not in monitor_threads:
-                start_thread = True
-            else:
-                if not monitor_threads[monitor_name].isAlive():
-                    logger.debug("thread stopped - restarting: " + str(monitor_name))
-                    monitor_threads[monitor_name].join()
+            if my_monitors[monitor_name].get('enabled', True):
+                start_thread = False
+                if monitor_name not in monitor_threads:
                     start_thread = True
+                else:
+                    if not monitor_threads[monitor_name].isAlive():
+                        logger.debug("thread stopped - restarting: " + str(monitor_name))
+                        monitor_threads[monitor_name].join()
+                        start_thread = True
 
-            if start_thread:
-                monitor_threads[monitor_name] = threading.Thread(target=my_monitors[monitor_name]['handler'], args=my_monitors[monitor_name]['args'], kwargs={'mythread': my_monitors[monitor_name]})
-                logger.debug("starting up monitor_thread: " + str(monitor_name))
-                monitor_threads[monitor_name].start()
+                if start_thread:
+                    monitor_threads[monitor_name] = threading.Thread(target=my_monitors[monitor_name]['handler'], args=my_monitors[monitor_name]['args'], kwargs={'mythread': my_monitors[monitor_name]})
+                    logger.debug("starting up monitor_thread: " + str(monitor_name))
+                    monitor_threads[monitor_name].start()
+            else:
+                logger.debug("monitor '{}' explicitly disabled in config".format(monitor_name))
 
     except Exception as err:
         logger.error(str(err))
