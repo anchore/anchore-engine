@@ -44,6 +44,14 @@ class AnalyzeImageFail(Event):
         super(AnalyzeImageFail, self).__init__(user_id=user_id, level='ERROR', message='Failed to analyze image', resource_id=image_digest, details=error)
 
 
+class ImageAnalysisFail(Event):
+    __event_type__ = 'image_analysis_fail'
+    __resource_type__ = _image_digest_resource_type
+
+    def __init__(self, user_id, image_digest, error=None):
+        super(ImageAnalysisFail, self).__init__(user_id=user_id, level='ERROR', message='Failed to analyze image', resource_id=image_digest, details=error)
+        
+
 class ArchiveAnalysisFail(Event):
     __event_type__ = 'archive_analysis_fail'
     __resource_type__ = _image_digest_resource_type

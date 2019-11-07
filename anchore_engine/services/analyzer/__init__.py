@@ -43,7 +43,7 @@ def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_
 def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
     ret_analyze = {}
     ret_query = {}
-
+    
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
         tmpdir = localconfig['tmp_dir']
@@ -85,7 +85,10 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     global servicename #current_avg, current_avg_count
 
     timer = int(time.time())
-    event = None
+    analysis_events = []
+    #event = None
+    userId = None
+    imageDigest = None
     try:
         logger.debug('dequeued object: {}'.format(qobj))
 
@@ -121,7 +124,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             try:
                 image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
             except AnchoreException as e:
-                event = events.AnalyzeImageFail(user_id=userId, image_digest=imageDigest, error=e.to_dict())
+                event = events.ImageAnalysisFail(user_id=userId, image_digest=imageDigest, error=e.to_dict())
+                analysis_events.append(event)
                 raise
 
             imageId = None
@@ -136,6 +140,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             except Exception as e:
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
                 event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                analysis_events.append(event)
                 raise err
 
             if rc:
@@ -190,6 +195,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 except Exception as err:
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
                     event = events.LoadAnalysisFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
+                    analysis_events.append(event)
                     raise newerr
 
                 logger.debug("updating image catalog record analysis_status")
@@ -223,11 +229,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
                         # new method
                         npayload['subscription_type'] = 'analysis_update'
-                        success_event = events.AnalyzeImageSuccess(user_id=userId, full_tag=fulltag, data=npayload)
-                        try:
-                            catalog_client.add_event(success_event)
-                        except:
-                            logger.error('Ignoring error creating analysis success event')
+                        event = events.AnalyzeImageSuccess(user_id=userId, full_tag=fulltag, data=npayload)
+                        analysis_events.append(event)
                             
                 except Exception as err:
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
@@ -235,6 +238,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             else:
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause='Invalid response from catalog API - {}'.format(str(rc)))
                 event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                analysis_events.append(event)
                 raise err
 
             logger.info("analysis complete: " + str(userId) + " : " + str(imageDigest))
@@ -243,16 +247,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             try:
                 run_time = float(time.time() - timer)
-                #current_avg_count = current_avg_count + 1.0
-                #new_avg = current_avg + ((run_time - current_avg) / current_avg_count)
-                #current_avg = new_avg
 
                 anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="success")
-                #anchore_engine.subsys.metrics.counter_inc('anchore_images_analyzed_total')
-
-                #localconfig = anchore_engine.configuration.localconfig.get_config()
-                #service_record = {'hostid': localconfig['host_id'], 'servicename': servicename}
-                #anchore_engine.subsys.servicestatus.set_status(service_record, up=True, available=True, detail={'avg_analysis_time_sec': current_avg, 'total_analysis_count': current_avg_count}, update_db=True)
 
             except Exception as err:
                 logger.warn(str(err))
@@ -265,12 +261,17 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             image_record['analysis_status'] = anchore_engine.subsys.taskstate.fault_state('analyze')
             image_record['image_status'] = anchore_engine.subsys.taskstate.fault_state('image_status')
             rc = catalog_client.update_image(imageDigest, image_record)
+
+            if userId and imageDigest:
+                event = events.AnalyzeImageFail(user_id=userId, image_digest=imageDigest, error=str(err))
+                analysis_events.append(event)
         finally:
-            if event:
-                try:
-                    catalog_client.add_event(event)
-                except:
-                    logger.error('Ignoring error creating analysis failure event')
+            if analysis_events:
+                for event in analysis_events:
+                    try:
+                        catalog_client.add_event(event)
+                    except:
+                        logger.error('Ignoring error sending event')
 
 
     except Exception as err:

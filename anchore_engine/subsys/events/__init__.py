@@ -11,6 +11,7 @@ from .images import ImageVulnerabilityUpdate
 from .images import ImagePolicyEvalUpdate
 from .images import AnalyzeImageSuccess
 from .images import AnalyzeImageFail
+from .images import ImageAnalysisFail
 from .images import ArchiveAnalysisFail
 from .images import LoadAnalysisFail
 from .images import ImageArchived
