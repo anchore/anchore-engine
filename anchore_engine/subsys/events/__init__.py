@@ -2,7 +2,7 @@
 Holds event definitions to be used by services for generating events
 """
 
-from .common import Event
+from .common import Event, UserEvent, SystemEvent
 from .feeds import FeedSyncStart
 from .feeds import FeedSyncComplete
 from .feeds import FeedSyncFail

@@ -1107,10 +1107,10 @@ def handle_notifications(*args, **kwargs):
                                                          None)  # remove subscription_key property from notification
                                         notification_record = notifications.make_notification(account, subscription_type,
                                                                                                   notification)                                            
-                            if notification_record:
-                                logger.spew("Storing NOTIFICATION: {} - {} - {}".format(account, notification_record, subscription_type))
-                                db_queues.add(subscription_type_actual, userId, notificationId, notification_record, 0,
-                                                  int(time.time() + notification_timeout), session=dbsession)
+                                if notification_record:
+                                    logger.spew("Storing NOTIFICATION: {} - {} - {}".format(account, notification_record, subscription_type))
+                                    db_queues.add(subscription_type_actual, userId, notificationId, notification_record, 0,
+                                                      int(time.time() + notification_timeout), session=dbsession)
                         except Exception as err:
                             import traceback
                             traceback.print_exc()

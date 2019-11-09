@@ -3515,6 +3515,8 @@ definitions:
                 type: string
           type:
             type: string
+          category_type:
+            type: string
           level:
             type: string
           message:

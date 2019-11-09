@@ -1016,6 +1016,44 @@ def db_upgrade_010_011():
     fixed_artifacts_upgrade_010_011()
     update_users_010_011()
 
+def event_category_type_upgrade_011_012():
+    """
+    Runs upgrade to add the 'category_type' column to events records
+
+    :return:
+    """
+
+    from anchore_engine.db import session_scope
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    new_columns = [
+        {
+            'table_name': 'events',
+            'columns': [
+                Column('category_type', String),
+            ]
+        }
+    ]
+
+    log.err("creating new table columns")
+    for table in new_columns:
+        for column in table['columns']:
+            log.err("creating new column ({}) in table ({})".format(column.name, table.get('table_name', "")))
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
+            except Exception as e:
+                log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+                raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
+
+    # populate new column
+    rc = engine.execute("UPDATE events set category_type='system' where category_type is null")
+    
+def db_upgrade_011_012():
+    event_category_type_upgrade_011_012()
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -1029,5 +1067,6 @@ upgrade_functions = (
     (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ]),
     (('0.0.8', '0.0.9'), [ db_upgrade_008_009 ]),
     (('0.0.9', '0.0.10'), [ db_upgrade_009_010 ]),
-    (('0.0.10', '0.0.11'), [ db_upgrade_010_011 ])
+    (('0.0.10', '0.0.11'), [ db_upgrade_010_011 ]),
+    (('0.0.11', '0.0.12'), [ db_upgrade_011_012 ])
 )

@@ -7,6 +7,7 @@ from anchore_engine.subsys.servicestatus import get_my_service_record
 class Event(object):
     __event_type__ = None
     __resource_type__ = None
+    __category_type__ = "system"
 
     def __init__(self, user_id, level, message, details, request_id=None, resource_id=None):
         self.user_id = user_id
@@ -24,6 +25,7 @@ class Event(object):
     def to_dict(self):
         event_dict = dict()
         event_dict['type'] = self.__event_type__
+        event_dict['category'] = self.__category_type__
         event_dict['level'] = self.level
         event_dict['message'] = self.message
         event_dict['details'] = self.details
@@ -39,3 +41,10 @@ class Event(object):
 
     def describe(self):
         return 'event: {}, resource type: {}'.format(self.__event_type__, self.__resource_type__)
+
+class SystemEvent(Event):
+    __category_type__ = "system"
+
+class UserEvent(Event):
+    __category_type__ = "user"
+

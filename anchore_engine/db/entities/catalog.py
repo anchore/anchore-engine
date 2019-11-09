@@ -111,6 +111,7 @@ class Event(Base, UtilMixin):
     resource_user_id = Column(String, nullable=True)
     resource_id = Column(String, nullable=True)
     resource_type = Column(String, nullable=True)
+    category_type = Column(String, nullable=True)
     source_servicename = Column(String, nullable=True)
     source_base_url = Column(String, nullable=True)
     source_hostid = Column(String, nullable=True)

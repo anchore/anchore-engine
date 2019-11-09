@@ -1,10 +1,10 @@
-from .common import Event
+from .common import Event, UserEvent, SystemEvent
 
 _service_resource_type = 'service'
 _plugin_resource_type = 'plugin'
 
 
-class ServiceOrphanedEvent(Event):
+class ServiceOrphanedEvent(SystemEvent):
     __event_type__ = 'service_orphaned'
     __resource_type__ = _service_resource_type
 
@@ -13,7 +13,7 @@ class ServiceOrphanedEvent(Event):
                                                    details={'service_name': name, 'host_id': host, 'cause': cause})
 
 
-class ServiceDownEvent(Event):
+class ServiceDownEvent(SystemEvent):
     __event_type__ = 'service_down'
     __resource_type__ = _service_resource_type
 
@@ -22,7 +22,7 @@ class ServiceDownEvent(Event):
                                                    details={'service_name': name, 'host_id': host, 'cause': cause})
 
 
-class ServiceRemovedEvent(Event):
+class ServiceRemovedEvent(SystemEvent):
     __event_type__ = 'service_removed'
     __resource_type__ = _service_resource_type
 
@@ -31,7 +31,7 @@ class ServiceRemovedEvent(Event):
                                                    details={'service_name': name, 'host_id': host, 'cause': cause})
 
 
-class ServiceAuthzPluginHealthCheckFail(Event):
+class ServiceAuthzPluginHealthCheckFail(SystemEvent):
     __event_type__ = 'authz_plugin_healthcheck_failed'
     __resource_type__ = _service_resource_type
 

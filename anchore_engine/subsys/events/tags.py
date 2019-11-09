@@ -1,9 +1,9 @@
-from anchore_engine.subsys.events import Event
+from anchore_engine.subsys.events import Event, UserEvent, SystemEvent
 
 _tag_resource_type = 'tag'
 
 
-class TagManifestParseFail(Event):
+class TagManifestParseFail(SystemEvent):
     __event_type__ = 'tag_manifest_parse_fail'
     __resource_type__ = _tag_resource_type
 

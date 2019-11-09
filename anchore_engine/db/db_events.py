@@ -172,6 +172,7 @@ def _dict_to_db(msg):
         db_event.resource_type = event_msg['resource'].get('type', None)
 
     db_event.type = event_msg['type']
+    db_event.category_type = event_msg['category']
     db_event.level = event_msg['level']
     db_event.message = event_msg['message']
     db_event.details = event_msg.get('details', {})

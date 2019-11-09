@@ -1,9 +1,9 @@
-from .common import Event
+from .common import Event, UserEvent, SystemEvent
 
 _repo_resource_type = 'repository'
 
 
-class ListTagsFail(Event):
+class ListTagsFail(SystemEvent):
     __event_type__ = 'list_tags_fail'
     __resource_type__ = _repo_resource_type
 

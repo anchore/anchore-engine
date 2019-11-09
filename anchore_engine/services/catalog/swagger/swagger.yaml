@@ -917,6 +917,11 @@ paths:
         type: string
         description: ""
         required: false
+      - name: category_type
+        in: query
+        type: string
+        description: ""
+        required: false
       - name: resource_id
         in: query
         type: string

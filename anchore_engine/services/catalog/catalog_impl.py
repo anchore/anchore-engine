@@ -678,6 +678,9 @@ def events(dbsession, request_inputs, bodycontent=None):
             if params.get('resource_type', None):
                 dbfilter['resource_type'] = params.get('resource_type')
 
+            if params.get('category_type', None):
+                dbfilter['category_type'] = params.get('category_type')
+
             if params.get('resource_id', None):
                 dbfilter['resource_id'] = params.get('resource_id')
 

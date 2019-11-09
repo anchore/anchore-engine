@@ -1,9 +1,9 @@
-from .common import Event
+from .common import Event, UserEvent, SystemEvent
 
 _feeds_resource_type = 'feeds'
 
 
-class FeedSyncStart(Event):
+class FeedSyncStart(SystemEvent):
     __event_type__ = 'feed_sync_start'
     __resource_type__ = _feeds_resource_type
 
@@ -11,7 +11,7 @@ class FeedSyncStart(Event):
         super(FeedSyncStart, self).__init__(user_id='admin', level='INFO', message='Feed sync started', details={'sync_feed_types': groups})
 
 
-class FeedSyncComplete(Event):
+class FeedSyncComplete(SystemEvent):
     __event_type__ = 'feed_sync_complete'
     __resource_type__ = _feeds_resource_type
 
@@ -19,7 +19,7 @@ class FeedSyncComplete(Event):
         super(FeedSyncComplete, self).__init__(user_id='admin', level='INFO', message='Feed sync completed', details={'sync_feed_types': groups})
 
 
-class FeedSyncFail(Event):
+class FeedSyncFail(SystemEvent):
     __event_type__ = 'feed_sync_fail'
     __resource_type__ = _feeds_resource_type
 
