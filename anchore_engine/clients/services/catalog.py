@@ -254,12 +254,12 @@ class CatalogClient(InternalServiceClient):
 
         return self.call_api(http.anchy_post, 'events', body=event.to_json())
 
-    def get_events(self, source_servicename=None, source_hostid=None, resource_type=None, category_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
+    def get_events(self, source_servicename=None, source_hostid=None, resource_type=None, category=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
         query_params = {
             'source_servicename': source_servicename,
             'source_hostid': source_hostid,
             'resource_type': resource_type,
-            'category_type': category_type,            
+            'category': category,
             'resource_id': resource_id,
             'level': level,
             'since': since,

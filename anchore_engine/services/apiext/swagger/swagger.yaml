@@ -3515,7 +3515,7 @@ definitions:
                 type: string
           type:
             type: string
-          category_type:
+          category:
             type: string
           level:
             type: string

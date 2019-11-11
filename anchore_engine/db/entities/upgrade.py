@@ -1016,9 +1016,9 @@ def db_upgrade_010_011():
     fixed_artifacts_upgrade_010_011()
     update_users_010_011()
 
-def event_category_type_upgrade_011_012():
+def event_category_upgrade_011_012():
     """
-    Runs upgrade to add the 'category_type' column to events records
+    Runs upgrade to add the 'category' column to events records
 
     :return:
     """
@@ -1031,7 +1031,7 @@ def event_category_type_upgrade_011_012():
         {
             'table_name': 'events',
             'columns': [
-                Column('category_type', String),
+                Column('category', String),
             ]
         }
     ]
@@ -1049,10 +1049,10 @@ def event_category_type_upgrade_011_012():
                 raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
 
     # populate new column
-    rc = engine.execute("UPDATE events set category_type='system' where category_type is null")
+    rc = engine.execute("UPDATE events set category='system' where category is null")
     
 def db_upgrade_011_012():
-    event_category_type_upgrade_011_012()
+    event_category_upgrade_011_012()
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.

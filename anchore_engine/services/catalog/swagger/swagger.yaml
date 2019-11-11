@@ -917,7 +917,7 @@ paths:
         type: string
         description: ""
         required: false
-      - name: category_type
+      - name: category
         in: query
         type: string
         description: ""
