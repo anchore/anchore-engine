@@ -132,9 +132,9 @@ jobs:
     - run:
         name: build Docker image
         command: |
-          # CLI_COMMIT=$(git ls-remote git@github.com:anchore/anchore-cli "refs/heads/${CIRCLE_BRANCH}" | awk '{ print $1 }')
+          CLI_COMMIT=$(git ls-remote git@github.com:anchore/anchore-cli "refs/heads/${CIRCLE_BRANCH}" | awk '{ print $1 }')
           # Get the commit sha for latest CLI commit tag. Useful for engine releases that don't include a cli release
-          CLI_COMMIT=$(git ls-remote --tags git://github.com/anchore/anchore-cli.git | sort -t '/' -k 3 -V | tail -n1 | awk '{print $1}')
+          #CLI_COMMIT=$(git ls-remote --tags git://github.com/anchore/anchore-cli.git | sort -t '/' -k 3 -V | tail -n1 | awk '{print $1}')
           docker build --build-arg ANCHORE_COMMIT="$CIRCLE_SHA1" --build-arg CLI_COMMIT="$CLI_COMMIT" -t "${IMAGE_NAME}:ci" -f ./Dockerfile .
     - run:
         name: Save Docker image
