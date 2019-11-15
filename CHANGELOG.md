@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 (2019-11-15)
+
++ Fix - Remove failing (deprecated) code block from periodic vulnerability scan - Fixes #294
++ Fix - Address issue where the gate is incorrectly triggering when params are meant to filter by filename or content regex name.  Fixes #290.
+
 ## 0.5.1 (2019-10-10)
 
 + Added - Array support for the id param in /query/vulnerabilities and a namespace parameter for same route. Fixes #278.
