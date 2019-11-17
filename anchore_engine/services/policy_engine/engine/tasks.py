@@ -21,7 +21,7 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
-from anchore_engine.subsys.events import FeedSyncStarted, FeedSyncCompleted, FeedSyncFailed
+from anchore_engine.subsys.events import FeedSyncTaskStarted, FeedSyncTaskCompleted, FeedSyncTaskFailed
 from anchore_engine.subsys import identities
 
 # A hack to get admin credentials for executing api ops
@@ -184,7 +184,7 @@ class FeedsUpdateTask(IAsyncTask):
             catalog_client = internal_client_for(CatalogClient, userId=None)
 
         try:
-            catalog_client.add_event(FeedSyncStarted(groups=self.feeds if self.feeds else 'all'))
+            catalog_client.add_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'))
         except:
             log.exception('Ignoring event generation error before feed sync')
 
@@ -196,7 +196,7 @@ class FeedsUpdateTask(IAsyncTask):
             f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
             f.vuln_flush_fn = FeedsUpdateTask.flush_vulnerability_matches
 
-            updated_dict = f.sync(to_sync=self.feeds, full_flush=self.full_flush)
+            updated_dict = f.sync(to_sync=self.feeds, full_flush=self.full_flush, catalog_client=catalog_client)
 
             log.info('Feed sync complete. Results = {}'.format(updated_dict))
             return updated_dict
@@ -209,9 +209,9 @@ class FeedsUpdateTask(IAsyncTask):
             # log feed sync event
             try:
                 if error:
-                    catalog_client.add_event(FeedSyncFailed(groups=self.feeds if self.feeds else 'all', error=error))
+                    catalog_client.add_event(FeedSyncTaskFailed(groups=self.feeds if self.feeds else 'all', error=error))
                 else:
-                    catalog_client.add_event(FeedSyncCompleted(groups=self.feeds if self.feeds else 'all'))
+                    catalog_client.add_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'))
             except:
                 log.exception('Ignoring event generation error after feed sync')
 

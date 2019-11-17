@@ -7,7 +7,8 @@ _image_tag_resource_type = 'image_tag'
 _image_reference_type = 'image_reference' # Input is a valid image reference, may be tag or digest
 _repo_resource_type = 'repository'
 _feeds_resource_type = 'feeds'
-
+_feed_resource_type = 'feed'
+_feed_group_resource_type = 'feed_group'
 
 class SystemCategory(EventBase):
     """
@@ -206,32 +207,88 @@ class SystemFeedsSubcategory(SystemCategory):
     __subcategory__ = CategoryDescriptor(name='feeds', description='Events from data feed operations')
 
 
-class FeedSyncStarted(SystemFeedsSubcategory):
+class FeedSyncTaskStarted(SystemFeedsSubcategory):
     __event_type__ = 'sync.started'
     __resource_type__ = _feeds_resource_type
-    __message__ = 'Feed sync started'
+    __message__ = 'Feeds sync task started'
 
     def __init__(self, groups):
         super().__init__(user_id='admin', details={'sync_feed_types': groups})
 
 
-class FeedSyncCompleted(SystemFeedsSubcategory):
+class FeedSyncTaskCompleted(SystemFeedsSubcategory):
     __event_type__ = 'sync.completed'
     __resource_type__ = _feeds_resource_type
-    __message__ = 'Feed sync completed'
+    __message__ = 'Feeds sync task completed'
 
     def __init__(self, groups):
         super().__init__(user_id='admin', details={'sync_feed_types': groups})
 
 
-class FeedSyncFailed(SystemFeedsSubcategory):
+class FeedSyncTaskFailed(SystemFeedsSubcategory):
     __event_type__ = 'sync.failed'
     __resource_type__ = _feeds_resource_type
     __level__ = EventLevel.ERROR
-    __message__ = 'Feed sync failed'
+    __message__ = 'Feeds sync task failed'
 
     def __init__(self, groups, error):
         super().__init__(user_id='admin', details={'cause': str(error), 'sync_feed_types': groups})
+
+
+class FeedSyncStarted(SystemFeedsSubcategory):
+    __event_type__ = 'sync.feed_started'
+    __resource_type__ = _feed_resource_type
+    __message__ = 'Feed sync started'
+
+    def __init__(self, feed):
+        super().__init__(user_id='admin', resource_id=feed, details=None)
+
+
+class FeedSyncCompleted(SystemFeedsSubcategory):
+    __event_type__ = 'sync.feed_completed'
+    __resource_type__ = _feed_resource_type
+    __message__ = 'Feed sync completed'
+
+    def __init__(self, feed):
+        super().__init__(user_id='admin', resource_id=feed, details=None)
+
+
+class FeedSyncFailed(SystemFeedsSubcategory):
+    __event_type__ = 'sync.feed_failed'
+    __resource_type__ = _feed_resource_type
+    __level__ = EventLevel.ERROR
+    __message__ = 'Feed sync failed'
+
+    def __init__(self, feed, error):
+        super().__init__(user_id='admin', resource_id=feed, details={'cause': str(error)})
+
+
+class FeedGroupSyncStarted(SystemFeedsSubcategory):
+    __event_type__ = 'sync.group_started'
+    __resource_type__ = _feed_group_resource_type
+    __message__ = 'Feed group sync started'
+
+    def __init__(self, feed, group):
+        super().__init__(user_id='admin', resource_id=feed + '/' + group, details=None)
+
+
+class FeedGroupSyncCompleted(SystemFeedsSubcategory):
+    __event_type__ = 'sync.group_completed'
+    __resource_type__ = _feed_group_resource_type
+    __message__ = 'Feed group sync completed'
+
+    def __init__(self, feed, group, result=None):
+        super().__init__(user_id='admin', resource_id=feed + '/' + group, details={'result': result})
+
+
+class FeedGroupSyncFailed(SystemFeedsSubcategory):
+    __event_type__ = 'sync.group_failed'
+    __resource_type__ = _feed_group_resource_type
+    __level__ = EventLevel.ERROR
+    __message__ = 'Feed group sync failed'
+
+    def __init__(self, feed, group, error):
+        super().__init__(user_id='admin', resource_id=feed + '/' + group, details={'cause': str(error)})
 
 
 class UserPolicySubcategory(UserCategory):

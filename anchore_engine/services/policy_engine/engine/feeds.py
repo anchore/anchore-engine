@@ -7,6 +7,7 @@ data. Additionally, any new feed will require new code to be able to consume it 
 an update to the feed handling code is ok to be required as well.
 
 """
+import copy
 import json
 import datetime
 import re
@@ -20,7 +21,9 @@ from anchore_engine.db import FixedArtifact, Vulnerability, GemMetadata, NpmMeta
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.clients.feeds.feed_service import get_client as get_feeds_client, InsufficientAccessTierError, InvalidCredentialsError
 from anchore_engine.util.langpack import convert_langversionlist_to_semver
+from anchore_engine.subsys.events import EventBase, FeedSyncStarted, FeedSyncFailed, FeedSyncCompleted, FeedGroupSyncCompleted, FeedGroupSyncFailed, FeedGroupSyncStarted
 from anchore_engine.utils import CPE
+from anchore_engine.clients.services.catalog import CatalogClient
 
 log = get_logger()
 
@@ -1057,7 +1060,7 @@ class AnchoreServiceFeed(DataFeed):
             db.rollback()
             raise
 
-    def sync(self, group=None, item_processing_fn=None, full_flush=False, flush_helper_fn=None):
+    def sync(self, group=None, item_processing_fn=None, full_flush=False, flush_helper_fn=None, event_client=None):
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -1085,6 +1088,8 @@ class AnchoreServiceFeed(DataFeed):
         for g in self.metadata.groups:
             log.info('Processing group: {}'.format(g.name))
             if not group or g.name == group:
+                _notify_event(FeedGroupSyncStarted(feed=self.__feed_name__, group=g.name), event_client)
+
                 if full_flush:
                     log.info('Performing group data flush prior to sync')
                     self._flush_group(g, flush_helper_fn)
@@ -1092,9 +1097,11 @@ class AnchoreServiceFeed(DataFeed):
                 try:
                     new_data = self._sync_group(g, full_flush=full_flush)  # Each group sync is a transaction
                     result['groups'].append(new_data)
+                    _notify_event(FeedGroupSyncCompleted(feed=self.__feed_name__, group=g.name, result=new_data), event_client)
                 except Exception as e:
                     log.exception('Failed syncing group data for {}/{}'.format(self.__feed_name__, g.name))
                     failed_count += 1
+                    _notify_event(FeedGroupSyncFailed(feed=self.__feed_name__, group=g.name, error=e), event_client)
             else:
                 log.info('Skipping group {} since not selected'.format(g))
 
@@ -1112,7 +1119,9 @@ class AnchoreServiceFeed(DataFeed):
             raise
 
         result['total_time_seconds'] = sync_time
-        result['status'] = 'success' if failed_count == 0 else 'failure'
+        if failed_count == 0:
+            result['status'] = 'success' if failed_count == 0 else 'failure'
+
         return result
 
     def group_by_name(self, group_name):
@@ -1310,7 +1319,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         db.flush()
 
-    def sync(self, group=None, item_processing_fn=None, full_flush=False, flush_helper_fn=None):
+    def sync(self, group=None, item_processing_fn=None, full_flush=False, flush_helper_fn=None, event_client=None):
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -1343,17 +1352,21 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             for g in self.metadata.groups:
                 log.info('Processing group: {}'.format(g.name))
                 if not group or g.name == group:
+                    _notify_event(FeedGroupSyncStarted(feed=self.__feed_name__, group=g.name), event_client)
+
                     if full_flush:
                         log.info('Performing group data flush prior to sync')
                         self._flush_group(g, flush_helper_fn)
 
                     try:
                         new_data = self._sync_group(g, vulnerability_processing_fn=item_processing_fn, full_flush=full_flush)
-                        #updated_records[g.name] = new_data
                         result['groups'].append(new_data)
+
+                        _notify_event(FeedGroupSyncCompleted(feed=self.__feed_name__, group=g.name, result=new_data), event_client)
                     except Exception as e:
                         log.exception('Failed syncing group data for {}/{}'.format(self.__feed_name__, g.name))
                         groups_failed += 1
+                        _notify_event(FeedGroupSyncFailed(feed=self.__feed_name__, group=g.name, error=e), event_client)
                 else:
                     log.info('Group not selected for sync: {}. Skipping.'.format(g.name))
 
@@ -1772,7 +1785,7 @@ class DataFeeds(object):
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for VulnDB feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
-    def sync(self, to_sync=None, full_flush=False):
+    def sync(self, to_sync=None, full_flush=False, catalog_client=None):
         """
         Sync all feeds.
         :return:
@@ -1791,9 +1804,13 @@ class DataFeeds(object):
                 log.info('Syncing group metadata for vulnerabilities feed')
                 vuln_feed = self.vulnerabilities
                 vuln_feed.init_feed_meta_and_groups()
-            except:
+            except Exception as e:
                 log.exception('Cannot sync group metadata for vulnerabilities feed')
                 vuln_feed = None
+
+                _notify_event(FeedSyncStarted(feed=self.vulnerabilities.__feed_name__), catalog_client)
+                _notify_event(FeedSyncFailed(feed=self.vulnerabilities.__feed_name__, error=e), catalog_client)
+
 
         pkgs_feed = None
         if to_sync is None or 'packages' in to_sync:
@@ -1801,9 +1818,13 @@ class DataFeeds(object):
                 log.info('Syncing group metadata for packages feed')
                 pkgs_feed = self.packages
                 pkgs_feed.init_feed_meta_and_groups()
-            except:
+            except Exception as e:
                 log.exception('Cannot sync group metadata for packages feed')
                 pkgs_feed = None
+
+                _notify_event(FeedSyncStarted(feed=self.packages.__feed_name__), catalog_client)
+                _notify_event(FeedSyncFailed(feed=self.packages.__feed_name__, error=e), catalog_client)
+
 
         # don't sync nvd feeds anymore
         # nvd_feed = None
@@ -1823,9 +1844,13 @@ class DataFeeds(object):
                 log.info('Syncing group metadata for nvdv2 feed')
                 nvdV2_feed = self.nvdV2
                 nvdV2_feed.init_feed_meta_and_groups()
-            except:
+            except Exception as e:
                 log.exception('Cannot sync group metadata for nvdV2 feed')
                 nvdV2_feed = None
+
+                _notify_event(FeedSyncStarted(feed=self.nvdV2.__feed_name__), catalog_client)
+                _notify_event(FeedSyncFailed(feed=self.nvdV2.__feed_name__, error=e), catalog_client)
+
 
         snyk_feed = None
         if to_sync is None or 'snyk' in to_sync:
@@ -1844,20 +1869,32 @@ class DataFeeds(object):
                 log.info('Syncing group metadata for vulndb feed')
                 vulndb_feed = self.vulndb
                 vulndb_feed.init_feed_meta_and_groups()
-            except:
+            except Exception as e:
                 log.exception('Cannot sync group metadata for vulndb feed')
                 vulndb_feed = None
+
+                _notify_event(FeedSyncStarted(feed=self.vulndb.__feed_name__), catalog_client)
+                _notify_event(FeedSyncFailed(feed=self.vulndb.__feed_name__, error=e), catalog_client)
+
 
         # Perform the feed sync next
 
         if vuln_feed:
             t = time.time()
+
+            _notify_event(FeedSyncStarted(feed=vuln_feed.__feed_name__), catalog_client)
             try:
                 log.info('Syncing vulnerability feed')
+                result.append(vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn, event_client=catalog_client))
 
-                result.append(vuln_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn))
-            except:
+                if result[-1]['status'] == 'success':
+                    _notify_event(FeedSyncCompleted(feed=vuln_feed.__feed_name__), catalog_client)
+                else:
+                    _notify_event(FeedSyncFailed(feed=vuln_feed.__feed_name__, error=result[-1]['']), catalog_client)
+            except Exception as e:
                 log.exception('Failure updating the vulnerabilities feed')
+                _notify_event(FeedSyncFailed(feed='vulnerabilities', error=e), catalog_client)
+
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = vuln_feed.__feed_name__
@@ -1867,10 +1904,17 @@ class DataFeeds(object):
         if pkgs_feed:
             t = time.time()
             try:
+                _notify_event(FeedSyncStarted(feed=pkgs_feed.__feed_name__), catalog_client)
                 log.info('Syncing packages feed')
-                result.append(pkgs_feed.sync(full_flush=full_flush))
-            except:
+                result.append(pkgs_feed.sync(full_flush=full_flush, event_client=catalog_client))
+
+                if result[-1]['status'] == 'success':
+                    _notify_event(FeedSyncCompleted(feed=pkgs_feed.__feed_name__), catalog_client)
+                else:
+                    _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=result[-1]['']), catalog_client)
+            except Exception as e:
                 log.exception('Failure updating the packages feed')
+                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = pkgs_feed.__feed_name__
@@ -1894,11 +1938,18 @@ class DataFeeds(object):
         # switch to nvdv2 whether nvd or nvdv2 is configured
         if nvdV2_feed:
             t = time.time()
+            _notify_event(FeedSyncStarted(feed=nvdV2_feed.__feed_name__), catalog_client)
             try:
                 log.info('Syncing nvdv2 feed')
-                result.append(nvdV2_feed.sync(full_flush=full_flush))
-            except:
+                result.append(nvdV2_feed.sync(full_flush=full_flush, event_client=catalog_client))
+
+                if result[-1]['status'] == 'success':
+                    _notify_event(FeedSyncCompleted(feed=nvdV2_feed.__feed_name__), catalog_client)
+                else:
+                    _notify_event(FeedSyncFailed(feed=nvdV2_feed.__feed_name__, error=result[-1]['']), catalog_client)
+            except Exception as e:
                 log.exception('Failure updating the nvdv2 feed')
+                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = nvdV2_feed.__feed_name__
@@ -1907,11 +1958,18 @@ class DataFeeds(object):
 
         if snyk_feed:
             t = time.time()
+            _notify_event(FeedSyncStarted(feed=snyk_feed.__feed_name__), catalog_client)
             try:
                 log.info('Syncing snyk feed')
-                result.append(snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn))
-            except:
+                result.append(snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn, event_client=catalog_client))
+
+                if result[-1]['status'] == 'success':
+                    _notify_event(FeedSyncCompleted(feed=snyk_feed.__feed_name__), catalog_client)
+                else:
+                    _notify_event(FeedSyncFailed(feed=snyk_feed.__feed_name__, error=result[-1]['']), catalog_client)
+            except Exception as e:
                 log.exception('Failure updating the snyk feed')
+                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = snyk_feed.__feed_name__
@@ -1920,11 +1978,18 @@ class DataFeeds(object):
 
         if vulndb_feed:
             t = time.time()
+            _notify_event(FeedSyncStarted(feed=vulndb_feed.__feed_name__), catalog_client)
             try:
                 log.info('Syncing vulndb feed')
-                result.append(vulndb_feed.sync(full_flush=full_flush))
-            except:
+                result.append(vulndb_feed.sync(full_flush=full_flush, event_client=catalog_client))
+
+                if result[-1]['status'] == 'success':
+                    _notify_event(FeedSyncCompleted(feed=vulndb_feed.__feed_name__), catalog_client)
+                else:
+                    _notify_event(FeedSyncFailed(feed=vulndb_feed.__feed_name__, error=result[-1]['']), catalog_client)
+            except Exception as e:
                 log.exception('Failure updating the vulndb feed')
+                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = vulndb_feed.__feed_name__
@@ -2049,3 +2114,13 @@ class DataFeeds(object):
     @property
     def vulndb(self):
         return self._vulndbFeed_cls()
+
+
+def _notify_event(event: EventBase, client: CatalogClient):
+    """Send an event"""
+
+    if client:
+        try:
+            client.add_event(event)
+        except Exception as e:
+            log.warn('Error adding feed start event: {}'.format(e))

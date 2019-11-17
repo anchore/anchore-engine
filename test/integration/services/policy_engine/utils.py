@@ -118,14 +118,11 @@ class LocalTestDataEnvironment(object):
         LocalVulnerabilityFeed.__data_path__ = self.feeds_dir
         # LocalNvdFeed.__data_path__ = self.feeds_dir
         # LocalNvdFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
-        # LocalSnykFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
-        # LocalSnykFeed.__data_path__ = self.feeds_dir
 
 
         if up_to:
             LocalPackagesFeed.__source_cls__.limit_to_older_than(up_to)
             LocalVulnerabilityFeed.__source_cls__.limit_to_older_than(up_to)
-            # LocalSnykFeed.__source_cls__.limit_to_older_than(up_to)
             # LocalNvdFeed.__source_cls__.limit_to_older_than(up_to)
 
         DataFeeds._vulnerabilitiesFeed_cls = LocalVulnerabilityFeed
@@ -342,13 +339,3 @@ class LocalNvdFeed(VulnerabilityFeed):
         if not src:
             src = self.__source_cls__(self.__data_path__)
         super(LocalNvdFeed, self).__init__(metadata=metadata, src=src)
-
-
-class LocalSnykFeed(VulnerabilityFeed):
-    __source_cls__ = LocalFilesystemFeedClient
-    __data_path__ = None
-
-    def __init__(self, metadata=None, src=None):
-        if not src:
-            src = self.__source_cls__(self.__data_path__)
-        super(LocalSnykFeed, self).__init__(metadata=metadata, src=src)

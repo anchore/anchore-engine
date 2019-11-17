@@ -60,6 +60,7 @@ class FeedClient(IFeedClient):
         self.feed_url = endpoint
         self.group_url = self.feed_url + '/{feed}'
         self.group_data_url = self.group_url + '/{group}'
+        self.retry_count = 3
 
     def _map_error_to_exception(self, exc, username, url):
         if exc.response.status_code == 401:
@@ -77,7 +78,7 @@ class FeedClient(IFeedClient):
         url = base_url
         feeds = None
         try:
-            record = self.http_client.execute_request(requests.get, url)
+            record = self.http_client.execute_request(requests.get, url, retries=self.retry_count)
 
             if record['success']:
                 data = json.loads(record['text'])
@@ -101,7 +102,7 @@ class FeedClient(IFeedClient):
         base_url = self.group_url.format(feed=feed)
         url = base_url + (('?next_token=' + next_token) if next_token else '')
         try:
-            record = self.http_client.execute_request(requests.get, url)
+            record = self.http_client.execute_request(requests.get, url, retries=self.retry_count)
             if record['success']:
                 data = json.loads(record['text'])
                 if 'groups' in data:
@@ -143,7 +144,7 @@ class FeedClient(IFeedClient):
 
         logger.debug("data group url: " + str(url))
         try:
-            record = self.http_client.execute_request(requests.get, url)
+            record = self.http_client.execute_request(requests.get, url, retries=self.retry_count)
             if record['success']:
                 data = json.loads(record['text'])
                 if 'data' in data:
