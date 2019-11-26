@@ -776,8 +776,7 @@ def events(dbsession, request_inputs, bodycontent=None):
                 # Notification for the new event
                 try:
                     logger.debug("queueing event creation notification")
-                    npayload = {'event': return_object['event']}
-                    rc = notifications.queue_notification(userId, subscription_key=return_object['event']['level'], subscription_type='event_log', payload=npayload)
+                    rc = notifications.queue_notification(userId, subscription_key=return_object['event']['level'], subscription_type='event_log', payload=return_object)
                 except Exception as err:
                     logger.warn("failed to enqueue notification for event creation - exception: " + str(err))
 
