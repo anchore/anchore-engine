@@ -3,12 +3,13 @@ from anchore_engine.subsys.events import Event, SystemEvent, UserEvent
 _image_digest_resource_type = 'image_digest'
 _image_tag_resource_type = 'image_tag'
 _image_resource_type = 'image'
+_checks_resource_type = 'checks'
 
 # Image user category events
 
 class ImageVulnerabilityUpdate(UserEvent):
     __event_type__ = 'image_vuln_update'
-    __resource_type__ = _image_tag_resource_type
+    __resource_type__ = _checks_resource_type
 
     def __init__(self, user_id, full_tag, data={}):
         super(ImageVulnerabilityUpdate, self).__init__(user_id=user_id, level='INFO', message='Vulnerability update detected for image', resource_id=full_tag, details=data)
@@ -16,7 +17,7 @@ class ImageVulnerabilityUpdate(UserEvent):
 
 class ImagePolicyEvalUpdate(UserEvent):
     __event_type__ = 'image_policy_eval_update'
-    __resource_type__ = _image_tag_resource_type
+    __resource_type__ = _checks_resource_type
 
     def __init__(self, user_id, full_tag, data={}):
         super(ImagePolicyEvalUpdate, self).__init__(user_id=user_id, level='INFO', message='Policy evaluation update detected for image', resource_id=full_tag, details=data)
