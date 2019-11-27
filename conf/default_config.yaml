@@ -149,7 +149,7 @@ services:
       policy_eval: 3600
       vulnerability_scan: 14400
       analyzer_queue: 1
-      notifications: 30
+      notifications: ${ANCHORE_CATALOG_NOTIFICATION_INTERVAL_SEC}
       service_watcher: 15
       policy_bundle_sync: 300
       repo_watcher: 60
