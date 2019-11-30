@@ -1270,6 +1270,9 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
         except Exception as err:
             raise err
         curr_final_action = curr_evaluation_result.get('final_action', '').upper()
+        # TODO hack! Include image digest, needed for the downstream notifications handler
+        if 'image_digest' not in curr_evaluation_result:
+            curr_evaluation_result['image_digest'] = imageDigest
         
         # set up the newest evaluation
         evalId = hashlib.md5(':'.join([policyId, userId, imageDigest, fulltag, str(curr_final_action)]).encode('utf8')).hexdigest()
@@ -1289,6 +1292,9 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                 try:
                     last_evaluation_result = obj_store.get_document(userId, 'policy_evaluations', last_evaluation_record['evalId'])
                     last_final_action = last_evaluation_result['final_action'].upper()
+                    # TODO hack! Include image digest, needed for the downstream notifications handler
+                    if 'image_digest' not in last_evaluation_result:
+                        last_evaluation_result['image_digest'] = imageDigest
                 except:
                     logger.warn("no last eval record - skipping")
 
