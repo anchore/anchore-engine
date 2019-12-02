@@ -1492,7 +1492,7 @@ paths:
         type: string
         description: Filter events by a prefix match on the event type (e.g. "user.image.")
         required: false
-        pattern: '[a-z0-9-_.*]+'
+        pattern: '^[a-z0-9-_.*]+$'
       - name: resource_type
         in: query
         type: string
