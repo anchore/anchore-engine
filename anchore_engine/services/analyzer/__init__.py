@@ -139,7 +139,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 rc = catalog_client.put_document('analysis_data', imageDigest, image_data)
             except Exception as e:
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
-                event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                event = events.SaveAnalysisFailed(user_id=userId, image_digest=imageDigest, error=err.to_dict())
                 analysis_events.append(event)
                 raise err
 
@@ -194,7 +194,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
                 except Exception as err:
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
-                    event = events.LoadAnalysisFail(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
+                    event = events.PolicyEngineLoadAnalysisFailed(user_id=userId, image_digest=imageDigest, error=newerr.to_dict())
                     analysis_events.append(event)
                     raise newerr
 
@@ -237,7 +237,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             else:
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause='Invalid response from catalog API - {}'.format(str(rc)))
-                event = events.ArchiveAnalysisFail(user_id=userId, image_digest=imageDigest, error=err.to_dict())
+                event = events.SaveAnalysisFailed(user_id=userId, image_digest=imageDigest, error=err.to_dict())
                 analysis_events.append(event)
                 raise err
 
@@ -263,7 +263,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             rc = catalog_client.update_image(imageDigest, image_record)
 
             if userId and imageDigest:
-                event = events.AnalyzeImageFail(user_id=userId, image_digest=imageDigest, error=str(err))
+                event = events.UserAnalyzeImageFailed(user_id=userId, image_digest=imageDigest, error=str(err))
                 analysis_events.append(event)
         finally:
             if analysis_events:

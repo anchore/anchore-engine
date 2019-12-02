@@ -111,7 +111,6 @@ class Event(Base, UtilMixin):
     resource_user_id = Column(String, nullable=True)
     resource_id = Column(String, nullable=True)
     resource_type = Column(String, nullable=True)
-    category = Column(String, nullable=True)
     source_servicename = Column(String, nullable=True)
     source_base_url = Column(String, nullable=True)
     source_hostid = Column(String, nullable=True)
@@ -128,7 +127,8 @@ class Event(Base, UtilMixin):
                       Index('ix_resource_id', resource_id),
                       Index('ix_source_servicename', source_servicename),
                       Index('ix_source_hostid', source_hostid),
-                      Index('ix_level', level))
+                      Index('ix_level', level),
+                      Index('ix_type', type))
 
     def __repr__(self):
         return "generated_uuid='%s' level='%s' message='%s'" % (self.generated_uuid, self.level, self.message)

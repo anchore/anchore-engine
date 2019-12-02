@@ -917,11 +917,12 @@ paths:
         type: string
         description: ""
         required: false
-      - name: category
+      - name: event_type
         in: query
         type: string
-        description: ""
+        description: Filter events by a prefix match on the event type (e.g. "user.image.")
         required: false
+        pattern: '[a-z0-9-_.*]+'
       - name: resource_id
         in: query
         type: string

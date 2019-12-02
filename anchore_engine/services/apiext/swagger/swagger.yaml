@@ -1453,6 +1453,20 @@ paths:
             items:
               $ref: "#/definitions/AnchoreErrorCode"
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+  /event_types:
+    get:
+      tags:
+      - Events
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.events
+      operationId: list_event_types
+      x-anchore-authz-action: listEvents
+      summary: List Event Types
+      description: Returns list of event types in the category hierarchy
+      responses:
+        200:
+          description: List of event types
+          schema:
+            $ref: "#/definitions/EventTypesList"
   /events:
     get:
       tags:
@@ -1473,6 +1487,12 @@ paths:
         type: string
         description: Filter events by the originating host ID
         required: false
+      - name: event_type
+        in: query
+        type: string
+        description: Filter events by a prefix match on the event type (e.g. "user.image.")
+        required: false
+        pattern: '[a-z0-9-_.*]+'
       - name: resource_type
         in: query
         type: string
@@ -3984,3 +4004,51 @@ definitions:
         description: A list of line numbers in the file that matched the regex
         items:
           type: integer
+  EventTypesList:
+    type: array
+    description: Array of EventCategory objects
+    items:
+      $ref: "#/definitions/EventCategory"
+  EventCategory:
+    type: object
+    description: A collection of event subcategories
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      subcategories:
+        type: array
+        items:
+          $ref: "#/definitions/EventSubcategory"
+  EventSubcategory:
+    type: object
+    description: A collection of events related to each other
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      events:
+        type: array
+        items:
+          $ref: "#/definitions/EventDescription"
+  EventDescription:
+    type: object
+    description: A description of an event type
+    properties:
+      name:
+        type: string
+        description: The event type. The last component of the fully-qualified event_type (category.subcategory.event)
+      type:
+        type: string
+        description: The fully qualified event type as would be seen in the event payload
+      message:
+        type: string
+        description: The message associated with the event type
+      resource_type:
+        type: string
+        description: The type of resource this event is generated from
+
+
+

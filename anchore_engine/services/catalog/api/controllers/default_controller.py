@@ -321,13 +321,14 @@ def subscriptions_subscriptionId_delete(subscriptionId):
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def events_get(source_servicename=None, source_hostid=None, resource_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
+def events_get(source_servicename=None, source_hostid=None, resource_type=None, event_type=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
                                                              default_params={'source_servicename': source_servicename,
                                                                                         'source_hostid': source_hostid,
                                                                                         'resource_type': resource_type,
                                                                                         'resource_id': resource_id,
+                                                                                        'event_type': event_type,
                                                                                         'level': level,
                                                                                         'since': since,
                                                                                         'before': before,

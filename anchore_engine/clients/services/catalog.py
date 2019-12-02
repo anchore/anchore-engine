@@ -7,7 +7,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.common
 import anchore_engine.clients.services.common
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.events import Event
+from anchore_engine.subsys.events import EventBase
 from anchore_engine.clients.services.internal import InternalServiceClient
 
 
@@ -249,15 +249,16 @@ class CatalogClient(InternalServiceClient):
         return self.call_api(http.anchy_delete, 'system/registries/{registry}', path_params={'registry': registry})
 
     def add_event(self, event):
-        if not isinstance(event, Event):
+        if not isinstance(event, EventBase):
             raise TypeError('Invalid event definition')
 
         return self.call_api(http.anchy_post, 'events', body=event.to_json())
 
-    def get_events(self, source_servicename=None, source_hostid=None, resource_type=None, category=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
+    def get_events(self, source_servicename=None, source_hostid=None, event_type=None, resource_type=None, category=None, resource_id=None, level=None, since=None, before=None, page=None, limit=None):
         query_params = {
             'source_servicename': source_servicename,
             'source_hostid': source_hostid,
+            'event_type': event_type,
             'resource_type': resource_type,
             'category': category,
             'resource_id': resource_id,

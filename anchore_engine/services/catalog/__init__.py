@@ -290,10 +290,10 @@ def handle_service_watcher(*args, **kwargs):
                                         max_service_heartbeat_timer)
 
                                     # Trigger an event to log the down service
-                                    event = events.ServiceDownEvent(user_id=event_account, name=service['servicename'],
-                                                                        host=service['hostid'],
-                                                                        url=service['base_url'],
-                                                                        cause='no heartbeat from service in ({}) seconds'.format(
+                                    event = events.ServiceDowned(user_id=event_account, name=service['servicename'],
+                                                                 host=service['hostid'],
+                                                                 url=service['base_url'],
+                                                                 cause='no heartbeat from service in ({}) seconds'.format(
                                                                             max_service_heartbeat_timer))
                                 else:
                                     service_update_record['status'] = True
@@ -317,10 +317,10 @@ def handle_service_watcher(*args, **kwargs):
                                         service_update_record = None
                                         
                                         # Trigger an event to log the orphaned service, only on transition
-                                        event = events.ServiceRemovedEvent(user_id=event_account, name=removed_servicename,
-                                                                           host=removed_hostid,
-                                                                           url=removed_base_url,
-                                                                           cause='no heartbeat from service in ({}) seconds'.format(
+                                        event = events.ServiceRemoved(user_id=event_account, name=removed_servicename,
+                                                                      host=removed_hostid,
+                                                                      url=removed_base_url,
+                                                                      cause='no heartbeat from service in ({}) seconds'.format(
                                                                                max_service_cleanup_timer))
                                     except Exception as err:
                                         logger.warn("attempt to remove service {}/{} failed - exception: {}".format(service.get('hostid'), service.get('servicename'), err))
@@ -336,10 +336,10 @@ def handle_service_watcher(*args, **kwargs):
 
                                     if service['status_message'] != taskstate.orphaned_state('service_status'): 
                                         # Trigger an event to log the orphaned service, only on transition
-                                        event = events.ServiceOrphanedEvent(user_id=event_account, name=service['servicename'],
-                                                                            host=service['hostid'],
-                                                                            url=service['base_url'],
-                                                                            cause='no heartbeat from service in ({}) seconds'.format(
+                                        event = events.ServiceOrphaned(user_id=event_account, name=service['servicename'],
+                                                                       host=service['hostid'],
+                                                                       url=service['base_url'],
+                                                                       cause='no heartbeat from service in ({}) seconds'.format(
                                                                                 max_service_orphaned_timer))
 
                         except Exception as err:
@@ -430,8 +430,8 @@ def handle_repo_watcher(*args, **kwargs):
                 try:
                     curr_repotags = docker_registry.get_repo_tags(userId, image_info, registry_creds=registry_creds)
                 except AnchoreException as e:
-                    event = events.ListTagsFail(user_id=userId, registry=image_info.get('registry', None),
-                                                repository=image_info.get('repo', None), error=e.to_dict())
+                    event = events.ListTagsFailed(user_id=userId, registry=image_info.get('registry', None),
+                                                  repository=image_info.get('repo', None), error=e.to_dict())
                     raise e
 
                 autosubscribes = ['analysis_update']
@@ -452,7 +452,7 @@ def handle_repo_watcher(*args, **kwargs):
                                                                                              registry_lookup=True,
                                                                                              registry_creds=registry_creds)
                             except Exception as err:
-                                event = events.ImageRegistryLookupFail(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
+                                event = events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
                                 raise err
 
                             manifest = None
@@ -467,7 +467,7 @@ def handle_repo_watcher(*args, **kwargs):
                                 else:
                                     raise TagManifestNotFoundError(tag=fulltag, msg='No manifest from get_image_info')
                             except AnchoreException as e:
-                                event = events.TagManifestParseFail(user_id=userId, tag=fulltag, error=e.to_dict())
+                                event = events.TagManifestParseFailed(user_id=userId, tag=fulltag, error=e.to_dict())
                                 raise
 
                             with db.session_scope() as dbsession:
@@ -592,7 +592,7 @@ def handle_image_watcher(*args, **kwargs):
                                                                              registry_lookup=True,
                                                                              registry_creds=registry_creds)
                 except Exception as err:
-                    event = events.ImageRegistryLookupFail(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
+                    event = events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=fulltag, data=err.__dict__)
                     raise err
                 logger.spew("checking image: got registry info: " + str(image_info))
 
@@ -607,7 +607,7 @@ def handle_image_watcher(*args, **kwargs):
                     else:
                         raise TagManifestNotFoundError(tag=fulltag, msg='No manifest from get_image_info')
                 except AnchoreException as e:
-                    event = events.TagManifestParseFail(user_id=userId, tag=fulltag, error=e.to_dict())
+                    event = events.TagManifestParseFailed(user_id=userId, tag=fulltag, error=e.to_dict())
                     raise
 
                 try:

@@ -244,7 +244,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                 last_policy_bundle_digest = hashlib.sha256(anchore_engine.utils.ensure_bytes(json.dumps(last_policy_bundle_content, sort_keys=True))).hexdigest()
                 new_policy_bundle_digest = hashlib.sha256(anchore_engine.utils.ensure_bytes(json.dumps(policy_bundle, sort_keys=True))).hexdigest()            
                 if last_policy_bundle_digest != new_policy_bundle_digest:
-                    event = anchore_engine.subsys.events.ActivePolicyBundleContentChange(user_id=user_id, data={'policy_id': policyId, 'last_policy_bundle_digest': last_policy_bundle_digest, 'current_policy_bundle_digest': new_policy_bundle_digest})
+                    event = anchore_engine.subsys.events.ActivePolicyBundleContentChanged(user_id=user_id, data={'policy_id': policyId, 'last_policy_bundle_digest': last_policy_bundle_digest, 'current_policy_bundle_digest': new_policy_bundle_digest})
                     try:
                         anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
                     except:
@@ -270,7 +270,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                 if rc:
                     if policyId != last_active_policyId:
                         # a new policy is now active
-                        event = anchore_engine.subsys.events.ActivePolicyBundleIdChange(user_id=user_id, data={'last_policy_bundle_id': last_active_policyId, 'current_policy_bundle_id': policyId})
+                        event = anchore_engine.subsys.events.ActivePolicyBundleIdChanged(user_id=user_id, data={'last_policy_bundle_id': last_active_policyId, 'current_policy_bundle_id': policyId})
                         try:
                             anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
                         except:

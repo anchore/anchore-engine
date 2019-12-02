@@ -2,6 +2,7 @@ import json
 import hashlib
 import time
 import base64
+import re
 
 from dateutil import parser as dateparser
 
@@ -249,7 +250,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         try:
                             image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=True, registry_creds=registry_creds)
                         except Exception as err:
-                            fail_event = anchore_engine.subsys.events.ImageRegistryLookupFail(user_id=userId, image_pull_string=input_string, data=err.__dict__)
+                            fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=input_string, data=err.__dict__)
                             try:
                                 _add_event(fail_event, dbsession)
                             except:
@@ -352,7 +353,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                     try:
                         image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
                     except Exception as err:
-                        fail_event = anchore_engine.subsys.events.ImageRegistryLookupFail(user_id=userId, image_pull_string=input_string, data=err.__dict__)
+                        fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=input_string, data=err.__dict__)
                         try:
                             _add_event(fail_event, dbsession)
                         except:
@@ -678,9 +679,6 @@ def events(dbsession, request_inputs, bodycontent=None):
             if params.get('resource_type', None):
                 dbfilter['resource_type'] = params.get('resource_type')
 
-            if params.get('category', None):
-                dbfilter['category'] = params.get('category')
-
             if params.get('resource_id', None):
                 dbfilter['resource_id'] = params.get('resource_id')
 
@@ -731,7 +729,14 @@ def events(dbsession, request_inputs, bodycontent=None):
                 httpcode = 400
                 raise Exception('limit must be valid integer between 1 and 1000')
 
-            ret = db_events.get_byfilter(userId=userId, session=dbsession, since=since, before=before, page=page, limit=limit, **dbfilter)
+            event_type = params.get('event_type')
+            if event_type:
+                event_type = event_type.lower()
+                if not re.match(r'[a-z0-9-_.*]+', event_type):
+                    httpcode = 400
+                    raise Exception('Unacceptable chars in event_type. Must match regex "[a-z0-9-_.*]+"')
+
+            ret = db_events.get_byfilter(userId=userId, session=dbsession, event_type=event_type, since=since, before=before, page=page, limit=limit, **dbfilter)
             if not ret:
                 httpcode = 404
                 raise Exception("events not found in DB")
@@ -1202,7 +1207,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
 
                 # new method
                 npayload['subscription_type'] = 'vuln_update'
-                success_event = anchore_engine.subsys.events.ImageVulnerabilityUpdate(user_id=userId, full_tag=scantag, data=npayload)
+                success_event = anchore_engine.subsys.events.TagVulnerabilityUpdated(user_id=userId, full_tag=scantag, data=npayload)
                 try:
                     _add_event(success_event, dbsession)
                 except:
@@ -1326,7 +1331,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
                     # new method
                     npayload['subscription_type'] = 'policy_eval'
-                    success_event = anchore_engine.subsys.events.ImagePolicyEvalUpdate(user_id=userId, full_tag=fulltag, data=npayload)
+                    success_event = anchore_engine.subsys.events.TagPolicyEvaluationUpdated(user_id=userId, full_tag=fulltag, data=npayload)
                     try:
                         _add_event(success_event, dbsession)
                     except:

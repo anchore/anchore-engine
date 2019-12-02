@@ -22,7 +22,7 @@ from anchore_engine import monitors
 from anchore_engine.db import db_services, session_scope, initialize as initialize_db
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
-from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFail
+from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
@@ -589,12 +589,12 @@ class ApiService(BaseService):
                     result = False
 
                 if not result:
-                    fail_event = ServiceAuthzPluginHealthCheckFail(user_id=localconfig.ADMIN_ACCOUNT_NAME,
-                                                                   name=service_name,
-                                                                   host=host_id,
-                                                                   plugin=handler,
-                                                                   details=str(ex)
-                                                                   )
+                    fail_event = ServiceAuthzPluginHealthCheckFailed(user_id=localconfig.ADMIN_ACCOUNT_NAME,
+                                                                     name=service_name,
+                                                                     host=host_id,
+                                                                     plugin=handler,
+                                                                     details=str(ex)
+                                                                     )
                     logger.info('Sending healthcheck failure event: {}'.format(fail_event.__event_type__))
 
                     try:
