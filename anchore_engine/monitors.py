@@ -57,6 +57,7 @@ def default_monitor_func(**kwargs):
                             the_cycle_timer = abs(int(config_cycle_timer))
                         elif config_cycle_timer == 0:
                             my_monitors[monitor_name]['enabled'] = False
+                            logger.debug("monitor '{}' has been explicitly disabled in config".format(monitor_name))
                         elif config_cycle_timer < min_cycle_timer:
                             logger.warn("configured cycle timer for handler ("+str(monitor_name)+") is less than the allowed min ("+str(min_cycle_timer)+") - using allowed min")
                             the_cycle_timer = min_cycle_timer
@@ -88,8 +89,6 @@ def default_monitor_func(**kwargs):
                     monitor_threads[monitor_name] = threading.Thread(target=my_monitors[monitor_name]['handler'], args=my_monitors[monitor_name]['args'], kwargs={'mythread': my_monitors[monitor_name]})
                     logger.debug("starting up monitor_thread: " + str(monitor_name))
                     monitor_threads[monitor_name].start()
-            else:
-                logger.debug("monitor '{}' explicitly disabled in config".format(monitor_name))
 
     except Exception as err:
         logger.error(str(err))

@@ -1340,6 +1340,7 @@ def monitor_func(**kwargs):
                             the_cycle_timer = abs(int(config_cycle_timer))
                         elif config_cycle_timer == 0:
                             watchers[watcher]['enabled'] = False
+                            logger.debug("watcher '{}' has been explicitly disabled in config".format(watcher))
                         elif config_cycle_timer < min_cycle_timer:
                             logger.warn("configured cycle timer for handler (" + str(
                                 watcher) + ") is less than the allowed min (" + str(
@@ -1379,8 +1380,7 @@ def monitor_func(**kwargs):
                     logger.info("simplequeue service not yet ready, will retry")
                 elif time.time() - watchers[watcher]['last_queued'] > watchers[watcher]['cycle_timer']:
                     rc = schedule_watcher(watcher)
-            else:
-                logger.debug("watcher '{}' explicitly disabled in config".format(watcher))    
+
     except Exception as err:
         logger.error(str(err))
     finally:
