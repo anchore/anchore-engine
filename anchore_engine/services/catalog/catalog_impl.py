@@ -1688,11 +1688,11 @@ def do_registry_delete(userId, registry_record, dbsession, force=False):
 
 def _add_event(event, dbsession, quiet=True):
     try:
-        db_events.add(event.to_dict(), session=dbsession)
+        added_event = db_events.add(event.to_dict(), session=dbsession)
 
-        logger.debug("queueing event creation notification")
-        npayload = {'event': event.to_dict()}
-        rc = notifications.queue_notification(event.user_id, subscription_key=event.level,
+        logger.debug("queueing event creation notification: {}".format(added_event))
+        npayload = {'event': added_event.to_dict()}
+        rc = notifications.queue_notification(added_event.user_id, subscription_key=added_event.level,
                                               subscription_type='event_log', payload=npayload)
     except:
         if quiet:

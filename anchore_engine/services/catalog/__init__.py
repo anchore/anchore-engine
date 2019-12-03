@@ -356,7 +356,7 @@ def handle_service_watcher(*args, **kwargs):
                             service_update_record['short_description'] = "could not get service status"
                     finally:
                         if event:
-                            _add_event(event)
+                            catalog_impl._add_event(event, dbsession)
 
                 if service_update_record:
                     service.update(service_update_record)
@@ -511,7 +511,8 @@ def handle_repo_watcher(*args, **kwargs):
                 logger.warn("failed to process repo_update subscription - exception: " + str(err))
             finally:
                 if event:
-                    _add_event(event)
+                    with db.session_scope() as dbsession:
+                        catalog_impl._add_event(event, dbsession)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -719,7 +720,8 @@ def handle_image_watcher(*args, **kwargs):
                 logger.error("failed to check/update image - exception: " + str(err))
             finally:
                 if event:
-                    _add_event(event)
+                    with db.session_scope() as dbsession:
+                        catalog_impl._add_event(event, dbsession)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -735,22 +737,6 @@ def handle_image_watcher(*args, **kwargs):
                                                       function=watcher, status="fail")
 
     return (True)
-
-
-def _add_event(event, quiet=True):
-    try:
-        with db.session_scope() as dbsession:
-            db_events.add(event.to_dict(), dbsession)
-
-        logger.debug("queueing event creation notification")
-        npayload = {'event': event.to_dict()}
-        rc = notifications.queue_notification(event.user_id, subscription_key=event.level,
-                                              subscription_type='event_log', payload=npayload)
-    except:
-        if quiet:
-            logger.exception('Ignoring error creating/notifying event: {}'.format(event))
-        else:
-            raise
 
 
 def check_feedmeta_update(dbsession):
