@@ -9,9 +9,10 @@ from .types import FeedSyncFailed
 from .types import ImageRegistryLookupFailed
 from .types import TagVulnerabilityUpdated
 from .types import TagPolicyEvaluationUpdated
-from .types import AnalyzeImageSuccess
+from .types import ImageAnalysisSuccess
 from .types import UserAnalyzeImageFailed
-from .types import ImageAnalysisFail
+from .types import UserAnalyzeImageCompleted
+from .types import ImageAnalysisFailed
 from .types import SaveAnalysisFailed
 from .types import PolicyEngineLoadAnalysisFailed
 from .types import ImageArchived

@@ -4,7 +4,6 @@ from .base import EventLevel, EventBase, CategoryDescriptor
 _image_digest_resource_type = 'image_digest'
 _image_tag_resource_type = 'image_tag'
 _image_reference_type = 'image_reference' # Input is a valid image reference, may be tag or digest
-_checks_resource_type = 'checks'
 _repo_resource_type = 'repository'
 _feeds_resource_type = 'feeds'
 
@@ -56,16 +55,17 @@ class UserAnalyzeImageFailed(UserImageSubcategory):
     __message__ = 'Failed to analyze image'
     __level__ = EventLevel.ERROR
 
-    def __init__(self, user_id, image_digest, error=None):
-        super().__init__(user_id=user_id, resource_id=image_digest, details=error)
+    def __init__(self, user_id, full_tag, error=None):
+        super().__init__(user_id=user_id, resource_id=full_tag, details=error)
 
 
 class UserAnalyzeImageCompleted(UserImageSubcategory):
     __event_type__ = 'analysis.completed'
     __message__ = 'Image analysis available'
+    __resource_type__ = _image_tag_resource_type
 
-    def __init__(self, user_id, image_digest, error=None):
-        super().__init__(user_id=user_id, resource_id=image_digest, details=error)
+    def __init__(self, user_id, full_tag, data=None):
+        super().__init__(user_id=user_id, resource_id=full_tag, details=data)
 
 
 class SystemImageAnalysisSubcategory(SystemCategory):
@@ -92,7 +92,7 @@ class ImageAnalysisError(SystemImageAnalysisSubcategory):
     __level__ = EventLevel.ERROR
 
 
-class ImageAnalysisFail(ImageAnalysisError):
+class ImageAnalysisFailed(ImageAnalysisError):
     __event_type__ = 'failed'
     __message__ = 'Failed to analyze image'
 
@@ -100,14 +100,14 @@ class ImageAnalysisFail(ImageAnalysisError):
         super().__init__(user_id=user_id, resource_id=image_digest, details=error)
 
 
-class AnalyzeImageSuccess(SystemImageAnalysisSubcategory):
+class ImageAnalysisSuccess(SystemImageAnalysisSubcategory):
     __event_type__ = 'completed'
     __resource_type__ = _image_tag_resource_type
     __level__ = EventLevel.INFO
     __message__ = 'Image successfully analyzed'
 
     def __init__(self, user_id, full_tag, data=None):
-        super(AnalyzeImageSuccess, self).__init__(user_id=user_id, resource_id=full_tag, details=data)
+        super(ImageAnalysisSuccess, self).__init__(user_id=user_id, resource_id=full_tag, details=data)
 
 
 class SaveAnalysisFailed(ImageAnalysisError):
@@ -304,4 +304,3 @@ class ServiceAuthzPluginHealthCheckFailed(SystemServiceSubcategory):
         :param details: json dict with
         """
         super().__init__(user_id=user_id, details={'service_name': name, 'host_id': host, 'plugin': plugin, 'cause': details})
-

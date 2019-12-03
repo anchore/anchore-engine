@@ -124,7 +124,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             try:
                 image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
             except AnchoreException as e:
-                event = events.ImageAnalysisFail(user_id=userId, image_digest=imageDigest, error=e.to_dict())
+                event = events.ImageAnalysisFailed(user_id=userId, image_digest=imageDigest, error=e.to_dict())
                 analysis_events.append(event)
                 raise
 
@@ -229,7 +229,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
                         # new method
                         npayload['subscription_type'] = 'analysis_update'
-                        event = events.AnalyzeImageSuccess(user_id=userId, full_tag=fulltag, data=npayload)
+                        event = events.UserAnalyzeImageCompleted(user_id=userId, full_tag=fulltag, data=npayload)
                         analysis_events.append(event)
                             
                 except Exception as err:
@@ -263,7 +263,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             rc = catalog_client.update_image(imageDigest, image_record)
 
             if userId and imageDigest:
-                event = events.UserAnalyzeImageFailed(user_id=userId, image_digest=imageDigest, error=str(err))
+                event = events.UserAnalyzeImageFailed(user_id=userId, full_tag=fulltag, error=str(err))
                 analysis_events.append(event)
         finally:
             if analysis_events:
