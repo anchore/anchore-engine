@@ -246,7 +246,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                 if last_policy_bundle_digest != new_policy_bundle_digest:
                     event = anchore_engine.subsys.events.ActivePolicyBundleContentChanged(user_id=user_id, data={'policy_id': policyId, 'last_policy_bundle_digest': last_policy_bundle_digest, 'current_policy_bundle_digest': new_policy_bundle_digest})
                     try:
-                        anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
+                        anchore_engine.services.catalog.catalog_impl.add_event(event, dbsession)
                     except:
                         logger.warn('Ignoring error creating active policy content change event')
         except Exception as err:
@@ -272,7 +272,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                         # a new policy is now active
                         event = anchore_engine.subsys.events.ActivePolicyBundleIdChanged(user_id=user_id, data={'last_policy_bundle_id': last_active_policyId, 'current_policy_bundle_id': policyId})
                         try:
-                            anchore_engine.services.catalog.catalog_impl._add_event(event, dbsession)
+                            anchore_engine.services.catalog.catalog_impl.add_event(event, dbsession)
                         except:
                             logger.warn('Ignoring error creating active policy id change event')
                         

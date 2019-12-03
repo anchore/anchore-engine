@@ -356,7 +356,7 @@ def handle_service_watcher(*args, **kwargs):
                             service_update_record['short_description'] = "could not get service status"
                     finally:
                         if event:
-                            catalog_impl._add_event(event, dbsession)
+                            catalog_impl.add_event(event, dbsession)
 
                 if service_update_record:
                     service.update(service_update_record)
@@ -512,7 +512,7 @@ def handle_repo_watcher(*args, **kwargs):
             finally:
                 if event:
                     with db.session_scope() as dbsession:
-                        catalog_impl._add_event(event, dbsession)
+                        catalog_impl.add_event(event, dbsession)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -721,7 +721,7 @@ def handle_image_watcher(*args, **kwargs):
             finally:
                 if event:
                     with db.session_scope() as dbsession:
-                        catalog_impl._add_event(event, dbsession)
+                        catalog_impl.add_event(event, dbsession)
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:

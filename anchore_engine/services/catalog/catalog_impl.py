@@ -252,7 +252,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         except Exception as err:
                             fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=input_string, data=err.__dict__)
                             try:
-                                _add_event(fail_event, dbsession)
+                                add_event(fail_event, dbsession)
                             except:
                                 logger.warn('Ignoring error creating image registry lookup event')
                             raise err
@@ -355,7 +355,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                     except Exception as err:
                         fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=input_string, data=err.__dict__)
                         try:
-                            _add_event(fail_event, dbsession)
+                            add_event(fail_event, dbsession)
                         except:
                             logger.warn('Ignoring error creating image registry lookup event')
                         raise err
@@ -772,7 +772,7 @@ def events(dbsession, request_inputs, bodycontent=None):
             return_object = ret
 
         elif method == 'POST':
-            record = _add_event_json(jsondata, dbsession, quiet=False)
+            record = add_event_json(jsondata, dbsession, quiet=False)
 
             if record:
                 httpcode = 200
@@ -1203,7 +1203,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
                 npayload['subscription_type'] = 'vuln_update'
                 success_event = anchore_engine.subsys.events.TagVulnerabilityUpdated(user_id=userId, full_tag=scantag, data=npayload)
                 try:
-                    _add_event(success_event, dbsession)
+                    add_event(success_event, dbsession)
                 except:
                     logger.warn('Ignoring error creating image vulnerability update event')
             except Exception as err:
@@ -1327,7 +1327,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
                     npayload['subscription_type'] = 'policy_eval'
                     success_event = anchore_engine.subsys.events.TagPolicyEvaluationUpdated(user_id=userId, full_tag=fulltag, data=npayload)
                     try:
-                        _add_event(success_event, dbsession)
+                        add_event(success_event, dbsession)
                     except:
                         logger.warn('Ignoring error creating image policy evaluation update event')
                 except Exception as err:
@@ -1680,18 +1680,36 @@ def do_registry_delete(userId, registry_record, dbsession, force=False):
     return(return_object, httpcode)
 
 
-def _add_event(event, dbsession, quiet=True):
-    return _add_event_json(event.to_dict(), dbsession, quiet)
+def add_event(event, dbsession, quiet=True):
+    """
+    Add an event object
+
+    Returns a dict object of the event as was added to the system
+
+    :param event:
+    :param dbsession:
+    :param quiet:
+    :return:
+    """
+    return add_event_json(event.to_dict(), dbsession, quiet)
 
 
-def _add_event_json(event_json, dbsession, quiet=True):
+def add_event_json(event_json, dbsession, quiet=True):
+    """
+    Add a raw json dict as an event
+    :param event_json:
+    :param dbsession:
+    :param quiet:
+    :return:
+    """
+
     try:
-        added_event = db_events.add(event_json, session=dbsession)
+        added_event_json = db_events.add(event_json, session=dbsession)
 
-        logger.debug("queueing event creation notification: {}".format(added_event))
-        npayload = {'event': added_event.to_dict()}
-        rc = notifications.queue_notification(added_event.user_id, subscription_key=added_event.level,
-                                              subscription_type='event_log', payload=npayload)
+        logger.debug("queueing event creation notification: {}".format(added_event_json))
+        rc = notifications.queue_notification(added_event_json['event']['resource']['user_id'], subscription_key=added_event_json['event']['level'],
+                                              subscription_type='event_log', payload=added_event_json)
+        return added_event_json
     except:
         if quiet:
             logger.exception('Ignoring error creating/notifying event: {}'.format(event_json))
