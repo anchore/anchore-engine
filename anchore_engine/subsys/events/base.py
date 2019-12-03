@@ -74,7 +74,7 @@ class EventBase(object, metaclass=EventMeta):
     def to_dict(self):
         event_dict = dict()
         event_dict['type'] = self.fq_event_type()
-        event_dict['level'] = self.__level__.value
+        event_dict['level'] = self.level
         event_dict['message'] = self.__message__
         event_dict['details'] = self.details
         event_dict['timestamp'] = self.timestamp
@@ -89,3 +89,7 @@ class EventBase(object, metaclass=EventMeta):
 
     def describe(self):
         return 'event: {}, resource: {}'.format(self.__event_type__, self.resource_id)
+
+    @property
+    def level(self):
+        return self.__level__.value
