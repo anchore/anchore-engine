@@ -772,22 +772,16 @@ def events(dbsession, request_inputs, bodycontent=None):
             return_object = ret
 
         elif method == 'POST':
-            record = db_events.add(session=dbsession, msg=jsondata)
+            record = _add_event_json(jsondata, dbsession, quiet=False)
 
             if record:
                 httpcode = 200
                 return_object = record
 
-                # Notification for the new event
-                try:
-                    logger.debug("queueing event creation notification")
-                    rc = notifications.queue_notification(userId, subscription_key=return_object['event']['level'], subscription_type='event_log', payload=return_object)
-                except Exception as err:
-                    logger.warn("failed to enqueue notification for event creation - exception: " + str(err))
-
             else:
                 httpcode = 500
                 raise Exception('Cannot create event')
+
     except Exception as err:
         logger.exception('Error in events handler')
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
@@ -1687,8 +1681,12 @@ def do_registry_delete(userId, registry_record, dbsession, force=False):
 
 
 def _add_event(event, dbsession, quiet=True):
+    return _add_event_json(event.to_dict(), dbsession, quiet)
+
+
+def _add_event_json(event_json, dbsession, quiet=True):
     try:
-        added_event = db_events.add(event.to_dict(), session=dbsession)
+        added_event = db_events.add(event_json, session=dbsession)
 
         logger.debug("queueing event creation notification: {}".format(added_event))
         npayload = {'event': added_event.to_dict()}
@@ -1696,8 +1694,10 @@ def _add_event(event, dbsession, quiet=True):
                                               subscription_type='event_log', payload=npayload)
     except:
         if quiet:
-            logger.exception('Ignoring error creating/notifying event: {}'.format(event))
+            logger.exception('Ignoring error creating/notifying event: {}'.format(event_json))
         else:
             raise
+
+
 ################################################################################
 
