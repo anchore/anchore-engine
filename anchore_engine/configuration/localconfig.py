@@ -51,10 +51,10 @@ DEFAULT_CONFIG = {
             'enabled': True,
             'feeds': {
                 'vulnerabilities': True,
-                'packages': True,
+                'packages': False,
                 'nvdv2': True,
-                'snyk': True,
-                'vulndb': True
+                'snyk': False,
+                'vulndb': False
             }
         }
     }

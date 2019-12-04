@@ -1813,7 +1813,7 @@ class DataFeeds(object):
 
 
         pkgs_feed = None
-        if to_sync is None or 'packages' in to_sync:
+        if to_sync is not None and 'packages' in to_sync:
             try:
                 log.info('Syncing group metadata for packages feed')
                 pkgs_feed = self.packages
@@ -1853,7 +1853,7 @@ class DataFeeds(object):
 
 
         snyk_feed = None
-        if to_sync is None or 'snyk' in to_sync:
+        if to_sync is not None and 'snyk' in to_sync:
             try:
                 log.info('Syncing group metadata for snyk feed')
                 snyk_feed = self.snyk
@@ -1864,7 +1864,7 @@ class DataFeeds(object):
                 snyk_feed = None
 
         vulndb_feed = None
-        if to_sync is None or 'vulndb' in to_sync:
+        if to_sync is not None and 'vulndb' in to_sync:
             try:
                 log.info('Syncing group metadata for vulndb feed')
                 vulndb_feed = self.vulndb
