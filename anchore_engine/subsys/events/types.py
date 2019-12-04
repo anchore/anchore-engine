@@ -1,4 +1,5 @@
-import enum
+import random
+
 from .base import EventLevel, EventBase, CategoryDescriptor
 
 _image_digest_resource_type = 'image_digest'
@@ -304,3 +305,31 @@ class ServiceAuthzPluginHealthCheckFailed(SystemServiceSubcategory):
         :param details: json dict with
         """
         super().__init__(user_id=user_id, details={'service_name': name, 'host_id': host, 'plugin': plugin, 'cause': details})
+
+
+class RandomWisdomEvent(SystemCategory):
+    __subcategory__ = CategoryDescriptor(name='test', description='Test events with randomly generated content')
+    __event_type__ = 'random_wisdom'
+    __message__ = 'Unsolicited random wisdom of the moment'
+    __resource_type__ = 'wisdom'
+
+    _quotes_ = [
+        'All bad poetry springs from genuine feeling - Oscar Wilde',
+        'The truth is rarely pure and never simple - Oscar Wilde',
+        'Moderation is a fatal thing. Nothing succeeds like excess - Oscar Wilde',
+        'The true sign of intelligence is not knowledge but imagination - Albert Einstein',
+        'Reality is merely an illusion, albeit a very persistent one - Albert Einstein',
+        'Peace cannot be kept by force, it can only be achieved by understanding - Albert Einstein',
+        'Never give a sword to a man who can\'t dance - Confucius',
+        'It is better to keep your mouth closed and let people think you are a fool than to open it and remove all doubt - Mark Twain',
+        'Against the assault of laughter, nothing can stand - Mark Twain',
+        'The very ink with which history is written is merely fluid prejudice - Mark Twain',
+        'Never pick a fight with people who buy ink by the barrel - Mark Twain',
+    ]
+
+    @staticmethod
+    def get_random_quote():
+        return random.choice(RandomWisdomEvent._quotes_)
+
+    def __init__(self):
+        super().__init__(user_id='admin', details=RandomWisdomEvent.get_random_quote())

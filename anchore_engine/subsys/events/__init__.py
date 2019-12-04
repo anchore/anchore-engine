@@ -29,6 +29,7 @@ from .types import ServiceOrphaned
 from .types import ServiceDowned
 from .types import ServiceRemoved
 from .types import ServiceAuthzPluginHealthCheckFailed
+from .types import RandomWisdomEvent
 
 
 ## TODO: Update refs in __init__ to types.py and fix code instances for invocation of events. Then, add API call.
