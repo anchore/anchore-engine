@@ -156,7 +156,7 @@ def _db_to_dict(db_event):
 
         if key in ['generated_uuid', 'created_at']:
             msg[key] = value if type(value) != datetime.datetime else _format_timestamp(value)
-        elif value:
+        else:
             if key.startswith('resource') or key.startswith('source'):
                 key1, key2 = key.split('_', 1)
                 if key1 not in msg['event']:
