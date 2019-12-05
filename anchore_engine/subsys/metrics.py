@@ -1,12 +1,11 @@
 import functools
-from flask import request, Response
+from flask import request
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
 from anchore_engine.version import version
 from anchore_engine.apis.authorization import auth_function_factory
 
-from flask.blueprints import Blueprint
 from prometheus_client import Histogram, Summary, Gauge, Counter
 from prometheus_flask_exporter import PrometheusMetrics
 
@@ -15,7 +14,8 @@ flask_metrics = None
 flask_metric_name = "flask_http_request_duration_seconds"
 metrics = {}
 
-#class anchore_flask_track(object):
+
+# class anchore_flask_track(object):
 #    def __init__(self, enabled, flask_metrics):
 #        self.enabled = enabled
 #        self.flask_metrics = flask_metrics
@@ -28,9 +28,9 @@ metrics = {}
 #            return(rc)
 #        else:
 #            return(func)
-            
 
-#class anchore_flask_track(object):
+
+# class anchore_flask_track(object):
 #    def __init__(self):
 #        pass
 #    def __call__(self, func):
@@ -53,16 +53,23 @@ class disabled_flask_metrics(object):
             @functools.wraps(f)
             def func(*args, **kwargs):
                 return f(*args, **kwargs)
+
             return func
+
         return decorator
+
     def do_not_track(self):
         return self._call_nop()
+
     def counter(self, *args, **kwargs):
         return self._call_nop()
+
     def gauge(self, *args, **kwargs):
         return self._call_nop()
+
     def summary(self, *args, **kwargs):
         return self._call_nop()
+
     def histogram(self, *args, **kwargs):
         return self._call_nop()
 
@@ -107,33 +114,36 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
 
     if not enabled:
         flask_metrics = disabled_flask_metrics()
-        return(True)
+        return (True)
 
     if not flask_metrics:
-        flask_metrics = PrometheusMetrics(flask_app, export_defaults=export_defaults)
+        flask_metrics = PrometheusMetrics(flask_app, export_defaults=export_defaults, group_by_endpoint=True)
 
         if auth_enabled:
             flask_app.before_request(metrics_auth(flask_metrics.path))
 
         flask_metrics.info('anchore_service_info', "Anchore Service Static Information", version=version, **kwargs)
 
-    return(True)
+    return (True)
+
 
 def is_enabled():
     global enabled
-    return(enabled)
+    return (enabled)
+
 
 def get_flask_metrics_obj():
     global flask_metrics, enabled
     if not enabled:
-        return(None)
-    return(flask_metrics)
+        return (None)
+    return (flask_metrics)
+
 
 def get_summary_obj(name, description="", **kwargs):
     global metrics, enabled
 
     if not enabled:
-        return(None)
+        return (None)
 
     ret = None
     try:
@@ -141,15 +151,16 @@ def get_summary_obj(name, description="", **kwargs):
             metrics[name] = Summary(name, description, list(kwargs.keys()))
         ret = metrics[name]
     except:
-        logger.warn("could not create/get named metric ("+str(name)+")")
+        logger.warn("could not create/get named metric (" + str(name) + ")")
 
-    return(ret)
+    return (ret)
+
 
 def summary_observe(name, observation, description="", **kwargs):
     global metrics, enabled
 
     if not enabled:
-        return(True)
+        return (True)
 
     try:
         if name not in metrics:
@@ -162,14 +173,15 @@ def summary_observe(name, observation, description="", **kwargs):
 
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
-        
-    return(True)
+
+    return (True)
+
 
 def histogram_observe(name, observation, description="", buckets=None, **kwargs):
     global metrics, enabled
 
     if not enabled:
-        return(True)
+        return (True)
 
     try:
         if name not in metrics:
@@ -185,14 +197,15 @@ def histogram_observe(name, observation, description="", buckets=None, **kwargs)
             metrics[name].observe(observation)
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
-        
-    return(True)
+
+    return (True)
+
 
 def gauge_set(name, observation, description="", **kwargs):
     global metrics
 
     if not enabled:
-        return(True)
+        return (True)
 
     try:
         if name not in metrics:
@@ -205,14 +218,15 @@ def gauge_set(name, observation, description="", **kwargs):
 
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
-        
-    return(True)
+
+    return (True)
+
 
 def counter_inc(name, step=1, description="", **kwargs):
     global metrics
 
     if not enabled:
-        return(True)
+        return (True)
 
     try:
         if name not in metrics:
@@ -225,5 +239,5 @@ def counter_inc(name, step=1, description="", **kwargs):
 
     except Exception as err:
         logger.warn("adding metric failed - exception: " + str(err))
-        
-    return(True)
+
+    return (True)
