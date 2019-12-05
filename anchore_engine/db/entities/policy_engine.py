@@ -1282,7 +1282,7 @@ class ImagePackage(Base):
     metadata_json = Column(StringJSON)
 
     license = Column(String(1024), default='N/A')
-    size = Column(Integer, nullable=True)
+    size = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

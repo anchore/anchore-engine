@@ -1016,40 +1016,18 @@ def db_upgrade_010_011():
     fixed_artifacts_upgrade_010_011()
     update_users_010_011()
 
-# def event_category_upgrade_011_012():
-#     """
-#     Runs upgrade to add the 'category' column to events records
-#
-#     :return:
-#     """
-#
-#     from anchore_engine.db import session_scope
-#
-#     engine = anchore_engine.db.entities.common.get_engine()
-#
-#     new_columns = [
-#         {
-#             'table_name': 'events',
-#             'columns': [
-#                 Column('category', String),
-#             ]
-#         }
-#     ]
-#
-#     log.err("creating new table columns")
-#     for table in new_columns:
-#         for column in table['columns']:
-#             log.err("creating new column ({}) in table ({})".format(column.name, table.get('table_name', "")))
-#             try:
-#                 cn = column.compile(dialect=engine.dialect)
-#                 ct = column.type.compile(engine.dialect)
-#                 engine.execute('ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s' % (table['table_name'], cn, ct))
-#             except Exception as e:
-#                 log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
-#                 raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
-#
-#     # populate new column
-#     rc = engine.execute("UPDATE events set category='system' where category is null")
+def db_upgrade_package_size_011_012():
+    """
+    Update the column type for image package size from int to bigint
+    :return:
+    """
+    from anchore_engine.db import session_scope
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    # Add constraints and index
+    log.err('Updating image package table size column from int to bigint')
+    rc = engine.execute("ALTER TABLE image_packages ALTER COLUMN size type bigint")
 
 
 def event_type_index_upgrade_011_012():
@@ -1068,8 +1046,7 @@ def event_type_index_upgrade_011_012():
     
 def db_upgrade_011_012():
     event_type_index_upgrade_011_012()
-    #event_category_upgrade_011_012()
-
+    db_upgrade_package_size_011_012()
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
