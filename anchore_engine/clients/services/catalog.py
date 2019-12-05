@@ -21,29 +21,6 @@ class CatalogClient(InternalServiceClient):
 
         return self.call_api(http.anchy_get, 'registry_lookup', query_params={'digest': digest, 'tag': tag})
 
-    def query_vulnerabilities(self, id=None, affected_package=None, affected_package_version=None, namespace=None):
-        if id and type(id) == list:
-            id = ','.join(id)
-
-        if namespace and type(namespace) == list:
-            namespace = ','.join(namespace)
-
-        return self.call_api(http.anchy_get, 'query/vulnerabilities', query_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
-
-    def query_images_by_vulnerability(self, vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
-        params = {
-            'vulnerability_id': vulnerability_id,
-            'severity': severity,
-            'namespace': namespace,
-            'affected_package': affected_package,
-            'vendor_only': vendor_only
-        }
-
-        return self.call_api(http.anchy_get, 'query/images/by_vulnerability', query_params=params)
-
-    def query_images_by_package(self, name=None, version=None, package_type=None, page=1, limit=None):
-        return self.call_api(http.anchy_get, 'query/images/by_package', query_params={'name': name, 'version': version, 'package_type': package_type, 'page': page, 'limit': limit})
-
     def add_repo(self, regrepo=None, autosubscribe=False, lookuptag=None):
         return self.call_api(http.anchy_post, 'repo', query_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
 

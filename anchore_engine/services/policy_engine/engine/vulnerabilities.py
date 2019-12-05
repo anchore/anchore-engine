@@ -208,3 +208,54 @@ def delete_matches(namespace_name, db_session):
     #for rec in db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name):
     return db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name).delete()
 
+
+def merge_nvd_metadata_image_packages(dbsession, img_pkg_vulns, nvd_cls, cpe_cls, already_loaded_nvds=None):
+    """
+    Same as merge_nvd_metadata but takes a list of ImagePackageVulnerabilities instead. Returns a list of (img pkg vuln, nvds list) tuples
+
+    :param dbsession:
+    :param img_pkg_vulns:
+    :param nvd_cls:
+    :param cpe_cls:
+    :param already_loaded_nvds:
+    :return:
+    """
+    merged = merge_nvd_metadata(dbsession, [x.vulnerability for x in img_pkg_vulns], nvd_cls, cpe_cls, already_loaded_nvds)
+    return zip(img_pkg_vulns, [x[1] for x in merged])
+
+
+def merge_nvd_metadata(dbsession, vulnerability_objs, nvd_cls, cpe_cls, already_loaded_nvds=None):
+    """
+    Return a list of tuples of (vuln obj, list(nvd records)
+
+    :param dbsession active db session to use for query
+    :param vulnerability_objs: a list of Vulnerability objects
+    :param nvd_cls the class of nvd object to use for query
+    :param cpe_cls the class of nvd object to use for query
+    :return: list of tuples of (Vulnerability, list(NVD objects)) tuples
+    """
+
+    if already_loaded_nvds is None:
+        already_loaded_nvds = []
+
+    result_list = [[x, x.get_nvd_identifiers(nvd_cls, cpe_cls) if isinstance(x, Vulnerability) else []] for x in vulnerability_objs]
+    nvd_ids = []
+
+    # Zip the ids into the master query list
+    for id in result_list:
+        nvd_ids.extend(id[1])
+
+    # Dedup
+    nvd_ids = list(set(nvd_ids).difference({rec.name for rec in already_loaded_nvds}))
+
+    # Do the db lookup for all of them
+    nvd_records = dbsession.query(nvd_cls).filter(nvd_cls.name.in_(nvd_ids)).all()
+    nvd_records.extend(already_loaded_nvds)
+
+    id_map = {x.name: x for x in nvd_records}
+
+    # Map back to the records
+    for entry in result_list:
+        entry[1] = [id_map[id] for id in entry[1] if id in id_map]
+
+    return result_list

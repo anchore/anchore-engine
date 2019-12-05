@@ -13,7 +13,7 @@ import time
 import hashlib
 import os
 import re
-from sqlalchemy import or_, and_, desc, asc, func
+from sqlalchemy import or_, asc, func, orm
 from werkzeug.exceptions import HTTPException
 
 
@@ -31,7 +31,7 @@ from anchore_engine.services.policy_engine.engine.policy.bundles import build_bu
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
+from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, merge_nvd_metadata, merge_nvd_metadata_image_packages
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
 from anchore_engine.subsys import logger as log
@@ -58,6 +58,18 @@ feed_sync_locking_enabled = True
 
 evaluation_cache_enabled = (os.getenv('ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED', 'true').lower() == 'true')
 
+def get_api_endpoint():
+    try:
+        return get_service_endpoint('apiext').strip('/')
+    except:
+        log.warn("Could not find valid apiext endpoint for links so will use policy engine endpoint instead")
+        try:
+            return get_service_endpoint('policy_engine').strip('/')
+        except:
+            log.warn('No policy engine endpoint found either, using default but invalid url')
+            return 'http://<valid endpoint not found>'
+
+    return ''
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_status():
@@ -601,7 +613,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             return make_response_error('Image not found', in_httpcode=404), 404
         else:
             if force_refresh:
-                log.info('Forcing refresh of vulnerabiltiies for {}/{}'.format(user_id, image_id))
+                log.info('Forcing refresh of vulnerabilities for {}/{}'.format(user_id, image_id))
                 try:
                     vulns = rescan_image(img, db_session=db)
                     db.commit()
@@ -627,7 +639,12 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         _nvd_cls, _cpe_cls = select_nvd_classes(db)
 
         rows = []
-        for vuln in vulns:
+        t = time.time()
+        vulns = merge_nvd_metadata_image_packages(db, vulns, _nvd_cls, _cpe_cls)
+        log.spew("Vuln timing merge {}".format(time.time() - t))
+
+        t = time.time()
+        for vuln, nvd_records in vulns:
             # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
             if vendor_only and vuln.fix_has_no_advisory():
                 continue
@@ -636,15 +653,11 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             cves = ''
             nvd_list = []
             all_data = {'nvd_data': nvd_list, 'vendor_data': []}
-            nvd_records = vuln.vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
+
             for nvd_record in nvd_records:
                 nvd_list.extend(nvd_record.get_cvss_data_nvd())
 
             cves = json.dumps(all_data)
-
-            #cves = ''
-            #if vuln.vulnerability.additional_metadata:
-            #    cves = ' '.join(vuln.vulnerability.additional_metadata.get('cves', []))
 
             rows.append([
                 vuln.vulnerability_id,
@@ -664,6 +677,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 ]
             )
 
+        log.spew("Vuln timing 1 {}".format(time.time() - t))
+
         vuln_listing = {
             'multi': {
                 'url_column_index': 7,
@@ -679,18 +694,19 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
+            t = time.time()
             all_cpe_matches = img.cpe_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
-            
+            log.spew("Vuln timing 2 {}".format(time.time() - t))
+
             if not all_cpe_matches:
                 all_cpe_matches = []
 
             cpe_hashes = {}
-            api_endpoint = None
+            api_endpoint = get_api_endpoint()
+
             for image_cpe, vulnerability_cpe in all_cpe_matches:
                 link = vulnerability_cpe.parent.link
                 if not link:
-                    if not api_endpoint:
-                        api_endpoint = get_service_endpoint('apiext').strip('/')
                     link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability_cpe.vulnerability_id)
 
                 cpe_vuln_el = {
@@ -1123,23 +1139,27 @@ def query_images_by_vulnerability(dbsession, request_inputs):
     return(return_object, httpcode)
 
 
-def query_vulnerabilities(dbsession, request_inputs):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
+def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_filter, namespace):
+    """
+    Return vulnerability records with the matched criteria from the feed data
+
+    :param dbsession: active db session to use
+    :param ids: single string or list of string ids
+    :param package_name_filter: string name to filter vulns by in the affected package list
+    :param package_version_filter: version for corresponding package to filter by
+    :param namespace: string or list of strings to filter namespaces by
+    :return: list of dicts
+    """
 
     return_object = []
     httpcode = 500
 
-    id = request_inputs.get('params', {}).get('id', None)
-    package_name_filter = request_inputs.get('params', {}).get('affected_package', None)
-    package_version_filter = request_inputs.get('params', {}).get('affected_package_version', None)
-    namespace = request_inputs.get('params', {}).get('namespace')
+    # Normalize to a list
+    if type(namespace) == str:
+        namespace = [namespace]
 
-    vulnerability_exists = False
-
-    log.info('Vuln IDs: {}. Namespace = {}'.format(id, namespace))
+    if type(ids) == str:
+        ids = [ids]
 
     try:
         return_el_template = {
@@ -1154,38 +1174,32 @@ def query_vulnerabilities(dbsession, request_inputs):
             'vendor_data': None
         }
 
-        pn_hash = {}
-
         # order_by ascending timestamp will result in dedup hash having only the latest information stored for return, if there are duplicate records for NVD
         (_nvd_cls, _cpe_cls) = select_nvd_classes(dbsession)
 
-        if not namespace or (type(namespace) == list and 'nvdv2:cves' in namespace) or (namespace == 'nvdv2:cves'):
-            if isinstance(id, list):
-                qry = dbsession.query(_nvd_cls).filter(_nvd_cls.name.in_(id)).order_by(asc(_nvd_cls.created_at))
-                log.info('Using list in: {}'.format(qry))
+        # Set the relationship loader for use with the queries
+        loader = orm.selectinload
 
-                vulnerabilities = qry.all()
-                vulnerabilities.extend(
-                    dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name.in_(id)).order_by(asc(VulnDBMetadata.created_at)).all()
-                )
-            else:
-                vulnerabilities = dbsession.query(_nvd_cls).filter(_nvd_cls.name == id).order_by(asc(_nvd_cls.created_at)).all()
-                vulnerabilities.extend(
-                    dbsession.query(VulnDBMetadata).filter(VulnDBMetadata.name == id).order_by(asc(VulnDBMetadata.created_at)).all()
-                )
-        else:
-            # Skip if the requested namespace was not 'nvd'
-            vulnerabilities = []
+        # Always fetch any matching nvd records, even if namespace doesn't match, since they are used for the cvss data
+        qry = dbsession.query(_nvd_cls).options(loader(_nvd_cls.vulnerable_cpes)).filter(_nvd_cls.name.in_(ids)).order_by(asc(_nvd_cls.created_at))
 
-        if vulnerabilities:
+        t1 = time.time()
+        nvd_vulnerabilities = qry.all()
+        nvd_vulnerabilities.extend(
+            dbsession.query(VulnDBMetadata).options(loader(VulnDBMetadata.cpes)).filter(VulnDBMetadata.name.in_(ids)).order_by(asc(VulnDBMetadata.created_at)).all()
+        )
+
+        log.spew('Vuln query 1 timing: {}'.format(time.time() - t1))
+
+        api_endpoint = get_api_endpoint()
+
+        if not namespace or ('nvdv2:cves' in namespace):
             dedupped_return_hash = {}
-            vulnerability_exists = True
-            api_endpoint = None
-            for vulnerability in vulnerabilities:
+            t1 = time.time()
+
+            for vulnerability in nvd_vulnerabilities:
                 link = vulnerability.link
                 if not link:
-                    if not api_endpoint:
-                        api_endpoint = get_service_endpoint('apiext').strip('/')
                     link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability.name)
 
                 namespace_el = {}
@@ -1212,29 +1226,37 @@ def query_vulnerabilities(dbsession, request_inputs):
                 if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
                     dedupped_return_hash[namespace_el['id']] = namespace_el
 
+            log.spew('Vuln merge took {}'.format(time.time() - t1))
+
             return_object.extend(list(dedupped_return_hash.values()))
 
-        if namespace and namespace == 'nvdv2:cves':
+        if namespace == ['nvdv2:cves']:
             # Skip if requested was 'nvd'
             vulnerabilities = []
         else:
-            if isinstance(id, list):
-                qry = dbsession.query(Vulnerability).filter(Vulnerability.id.in_(id))
-            else:
-                qry = dbsession.query(Vulnerability).filter(Vulnerability.id == id)
+            t1 = time.time()
+
+            qry = dbsession.query(Vulnerability).options(loader(Vulnerability.fixed_in)).filter(Vulnerability.id.in_(ids))
 
             if namespace:
-                log.info('Using namespace query: {}'.format(qry))
                 if type(namespace) == str:
                     namespace = [namespace]
 
-                vulnerabilities = qry.filter(Vulnerability.namespace_name.in_(namespace)).all()
-            else:
-                log.info('Using query: {}'.format(qry))
-                vulnerabilities = qry.all()
+                qry = qry.filter(Vulnerability.namespace_name.in_(namespace))
+
+            vulnerabilities = qry.all()
+
+            log.spew('Vuln query 2 timing: {}'.format(time.time() - t1))
 
         if vulnerabilities:
-            for vulnerability in vulnerabilities:
+            log.spew('Merging nvd data into the vulns')
+            t1 = time.time()
+            merged_vulns = merge_nvd_metadata(dbsession, vulnerabilities, _nvd_cls, _cpe_cls, already_loaded_nvds=nvd_vulnerabilities)
+            log.spew('Vuln nvd query 2 timing: {}'.format(time.time() - t1))
+
+            for entry in merged_vulns:
+                vulnerability = entry[0]
+                nvds = entry[1]
                 namespace_el = {}
                 namespace_el.update(return_el_template)
                 namespace_el['id'] = vulnerability.id
@@ -1246,7 +1268,7 @@ def query_vulnerabilities(dbsession, request_inputs):
                 namespace_el['nvd_data'] = []
                 namespace_el['vendor_data'] = []
 
-                for nvd_record in vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls):
+                for nvd_record in nvds:
                     namespace_el['nvd_data'].extend(nvd_record.get_cvss_data_nvd())
                 
                 for v_pkg in vulnerability.fixed_in:
@@ -1275,16 +1297,15 @@ def query_vulnerabilities(dbsession, request_inputs):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None, namespace=None):
-    log.info('Id: {}'.format(id))
     try:
+        log.info('Querying vulnerabilities')
         session = get_session()
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
 
         # override to ensure we got the array version, not the string version
         request_inputs['params']['id'] = id
         request_inputs['params']['namespace'] = namespace
-        log.info('Params: {}'.format(request_inputs))
-        return_object, httpcode = query_vulnerabilities(session, request_inputs)
+        return_object, httpcode = query_vulnerabilities(session, id, affected_package, affected_package_version, namespace)
     except Exception as err:
         httpcode = 500
         return_object = str(err)
@@ -1296,7 +1317,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_images_by_package_get(user_id, name=None, version=None, package_type=None):
-
+    log.info('Querying images by package {}'.format(name))
     try:
         session = get_session()
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
@@ -1312,6 +1333,7 @@ def query_images_by_package_get(user_id, name=None, version=None, package_type=N
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
+    log.info('Querying images by vulnerability {}'.format(vulnerability_id))
     try:
         session = get_session()
         request_inputs = apis.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})

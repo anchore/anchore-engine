@@ -30,69 +30,6 @@ def status():
 
     return (return_object, httpcode)
 
-
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def query_vulnerabilities_get(id=None, affected_package=None, affected_package_version=None, namespace=None):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'id': id, 'affected_package': affected_package, 'affected_package_version': affected_package_version, 'namespace': namespace})
-        # Override to ensure it's passed properly for array types
-        request_inputs.get('params', {})['namespace'] = namespace
-        request_inputs.get('params', {})['id'] = id
-
-        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
-        resp = client.query_vulnerabilities(vuln_id=request_inputs.get('params',{}).get('id'),
-                                            affected_package=request_inputs.get('params',{}).get('affected_package'),
-                                            affected_package_version=request_inputs.get('params',{}).get('affected_package_version'),
-                                            namespace=request_inputs.get('params', {}).get('namespace'))
-        code = 200
-    except Exception as err:
-        logger.exception('Error dispatching/receiving request from policy engine for vulnerability query')
-        resp = str(err)
-        code = 500
-
-    return resp, code
-
-
-@authorizer.requires_account(with_types=[AccountTypes.service, AccountTypes.admin])
-def query_images_by_package_get(name=None, version=None, package_type=None):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'name': name, 'version': version, 'package_type': package_type})
-        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
-        logger.info('Params for image by_package: {}'.format(request_inputs))
-
-        return_object = client.query_images_by_package(user_id=ApiRequestContextProxy.namespace(),
-                                                       name=request_inputs.get('params',{}).get('name'),
-                                                       version=request_inputs.get('params',{}).get('version'),
-                                                       package_type=request_inputs.get('params',{}).get('package_type'))
-        httpcode = 200
-    except Exception as err:
-        logger.exception('Error dispatching/receiving request from policy engine for image query by package')
-        httpcode = 500
-        return_object = str(err)
-
-
-    return (return_object, httpcode)
-
-
-@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def query_images_by_vulnerability_get(vulnerability_id=None, severity=None, namespace=None, affected_package=None, vendor_only=True):
-    try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'vulnerability_id': vulnerability_id, 'severity': severity, 'namespace': namespace, 'affected_package': affected_package, 'vendor_only': vendor_only})
-        client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
-        return_object = client.query_images_by_vulnerability(user_id=ApiRequestContextProxy.namespace(),
-                                                             vulnerability_id=request_inputs.get('params',{}).get('vulnerability_id'),
-                                                             severity=request_inputs.get('params',{}).get('severity'),
-                                                             namespace=request_inputs.get('params',{}).get('namespace'),
-                                                             affected_package=request_inputs.get('params',{}).get('affected_package'),
-                                                             vendor_only=request_inputs.get('params',{}).get('vendor_only'))
-        httpcode = 200
-    except Exception as err:
-        httpcode = 500
-        return_object = str(err)
-
-    return (return_object, httpcode)
-
-
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
     try:

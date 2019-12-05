@@ -236,23 +236,7 @@ class Vulnerability(Base):
             _nvd_cls, _cpe_cls = select_nvd_classes(db)
 
         try:
-            if self.id.startswith('CVE-'):
-                cves = [self.id]
-            else:
-                cves = []
-
-            if self.metadata_json.get("CVE", []):
-                for cve_el in self.metadata_json.get("CVE", []):
-                    if type(cve_el) == dict:
-                        # RHSA and ELSA internal elements are dicts
-                        cve_id = cve_el.get('Name', None)
-                    elif type(cve_el) == str:
-                        # ALAS internal elements are just CVE ids
-                        cve_id = cve_el
-
-                    if cve_id and cve_id not in cves:
-                        cves.append(cve_id)
-
+            cves = self.get_nvd_identifiers(_nvd_cls, _cpe_cls)
             nvd_records = db.query(_nvd_cls).filter(_nvd_cls.name.in_(cves)).all()
         except Exception as err:
             log.warn("failed to gather NVD information for vulnerability due to exception: {}".format(str(err)))
@@ -262,6 +246,31 @@ class Vulnerability(Base):
             ret = nvd_records
 
         return(ret)
+
+    def get_nvd_identifiers(self,_nvd_cls, _cpe_cls):
+        cves = []
+        try:
+            if self.id.startswith('CVE-'):
+                cves = [self.id]
+
+            if self.metadata_json.get("CVE", []):
+                for cve_el in self.metadata_json.get("CVE", []):
+                    if type(cve_el) == dict:
+                        # RHSA and ELSA internal elements are dicts
+                        cve_id = cve_el.get('Name', None)
+                    elif type(cve_el) == str:
+                        # ALAS internal elements are just CVE ids
+                        cve_id = cve_el
+                    else:
+                        cve_id = None
+
+                    if cve_id and cve_id not in cves:
+                        cves.append(cve_id)
+        except Exception as err:
+            log.warn("failed to gather NVD information for vulnerability due to exception: {}".format(str(err)))
+
+        return cves
+
 
 class VulnerableArtifact(Base):
     """
@@ -1847,7 +1856,6 @@ class ImagePackageVulnerability(Base):
         {}
     )
 
-
     def fixed_artifact(self):
         """
         Return the FixedArtifact record given a package has been matched to the vulnerability
@@ -2189,6 +2197,7 @@ class CachedPolicyEvaluation(Base):
             return bucket, key
         else:
             raise ValueError('Result type is not an archive')
+
 
 def select_nvd_classes(db=None):
     if not db:
