@@ -20,7 +20,7 @@ def cls_fully_loaded_test_env(cls_test_data_env2, request):
     _init_distro_mappings()
 
     from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
-    t = FeedsUpdateTask()
+    t = FeedsUpdateTask(feeds_to_sync=['vulnerabilities', 'packages', 'nvdv2', 'nvd', 'vulndb'])
     t.execute()
 
     for image_id, path in request.cls.test_env.image_exports():
