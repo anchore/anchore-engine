@@ -51,7 +51,7 @@ def test_whitelists(large_whitelist, test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
 
-    [x for x in default_bundle['whitelists'] if x['id'] == 'wl_jessie'][0]['items'].append({'gate': 'ANCHORESEC', 'trigger_id': '*binutils*', 'id': 'testinserted123'})
+    [x for x in default_bundle['whitelists'] if x['id'] == 'wl_jessie'][0]['items'].append({'gate': 'vulnerabilities', 'trigger_id': '*binutils*', 'id': 'testinserted123'})
     built = build_bundle(default_bundle, for_tag=test_tag)
     assert not built.init_errors
     logger.info(('Got: {}'.format(built)))
@@ -100,13 +100,13 @@ def test_regexes(large_whitelist, test_data_env_with_images_loaded):
     node_whitelist = [x for x in bundle['whitelists'] if x['id'] == 'wl_jessie'][0]
     node_whitelist['items'] = [x for x in node_whitelist['items'] if 'binutils' in x['trigger_id']]
     node_whitelist['items'].append(
-        {'gate': 'ANCHORESEC', 'trigger_id': 'CVE-2016-6515+openssh-client', 'id': 'testinserted3'})
+        {'gate': 'vulnerabilities', 'trigger_id': 'CVE-2016-6515+openssh-client', 'id': 'testinserted3'})
     node_whitelist['items'].append(
-        {'gate': 'ANCHORESEC', 'trigger_id': 'CVE-2016-6515+*', 'id': 'test-cve-2016-6515'})
+        {'gate': 'vulnerabilities', 'trigger_id': 'CVE-2016-6515+*', 'id': 'test-cve-2016-6515'})
     node_whitelist['items'].append(
-        {'gate': 'ANCHORESEC', 'trigger_id': 'CVE-2017*', 'id': 'testinserted2'})
+        {'gate': 'vulnerabilities', 'trigger_id': 'CVE-2017*', 'id': 'testinserted2'})
     node_whitelist['items'].append(
-        {'gate': 'ANCHORESEC', 'trigger_id': '*binutils*', 'id': 'testinserted1'})
+        {'gate': 'vulnerabilities', 'trigger_id': '*binutils*', 'id': 'testinserted1'})
 
     db = get_session()
     img_obj = db.query(Image).get((test_data_env_with_images_loaded.get_images_named('node')[0][0], '0'))
@@ -142,13 +142,13 @@ def test_regexes(large_whitelist, test_data_env_with_images_loaded):
         "action": "go",
         "rule": {
           "action": "stop",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNHIGH",
+          "gate": "vulnerabilities",
+          "trigger": "package",
           "params": {}
         },
         "match": {
             "message": "HIGH Vulnerability found in package - openssh-client (CVE-2016-6515 - https://security-tracker.debian.org/tracker/CVE-2016-6515)",
-            "trigger": "VULNHIGH",
+            "trigger": "package",
             "whitelisted": {
                 "whitelist_id": "wl_jessie",
                 "matched_rule_id": "testinserted3",

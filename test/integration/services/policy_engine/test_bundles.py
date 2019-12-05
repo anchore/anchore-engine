@@ -1,14 +1,15 @@
 import pytest
 import json
-import os
 import copy
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, GateAction
 from anchore_engine.db import get_thread_scoped_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
+from anchore_engine.db import get_thread_scoped_session, Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, UnsupportedVersionError, BundleTargetTagMismatchError
 from test.fixtures import anchore_db
 from test.integration.services.policy_engine.fixtures import test_data_env, test_data_env_with_images_loaded
+
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
@@ -65,23 +66,6 @@ def test_basic_legacy_evaluation(test_data_env_with_images_loaded):
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/ruby:latest'
     built = build_bundle(test_data_env_with_images_loaded.get_bundle('default'), for_tag=test_tag)
-    assert not built.init_errors
-    logger.info('Got: {}'.format(built))
-
-    img_obj = get_image_named(db, test_data_env_with_images_loaded, 'ruby')
-    assert img_obj is not None
-
-    assert img_obj is not None, 'Failed to get an image object to test'
-    evaluation = built.execute(img_obj, tag=test_tag,
-                               context=ExecutionContext(db_session=db, configuration={}))
-
-    assert evaluation is not None, 'Got None eval'
-    logger.info(json.dumps(evaluation.json(), indent=2))
-    logger.info(json.dumps(evaluation.as_table_json(), indent=2))
-
-    logger.info('Building executable bundle from old default bundle')
-    test_tag = 'docker.io/library/ruby:latest'
-    built = build_bundle(test_data_env_with_images_loaded.get_bundle('old_default'), for_tag=test_tag)
     assert not built.init_errors
     logger.info('Got: {}'.format(built))
 
@@ -193,7 +177,6 @@ def test_duplicate_rule_evaluation(test_data_env_with_images_loaded):
     assert evaluation is not None, 'Got None eval'
     logger.info(json.dumps(evaluation.json(), indent=2))
     logger.info(json.dumps(evaluation.as_table_json(), indent=2))
-
 
 
 def test_image_whitelist(test_data_env_with_images_loaded):
@@ -1031,7 +1014,7 @@ def test_invalid_actions(test_data_env_with_images_loaded):
                             'action': 'GO',
                             'params': [
                                 {
-                                    'name': 'MAXAGE',
+                                    'name': 'max_days_since_sync',
                                     'value': 0.1
                                 }
                             ]
@@ -1079,7 +1062,7 @@ def test_invalid_actions(test_data_env_with_images_loaded):
                             'action': 'GO',
                             'params': [
                                 {
-                                    'name': 'MAXIMUS_AGIMUS',
+                                    'name': 'max_days_since_sync',
                                     'value': 10
                                 }
                             ]

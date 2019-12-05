@@ -19,110 +19,21 @@
       "comment": "Default policy from Anchore CLI",
       "rules": [
         {
-          "action": "BLAH",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "NOFROM",
+          "action": "invalidaction",
+          "gate": "dockerfile",
+          "trigger": "instruction",
           "params": []
         },
         {
           "action": "STOP",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "NOTAG",
-          "params": []
-        },
-        {
-          "action": "GO",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "FROMSCRATCH",
-          "params": []
-        },
-        {
-          "action": "GO",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "SUDO",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "DOCKERFILECHECK",
-          "trigger": "EXPOSE",
-          "params": [
-            {
-              "name": "DENIEDPORTS",
-              "value": "22-100"
-            }
-          ]
-        },
-        {
-          "action": "WARN",
-          "gate": "PKGDIFF",
-          "trigger": "PKGADD",
+          "gate": "dockerfile",
+          "trigger": "instruction",
           "params": []
         },
         {
           "action": "WARN",
-          "gate": "PKGDIFF",
-          "trigger": "PKGDEL",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "PKGDIFF",
-          "trigger": "PKGVERSIONDIFF",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "SUIDDIFF",
-          "trigger": "SUIDMODEDIFF",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "SUIDDIFF",
-          "trigger": "SUIDFILEADD",
-          "params": []
-        },
-        {
-          "action": "GO",
-          "gate": "SUIDDIFF",
-          "trigger": "SUIDFILEDEL",
-          "params": []
-        },
-        {
-          "action": "GO",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNUNKNOWN",
-          "params": []
-        },
-        {
-          "action": "GO",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNLOW",
-          "params": []
-        },
-        {
-          "action": "WARN",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNMEDIUM",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNHIGH",
-          "params": []
-        },
-        {
-          "action": "STOP",
-          "gate": "ANCHORESEC",
-          "trigger": "VULNCRITICAL",
-          "params": []
-        },
-        {
-          "action": "WARN",
-          "gate": "ANCHORESEC",
-          "trigger": "UNSUPPORTEDDISTRO",
+          "gate": "vulnerabilities",
+          "trigger": "vulnerability_data_unavailable",
           "params": []
         }
       ],
