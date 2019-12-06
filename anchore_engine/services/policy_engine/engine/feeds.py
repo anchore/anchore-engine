@@ -1989,7 +1989,7 @@ class DataFeeds(object):
                     _notify_event(FeedSyncFailed(feed=vulndb_feed.__feed_name__, error=result[-1]['']), catalog_client)
             except Exception as e:
                 log.exception('Failure updating the vulndb feed')
-                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
+                _notify_event(FeedSyncFailed(feed=vulndb_feed.__feed_name__, error=e), catalog_client)
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = vulndb_feed.__feed_name__
