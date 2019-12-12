@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 (2019-12-13)
+
++ Added - Substantial updates to event subsystem, adding new many new info and error level event types and implementation.
++ Added - Auth toggle for prometheus metrics routes (using disable_auth in metrics section of config.yaml).
++ Added - Group API metrics by function name instead of URI to handle the large number of routes when using Ids in the route.
++ Fix - Change the db column type for the image_packages.size column from int -> bigint for larger packages than 2GB. Fixes #239.
++ Improved - Improvements in vuln listing for an image and vuln query performance. Resolves #286.
++ Improved - Introduce retries for individual feed group syncs and introduce more granular feed sync events to better track sync progress.
++ Improved - Quickstart/initial install via docker-compose now uses pre-loaded vulnerability data (preload DB) to reduce initial feed sync.
++ Improved - Moves deprecated gates/triggers to the EOL lifecycle stage. Resolves #276.
++ Minor bug fixes and improvements in error/eventing subsytems, and performance for NVD related vulnerability syncs and scans
+
 ## 0.5.2 (2019-11-15)
 
 + Fix - Remove failing (deprecated) code block from periodic vulnerability scan - Fixes #294
