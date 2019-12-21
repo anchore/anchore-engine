@@ -1465,54 +1465,6 @@ class PackagesFeed(AnchoreServiceFeed):
         db.flush()
 
 
-class NvdFeed(AnchoreServiceFeed):
-    """
-    Feed for package data, served from the anchore feed service backend
-    """
-
-    __feed_name__ = 'nvd'
-    _cve_key = '@id'
-    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, NvdFeedDataMapper, _cve_key)
-
-    def query_by_key(self, key, group=None):
-        if not group:
-            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
-
-        db = get_session()
-        try:
-            return db.query(NvdMetadata).get((key, group))
-        except Exception as e:
-            log.exception('Could not retrieve nvd vulnerability by key:')
-
-    def _flush_group(self, group_obj, flush_helper_fn=None):
-
-        db = get_session()
-        if flush_helper_fn:
-            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
-
-        count = db.query(CpeVulnerability).filter(CpeVulnerability.namespace_name == group_obj.name).delete()
-        log.info('Flushed {} CpeVuln records'.format(count))
-        count = db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_obj.name).delete()
-        log.info('Flushed {} Nvd records'.format(count))
-
-        db.flush()
-
-    def _dedup_data_key(self, item):
-        return item.name
-
-    def record_count(self, group_name):
-        db = get_session()
-        try:
-            if 'nvddb' in group_name:
-                return db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_name).count()
-            else:
-                return 0
-        except Exception as e:
-            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
-            raise
-        finally:
-            db.rollback()
-
 class NvdV2Feed(AnchoreServiceFeed):
     """
     Feed for package data, served from the anchore feed service backend
@@ -1605,41 +1557,6 @@ class VulnDBFeed(AnchoreServiceFeed):
             db.rollback()
 
 
-class SnykFeed(VulnerabilityFeed):
-    """
-    Feed for package data, served from the anchore feed service backend
-    """
-
-    __feed_name__ = 'snyk'
-    _cve_key = 'id'
-    __group_data_mappers__ = SingleTypeMapperFactory(__feed_name__, SnykFeedDataMapper, _cve_key)
-
-#    def query_by_key(self, key, group=None):
-#        if not group:
-#            raise ValueError('Group must be specified since it is part of the key for vulnerabilities')
-#        db = get_session()
-#        try:
-#            return db.query(Vulnerability).get((key, group))
-#        except Exception as e:
-#            log.exception('Could not retrieve snyk vulnerability by key:')
-
-#    def _dedup_data_key(self, item):
-#        return item.id
-
-    def record_count(self, group_name):
-        db = get_session()
-        try:
-            if 'snyk' in group_name:
-                return db.query(Vulnerability).filter(Vulnerability.namespace_name == group_name).count()
-            else:
-                return 0
-        except Exception as e:
-            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
-            raise
-        finally:
-            db.rollback()
-
-
 class FeedFactory(object):
     """
     Factory class for creating feed objects. Not necessary yet because we don't have any dynamically updated feeds such that we
@@ -1649,9 +1566,7 @@ class FeedFactory(object):
     override_mapping = {
         'vulnerabilities': VulnerabilityFeed,
         'packages': PackagesFeed,
-        'nvd': NvdFeed,
         'nvdv2': NvdV2Feed,
-        'snyk': SnykFeed,
         'vulndb': VulnDBFeed,
     }
 
@@ -1692,9 +1607,7 @@ class DataFeeds(object):
     _proxy = None
     _vulnerabilitiesFeed_cls = VulnerabilityFeed
     _packagesFeed_cls = PackagesFeed
-    _nvdsFeed_cls = NvdFeed
     _nvdV2sFeed_cls = NvdV2Feed
-    _snyksFeed_cls = SnykFeed
     _vulndbFeed_cls = VulnDBFeed
 
     def __init__(self):
@@ -1764,21 +1677,10 @@ class DataFeeds(object):
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for packages feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
-        # don't sync nvd feeds anymore
-        # try:
-        #     self.nvd.refresh_groups()
-        # except (InsufficientAccessTierError, InvalidCredentialsError) as e:
-        #     log.error('Cannot update group metadata for Nvd feed due to insufficient access or invalid credentials: {}'.format(e.message))
-
         try:
             self.nvdV2.refresh_groups()
         except (InsufficientAccessTierError, InvalidCredentialsError) as e:
             log.error('Cannot update group metadata for NvdV2 feed due to insufficient access or invalid credentials: {}'.format(e.message))
-
-        try:
-            self.snyk.refresh_groups()
-        except (InsufficientAccessTierError, InvalidCredentialsError) as e:
-            log.error('Cannot update group metadata for snyk feed due to insufficient access or invalid credentials: {}'.format(e.message))
 
         try:
             self.vulndb.refresh_groups()
@@ -1825,18 +1727,6 @@ class DataFeeds(object):
                 _notify_event(FeedSyncStarted(feed=self.packages.__feed_name__), catalog_client)
                 _notify_event(FeedSyncFailed(feed=self.packages.__feed_name__, error=e), catalog_client)
 
-
-        # don't sync nvd feeds anymore
-        # nvd_feed = None
-        # if to_sync is None or 'nvd' in to_sync:
-        #     try:
-        #         log.info('Syncing group metadata for nvd feed')
-        #         nvd_feed = self.nvd
-        #         nvd_feed.init_feed_meta_and_groups()
-        #     except:
-        #         log.exception('Cannot sync group metadata for nvd feed')
-        #         nvd_feed = None
-
         # switch to nvdv2 whether nvd or nvdv2 is configured
         nvdV2_feed = None
         if to_sync is None or any(item in to_sync for item in ['nvd', 'nvdv2']):
@@ -1875,7 +1765,6 @@ class DataFeeds(object):
 
                 _notify_event(FeedSyncStarted(feed=self.vulndb.__feed_name__), catalog_client)
                 _notify_event(FeedSyncFailed(feed=self.vulndb.__feed_name__, error=e), catalog_client)
-
 
         # Perform the feed sync next
 
@@ -1921,20 +1810,6 @@ class DataFeeds(object):
                 fail_result['total_time_seconds'] = time.time() - t
                 result.append(fail_result)
 
-        # don't sync nvd feeds anymore
-        # if nvd_feed:
-        #     t = time.time()
-        #     try:
-        #         log.info('Syncing nvd feed')
-        #         result.append(nvd_feed.sync(full_flush=full_flush))
-        #     except:
-        #         log.exception('Failure updating the nvd feed')
-        #         all_success = False
-        #         fail_result = build_feed_sync_results()
-        #         fail_result['feed'] = nvd_feed.__feed_name__
-        #         fail_result['total_time_seconds'] = time.time() - t
-        #         result.append(fail_result)
-
         # switch to nvdv2 whether nvd or nvdv2 is configured
         if nvdV2_feed:
             t = time.time()
@@ -1953,26 +1828,6 @@ class DataFeeds(object):
                 all_success = False
                 fail_result = build_feed_sync_results()
                 fail_result['feed'] = nvdV2_feed.__feed_name__
-                fail_result['total_time_seconds'] = time.time() - t
-                result.append(fail_result)
-
-        if snyk_feed:
-            t = time.time()
-            _notify_event(FeedSyncStarted(feed=snyk_feed.__feed_name__), catalog_client)
-            try:
-                log.info('Syncing snyk feed')
-                result.append(snyk_feed.sync(item_processing_fn=self.vuln_fn, full_flush=full_flush, flush_helper_fn=self.vuln_flush_fn, event_client=catalog_client))
-
-                if result[-1]['status'] == 'success':
-                    _notify_event(FeedSyncCompleted(feed=snyk_feed.__feed_name__), catalog_client)
-                else:
-                    _notify_event(FeedSyncFailed(feed=snyk_feed.__feed_name__, error=result[-1]['']), catalog_client)
-            except Exception as e:
-                log.exception('Failure updating the snyk feed')
-                _notify_event(FeedSyncFailed(feed=pkgs_feed.__feed_name__, error=e), catalog_client)
-                all_success = False
-                fail_result = build_feed_sync_results()
-                fail_result['feed'] = snyk_feed.__feed_name__
                 fail_result['total_time_seconds'] = time.time() - t
                 result.append(fail_result)
 
@@ -2036,18 +1891,6 @@ class DataFeeds(object):
             else:
                 log.info('Skipping bulk sync since feed already initialized')
 
-        # don't sync nvd feeds anymore
-        # if to_sync is None or 'nvd' in to_sync:
-        #     if not only_if_unsynced or self.nvd.never_synced():
-        #         try:
-        #             log.info('Syncing nvd feed')
-        #             updated_records['nvd'] = self.nvd.bulk_sync()
-        #         except Exception as err:
-        #             log.exception('Failure updating the nvd feed. Continuing with next feed')
-        #             all_success = False
-        #
-        #     else:
-        #         log.info('Skipping bulk sync since feed already initialized')
 
         # switch to nvdv2 whether nvd or nvdv2 is configured
         if to_sync is None or any(item in to_sync for item in ['nvd', 'nvdv2']):
@@ -2057,18 +1900,6 @@ class DataFeeds(object):
                     updated_records['nvd'] = self.nvdV2.bulk_sync()
                 except Exception as err:
                     log.exception('Failure updating the nvdV2 feed. Continuing with next feed')
-                    all_success = False
-
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-        if to_sync is None or 'snyk' in to_sync:
-            if not only_if_unsynced or self.snyk.never_synced():
-                try:
-                    log.info('Syncing snyk feed')
-                    updated_records['snyk'] = self.snyk.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the snyk feed. Continuing with next feed')
                     all_success = False
 
             else:
@@ -2100,16 +1931,8 @@ class DataFeeds(object):
         return self._packagesFeed_cls()
 
     @property
-    def nvd(self):
-        return self._nvdsFeed_cls()
-
-    @property
     def nvdV2(self):
         return self._nvdV2sFeed_cls()
-
-    @property
-    def snyk(self):
-        return self._snyksFeed_cls()
 
     @property
     def vulndb(self):

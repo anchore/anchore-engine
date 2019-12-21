@@ -116,19 +116,13 @@ class LocalTestDataEnvironment(object):
         LocalPackagesFeed.__data_path__ = self.feeds_dir
         LocalVulnerabilityFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
         LocalVulnerabilityFeed.__data_path__ = self.feeds_dir
-        # LocalNvdFeed.__data_path__ = self.feeds_dir
-        # LocalNvdFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
-
 
         if up_to:
             LocalPackagesFeed.__source_cls__.limit_to_older_than(up_to)
             LocalVulnerabilityFeed.__source_cls__.limit_to_older_than(up_to)
-            # LocalNvdFeed.__source_cls__.limit_to_older_than(up_to)
 
         DataFeeds._vulnerabilitiesFeed_cls = LocalVulnerabilityFeed
         DataFeeds._packagesFeed_cls = LocalPackagesFeed
-        DataFeeds._nvdsFeed_cls = LocalVulnerabilityFeed
-        DataFeeds._snyksFeed_cls = LocalVulnerabilityFeed
         DataFeeds._nvdV2sFeed_cls = LocalVulnerabilityFeed
         DataFeeds._vulndbFeed_cls = LocalVulnerabilityFeed
 
@@ -329,13 +323,3 @@ class LocalVulnerabilityFeed(VulnerabilityFeed):
         if not src:
             src = self.__source_cls__(self.__data_path__)
         super(LocalVulnerabilityFeed, self).__init__(metadata=metadata, src=src)
-
-
-class LocalNvdFeed(VulnerabilityFeed):
-    __source_cls__ = LocalFilesystemFeedClient
-    __data_path__ = None
-
-    def __init__(self, metadata=None, src=None):
-        if not src:
-            src = self.__source_cls__(self.__data_path__)
-        super(LocalNvdFeed, self).__init__(metadata=metadata, src=src)
