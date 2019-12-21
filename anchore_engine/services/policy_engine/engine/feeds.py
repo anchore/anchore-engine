@@ -694,18 +694,6 @@ class DataFeed(object):
         """
         raise NotImplementedError()
 
-    def bulk_sync(self, group=None):
-        """
-        Similar to sync, but uses bulk operations and is therefore more prone to failure due to things like data conflicts.
-
-        This is intended for large initial syncs or operations where conflicts and updates are less likely than a large
-        volume of inserts.
-
-        :param group: the group name to update if only one is desired. If not provided then all groups are updated
-        :return: dict of group:record_count_inserted
-        """
-        raise NotImplementedError()
-
 
 class AnchoreServiceFeed(DataFeed):
     """
@@ -807,48 +795,6 @@ class AnchoreServiceFeed(DataFeed):
 
         return mapper
 
-
-    # TODO: context manager for syncs to facilitate simple state management.
-    # On enter, create record and state = 'running', on exit, set completion state and commit transaction
-    # class SyncContext(object):
-    #     def __init__(self, feed=None, group=None):
-    #         log.debug('Beginning sync context')
-    #         self.sync_record = None
-    #         self.feed = feed
-    #         self.group = group
-    #         self.session = None
-    #
-    #     def __enter__(self):
-    #         db = get_session()
-    #         try:
-    #             self.sync_record = SyncHistory(feed=self.feed, group=self.group)
-    #             db.add(self.sync_record)
-    #             db.commit()
-    #         except:
-    #             db.rollback()
-    #             raise
-    #
-    #         self.session = get_session()
-    #
-    #     def __exit__(self, exc_type, exc_val, exc_tb):
-    #         try:
-    #             self.session.refresh(self.sync_record)
-    #             if exc_val:
-    #                 self.sync_record.state = 'failed'
-    #             else:
-    #                 self.sync_record.state = 'complete'
-    #
-    #             self.sync_record.terminated_at = datetime.datetime.utcnow()
-    #             self.session.add(self.sync_record)
-    #             self.session.commit()
-    #         except:
-    #             log.exception('Exception committing sync state, rolling back')
-    #             self.session.rollback()
-    #             raise
-    #
-    # def _dedup_data(self, new_data_items):
-    #     return new_data_items
-
     def _dedup_data_key(self, item):
         """
         Return the key value to uniquely identify the item
@@ -887,39 +833,6 @@ class AnchoreServiceFeed(DataFeed):
         data = list(new_data_deduped.values())
         new_data_deduped = None
         return data, next_token
-
-    def _bulk_sync_group(self, group_obj):
-        """
-        Performs a bulk sync of a single group.
-
-        :param group_obj:
-        :return: number of records inserted
-        """
-
-        fetch_time = time.time()
-        new_data_deduped, next_token = self._get_deduped_data(group_obj)
-        fetch_time = time.time() - fetch_time
-        log.info('Group data fetch took {} sec'.format(fetch_time))
-
-        log.info('Adding {} records from group {}'.format(len(new_data_deduped), group_obj.name))
-        db_time = time.time()
-        db = get_session()
-        try:
-            for i in new_data_deduped:
-                db.add(i)
-
-            # Data complete, update the timestamp
-            group_obj.last_sync = datetime.datetime.utcnow()
-            db.add(group_obj)
-            db.commit()
-            return len(new_data_deduped)
-        except Exception as e:
-            log.exception('Error syncing group: {}'.format(group_obj))
-            db.rollback()
-            raise
-        finally:
-            db_time = time.time() - db_time
-            log.info('Sync db time took {} sec'.format(db_time))
 
     def _sync_group(self, group_obj, full_flush=False):
         """
@@ -991,37 +904,6 @@ class AnchoreServiceFeed(DataFeed):
             flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         db.query(GenericFeedDataRecord).delete()
-
-    def bulk_sync(self, group=None):
-        """
-        Performs a bulk sync of one or all groups, which does not do any merges or assume any data is extant to conflict.
-        Will also not perform any per-record updates to the rest of the system.
-
-        This is intended as a function for use on the very first sync operation when no other data is yet in the system.
-
-        :param group: str name of group to sync, if None then all groups are synced
-        :return: map of group:record_count for insertions
-        """
-
-        self.init_feed_meta_and_groups()
-
-        updated_records = {}
-
-        # Each group update is a unique session and can roll itself back.
-        for g in self.metadata.groups:
-            log.info('Processing group for bulk sync: {}'.format(g.name))
-            if not group or g.name == group:
-                try:
-                    inserted_count = self._bulk_sync_group(g)
-                    updated_records[g.name] = inserted_count
-                except Exception as e:
-                    log.exception('Failed bulk syncing group data for {}/{}'.format(self.__feed_name__, g.name))
-                    raise e
-            else:
-                log.info('Group not selected for bulk sync: {}. Skipping.'.format(g.name))
-
-        self._update_last_sync_timestamp()
-        return updated_records
 
     def _update_last_sync_timestamp(self, db=None, update_time=None):
         """
@@ -1855,72 +1737,6 @@ class DataFeeds(object):
             raise Exception("one or more feeds failed to sync")
 
         return result
-
-    def bulk_sync(self, to_sync=None, only_if_unsynced=True):
-        """
-        Sync all feeds using a bulk sync for each for performance, particularly on initial sync.
-        :param to_sync: list of feed names to sync, if None all feeds are synced
-        :return:
-        """
-
-        all_success = True
-
-        updated_records = {}
-
-        if to_sync is None or 'vulnerabilities' in to_sync:
-            if not only_if_unsynced or self.vulnerabilities.never_synced():
-                log.info('Bulk syncing vulnerability feed')
-                try:
-                    updated_records['vulnerabilities'] = self.vulnerabilities.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the vulnerabilities feed. Continuing with next feed')
-                    all_success = False
-
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-        if to_sync is None or 'packages' in to_sync:
-            if not only_if_unsynced or self.packages.never_synced():
-                try:
-                    log.info('Syncing packages feed')
-                    updated_records['packages'] = self.packages.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the packages feed. Continuing with next feed')
-                    all_success = False
-
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-
-        # switch to nvdv2 whether nvd or nvdv2 is configured
-        if to_sync is None or any(item in to_sync for item in ['nvd', 'nvdv2']):
-            if not only_if_unsynced or self.nvdV2.never_synced():
-                try:
-                    log.info('Syncing nvdV2 feed')
-                    updated_records['nvd'] = self.nvdV2.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the nvdV2 feed. Continuing with next feed')
-                    all_success = False
-
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-        if to_sync is None or 'vulndb' in to_sync:
-            if not only_if_unsynced or self.vulndb.never_synced():
-                try:
-                    log.info('Syncing vulndb feed')
-                    updated_records['nvd'] = self.vulndb.bulk_sync()
-                except Exception as err:
-                    log.exception('Failure updating the vulndb feed. Continuing with next feed')
-                    all_success = False
-
-            else:
-                log.info('Skipping bulk sync since feed already initialized')
-
-        if not all_success:
-            raise Exception("one or more feeds failed to sync")
-
-        return updated_records
 
     @property
     def vulnerabilities(self):
