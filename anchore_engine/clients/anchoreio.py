@@ -27,7 +27,6 @@ class IAuthenticatedHTTPClientBase(abc.ABC):
     def execute_request(self, method, url, connect_timeout=None, read_timeout=None, retries=None):
         pass
 
-
     @property
     @abc.abstractmethod
     def user(self):
@@ -137,7 +136,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         conn_timeout = int(self.auth_config['conn_timeout'])
         read_timeout = int(self.auth_config['read_timeout'])
         timeout_tuple = (conn_timeout, read_timeout)
-        verify=self.auth_config['verify']
+        verify = self.auth_config['verify']
 
         if not client_info:
             # get client info
@@ -187,7 +186,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
             ret['text'] = r.text
             ret['status_code'] = r.status_code
             if r.status_code == 200:
-                new_anchore_auth['token_info'] = r.json() #json.loads(str(r.text, 'utf-8'))
+                new_anchore_auth['token_info'] = r.json()  # json.loads(str(r.text, 'utf-8'))
                 ret['success'] = True
             else:
                 r.raise_for_status()
@@ -211,7 +210,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
             ret['text'] = r.text
             ret['status_code'] = r.status_code
             if r.status_code == 200:
-                new_anchore_auth['token_info'] = r.json() #json.loads(str(r.text, 'utf-8'))
+                new_anchore_auth['token_info'] = r.json()  # json.loads(str(r.text, 'utf-8'))
                 ret['success'] = True
             else:
                 r.raise_for_status()
@@ -245,7 +244,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
 
         # make a request
         if not connect_timeout:
-            conn_timeout = int(self.auth_config['conn_timeout'])
+            connect_timeout = int(self.auth_config['conn_timeout'])
         if not read_timeout:
             read_timeout = int(self.auth_config['read_timeout'])
 
@@ -260,7 +259,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
         success = False
         count = 0
 
-        conn_timeout = int(conn_timeout)
+        conn_timeout = int(connect_timeout)
         read_timeout = int(read_timeout)
 
         while not success and count < retries:
@@ -283,7 +282,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
                     if r.status_code == 401:
                         logger.debug(
                             "Got HTTP 401 on authenticated {}, response body: {}".format(method.__name__, str(r.text)))
-                        resp = r.json() #json.loads(str(r.text, 'utf-8'))
+                        resp = r.json()  # json.loads(str(r.text, 'utf-8'))
                         if 'name' in resp and resp['name'] == 'invalid_token':
                             # print "bad tok - attempting to refresh"
                             rc, record = self._auth_refresh(forcerefresh=True)
@@ -310,7 +309,7 @@ class Oauth2AuthenticatedClient(IAuthenticatedHTTPClientBase):
             except requests.HTTPError as e:
                 if e.response is not None and 400 <= e.response.status_code < 500:
                     self._map_error_to_exception(e, username=self.user, url=url)
-                    #raise e
+                    # raise e
                 else:
                     logger.debug("attempt failed: " + str(e))
                     ret['text'] = 'server error: ' + str(e)
@@ -348,7 +347,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
             self.auth_config['read_timeout'] = read_timeout
         if retries:
             self.auth_config['max_retries'] = retries
-        
+
         self.auth_config['verify'] = verify
 
     @property
@@ -382,14 +381,15 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
 
         # make a request
         if not connect_timeout:
-            conn_timeout = int(self.auth_config['conn_timeout'])
+            connect_timeout = int(self.auth_config['conn_timeout'])
+
         if not read_timeout:
             read_timeout = int(self.auth_config['read_timeout'])
 
         if not retries:
             retries = int(self.auth_config['max_retries'])
         retries = int(retries)
-        
+
         verify = self.auth_config['verify']
 
         ret = {'status_code': 1, 'text': '', 'success': False}
@@ -397,7 +397,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
         success = False
         count = 0
 
-        conn_timeout = int(conn_timeout)
+        conn_timeout = int(connect_timeout)
         read_timeout = int(read_timeout)
 
         while not success and count < retries:
@@ -432,7 +432,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
             except requests.HTTPError as e:
                 if e.response is not None and 400 <= e.response.status_code < 500:
                     self._map_error_to_exception(e, username=self.user, url=url)
-                    #raise e
+                    # raise e
                 else:
                     logger.debug("attempt failed: " + str(e))
                     ret['text'] = 'server error: ' + str(e)
@@ -441,30 +441,6 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                 ret['text'] = "server error: " + str(err)
 
         return (ret)
-
-
-def get_anchoreio_client(user, pw):
-    global anchoreio_clients
-
-    if user in anchoreio_clients:
-        if pw == anchoreio_clients[user].get('pw', None) and anchoreio_clients[user].get('client', None):
-            return(anchoreio_clients[user]['client'])
-        else:
-            del(anchoreio_clients[user]['client'])
-            anchoreio_clients[user] = {}
-
-    # make a new client
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-
-    anchoreio_clients[user] = {}
-    try:
-        anchoreio_clients[user]['pw'] = pw
-        anchoreio_clients[user]['client'] = Oauth2AuthenticatedClient(localconfig.get('feeds', {}).get('token_url'), localconfig.get('feeds', {}).get('client_url'), user, pw, connect_timeout=localconfig.get('feeds', {}).get('connection_timeout_seconds', None), read_timeout=localconfig.get('feeds', {}).get('read_timeout_seconds', None), verify=localconfig.get('feeds', {}).get('ssl_verify', True))
-    except Exception as err:
-        anchoreio_clients.pop(user, None)
-        raise AnchoreIOClientError(cause=err)
-
-    return(anchoreio_clients[user]['client'])
 
 
 class AnchoreIOClientError(AnchoreException):
