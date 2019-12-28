@@ -44,7 +44,7 @@ def get_feeds_config(full_config):
     :param full_config:
     :return: dict that is the feeds configuration
     """
-    return full_config.get('feeds',{})
+    return full_config.get('feeds', {})
 
 
 def get_selected_feeds_to_sync(config):
@@ -174,106 +174,15 @@ class NpmPackageDataMapper(KeyIDFeedDataMapper):
         return db_rec
 
 
-class NvdFeedDataMapper(FeedDataMapper):
-    """
-    Maps an NVD record into an NvdMetadata ORM object
-    """
-    def map(self, record_json):
-        db_rec = NvdMetadata()
-        db_rec.name = record_json['@id']
-        db_rec.namespace_name = self.group
-        db_rec.summary = record_json.get('summary', "")
-
-        rawvc = record_json.get('vulnerable-configuration', {})
-        db_rec.vulnerable_configuration = rawvc
-        #db_rec.vulnerable_configuration = json.dumps(rawvc)
-
-        rawvsw = record_json.get('vulnerable-software-list', {})
-        db_rec.vulnerable_software = rawvsw
-        #db_rec.vulnerable_software = json.dumps(rawvsw)
-
-        rawcvss = record_json.get('cvss', {})
-        db_rec.cvss = rawcvss
-        #db_rec.cvss = json.dumps(rawcvss)
-
-        sev = "Unknown"
-        try:
-            #cvss_json = json.loads(self.cvss)
-            score = float(rawcvss['base_metrics']['score'])
-            if score <= 3.9:
-                sev = "Low"
-            elif score <= 6.9:
-                sev = "Medium"
-            elif score <= 10.0:
-                sev = "High"
-            else:
-                sev = "Unknown"
-        except:
-            sev = "Unknown"
-        db_rec.severity = sev
-
-        db_rec.vulnerable_cpes = []
-
-        vswlist = []
-        try:
-            if isinstance(rawvsw['product'], list):
-               vswlist = rawvsw['product']
-            else:
-                vswlist = [rawvsw['product']]
-        except:
-            pass
-
-        # convert each vulnerable software list CPE into a DB record
-        all_cpes = {}
-        for vsw in vswlist:
-            try:
-
-                # tokenize the input CPE
-                toks = vsw.split(":")
-                final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-                for i in range(1, len(final_cpe)):
-                    try:
-                        if toks[i]:
-                            final_cpe[i] = toks[i]
-                        else:
-                            final_cpe[i] = '-'
-                    except:
-                        final_cpe[i] = '-'
-
-                if ':'.join(final_cpe) not in all_cpes:
-                    all_cpes[':'.join(final_cpe)] = True
-                    if final_cpe[1] == '/a':
-                        newcpe = CpeVulnerability()
-                        newcpe.feed_name = 'nvd'
-                        newcpe.cpetype = final_cpe[1]
-                        newcpe.vendor = final_cpe[2]
-                        newcpe.name = final_cpe[3]
-                        newcpe.version = final_cpe[4]
-                        newcpe.update = final_cpe[5]
-                        themeta = final_cpe[6]
-                        if 'ruby' in final_cpe[6]:
-                            themeta = '~~~ruby~~'
-                        elif 'node.js' in final_cpe[6] or 'nodejs' in final_cpe[6]:
-                            themeta = '~~~node.js~~'
-                        elif 'python' in final_cpe[6]:
-                            themeta = '~~~python~~'
-                        newcpe.meta = themeta
-                        newcpe.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
-                        db_rec.vulnerable_cpes.append(newcpe)
-
-            except Exception as err:
-                log.warn("failed to convert vulnerable-software-list into database CPE record - exception: " + str(err))
-
-        return db_rec
-
 class NvdV2FeedDataMapper(FeedDataMapper):
     """
     Maps an NVD record into an NvdMetadata ORM object
     """
+
     def map(self, record_json):
         db_rec = NvdV2Metadata()
 
-        #log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
+        # log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
         db_rec = NvdV2Metadata()
         db_rec.name = record_json.get('cve', {}).get('CVE_data_meta', {}).get('ID', None)
         db_rec.namespace_name = self.group
@@ -317,7 +226,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
     """
 
     def map(self, record_json):
-        #log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
+        # log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
         db_rec = VulnDBMetadata()
         db_rec.name = record_json.get('id')
         db_rec.namespace_name = self.group
@@ -390,6 +299,7 @@ class SnykFeedDataMapper(FeedDataMapper):
     """
     Maps a Snyk record into an Vulnerability ORM object
     """
+
     def map(self, record_json):
         if not record_json:
             return None
@@ -423,7 +333,7 @@ class SnykFeedDataMapper(FeedDataMapper):
             v_in = FixedArtifact()
             v_in.name = pkgvuln.get("package")
             v_in.version = sem_version
-            v_in.version_format = "semver" #"semver:{}".format(nslang)
+            v_in.version_format = "semver"  # "semver:{}".format(nslang)
             v_in.epochless_version = v_in.version
             v_in.vulnerability_id = db_rec.id
             v_in.namespace_name = db_rec.namespace_name
@@ -497,13 +407,13 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
         db_rec.link = vuln.get('Link')
         description = vuln.get("Description", "")
         if description:
-            db_rec.description = vuln.get('Description','') if len(vuln.get('Description','')) < self.MAX_STR_LEN else (vuln.get('Description')[:self.MAX_STR_LEN - 8] + '...')
+            db_rec.description = vuln.get('Description', '') if len(vuln.get('Description', '')) < self.MAX_STR_LEN else (vuln.get('Description')[:self.MAX_STR_LEN - 8] + '...')
         else:
             db_rec.description = ""
         db_rec.fixed_in = []
-        #db_rec.vulnerable_in = []
+        # db_rec.vulnerable_in = []
 
-        #db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
+        # db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
         db_rec.additional_metadata = vuln.get('Metadata', {})
         cvss_data = vuln.get('Metadata', {}).get('NVD', {}).get('CVSSv2')
         if cvss_data:
@@ -525,17 +435,17 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
 
                 db_rec.fixed_in.append(fix)
 
-#        if 'VulnerableIn' in vuln:
-#            for v in vuln['VulnerableIn']:
-#                v_in = VulnerableArtifact()
-#                v_in.name = v['Name']
-#                v_in.version = v['Version']
-#                v_in.version_format = v['VersionFormat']
-#                v_in.epochless_version = re.sub(r'^[0-9]*:', '', v['Version'])
-#                v_in.vulnerability_id = db_rec.id
-#                v_in.namespace_name = self.group
-#
-#                db_rec.vulnerable_in.append(v_in)
+        #        if 'VulnerableIn' in vuln:
+        #            for v in vuln['VulnerableIn']:
+        #                v_in = VulnerableArtifact()
+        #                v_in.name = v['Name']
+        #                v_in.version = v['Version']
+        #                v_in.version_format = v['VersionFormat']
+        #                v_in.epochless_version = re.sub(r'^[0-9]*:', '', v['Version'])
+        #                v_in.vulnerability_id = db_rec.id
+        #                v_in.namespace_name = self.group
+        #
+        #                db_rec.vulnerable_in.append(v_in)
 
         return db_rec
 
@@ -663,7 +573,7 @@ class DataFeed(object):
     
     """
 
-    __source_cls__ = None #  A class definition that implements IFeedSource
+    __source_cls__ = None  # A class definition that implements IFeedSource
     __feed_name__ = None
     __should_sync__ = None
     __group_data_mappers__ = None  # A dict/map of group names to mapper objects for translating group data into db types
@@ -707,7 +617,7 @@ class AnchoreServiceFeed(DataFeed):
     __source_cls__ = AnchoreFeedServiceClient
     __group_data_mappers__ = GenericFeedDataMapper
 
-    MAX_FEED_SYNC_PAGES = 4 # Number of pages of data (~5mb each) to process at a time during feed sync to keep memory usage reasonable
+    MAX_FEED_SYNC_PAGES = 4  # Number of pages of data (~5mb each) to process at a time during feed sync to keep memory usage reasonable
 
     def __init__(self, metadata=None, src=None):
         if not metadata:
@@ -867,7 +777,7 @@ class AnchoreServiceFeed(DataFeed):
 
                 for rec in new_data_deduped:
                     merged = db.merge(rec)
-                    #db.add(merged)
+                    # db.add(merged)
                 db.flush()
                 log.info('Db merge took {} sec'.format(time.time() - db_time))
                 total_updated_count += len(new_data_deduped)
@@ -1138,12 +1048,12 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             log.debug('Fixed In records diff: {}'.format(fix_diff))
             return False
 
-        #normalized_vulnin_a = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_a.vulnerable_in}
-        #normalized_vulnin_b = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_b.vulnerable_in}
+        # normalized_vulnin_a = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_a.vulnerable_in}
+        # normalized_vulnin_b = {(vuln.name, vuln.epochless_version, vuln.version) for vuln in vulnerability_b.vulnerable_in}
 
-        #vulnin_diff = normalized_vulnin_a.symmetric_difference(normalized_vulnin_b)
+        # vulnin_diff = normalized_vulnin_a.symmetric_difference(normalized_vulnin_b)
 
-        #if vulnin_diff:
+        # if vulnin_diff:
         #    log.debug('VulnIn records diff: {}'.format(vulnin_diff))
         #    return False
 
@@ -1194,8 +1104,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
         log.info('Flushed {} fix records'.format(count))
-        #count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
-        #log.info('Flushed {} vuln_in records'.format(count))
+        # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
+        # log.info('Flushed {} vuln_in records'.format(count))
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
         log.info('Flushed {} vulnerability records'.format(count))
 
@@ -1261,7 +1171,6 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         finally:
             feed_list_cache.vuln_group_list = None
-
 
     @staticmethod
     def cached_group_name_lookup(name):
@@ -1595,7 +1504,6 @@ class DataFeeds(object):
                 _notify_event(FeedSyncStarted(feed=self.vulnerabilities.__feed_name__), catalog_client)
                 _notify_event(FeedSyncFailed(feed=self.vulnerabilities.__feed_name__, error=e), catalog_client)
 
-
         pkgs_feed = None
         if to_sync is not None and 'packages' in to_sync:
             try:
@@ -1622,7 +1530,6 @@ class DataFeeds(object):
 
                 _notify_event(FeedSyncStarted(feed=self.nvdV2.__feed_name__), catalog_client)
                 _notify_event(FeedSyncFailed(feed=self.nvdV2.__feed_name__, error=e), catalog_client)
-
 
         snyk_feed = None
         if to_sync is not None and 'snyk' in to_sync:
