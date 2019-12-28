@@ -2,6 +2,7 @@
 Generic utilities
 """
 import datetime
+import decimal
 import hashlib
 import json
 import platform
@@ -14,6 +15,9 @@ from operator import itemgetter
 import time
 import os
 import re
+from ijson import common as ijcommon
+from ijson.backends import python as ijpython
+
 
 from anchore_engine.subsys import logger
 
@@ -807,4 +811,27 @@ def timer(label, log_level='debug'):
             logger.debug('Execution of {} took: {} seconds'.format(label, time.time() - t))
 
 
+# Generally we're not dealing with high precision floats in feed data, so this shouldn't result in any loss of precision
+def ijson_decimal_to_float(event):
+    """
+    Event handler for use with ijson parsers to output floats instead of Decimals for better json serializability downstream.
 
+    :param event:
+    :return:
+    """
+    if event[1] == 'number' and isinstance(event[2], decimal.Decimal):
+        return event[0], event[1], float(event[2])
+    else:
+        return event
+
+
+def mapped_parser_item_iterator(input_stream, item_path):
+    """
+    Boilerplate function to setup the event mapper to ensure floats instead of decimals for use with ijson
+
+    :param input_stream:
+    :param item_path:
+    :return:
+    """
+    events = map(ijson_decimal_to_float, ijpython.parse(input_stream))
+    return ijcommon.items(events, item_path)

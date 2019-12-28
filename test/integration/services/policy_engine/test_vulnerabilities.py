@@ -5,7 +5,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask, rescan_image
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.integration.services.policy_engine.utils import reset_feed_sync_time
 from anchore_engine.services.policy_engine import _init_distro_mappings
 
@@ -51,16 +51,13 @@ def check_all_imgs_vuln():
 
 
 def sync_feeds(test_env, up_to=None):
-    df = DataFeeds.instance()
     if up_to:
         test_env.set_max_feed_time(up_to)
 
-    logger.info('Syncing vuln')
-    df.vulnerabilities.sync(item_processing_fn=FeedsUpdateTask.process_updated_vulnerability)
-    logger.info('Syncing packages')
-    df.packages.sync()
+    logger.info('Syncing vuln and packages')
+    DataFeeds.__scratch_dir__ = '/tmp'
+    DataFeeds.sync(['vulnerabilities', 'packages'], feed_client=test_env.feed_client)
     logger.info('Sync complete')
-
 
 def test_namespace_support(test_data_env):
     _init_distro_mappings()
@@ -100,12 +97,10 @@ def test_namespace_support(test_data_env):
     ]
 
     for i in expected:
-        if not vulnerabilities.have_vulnerabilities_for(i):
-            raise Exception('Bad failure: {}'.format(i.namespace_name))
+        assert vulnerabilities.have_vulnerabilities_for(i), 'Expected vulns for namespace {}'.format(i.namespace_name)
 
     for i in fail:
-        if vulnerabilities.have_vulnerabilities_for(i):
-            raise Exception('Should not have data for {}'.format(i.namespace_name))
+        assert not vulnerabilities.have_vulnerabilities_for(i), 'Did not expect vulns for namespace {}'.format(i.namespace_name)
 
 
 def check_fix_version(test_env):
@@ -139,8 +134,7 @@ def _img_vulns(id):
     db = get_thread_scoped_session()
     try:
         img = db.query(Image).filter_by(id=id, user_id='0').one_or_none()
-        if not img:
-            raise Exception('Not found')
+        assert img, 'Image not found {}'.format(id)
         total_vulns = [str(x) for x in img.vulnerabilities()] + [str(y) for y in img.cpe_vulnerabilities(None, None)]
         return total_vulns
     finally:
@@ -173,3 +167,13 @@ def test_vuln_image_updates(test_data_env):
     logger.info(json.dumps(updated_vulns, indent=2))
 
     #_rescan_cve('7b3dce19c46b752708da38a602decbb1cc4906c8c1f1a19b620158926c199930')
+
+
+def test_have_vulnerabilities_for(test_data_env):
+    _init_distro_mappings()
+    sync_feeds(test_data_env)
+
+    failz = DistroNamespace(name='somecrzy', version='8', like_distro='debian')
+    passes = DistroNamespace(name='debian', version='8', like_distro='debian')
+    assert not vulnerabilities.have_vulnerabilities_for(failz), 'Should not have vulns for ' + failz.namespace_name
+    assert vulnerabilities.have_vulnerabilities_for(passes), 'Should have vulns for ' + passes.namespace_name

@@ -3,14 +3,14 @@ Utilities for running tests for db, logging, etc.
 
 """
 import datetime
-import base64
 import json
 import os
-from collections import namedtuple
 
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, PackagesFeed, VulnerabilityFeed, IFeedSource, FeedMetadata, FeedGroupMetadata
+from anchore_engine.services.policy_engine.engine.feeds import IFeedSource, FeedGroupList, FeedList, GroupData
+from anchore_engine.db.entities.policy_engine import FeedMetadata
 from anchore_engine.subsys import logger
-from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.services.policy_engine.engine.feeds.schemas import FeedAPIGroupRecord, FeedAPIRecord
+from anchore_engine.utils import ensure_bytes
 
 
 class LocalFileExport(object):
@@ -72,6 +72,7 @@ class LocalTestDataEnvironment(object):
     BUNDLES_DIR = 'bundles'
 
     IMAGE_METADATA_FILENAME = 'image_export_metadata.json'
+
     # Metadata file that contains a single object with image_id as key and each value an object with:
     # name - str, file - str
     # Exampe:
@@ -101,7 +102,7 @@ class LocalTestDataEnvironment(object):
         self.bundles = {}
         for f in os.listdir(self.bundle_dir):
             with open(os.path.join(self.bundle_dir, f)) as fd:
-                b = json.load(fd ,parse_int=str, parse_float=str)
+                b = json.load(fd, parse_int=str, parse_float=str)
             self.bundles[b['id']] = b
 
     def image_exports(self):
@@ -112,19 +113,12 @@ class LocalTestDataEnvironment(object):
         return [(x, os.path.join(self.images_dir, self.image_map[x]['path'])) for x in list(self.image_map.keys())]
 
     def init_feeds(self, up_to=None):
-        LocalPackagesFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
-        LocalPackagesFeed.__data_path__ = self.feeds_dir
-        LocalVulnerabilityFeed.__source_cls__ = TimeWindowedLocalFilesytemFeedClient
-        LocalVulnerabilityFeed.__data_path__ = self.feeds_dir
-
         if up_to:
-            LocalPackagesFeed.__source_cls__.limit_to_older_than(up_to)
-            LocalVulnerabilityFeed.__source_cls__.limit_to_older_than(up_to)
+            TimeWindowedLocalFilesytemFeedClient.limit_to_older_than(up_to)
 
-        DataFeeds._vulnerabilitiesFeed_cls = LocalVulnerabilityFeed
-        DataFeeds._packagesFeed_cls = LocalPackagesFeed
-        DataFeeds._nvdV2sFeed_cls = LocalVulnerabilityFeed
-        DataFeeds._vulndbFeed_cls = LocalVulnerabilityFeed
+    @property
+    def feed_client(self):
+        return TimeWindowedLocalFilesytemFeedClient(self.feeds_dir)
 
     def get_image_meta(self, img_id):
         return self.image_map.get(img_id)
@@ -133,8 +127,7 @@ class LocalTestDataEnvironment(object):
         return [x for x in list(self.image_map.items()) if x[1]['name'] == name]
 
     def set_max_feed_time(self, max_datetime):
-        LocalPackagesFeed.__source_cls__.limit_to_older_than(max_datetime)
-        LocalVulnerabilityFeed.__source_cls__.limit_to_older_than(max_datetime)
+        TimeWindowedLocalFilesytemFeedClient.limit_to_older_than(max_datetime)
 
     def list_available_bundles(self):
         raise NotImplementedError()
@@ -152,33 +145,28 @@ class LocalFilesystemFeedClient(IFeedSource):
     timestamps as filenames
 
     """
-    Feed = namedtuple('LocalFeed', ['name', 'access_tier', 'description'])
-    FeedGroup = namedtuple('LocalFeedGroup', ['name', 'access_tier', 'description'])
 
     def __init__(self, base_path):
         self.src_path = base_path
+        self.feed_url = 'file://' + self.src_path
 
     def list_feeds(self):
         feeds = []
         for d_name in os.listdir(self.src_path):
-            feeds.append(LocalFilesystemFeedClient.Feed(name=d_name, access_tier=0,
-                                                        description='A local feed found on local FS at: {}'.format(
-                                                            os.path.join(self.src_path, d_name))))
+            feeds.append(FeedAPIRecord(name=d_name, access_tier=0, description='A local feed found on local FS at: {}'.format(os.path.join(self.src_path, d_name))))
         logger.info('Returning local fs feeds: {}'.format(feeds))
-        return feeds
+        return FeedList(feeds=feeds)
 
     def list_feed_groups(self, feed_name):
         assert feed_name
         groups = []
         feed_path = os.path.join(self.src_path, feed_name)
         for d_name in os.listdir(feed_path):
-            groups.append(LocalFilesystemFeedClient.FeedGroup(name=d_name, access_tier=0,
-                                                              description='A local feed group found on local FS at: {}'.format(
-                                                                  os.path.join(feed_path, d_name))))
+            groups.append(FeedAPIGroupRecord(name=d_name, access_tier=0, description='A local feed group found on local FS at: {}'.format(os.path.join(feed_path, d_name))))
         logger.info('Returning local fs feed groups for feed {}: {}'.format(feed_name, groups))
-        return groups
+        return FeedGroupList(groups=groups)
 
-    def get_feed_group_data(self, feed, group, since=None):
+    def get_feed_group_data(self, feed, group, since=None, next_token=None):
         assert feed and group
 
         if type(since) == datetime.datetime:
@@ -197,7 +185,7 @@ class LocalFilesystemFeedClient(IFeedSource):
             else:
                 continue
 
-        return data
+        return GroupData(data=data, next_token=None, since=since, record_count=len(data))
 
 
 class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
@@ -213,44 +201,7 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
     def limit_to_older_than(cls, limit_datetime):
         cls.newest_allowed = limit_datetime
 
-    def get_paged_feed_group_data(self, feed, group, since=None, next_token=None):
-        if type(since) == datetime.datetime:
-            since = since.isoformat()
-
-        files = []
-        group_path = os.path.join(self.src_path, feed, group)
-        if next_token:
-            next_token = ensure_str(base64.decodebytes(ensure_bytes(next_token)))
-        data = []
-        size = 0
-        token = None
-
-        back_boundary = since
-        forward_boundary = self.newest_allowed.isoformat() if self.newest_allowed else None
-        logger.debug(
-            'Getting data for {}/{} with back boundary {} and forward boundary {}'.format(feed, group, back_boundary,
-                                                                                          forward_boundary))
-        for datafile_name in sorted(os.listdir(group_path)):
-            if (not back_boundary or (datafile_name >= back_boundary)) and (
-                not forward_boundary or (forward_boundary and datafile_name <= forward_boundary)) and (not next_token or datafile_name >= next_token):
-                logger.debug('Using data file {}'.format(datafile_name))
-                fpath = os.path.join(group_path, datafile_name)
-                s = os.stat(fpath)
-                if size + s.st_size > self.max_content_size:
-                    token = datafile_name
-                    break
-                else:
-                    size += s.st_size
-                    with open(fpath) as f:
-                            content = json.load(f)
-                            data += content
-            else:
-                logger.debug('Data file {} outside of bounds, skipping'.format(datafile_name))
-                continue
-
-        return data, ensure_str(base64.encodebytes(ensure_bytes(token))) if token else None
-
-    def get_feed_group_data(self, feed, group, since=None):
+    def get_feed_group_data(self, feed, group, since=None, next_token=None):
         """
         Extended implementation of parent type function that includes a limit to how fresh of data is allowed. Will
         return all records between 'since' date and 'newest_allowed' date unless newest_allowed is None in which case there
@@ -259,12 +210,12 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
         :param feed:
         :param group:
         :param since:
+        :param next_token:
         :return:
         """
         if type(since) == datetime.datetime:
             since = since.isoformat()
 
-        files = []
         group_path = os.path.join(self.src_path, feed, group)
         data = []
 
@@ -277,12 +228,19 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
                 fpath = os.path.join(group_path, datafile_name)
                 with open(fpath) as f:
                     content = json.load(f)
-                    data += content
+                    if isinstance(content, dict):
+                        data.extend(content['data'])
+                    else:
+                        data.extend(content)
             else:
                 logger.debug('Data file {} outside of bounds, skipping'.format(datafile_name))
                 continue
 
-        return data
+        # Make it look like a single chunk of data from the API (e.g. next_token and data keys
+        data = {'data': data, 'next_token': ''}
+        outdata = ensure_bytes(json.dumps(data))
+
+        return GroupData(data=outdata, next_token=None, since=since, record_count=len(data['data']))
 
 
 def reset_feed_sync_time(db, update_time, feed_name, feed_groups=None):
@@ -302,24 +260,3 @@ def reset_feed_sync_time(db, update_time, feed_name, feed_groups=None):
         if not feed_groups or g.name in feed_groups:
             g.last_sync = update_time
     return feed
-
-
-# Examples for how to extend for local FS testing
-class LocalPackagesFeed(PackagesFeed):
-    __source_cls__ = LocalFilesystemFeedClient
-    __data_path__ = None
-
-    def __init__(self, metadata=None, src=None):
-        if not src:
-            src = self.__source_cls__(self.__data_path__)
-        super(PackagesFeed, self).__init__(metadata=metadata, src=src)
-
-
-class LocalVulnerabilityFeed(VulnerabilityFeed):
-    __source_cls__ = LocalFilesystemFeedClient
-    __data_path__ = None
-
-    def __init__(self, metadata=None, src=None):
-        if not src:
-            src = self.__source_cls__(self.__data_path__)
-        super(LocalVulnerabilityFeed, self).__init__(metadata=metadata, src=src)

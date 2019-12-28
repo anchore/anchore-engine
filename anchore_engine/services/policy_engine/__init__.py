@@ -54,7 +54,7 @@ except:
 # service funcs (must be here)
 
 def _check_feed_client_credentials():
-    from anchore_engine.clients.feeds.feed_service import get_client
+    from anchore_engine.services.policy_engine.engine.feeds.client import get_client
     sleep_time = feed_config_check_backoff
     last_ex = None
 
@@ -162,7 +162,7 @@ def do_feed_sync(msg):
         from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 
     if 'get_selected_feeds_to_sync' not in locals():
-        from anchore_engine.services.policy_engine.engine.feeds import get_selected_feeds_to_sync
+        from anchore_engine.services.policy_engine.engine.feeds.sync import get_selected_feeds_to_sync
 
     handler_success = False
     timer = time.time()

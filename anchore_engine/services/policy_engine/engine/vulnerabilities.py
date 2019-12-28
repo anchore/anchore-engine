@@ -14,17 +14,47 @@ import time
 
 from sqlalchemy import or_
 
-from anchore_engine.db import DistroNamespace, get_thread_scoped_session
-from anchore_engine.db import Vulnerability, FixedArtifact, ImagePackage, ImagePackageVulnerability
+from anchore_engine.db import DistroNamespace, get_thread_scoped_session, get_session
+from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
 from anchore_engine.common import nonos_package_types, os_package_types
+from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_json
+import threading
 
-from .feeds import DataFeeds, VulnerabilityFeed
 from .logs import get_logger
 
 log = get_logger()
 
 # TODO: introduce a match cache for the fix key and package key to optimize the lookup and updates since its common to
 # see a lot of images with the same versions of packages installed.
+
+
+class ThreadLocalFeedGroupNameCache:
+    """
+    Simple cache used during feed syncs to caching name lookups. Here for simpler import paths, used by both feeds.VulnerabilityFeed and vulerabilities.process_updated_vulnerability functions
+    """
+    feed_list_cache = threading.local()
+
+    @classmethod
+    def lookup(cls, name):
+        if cls.feed_list_cache and hasattr(cls.feed_list_cache, 'vuln_group_list'):
+            return cls.feed_list_cache.vuln_group_list and name in cls.feed_list_cache.vuln_group_list
+        else:
+            return False
+
+    @classmethod
+    def add(cls, names: list):
+        try:
+            for n in names:
+                cls.feed_list_cache.vuln_group_list.update(set(names))
+        except AttributeError:
+            cls.feed_list_cache.vuln_group_list = set(names)
+
+    @classmethod
+    def flush(cls):
+        try:
+            cls.feed_list_cache.vuln_group_list = None
+        except AttributeError:
+            pass
 
 
 def have_vulnerabilities_for(distro_namespace_obj):
@@ -34,15 +64,13 @@ def have_vulnerabilities_for(distro_namespace_obj):
     :param distro_namespace_obj:
     :return: boolean
     """
-    db = get_thread_scoped_session()
 
     # All options are the same, no need to loop
     # Check all options for distro/flavor mappings
-    vulnerability_feed = DataFeeds.instance().vulnerabilities
-
+    db = get_thread_scoped_session()
     for namespace_name in distro_namespace_obj.like_namespace_names:
-        # Check feed names
-        if vulnerability_feed.group_by_name(namespace_name):
+        feed = get_feed_json(db_session=db, feed_name='vulnerabilities')
+        if feed and namespace_name in [x['name'] for x in feed.get('groups', [])]:
             # No records yet, but we have the feed, so may just not have any data yet
             return True
     else:
@@ -53,11 +81,9 @@ def namespace_has_no_feed(name, version):
     """
     Returns true if the given namespace has no direct CVE feed and false if it does.
 
-    :param candidate_namespace: the namespace of the cve item being checked
-    :param related_name: the namespace to check and validate if it should remain on the list or if it has its own feed
-    :return: boolean if related_name does not have a feed of its own and should use the candidate_namespace feed
+    :return: boolean if name,version tuple does not have a feed of its own
     """
-    return not VulnerabilityFeed.cached_group_name_lookup(name + ':' + version)
+    return not ThreadLocalFeedGroupNameCache.lookup(name + ':' + version)
 
 
 def find_vulnerable_image_packages(vulnerability_obj):
@@ -259,3 +285,77 @@ def merge_nvd_metadata(dbsession, vulnerability_objs, nvd_cls, cpe_cls, already_
         entry[1] = [id_map[id] for id in entry[1] if id in id_map]
 
     return result_list
+
+
+def flush_vulnerability_matches(db, feed_name=None, group_name=None):
+    """
+    Delete image vuln matches for the namespacename that matches the group name
+    :param db:
+    :param feed_name:
+    :param group_name:
+    :return:
+    """
+
+    count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
+    log.info('Deleted {} rows in flush for group {}'.format(count, group_name))
+
+
+def process_updated_vulnerability(db, vulnerability):
+    """
+    Update vulnerability matches for this vulnerability. This function will add objects to the db session but
+    will not commit. The caller is expected to manage the session lifecycle.
+
+    :param: item: The updated vulnerability object
+    :param: db: The db session to use, should be valid and open
+    :return: list of (user_id, image_id) that were affected
+    """
+    log.spew('Processing CVE update for: {}'.format(vulnerability.id))
+    changed_images = []
+
+    # Find any packages already matched with the CVE ID.
+    current_affected = vulnerability.current_package_vulnerabilities(db)
+
+    # May need to remove vuln from some packages.
+    if vulnerability.is_empty():
+        log.spew('Detected an empty CVE. Removing all existing matches on this CVE')
+
+        # This is a flush, nothing can be vulnerable to this, so remove it from packages.
+        if current_affected:
+            log.debug('Detected {} existing matches on CVE {} to remove'.format(len(current_affected), vulnerability.id))
+
+            for pkgVuln in current_affected:
+                log.debug('Removing match on image: {}/{}'.format(pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
+                db.delete(pkgVuln)
+                changed_images.append((pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
+    else:
+        # Find impacted images for the current vulnerability
+        new_vulnerable_packages = [ImagePackageVulnerability.from_pair(x, vulnerability) for x in find_vulnerable_image_packages(vulnerability)]
+        unique_vuln_pkgs = set(new_vulnerable_packages)
+        current_match = set(current_affected)
+
+        if len(new_vulnerable_packages) > 0:
+            log.debug('Found {} packages vulnerable to cve {}'.format(len(new_vulnerable_packages), vulnerability.id))
+            log.debug('Dedup matches from {} to {}'.format(len(new_vulnerable_packages), len(unique_vuln_pkgs)))
+
+        # Find the diffs of any packages that were vulnerable but are no longer.
+        no_longer_affected = current_match.difference(unique_vuln_pkgs)
+        possibly_updated = current_match.intersection(unique_vuln_pkgs)
+        new_matches = unique_vuln_pkgs.difference(current_match)
+
+        if len(no_longer_affected) > 0:
+            log.debug('Found {} packages no longer vulnerable to cve {}'.format(len(no_longer_affected), vulnerability.id))
+            for img_pkg_vuln in no_longer_affected:
+                log.debug('Removing old invalid match for pkg {} on cve {}'.format(img_pkg_vuln, vulnerability.id))
+                db.delete(img_pkg_vuln)
+            db.flush()
+
+        for v in new_matches:
+            log.debug('Adding new vulnerability match: {}'.format(v))
+            db.add(v)
+            changed_images.append((v.pkg_user_id, v.pkg_image_id))
+
+        db.flush()
+
+    log.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+
+    return changed_images

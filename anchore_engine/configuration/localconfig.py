@@ -40,11 +40,7 @@ DEFAULT_CONFIG = {
     },
     'keys': {},
     'feeds': {
-        'anonymous_user_username': 'anon@ancho.re',
-        'anonymous_user_password': 'pbiU2RYZ2XrmYQ',
         'url': 'https://ancho.re/v1/service/feeds',
-        'client_url': 'https://ancho.re/v1/account/users',
-        'token_url': 'https://ancho.re/oauth/token',
         'connection_timeout_seconds': 3,
         'read_timeout_seconds': 60,
         'selective_sync': {

@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy.exc
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, ImagePackage, Vulnerability, VulnerableArtifact, FixedArtifact
-from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
+from anchore_engine.services.policy_engine.engine.feeds import feeds
 from test.integration.services.policy_engine.fixtures import anchore_db, test_data_env
 from anchore_engine.subsys import logger
 
@@ -87,7 +87,7 @@ def test_cve_updates(test_data_env):
     db = get_session()
     try:
         db.add(test_cve)
-        FeedsUpdateTask.process_updated_vulnerability(db, test_cve)
+        feeds.process_updated_vulnerability(db, test_cve)
         db.commit()
     except:
         logger.exception('Failed!')
@@ -114,7 +114,7 @@ def test_cve_updates(test_data_env):
     try:
         t2 = db.merge(test_cve2)
         db.add(t2)
-        FeedsUpdateTask.process_updated_vulnerability(db, t2)
+        feeds.process_updated_vulnerability(db, t2)
         db.commit()
     except:
         logger.exception('Failed!')

@@ -2,7 +2,7 @@ import calendar
 import time
 from collections import OrderedDict
 
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_group_detached
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, select_nvd_classes
@@ -462,13 +462,12 @@ class FeedOutOfDateTrigger(BaseTrigger):
 
         oldest_update = None
         if ns:
-            vulnerability_feed = DataFeeds.instance().vulnerabilities
             for namespace_name in ns.like_namespace_names:
                 # Check feed names
-                groups = vulnerability_feed.group_by_name(namespace_name)
-                if groups:
+                group = get_feed_group_detached('vulnerabilities', namespace_name) #vulnerability_feed.group_by_name(namespace_name)
+                if group:
                     # No records yet, but we have the feed, so may just not have any data yet
-                    oldest_update = groups[0].last_sync
+                    oldest_update = group.last_sync
                     break
 
         if self.max_age.value() is not None:
