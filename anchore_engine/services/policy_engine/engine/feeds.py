@@ -295,54 +295,6 @@ class VulnDBFeedDataMapper(FeedDataMapper):
         return db_rec
 
 
-class SnykFeedDataMapper(FeedDataMapper):
-    """
-    Maps a Snyk record into an Vulnerability ORM object
-    """
-
-    def map(self, record_json):
-        if not record_json:
-            return None
-
-        # get the fundamental categories/ids
-        id = list(record_json.keys()).pop()
-        pkgvuln = record_json[id]
-        (group_name, nslang) = self.group.split(":", 2)
-
-        # create a new vulnerability record
-        db_rec = Vulnerability()
-
-        # primary keys
-        db_rec.namespace_name = self.group
-        db_rec.id = id
-
-        # severity calculation
-        db_rec.cvss2_score = pkgvuln.get('cvssScore')
-        db_rec.cvss2_vectors = pkgvuln.get('cvssV3')
-        db_rec.severity = db_rec.get_cvss_severity()
-
-        # other metadata
-        db_rec.link = pkgvuln.get('url')
-        db_rec.description = ""
-        db_rec.additional_metadata = pkgvuln
-
-        # add fixed_in records
-        semver_range = convert_langversionlist_to_semver(pkgvuln.get('vulnerableVersions', []), nslang)
-        sem_versions = semver_range.split(' || ')
-        for sem_version in sem_versions:
-            v_in = FixedArtifact()
-            v_in.name = pkgvuln.get("package")
-            v_in.version = sem_version
-            v_in.version_format = "semver"  # "semver:{}".format(nslang)
-            v_in.epochless_version = v_in.version
-            v_in.vulnerability_id = db_rec.id
-            v_in.namespace_name = db_rec.namespace_name
-            v_in.fix_metadata = {'fix_exists': pkgvuln.get('upgradeable', False)}
-            db_rec.fixed_in.append(v_in)
-
-        return db_rec
-
-
 class VulnerabilityFeedDataMapper(FeedDataMapper):
     """  
     Maps a Vulnerability record:
