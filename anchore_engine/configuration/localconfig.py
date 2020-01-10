@@ -278,7 +278,7 @@ def read_config(configfile=None):
                 else:
                     confbuf = confbufcopy
 
-            confdata = yaml.load(confbuf)
+            confdata = yaml.load(confbuf, Loader=yaml.FullLoader)
             if confdata:
                 ret.update(confdata)
         except Exception as err:

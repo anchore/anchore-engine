@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi7/ubi:7.7-99 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi7/ubi:7.7 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -60,7 +60,7 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi7/ubi:7.7-99 as anchore-engine-final
+FROM registry.access.redhat.com/ubi7/ubi:7.7 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
@@ -142,7 +142,7 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
     yum update -y && \
-    yum install -y rh-python36 rh-python36-python-wheel rh-python36-python-pip git procps psmisc
+    yum install -y rh-python36 rh-python36-python-wheel rh-python36-python-pip procps psmisc
 
 # Setup container default configs and directories
 

@@ -18,7 +18,7 @@ raw_dockerfile = 'FROM stratch\nRUN echo "hello" > file\n'
 def _load_spec(path):
     with open(path) as f:
         if path.endswith('yaml') or path.endswith('yml'):
-            return yaml.load(f)
+            return yaml.load(f, Loader=yaml.FullLoader)
         else:
             return json.load(f)
 
