@@ -126,6 +126,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
             if patt:
                 op,verraw = (patt.group(1), patt.group(2))
                 inrange = language_compare(rawpkgver, op, verraw, language=language)
+                
                 if not inrange:
                     violation = True
                     break
