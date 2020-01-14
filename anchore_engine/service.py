@@ -510,7 +510,15 @@ class ApiService(BaseService):
         """
 
         try:
-            self._application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir)
+
+            enable_swagger_ui = True
+            if self.configuration.get('enable_swagger_ui', None) is not None:
+                enable_swagger_ui = self.configuration.get('enable_swagger_ui')
+            elif self.global_configuration.get('enable_swagger_ui', None) is not None:
+                enable_swagger_ui = self.global_configuration.get('enable_swagger_ui')
+                
+            flask_app_options = {'swagger_ui': enable_swagger_ui}
+            self._application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir, options=flask_app_options)
             flask_app = self._application.app
             flask_app.url_map.strict_slashes = False
 
