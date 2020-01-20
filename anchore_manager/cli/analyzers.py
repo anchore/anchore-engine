@@ -193,27 +193,23 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
                 image_detail['created_at'] = created_at
                 image_detail['last_updated'] = created_at
                 image_detail['tag_detected_at'] = created_at
-                image_detail['record_state_key'] = 'active'                 
+                image_detail['record_state_key'] = 'active'
         except Exception as err:
             # image record setup fail
             raise err
 
         # perform analysis
-        try:
-            image_data, analyzed_manifest_data = analyze_image(userId, rawmanifest, image_record, workspace_root, config, registry_creds=[], use_cache_dir=None, image_source='docker-archive', image_source_meta=docker_archive)
+        image_data, analyzed_manifest_data = analyze_image(userId, rawmanifest, image_record, workspace_root, config, registry_creds=[], use_cache_dir=None, image_source='docker-archive', image_source_meta=docker_archive)
 
-            image_content_data = {}
-            for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
-                try:
-                    image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=input_manifest_data)
-                except:
-                    image_content_data[content_type] = {}
+        image_content_data = {}
+        for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
+            try:
+                image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=input_manifest_data)
+            except Exception:
+                image_content_data[content_type] = {}
 
-            anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
-            image_record['image_size'] = int(image_record['image_size'])
-        except Exception as err:
-            # image analysis fail
-            raise err
+        anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
+        image_record['image_size'] = int(image_record['image_size'])
 
         # generate an output image archive tarball
         archive_file = anchore_archive
@@ -247,5 +243,5 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
         logger.error(anchore_manager.cli.utils.format_error_output(click_config, 'db', {}, err))
         sys.exit(2)
 
-    
+
     click.echo("Analysis complete for image {} - archive file is located at {}".format(imageDigest, archive_file))
