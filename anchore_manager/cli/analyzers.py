@@ -134,10 +134,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
                 userId = 'admin'
 
             if created_at:
-                try:
-                    if int(created_at) < 0 or int(created_at) > now+1:
-                        raise Exception()
-                except Exception as err:
+                if int(created_at) < 0 or int(created_at) > now+1:
                     raise ValueError("created_at must by a unix timestamp between 0 and now ({})".format(now))
             else:
                 created_at = now
@@ -170,7 +167,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
                             annotations[k] = v
                         else:
                             raise Exception("found null in key or value")
-                    except Exception as err:
+                    except Exception:
                         raise ValueError("annotation format error - annotations must be of the form (--annotation key=value), found: {}".format(a))
 
             workspace_root = config['tmp_dir']
