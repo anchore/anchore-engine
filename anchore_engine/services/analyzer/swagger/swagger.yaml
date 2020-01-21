@@ -26,13 +26,6 @@ schemes:
 - "https"
 - "http"
 
-securityDefinitions:
-  basicAuth:
-    type: basic
-
-security:
-  - basicAuth: []
-
 paths:
   /status:
     get:
