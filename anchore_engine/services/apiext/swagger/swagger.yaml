@@ -52,11 +52,7 @@ consumes:
 - application/json
 produces:
 - application/json
-securityDefinitions:
-  basicAuth:
-    type: basic
-security:
-- basicAuth: []
+
 parameters:
   AsAccountParameter:
     name: x-anchore-account

@@ -12,11 +12,7 @@ basePath: "/"
 schemes:
 - https
 - http
-securityDefinitions:
-  anchore_basic:
-    type: basic
-security:
-  - anchore_basic: []
+
 paths:
   /evaluation_cache/status:
     get:
