@@ -511,7 +511,7 @@ class ApiService(BaseService):
 
         try:
 
-            enable_swagger_ui = True
+            enable_swagger_ui = False
             if self.configuration.get('enable_swagger_ui', None) is not None:
                 enable_swagger_ui = self.configuration.get('enable_swagger_ui')
             elif self.global_configuration.get('enable_swagger_ui', None) is not None:
