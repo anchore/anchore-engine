@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+# Fail on any errors, including in pipelines and when variables are missing
+set -euo pipefail
+
+display_usage() {
+    cat << EOF
+    This script is intended to be invoked from the root project Makefile, it is a simple wrapper
+    for calling pipeline task functions found in the following tasks libraries:
+
+        ${script_dir}/make/common_tasks
+        ${script_dir}/make/pipeline_tasks
+
+    This script handles UX, sourcing tasks libraries, displaying usage, and verbose output
+
+        usage: $0 < task_name >
+EOF
+}
+
+display_make_usage() {
+    printf "\nUse make from the project root directory to invoke pipeline tasks\n"
+    print_colorized WARN "usage: make < task_name >"
+}
+
+# source all CI commands & utility functions
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=SCRIPTDIR/make/utils
+source "${script_dir}/make/utils"
+# shellcheck source=SCRIPTDIR/make/pipeline_tasks
+source "${script_dir}/make/pipeline_tasks"
+# shellcheck source=SCRIPTDIR/make/common_tasks
+source "${script_dir}/make/common_tasks"
+
+setup_colors
+
+# Check for valid input arguments
+if [[ "$#" -eq 0 ]]; then
+    print_colorized ERROR "ERROR - script requires input" >&2
+    display_usage
+    exit 1
+
+elif [[ "$1" =~ (help|-h) ]]; then
+    display_make_usage
+
+# Check if the first argument is a function or executable script
+elif declare -f "$1" &> /dev/null || [[ -x "$1" ]]; then
+    # VERBOSE will trap all bash commands & print to screen, like using set -v but allows printing in color
+    if [[ "${VERBOSE:-false}" =~ (true|TRUE|y|Y|1) ]]; then
+        set -o functrace
+        trap 'printf "%s${INFO}+ $BASH_COMMAND${NORMAL}\n" >&2' DEBUG
+    fi
+
+    # run the task function/script with all arguments passed to it
+    "$@"
+
+else
+    print_colorized ERROR "ERROR - $1 is not a valid function name or script path" >&2
+    display_usage
+    exit 1
+fi

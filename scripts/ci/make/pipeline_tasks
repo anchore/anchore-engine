@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+
+# source utility functions
+# shellcheck source=SCRIPTDIR/utils
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils"
+
+##########################################################
+###   PROJECT SPECIFIC TASK COMMANDS - RUNTIME ORDER   ###
+########################################################
+
+# These functions are intended to be utilized as task commands invoked from the run_make_task script
+
+build() {
+    local COMMIT_SHA="${1:?'required parameter'}"
+    local GIT_REPO="${2:?'required parameter'}"
+    local GIT_TAG="${3:?'required parameter'}"
+    local TEST_IMAGE_NAME="${4:?'required parameter'}"
+
+    local anchore_cli_commit
+    local build_cache
+
+    # dont use the docker build cache if building from a semver tag
+    if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
+        print_colorized WARN "building from a git tag - disabling docker build cache and using latest anchore-cli version tag"
+        anchore_cli_commit="$(git ls-remote --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git | tail -n1 | sed 's/.*\///')"
+        build_cache="--no-cache"
+    else
+        anchore_cli_commit="master"
+        build_cache=''
+    fi
+
+    print_colorized WARN "building image ${TEST_IMAGE_NAME} - using anchore-cli installed from git@${anchore_cli_commit}"
+    docker build --target anchore-engine-builder ${build_cache} -t "${GIT_REPO}:builder" -f ./Dockerfile .
+    docker build --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" ${build_cache} --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
+    print_colorized WARN "successfully built image -- ${TEST_IMAGE_NAME}"
+}
+
+lint() {
+    local PYTHON="${1:?'required parameter'}"
+    local VENV="${2:?'required parameter'}"
+
+    activate_venv "${VENV}"
+    hash pylint || "${PYTHON}" -m pip install -q pylint
+
+    print_colorized WARN "linting project"
+    pylint anchore_engine
+    pylint anchore_manager
+}
+
+unit_tests() {
+    local PYTHON="${1:?'required parameter'}"
+    local VENV="${2:?'required parameter'}"
+
+    activate_venv "${VENV}"
+    hash tox || "${PYTHON}" -m pip install -q tox
+
+    print_colorized WARN "running unit tests"
+    tox test/unit
+}
+
+integration_tests() {
+    local PYTHON="${1:?'required parameter'}"
+    local VENV="${2:?'required parameter'}"
+
+    activate_venv "${VENV}"
+    hash tox || "${PYTHON}" -m pip install tox
+    hash docker-compose || "${PYTHON}" -m pip install docker-compose
+
+    print_colorized WARN "running integration tests"
+    if [[ "${CI:-false}" == true ]]; then
+        tox test/integration
+    else
+        ./scripts/tests/test_with_deps.sh test/integration/
+    fi
+}
+
+functional_tests() {
+    local PYTHON="${1:?'required parameter'}"
+    local VENV="${2:?'required parameter'}"
+
+    activate_venv "${VENV}"
+    hash tox || "${PYTHON}" -m pip install tox
+    hash anchore-cli || "${PYTHON}" -m pip install -q anchorecli
+
+    print_colorized WARN "running functional tests"
+    anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
+    anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
+    tox test/functional
+}
+
+setup_e2e_tests() {
+    local COMMIT_SHA="${1:?'required parameter'}"
+    local DEV_IMAGE_REPO="${2:?'required parameter'}"
+    local GIT_TAG="${3:?'required parameter'}"
+    local TEST_IMAGE_NAME="${4:?'required parameter'}"
+    local VENV="${5:?'required parameter'}"
+
+    local helm_deploy_name
+    local engine_image
+
+    activate_venv "${VENV}"
+
+    if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then
+        # get the latest rc git tag for this semver & use it for the image tag
+        engine_image="${DEV_IMAGE_REPO}:$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
+        print_colorized WARN "detected semver git tag, using RC image for e2e testing -- ${engine_image}"
+
+    elif docker inspect "${TEST_IMAGE_NAME}" &> /dev/null; then
+        engine_image="${TEST_IMAGE_NAME}"
+        print_colorized WARN "using local dev image for e2e testing -- ${engine_image}"
+        kind load docker-image "${engine_image}" --name e2e-testing
+
+    else
+        engine_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+        print_colorized WARN "using remote dev image for e2e testing -- ${engine_image}"
+    fi
+
+    if [[ "${CI:-false}" == true ]]; then
+        # Test for required environment variables exported in CI jobs
+        test "${DOCKER_PASS:?'required environment variable'}"
+        test "${DOCKER_USER:?'required environment variable'}"
+
+        # create k8s secret using $DOCKER_USER & $DOCKER_PASS and set as default imagePullCreds
+        kubectl create secret docker-registry anchore-enterprise-pullcreds --docker-server=docker.io --docker-username="${DOCKER_USER}" --docker-password="${DOCKER_PASS}" --docker-email=anchoreci@anchore.com
+        kubectl patch serviceaccount default --type=merge --patch '{"imagePullSecrets":[{"name": "anchore-enterprise-pullcreds"}]}'
+    fi
+
+    helm repo add stable https://kubernetes-charts.storage.googleapis.com
+    helm_deploy_name="e2e-testing-${RANDOM:0:5}"
+    helm install "${helm_deploy_name}" -f test/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
+
+    # Patch anchore-engine-api nodeport to the configured port thats mapped with kind to localhost:8228
+    kubectl patch service "${helm_deploy_name}-anchore-engine-api" --type=json --patch '[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30028}]'
+}
+
+run_e2e_tests() {
+    local PYTHON="${1:?'required parameter'}"
+    local VENV="${2:?'required parameter'}"
+
+    activate_venv "${VENV}"
+    hash anchore-cli || "${PYTHON}" -m pip install -q anchorecli
+
+    print_colorized WARN "running e2e tests"
+    anchore-cli --u admin --p foobar system wait --timeout 300 --interval 10 --feedsready '' --servicesready 'catalog,apiext,policy_engine,simplequeue,analyzer'
+    anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
+    "${PYTHON}" scripts/tests/aetest.py docker.io/alpine:latest
+    "${PYTHON}" scripts/tests/aefailtest.py docker.io/alpine:latest
+}
+
+push_dev_image() {
+    local COMMIT_SHA="${1:?'required parameter'}"
+    local DEV_IMAGE_REPO="${2:?'required parameter'}"
+    local GIT_BRANCH="${3:?'required parameter'}"
+    local TEST_IMAGE_NAME="${4:?'required parameter'}"
+
+    local dev_image
+    local latest_image
+    local branch_image
+
+    dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+
+    if [[ "${CI:-false}" == true ]]; then
+        # Test for required environment variables exported in CI jobs
+        test "${DOCKER_PASS:?'required environment variable'}"
+        test "${DOCKER_USER:?'required environment variable'}"
+        test "${RELEASE_BRANCHES:?'required environment variable'}"
+
+        echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+        print_colorized WARN "tagging and pushing image -- ${dev_image}"
+        docker tag "${TEST_IMAGE_NAME}" "${dev_image}"
+        docker push "${dev_image}"
+
+        if [[ "${GIT_BRANCH}" == 'master' ]]; then
+            latest_image="${DEV_IMAGE_REPO}:latest"
+            print_colorized WARN "tagging & pushing image -- ${latest_image}"
+            docker tag "${dev_image}" "${latest_image}"
+            docker push "${latest_image}"
+
+        elif [[ "${RELEASE_BRANCHES}" == *"${GIT_BRANCH}"* ]]; then
+            branch_image="${DEV_IMAGE_REPO}:${GIT_BRANCH}"
+            print_colorized WARN "tagging & pushing image -- ${branch_image}"
+            docker tag "${dev_image}" "${branch_image}"
+            docker push "${branch_image}"
+        fi
+    else
+        print_colorized WARN "tagging and pushing image -- ${dev_image}"
+        continue_prompt
+        docker tag "${TEST_IMAGE_NAME}" "${dev_image}"
+        docker push "${dev_image}"
+    fi
+}
+
+push_rc_image() {
+    local COMMIT_SHA="${1:?'required parameter'}"
+    local DEV_IMAGE_REPO="${2:?'required parameter'}"
+    local GIT_TAG="${3:?'required parameter'}"
+
+    local dev_image
+    local rc_image
+
+    if [[ "${CI:-false}" == true ]]; then
+        # Test for required environment variables exported in CI jobs
+        test "${DOCKER_PASS:?'required environment variable'}"
+        test "${DOCKER_USER:?'required environment variable'}"
+
+        dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+        rc_image="${DEV_IMAGE_REPO}:${GIT_TAG}"
+
+        echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+        print_colorized WARN "pulling dev image for release candidate -- ${dev_image}"
+        docker pull "${dev_image}"
+
+        print_colorized WARN "tagging and pushing image -- ${rc_image}"
+        docker tag "${dev_image}" "${rc_image}"
+        docker push "${rc_image}"
+    else
+        print_colorized WARN "CI=true must be set to push image -- ${rc_image}"
+    fi
+}
+
+push_prod_image_release() {
+    local DEV_IMAGE_REPO="${1:?'required parameter'}"
+    local GIT_BRANCH="${2:-'required parameter'}"
+    local GIT_TAG="${3:?'required parameter'}"
+
+    local prod_image
+    local rc_image
+
+    if [[ "${CI:-false}" == true ]]; then
+        # Test for required environment variables exported in CI jobs
+        test "${DOCKER_PASS:?'required environment variable'}"
+        test "${DOCKER_USER:?'required environment variable'}"
+        test "${LATEST_RELEASE_BRANCH:?'required environment variable'}"
+        test "${PROD_IMAGE_REPO:?'required environment variable'}"
+
+        rc_image="${DEV_IMAGE_REPO}:$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
+        prod_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
+
+        echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+        print_colorized WARN "pulling RC image for release -- ${rc_image}"
+        docker pull "${rc_image}"
+
+        print_colorized WARN "tagging and pushing image -- ${prod_image}"
+        docker tag "${rc_image}" "${prod_image}"
+        docker push "${prod_image}"
+
+        if [[ "${GIT_BRANCH}" == "${LATEST_RELEASE_BRANCH}" ]]; then
+            local latest_image="${PROD_IMAGE_REPO}:latest"
+            print_colorized WARN "tagging and pushing image -- ${latest_image}"
+            docker tag "${prod_image}" "${latest_image}"
+            docker push "${latest_image}"
+        fi
+    else
+        print_colorized WARN "CI=true must be set to push image -- ${prod_image}"
+    fi
+}
+
+push_prod_image_rebuild() {
+    local COMMIT_SHA="${1:?'required parameter'}"
+    local DEV_IMAGE_REPO="${2:?'required parameter'}"
+    local GIT_TAG="${3:?'required parameter'}"
+
+    local dev_image
+    local rebuild_image
+
+    if [[ "${CI:-false}" == true ]]; then
+        # Test for required environment variables exported in CI jobs
+        test "${DOCKER_PASS:?'required environment variable'}"
+        test "${DOCKER_USER:?'required environment variable'}"
+        test "${PROD_IMAGE_REPO:?'required environment variable'}"
+
+        dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+        rebuild_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
+
+        echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+        print_colorized WARN "pulling dev image for release candidate -- ${dev_image}"
+        docker pull "${dev_image}"
+
+        print_colorized WARN "tagging and pushing image -- ${rebuild_image}"
+        docker tag "${dev_image}" "${rebuild_image}"
+        docker push "${rebuild_image}"
+    else
+        print_colorized WARN "CI=true must be set to push image -- ${rebuild_image}"
+    fi
+}

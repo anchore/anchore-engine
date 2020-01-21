@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # Usage: test_with_deps.sh <path to test(s) to run> <additional params to pass to tox>
 # Unit test Example: ./scripts/testing/test_with_deps.sh test/unit
 # Integration test Example: ./scripts/testing/test_with_deps.sh test/integration
@@ -11,30 +12,28 @@
 to_run=${1}
 full_params=$@
 
-test_dir=`echo ${to_run} | cut -f -2 -d '/'`
+test_dir=$(echo "${to_run}" | cut -f -2 -d '/')
 
-if [ -e ${test_dir}/setup_deps.sh ]
-then
-	echo Found deps, initializing
-	pushd ${test_dir}
+if [[ -e ${test_dir}/setup_deps.sh ]]; then
+	echo "Found deps, initializing"
+	pushd "${test_dir}"
 	source ./setup_deps.sh
 	popd
 else
 	echo No setup_depts.sh script found to run, skipping
 fi
 
-echo Running the tests
+echo "Running the tests"
 tox ${full_params}
-test_return_code=${?}
+test_return_code=$?
 
-if [ -e ${test_dir}/teardown_deps.sh ]
-then
-	pushd ${test_dir}
-	echo Tearing down deps
+if [[ -e ${test_dir}/teardown_deps.sh ]]; then
+	pushd "${test_dir}"
+	echo "Tearing down deps"
 	source ./teardown_deps.sh
 	popd
 else
-	echo No teardown_deps.sh found to run, skipping
+	echo "No teardown_deps.sh found to run, skipping"
 fi
 
 exit ${test_return_code}

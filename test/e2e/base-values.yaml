@@ -1,0 +1,63 @@
+postgresql:
+  # image: anchore/engine-db-preload
+  # imageTag: latest
+  # postgresUser: postgres
+  # postgrsPassword: foobar123
+  # postgresDatabase: postgres
+  # probes:
+  #   liveness:
+  #     initialDelay: 500
+  resources:
+   limits:
+     cpu: 1
+     memory: 1G
+   requests:
+     cpu: 100m
+     memory: 100M
+
+anchoreAnalyzer:
+  resources:
+   limits:
+     cpu: 1
+     memory: 1G
+   requests:
+     cpu: 100m
+     memory: 100M
+
+anchoreApi:
+  service:
+    type: NodePort
+  resources:
+   limits:
+     cpu: 500m
+     memory: 500M
+   requests:
+     cpu: 100m
+     memory: 100M
+
+anchoreCatalog:
+  resources:
+   limits:
+     cpu: 1
+     memory: 1G
+   requests:
+     cpu: 100m
+     memory: 100M
+
+anchorePolicyEngine:
+  resources:
+   limits:
+     cpu: 1
+     memory: 1G
+   requests:
+     cpu: 100m
+     memory: 100M
+
+anchoreSimpleQueue:
+  resources:
+   limits:
+     cpu: 500m
+     memory: 500M
+   requests:
+     cpu: 100m
+     memory: 100M
