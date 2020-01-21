@@ -203,6 +203,7 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
             try:
                 image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=input_manifest_data)
             except Exception:
+                logger.exception("Unable to determine content_type, will fallback to {}")
                 image_content_data[content_type] = {}
 
         anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
