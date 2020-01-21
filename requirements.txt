@@ -14,11 +14,11 @@ inflection==0.3.1
 itsdangerous==1.1.0
 Jinja2==2.10.3
 jmespath==0.9.4
-jsonschema==3.2.0
+jsonschema==2.6.0
 MarkupSafe==1.1.1
 passlib==1.7.2
 pathlib==1.0.1
-pg8000==1.13.2
+pg8000==1.10.6
 prettytable==0.7.2
 prometheus-client==0.7.1
 prometheus-flask-exporter==0.12.1
