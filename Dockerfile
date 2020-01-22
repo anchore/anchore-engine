@@ -31,6 +31,8 @@ RUN set -ex && \
     pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
+    cp ./scripts/docker-compose/anchore-prometheus.yml /build_output/configs/anchore-prometheus.yml && \
+    cp ./scripts/docker-compose/anchore-swaggerui-nginx.conf /build_output/configs/anchore-swaggerui-nginx.conf && \
     cp ./docker-compose.yaml /build_output/configs/docker-compose.yaml && \
     cp ./docker-compose-dev.yaml /build_output/configs/docker-compose-dev.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh 
@@ -163,6 +165,8 @@ RUN set -ex && \
     mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
+    cp /build_output/configs/anchore-prometheus.yml /config/anchore-prometheus.yml && \
+    cp /build_output/configs/anchore-swaggerui-nginx.conf /config/anchore-swaggerui-nginx.conf && \
     cp /build_output/configs/docker-compose.yaml /docker-compose.yaml && \
     cp /build_output/configs/docker-compose-dev.yaml /docker-compose-dev.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
