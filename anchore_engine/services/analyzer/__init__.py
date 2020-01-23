@@ -134,6 +134,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             except Exception as err:
                 logger.warn("could not get imageId after analysis or from image record - exception: " + str(err))
 
+            logger.info("adding image analysis data to catalog: userid={} imageId={} imageDigest={}".format(userId, imageId, imageDigest))
             try:
                 logger.debug("archiving analysis data")
                 rc = catalog_client.put_document('analysis_data', imageDigest, image_data)
@@ -141,11 +142,11 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
                 event = events.SaveAnalysisFailed(user_id=userId, image_digest=imageDigest, error=err.to_dict())
                 analysis_events.append(event)
-                raise err
+                raise err            
 
             if rc:
                 try:
-                    logger.debug("extracting image content data")
+                    logger.debug("extracting image content data locally")
                     image_content_data = {}
                     for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
                         try:
@@ -163,14 +164,14 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
 
                     except Exception as err:
-                        raise err
+                        raise err                            
 
                 except Exception as err:
                     import traceback
                     traceback.print_exc()
                     logger.warn("could not store image content metadata to archive - exception: " + str(err))
 
-                logger.debug("adding image record to policy-engine service (" + str(userId) + " : " + str(imageId) + ")")
+                logger.info("adding image to policy engine: userid={} imageId={} imageDigest={}".format(userId, imageId, imageDigest))                
                 try:
                     if not imageId:
                         raise Exception("cannot add image to policy engine without an imageId")
@@ -181,16 +182,28 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     pe_client = internal_client_for(PolicyEngineClient, userId)
 
                     try:
-                        logger.debug("clearing any existing record in policy engine for image: " + str(imageId))
+                        logger.debug("clearing any existing image record in policy engine: {} / {} / {}".format(userId, imageId, imageDigest))
                         rc = pe_client.delete_image(user_id=userId, image_id=imageId)
                     except Exception as err:
                         logger.warn("exception on pre-delete - exception: " + str(err))
 
-                    logger.info('Loading image into policy engine: {} {}'.format(userId, imageId))
-                    image_analysis_fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
-                    logger.debug("policy engine request: " + image_analysis_fetch_url)
-                    resp = pe_client.ingress_image(userId, imageId, image_analysis_fetch_url)
-                    logger.debug("policy engine image add response: " + str(resp))
+                    client_success = False
+                    last_exception = None
+                    for retry_wait in [1, 3, 5, 0]:
+                        try:
+                            logger.debug('loading image into policy engine: {} / {} / {}'.format(userId, imageId, imageDigest))
+                            image_analysis_fetch_url='catalog://'+str(userId)+'/analysis_data/'+str(imageDigest)
+                            logger.debug("policy engine request: " + image_analysis_fetch_url)
+                            resp = pe_client.ingress_image(userId, imageId, image_analysis_fetch_url)
+                            logger.debug("policy engine image add response: " + str(resp))
+                            client_success = True
+                            break
+                        except Exception as e:
+                            logger.warn("attempt failed, will retry - exception: {}".format(e))                            
+                            last_exception = e
+                            time.sleep(retry_wait)
+                    if not client_success:
+                        raise last_exception                                                        
 
                 except Exception as err:
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
@@ -263,8 +276,10 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             rc = catalog_client.update_image(imageDigest, image_record)
 
             if userId and imageDigest:
-                event = events.UserAnalyzeImageFailed(user_id=userId, full_tag=fulltag, error=str(err))
-                analysis_events.append(event)
+                for image_detail in image_record['image_detail']:
+                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']                
+                    event = events.UserAnalyzeImageFailed(user_id=userId, full_tag=fulltag, error=str(err))
+                    analysis_events.append(event)
         finally:
             if analysis_events:
                 for event in analysis_events:

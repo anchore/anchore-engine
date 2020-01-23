@@ -55,6 +55,7 @@ class TagPolicyEvaluationUpdated(UserCheckSubcategory):
 class UserAnalyzeImageFailed(UserImageSubcategory):
     __event_type__ = 'analysis.failed'
     __message__ = 'Failed to analyze image'
+    __resource_type__ = _image_tag_resource_type    
     __level__ = EventLevel.ERROR
 
     def __init__(self, user_id, full_tag, error=None):
