@@ -26,10 +26,7 @@ To quickly bring up an installation of Anchore Engine on a system with docker (a
 mkdir ~/aevolume
 cd ~/aevolume
 
-docker pull docker.io/anchore/anchore-engine:latest
-docker create --name ae docker.io/anchore/anchore-engine:latest
-docker cp ae:/docker-compose.yaml ~/aevolume/docker-compose.yaml
-docker rm ae
+curl -sO https://raw.githubusercontent.com/anchore/anchore-engine/master/docker-compose.yaml
 
 docker-compose pull
 docker-compose up -d
