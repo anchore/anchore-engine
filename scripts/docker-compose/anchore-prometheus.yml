@@ -16,7 +16,7 @@ scrape_configs:
   scheme: http
   static_configs:
   - targets:
-    - anchore-engine:8228
+    - engine-api:8228
   basic_auth:
     username: admin
     password: foobar
@@ -28,7 +28,7 @@ scrape_configs:
   scheme: http
   static_configs:
   - targets:
-    - anchore-engine:8082
+    - engine-catalog:8228
   basic_auth:
     username: admin
     password: foobar
@@ -40,7 +40,7 @@ scrape_configs:
   scheme: http
   static_configs:
   - targets:
-    - anchore-engine:8083
+    - engine-simpleq:8228
   basic_auth:
     username: admin
     password: foobar
@@ -52,19 +52,7 @@ scrape_configs:
   scheme: http
   static_configs:
   - targets:
-    - anchore-engine:8084
-  basic_auth:
-    username: admin
-    password: foobar
-
-- job_name: anchore-k8s
-  scrape_interval: 15s
-  scrape_timeout: 10s
-  metrics_path: /metrics
-  scheme: http
-  static_configs:
-  - targets:
-    - anchore-engine:8338
+    - engine-analyzer:8228
   basic_auth:
     username: admin
     password: foobar
@@ -76,7 +64,7 @@ scrape_configs:
   scheme: http
   static_configs:
   - targets:
-    - anchore-engine:8087
+    - engine-policy-engine:8228
   basic_auth:
     username: admin
     password: foobar

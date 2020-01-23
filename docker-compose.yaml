@@ -119,7 +119,7 @@ services:
       driver: "json-file"
       options:
         max-size: 100m
-  # Kubernetes handler webhook. Uncomment to use, not typically needed for docker-compose installs
+# Uncomment this section to enable Kubernetes handler webhook. Not typically needed for docker-compose installs
 #  kubehook:
 #    image: anchore/anchore-engine:v0.6.0
 #    depends_on:
@@ -136,3 +136,40 @@ services:
 #    - ANCHORE_DB_PASSWORD=mysecretpassword
 #    - ANCHORE_ENDPOINT_HOSTNAME=kubehook
 #    command: ["anchore-manager", "service", "start", "kubernetes_webhook"]
+
+# Uncomment this section to add a prometheus instance to gather metrics. This is mostly for quickstart to demonstrate prometheus metrics exported
+#  anchore-prometheus:
+#      image: docker.io/prom/prometheus:latest
+#      depends_on:
+#       - engine-api
+#      volumes:
+#       - ./anchore-prometheus.yml:/etc/prometheus/prometheus.yml:z
+#      logging:
+#       driver: "json-file"
+#       options:
+#        max-size: 100m
+#      ports:
+#       - "9090:9090"
+
+# Uncomment this section to run a swagger UI service, for inspecting and interacting with the anchore engine API via a browser (http://localhost:8080 by default, change if needed in both sections below)
+#  anchore-swagger-ui-nginx:
+#    image: docker.io/nginx:latest
+#    depends_on:
+#     - engine-api
+#     - anchore-swagger-ui
+#    ports:
+#     - "8080:8080"
+#    volumes:
+#     - ./anchore-swaggerui-nginx.conf:/etc/nginx/nginx.conf:z
+#    logging:
+#     driver: "json-file"
+#     options:
+#      max-size: 100m
+#  anchore-swagger-ui:
+#    image: docker.io/swaggerapi/swagger-ui
+#    environment:
+#      - URL=http://localhost:8080/v1/swagger.json
+#    logging:
+#     driver: "json-file"
+#     options:
+#      max-size: 100m
