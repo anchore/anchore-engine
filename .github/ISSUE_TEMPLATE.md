@@ -9,11 +9,11 @@
 <!--
 If this is a BUG REPORT, please:
   - Fill in as much of the template below as possible so we can reproduce and understand the issue.
-  
+
 If this is a FEATURE REQUEST, please:
   - Describe the feature *in detail* as much as possible including possible cli and api behavior and how to test the feature.
 
-In both cases, we'll probably ask follow-up questions to ensure it's well understoon. If we cannot reproduce the issue or
+In both cases, we'll probably ask follow-up questions to ensure it's well understood. If we cannot reproduce the issue or
 questions go unanswered for too long, we may close the issue. If we're wrong, PLEASE feel free to re-open it and explain why.
 -->
 
@@ -23,7 +23,7 @@ docker exec <engine_container> pip show anchore-engine
 -->
 **Version of Anchore Engine and Anchore CLI if applicable**:
 
- 
+
 **What happened**:
 
 
