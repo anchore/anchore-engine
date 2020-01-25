@@ -789,3 +789,22 @@ class CPE(object):
             return True
         else:
             return False
+
+@contextmanager
+def timer(label, log_level='debug'):
+    t = time.time()
+    try:
+        yield
+    finally:
+        log_level = log_level.lower()
+        if log_level == 'info':
+            logger.info('Execution of {} took: {} seconds'.format(label, time.time() - t))
+        elif log_level == 'warn':
+            logger.warn('Execution of {} took: {} seconds'.format(label, time.time() - t))
+        elif log_level == 'spew':
+            logger.spew('Execution of {} took: {} seconds'.format(label, time.time() - t))
+        else:
+            logger.debug('Execution of {} took: {} seconds'.format(label, time.time() - t))
+
+
+
