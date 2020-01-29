@@ -188,7 +188,7 @@ class FeedsUpdateTask(IAsyncTask):
             catalog_client = internal_client_for(CatalogClient, userId=None)
 
         try:
-            notify_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'), catalog_client)
+            notify_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'), catalog_client, self.uuid)
         except:
             log.exception('Ignoring event generation error before feed sync. (operation_id={})'.format(self.uuid))
 
@@ -208,9 +208,9 @@ class FeedsUpdateTask(IAsyncTask):
             # log feed sync event
             try:
                 if error:
-                    notify_event(FeedSyncTaskFailed(groups=self.feeds if self.feeds else 'all', error=error), catalog_client)
+                    notify_event(FeedSyncTaskFailed(groups=self.feeds if self.feeds else 'all', error=error), catalog_client, self.uuid)
                 else:
-                    notify_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'), catalog_client)
+                    notify_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'), catalog_client, self.uuid)
             except:
                 log.exception('Ignoring event generation error after feed sync (operation_id={})'.format(self.uuid))
 

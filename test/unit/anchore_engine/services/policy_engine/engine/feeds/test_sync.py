@@ -1,6 +1,7 @@
 import pytest
 import datetime
-from anchore_engine.services.policy_engine.engine.feeds.sync import get_selected_feeds_to_sync, get_feeds_config, DataFeeds, DataFeed, FeedMetadata, VulnDBFeed, VulnerabilityFeed, NvdV2Feed, PackagesFeed
+from anchore_engine.services.policy_engine.engine.feeds.feeds import DataFeed
+from anchore_engine.services.policy_engine.engine.feeds.sync import get_selected_feeds_to_sync, get_feeds_config, DataFeeds, FeedMetadata, VulnDBFeed, VulnerabilityFeed, NvdV2Feed, PackagesFeed
 
 
 @pytest.fixture

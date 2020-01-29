@@ -16,12 +16,12 @@ from anchore_engine.services.policy_engine.engine.feeds.db import lookup_feed
 log = get_logger()
 
 
-def build_group_sync_result():
-    return {'group': None, 'status': 'failure', 'total_time_seconds': 0, 'updated_record_count': 0, 'updated_image_count': 0}
+def build_group_sync_result(group=None, status='failure'):
+    return {'group': group, 'status': status, 'total_time_seconds': 0, 'updated_record_count': 0, 'updated_image_count': 0}
 
 
-def build_feed_sync_results():
-    return {'feed': None, 'status': 'failure', 'total_time_seconds': 0, 'groups': []}
+def build_feed_sync_results(feed=None, status='failure'):
+    return {'feed': feed, 'status': status, 'total_time_seconds': 0, 'groups': []}
 
 
 class FeedMeta(type):
@@ -74,7 +74,7 @@ class DataFeed(object, metaclass=FeedMeta):
         """
         self.metadata = metadata
 
-    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, operation_id=None) -> dict:
+    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None, group=None) -> dict:
         """
         Ensure the feed is synchronized. Performs checks per sync item and if item_processing_fn is provided.
         Transaction scope is the update for an entire group.
@@ -225,12 +225,15 @@ class AnchoreServiceFeed(DataFeed):
         db = get_session()
 
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
+
         if self.__flush_helper_fn__:
             self.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         db.query(GenericFeedDataRecord).delete()
+        group_obj.last_sync = None # Null the update timestamp to reflect the flush
+        db.flush()
 
-    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None) -> dict:
+    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None, group=None) -> dict:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -257,18 +260,18 @@ class AnchoreServiceFeed(DataFeed):
         log.info(log_msg_ctx(operation_id, self.__feed_name__, None, 'Starting feed sync'))
 
         # Only iterate thru what was fetched
-        for group_download_result in filter(lambda x: x.feed == self.__feed_name__, fetched_data.metadata.download_result.results):
+        for group_download_result in filter(lambda x: x.feed == self.__feed_name__ and (not group or group == x.name), fetched_data.metadata.download_result.results):
             log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Processing group for db update'))
-            notify_event(FeedGroupSyncStarted(feed=group_download_result.feed, group=group_download_result.group), event_client)
 
             try:
-                new_data = self._sync_group(group_download_result, full_flush=full_flush, local_repo=fetched_data)  # Each group sync is a transaction
+                new_data = self._sync_group(group_download_result, full_flush=full_flush, local_repo=fetched_data, operation_id=operation_id)  # Each group sync is a transaction
                 result['groups'].append(new_data)
-                notify_event(FeedGroupSyncCompleted(feed=group_download_result.feed, group=group_download_result.group, result=new_data), event_client)
             except Exception as e:
                 log.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Failed syncing group data'))
                 failed_count += 1
-                notify_event(FeedGroupSyncFailed(feed=group_download_result.feed, group=group_download_result.group, error=e), event_client)
+                fail_result = build_group_sync_result()
+                fail_result['group'] = group_download_result.group
+                result['groups'].append(fail_result)
 
         sync_time = time.time() - t
         self._update_last_full_sync_timestamp()
@@ -470,7 +473,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
 
         db = get_session()
-        self.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        VulnerabilityFeed.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} fix records'.format(count)))
@@ -478,10 +482,11 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         # log.info('Flushed {} vuln_in records'.format(count))
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
+        group_obj.last_sync = None # Null the update timestamp to reflect the flush
 
         db.flush()
 
-    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None) -> dict:
+    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None, group=None) -> dict:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -499,16 +504,13 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         if self.metadata and self.metadata.groups:
             # Setup the group name cache
             ThreadLocalFeedGroupNameCache.add([x.name for x in self.metadata.groups])
-            #feed_list_cache.vuln_group_list =  [x.name for x in self.metadata.groups])
         else:
             ThreadLocalFeedGroupNameCache.flush()
-            #feed_list_cache.vuln_group_list = []
 
         try:
-            return super().sync(fetched_data, full_flush, event_client)
+            return super().sync(fetched_data, full_flush, event_client, operation_id=operation_id, group=group)
         finally:
             ThreadLocalFeedGroupNameCache.flush()
-            #feed_list_cache.vuln_group_list = None
 
     def record_count(self, group_name):
         db = get_session()
@@ -567,6 +569,8 @@ class PackagesFeed(AnchoreServiceFeed):
         count = db.query(ent_cls).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} records'.format(count, group_obj.name)))
 
+        group_obj.last_sync = None
+
         db.flush()
 
 
@@ -588,6 +592,8 @@ class NvdV2Feed(AnchoreServiceFeed):
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} CpeV2Vuln records'.format(count)))
         count = db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_obj.name).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} NvdV2 records'.format(count)))
+
+        group_obj.last_sync = None
 
         db.flush()
 
@@ -622,6 +628,7 @@ class VulnDBFeed(AnchoreServiceFeed):
         count = db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_obj.name).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBMetadata records'.format(count)))
 
+        group_obj.last_sync = None
         db.flush()
 
     def record_count(self, group_name):
@@ -645,9 +652,10 @@ def feed_instance_by_name(name):
     return DataFeed.get_feed_by_name(name)()
 
 
-def notify_event(event: EventBase, client: CatalogClient):
+def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
     """
     Send an event or just log it if client is None
+    Always log the event to info level
     """
 
     if client:
@@ -655,8 +663,11 @@ def notify_event(event: EventBase, client: CatalogClient):
             client.add_event(event)
         except Exception as e:
             log.warn('Error adding feed start event: {}'.format(e))
-    else:
-        log.info('Event: {}'.format(event.to_json()))
+
+    try:
+        log.info('Event: {} (operation_id={})'.format(event.to_json(), operation_id))
+    except:
+        log.exception('Error logging event')
 
 
 def log_msg_ctx(operation_id, feed, group, msg):

@@ -295,9 +295,8 @@ def flush_vulnerability_matches(db, feed_name=None, group_name=None):
     :param group_name:
     :return:
     """
-
     count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
-    log.info('Deleted {} rows in flush for group {}'.format(count, group_name))
+    log.info('Deleted {} vulnerability matches in flush for group {}'.format(count, group_name))
 
 
 def process_updated_vulnerability(db, vulnerability):
