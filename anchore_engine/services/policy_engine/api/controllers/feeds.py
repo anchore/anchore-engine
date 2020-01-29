@@ -5,7 +5,7 @@ from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_A
 from anchore_engine.clients.services.simplequeue import LeaseAcquisitionFailedError, LeaseUnavailableError
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds import db, sync
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.subsys import logger as log
 
@@ -19,9 +19,7 @@ def list_feeds(include_counts=False):
     :return:
     """
 
-    f = DataFeeds.instance()
-    meta = f.list_metadata()
-
+    meta = db.get_all_feeds_detached()
     response = []
 
     for feed in meta:
@@ -40,7 +38,7 @@ def list_feeds(include_counts=False):
 
             if include_counts:
                 # Compute count (this is slow)
-                g.record_count = f.records_for(i.name, g.name)
+                g.record_count = sync.DataFeeds.records_for(i.name, g.name)
             else:
                 g.record_count = None
 

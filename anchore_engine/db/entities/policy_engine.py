@@ -81,6 +81,16 @@ class FeedMetadata(Base, UtilMixin):
     def __repr__(self):
         return '<{}(name={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.access_tier, self.created_at.isoformat())
 
+    def to_json(self, include_groups=True):
+        j = super().to_json()
+
+        if include_groups:
+            j['groups'] = [g.to_json() for g in self.groups]
+        else:
+            j['groups'] = None
+
+        return j
+
 
 class FeedGroupMetadata(Base, UtilMixin):
     __tablename__ = 'feed_groups'
@@ -97,6 +107,14 @@ class FeedGroupMetadata(Base, UtilMixin):
         return '<{} name={}, feed={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.feed_name, self.access_tier,
                                                                               self.created_at)
 
+    def to_json(self, include_feed=False):
+        j = super().to_json()
+        if include_feed:
+            j['feed'] = self.feed.to_json(include_groups=False) # Avoid the loop
+        else:
+            j['feed'] = None # Ensure no non-serializable stuff
+
+        return j
 
 class GenericFeedDataRecord(Base):
     """

@@ -8,17 +8,18 @@ import dateutil.parser
 import requests
 import time
 import urllib.request, urllib.parse, urllib.error
-
+import uuid
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, find_vulnerable_image_packages, ImagePackageVulnerability, rescan_image
+from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, rescan_image
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds, get_selected_feeds_to_sync
+from anchore_engine.services.policy_engine.engine.feeds.sync import get_selected_feeds_to_sync, DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.feeds import notify_event
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
 from anchore_engine.subsys.events import FeedSyncTaskStarted, FeedSyncTaskCompleted, FeedSyncTaskFailed
@@ -107,16 +108,18 @@ class FeedsFlushTask(IAsyncTask):
 
     """
     def execute(self):
-        db = get_session()
-        try:
-            count = db.query(ImagePackageVulnerability).delete()
-            log.info('Deleted {} vulnerability match records in flush'.format(count))
-            f = DataFeeds.instance()
-            f.flush()
-            db.commit()
-        except:
-            log.exception('Error executing feeds flush task')
-            raise
+        raise NotImplementedError()
+
+        # db = get_session()
+        # try:
+        #     count = db.query(ImagePackageVulnerability).delete()
+        #     log.info('Deleted {} vulnerability match records in flush'.format(count))
+        #     f = DataFeeds.instance()
+        #     f.flush()
+        #     db.commit()
+        # except:
+        #     log.exception('Error executing feeds flush task')
+        #     raise
 
 
 class FeedsUpdateTask(IAsyncTask):
@@ -167,12 +170,13 @@ class FeedsUpdateTask(IAsyncTask):
         self.feeds = feeds_to_sync
         self.created_at = datetime.datetime.utcnow()
         self.full_flush = flush
+        self.uuid = uuid.uuid4().hex
 
     def is_full_sync(self):
         return self.feeds is None
 
     def execute(self):
-        log.info('Starting feed update')
+        log.info('Starting feed sync. (operation_id={})'.format(self.uuid))
 
         # Feed syncs will update the images with any new cves that are pulled in for a the sync. As such, any images that are loaded while the sync itself is in progress need to be
         # re-scanned for cves since the transaction ordering can result in the images being loaded with data prior to sync but not included in the sync process itself.
@@ -184,41 +188,36 @@ class FeedsUpdateTask(IAsyncTask):
             catalog_client = internal_client_for(CatalogClient, userId=None)
 
         try:
-            catalog_client.add_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'))
+            notify_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'), catalog_client)
         except:
-            log.exception('Ignoring event generation error before feed sync')
+            log.exception('Ignoring event generation error before feed sync. (operation_id={})'.format(self.uuid))
 
         start_time = datetime.datetime.utcnow()
         try:
-            f = DataFeeds.instance()
             start_time = datetime.datetime.utcnow()
+            updated_dict = DataFeeds.sync(to_sync=self.feeds, full_flush=self.full_flush, catalog_client=catalog_client, operation_id=self.uuid)
 
-            f.vuln_fn = FeedsUpdateTask.process_updated_vulnerability
-            f.vuln_flush_fn = FeedsUpdateTask.flush_vulnerability_matches
-
-            updated_dict = f.sync(to_sync=self.feeds, full_flush=self.full_flush, catalog_client=catalog_client)
-
-            log.info('Feed sync complete. Results = {}'.format(updated_dict))
+            log.info('Feed sync complete (operation_id={})'.format(self.uuid))
             return updated_dict
         except Exception as e:
             error = e
-            log.exception('Failure refreshing and syncing feeds')
+            log.exception('Failure refreshing and syncing feeds. (operation_id={})'.format(self.uuid))
             raise
         finally:
             end_time = datetime.datetime.utcnow()
             # log feed sync event
             try:
                 if error:
-                    catalog_client.add_event(FeedSyncTaskFailed(groups=self.feeds if self.feeds else 'all', error=error))
+                    notify_event(FeedSyncTaskFailed(groups=self.feeds if self.feeds else 'all', error=error), catalog_client)
                 else:
-                    catalog_client.add_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'))
+                    notify_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'), catalog_client)
             except:
-                log.exception('Ignoring event generation error after feed sync')
+                log.exception('Ignoring event generation error after feed sync (operation_id={})'.format(self.uuid))
 
             try:
                 self.rescan_images_created_between(from_time=start_time, to_time=end_time)
             except:
-                log.exception('Unexpected exception rescanning vulns for images added during the feed sync')
+                log.exception('Unexpected exception rescanning vulns for images added during the feed sync. (operation_id={})'.format(self.uuid))
                 raise
             finally:
                 end_session()
@@ -238,14 +237,14 @@ class FeedsUpdateTask(IAsyncTask):
         if from_time is None or to_time is None:
             raise ValueError('Cannot process None timestamp')
 
-        log.info('Rescanning images loaded between {} and {}'.format(from_time.isoformat(), to_time.isoformat()))
+        log.info('Rescanning images loaded between {} and {} (operation_id={})'.format(from_time.isoformat(), to_time.isoformat(), self.uuid))
         count = 0
 
         db = get_session()
         try:
             # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
             imgs = [(x.id, x.user_id) for x in db.query(Image).filter(Image.created_at >= from_time, Image.created_at <= to_time)]
-            log.info('Detected images: {} for rescan'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]'))
+            log.info('Detected images: {} for rescan (operation_id={})'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]', self.uuid))
         finally:
             db.rollback()
 
@@ -259,11 +258,11 @@ class FeedsUpdateTask(IAsyncTask):
                         # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
                         image_obj = db.query(Image).get(img)
                         if image_obj:
-                            log.info('Rescanning image {} post-vuln sync'.format(img))
+                            log.info('Rescanning image {} post-vuln sync. (operation_id={})'.format(img, self.uuid))
                             vulns = rescan_image(image_obj, db_session=db)
                             count += 1
                         else:
-                            log.warn('Failed to lookup image with tuple: {}'.format(str(img)))
+                            log.warn('Failed to lookup image with tuple: {} (operation_id={})'.format(str(img), self.uuid))
 
                         db.commit()
 
@@ -272,85 +271,10 @@ class FeedsUpdateTask(IAsyncTask):
 
                     break
                 except Exception as e:
-                    log.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying'.format(img))
+                    log.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying (operation_id={})'.format(img, self.uuid))
                     time.sleep(5)
 
         return count
-
-    @staticmethod
-    def flush_vulnerability_matches(db, feed_name=None, group_name=None):
-        """
-        Delete image vuln matches for the namespacename that matches the group name
-        :param db:
-        :param feed_name:
-        :param group_name:
-        :return:
-        """
-
-        count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
-        log.info('Deleted {} rows in flush for group {}'.format(count, group_name))
-
-
-    @staticmethod
-    def process_updated_vulnerability(db, vulnerability):
-        """
-        Update vulnerability matches for this vulnerability. This function will add objects to the db session but
-        will not commit. The caller is expected to manage the session lifecycle.
-
-        :param: item: The updated vulnerability object
-        :param: db: The db session to use, should be valid and open
-        :return: list of (user_id, image_id) that were affected
-        """
-        log.spew('Processing CVE update for: {}'.format(vulnerability.id))
-        changed_images = []
-
-        # Find any packages already matched with the CVE ID.
-        current_affected = vulnerability.current_package_vulnerabilities(db)
-
-        # May need to remove vuln from some packages.
-        if vulnerability.is_empty():
-            log.spew('Detected an empty CVE. Removing all existing matches on this CVE')
-
-            # This is a flush, nothing can be vulnerable to this, so remove it from packages.
-            if current_affected:
-                log.debug('Detected {} existing matches on CVE {} to remove'.format(len(current_affected), vulnerability.id))
-
-                for pkgVuln in current_affected:
-                    log.debug('Removing match on image: {}/{}'.format(pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
-                    db.delete(pkgVuln)
-                    changed_images.append((pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
-        else:
-            # Find impacted images for the current vulnerability
-            new_vulnerable_packages = [ImagePackageVulnerability.from_pair(x, vulnerability) for x in find_vulnerable_image_packages(vulnerability)]
-            unique_vuln_pkgs = set(new_vulnerable_packages)
-            current_match = set(current_affected)
-
-            if len(new_vulnerable_packages) > 0:
-                log.debug('Found {} packages vulnerable to cve {}'.format(len(new_vulnerable_packages), vulnerability.id))
-                log.debug('Dedup matches from {} to {}'.format(len(new_vulnerable_packages), len(unique_vuln_pkgs)))
-
-            # Find the diffs of any packages that were vulnerable but are no longer.
-            no_longer_affected = current_match.difference(unique_vuln_pkgs)
-            possibly_updated = current_match.intersection(unique_vuln_pkgs)
-            new_matches = unique_vuln_pkgs.difference(current_match)
-
-            if len(no_longer_affected) > 0:
-                log.debug('Found {} packages no longer vulnerable to cve {}'.format(len(no_longer_affected), vulnerability.id))
-                for img_pkg_vuln in no_longer_affected:
-                    log.debug('Removing old invalid match for pkg {} on cve {}'.format(img_pkg_vuln, vulnerability.id))
-                    db.delete(img_pkg_vuln)
-                db.flush()
-
-            for v in new_matches:
-                log.debug('Adding new vulnerability match: {}'.format(v))
-                db.add(v)
-                changed_images.append((v.pkg_user_id, v.pkg_image_id))
-
-            db.flush()
-
-        log.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
-
-        return changed_images
 
     @classmethod
     def from_json(cls, json_obj):
