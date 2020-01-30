@@ -7,7 +7,7 @@
 + Improved - Dependency updates
 + Fix - Adds the release component of package version for rpms in package listing of OS packages in API responses. Fixes #320.
 + Fix - Removes the embedded swagger ui to keep image smaller and less dependencies with reduced security surface. Uses a side-card model instead with another container for the UI if browsing the API is desired. Fixes #323.
-+ Minor bug fixes and improvements in error/eventing subsytems, and performance for NVD related vulnerability syncs and scans
++ Minor bug fixes and improvements
 
 ## 0.6.0 (2019-12-13)
 
