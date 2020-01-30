@@ -14,6 +14,7 @@ logger.enable_test_logging()
 
 reason = 'only packages'
 
+empty_metadata_sync_result = ({}, []) # No feeds synced nor requested so no errors
 
 def test_vuln_sync(test_data_env):
     with session_scope() as db:
@@ -56,10 +57,10 @@ def test_package_sync(test_data_env):
 
 def test_group_lookups(test_data_env):
     r = DataFeeds.sync_metadata(feed_client=test_data_env.feed_client)
-    assert r == {}, 'No metadata should be returned from sync with empty to_sync input'
+    assert r == empty_metadata_sync_result, 'No metadata should be returned from sync with empty to_sync input'
 
     r = DataFeeds.sync_metadata(feed_client=test_data_env.feed_client, to_sync=['vulnerabilities'])
-    assert r and len(r) == 1, 'Metadata should be returned from sync with non-empty to_sync list'
+    assert r and len(r[0]) == 1, 'Metadata should be returned from sync with non-empty to_sync list'
 
     df = feed_instance_by_name('vulnerabilities')
     assert df is not None, 'vulnerabilities feed instance not loaded'
@@ -76,21 +77,21 @@ def test_sync_repo(test_data_env):
     with pytest.raises(Exception):
         DataFeeds.sync_from_fetched(repo, catalog_client=None)
 
-    assert DataFeeds.sync_metadata(feed_client=test_data_env.feed_client) == {}
-    assert DataFeeds.sync_metadata(feed_client=test_data_env.feed_client, to_sync=['vulnerabilities']).get('vulnerabilities') is not None
+    assert DataFeeds.sync_metadata(feed_client=test_data_env.feed_client) == empty_metadata_sync_result
+    assert DataFeeds.sync_metadata(feed_client=test_data_env.feed_client, to_sync=['vulnerabilities'])[0].get('vulnerabilities') is not None
     assert DataFeeds.sync_from_fetched(repo, catalog_client=None)
 
 
 def test_metadata_sync(test_data_env):
     r = DataFeeds.sync_metadata(feed_client=test_data_env.feed_client)
-    assert r == {}, 'Expected empty dict result from metadata sync with no to_sync directive'
+    assert r == empty_metadata_sync_result, 'Expected empty dict result from metadata sync with no to_sync directive'
 
     r = DataFeeds.sync_metadata(feed_client=test_data_env.feed_client, to_sync=['vulnerabilities', 'packages', 'vulndb', 'nvdv2'])
     assert r is not None, 'Expected dict result from metadata sync'
-    assert type(r) == dict, 'Expected dict result from metadata sync'
-    assert len(r) == 4, 'Expected dict result from metadata sync'
-    assert r.get('vulnerabilities')
-    assert r.get('packages')
-    assert r.get('vulndb')
-    assert r.get('nvdv2')
+    assert type(r) == tuple and type(r[0]) == dict and type(r[1]) == list, 'Expected tuple with element 1 = dict result from metadata sync'
+    assert len(r[0]) == 4, 'Expected dict result from metadata sync'
+    assert r[0].get('vulnerabilities')
+    assert r[0].get('packages')
+    assert r[0].get('vulndb')
+    assert r[0].get('nvdv2')
 

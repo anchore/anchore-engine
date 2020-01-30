@@ -97,7 +97,7 @@ class DataFeeds(object):
         """
 
         if not to_sync:
-            return {}, ()
+            return {}, []
 
         db = get_session()
         try:
@@ -348,9 +348,6 @@ class DataFeeds(object):
         finally:
             if feed_data_repo:
                 feed_data_repo.teardown()
-
-        if failed:
-            raise Exception('one or more feeds failed to sync metadata: {}'.format([x.__feed_name__ for x in failed]))
 
         return result
 

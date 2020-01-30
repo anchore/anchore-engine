@@ -32,7 +32,7 @@ def cls_fully_loaded_test_env(cls_test_data_env2, request):
     """
     _init_distro_mappings()
     DataFeeds.__scratch_dir__ = '/tmp'
-    DataFeeds.sync(to_sync=['vulnerabilities', 'packages', 'nvdv2', 'nvd', 'vulndb'], feed_client=request.cls.test_env.feed_client)
+    DataFeeds.sync(to_sync=['vulnerabilities', 'packages', 'nvdv2', 'vulndb'], feed_client=request.cls.test_env.feed_client)
     load_images(request)
 
 
