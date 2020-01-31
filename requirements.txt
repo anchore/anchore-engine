@@ -45,3 +45,4 @@ Werkzeug==0.16.0
 yosai==0.3.2
 zope.component==4.6
 zope.interface==4.7.1
+ijson==2.5.1

@@ -2,7 +2,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseT
 from anchore_engine.services.policy_engine.engine.policy.params import TypeValidator, TriggerParameter
 from anchore_engine.db import NpmMetadata
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.feeds import DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_instance_by_name
 
 log = get_logger()
 
@@ -141,8 +141,8 @@ class NoFeedTrigger(BaseTrigger):
 
     def evaluate(self, image_obj, context):
         try:
-            feed_meta = DataFeeds.instance().packages.group_by_name(FEED_KEY)
-            if feed_meta and feed_meta[0].last_sync:
+            feed_meta = feed_instance_by_name('packages').group_by_name(FEED_KEY)
+            if feed_meta and feed_meta.last_sync:
                 return
         except Exception as e:
             log.exception('Error determining feed presence for npms. Defaulting to firing trigger')

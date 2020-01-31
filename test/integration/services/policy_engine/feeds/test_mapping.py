@@ -1,9 +1,10 @@
 """
 Tests Feed mapping objects
 """
-
+import json
 import pytest
-from anchore_engine.services.policy_engine.engine.feeds import Vulnerability, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, GemMetadata, NpmMetadata, DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.mappers import Vulnerability, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, GemMetadata, NpmMetadata
+from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.fixtures import anchore_db
 from test.integration.services.policy_engine.fixtures import test_data_env
 
@@ -126,10 +127,10 @@ def test_vuln_overflow():
 
 
 def test_vuln_full_data(test_data_env):
-    c = DataFeeds.instance().vulnerabilities.source
-    for g in c.list_feed_groups('vulnerabilities'):
+    c = test_data_env.feed_client
+    for g in c.list_feed_groups('vulnerabilities').groups:
         print(('Group: {}'.format(g.name)))
-        for v in c.get_feed_group_data('vulnerabilities', g.name):
+        for v in json.loads(c.get_feed_group_data('vulnerabilities', g.name).data).get('data'):
             r = vuln_mapper.map(v)
             assert vuln_validator(r), 'Failed validation on: {}'.format(v)
 
@@ -205,9 +206,9 @@ def test_npms_invalid():
 
 
 def test_npms_full_data(test_data_env):
-    c = DataFeeds.instance().vulnerabilities.source
+    c = test_data_env.feed_client
     count = 1
-    for v in c.get_feed_group_data('packages', 'npm'):
+    for v in json.loads(c.get_feed_group_data('packages', 'npm').data).get('data', []):
         r = npm_mapper.map(v)
         _npm_validator(r)
         count += 1
@@ -220,8 +221,8 @@ def _npm_validator(n):
 
 def test_gems_full_data(test_data_env):
     count = 1
-    c = DataFeeds.instance().vulnerabilities.source
-    for v in c.get_feed_group_data('packages', 'gem'):
+    c = test_data_env.feed_client
+    for v in json.loads(c.get_feed_group_data('packages', 'gem').data).get('data', []):
         r = gem_mapper.map(v)
         _gem_validator(r)
         count += 1
@@ -231,5 +232,3 @@ def _gem_validator(n):
     assert isinstance(n, GemMetadata)
     assert n.name, 'Name cannot be null or empty: {}'.format(n.name)
     assert n.id, 'Id cannot be null or empty: {}'.format(n.id)
-
-

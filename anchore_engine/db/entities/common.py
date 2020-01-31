@@ -1,7 +1,7 @@
 """
 Common functions and variables for all entity types including some bootstrap and init functions
 """
-
+import decimal
 import json
 import uuid
 import time

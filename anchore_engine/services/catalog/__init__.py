@@ -8,7 +8,6 @@ import pkg_resources
 from sqlalchemy.exc import IntegrityError
 
 # anchore modules
-import anchore_engine.clients.anchoreio
 import anchore_engine.common.helpers
 import anchore_engine.common.images
 from anchore_engine.clients.services import internal_client_for

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1 (2020-1-30)
++ Improved - Substantial updates to feed sync process in policy engine service to increate transparency in the process, show incremental updates, and use much less memory during the sync. Fixes #284
++ Improved - Adds commented out defaults in docker-compose.yaml embedded in image to easily support starting prometheus and a swagger ui sidecar for API browsing.
++ Improved - Adds backoff/retry in analyzer task flow for loads to policy engine to handle transient failures. Fixes #322.
++ Improved - Dependency updates
++ Fix - Adds the release component of package version for rpms in package listing of OS packages in API responses. Fixes #320.
++ Fix - Removes the embedded swagger ui to keep image smaller and less dependencies with reduced security surface. Uses a side-card model instead with another container for the UI if browsing the API is desired. Fixes #323.
++ Minor bug fixes and improvements
+
 ## 0.6.0 (2019-12-13)
 
 + Added - Substantial updates to event subsystem, adding new many new info and error level event types and implementation.
