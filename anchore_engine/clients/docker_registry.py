@@ -261,18 +261,18 @@ def get_image_manifest(userId, image_info, registry_creds):
     err = manifest = digest = parentdigest = None
     try:
         if tag:
-            manifest, digest, parentdigest = get_image_manifest_skopeo(url, registry, repo, intag=tag, user=user, pw=pw, verify=registry_verify)
+            manifest, digest, parentdigest, parentmanifest = get_image_manifest_skopeo(url, registry, repo, intag=tag, user=user, pw=pw, verify=registry_verify)
         elif input_digest:
-            manifest, digest, parentdigest = get_image_manifest_skopeo(url, registry, repo, indigest=input_digest, user=user, pw=pw, verify=registry_verify)
+            manifest, digest, parentdigest, parentmanifest = get_image_manifest_skopeo(url, registry, repo, indigest=input_digest, user=user, pw=pw, verify=registry_verify)
         else:
             raise Exception("neither tag nor digest was given as input")
     except Exception as ex:
         logger.error("could not fetch manifest/digest: " + str(ex))
-        manifest = digest = parentdigest = None
+        manifest = digest = parentdigest = parentmanifest = None
         err = ex
 
     if manifest and digest:
-        return(manifest, digest, parentdigest)
+        return(manifest, digest, parentdigest, parentmanifest)
 
     logger.error("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
     if err:

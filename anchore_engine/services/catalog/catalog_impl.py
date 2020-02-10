@@ -374,6 +374,8 @@ def image(dbsession, request_inputs, bodycontent=None):
                     except Exception as err:
                         raise Exception("could not fetch/parse manifest - exception: " + str(err))
 
+                    parent_manifest = json.dumps(image_info.get('parentmanifest', {}))
+                    
                     logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
 
                     # Check for dockerfile updates to an existing image
@@ -382,7 +384,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         if found_img:
                             raise BadRequest('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis', detail={'digest': image_info['digest'], 'tag': image_info['fulltag']})
 
-                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, annotations=annotations)
+                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, parent_manifest=parent_manifest, annotations=annotations)
                     if image_records:
                         image_record = image_records[0]
 
@@ -1344,7 +1346,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
     return(curr_evaluation_record, curr_evaluation_result)
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}, parent_manifest=None):
     ret = []
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
@@ -1432,11 +1434,15 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
 
                         try:
                             rc = obj_store.put_document(userId, 'manifest_data', imageDigest, manifest)
+                            rc = obj_store.put_document(userId, 'parent_manifest_data', imageDigest, parent_manifest)
 
                             rc = db_catalog_image.add_record(new_image_record, session=dbsession)
                             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                             if not manifest:
                                 manifest = json.dumps({})
+                            if not parent_manifest:
+                                parent_manifest = json.dumps({})
+                                
                         except Exception as err:
                             raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
@@ -1479,6 +1485,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
 
                         try:
                             rc = obj_store.put_document(userId, 'manifest_data', imageDigest, manifest)
+                            rc = obj_store.put_document(userId, 'parent_manifest_data', imageDigest, parent_manifest)                            
 
                             rc = db_catalog_image.update_record_image_detail(image_record, new_image_detail, session=dbsession)
 
@@ -1487,6 +1494,8 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                             image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                             if not manifest:
                                 manifest = json.dumps({})
+                            if not parent_manifest:
+                                parent_manifest = json.dumps({})                                
                         except Exception as err:
                             raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot add image, failed to update archive/DB", input_httpcode=500)
 
@@ -1558,7 +1567,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
             rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
 
             # digest-based archiveId buckets
-            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data']:
+            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data', 'parent_manifest_data']:
                 archiveId = imageDigest
                 logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
                 rc = obj_store.delete(userId, bucket, archiveId)

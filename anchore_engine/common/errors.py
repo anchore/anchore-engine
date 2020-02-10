@@ -8,3 +8,4 @@ class AnchoreError(enum.Enum):
     SKOPEO_UNKNOWN_ERROR = "The skopeo command has failed due to an error that is not explicitly handled, see the command output/error for more information"
     UNKNOWN = "An unknown error has occurred, please consult the anchore service logs for more information"
     FEED_SYNC_ALREADY_IN_PROGRESS = "Feed sync lock held by another process"
+    OSARCH_MISMATCH = "The image manifest from the registry does not container an arch/os that matches local environment"

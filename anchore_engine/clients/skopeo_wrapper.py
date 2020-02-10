@@ -6,6 +6,7 @@ import tempfile
 import anchore_engine.configuration.localconfig
 from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
+from anchore_engine.common.errors import AnchoreError
 
 def manifest_to_digest_shellout(rawmanifest):
     ret = None
@@ -58,7 +59,7 @@ def copy_image_from_docker_archive(source_archive, dest_dir):
         logger.error("command failed with exception - " + str(err))
         raise err
 
-def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, use_cache_dir=None, dest_type='oci'):
+def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, parent_manifest=None, use_cache_dir=None, dest_type='oci'):
     try:
         proc_env = os.environ.copy()
         if user and pw:
@@ -92,26 +93,62 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         else:
             global_timeout_str = ""
 
-
-        if dest_type == 'oci':
-            if manifest:
-                with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
-                    OFH.write(manifest)
-            cmd = ["/bin/sh", "-c", "skopeo {} copy {} {} {} docker://{} oci:{}:image".format(global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
-        else:
-            cmd = ["/bin/sh", "-c", "skopeo {} copy {} {} docker://{} dir:{}".format(global_timeout_str, tlsverifystr, credstr, fulltag, copydir)]
-
-        cmdstr = ' '.join(cmd)
-        try:
-            rc, sout, serr = run_command_list(cmd, env=proc_env)
-            if rc != 0:
-                raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+        os_overrides = [""]
+        if manifest:
+            manifest_data = json.loads(manifest)
+            if parent_manifest:
+                parent_manifest_data = json.loads(parent_manifest)
             else:
-                logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                parent_manifest_data = {}
 
-        except Exception as err:
-            logger.error("command failed with exception - " + str(err))
-            raise err
+            if parent_manifest_data:
+                for mlist in parent_manifest_data.get('manifests', []):
+                    imageos = mlist.get('platform', {}).get('os', "")
+                    if imageos not in ["", 'linux'] and imageos not in os_overrides:
+                        dest_type = 'dir'
+                        os_overrides.insert(0, imageos)
+
+        for os_override in os_overrides:
+            success = False
+            if os_override not in ["", 'linux']:
+                dest_type = 'dir'
+                os_override_str = "--override-os {}".format(os_override)
+            else:
+                os_override_str = ""
+                
+            if dest_type == 'oci':
+                if manifest:
+                    with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
+                        OFH.write(manifest)
+
+                if parent_manifest:
+                    with open(os.path.join(copydir, "parent_manifest.json"), 'w') as OFH:
+                        OFH.write(parent_manifest)
+                        
+                cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(os_override_str, global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
+            else:
+                cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} docker://{} dir:{}".format(os_override_str, global_timeout_str, tlsverifystr, credstr, fulltag, copydir)]
+
+            cmdstr = ' '.join(cmd)
+            try:
+                rc, sout, serr = run_command_list(cmd, env=proc_env)
+                if rc != 0:
+                    skopeo_error = SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+                    if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
+                        raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)                    
+                else:
+                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    success = True                    
+
+            except Exception as err:
+                logger.error("command failed with exception - " + str(err))
+                raise err
+
+            if success:
+                break
+        if not success:
+            logger.error("could not download image")
+            raise Exception("could not download image")
     except Exception as err:
         raise err
 
@@ -205,28 +242,42 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
         else:
             global_timeout_str = ""
 
+        os_override_strs = ["", "--override-os windows"]
         try:
-            cmd = ["/bin/sh", "-c", "skopeo {} inspect --raw {} {} docker://{}".format(global_timeout_str, tlsverifystr, credstr, pullstring)]
-            cmdstr = ' '.join(cmd)
-            try:
-                rc, sout, serr = run_command_list(cmd, env=proc_env)
-                if rc != 0:
-                    raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
-                else:
-                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-            except Exception as err:
-                logger.error("command failed with exception - " + str(err))
-                raise err
+            success = False
+            for os_override_str in os_override_strs:
+                cmd = ["/bin/sh", "-c", "skopeo {} {} inspect --raw {} {} docker://{}".format(global_timeout_str, os_override_str, tlsverifystr, credstr, pullstring)]
+                cmdstr = ' '.join(cmd)
+                try:
+                    rc, sout, serr = run_command_list(cmd, env=proc_env)
+                    if rc != 0:
+                        skopeo_error = SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+                        if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
+                            raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+                    else:
+                        logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                        success = True
+                except Exception as err:
+                    logger.error("command failed with exception - " + str(err))
+                    raise err
 
-            sout = str(sout, 'utf-8') if sout else None    
-            ret = sout
+                if success:
+                    sout = str(sout, 'utf-8') if sout else None    
+                    ret = sout
+                    break
+
+            if not success:
+                logger.error("could not retrieve manifest")
+                raise Exception("could not retrieve manifest")
+            
         except Exception as err:
             raise err
     except Exception as err:
         raise err
+
     return(ret)
 
-def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True):
+def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True, topmanifest=None):
     manifest = {}
     digest = None
     testDigest = None
@@ -243,6 +294,8 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
             rawmanifest = get_image_manifest_skopeo_raw(pullstring, user=user, pw=pw, verify=verify)
             digest = manifest_to_digest(rawmanifest)
             manifest = json.loads(rawmanifest)
+            if topmanifest is None:
+                topmanifest = json.loads(rawmanifest)
             if not topdigest:
                 topdigest = digest
 
@@ -251,11 +304,11 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
                 new_digest = None
                 for entry in manifest.get('manifests'):
                     platform = entry.get('platform')
-                    if platform and platform.get('architecture') in ['amd64'] and platform.get('os') == 'linux':
+                    if platform and platform.get('architecture') in ['amd64'] and platform.get('os') in ['linux', 'windows']:
                         new_digest = entry.get('digest')
                         break
 
-                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify, topdigest=topdigest)
+                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify, topdigest=topdigest, topmanifest=topmanifest)
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
             raise err
@@ -268,7 +321,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
     if not manifest or not digest:
         raise SkopeoError(msg="No digest/manifest from skopeo")
 
-    return(manifest, digest, topdigest)
+    return(manifest, digest, topdigest, topmanifest)
 
 class SkopeoError(AnchoreException):
 
@@ -289,6 +342,8 @@ class SkopeoError(AnchoreException):
                 self.error_code = AnchoreError.REGISTRY_NOT_ACCESSIBLE.name
             elif "error pinging registry" in self.stderr:
                 self.error_code = AnchoreError.REGISTRY_NOT_SUPPORTED.name
+            elif "no image found in manifest list for architecture amd64, OS linux" in self.stderr:
+                self.error_code = AnchoreError.OSARCH_MISMATCH.name
             else:
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
         except:

@@ -610,6 +610,8 @@ def handle_image_watcher(*args, **kwargs):
                     event = events.TagManifestParseFailed(user_id=userId, tag=fulltag, error=e.to_dict())
                     raise
 
+                parent_manifest = json.dumps(image_info.get('parentmanifest', {}))
+
                 try:
                     dbfilter = {
                         'registry': image_info['registry'],
@@ -627,6 +629,14 @@ def handle_image_watcher(*args, **kwargs):
                 except Exception as err:
                     logger.debug("found empty/invalid stored manifest, storing new: " + str(err))
                     rc = obj_mgr.put_document(userId, 'manifest_data', image_info['digest'], manifest)
+
+                try:
+                    stored_parent_manifest = json.loads(obj_mgr.get_document(userId, 'parent_manifest_data', image_info['digest']))
+                    if not stored_parent_manifest:
+                        raise Exception("stored parent manifest is empty")
+                except Exception as err:
+                    logger.debug("found empty/invalid stored parent manifest, storing new: " + str(err))
+                    rc = obj_mgr.put_document(userId, 'parent_manifest_data', image_info['digest'], parent_manifest)
 
                 logger.debug("checking image: looking up image in db using dbfilter: " + str(dbfilter))
                 with db.session_scope() as dbsession:
@@ -678,6 +688,7 @@ def handle_image_watcher(*args, **kwargs):
                                                                          digests=[image_info['fulldigest']],
                                                                          parentdigest=image_info.get('parentdigest', None),
                                                                          manifest=manifest,
+                                                                         parent_manifest=parent_manifest,
                                                                          annotations=last_annotations)
 
                     if image_records:
@@ -956,10 +967,17 @@ def handle_analyzer_queue(*args, **kwargs):
                         logger.debug("failed to get manifest - {}".format(str(err)))
                         manifest = {}
 
+                    try:
+                        parent_manifest = obj_mgr.get_document(userId, 'parent_manifest_data', image_record['imageDigest'])
+                    except Exception as err:
+                        parent_manifest = {}                        
+
                     qobj = {}
                     qobj['userId'] = userId
                     qobj['imageDigest'] = image_record['imageDigest']
                     qobj['manifest'] = manifest
+                    qobj['parent_manifest'] = parent_manifest
+
                     try:
                         if not q_client.is_inqueue('images_to_analyze', qobj):
                             # queue image for analysis

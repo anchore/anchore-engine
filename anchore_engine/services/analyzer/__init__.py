@@ -36,11 +36,11 @@ system_user_auth = ('anchore-system', '')
 #current_avg_count = 0.0
 
 
-def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
+def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=False, parent_manifest=None):
 
-    return perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
+    return perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable, parent_manifest=parent_manifest)
 
-def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False):
+def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False, parent_manifest=None):
     ret_analyze = {}
     ret_query = {}
     
@@ -59,6 +59,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
     try:
         image_detail = image_record['image_detail'][0]
         registry_manifest = manifest
+        registry_parent_manifest = parent_manifest
         pullstring = image_detail['registry'] + "/" + image_detail['repo'] + "@" + image_detail['imageDigest']
         fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
         logger.debug("using pullstring ("+str(pullstring)+") and fulltag ("+str(fulltag)+") to pull image data")
@@ -73,7 +74,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
     logger.debug("obtaining anchorelock..." + str(pullstring))
     with anchore_engine.clients.localanchore_standalone.get_anchorelock(lockId=pullstring, driver='nodocker'):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
-        analyzed_image_report, manifest_raw = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, localconfig, registry_creds=registry_creds, use_cache_dir=use_cache_dir)
+        analyzed_image_report, manifest_raw = localanchore_standalone.analyze_image(userId, registry_manifest, image_record, tmpdir, localconfig, registry_creds=registry_creds, use_cache_dir=use_cache_dir, parent_manifest=registry_parent_manifest)
         ret_analyze = analyzed_image_report
 
     logger.info("performing analysis on image complete: " + str(pullstring))
@@ -96,6 +97,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
         userId = record['userId']
         imageDigest = record['imageDigest']
         manifest = record['manifest']
+        parent_manifest = record.get('parent_manifest', None)
 
         # check to make sure image is still in DB
         catalog_client = internal_client_for(CatalogClient, userId)
@@ -122,7 +124,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             # actually do analysis
             registry_creds = catalog_client.get_registry()
             try:
-                image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable)
+                image_data = perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_enable=layer_cache_enable, parent_manifest=parent_manifest)
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(user_id=userId, image_digest=imageDigest, error=e.to_dict())
                 analysis_events.append(event)
