@@ -133,28 +133,50 @@ def _msg(msg_string, msg_log_level='INFO'):
                 # removing old event log stuff since there are no fatal messages in the system
                 pass
 
-#@bootstrap_logger_intercept(logging.DEBUG)
+
+def safe_formatter(message, args):
+    """
+    Try to safely format a log message, so that exceptions are logged and do
+    not break an application.
+
+    Used as a helper by the log functions so that they can accept the
+    following:
+
+        logger.debug("a debug message: %s", "extra argument")
+    """
+    if args:
+        try:
+            return message % args
+        except TypeError:
+            exception('unable to produce log record: %s' % message)
+    return message
+
+
 def spew(msg_string):
     return (_msg(msg_string, msg_log_level='SPEW'))
 
 
 @bootstrap_logger_intercept(logging.DEBUG)
-def debug(msg_string):
+def debug(msg_string, *args):
+    msg_string = safe_formatter(msg_string, args)
     return (_msg(msg_string, msg_log_level='DEBUG'))
 
 
 @bootstrap_logger_intercept(logging.INFO)
-def info(msg_string):
+def info(msg_string, *args):
+    msg_string = safe_formatter(msg_string, args)
     return (_msg(msg_string, msg_log_level='INFO'))
 
 
 @bootstrap_logger_intercept(logging.WARN)
-def warn(msg_string):
+def warn(msg_string, *args):
+    msg_string = safe_formatter(msg_string, args)
     return (_msg(msg_string, msg_log_level='WARN'))
 
 
 @bootstrap_logger_intercept(logging.ERROR)
-def error(msg_string):
+def error(msg_string, *args):
+    msg_string = safe_formatter(msg_string, args)
     return (_msg(msg_string, msg_log_level='ERROR'))
 
 
@@ -203,4 +225,3 @@ def set_log_level(new_log_level, log_to_stdout=False, log_to_db=False):
 
     _log_to_stdout = log_to_stdout
     _log_to_db = log_to_db
-
