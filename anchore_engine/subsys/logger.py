@@ -10,6 +10,9 @@ import logging
 bootstrap_logger = None
 bootstrap_logger_enabled = False
 
+DEFAULT_FORMAT = "[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s"
+DEFAULT_DATE_FORMAT = '%Y-%m-%d %H:%M:%S+0000'
+
 log_level_map = {
     'FATAL': 0,
     'ERROR': 1,
@@ -18,14 +21,16 @@ log_level_map = {
     'DEBUG': 4,
     'SPEW': 99
 }
-log_level = None # int level for logging
+log_level = None  # int level for logging
 _log_to_db = None
 _log_to_stdout = False
 
 
 def enable_test_logging(level='WARN', outfile=None):
     """
-    Use the bootstrap logger for logging in test code (as root logger), for intercept by pytest etc. This code should *only* ever be called in code from test/
+    Use the bootstrap logger for logging in test code (as root logger), for
+    intercept by pytest etc. This code should *only* ever be called in code
+    from test/
 
     :return:
     """
@@ -43,9 +48,15 @@ def enable_test_logging(level='WARN', outfile=None):
 
     prefix = 'test'
     if outfile:
-        logging.basicConfig(level=level, filename=outfile, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+        logging.basicConfig(
+            level=level, filename=outfile,
+            format=DEFAULT_FORMAT.format(prefix), datefmt=DEFAULT_DATE_FORMAT
+        )
     else:
-        logging.basicConfig(level=level, stream=sys.stdout, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+        logging.basicConfig(
+            level=level, stream=sys.stdout,
+            format=DEFAULT_FORMAT.format(prefix), datefmt=DEFAULT_DATE_FORMAT
+        )
 
     bootstrap_logger = logging.getLogger()
     bootstrap_logger_enabled = True
@@ -53,7 +64,8 @@ def enable_test_logging(level='WARN', outfile=None):
 
 def enable_bootstrap_logging(service_name=None):
     """
-    Turn on the bootstrap logger, which provides basic stdout logs until the main twisted logger is online and ready.
+    Turn on the bootstrap logger, which provides basic stdout logs until the
+    main twisted logger is online and ready.
 
     :param name_prefix:
     :return:
@@ -71,7 +83,11 @@ def enable_bootstrap_logging(service_name=None):
         level = 'INFO'
 
     prefix = 'service:{}'.format(service_name if service_name else ' ')
-    logging.basicConfig(level=level, stream=sys.stdout, format="[{}] %(asctime)s [-] [%(name)s] [%(levelname)s] %(message)s".format(prefix), datefmt='%Y-%m-%d %H:%M:%S+0000')
+    logging.basicConfig(
+        level=level,
+        stream=sys.stdout,
+        format=DEFAULT_FORMAT.format(prefix), datefmt=DEFAULT_DATE_FORMAT
+    )
 
     bootstrap_logger = logging.getLogger('bootstrap')
     bootstrap_logger_enabled = True
@@ -103,7 +119,7 @@ def bootstrap_logger_intercept(level):
 def _msg(msg_string, msg_log_level='INFO'):
     global log_level, log_level_map, _log_to_stdout, _log_to_db
 
-    if log_level == None:
+    if log_level is None:
         log_level = log_level_map['INFO']
 
     if log_level_map[msg_log_level] <= log_level:
@@ -117,7 +133,7 @@ def _msg(msg_string, msg_log_level='INFO'):
             module = inspect.getmodule(frame[0])
             caller_file = module.__name__
             caller_name = outer_frame[3][3]
-        except Exception as err:
+        except Exception:
             pass
 
         themsg = "[" + caller_file + "/" + caller_name + "()] [" + msg_log_level + "] " + msg_string
