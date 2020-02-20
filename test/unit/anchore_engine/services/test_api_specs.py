@@ -24,72 +24,33 @@ service_swaggers = [
     'anchore_engine/services/kubernetes_webhook/swagger/swagger.yaml'
 ]
 
-def test_api_service():
+@pytest.mark.parametrize('service', service_swaggers)
+def test_api_service(service):
     """
-    Creates a mocked interface for each specified swagger spec and runs a server with a forked process to ensure swagger validates fully.
+    Creates a mocked interface for each specified swagger spec and creates
+    a server to ensure swagger validates fully.
 
-    :return:
+    If invalid specs are detected the spec will raise `InvalidSpecification`.
+
+    Further enhancement of this test is to make actual requests to the Apps
+    generated.
     """
 
     port = 8081
+    name = service.rsplit('/', 3)[2]
+    resolver = MockResolver(mock_all='all')
+    api_extra_args = {'resolver': resolver}
 
-    for swagger in service_swaggers:
-        pid = os.fork()
-        if not pid:
-            name = swagger.rsplit('/', 3)[2]
-            logger.info(('Starting server for: {} at: {}'.format(name, swagger)))
-            resolver = MockResolver(mock_all='all')
-            api_extra_args = {'resolver': resolver}
+    options = {"serve_spec": False, "swagger_ui": False}
+    app = connexion.FlaskApp(name, options=options)
 
-            app = connexion.FlaskApp(name,
-                                     swagger_json=False,
-                                     swagger_ui=False)
+    app.add_api(service,
+                resolver_error=True,
+                validate_responses=True,
+                strict_validation=True,
+                **api_extra_args)
 
-            app.add_api(swagger,
-                        resolver_error=True,
-                        validate_responses=True,
-                        strict_validation=True,
-                        **api_extra_args)
-
-            app.run(port=port)
-
-        else:
-            try:
-                logger.info('Wait for pinging server of pid: {}'.format(pid))
-                # Let the api initialize
-                retries = 3
-                killed = False
-
-                for i in range(retries):
-                    time.sleep(2)
-                    proc_id, status = os.waitpid(pid, os.WNOHANG)
-
-                    logger.info('Child pid: {}. Status = {}'.format(pid, status))
-                    if proc_id == 0 and status == 0:
-                        try:
-                            logger.info('Killing pid {}'.format(pid))
-                            os.kill(pid, signal.SIGTERM)
-                            killed = True
-                        except ProcessLookupError:
-                            logger.info('Process {} not found, skipping kill'.format(pid))
-                        finally:
-                            break
-                    elif status != 0 and killed:
-                        logger.info('Confirmed child pid killed')
-                        break
-                    else:
-                        pytest.fail('Mock service for {} failed to start properly'.format(swagger))
-                        break
-            except ProcessLookupError:
-                logger.info('Process {} not found. Exiting cleanly')
-            except (KeyboardInterrupt, Exception):
-                raise
-            finally:
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    # This is expected
-                    pass
-                except:
-                    logger.exception("Failed to kill child process")
-
+    client = app.app.test_client()
+    # potential enhancment would be to create a request like:
+    #     response = client.get('/health')
+    #     assert response.status_code == 200
