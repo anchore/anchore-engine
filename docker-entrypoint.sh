@@ -14,7 +14,7 @@ if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; 
     mkdir -p /home/anchore/certs_override/python
     mkdir -p /home/anchore/certs_override/os
     ### for python
-    cp /opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem /home/anchore/certs_override/python/cacert.pem
+    cp /usr/local/lib/python3.6/site-packages/certifi/cacert.pem /home/anchore/certs_override/python/cacert.pem
     for file in /home/anchore/certs/*; do
         if grep -q 'BEGIN CERTIFICATE' "${file}"; then
             cat "${file}" >> /home/anchore/certs_override/python/cacert.pem
