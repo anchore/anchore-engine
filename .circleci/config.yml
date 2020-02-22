@@ -74,6 +74,8 @@ jobs:
           - /data
       - image: anchore/test-infra-swift:latest
       - image: circleci/postgres:9.6
+        environment:
+          POSTGRES_PASSWORD: "postgres"
     environment:
       ANCHORE_TEST_S3_ACCESS_KEY: "9EB92C7W61YPFQ6QLDOU"
       ANCHORE_TEST_S3_SECRET_KEY: "TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s"
