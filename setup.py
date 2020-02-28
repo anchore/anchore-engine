@@ -30,7 +30,7 @@ package_data = {
 data_files = []
 #scripts = ['scripts/anchore-engine']
 scripts = []
-packages = find_packages(exclude=['test', 'test.*', 'legacy_test'])
+packages = find_packages(exclude=['test', 'test.*'])
 packages.append('twisted.plugins')
 setup(
     name='anchore_engine',
