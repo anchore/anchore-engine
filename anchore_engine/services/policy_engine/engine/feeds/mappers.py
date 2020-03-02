@@ -346,3 +346,72 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
         #                db_rec.vulnerable_in.append(v_in)
 
         return db_rec
+
+
+class GithubFeedDataMapper(FeedDataMapper):
+    """
+    Maps a Github record into an GithubMetadata ORM object
+
+    JSON Record is structured like::
+
+        {'key': 'GHSA-73m2-3pwg-5fgc',
+        'namespace': 'github:python',
+        'payload': {'Vulnerability': {}, 'Advisory': advisory}
+
+    And the Advisory itself::
+
+        {'CVE': ['GHSA-73m2-3pwg-5fgc', 'CVE-2020-5236'],
+         'FixedIn': [{'ecosystem': 'python',
+                      'fixedin': None,
+                      'identifier': '1.4.3',
+                      'name': 'waitress'},
+                     {'ecosystem': 'os',
+                      'fixedin': None,
+                      'identifier': None,
+                      'name': 'waitress'}],
+         'Metadata': {'CVE': ['GHSA-73m2-3pwg-5fgc', 'CVE-2020-5236']},
+         'Severity': 'Critical',
+         'Summary': 'Critical severity vulnerability that affects waitress',
+         'url': 'https://github.com/advisories/GHSA-73m2-3pwg-5fgc',
+         'withdrawn': None}
+
+    """
+
+    def map(self, record_json):
+        advisory = record_json['Advisory']
+
+        db_rec = Vulnerability()
+        db_rec.id = advisory['ghsaId']
+        db_rec.name = advisory['ghsaId']
+        db_rec.namespace_name = advisory['namespace']
+        db_rec.description = advisory['Summary']
+        db_rec.severity = advisory.get('Severity', 'Unknown') or 'Unknown'
+        db_rec.link = advisory['url']
+        db_rec.metadata_json = advisory['Metadata']
+        references = ["https://nvd.nist.gov/vuln/detail/{}".format(i) for i in advisory['CVE']]
+        db_rec.references = references
+
+        # Set the `FixedArtifact` to an empty list so that a cascade deletion
+        # gets rid of the associated fixes. If the advisory has been withdrawn,
+        # this field will a string with a date.
+        if advisory['withdrawn'] is not None:
+            db_rec.fixed_in = []
+            return db_rec
+
+        for f in advisory['FixedIn']:
+            fix = FixedArtifact()
+            fix.name = f['name']
+            # this is an unfortunate lie, 'version' has to be a range in order
+            # to be processed correctly. If there is a real fix version, it
+            # will be set in the `fix_metadata`.
+            fix.version = f.get('range', 'None')
+            fix.version_format = 'semver'
+            fix.vulnerability_id = db_rec.id
+            fix.namespace_name = f['namespace']
+            fix.vendor_no_advisory = False
+            # the advisory summary is the same as db_rec.description, do we need to do this again?
+            fix.fix_metadata = {'first_patched_version': f['identifier']}
+
+            db_rec.fixed_in.append(fix)
+
+        return db_rec
