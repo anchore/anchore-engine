@@ -1,5 +1,4 @@
 import boto3
-#import botocore.config
 import urllib.parse
 
 from anchore_engine import utils
