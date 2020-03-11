@@ -61,14 +61,14 @@ def make_response_content(content_type, content_data):
                     r = content_data[package].get('release', None)
                     if (v and r) and (v.lower() != 'n/a') and r.lower() != 'n/a':
                         el['version'] = "{}-{}".format(v, r)
-                        
+
             except:
                 el = {}
             if el:
                 ret.append(el)
 
     elif content_type == 'npm':
-        for package in list(content_data.keys()):        
+        for package in list(content_data.keys()):
             el = {}
             try:
                 el['package'] = content_data[package]['name']
@@ -156,7 +156,7 @@ def make_response_content(content_type, content_data):
             except Exception as err:
                 el = {}
             if el:
-                ret.append(el)        
+                ret.append(el)
     elif content_type in ['docker_history']:
         try:
             ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(json.dumps(content_data))))
@@ -314,10 +314,9 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     all_data = json.loads(row[header.index('CVES')])  # {'nvd_data': [], 'vendor_data': []}
                     el['nvd_data'] = make_cvss_scores(all_data.get('nvd_data', []))
                     el['vendor_data'] = make_cvss_scores(all_data.get('vendor_data', []))
+                    el['advisory_data'] = all_data.get('advisory_data', {})
                     for nvd_el in el['nvd_data']:
                         id_cves_map[nvd_el.get('id')] = el.get('vuln')
-                    #for cve in row[header.index('CVES')].split():
-                    #    id_cves_map[cve] = el.get('vuln')
 
     except Exception as err:
         logger.exception('could not prepare query response')
@@ -721,7 +720,7 @@ def list_imagetags():
 
         return_object = client.get_imagetags()
         httpcode = 200
-        
+
     except Exception as err:
         httpcode = 500
         return_object = str(err)
@@ -890,7 +889,7 @@ def delete_image(imageDigest, force=False):
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image(imageDigest, history=None):
-    
+
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'history': False})
         return_object, httpcode = images_imageDigest(request_inputs, imageDigest)
@@ -992,7 +991,7 @@ def get_image_metadata_by_type(imageDigest, mtype):
     except Exception as err:
         httpcode = 500
         return_object = str(err)
-    
+
     return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -1099,7 +1098,7 @@ def get_image_vulnerability_types_by_imageId(imageId):
             imageDigest = lookup_imageDigest_from_imageId(request_inputs, imageId)
         except:
             imageDigest = imageId
-            
+
         return_object, httpcode = get_image_vulnerability_types(imageDigest)
 
     except Exception as err:
@@ -1527,9 +1526,9 @@ def _get_image_ok(account, imageDigest):
     """
     Get the image id if the image exists and is analyzed, else raise error
 
-    :param account: 
-    :param imageDigest: 
-    :return: 
+    :param account:
+    :param imageDigest:
+    :return:
     """
     catalog_client = internal_client_for(CatalogClient, account)
     image_report = catalog_client.get_image(imageDigest)
@@ -1544,7 +1543,7 @@ def _get_image_ok(account, imageDigest):
 
     return imageId
 
-    
+
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_retrieved_files(imageDigest):
     """
