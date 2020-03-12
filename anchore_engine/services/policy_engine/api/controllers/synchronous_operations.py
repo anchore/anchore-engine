@@ -48,7 +48,7 @@ authorizer = get_authorizer()
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
-TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version', 'CVES']
+TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Path', 'Package_Version', 'CVES']
 
 DEFAULT_CACHE_CONN_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
 DEFAULT_CACHE_READ_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for first byte timeout for policy eval cache
@@ -677,6 +677,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 'vulnerabilities',
                 vuln.vulnerability.namespace_name,
                 vuln.pkg_name,
+                vuln.pkg_path,
                 vuln.package.fullversion,
                 cves,
                 ]
