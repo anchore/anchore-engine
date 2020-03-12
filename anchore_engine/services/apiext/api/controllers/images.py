@@ -281,6 +281,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         'feed': 'Feed',
         'feed_group': 'Feed_Group',
         'package_name': 'Package_Name',
+        'package_path': 'Package_Path',
         'package_version': 'Package_Version',
     }
     id_cves_map = {}
