@@ -1907,6 +1907,12 @@ class ImagePackageVulnerability(Base):
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
         if fixed_in.version_format in ['semver']:
+            # Github Advisories can add the real version where there is a fix if any.
+            metadata = fixed_in.fix_metadata or {}
+            first_patched_version = metadata.get('first_patched_version')
+            if first_patched_version:
+                return first_patched_version
+
             if fix_available_in and fixed_in.fix_metadata and fixed_in.fix_metadata.get('fix_exists', False):
                 fix_available_in = "! {}".format(fix_available_in)
             else:
