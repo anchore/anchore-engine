@@ -1,17 +1,15 @@
 """
 This is an integration-level test for checking CVE updates at fine granularity.
 """
-import pytest
-
 import sqlalchemy.exc
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, ImagePackage, Vulnerability, VulnerableArtifact, FixedArtifact
 from anchore_engine.services.policy_engine.engine.feeds import feeds
-#from test.integration.services.policy_engine.fixtures import anchore_db, test_data_env
 from anchore_engine.subsys import logger
 
 
 logger.enable_test_logging(level='DEBUG')
+
 
 def test_cve_updates(test_data_env):
     test_env = test_data_env
@@ -78,9 +76,9 @@ def test_cve_updates(test_data_env):
         db.add(test_image)
         db.add(test_package)
         db.commit()
-    except sqlalchemy.exc.IntegrityError as e:
+    except sqlalchemy.exc.IntegrityError:
         db.rollback()
-    except Exception as e:
+    except Exception:
         logger.exception('Unexpected failure')
         raise
 
@@ -89,7 +87,7 @@ def test_cve_updates(test_data_env):
         db.add(test_cve)
         feeds.process_updated_vulnerability(db, test_cve)
         db.commit()
-    except:
+    except sqlalchemy.exc.IntegrityError:
         logger.exception('Failed!')
         db.rollback()
     finally:
@@ -116,7 +114,7 @@ def test_cve_updates(test_data_env):
         db.add(t2)
         feeds.process_updated_vulnerability(db, t2)
         db.commit()
-    except:
+    except sqlalchemy.exc.IntegrityError:
         logger.exception('Failed!')
         db.rollback()
     finally:
@@ -126,14 +124,16 @@ def test_cve_updates(test_data_env):
         db.commit()
 
 
-
 def test_github_advisory_fixed_in(test_data_env):
     test_env = test_data_env
     test_env.init_feeds()
 
     test_user_id = 'test1'
     test_img_id = 'img1'
-    test_image = Image(user_id=test_user_id, id=test_img_id, distro_name='centos', distro_version='7')
+    test_image = Image(
+        user_id=test_user_id, id=test_img_id,
+        distro_name='centos', distro_version='7'
+    )
     test_image.familytree_json = [test_img_id]
     test_image.layers_json = [test_img_id]
     test_image.layer_info_json = ['somelayer_here']
@@ -146,7 +146,10 @@ def test_github_advisory_fixed_in(test_data_env):
     test_image.docker_data_json = {'Config': {}, 'ContainerConfig': {}}
     test_image.dockerfile_contents = 'FROM BLAH'
 
-    test_package = ImagePackage(image_user_id=test_user_id, image_id=test_img_id, name='testpackage', version='1.0', pkg_type='python')
+    test_package = ImagePackage(
+        image_user_id=test_user_id, image_id=test_img_id,
+        name='testpackage', version='1.0', pkg_type='python'
+    )
     test_package.src_pkg = 'testpackage'
     test_package.distro_name = 'centos'
     test_package.distro_version = '7'
@@ -173,7 +176,6 @@ def test_github_advisory_fixed_in(test_data_env):
     test_fixedin.parent = test_cve
     test_cve.fixed_in = [test_fixedin]
 
-
     db = get_session()
     try:
         db.add(test_image)
@@ -181,7 +183,7 @@ def test_github_advisory_fixed_in(test_data_env):
         db.commit()
     except sqlalchemy.exc.IntegrityError:
         db.rollback()
-    except Exception as e:
+    except Exception:
         logger.exception('Unexpected failure')
         raise
 
@@ -191,7 +193,7 @@ def test_github_advisory_fixed_in(test_data_env):
         db.add(test_cve)
         feeds.process_updated_vulnerability(db, test_cve)
         db.commit()
-    except:
+    except sqlalchemy.exc.IntegrityError:
         logger.exception('Failed!')
         db.rollback()
 
