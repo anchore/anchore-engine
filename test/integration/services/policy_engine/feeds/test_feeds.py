@@ -6,9 +6,6 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_instance_by_name
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo, LocalFeedDataRepoMetadata
 from anchore_engine.db import Vulnerability, GemMetadata, NpmMetadata, session_scope
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env
-from test.fixtures import anchore_db
 
 logger.enable_test_logging()
 

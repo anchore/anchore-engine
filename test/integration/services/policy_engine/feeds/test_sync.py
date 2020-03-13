@@ -1,7 +1,4 @@
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env
-from test.fixtures import anchore_db
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()

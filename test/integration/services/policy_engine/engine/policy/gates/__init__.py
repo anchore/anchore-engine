@@ -5,7 +5,6 @@ from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine import _init_distro_mappings
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from test.integration.services.policy_engine.fixtures import cls_test_data_env2, cls_anchore_db
 from anchore_engine.subsys import logger
 
 

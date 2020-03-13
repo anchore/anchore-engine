@@ -12,8 +12,6 @@ from anchore_engine.services.policy_engine.engine.policy.bundles import build_bu
 from anchore_engine.db import get_thread_scoped_session as get_session, Image
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env_with_images_loaded, test_data_env
 
 default_bundle = None
 

@@ -7,8 +7,6 @@ from anchore_engine.db import get_thread_scoped_session, Image, end_session
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.db import get_thread_scoped_session, Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, UnsupportedVersionError, BundleTargetTagMismatchError
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env, test_data_env_with_images_loaded
 
 from anchore_engine.subsys import logger
 

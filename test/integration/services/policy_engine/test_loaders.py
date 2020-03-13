@@ -5,8 +5,6 @@ import pytest
 from anchore_engine.subsys import logger
 from anchore_engine.db import session_scope, Image, FeedMetadata, FeedGroupMetadata, Vulnerability, NvdMetadata, NpmMetadata, GemMetadata
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env
 from anchore_engine.configuration import localconfig
 
 logger.enable_test_logging()

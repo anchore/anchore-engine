@@ -2,12 +2,11 @@
 Gate Unit tests
 """
 import pytest
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.db import Image
 from anchore_engine.subsys import logger
 
 from anchore_engine.services.policy_engine.engine.policy.gates.image_metadata import ImageMetadataGate, ImageMetadataAttributeCheckTrigger
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_anchore_db, cls_test_data_env2, cls_no_feeds_test_env
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 
 logger.enable_test_logging()
 

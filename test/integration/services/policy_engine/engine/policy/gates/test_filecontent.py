@@ -3,7 +3,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.gates.files import FileCheckGate, FilenameMatchTrigger, ContentMatchTrigger, SuidCheckTrigger
 from anchore_engine.db import Image
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_anchore_db, cls_test_data_env2, cls_no_feeds_test_env
+from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_no_feeds_test_env
 
 logger.enable_test_logging()
 
