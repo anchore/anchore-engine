@@ -23,7 +23,7 @@ def language_compare(a, op, b, language='python'):
     if language in ['java', 'maven']:
         aoptions = [MavenVersion(a)]
         boptions = [MavenVersion(b)]
-    elif language in ['js', 'npm', 'ruby', 'gem']:
+    elif language in ['js', 'npm', 'ruby', 'gem', 'nuget']:
         try:
             aoptions = [semantic_version.Version.coerce(a)]
             boptions = [semantic_version.Version.coerce(b)]
@@ -221,7 +221,7 @@ def convert_langversionlist_to_semver(versionlist, language):
     semvers = []
     for version in versionlist:
         normal_semver = None
-        if language in ['python', 'maven', 'java', 'dotnet']:
+        if language in ['python', 'maven', 'java', 'nuget']:
             normal_semver = cleanup_range(convert_mrange_to_srange(version))
         elif language in ['js', 'npm', 'golang', 'go']:
             normal_semver = cleanup_range(version)

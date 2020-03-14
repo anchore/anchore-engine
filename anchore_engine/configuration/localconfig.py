@@ -11,6 +11,7 @@ from pkg_resources import resource_filename
 
 from anchore_engine.subsys import logger
 from anchore_engine.db.entities.identity import AccountTypes
+from anchore_engine.common import image_content_types, image_metadata_types
 
 DEFAULT_CONFIG = {
     'service_dir': os.path.join("{}".format(os.getenv("HOME", "/tmp/anchoretmp")), ".anchore_engine"),
@@ -216,6 +217,34 @@ def load_config(configdir=None, configfile=None, validate_params=None):
     # generate/setup the host_id in the service_dir
     localconfig['host_id'] = get_host_id()
 
+    # any special deployment/environment specific config handling here, via extension config
+    localconfig['image_content_types'] = image_content_types
+    localconfig['image_metadata_types'] = image_metadata_types
+
+    ext_config = {}
+    for mod in 'anchore_engine', 'anchore_enterprise':
+        try:
+            ext_config_file = os.path.join(resource_filename(mod, "conf/"), 'extensions.yaml')
+        except Exception as err:
+            logger.debug("skipping config extension load for module {} - exception: {}".format(mod, err))
+            ext_config_file = None
+            
+        if ext_config_file and os.path.exists(ext_config_file):
+            try:
+                with open(ext_config_file, 'r') as FH:
+                    d = yaml.safe_load(FH)
+                    if d:
+                        ext_config.update(d)
+            except Exception as err:
+                logger.error("failed to load extensions.yaml - exception: {}".format(err))
+
+    if ext_config:
+        if ext_config.get('content_types', []):
+            localconfig['image_content_types'].extend(ext_config.get('content_types'))
+    
+        if ext_config.get('metadata_types', []):
+            localconfig['image_metadata_types'].extend(ext_config.get('metadata_types'))
+            
     # any special overrides/deprecation handling here
     try:
         analyzer_config = localconfig.get('services', {}).get('analyzer', {})
@@ -227,6 +256,7 @@ def load_config(configdir=None, configfile=None, validate_params=None):
         logger.warn(str(err))
         pass
 
+    
     return (localconfig)
 
 

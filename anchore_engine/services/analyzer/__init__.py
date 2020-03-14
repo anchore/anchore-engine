@@ -87,9 +87,12 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
     timer = int(time.time())
     analysis_events = []
-    #event = None
     userId = None
     imageDigest = None
+
+    localconfig = anchore_engine.configuration.localconfig.get_config()    
+    myconfig = localconfig['services']['analyzer']    
+
     try:
         logger.debug('dequeued object: {}'.format(qobj))
 
@@ -150,7 +153,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 try:
                     logger.debug("extracting image content data locally")
                     image_content_data = {}
-                    for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
+                    all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])
+                    for content_type in all_content_types:
                         try:
                             image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(image_data, content_type, manifest=manifest)
                         except Exception as err:
@@ -178,7 +182,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     if not imageId:
                         raise Exception("cannot add image to policy engine without an imageId")
 
-                    localconfig = anchore_engine.configuration.localconfig.get_config()
+                    #localconfig = anchore_engine.configuration.localconfig.get_config()
                     verify = localconfig['internal_ssl_verify']
 
                     pe_client = internal_client_for(PolicyEngineClient, userId)

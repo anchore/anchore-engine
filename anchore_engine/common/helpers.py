@@ -244,6 +244,15 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
                         ret[k] = avalue
             except Exception as err:
                 raise Exception("could not extract/parse content info - exception: " + str(err))
+        elif 'pkgs.{}'.format(content_type) in idata['imagedata']['analysis_report']['package_list']:
+            # catchall for additional pkg types
+            try:
+                adata = idata['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
+                for k in list(adata.keys()):
+                    avalue = json.loads(adata[k])
+                    ret[k] = avalue
+            except Exception as err:
+                raise Exception("could not extract/parse content info - exception: " + str(err))            
         elif content_type == 'metadata':
             try:
                 if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
