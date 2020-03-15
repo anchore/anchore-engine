@@ -26,7 +26,6 @@ service_map = {
     'simplequeue': 'anchore-simplequeue',
     'apiext': 'anchore-api',
     'catalog': 'anchore-catalog',
-    'kubernetes_webhook': 'anchore-kubernetes-webhook',
     'policy_engine': 'anchore-policy-engine'
 }
 

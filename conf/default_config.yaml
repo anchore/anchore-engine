@@ -116,15 +116,6 @@ services:
     authorization_handler: ${ANCHORE_AUTHZ_HANDLER}
     authorization_handler_config:
       endpoint: ${ANCHORE_EXTERNAL_AUTHZ_ENDPOINT}
-  kubernetes_webhook:
-    enabled: true
-    require_auth: false
-    endpoint_hostname: '${ANCHORE_ENDPOINT_HOSTNAME}'
-    listen: '0.0.0.0'
-    port: ${ANCHORE_SERVICE_PORT}
-    authorization_handler: ${ANCHORE_AUTHZ_HANDLER}
-    authorization_handler_config:
-      endpoint: ${ANCHORE_EXTERNAL_AUTHZ_ENDPOINT}
   catalog:
     enabled: true
     require_auth: true

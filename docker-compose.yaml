@@ -119,23 +119,6 @@ services:
       driver: "json-file"
       options:
         max-size: 100m
-# Uncomment this section to enable Kubernetes handler webhook. Not typically needed for docker-compose installs
-#  kubehook:
-#    image: anchore/anchore-engine:v0.6.1
-#    depends_on:
-#    - anchore-db
-#    - engine-catalog
-#    ports:
-#    - "8338:8228"
-#    logging:
-#      driver: "json-file"
-#      options:
-#        max-size: 100m
-#    environment:
-#    - ANCHORE_DB_HOST=anchore-db
-#    - ANCHORE_DB_PASSWORD=mysecretpassword
-#    - ANCHORE_ENDPOINT_HOSTNAME=kubehook
-#    command: ["anchore-manager", "service", "start", "kubernetes_webhook"]
 
 # Uncomment this section to add a prometheus instance to gather metrics. This is mostly for quickstart to demonstrate prometheus metrics exported
 #  anchore-prometheus:
