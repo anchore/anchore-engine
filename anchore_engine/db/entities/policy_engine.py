@@ -346,15 +346,12 @@ class VulnerableArtifact(Base):
             return False
 
         # Is it a catch-all record? Explicit 'None' or 'all' versions indicate all versions of the named package are vulnerable.
-        if vuln_obj.epochless_version in ['all', 'None']:
+        # Or is it an exact version match?
+        if vuln_obj.epochless_version in ['all', 'None'] or \
+                (package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version):
             return True
-
-        # Is the package older than the fix?
-        if package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version:
-            return True
-
-        # Newer or the same
-        return False
+        else:
+            return False
 
 
 class FixedArtifact(Base):
@@ -1319,7 +1316,7 @@ class ImagePackage(Base):
 
     vulnerabilities = relationship('ImagePackageVulnerability', back_populates='package', lazy='dynamic')
     image = relationship('Image', back_populates='packages')
-    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all', 'delete', 'delete-orphan'])
 
     __table_args__ = (
         ForeignKeyConstraint(columns=[image_id, image_user_id],
@@ -1360,7 +1357,7 @@ class ImagePackage(Base):
                 props[key] = value
         return props
 
-    def vulnerabilities_for_package(self):
+    def find_vulnerabilities(self):
         """
         Given an ImagePackage object, return the vulnerabilities that it matches.
 
@@ -1444,9 +1441,9 @@ class ImagePackage(Base):
                 if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(self):
                     matches.append(candidate)
 
-        #for candidate in vulnerable_candidates:
-        #    if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(package_obj):
-        #        matches.append(candidate)
+            for candidate in vulnerable_candidates:
+               if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(self):
+                   matches.append(candidate)
 
         #log.debug("TIMER DB: {}".format(time.time() - ts))
         return matches
@@ -1474,12 +1471,11 @@ class ImagePackage(Base):
                                                             or_(FixedArtifact.name == package_obj.name, FixedArtifact.name == package_obj.normalized_src_pkg)).all()
 
         # Match the namespace and package name or src pkg name
-        vulnerable_candidates = []
-        #vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
-        #                                                            or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
-
+        vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
+                                                                    or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
 
         return fix_candidates, vulnerable_candidates
+
 
 class ImagePackageManifestEntry(Base):
     """
