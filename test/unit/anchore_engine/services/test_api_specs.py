@@ -21,7 +21,6 @@ service_swaggers = [
     'anchore_engine/services/simplequeue/swagger/swagger.yaml',
     'anchore_engine/services/analyzer/swagger/swagger.yaml',
     'anchore_engine/services/policy_engine/swagger/swagger.yaml',
-    'anchore_engine/services/kubernetes_webhook/swagger/swagger.yaml'
 ]
 
 @pytest.mark.parametrize('service', service_swaggers)

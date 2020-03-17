@@ -6,6 +6,9 @@ services:
     container_name: postgres
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+
   swift:
     image: anchore/test-infra-swift:latest
 #    build:
