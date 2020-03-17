@@ -9,7 +9,7 @@ from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAG
 from anchore_engine.subsys.object_store import get_manager
 from anchore_engine.subsys.object_store.exc import DriverConfigurationError, BadCredentialsError
 from test.fixtures import anchore_db
-from .fixtures import swift_container, s3_bucket, test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_s3_region, test_swift_auth_url, test_swift_container, test_swift_key, test_swift_user
+from .conftest import test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_s3_region, test_swift_auth_url, test_swift_container, test_swift_key, test_swift_user
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
@@ -79,7 +79,7 @@ def test_fs(anchore_db):
                 }
             }
         }
-    }    
+    }
     object_store.initialize(config, check_db=False, manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID, config_keys=[DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY], allow_legacy_fallback=False, force=True)
     run_test()
 
