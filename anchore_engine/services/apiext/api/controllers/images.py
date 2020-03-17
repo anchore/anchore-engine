@@ -33,9 +33,11 @@ authorizer = get_authorizer()
 def make_response_content(content_type, content_data):
     ret = []
 
-    if content_type not in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])
+    if content_type not in all_content_types:    
         logger.warn("input content_type (" + str(content_type) +") not supported (" + str(
-            anchore_engine.common.image_content_types) + ")")
+            all_content_types) + ")")
         return(ret)
 
     if not content_data:
@@ -127,7 +129,6 @@ def make_response_content(content_type, content_data):
                 el = {}
             if el:
                 ret.append(el)
-
     elif content_type == 'files':
         elmap = {
             'linkdst': 'linkdest',
@@ -170,7 +171,25 @@ def make_response_content(content_type, content_data):
             logger.warn("could not base64 encode content - exception: {}".format(err))
             ret = ""
     else:
-        ret = content_data
+        try:
+            for package in list(content_data.keys()):
+                el = {}
+                try:
+                    el['package'] = content_data[package]['name']
+                    el['type'] = content_data[package]['type'].upper()
+                    el['location'] = content_data[package].get('location', None) or 'Unknown'
+                    el['version'] = content_data[package].get('version', None) or 'Unknown'
+                    el['origin'] = content_data[package].get('origin', None) or 'Unknown'
+                    el['license'] = content_data[package].get('license', None) or 'Unknown'
+                except Exception as err:
+                    el = {}
+                if el:
+                    ret.append(el)
+            if not ret:
+                raise Exception("empty return list after generic element parse")
+        except Exception as err:
+            logger.debug("couldn't parse any generic package elements, returning raw content_data - exception: {}".format(err))
+            ret = content_data
 
     return(ret)
 
@@ -590,7 +609,9 @@ def get_content(request_inputs, content_type, doformat=False):
     httpcode = 500
     userId, pw = user_auth
     try:
-        if content_type not in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])        
+        if content_type not in all_content_types:
             httpcode = 404
             raise Exception("content type ("+str(content_type)+") not available")
 
@@ -967,7 +988,8 @@ def get_image_policy_check_by_imageId(imageId, policyId=None, tag=None, detail=N
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_metadata(imageDigest):
     try:
-        return_object = anchore_engine.common.image_metadata_types
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = localconfig.get('image_metadata_types', [])
         httpcode = 200
     except Exception as err:
         httpcode = 500
@@ -998,7 +1020,8 @@ def get_image_metadata_by_type(imageDigest, mtype):
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_content(imageDigest):
     try:
-        return_object = anchore_engine.common.image_content_types
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = localconfig.get('image_content_types', [])
         httpcode = 200
     except Exception as err:
         httpcode = 500
@@ -1010,7 +1033,8 @@ def list_image_content(imageDigest):
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_image_content_by_imageid(imageId):
     try:
-        return_object = anchore_engine.common.image_content_types
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        return_object = localconfig.get('image_content_types', [])
         httpcode = 200
     except Exception as err:
         httpcode = 500

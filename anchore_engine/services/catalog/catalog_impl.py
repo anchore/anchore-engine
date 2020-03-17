@@ -1413,7 +1413,9 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                             rc =  obj_store.put_document(userId, 'analysis_data', imageDigest, anchore_data)
 
                             image_content_data = {}
-                            for content_type in anchore_engine.common.image_content_types + anchore_engine.common.image_metadata_types:
+                            localconfig = anchore_engine.configuration.localconfig.get_config()
+                            all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])
+                            for content_type in all_content_types:
                                 try:
                                     image_content_data[content_type] = anchore_engine.common.helpers.extract_analyzer_content(anchore_data, content_type, manifest=manifest)
                                 except:

@@ -111,36 +111,47 @@ class ImageLoader(object):
 
 
         packages = []
+        handled_ptypes = []
 
         # Packages        
         log.info('Loading image packages')
-        os_packages = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
+        os_packages, handled = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
         packages = packages + os_packages
+        handled_ptypes = handled_ptypes + handled
 
         # FileSystem
         log.info('Loading image files')
-        image.fs = self.load_fsdump(analysis_report)
+        image.fs, handled = self.load_fsdump(analysis_report)
+        handled_ptypes = handled_ptypes + handled        
 
         # Npms
         log.info('Loading image npms')
-        npm_image_packages = self.load_npms(analysis_report, image)
+        npm_image_packages, handled = self.load_npms(analysis_report, image)
         packages = packages + npm_image_packages
+        handled_ptypes = handled_ptypes + handled
 
         # Gems
         log.info('Loading image gems')
-        gem_image_packages = self.load_gems(analysis_report, image)
+        gem_image_packages, handled = self.load_gems(analysis_report, image)
         packages = packages + gem_image_packages
+        handled_ptypes = handled_ptypes + handled
 
         ## Python
         log.info('Loading image python packages')
-        python_packages = self.load_pythons(analysis_report, image)
+        python_packages, handled = self.load_pythons(analysis_report, image)
         packages = packages + python_packages
+        handled_ptypes = handled_ptypes + handled
 
         ## Java
         log.info('Loading image java packages')
-        java_packages = self.load_javas(analysis_report, image)
+        java_packages, handled = self.load_javas(analysis_report, image)
         packages = packages + java_packages
+        handled_ptypes = handled_ptypes + handled
 
+        generic_packages, handled = self.load_generic_packages(analysis_report, image, excludes=handled_ptypes)
+        packages = packages + generic_packages
+        handled_ptypes = handled_ptypes + handled        
+        
         image.packages = packages
 
         # Package metadata
@@ -363,13 +374,14 @@ class ImageLoader(object):
         :return: list of Package objects that can be added to an image
         """
         pkgs = []
+        handled_pkgtypes = ['pkgs.allinfo', 'pkgs.all']
 
         img_distro = DistroNamespace.for_obj(image_obj)
 
         # pkgs.allinfo handling
         pkgs_all = list(package_analysis_json.get('pkgs.allinfo', {}).values())
         if not pkgs_all:
-            return []
+            return [], handled_pkgtypes
         else:
             pkgs_all = pkgs_all[0]
 
@@ -417,7 +429,7 @@ class ImageLoader(object):
             pkgs.append(p)
 
         if pkgs:
-            return pkgs
+            return pkgs, handled_pkgtypes
         else:
             log.warn('Pkg Allinfo not found, reverting to using pkgs.all')
 
@@ -449,7 +461,7 @@ class ImageLoader(object):
                     p.version = version
                     p.release = None
 
-        return pkgs
+        return pkgs, handled_pkgtypes
 
     def load_fsdump(self, analysis_report_json):
         """
@@ -460,6 +472,7 @@ class ImageLoader(object):
         :return:
         """
 
+        handled_pkgtypes = ['files.allinfo', 'files.all', 'files.md5sums', 'files.sha256sums', 'files.sha1sums', 'files.suids', 'pkgfiles.all']
         file_entries = {}
         all_infos = analysis_report_json.get('file_list', {}).get('files.allinfo', {}).get('base', {})
         file_perms = analysis_report_json.get('file_list', {}).get('files.all', {}).get('base', {})
@@ -522,12 +535,13 @@ class ImageLoader(object):
         # Compress and set the data
         entry.total_entry_count = len(file_entries)
         entry.files = file_entries
-        return entry
+        return entry, handled_pkgtypes
 
     def load_npms(self, analysis_json, containing_image):
+        handled_pkgtypes = ['pkgs.npms']        
         npms_json = analysis_json.get('package_list', {}).get('pkgs.npms',{}).get('base')
         if not npms_json:
-            return []
+            return [], handled_pkgtypes
 
             
         npms = []
@@ -576,12 +590,13 @@ class ImageLoader(object):
             np.src_pkg = fullname
             image_packages.append(np)
 
-        return image_packages
+        return image_packages, handled_pkgtypes
 
     def load_gems(self, analysis_json, containing_image):
+        handled_pkgtypes = ['pkgs.gems']        
         gems_json = analysis_json.get('package_list', {}).get('pkgs.gems', {}).get('base')
         if not gems_json:
-            return []
+            return [], handled_pkgtypes
 
         gems = []
         image_packages = []
@@ -629,13 +644,13 @@ class ImageLoader(object):
             np.src_pkg = fullname
             image_packages.append(np)
 
-        return image_packages
+        return image_packages, handled_pkgtypes
 
     def load_pythons(self, analysis_json, containing_image):
-
+        handled_pkgtypes = ['pkgs.python']
         pkgs_json = analysis_json.get('package_list', {}).get('pkgs.python', {}).get('base')
         if not pkgs_json:
-            return []
+            return [], handled_pkgtypes
 
         pkgs = []
         for path, pkg_str in list(pkgs_json.items()):
@@ -670,12 +685,13 @@ class ImageLoader(object):
             n.src_pkg = fullname
             pkgs.append(n)
             
-        return pkgs
+        return pkgs, handled_pkgtypes
 
     def load_javas(self, analysis_json, containing_image):
+        handled_pkgtypes = ['pkgs.java']        
         pkgs_json = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
         if not pkgs_json:
-            return []
+            return [], handled_pkgtypes
 
         pkgs = []
         for path, pkg_str in list(pkgs_json.items()):
@@ -738,8 +754,50 @@ class ImageLoader(object):
 
             pkgs.append(n)
 
-        return pkgs
+        return pkgs, handled_pkgtypes
 
+    def load_generic_packages(self, analysis_json, containing_image, excludes=[]):
+        pkgs = []
+        handled_pkgtypes = []
+        package_types = analysis_json.get('package_list', {})
+        for package_type in package_types:
+            if package_type not in excludes:
+                patt = re.match(r"pkgs\.(.*)", package_type)
+                if patt:
+                    ptype = patt.group(1)
+                    handled_pkgtypes.append(ptype)                    
+                    pkgs_json = analysis_json.get('package_list', {}).get(package_type, {}).get('base', {})
+
+                    if not pkgs_json:
+                        return [], handled_pkgtypes
+
+                    for path, pkg_str in list(pkgs_json.items()):
+                        pkg_json = json.loads(pkg_str)
+                        n = ImagePackage()
+                        # primary keys
+                        n.name = pkg_json.get('name')
+                        n.pkg_path = path
+                        n.version = pkg_json.get('version')
+                        n.pkg_type = pkg_json.get('type', 'N/A')
+                        n.arch = 'N/A'
+                        n.image_user_id = n.image_user_id
+                        n.image_id = n.image_id
+                        # other
+                        n.pkg_path_hash = hashlib.sha256(ensure_bytes(path)).hexdigest()
+                        n.distro_name = n.pkg_type
+                        n.distro_version = 'N/A'
+                        n.like_distro = n.pkg_type
+                        n.fullversion = n.version
+                        n.license = pkg_json.get('license', 'N/A')
+                        n.origin = pkg_json.get('origin', 'N/A')
+
+                        fullname = n.name
+                        n.normalized_src_pkg = fullname
+                        n.src_pkg = fullname
+                        pkgs.append(n)
+                    
+        return pkgs, handled_pkgtypes
+    
     def _fuzzy_python(self, input_el):
         global nomatch_inclusions
 
