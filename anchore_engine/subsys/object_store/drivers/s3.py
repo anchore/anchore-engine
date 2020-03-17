@@ -1,5 +1,6 @@
 import boto3
 import urllib.parse
+import uuid
 
 from anchore_engine import utils
 from anchore_engine.subsys import logger
@@ -61,45 +62,35 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         if not self.bucket_name:
             raise ValueError('Cannot configure s3 driver with out a provided bucket to use')
 
-        try:
-            self._check_creds()
-        except BucketNotFoundError:
-            pass
-
-        self._check_bucket()
+        self._check()
 
         self.prefix = self.config.get('prefix', '')
 
-    def _check_creds(self):
-        try:
-            self.s3_client.get_bucket_location(Bucket=self.bucket_name)
-        except Exception as ex:
-            if hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [403, 401]:
-                # Permission denied
-                raise BadCredentialsError(creds_dict=self.session.get_credentials().__dict__, endpoint=self.s3_client._endpoint, cause=ex)
-            elif hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [400]:
-                # Signature mismatch error (bad request), usually a wrong secret key for a valid access key
-                raise BadCredentialsError(creds_dict=self.session.get_credentials().__dict__, endpoint=self.s3_client._endpoint, cause=ex)
-            elif hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [404]:
-                raise BucketNotFoundError(self.bucket_name)
-            else:
-                logger.error('Got cred check error: {}'.format(ex.response.get('ResponseMetadata')))
-                raise ex
+    def _check(self):
+        """
+        Ensure that client can put/get/delete from a bucket.
+        """
+        key = "__anchore_s3_key_self_check__{}".format(str(uuid.uuid4()))
 
-    def _check_bucket(self):
         try:
-            self.s3_client.get_bucket_location(Bucket=self.bucket_name)
+            self.s3_client.put_object(Bucket=self.bucket_name, Key=key, Body=b'')
+            self.s3_client.get_object(Bucket=self.bucket_name, Key=key)
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=key)
         except Exception as ex:
-            if hasattr(ex, 'response') and ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode') in [404]:
-                if self.create_bucket:
-                    self.s3_client.create_bucket(Bucket=self.bucket_name)
-                else:
-                    raise BucketNotFoundError(self.bucket_name)
-            else:
-                logger.error(
-                    'Error checking configured bucket for location during driver preflight check. Bucket = {}. Error = {}'.format(
-                        self.bucket_name, ex))
-                raise DriverConfigurationError(cause=ex)
+            try:
+                code = ex.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                if code in [403, 401, 400]:
+                    raise BadCredentialsError(
+                        creds_dict=self.session.get_credentials().__dict__,
+                        endpoint=self.s3_client._endpoint, cause=ex
+                    )
+                elif code == 404:
+                    if self.create_bucket:
+                        self.s3_client.create_bucket(Bucket=self.bucket_name)
+                    else:
+                        raise BucketNotFoundError(self.bucket_name)
+            except AttributeError:
+                raise
 
     def _build_key(self, userId, usrBucket, key):
         return self._key_format.format(prefix=self.prefix, userid=userId, bucket=usrBucket, key=key)
@@ -121,7 +112,7 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
             content = resp['Body'].read()
             ret = utils.ensure_bytes(content)
             return(ret)
-            
+
         except Exception as e:
             raise e
 
