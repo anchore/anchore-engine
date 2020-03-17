@@ -1068,12 +1068,9 @@ def db_upgrade_011_012():
 def upgrade_feed_groups_013():
     log.err('Upgrading feed and feed group schemas to add enabled flags')
 
-    from anchore_engine.db import session_scope
     from anchore_engine.services.policy_engine.engine.feeds import sync
-
     engine = anchore_engine.db.entities.common.get_engine()
 
-    # Add constraints and index
     log.err('Updating feeds table to have enabled flag')
     engine.execute("ALTER TABLE feeds ADD COLUMN IF NOT EXISTS enabled boolean")
     engine.execute("UPDATE feeds set enabled = TRUE")
@@ -1093,6 +1090,18 @@ def upgrade_feed_groups_013():
     sync.DataFeeds.update_counts()
 
 
+def upgrade_distro_mappings_rhel_013():
+    """
+    Updates distro map entries to use rhel feed instead of centos feed
+
+    """
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    log.err('Updating distro mappings to map centos, fedora, and rhel to new feed distro "rhel"')
+    engine.execute("UPDATE distro_mappings set to_distro = 'rhel' where from_distro in ('centos', 'fedora', 'rhel') and to_distro = 'centos'")
+    log.err('Mapping updated. All centos, fedora, and rhel images will now get vulnerability data from the vulnerabilities/rhel:* feed groups instead of vulnerabilities/centos:*')
+
+
 def db_upgrade_012_013():
     """
     Upgrade schema from 0.0.12 --> 0.0.13
@@ -1101,6 +1110,7 @@ def db_upgrade_012_013():
     """
 
     upgrade_feed_groups_013()
+    upgrade_distro_mappings_rhel_013()
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
