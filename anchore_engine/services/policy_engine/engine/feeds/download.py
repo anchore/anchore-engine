@@ -9,8 +9,7 @@ from anchore_engine.utils import mapped_parser_item_iterator
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.services.policy_engine.engine.feeds.schemas import LocalFeedDataRepoMetadata, DownloadOperationConfiguration, DownloadOperationResult, GroupDownloadOperationConfiguration, FeedAPIGroupRecord, FeedAPIRecord, GroupDownloadResult
 
-from anchore_engine.services.policy_engine.engine.logs import get_logger
-logger = get_logger()
+from anchore_engine.subsys import logger
 
 from anchore_engine.utils import ensure_bytes, timer
 
