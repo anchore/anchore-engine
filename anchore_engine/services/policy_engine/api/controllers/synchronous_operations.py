@@ -28,7 +28,7 @@ from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityL
 from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
 from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, select_nvd_classes, VulnDBMetadata, VulnDBCpe
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
-from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError
+from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, ValidationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, merge_nvd_metadata, merge_nvd_metadata_image_packages
@@ -795,6 +795,8 @@ def validate_bundle(policy_bundle):
             executable_bundle = build_bundle(policy_bundle, allow_deprecated=False)
             if executable_bundle.init_errors:
                 problems = executable_bundle.init_errors
+        except ValidationError as e:
+            problems.append(e)
         except InitializationError as e:
             # Expand any validation issues
             problems = e.causes
