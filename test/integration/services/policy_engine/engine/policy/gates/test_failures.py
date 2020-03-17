@@ -7,8 +7,8 @@ from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, BundleExecution
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import DockerfileGate, ExposedPortsTrigger
-from anchore_engine.services.policy_engine.engine.policy.exceptions import TriggerEvaluationError, TriggerNotAvailableError, TriggerNotFoundError, ValidationError, PolicyRuleValidationErrorCollection
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_anchore_db, cls_test_data_env2, cls_no_feeds_test_env
+from anchore_engine.services.policy_engine.engine.policy.exceptions import TriggerEvaluationError, ValidationError, PolicyRuleValidationErrorCollection
+from test.integration.services.policy_engine.engine.policy.gates import cls_no_feeds_test_env
 
 logger.enable_test_logging()
 

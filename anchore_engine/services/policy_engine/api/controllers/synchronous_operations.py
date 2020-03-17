@@ -48,7 +48,7 @@ authorizer = get_authorizer()
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
 
-TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Version', 'CVES']
+TABLE_STYLE_HEADER_LIST = ['CVE_ID', 'Severity', '*Total_Affected', 'Vulnerable_Package', 'Fix_Available', 'Fix_Images', 'Rebuild_Images', 'URL', 'Package_Type', 'Feed', 'Feed_Group', 'Package_Name', 'Package_Path', 'Package_Version', 'CVES']
 
 DEFAULT_CACHE_CONN_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
 DEFAULT_CACHE_READ_TIMEOUT = -1 # Disabled by default, can be set in config file. Seconds for first byte timeout for policy eval cache
@@ -626,7 +626,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
                 db = get_session()
                 db.refresh(img)
-            
+
             vulns = img.vulnerabilities()
 
         # Has vulnerabilities?
@@ -654,7 +654,10 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             # rennovation this for new CVSS references
             cves = ''
             nvd_list = []
-            all_data = {'nvd_data': nvd_list, 'vendor_data': []}
+            all_data = {'nvd_data': nvd_list, 'vendor_data': [], 'advisory_data': {'cves': []}}
+
+            if vuln.vulnerability.additional_metadata:
+                all_data['advisory_data']['cves'] = vuln.vulnerability.additional_metadata.get('CVE', [])
 
             for nvd_record in nvd_records:
                 nvd_list.extend(nvd_record.get_cvss_data_nvd())
@@ -674,6 +677,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 'vulnerabilities',
                 vuln.vulnerability.namespace_name,
                 vuln.pkg_name,
+                vuln.pkg_path,
                 vuln.package.fullversion,
                 cves,
                 ]
@@ -1007,7 +1011,7 @@ def query_images_by_package(dbsession, request_inputs):
         matched_images = list(ret_hash.values())
         return_object = {
             'matched_images': matched_images
-        }            
+        }
         httpcode = 200
     except Exception as err:
         log.error("{}".format(err))
@@ -1083,7 +1087,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         start = time.time()
         if image_package_matches or image_cpe_matches or image_cpe_vlndb_matches:
             imageId_to_record = _get_imageId_to_record(userId, dbsession=dbsession)
-            
+
             start = time.time()
             for image in image_package_matches:
                 if vendor_only and check_no_advisory(image):
@@ -1272,7 +1276,7 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
 
                 for nvd_record in nvds:
                     namespace_el['nvd_data'].extend(nvd_record.get_cvss_data_nvd())
-                
+
                 for v_pkg in vulnerability.fixed_in:
                     if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
                         pkg_el = {
@@ -1289,7 +1293,7 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
                     return_object.append(namespace_el)
 
         httpcode = 200
-            
+
     except Exception as err:
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
@@ -1314,7 +1318,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
     finally:
         session.close()
 
-    return (return_object, httpcode)    
+    return (return_object, httpcode)
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1330,7 +1334,7 @@ def query_images_by_package_get(user_id, name=None, version=None, package_type=N
     finally:
         session.close()
 
-    return (return_object, httpcode)    
+    return (return_object, httpcode)
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)

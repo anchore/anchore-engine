@@ -5,8 +5,6 @@ import json
 import pytest
 from anchore_engine.services.policy_engine.engine.feeds.mappers import Vulnerability, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, GemMetadata, NpmMetadata
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env
 
 test_cve = {
     'Vulnerability': {

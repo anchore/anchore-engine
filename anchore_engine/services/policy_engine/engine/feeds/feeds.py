@@ -7,7 +7,12 @@ from anchore_engine.db import get_thread_scoped_session as get_session, FeedMeta
 
 from anchore_engine.services.policy_engine.engine.feeds.schemas import DownloadOperationConfiguration, GroupDownloadResult, GroupDownloadOperationParams
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo
-from anchore_engine.services.policy_engine.engine.feeds.mappers import GenericFeedDataMapper, SingleTypeMapperFactory, VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper, NvdV2FeedDataMapper, VulnDBFeedDataMapper
+from anchore_engine.services.policy_engine.engine.feeds.mappers import (
+        GenericFeedDataMapper, SingleTypeMapperFactory,
+        VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper,
+        NvdV2FeedDataMapper, VulnDBFeedDataMapper, GithubFeedDataMapper
+)
+from anchore_engine.services.policy_engine.engine.feeds import mappers
 from anchore_engine.services.policy_engine.engine.vulnerabilities import process_updated_vulnerability, flush_vulnerability_matches, ThreadLocalFeedGroupNameCache
 from anchore_engine.subsys.events import FeedGroupSyncStarted, FeedGroupSyncCompleted, FeedGroupSyncFailed, EventBase
 from anchore_engine.services.policy_engine.engine.logs import get_logger
@@ -640,6 +645,18 @@ class VulnDBFeed(AnchoreServiceFeed):
             raise
         finally:
             db.rollback()
+
+
+class GithubFeed(VulnerabilityFeed):
+    """
+    Feed for the Github Advisories data
+    """
+
+    __feed_name__ = 'advisories'
+    _cve_key = 'id'
+    __group_data_mappers__ = SingleTypeMapperFactory(
+        __feed_name__, GithubFeedDataMapper, _cve_key
+    )
 
 
 def feed_instance_by_name(name):

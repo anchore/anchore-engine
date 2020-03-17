@@ -1,6 +1,5 @@
 import datetime
 import json
-import pytest
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace
@@ -9,8 +8,6 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.integration.services.policy_engine.utils import reset_feed_sync_time
 from anchore_engine.services.policy_engine import _init_distro_mappings
 
-from test.fixtures import anchore_db
-from test.integration.services.policy_engine.fixtures import test_data_env
 
 logger.enable_test_logging()
 
