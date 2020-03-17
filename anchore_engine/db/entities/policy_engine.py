@@ -69,17 +69,18 @@ class FeedMetadata(Base, UtilMixin):
     name = Column(String(feed_name_length), primary_key=True)
     description = Column(String(512))
     access_tier = Column(Integer)
-    groups = relationship('FeedGroupMetadata', back_populates='feed')
+    groups = relationship('FeedGroupMetadata', back_populates='feed', cascade='all, delete-orphan')
     last_full_sync = Column(DateTime)
-    last_update = Column(DateTime)
+    last_update = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    enabled = Column(Boolean, default=True)
 
     @classmethod
     def get_by_name(cls, name):
         return FeedMetadata.query.filter(name=name).scalar()
 
     def __repr__(self):
-        return '<{}(name={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.access_tier, self.created_at.isoformat())
+        return '<{}(name={}, access_tier={}, enabled={}, created_at={}>'.format(self.__class__, self.name, self.access_tier, self.enabled, self.created_at.isoformat())
 
     def to_json(self, include_groups=True):
         j = super().to_json()
@@ -101,10 +102,13 @@ class FeedGroupMetadata(Base, UtilMixin):
     access_tier = Column(Integer)
     last_sync = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_update = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    enabled = Column(Boolean, default=True)
+    count = Column(BigInteger) # To cache the row count of the group between feed syncs to avoid extra row count ops
     feed = relationship('FeedMetadata', back_populates='groups')
 
     def __repr__(self):
-        return '<{} name={}, feed={}, access_tier={}, created_at={}>'.format(self.__class__, self.name, self.feed_name, self.access_tier,
+        return '<{} name={}, feed={}, access_tier={}, enabled={}, created_at={}>'.format(self.__class__, self.name, self.feed_name, self.access_tier, self.enabled,
                                                                               self.created_at)
 
     def to_json(self, include_feed=False):
@@ -115,6 +119,7 @@ class FeedGroupMetadata(Base, UtilMixin):
             j['feed'] = None # Ensure no non-serializable stuff
 
         return j
+
 
 class GenericFeedDataRecord(Base):
     """

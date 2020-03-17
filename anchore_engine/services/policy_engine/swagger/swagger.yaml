@@ -459,7 +459,12 @@ paths:
         in: query
         required: false
         type: boolean
-        description: If set, include record counts for each group, this can incur a lot of latency in the response
+        description: If set, include record counts for each group.
+      - name: refresh_counts
+        in: query
+        required: false
+        type: boolean
+        description: If set, include record counts in response but also recalculate the counts. This is a more expensive operation.
       responses:
         200:
           description: "FeedInfo listing"
@@ -476,10 +481,14 @@ paths:
       produces:
       - "application/json"
       parameters:
-      - name: "force_flush"
-        in: "query"
+      - name: force_flush
+        in: query
         required: false
         type: boolean
+      - name: feed
+        in: query
+        required: false
+        type: string
       responses:
         200:
           description: "Processed successfully"
@@ -492,6 +501,110 @@ paths:
           description: "Internal server error processing the request. Retry expected"
         400:
           description: "Bad request, fix and resend"
+  /feeds/{feed}:
+    put:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: toggle_feed_enabled
+      description: "Disable the feed so that it does not sync on subsequent sync operations"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: enabled
+          type: boolean
+          required: true
+          in: query
+      responses:
+        200:
+          description: "FeedInfo"
+          schema:
+            $ref: "#/definitions/FeedMetadata"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        400:
+          description: "Bad request, fix and resend"
+    delete:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: delete_feed
+      description: "Delete the groups and data for the feed and disable the feed itself"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Successfully deleted"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        404:
+          description: "Not found"
+  /feeds/{feed}/{group}:
+    put:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: toggle_group_enabled
+      description: "Disable a specific group within a feed to not sync"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: group
+          in: path
+          type: string
+          required: true
+        - name: enabled
+          type: boolean
+          required: true
+          in: query
+      responses:
+        200:
+          description: "FeedInfo listing"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/FeedMetadata"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        400:
+          description: "Bad request, fix and resend"
+    delete:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
+      operationId: delete_group
+      description: "Delete the group data and disable the group itself"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: group
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          description: "Successfully deleted"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        404:
+          description: "Not found"
 definitions:
   Image:
     type: object
@@ -1155,6 +1268,8 @@ definitions:
       last_full_sync:
         type: string
         format: date-time
+      enabled:
+        type: boolean
   FeedGroupMetadata:
     type: object
     properties:
@@ -1168,6 +1283,8 @@ definitions:
         format: date-time
       record_count:
         type: integer
+      enabled:
+        type: boolean
   PolicyEvaluationCacheEnabledStatus:
     type: object
     description: The enabled status of policy evaluation caching for a specific policy engine instance

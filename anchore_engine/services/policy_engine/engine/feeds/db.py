@@ -21,6 +21,45 @@ def lookup_feed_group(db_session, feed_name, group_name):
     return db_session.query(FeedGroupMetadata).filter_by(name=group_name, feed_name=feed_name).one_or_none()
 
 
+def set_feed_group_enabled(db_session, feed_name, group_name, is_enabled):
+    """
+    Update the group's enabled state
+
+    :param db_session: active db session to use
+    :param feed_name: string name of feed
+    :param group_name: string group name
+    :param is_enabled: boolean to set enabled flag
+    :return:
+    """
+    if db_session is None or not db_session.is_active:
+        raise ValueError('db_session must be an open, valid session')
+
+    meta = db_session.query(FeedGroupMetadata).filter_by(name=group_name, feed_name=feed_name).one_or_none()
+    if meta:
+        meta.enabled = is_enabled
+
+    return meta
+
+
+def set_feed_enabled(db_session, feed_name, is_enabled):
+    """
+    Update the group's enabled state
+
+    :param db_session: active db session to use
+    :param feed_name: string name of feed
+    :param is_enabled: boolean to set enabled flag
+    :return:
+    """
+    if db_session is None or not db_session.is_active:
+        raise ValueError('db_session must be an open, valid session')
+
+    meta = db_session.query(FeedMetadata).filter_by(name=feed_name).one_or_none()
+    if meta:
+        meta.enabled = is_enabled
+
+    return meta
+
+
 def get_feed_json(db_session, feed_name):
     cache = local_named_cache(cache_name)
     cached = cache.lookup(feed_name)

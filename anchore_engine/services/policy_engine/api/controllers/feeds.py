@@ -2,51 +2,80 @@ from flask import jsonify
 
 from anchore_engine.common.errors import AnchoreError
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine.apis.exceptions import BadRequest, ConflictingRequest, ResourceNotFound, InternalError
 from anchore_engine.clients.services.simplequeue import LeaseAcquisitionFailedError, LeaseUnavailableError
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.subsys import logger as log
+from anchore_engine.db import FeedMetadata as DbFeedMetadata, FeedGroupMetadata as DbFeedGroupMetadata
 
 authorizer = get_authorizer()
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def list_feeds(include_counts=False):
+def list_feeds(include_counts=False, refresh_counts=False):
     """
     GET /feeds
+
+    :param include_counts (ignored since counts are handled in the record now)
+    :param refresh_counts: forcibly update the group counts (not normally necessary)
     :return:
     """
 
-    meta = db.get_all_feeds_detached()
-    response = []
+    if refresh_counts:
+        sync.DataFeeds.update_counts()
 
-    for feed in meta:
-        i = FeedMetadata()
-        i.name = feed.name
-        i.last_full_sync = feed.last_full_sync.isoformat() if feed.last_full_sync else None
-        i.created_at = feed.created_at.isoformat() if feed.created_at else None
-        i.updated_at = feed.last_update.isoformat() if feed.last_update else None
-        i.groups = []
-
-        for group in feed.groups:
-            g = FeedGroupMetadata()
-            g.name = group.name
-            g.last_sync = group.last_sync.isoformat() if group.last_sync else None
-            g.created_at = group.created_at.isoformat() if group.created_at else None
-
-            if include_counts:
-                # Compute count (this is slow)
-                g.record_count = sync.DataFeeds.records_for(i.name, g.name)
-            else:
-                g.record_count = None
-
-            i.groups.append(g.to_dict())
-
-        response.append(i.to_dict())
+    response = _marshall_feeds_response(refresh_counts)
 
     return jsonify(response)
+
+
+def _marshall_feeds_response(include_counts: bool):
+    response = []
+    meta = db.get_all_feeds_detached()
+
+    for feed in meta:
+        response.append(_marshall_feed_response(feed, include_counts))
+
+    return response
+
+
+def _marshall_feed_response(feed: DbFeedMetadata, include_counts=True):
+    if not feed:
+        return ValueError(feed)
+
+    i = FeedMetadata()
+    i.name = feed.name
+    i.last_full_sync = feed.last_full_sync.isoformat() if feed.last_full_sync else None
+    i.created_at = feed.created_at.isoformat() if feed.created_at else None
+    i.updated_at = feed.last_update.isoformat() if feed.last_update else None
+    i.enabled = feed.enabled
+    i.groups = []
+
+    for group in feed.groups:
+        i.groups.append(_marshall_group_response(group, include_counts=include_counts))
+
+    return i.to_dict()
+
+
+def _marshall_group_response(group: DbFeedGroupMetadata, include_counts=True):
+    if not group:
+        raise ValueError(group)
+
+    g = FeedGroupMetadata()
+    g.name = group.name
+    g.last_sync = group.last_sync.isoformat() if group.last_sync else None
+    g.created_at = group.created_at.isoformat() if group.created_at else None
+    g.updated_at = group.last_update.isoformat() if group.last_update else None
+    g.enabled = group.enabled
+    if include_counts:
+        g.record_count = group.count
+    else:
+        g.record_count = None
+
+    return g.to_dict()
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -72,3 +101,97 @@ def sync_feeds(sync=True, force_flush=False):
             return jsonify(make_response_error(e, in_httpcode=500)), 500
 
     return jsonify(result), 200
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def toggle_feed_enabled(feed, enabled):
+    if type(enabled) != bool:
+        raise BadRequest(message='state must be a boolean', detail={'value': enabled})
+
+    session = db.get_session()
+    try:
+        f = db.set_feed_enabled(session, feed, enabled)
+        session.flush()
+
+        updated = _marshall_feed_response(f)
+        session.commit()
+
+        return jsonify(updated), 200
+    except Exception:
+        log.error('Could not update feed enabled status')
+        session.rollback()
+        raise
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def toggle_group_enabled(feed, group, enabled):
+    if type(enabled) != bool:
+        raise BadRequest(message='state must be a boolean', detail={'value': enabled})
+
+    session = db.get_session()
+    try:
+        g = db.set_feed_group_enabled(session, feed, group, enabled)
+        session.flush()
+
+        grp = _marshall_group_response(g)
+        session.commit()
+
+        return jsonify(grp), 200
+    except Exception:
+        log.error('Could not update feed group enabled status')
+        session.rollback()
+        raise
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def delete_feed(feed):
+    session = db.get_session()
+    try:
+        f = db.lookup_feed(db_session=session, feed_name=feed)
+        if not f:
+            raise ResourceNotFound(resource=feed, detail={})
+        elif f.enabled:
+            raise ConflictingRequest(message='Cannot delete an enabled feed. Disable the feed first', detail={})
+    finally:
+        session.rollback()
+
+    try:
+        sync.DataFeeds.delete_feed(feed)
+    except Exception:
+        log.error('Could not update feed group enabled status')
+        raise
+
+    session = db.get_session()
+    try:
+        fd = db.get_feed_json(db_session=session, feed_name=feed)
+        return jsonify(fd)
+    except Exception:
+        raise
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def delete_group(feed, group):
+    session = db.get_session()
+    try:
+        f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)
+        if not f:
+            raise ResourceNotFound(resource=feed, detail={})
+        elif f.enabled:
+            raise ConflictingRequest(message='Cannot delete an enabled feed group. Disable the feed group first', detail={})
+    except KeyError as e:
+        raise ResourceNotFound(str(e), detail={})
+    finally:
+        session.rollback()
+
+    try:
+        g = sync.DataFeeds.delete_feed_group(feed_name=feed, group_name=group)
+        log.info('Flushed group records {}'.format(g))
+        if g:
+            return jsonify(_marshall_group_response(g)), 200
+        else:
+            raise ResourceNotFound(group, detail={})
+    except KeyError as e:
+        raise ResourceNotFound(resource=str(e), detail={'feed': feed, 'group': group})
+    except Exception:
+        log.error('Could not flush feed group {}/{}'.format(feed, group))
+        raise

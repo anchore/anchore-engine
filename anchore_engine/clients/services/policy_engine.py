@@ -1,6 +1,6 @@
 import json
 from anchore_engine.clients.services.internal import InternalServiceClient
-from anchore_engine.clients.services.http import anchy_get, anchy_post, anchy_delete
+from anchore_engine.clients.services.http import anchy_get, anchy_post, anchy_delete, anchy_put
 
 
 class PolicyEngineClient(InternalServiceClient):
@@ -82,4 +82,18 @@ class PolicyEngineClient(InternalServiceClient):
 
     def sync_feeds(self, force_flush=False):
         return self.call_api(anchy_post, 'feeds', query_params={'force_flush': force_flush})
+
+    def toggle_feed_enabled(self, feed, enabled):
+        return self.call_api(anchy_put, 'feeds/{feed}', path_params={'feed': feed}, query_params={'enabled': enabled})
+
+    def toggle_feed_group_enabled(self, feed, group, enabled):
+        return self.call_api(anchy_put, 'feeds/{feed}/{group}', path_params={'feed': feed, 'group': group}, query_params={'enabled': enabled})
+
+    def delete_feed(self, feed):
+        return self.call_api(anchy_delete, 'feeds/{feed}', path_params={'feed': feed})
+
+    def delete_feed_group(self, feed, group):
+        return self.call_api(anchy_delete, 'feeds/{feed}/{group}', path_params={'feed': feed, 'group': group})
+
+
 

@@ -16,6 +16,7 @@ try:
     from twisted.python import log
 except:
     import logging
+
     logger = logging.getLogger(__name__)
     log = logger
 
@@ -24,19 +25,21 @@ upgrade_enabled = True
 # Set at module level for any db module that needs db upgrade ability
 my_module_upgrade_id = 1
 
+
 def do_db_compatibility_check():
-    required_pg_version = (9,6)
+    required_pg_version = (9, 6)
 
     try:
         engine = anchore_engine.db.entities.common.get_engine()
         if engine.dialect.server_version_info >= required_pg_version:
-            return(True)
+            return (True)
         else:
             raise Exception("discovered db version {} is not >= required db version {}".format(engine.dialect.server_version_info, required_pg_version))
     except Exception as err:
         raise err
 
     raise Exception("database compatibility could not be performed")
+
 
 def do_db_post_actions(localconfig=None):
     return
@@ -45,7 +48,7 @@ def do_db_post_actions(localconfig=None):
 def get_versions():
     code_versions = {}
     db_versions = {}
-    
+
     from anchore_engine import version
 
     code_versions['service_version'] = version.version
@@ -58,11 +61,12 @@ def get_versions():
     except Exception as err:
         if is_table_not_found(err):
             logger.info("anchore table not found")
-            #raise TableNotFoundError('anchore table not found')
+            # raise TableNotFoundError('anchore table not found')
         else:
             raise Exception("Cannot find existing/populated anchore DB tables in connected database - has anchore-engine initialized this DB?\n\nDB - exception: " + str(err))
 
-    return(code_versions, db_versions)
+    return (code_versions, db_versions)
+
 
 def do_version_update(db_versions, code_versions):
     from anchore_engine.db import db_anchore, session_scope
@@ -70,7 +74,7 @@ def do_version_update(db_versions, code_versions):
     with session_scope() as dbsession:
         db_anchore.add(code_versions['service_version'], code_versions['db_version'], code_versions, session=dbsession)
 
-    return(True)
+    return (True)
 
 
 @contextmanager
@@ -90,8 +94,9 @@ def upgrade_context(lock_id):
         versions = get_versions()
         yield versions
 
+
 def do_create_tables(specific_tables=None):
-    print ("Creating DB Tables")
+    print("Creating DB Tables")
     from anchore_engine.db.entities.common import Base, do_create
 
     try:
@@ -99,8 +104,9 @@ def do_create_tables(specific_tables=None):
             do_create(specific_tables=specific_tables, base=Base)
     except Exception as err:
         raise err
-    print ("DB Tables created")
-    return(True)
+    print("DB Tables created")
+    return (True)
+
 
 def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
     from anchore_engine.db import session_scope
@@ -115,6 +121,7 @@ def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
                 raise Exception("Initialization failed: could not initialize system credentials - exception: " + str(err))
 
         do_version_update(db_versions, code_versions)
+
 
 def run_upgrade():
     """
@@ -159,6 +166,7 @@ def run_upgrade():
             except Exception as err:
                 raise err
 
+
 def do_upgrade(inplace, incode):
     global upgrade_enabled, upgrade_functions
 
@@ -200,6 +208,7 @@ def do_upgrade(inplace, incode):
 
     ret = True
     return (ret)
+
 
 ### Individual upgrade routines - be sure to add to the function map at the end of this module if adding a new routine here
 
@@ -273,6 +282,7 @@ def db_upgrade_002_003():
 
     return True
 
+
 def db_upgrade_003_004():
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -313,7 +323,7 @@ def db_upgrade_003_004():
                 result = db_archivedocument.get(userId, 'analysis_data', imageDigest, session=dbsession)
             if result and 'jsondata' in result:
                 image_data = json.loads(result['jsondata'])['document']
-                
+
             if image_data:
                 # update the record and store
                 anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
@@ -325,6 +335,7 @@ def db_upgrade_003_004():
             log.err("upgrade: failed to populate new columns with existing data for image (" + str(imageDigest) + "), record may be incomplete: " + str(err))
 
     return True
+
 
 def db_upgrade_004_005():
     engine = anchore_engine.db.entities.common.get_engine()
@@ -342,6 +353,7 @@ def db_upgrade_004_005():
         except Exception as e:
             log.err('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
             raise Exception('failed to perform DB upgrade on catalog_image adding column - exception: {}'.format(str(e)))
+
 
 def queue_data_upgrades_005_006():
     engine = anchore_engine.db.entities.common.get_engine()
@@ -394,7 +406,8 @@ def archive_data_upgrade_005_006():
     max_pending_session_size = 10000
 
     with session_scope() as db_session:
-        for doc in db_session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.documentName, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated, LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val):
+        for doc in db_session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.documentName, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated,
+                                    LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val):
             meta = ObjectStorageMetadata(userId=doc[0],
                                          bucket=doc[1],
                                          archiveId=doc[2],
@@ -452,6 +465,7 @@ def db_upgrade_005_006():
     queue_data_upgrades_005_006()
     archive_data_upgrade_005_006()
     fixed_artifact_upgrade_005_006()
+
 
 def catalog_image_upgrades_006_007():
     engine = anchore_engine.db.entities.common.get_engine()
@@ -527,10 +541,12 @@ def user_account_upgrades_007_008():
 def db_upgrade_006_007():
     catalog_image_upgrades_006_007()
 
+
 def db_upgrade_007_008():
     catalog_upgrade_007_008()
     policy_engine_packages_upgrade_007_008()
     user_account_upgrades_007_008()
+
 
 def catalog_upgrade_007_008():
     from anchore_engine.db import session_scope
@@ -557,7 +573,8 @@ def catalog_upgrade_007_008():
             except Exception as e:
                 log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
                 raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
-        
+
+
 def policy_engine_packages_upgrade_007_008():
     from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem, Image
     if True:
@@ -601,7 +618,6 @@ def policy_engine_packages_upgrade_007_008():
                     log.err('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
                     raise Exception('failed to perform DB upgrade on {} adding column - exception: {}'.format(table, str(e)))
 
-
         # populate the new columns
         log.err("updating new column (pkg_path) - this may take a while")
         for table in ['image_packages', 'image_package_vulnerabilities']:
@@ -611,8 +627,7 @@ def policy_engine_packages_upgrade_007_008():
                 startts = time.time()
                 rc = engine.execute("UPDATE {} set pkg_path='pkgdb' where pkg_path is null".format(table))
                 log.err("updated {} records in {} (time={}), performing next range".format(rc.rowcount, table, time.time() - startts))
-                done=True
-
+                done = True
 
         with session_scope() as dbsession:
             db_image_ids = dbsession.query(Image.id).distinct().all()
@@ -667,7 +682,6 @@ def policy_engine_packages_upgrade_007_008():
             engine.execute(command)
             cmdcount = cmdcount + 1
 
-
         log.err("converting ImageNpm and ImageGem records into ImagePackage records - this may take a while")
         # migrate ImageNpm and ImageGem records into ImagePackage records
         with session_scope() as dbsession:
@@ -675,7 +689,6 @@ def policy_engine_packages_upgrade_007_008():
             total_gems = dbsession.query(ImageGem).count()
 
         log.err("will migrate {} image npm records".format(total_npms))
-
 
         npms = []
         chunk_size = 8192
@@ -824,7 +837,6 @@ def db_upgrade_008_009():
             "ALTER TABLE image_gems add column IF NOT EXISTS seq_id int DEFAULT nextval('image_gems_seq_id_seq')",
             "CREATE INDEX IF NOT EXISTS idx_gem_seq ON image_gems using btree (seq_id)",
 
-
             # This is a duplicate action from the updated 0.0.8 upgrade, effectively a no-op if that upgrade was already run
             "ALTER TABLE image_packages ALTER COLUMN origin TYPE varchar",
 
@@ -925,6 +937,7 @@ def registry_name_upgrade_010_011():
     # populate new column
     rc = engine.execute("UPDATE registries set registry_name=registry where registry_name is null")
 
+
 def fixed_artifacts_upgrade_010_011():
     """
     Runs upgrade to add the 'fix_observed_at' column to fixed_artifacts records
@@ -959,6 +972,7 @@ def fixed_artifacts_upgrade_010_011():
 
     # populate new column
     rc = engine.execute("UPDATE feed_data_vulnerabilities_fixed_artifacts set fix_observed_at=updated_at where fix_observed_at is null and version!='None'")
+
 
 def update_users_010_011():
     """
@@ -1016,6 +1030,7 @@ def db_upgrade_010_011():
     fixed_artifacts_upgrade_010_011()
     update_users_010_011()
 
+
 def db_upgrade_package_size_011_012():
     """
     Update the column type for image package size from int to bigint
@@ -1043,24 +1058,65 @@ def event_type_index_upgrade_011_012():
 
     log.err("creating new column index")
     engine.execute("CREATE INDEX IF NOT EXISTS ix_type ON events using btree (type)")
-    
+
+
 def db_upgrade_011_012():
     event_type_index_upgrade_011_012()
     db_upgrade_package_size_011_012()
+
+
+def upgrade_feed_groups_013():
+    log.err('Upgrading feed and feed group schemas to add enabled flags')
+
+    from anchore_engine.db import session_scope
+    from anchore_engine.services.policy_engine.engine.feeds import sync
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    # Add constraints and index
+    log.err('Updating feeds table to have enabled flag')
+    engine.execute("ALTER TABLE feeds ADD COLUMN IF NOT EXISTS enabled boolean")
+    engine.execute("UPDATE feeds set enabled = TRUE")
+
+    log.err('Updating feed_groups table to have enabled flag')
+    engine.execute("ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS enabled boolean")
+    engine.execute("UPDATE feed_groups set enabled = TRUE")
+
+    log.err('Updating feed groups table to have count for each group')
+    engine.execute("ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS count bigint")
+
+    log.err('Updating feed groups table to have last_update for each group')
+    engine.execute("ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS last_update timestamp")
+    engine.execute("UPDATE feed_groups set last_update = last_sync where last_update is NULL")
+
+    # Update the counts
+    sync.DataFeeds.update_counts()
+
+
+def db_upgrade_012_013():
+    """
+    Upgrade schema from 0.0.12 --> 0.0.13
+
+    :return:
+    """
+
+    upgrade_feed_groups_013()
+
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
 upgrade_functions = (
-    (('0.0.1', '0.0.2'), [ db_upgrade_001_002 ]),
-    (('0.0.2', '0.0.3'), [ db_upgrade_002_003 ]),
-    (('0.0.3', '0.0.4'), [ db_upgrade_003_004 ]),
-    (('0.0.4', '0.0.5'), [ db_upgrade_004_005 ]),
-    (('0.0.5', '0.0.6'), [ db_upgrade_005_006 ]),
-    (('0.0.6', '0.0.7'), [ db_upgrade_006_007 ]),
-    (('0.0.7', '0.0.8'), [ db_upgrade_007_008 ]),
-    (('0.0.8', '0.0.9'), [ db_upgrade_008_009 ]),
-    (('0.0.9', '0.0.10'), [ db_upgrade_009_010 ]),
-    (('0.0.10', '0.0.11'), [ db_upgrade_010_011 ]),
-    (('0.0.11', '0.0.12'), [ db_upgrade_011_012 ])
+    (('0.0.1', '0.0.2'), [db_upgrade_001_002]),
+    (('0.0.2', '0.0.3'), [db_upgrade_002_003]),
+    (('0.0.3', '0.0.4'), [db_upgrade_003_004]),
+    (('0.0.4', '0.0.5'), [db_upgrade_004_005]),
+    (('0.0.5', '0.0.6'), [db_upgrade_005_006]),
+    (('0.0.6', '0.0.7'), [db_upgrade_006_007]),
+    (('0.0.7', '0.0.8'), [db_upgrade_007_008]),
+    (('0.0.8', '0.0.9'), [db_upgrade_008_009]),
+    (('0.0.9', '0.0.10'), [db_upgrade_009_010]),
+    (('0.0.10', '0.0.11'), [db_upgrade_010_011]),
+    (('0.0.11', '0.0.12'), [db_upgrade_011_012]),
+    (('0.0.12', '0.0.13'), [db_upgrade_012_013])
 )

@@ -18,7 +18,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import build_feed_
 from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.download import FeedDownloader, DownloadOperationConfiguration, LocalFeedDataRepo
 from anchore_engine.services.policy_engine.engine.logs import get_logger
-from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
+from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds, get_all_feeds_detached
 from anchore_engine.subsys.events import FeedSyncStarted, FeedSyncFailed, FeedSyncCompleted, FeedGroupSyncStarted, FeedGroupSyncCompleted, FeedGroupSyncFailed
 from anchore_engine.configuration import localconfig
 
@@ -64,12 +64,10 @@ class DataFeeds(object):
         return cls._proxy
 
     @staticmethod
-    def records_for(feed_name, group_name):
-        try:
-            return feed_instance_by_name(feed_name).record_count(group_name)
-        except KeyError as e:
-            log.debug('cannot compute record count for unknown feed: {}'.format(e))
-            return 0
+    def update_counts():
+        for feed in get_all_feeds_detached():
+            f = feed_instance_by_name(feed.name)
+            f.update_counts()
 
     @staticmethod
     def _pivot_and_filter_feeds_by_config(to_sync: list, source_found: list, db_found: list):
@@ -124,7 +122,7 @@ class DataFeeds(object):
                     # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
                     if not db_feed:
                         log.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_feed.name, operation_id))
-                        db_feed = FeedMetadata(name=api_feed.name, description=api_feed.description, access_tier=api_feed.access_tier)
+                        db_feed = FeedMetadata(name=api_feed.name, description=api_feed.description, access_tier=api_feed.access_tier, enabled=True)
                         db.add(db_feed)
                         db.flush()
                     else:
@@ -140,7 +138,7 @@ class DataFeeds(object):
                         # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
                         if not db_group:
                             log.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_group.name, operation_id))
-                            db_group = FeedGroupMetadata(name=api_group.name, description=api_group.description, access_tier=api_group.access_tier, feed=db_feed)
+                            db_group = FeedGroupMetadata(name=api_group.name, description=api_group.description, access_tier=api_group.access_tier, feed=db_feed, enabled=True)
                             db_group.last_sync = None
                             db.add(db_group)
                         else:
@@ -224,7 +222,6 @@ class DataFeeds(object):
 
         return fail_results
 
-
     @staticmethod
     def sync(to_sync=None, full_flush=False, catalog_client=None, feed_client=None, operation_id=None):
         """
@@ -267,7 +264,14 @@ class DataFeeds(object):
         for f in feeds_to_sync:
             log.info('Initialized feed to sync: {} (operation_id={})'.format(f.__feed_name__, operation_id))
             if f.metadata:
-                groups_to_download.extend(f.metadata.groups)
+                if f.metadata.enabled:
+                    for g in f.metadata.groups:
+                        if g.enabled:
+                            groups_to_download.append(g)
+                        else:
+                            log.info("Will not sync/download group {} of feed {} because group is explicitly disabled".format(g.name, g.feed_name))
+                else:
+                    log.info('Skipping feed {} because it is explicitly not enabled'.format(f.__feed_name__))
             else:
                 log.warn('No metadata found for feed {}. Unexpected but not an error (operation_id={})'.format(f.__feed_name__, operation_id))
 
@@ -350,6 +354,35 @@ class DataFeeds(object):
                 feed_data_repo.teardown()
 
         return result
+
+    @staticmethod
+    def delete_feed_group(feed_name, group_name):
+        """
+
+        :param feed_name:
+        :param group_name:
+        :return:
+        """
+
+        f = feed_instance_by_name(feed_name)
+        if not f:
+            raise KeyError(feed_name)
+
+        return f.flush_group(group_name)
+
+
+    @staticmethod
+    def delete_feed(feed_name):
+        """
+
+        :param feed_name:
+        :return:
+        """
+        f = feed_instance_by_name(feed_name)
+        if not f:
+            raise KeyError(feed_name)
+
+        return f.flush_all()
 
 
 def _get_group_result(feed_result: list) -> dict:

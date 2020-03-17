@@ -41,7 +41,7 @@ def make_response_service(user_auth, service_record, params):
     for removekey in ['record_state_val', 'record_state_key']:
         ret.pop(removekey, None)
 
-    return (ret)
+    return ret
 
 
 def ping():
@@ -69,7 +69,7 @@ def version_noop():
     return '', 200
 
 
-@authorizer.requires([]) # Any authenticated user
+@authorizer.requires([])  # Any authenticated user
 def get_status():
     """
     GET /status
@@ -90,7 +90,7 @@ def get_status():
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([])
@@ -132,15 +132,15 @@ def get_service_detail():
                     pass
 
                 # Bring back when eventing subsystem is utilized
-                #service_detail['error_event'] = []
-                #try:
+                # service_detail['error_event'] = []
+                # try:
                 #    events = catalog.get_event(user_auth)
                 #    for event in events:
                 #        el = {}
                 #        for k in ['message_ts', 'hostId', 'message', 'level']:
                 #            el[k] = event[k]
                 #        service_detail['error_event'].append(el)
-                #except:
+                # except:
                 #    pass
                 httpcode = 200
 
@@ -154,7 +154,7 @@ def get_service_detail():
     except Exception as err:
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
@@ -182,7 +182,8 @@ def list_services():
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
+
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def get_services_by_name(servicename):
@@ -201,7 +202,7 @@ def get_services_by_name(servicename):
     return_object = []
     httpcode = 500
     try:
-        client = CatalogClient(user=user_auth[0], password=user_auth[1])
+        client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
         service_records = client.get_service(servicename=servicename)
         for service_record in service_records:
             return_object.append(make_response_service(user_auth, service_record, params))
@@ -211,7 +212,7 @@ def get_services_by_name(servicename):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
@@ -241,7 +242,7 @@ def get_services_by_name_and_host(servicename, hostid):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
@@ -267,7 +268,8 @@ def delete_service(servicename, hostid):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
+
 
 @authorizer.requires([])
 def get_system_feeds():
@@ -284,7 +286,8 @@ def get_system_feeds():
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)    
+    return return_object, httpcode
+
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def post_system_feeds(flush=False):
@@ -302,7 +305,68 @@ def post_system_feeds(flush=False):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)    
+    return return_object, httpcode
+
+
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+def toggle_feed_enabled(feed, enabled):
+    httpcode = 500
+    try:
+        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        return_object = p_client.toggle_feed_enabled(feed, enabled)
+        if return_object is not None:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+def toggle_group_enabled(feed, group, enabled):
+    httpcode = 500
+    try:
+        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        return_object = p_client.toggle_feed_group_enabled(feed, group, enabled)
+        if return_object is not None:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+def delete_feed(feed):
+    httpcode = 500
+    try:
+        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        return_object = p_client.delete_feed(feed)
+        if return_object is not None:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
+@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
+def delete_feed_group(feed, group):
+    httpcode = 500
+    try:
+        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        return_object = p_client.delete_feed_group(feed, group)
+        if return_object is not None:
+            httpcode = 200
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
 
 @authorizer.requires([])
 def describe_policy():
@@ -319,6 +383,7 @@ def describe_policy():
         httpcode = return_object['httpcode']
 
     return return_object, httpcode
+
 
 @authorizer.requires([])
 def describe_error_codes():

@@ -1278,7 +1278,7 @@ paths:
       tags:
       - System
       summary: "list feeds operations and information"
-      description: ""
+      description: "Return a list of feed and their groups along with update and record count information. This data reflects the state of the policy engine, not the upstream feed service itself."
       operationId: "get_system_feeds"
       x-anchore-authz-action: listFeeds
       responses:
@@ -1297,7 +1297,7 @@ paths:
       tags:
       - System
       summary: "trigger feeds operations"
-      description: ""
+      description: "Execute a synchronous feed sync operation. The response will block until complete, then return the result summary."
       operationId: "post_system_feeds"
       x-anchore-authz-action: updateFeeds
       parameters:
@@ -1321,7 +1321,122 @@ paths:
           schema:
             $ref: "#/definitions/ApiErrorResponse"
       x-swagger-router-controller: "anchore_engine.services.apiext.api.controllers.system"
-
+  /system/feeds/{feed}:
+    put:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: toggle_feed_enabled
+      x-anchore-authz-action: updateFeeds
+      description: "Disable the feed so that it does not sync on subsequent sync operations"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: enabled
+          type: boolean
+          required: true
+          in: query
+      responses:
+        200:
+          description: "FeedInfo"
+          schema:
+            $ref: "#/definitions/FeedMetadata"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        400:
+          description: "Bad request, fix and resend"
+    delete:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: delete_feed
+      x-anchore-authz-action: updateFeeds
+      description: "Delete the groups and data for the feed and disable the feed itself"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: "Successfully deleted"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        404:
+          description: "Not found"
+  /system/feeds/{feed}/{group}:
+    put:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      x-anchore-authz-action: updateFeeds
+      operationId: toggle_group_enabled
+      description: "Disable a specific group within a feed to not sync"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: group
+          in: path
+          type: string
+          required: true
+        - name: enabled
+          type: boolean
+          required: true
+          in: query
+      responses:
+        200:
+          description: "FeedInfo listing"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/FeedMetadata"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        400:
+          description: "Bad request, fix and resend"
+    delete:
+      tags:
+      - System
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
+      operationId: delete_feed_group
+      x-anchore-authz-action: updateFeeds
+      description: "Delete the group data and disable the group itself"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - name: feed
+          in: path
+          required: true
+          type: string
+        - name: group
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          description: "Successfully deleted"
+        500:
+          description: "Internal server error processing the request. Retry expected"
+        404:
+          description: "Not found"
   /system/services:
     get:
       tags:
