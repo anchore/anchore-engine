@@ -1,4 +1,3 @@
-import json
 import re
 import semantic_version
 
@@ -10,9 +9,8 @@ from anchore_engine.util.maven import MavenVersion
 
 zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
 
-def language_compare(a, op, b, language='python'):
-    global zerolikes
 
+def language_compare(a, op, b, language='python'):
     if op not in ['>', '<', '<=', '>=', '!=', '=', '==', '~', '^']:
         raise Exception("unknown op {}".format(op))
     elif not a or not b:
@@ -27,7 +25,7 @@ def language_compare(a, op, b, language='python'):
         try:
             aoptions = [semantic_version.Version.coerce(a)]
             boptions = [semantic_version.Version.coerce(b)]
-        except:
+        except Exception:
             logger.debug("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
             aoptions = [parse_version(a)]
             boptions = [parse_version(b)]
@@ -35,7 +33,7 @@ def language_compare(a, op, b, language='python'):
         try:
             aoptions = [StrictVersion(a), LooseVersion(a)]
             boptions = [StrictVersion(b), LooseVersion(b)]
-        except:
+        except Exception:
             logger.debug("python versions {}/{} unable to load as StrictVersion - falling back to LooseVersion/parse_version".format(a, b))
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
@@ -46,58 +44,59 @@ def language_compare(a, op, b, language='python'):
         try:
             if op == '>':
                 if b in zerolikes:
-                    return(True)
+                    return True
                 if aoptions[i] > boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op == '>=':
                 if b in zerolikes:
-                    return(True)
+                    return True
                 if aoptions[i] >= boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op == '<':
                 if b in zerolikes:
-                    return(False)
+                    return False
                 if aoptions[i] < boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op == '<=':
                 if aoptions[i] <= boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op in ['=', '==']:
                 if aoptions[i] == boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op == '!=':
                 if aoptions[i] != boptions[i]:
-                    return(True)
+                    return True
                 else:
-                    return(False)
+                    return False
             elif op == '~':
                 # for these operations, attempt to coerce and compare with semantic_version
                 ha = semantic_version.Version.coerce(str(aoptions[i]))
                 hb = semantic_version.Version.coerce(str(boptions[i]))
                 hs = semantic_version.Spec("~{}".format(hb))
                 rc = hs.match(ha)
-                return(rc)
+                return rc
             elif op == '^':
                 # for these operations, attempt to coerce and compare with semantic_version
                 ha = semantic_version.Version.coerce(str(aoptions[i]))
                 hb = semantic_version.Version.coerce(str(boptions[i]))
                 hs = semantic_version.Spec("^{}".format(hb))
                 rc = hs.match(ha)
-                return(rc)
-        except Exception as err:
+                return rc
+        except Exception:
             pass
 
-    return(False)
+    return False
+
 
 def normalized_version_match(rawsemver, rawpkgver, language='python'):
     versionmatch = False
@@ -109,7 +108,6 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
         vrange = vrange.strip()
         if vrange in ['*', 'all']:
             inrange = True
-            rangematch = vrange
             break
 
         tokre = re.compile(r"[!|<|>|=|~|^]+\s*[^\s]+")
@@ -124,18 +122,19 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
             rangecheck = re.sub(r"\s+", "", rangecheck)
             patt = re.match("([!|<|>|=|~|^]+)(.*)", rangecheck)
             if patt:
-                op,verraw = (patt.group(1), patt.group(2))
+                op, verraw = (patt.group(1), patt.group(2))
                 inrange = language_compare(rawpkgver, op, verraw, language=language)
-                
+
                 if not inrange:
                     violation = True
                     break
             else:
+                # XXX doesn't seem possible to reach this because of the double
+                # check with regular expressions
                 raise Exception("unknown range format {}".format(rangecheck))
 
         if not violation:
             inrange = True
-            rangematch = vrange
             break
 
     if inrange:
@@ -143,9 +142,9 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
 
     return(versionmatch)
 
+
 def convert_mrange_to_srange(rawsemver):
     normal_ranges = []
-
     tokre = re.compile(r"[\[|\(][^[\]|\)]+[\]|\)]")
     vranges = tokre.findall(rawsemver)
     for vrange in vranges:
@@ -190,13 +189,15 @@ def convert_mrange_to_srange(rawsemver):
     normal_semver = ' || '.join(normal_ranges)
     return(normal_semver)
 
+
 def convert_rrange_to_srange(rawsemver):
     toks = re.split(", *", rawsemver)
     if len(toks) > 2:
         raise Exception("cannot handle range of len greater than 2")
-        
+
     ret = " ".join(re.sub(r'\s+', "", x) for x in toks)
     return(ret)
+
 
 def cleanup_range(rawrange):
     vtoks = rawrange.split("||")
@@ -210,12 +211,13 @@ def cleanup_range(rawrange):
                 if tok[0] not in ['<', '>', '!', '=', '~', '^']:
                     final_toks.append("={}".format(tok))
                 else:
-                    final_toks.append(tok)        
+                    final_toks.append(tok)
             else:
                 final_toks.append("<0.0.0")
         final_vtoks.append(" ".join(final_toks))
     retrange = " || ".join(final_toks)
     return(retrange)
+
 
 def convert_langversionlist_to_semver(versionlist, language):
     semvers = []
@@ -237,24 +239,23 @@ def convert_langversionlist_to_semver(versionlist, language):
         normal_semver_range = ' || '.join(semvers)
     else:
         normal_semver_range = '*'
-    
+
     return(normal_semver_range)
 
-def langpack_is_all(rawsemver):
-    global zerolikes
 
+def langpack_is_all(rawsemver):
     if rawsemver in ['*', 'all']:
         return(True)
-    
+
     for zl in zerolikes:
         if rawsemver == ">{}".format(zl) or rawsemver == ">={}".format(zl):
             return(True)
 
     return(False)
 
+
 def compare_versions(rawsemver, rawpkgver, language='python'):
     ret = False
-    versionmatch = False
     if not rawsemver:
         raise Exception("empty version range passed as input")
     normal_semver = rawsemver
