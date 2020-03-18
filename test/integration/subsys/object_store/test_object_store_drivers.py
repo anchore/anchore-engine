@@ -7,9 +7,50 @@ from anchore_engine.subsys.object_store.drivers.filesystem import FilesystemObje
 from anchore_engine.subsys.object_store.drivers.rdbms import DbDriver
 from anchore_engine.subsys.object_store.drivers.s3 import S3ObjectStorageDriver
 from anchore_engine.subsys.object_store.drivers.swift import SwiftObjectStorageDriver
+from anchore_engine.subsys.object_store import exc
 from anchore_engine.subsys import logger
 from test.fixtures import anchore_db
-from test.integration.subsys.object_store.fixtures import s3_bucket, swift_container, test_s3_region, test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key
+from test.integration.subsys.object_store.conftest import test_s3_region, test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key
+
+
+class TestS3OjbectStorageDriver:
+
+    def setup(self):
+        self.driver_config = {
+            'access_key': test_s3_key,
+            'secret_key': test_s3_secret_key,
+            'url': test_s3_url,
+            'region': test_s3_region,
+            'bucket': test_s3_bucket
+        }
+
+    def test_check_is_valid(self, s3_bucket):
+        S3ObjectStorageDriver(self.driver_config)
+
+    def test_key_is_removed(self, s3_bucket, s3_client):
+        S3ObjectStorageDriver(self.driver_config)
+        response = s3_client.list_objects_v2(Bucket=test_s3_bucket)
+        assert response.get('Contents') is None
+
+    def test_403(self, s3_bucket):
+        self.driver_config['access_key'] = 'bogus'
+        with pytest.raises(exc.BadCredentialsError):
+            S3ObjectStorageDriver(self.driver_config)
+
+    def test_400(self, s3_bucket):
+        self.driver_config['secret_key'] = 'bogus'
+        with pytest.raises(exc.BadCredentialsError):
+            S3ObjectStorageDriver(self.driver_config)
+
+    def test_404(self, s3_bucket):
+        self.driver_config['bucket'] = 'bogus'
+        with pytest.raises(exc.BucketNotFoundError):
+            S3ObjectStorageDriver(self.driver_config)
+
+    def test_non_boto_error(self, s3_bucket):
+        self.driver_config['bucket'] = lambda x: None
+        with pytest.raises(AttributeError):
+            S3ObjectStorageDriver(self.driver_config)
 
 
 def do_test_CRUD(driver_cls, driver_config):

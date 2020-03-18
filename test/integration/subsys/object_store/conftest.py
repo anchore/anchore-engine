@@ -15,6 +15,24 @@ test_swift_auth_url = os.getenv('ANCHORE_TEST_SWIFT_AUTH_URL')
 test_swift_container = os.getenv('ANCHORE_TEST_SWIFT_CONTAINER')
 
 
+@pytest.fixture
+def s3_client():
+    import boto3
+
+    logger.info('Initializing an s3 bucket: {}'.format(test_s3_bucket))
+
+    session = boto3.Session(aws_access_key_id=test_s3_key, aws_secret_access_key=test_s3_secret_key)
+
+    if test_s3_url:
+        client = session.client(service_name='s3', endpoint_url=test_s3_url)
+
+    elif test_s3_region:
+        client = session.client(service_name='s3', region_name=test_s3_region)
+    else:
+        client = session.client(service_name='s3')
+    return client
+
+
 @pytest.fixture(scope='module')
 def s3_bucket():
     """
@@ -47,6 +65,8 @@ def s3_bucket():
     finally:
         logger.info('Deleting/cleanup s3 bucket: {}'.format(test_s3_bucket))
         try:
+            for _obj in s3_client.list_objects(Bucket=bucket_name).get('Contents', []):
+                s3_client.delete_object(Bucket=bucket_name, Key=_obj['Key'])
             s3_client.delete_bucket(Bucket=bucket_name)
         except botocore.exceptions.ClientError as e:
             logger.exception('Bucket cleanup exception')
