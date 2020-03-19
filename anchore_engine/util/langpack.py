@@ -25,7 +25,7 @@ def language_compare(a, op, b, language='python'):
         try:
             aoptions = [semantic_version.Version.coerce(a)]
             boptions = [semantic_version.Version.coerce(b)]
-        except Exception:
+        except ValueError:
             logger.debug("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
             aoptions = [parse_version(a)]
             boptions = [parse_version(b)]
@@ -33,7 +33,7 @@ def language_compare(a, op, b, language='python'):
         try:
             aoptions = [StrictVersion(a), LooseVersion(a)]
             boptions = [StrictVersion(b), LooseVersion(b)]
-        except Exception:
+        except ValueError:
             logger.debug("python versions {}/{} unable to load as StrictVersion - falling back to LooseVersion/parse_version".format(a, b))
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
@@ -92,10 +92,8 @@ def language_compare(a, op, b, language='python'):
                 hs = semantic_version.Spec("^{}".format(hb))
                 rc = hs.match(ha)
                 return rc
-        except Exception:
+        except TypeError:
             pass
-
-    return False
 
 
 def normalized_version_match(rawsemver, rawpkgver, language='python'):
@@ -128,10 +126,6 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
                 if not inrange:
                     violation = True
                     break
-            else:
-                # XXX doesn't seem possible to reach this because of the double
-                # check with regular expressions
-                raise Exception("unknown range format {}".format(rangecheck))
 
         if not violation:
             inrange = True
