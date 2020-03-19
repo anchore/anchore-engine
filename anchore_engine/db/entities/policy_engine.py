@@ -15,7 +15,7 @@ from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
-from anchore_engine.util.langpack import compare_versions as langpack_compare_versions, langpack_is_all
+from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
 
 try:
     from anchore_engine.subsys import logger as log
@@ -1400,7 +1400,7 @@ class ImagePackage(Base):
                 do_langscan = True
             elif self.pkg_type in ['nuget', 'dotnet']:
                 likematch = '%nuget%'
-                do_langscan = True                
+                do_langscan = True
         else:
             do_osscan = True
 
