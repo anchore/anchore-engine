@@ -652,7 +652,7 @@ class GithubFeed(VulnerabilityFeed):
     Feed for the Github Advisories data
     """
 
-    __feed_name__ = 'advisories'
+    __feed_name__ = 'github'
     _cve_key = 'id'
     __group_data_mappers__ = SingleTypeMapperFactory(
         __feed_name__, GithubFeedDataMapper, _cve_key

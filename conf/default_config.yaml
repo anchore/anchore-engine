@@ -71,7 +71,7 @@ feeds:
     # If enabled only sync specific feeds instead of all.
     enabled: ${ANCHORE_FEEDS_SELECTIVE_ENABLED}
     feeds:
-      advisories: true
+      github: true
       vulnerabilities: true
       # Warning: enabling the packages and nvd sync causes the service to require much
       #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
