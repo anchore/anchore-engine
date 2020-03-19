@@ -7,18 +7,13 @@ all_languages = ['java', 'maven', 'js', 'npm', 'ruby', 'gem', 'nuget', 'python']
 generic_languages = ['js', 'npm', 'ruby', 'gem', 'nuget']
 
 lesser_versions = [
-    '0', '0.0', '0.0.0', '0.0.0.0',
-    '1', '1.0', '1.0.0', '1.0.0.0',
-    '1.1', '1.0.1', '1.0.0.1',
-    '1.1.1', '1.0.1.1',
-    '1.1.1.1',
+    '0.0',
+    '1', '1.0',
+    '1.0.1', '1.0.0.1',
 ]
 
 greater_versions = [
-    '2', '2.0', '2.0.0', '2.0.0.0',
-    '2.2', '2.0.2', '2.0.0.2',
-    '2.2.2', '2.0.2.2',
-    '2.2.2.2',
+    '2', '2.1', '2.0.1', '2.0.0.0',
 ]
 
 greater_versions_rc = [
@@ -71,12 +66,17 @@ def lesser_than_rc_versions(request):
     # < 2.0.0-rc1
     return request.param
 
+
 is_match = [
     ('=1', '1'),
     ('<=1', '1'),
     ('<1', '0'),
     ('>=1', '1'),
     ('>1', '2'),
+    ('!=1', '2'),
+    ('!=1', 'all'),
+    ('!=1', '*'),
+    ('*', '*'),
 
     ('=1', '1'),
     ('=1.0', '1.0'),
@@ -140,14 +140,13 @@ is_match = [
 
 doesnt_match = [
     ('=1', '2'),
-
     ('<=1', '2'),
-
     ('<1', '2'),
-
     ('>=1', '0'),
-
     ('>1', '1'),
+    ('!=1', '1'),
+    ('>1', 'all'),
+    ('>1', '*'),
 
 
     ('<0', 'blah'),
@@ -206,6 +205,7 @@ error_matches = [
     ('>==1', '1'),
     ('>>1', '1'),
     ('blah', '1'),
+    ('-1.0', '1'),
 ]
 
 # "generic" becuase they are handled specifically without Java and Python
@@ -286,7 +286,6 @@ def test_lesser_than(lesser_than_versions, right, lang):
 @pytest.mark.parametrize('lang', all_languages)
 def test_lesser_than_rc(lesser_than_rc_versions, right, lang):
     assert compare_versions(lesser_than_rc_versions, right, lang) is True
-
 
 
 @pytest.mark.parametrize('right', lesser_versions)
