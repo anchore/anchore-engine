@@ -63,10 +63,11 @@ paths:
       description: Delete information about a domain, if applicable
       parameters:
         - name: domain
-          in: body
+          in: query
           required: true
           schema:
-            $ref: "#/definitions/Domain"
+            type: string
+            description: The name of a domain
       responses:
         200:
           description: Deletion successful
@@ -93,10 +94,11 @@ paths:
       description: Delete information about a principal, if applicable
       parameters:
         - name: principal
-          in: body
+          in: query
           required: true
           schema:
-            $ref: "#/definitions/Principal"
+            type: string
+            description: The name of a principal
       responses:
         200:
           description: Deletion successful

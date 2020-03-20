@@ -227,8 +227,7 @@ class AuthzPluginHttpClient(BasicApiClient):
             resp.raise_for_status()
 
     def delete_domain(self, domain: str):
-        req = Domain(domain)
-        resp = self.call_api(requests.delete, 'domains', body=json.dumps(req.to_json()))
+        resp = self.call_api(requests.delete, 'domains', query_params={'domain': domain})
 
         if resp.status_code in [200, 204]:
             return True
@@ -236,7 +235,7 @@ class AuthzPluginHttpClient(BasicApiClient):
             resp.raise_for_status()
 
     def list_domains(self):
-        resp = self.call_api(requests.get, 'domains')        
+        resp = self.call_api(requests.get, 'domains')
         if resp.status_code == 200:
             return [Domain(x) for x in resp.json()]
         else:
@@ -251,8 +250,7 @@ class AuthzPluginHttpClient(BasicApiClient):
             resp.raise_for_status()
 
     def delete_principal(self, principal: str):
-        req = Principal(principal)
-        resp = self.call_api(requests.delete, 'principals', body=json.dumps(req.to_json()))
+        resp = self.call_api(requests.delete, 'principals', query_params={'principal': principal})
 
         if resp.status_code in [200, 204]:
             return True
@@ -260,7 +258,7 @@ class AuthzPluginHttpClient(BasicApiClient):
             resp.raise_for_status()
 
     def list_principals(self):
-        resp = self.call_api(requests.get, 'principals')        
+        resp = self.call_api(requests.get, 'principals')
         if resp.status_code == 200:
             return [Principal(x) for x in resp.json()]
         else:
