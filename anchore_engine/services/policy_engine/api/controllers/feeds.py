@@ -15,7 +15,7 @@ authorizer = get_authorizer()
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def list_feeds(include_counts=False, refresh_counts=False):
+def list_feeds(refresh_counts=False):
     """
     GET /feeds
 
@@ -27,22 +27,22 @@ def list_feeds(include_counts=False, refresh_counts=False):
     if refresh_counts:
         sync.DataFeeds.update_counts()
 
-    response = _marshall_feeds_response(refresh_counts)
+    response = _marshall_feeds_response()
 
     return jsonify(response)
 
 
-def _marshall_feeds_response(include_counts: bool):
+def _marshall_feeds_response():
     response = []
     meta = db.get_all_feeds_detached()
 
     for feed in meta:
-        response.append(_marshall_feed_response(feed, include_counts))
+        response.append(_marshall_feed_response(feed))
 
     return response
 
 
-def _marshall_feed_response(feed: DbFeedMetadata, include_counts=True):
+def _marshall_feed_response(feed: DbFeedMetadata):
     if not feed:
         return ValueError(feed)
 
@@ -55,12 +55,12 @@ def _marshall_feed_response(feed: DbFeedMetadata, include_counts=True):
     i.groups = []
 
     for group in feed.groups:
-        i.groups.append(_marshall_group_response(group, include_counts=include_counts))
+        i.groups.append(_marshall_group_response(group))
 
     return i.to_dict()
 
 
-def _marshall_group_response(group: DbFeedGroupMetadata, include_counts=True):
+def _marshall_group_response(group: DbFeedGroupMetadata):
     if not group:
         raise ValueError(group)
 
@@ -70,11 +70,7 @@ def _marshall_group_response(group: DbFeedGroupMetadata, include_counts=True):
     g.created_at = group.created_at.isoformat() if group.created_at else None
     g.updated_at = group.last_update.isoformat() if group.last_update else None
     g.enabled = group.enabled
-    if include_counts:
-        g.record_count = group.count
-    else:
-        g.record_count = None
-
+    g.record_count = group.count
     return g.to_dict()
 
 
