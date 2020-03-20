@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+#########################################################
+###   COMMON UTILITY FUNCTIONS - ALPHABETICAL ORDER   ###
+#########################################################
+
+activate_venv() {
+    local VENV="${1:?'required parameter'}"
+
+    # activate virtual environment if it is available
+    if [[ -f "${VENV}/bin/activate" ]]; then
+        # shellcheck source=/dev/null
+        source "${VENV}/bin/activate"
+        print_colorized WARN "using virtual environment - ${VENV}"
+    else
+        print_colorized WARN "virtual environment - ${VENV} - not found"
+    fi
+}
+
+continue_prompt() {
+    while true; do
+        read -rp "Do you want to continue? " yn
+        case ${yn} in
+            [Yy]* ) break;;
+            [Nn]* ) exit;;
+            * ) echo "Please answer yes or no. ";;
+        esac
+    done
+}
+
+print_colorized() {
+    # Prints a message using the specified color code (OK, WARN, INFO, ERROR, NORMAL)
+    local color_code="${1:?'required parameter'}"
+    local message="${2:?'required parameter'}"
+
+    printf "\n${!color_code}%s${NORMAL}\n" "${message}"
+}
+
+setup_colors() {
+    # Setup shell colors for print statements
+    # ${OK}=green, ${WARN}=yellow, ${INFO}=cyan, ${ERROR}=red, ${NORMAL}=normal
+    export OK="\033[0;32m" \
+        WARN="\033[0;33m" \
+        INFO="\033[0;36m" \
+        ERROR="\033[0;31m" \
+        NORMAL="\033[0m"
+}

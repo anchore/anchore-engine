@@ -1,6 +1,10 @@
 .idea
 .git
+.github
 .circleci
 .tox
 .pytest*
-
+.vscode
+venv
+scripts/ci
+Makefile
