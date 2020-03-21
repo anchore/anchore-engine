@@ -37,17 +37,23 @@ class ThreadLocalFeedGroupNameCache:
     @classmethod
     def lookup(cls, name):
         if cls.feed_list_cache and hasattr(cls.feed_list_cache, 'vuln_group_list'):
-            return cls.feed_list_cache.vuln_group_list and name in cls.feed_list_cache.vuln_group_list
+            return cls.feed_list_cache.vuln_group_list and cls.feed_list_cache.vuln_group_list.get(name, False)
         else:
             return False
 
     @classmethod
-    def add(cls, names: list):
+    def add(cls, name_tuples: list):
+        """
+        List of (name:str, enabled:bool) tuples
+
+        :param name_tuples:
+        :return:
+        """
+        dict_version = {n[0]: n for n in name_tuples}
         try:
-            for n in names:
-                cls.feed_list_cache.vuln_group_list.update(set(names))
+            cls.feed_list_cache.vuln_group_list.update(dict_version)
         except AttributeError:
-            cls.feed_list_cache.vuln_group_list = set(names)
+            cls.feed_list_cache.vuln_group_list = dict_version
 
     @classmethod
     def flush(cls):
@@ -85,7 +91,7 @@ def namespace_has_no_feed(name, version):
     """
     ns = DistroNamespace.as_namespace_name(name, version)
     found = ThreadLocalFeedGroupNameCache.lookup(ns) # Returns a tuple (name, enabled:bool)
-    return not found or not found[1]
+    return (not found) or (not found[1])
 
 
 def find_vulnerable_image_packages(vulnerability_obj):
