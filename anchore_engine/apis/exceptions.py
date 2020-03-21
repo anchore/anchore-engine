@@ -24,6 +24,10 @@ class BadRequest(AnchoreApiError):
     __response_code__ = 400
 
 
+class ConflictingRequest(AnchoreApiError):
+    __response_code__ = 409
+
+
 class AccessDeniedError(AnchoreApiError):
     __response_code__ = 403
 

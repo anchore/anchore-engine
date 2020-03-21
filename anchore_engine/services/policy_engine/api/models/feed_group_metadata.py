@@ -15,7 +15,7 @@ class FeedGroupMetadata(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, created_at=None, last_sync=None, record_count=None):  # noqa: E501
+    def __init__(self, name=None, created_at=None, last_sync=None, record_count=None, enabled=None, updated_at=None):  # noqa: E501
         """FeedGroupMetadata - a model defined in Swagger
 
         :param name: The name of this FeedGroupMetadata.  # noqa: E501
@@ -31,20 +31,26 @@ class FeedGroupMetadata(Model):
             'name': str,
             'created_at': datetime,
             'last_sync': datetime,
-            'record_count': int
+            'record_count': int,
+            'enabled': bool,
+            'updated_at': datetime
         }
 
         self.attribute_map = {
             'name': 'name',
             'created_at': 'created_at',
             'last_sync': 'last_sync',
-            'record_count': 'record_count'
+            'record_count': 'record_count',
+            'enabled': 'enabled',
+            'updated_at': 'updated_at'
         }
 
         self._name = name
         self._created_at = created_at
         self._last_sync = last_sync
         self._record_count = record_count
+        self._enabled = enabled
+        self._updated_at = updated_at
 
     @classmethod
     def from_dict(cls, dikt):
@@ -140,3 +146,19 @@ class FeedGroupMetadata(Model):
         """
 
         self._record_count = record_count
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def updated_at(self):
+        return self._updated_at
+
+    @updated_at.setter
+    def updated_at(self, updated_at):
+        self._updated_at = updated_at

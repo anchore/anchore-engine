@@ -40,7 +40,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.clients.services import internal_client_for, catalog
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services.common import get_service_endpoint
-from anchore_engine.utils import ensure_str, ensure_bytes
+from anchore_engine.utils import ensure_str, ensure_bytes, timer
 
 authorizer = get_authorizer()
 
@@ -627,7 +627,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 db = get_session()
                 db.refresh(img)
 
-            vulns = img.vulnerabilities()
+            with timer('Image vulnerability primary lookup', log_level='debug'):
+                vulns = img.vulnerabilities()
 
         # Has vulnerabilities?
         warns = []
@@ -641,49 +642,46 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         _nvd_cls, _cpe_cls = select_nvd_classes(db)
 
         rows = []
-        t = time.time()
-        vulns = merge_nvd_metadata_image_packages(db, vulns, _nvd_cls, _cpe_cls)
-        log.spew("Vuln timing merge {}".format(time.time() - t))
+        with timer('Image vulnerability nvd metadata merge', log_level='debug'):
+            vulns = merge_nvd_metadata_image_packages(db, vulns, _nvd_cls, _cpe_cls)
 
-        t = time.time()
-        for vuln, nvd_records in vulns:
-            # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
-            if vendor_only and vuln.fix_has_no_advisory():
-                continue
+        with timer('Image vulnerability output formatting', log_level='debug'):
+            for vuln, nvd_records in vulns:
+                # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
+                if vendor_only and vuln.fix_has_no_advisory():
+                    continue
 
-            # rennovation this for new CVSS references
-            cves = ''
-            nvd_list = []
-            all_data = {'nvd_data': nvd_list, 'vendor_data': [], 'advisory_data': {'cves': []}}
+                # rennovation this for new CVSS references
+                cves = ''
+                nvd_list = []
+                all_data = {'nvd_data': nvd_list, 'vendor_data': [], 'advisory_data': {'cves': []}}
 
-            if vuln.vulnerability.additional_metadata:
-                all_data['advisory_data']['cves'] = vuln.vulnerability.additional_metadata.get('CVE', [])
+                if vuln.vulnerability.additional_metadata:
+                    all_data['advisory_data']['cves'] = vuln.vulnerability.additional_metadata.get('CVE', [])
 
-            for nvd_record in nvd_records:
-                nvd_list.extend(nvd_record.get_cvss_data_nvd())
+                for nvd_record in nvd_records:
+                    nvd_list.extend(nvd_record.get_cvss_data_nvd())
 
-            cves = json.dumps(all_data)
+                cves = json.dumps(all_data)
 
-            rows.append([
-                vuln.vulnerability_id,
-                vuln.vulnerability.severity,
-                1,
-                vuln.pkg_name + '-' + vuln.package.fullversion,
-                str(vuln.fixed_in()),
-                vuln.pkg_image_id,
-                'None', # Always empty this for now
-                vuln.vulnerability.link,
-                vuln.pkg_type,
-                'vulnerabilities',
-                vuln.vulnerability.namespace_name,
-                vuln.pkg_name,
-                vuln.pkg_path,
-                vuln.package.fullversion,
-                cves,
-                ]
-            )
-
-        log.spew("Vuln timing 1 {}".format(time.time() - t))
+                rows.append([
+                    vuln.vulnerability_id,
+                    vuln.vulnerability.severity,
+                    1,
+                    vuln.pkg_name + '-' + vuln.package.fullversion,
+                    str(vuln.fixed_in()),
+                    vuln.pkg_image_id,
+                    'None', # Always empty this for now
+                    vuln.vulnerability.link,
+                    vuln.pkg_type,
+                    'vulnerabilities',
+                    vuln.vulnerability.namespace_name,
+                    vuln.pkg_name,
+                    vuln.pkg_path,
+                    vuln.package.fullversion,
+                    cves,
+                    ]
+                )
 
         vuln_listing = {
             'multi': {
@@ -700,41 +698,42 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
-            t = time.time()
-            all_cpe_matches = img.cpe_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
-            log.spew("Vuln timing 2 {}".format(time.time() - t))
+            all_cpe_matches = []
+            with timer('Image vulnerabilities cpe matches', log_level='debug'):
+                with timer('Image vulnerability cpe lookups', log_level='debug'):
+                    all_cpe_matches = img.cpe_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls)
 
-            if not all_cpe_matches:
-                all_cpe_matches = []
+                if not all_cpe_matches:
+                    all_cpe_matches = []
 
-            cpe_hashes = {}
-            api_endpoint = get_api_endpoint()
+                cpe_hashes = {}
+                api_endpoint = get_api_endpoint()
 
-            for image_cpe, vulnerability_cpe in all_cpe_matches:
-                link = vulnerability_cpe.parent.link
-                if not link:
-                    link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability_cpe.vulnerability_id)
+                for image_cpe, vulnerability_cpe in all_cpe_matches:
+                    link = vulnerability_cpe.parent.link
+                    if not link:
+                        link = '{}/query/vulnerabilities?id={}'.format(api_endpoint, vulnerability_cpe.vulnerability_id)
 
-                cpe_vuln_el = {
-                    'vulnerability_id': vulnerability_cpe.vulnerability_id,
-                    'severity': vulnerability_cpe.parent.severity,
-                    'link': link,
-                    'pkg_type': image_cpe.pkg_type,
-                    'pkg_path': image_cpe.pkg_path,
-                    'name': image_cpe.name,
-                    'version': image_cpe.version,
-                    'cpe': image_cpe.get_cpestring(),
-                    'cpe23': image_cpe.get_cpe23string(),
-                    'feed_name': vulnerability_cpe.feed_name,
-                    'feed_namespace': vulnerability_cpe.namespace_name,
-                    'nvd_data': vulnerability_cpe.parent.get_cvss_data_nvd(),
-                    'vendor_data': vulnerability_cpe.parent.get_cvss_data_vendor(),
-                    'fixed_in': vulnerability_cpe.get_fixed_in()
-                }
-                cpe_hash = hashlib.sha256(utils.ensure_bytes(json.dumps(cpe_vuln_el))).hexdigest()
-                if not cpe_hashes.get(cpe_hash, False):
-                    cpe_vuln_listing.append(cpe_vuln_el)
-                    cpe_hashes[cpe_hash] = True
+                    cpe_vuln_el = {
+                        'vulnerability_id': vulnerability_cpe.vulnerability_id,
+                        'severity': vulnerability_cpe.parent.severity,
+                        'link': link,
+                        'pkg_type': image_cpe.pkg_type,
+                        'pkg_path': image_cpe.pkg_path,
+                        'name': image_cpe.name,
+                        'version': image_cpe.version,
+                        'cpe': image_cpe.get_cpestring(),
+                        'cpe23': image_cpe.get_cpe23string(),
+                        'feed_name': vulnerability_cpe.feed_name,
+                        'feed_namespace': vulnerability_cpe.namespace_name,
+                        'nvd_data': vulnerability_cpe.parent.get_cvss_data_nvd(),
+                        'vendor_data': vulnerability_cpe.parent.get_cvss_data_vendor(),
+                        'fixed_in': vulnerability_cpe.get_fixed_in()
+                    }
+                    cpe_hash = hashlib.sha256(utils.ensure_bytes(json.dumps(cpe_vuln_el))).hexdigest()
+                    if not cpe_hashes.get(cpe_hash, False):
+                        cpe_vuln_listing.append(cpe_vuln_el)
+                        cpe_hashes[cpe_hash] = True
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 

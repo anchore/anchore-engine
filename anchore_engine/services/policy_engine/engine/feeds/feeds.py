@@ -94,7 +94,33 @@ class DataFeed(object, metaclass=FeedMeta):
         """
         raise NotImplementedError()
 
-    def record_count(self, group_name):
+    def record_count(self, group_name, db):
+        """
+        :param group_name: Name of group to get count for
+        :param db: db session to use
+        :return:
+        """
+        raise NotImplementedError()
+
+    def update_counts(self):
+        raise NotImplementedError()
+
+    def flush_group(self, group_name):
+        """
+        Flushes data out of a specific group. Does not remove the group metadata record, but will set the count to zero.
+        This is a db unit-of-work. Will create transaction and commit result
+
+        :param group_name:
+        :return: True on success
+        """
+        raise NotImplementedError()
+
+    def flush_all(self):
+        """
+        Flush all groups for the feed, unset the last full sync timestamp, but leave metadata records for feed.
+
+        :return:
+        """
         raise NotImplementedError()
 
 
@@ -120,9 +146,28 @@ class AnchoreServiceFeed(DataFeed):
 
         super(AnchoreServiceFeed, self).__init__(metadata=metadata)
 
-    def record_count(self, group_name):
+    def record_count(self, group_name, db):
         # Implement in subclasses
         raise NotImplementedError()
+
+    def update_counts(self):
+        """
+        Self-contained unit of work to update the row counts for each feed group in the feed group metadata
+        :return:
+        """
+
+        db = get_session()
+        try:
+            log.debug('Updating group counts for feed {}'.format(self.__feed_name__))
+            my_meta = lookup_feed(db, self.__feed_name__)
+            for group in my_meta.groups:
+                group.count = self.record_count(group.name, db)
+                log.info('Updating feed group {} record count = {}'.format(group.name, group.count))
+            db.commit()
+        except Exception:
+            db.rollback()
+            log.error('Could not update group counts')
+            raise
 
     def _load_mapper(self, group_obj):
         """
@@ -189,12 +234,14 @@ class AnchoreServiceFeed(DataFeed):
 
                 if count >= self.RECORDS_PER_CHUNK:
                     # Commit
+                    group_db_obj.count = self.record_count(group_db_obj.name, db)
                     db.commit()
                     db = get_session()
                     log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                     count = 0
 
             else:
+                group_db_obj.count = self.record_count(group_db_obj.name, db)
                 db.commit()
                 db = get_session()
                 log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
@@ -202,6 +249,7 @@ class AnchoreServiceFeed(DataFeed):
             log.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
             group_db_obj = self.group_by_name(group_download_result.group)
             group_db_obj.last_sync = download_started
+            group_db_obj.count = self.record_count(group_db_obj.name, db)
             db.add(group_db_obj)
             db.commit()
         except Exception as e:
@@ -236,7 +284,40 @@ class AnchoreServiceFeed(DataFeed):
 
         db.query(GenericFeedDataRecord).delete()
         group_obj.last_sync = None # Null the update timestamp to reflect the flush
+        group_obj.count = 0
         db.flush()
+
+    def flush_group(self, group_name):
+        db = get_session()
+        try:
+            g = self.group_by_name(group_name)
+            if not g:
+                raise KeyError(group_name)
+
+            self._flush_group(g)
+            db.commit()
+            return g
+        except Exception:
+            db.rollback()
+            raise
+
+    def flush_all(self):
+        db = get_session()
+        try:
+            db.refresh(self.metadata)
+            for g in self.metadata.groups:
+                self._flush_group(group_obj=g)
+
+            db.refresh(self.metadata)
+
+            # Remove all groups
+            self.metadata.groups = []
+            self.metadata.last_full_sync = None
+            db.commit()
+            return self.metadata
+        except Exception:
+            db.rollback()
+            raise
 
     def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None, group=None) -> dict:
         """
@@ -377,12 +458,14 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
                 if count >= self.RECORDS_PER_CHUNK:
                     # Commit
+                    group_db_obj.count = self.record_count(group_db_obj.name, db)
                     db.commit()
                     log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                     db = get_session()
                     count = 0
 
             else:
+                group_db_obj.count = self.record_count(group_db_obj.name, db)
                 db.commit()
                 log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                 db = get_session()
@@ -390,6 +473,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             log.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
             group_db_obj = self.group_by_name(group_download_result.group)
             group_db_obj.last_sync = download_started
+            group_db_obj.count = self.record_count(group_db_obj.name, db)
             db.add(group_db_obj)
             db.commit()
         except Exception as e:
@@ -488,6 +572,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
         group_obj.last_sync = None # Null the update timestamp to reflect the flush
+        group_obj.count = 0
 
         db.flush()
 
@@ -517,15 +602,12 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         finally:
             ThreadLocalFeedGroupNameCache.flush()
 
-    def record_count(self, group_name):
-        db = get_session()
+    def record_count(self, group_name, db):
         try:
             return db.query(Vulnerability).filter(Vulnerability.namespace_name == group_name).count()
         except Exception as e:
             log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
-        finally:
-            db.rollback()
 
 
 class PackagesFeed(AnchoreServiceFeed):
@@ -543,8 +625,7 @@ class PackagesFeed(AnchoreServiceFeed):
     def _dedup_data_key(self, item):
         return item.name
 
-    def record_count(self, group_name):
-        db = get_session()
+    def record_count(self, group_name, db):
         try:
             if group_name == 'npm':
                 return db.query(NpmMetadata).count()
@@ -555,8 +636,6 @@ class PackagesFeed(AnchoreServiceFeed):
         except Exception as e:
             log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
-        finally:
-            db.rollback()
 
     def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
         db = get_session()
@@ -575,7 +654,7 @@ class PackagesFeed(AnchoreServiceFeed):
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} records'.format(count, group_obj.name)))
 
         group_obj.last_sync = None
-
+        group_obj.count = 0
         db.flush()
 
 
@@ -599,18 +678,15 @@ class NvdV2Feed(AnchoreServiceFeed):
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} NvdV2 records'.format(count)))
 
         group_obj.last_sync = None
-
+        group_obj.count = 0
         db.flush()
 
-    def record_count(self, group_name):
-        db = get_session()
+    def record_count(self, group_name, db):
         try:
             return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
         except Exception as e:
             log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
-        finally:
-            db.rollback()
 
 
 class VulnDBFeed(AnchoreServiceFeed):
@@ -634,17 +710,15 @@ class VulnDBFeed(AnchoreServiceFeed):
         log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBMetadata records'.format(count)))
 
         group_obj.last_sync = None
+        group_obj.count = 0
         db.flush()
 
-    def record_count(self, group_name):
-        db = get_session()
+    def record_count(self, group_name, db):
         try:
             return db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_name).count()
         except Exception as e:
             log.exception('Error getting feed data group record count in vulndb feed for group: {}'.format(group_name))
             raise
-        finally:
-            db.rollback()
 
 
 class GithubFeed(VulnerabilityFeed):
@@ -659,7 +733,7 @@ class GithubFeed(VulnerabilityFeed):
     )
 
 
-def feed_instance_by_name(name):
+def feed_instance_by_name(name: str) -> DataFeed:
     """
     Returns an instance of the feed using the given name, raises KeyError if name not found
 

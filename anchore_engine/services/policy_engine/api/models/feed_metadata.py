@@ -16,7 +16,7 @@ class FeedMetadata(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, created_at=None, updated_at=None, groups=None, last_full_sync=None):  # noqa: E501
+    def __init__(self, name=None, created_at=None, updated_at=None, groups=None, last_full_sync=None, enabled=None):  # noqa: E501
         """FeedMetadata - a model defined in Swagger
 
         :param name: The name of this FeedMetadata.  # noqa: E501
@@ -35,7 +35,8 @@ class FeedMetadata(Model):
             'created_at': datetime,
             'updated_at': datetime,
             'groups': List[FeedGroupMetadata],
-            'last_full_sync': datetime
+            'last_full_sync': datetime,
+            'enabled': bool
         }
 
         self.attribute_map = {
@@ -43,7 +44,8 @@ class FeedMetadata(Model):
             'created_at': 'created_at',
             'updated_at': 'updated_at',
             'groups': 'groups',
-            'last_full_sync': 'last_full_sync'
+            'last_full_sync': 'last_full_sync',
+            'enabled': 'enabled'
         }
 
         self._name = name
@@ -51,6 +53,7 @@ class FeedMetadata(Model):
         self._updated_at = updated_at
         self._groups = groups
         self._last_full_sync = last_full_sync
+        self._enabled = enabled
 
     @classmethod
     def from_dict(cls, dikt):
@@ -173,3 +176,11 @@ class FeedMetadata(Model):
         """
 
         self._last_full_sync = last_full_sync
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
