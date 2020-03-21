@@ -1,8 +1,10 @@
+import pytest
 import datetime
 import json
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine import vulnerabilities
-from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace
+from anchore_engine.db.entities.policy_engine import DistroTuple
+from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace, DistroMapping
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask, rescan_image
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.integration.services.policy_engine.utils import reset_feed_sync_time
@@ -175,3 +177,24 @@ def test_have_vulnerabilities_for(test_data_env):
     passes = DistroNamespace(name='debian', version='8', like_distro='debian')
     assert not vulnerabilities.have_vulnerabilities_for(failz), 'Should not have vulns for ' + failz.namespace_name
     assert vulnerabilities.have_vulnerabilities_for(passes), 'Should have vulns for ' + passes.namespace_name
+
+
+def test_distromappings(anchore_db):
+    _init_distro_mappings()
+
+    c7 = DistroNamespace(name='centos', version='7', like_distro='centos')
+    assert c7.mapped_names() == []
+    assert c7.like_namespace_names == ['rhel:7']
+
+    r7 = DistroNamespace(name='rhel', version='7', like_distro='centos')
+    assert set(r7.mapped_names()) == {'centos', 'fedora', 'rhel'}
+    assert r7.like_namespace_names == ['rhel:7']
+
+    assert sorted(DistroMapping.distros_mapped_to('rhel', '7')) == sorted([DistroTuple('rhel','7','RHEL'), DistroTuple('centos', '7', 'RHEL'), DistroTuple('fedora','7', 'RHEL')])
+
+    dist = DistroNamespace('rhel', '7')
+    logger.info('mapped names for rhel:7 = {}'.format(dist.mapped_names()))
+    dist = DistroNamespace('centos', '7')
+    logger.info('mapped names for centos:7 = {}'.format(dist.mapped_names()))
+    assert False
+
