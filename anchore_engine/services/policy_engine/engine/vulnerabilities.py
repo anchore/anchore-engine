@@ -83,7 +83,9 @@ def namespace_has_no_feed(name, version):
 
     :return: boolean if name,version tuple does not have a feed of its own
     """
-    return not ThreadLocalFeedGroupNameCache.lookup(name + ':' + version)
+    ns = DistroNamespace.as_namespace_name(name, version)
+    found = ThreadLocalFeedGroupNameCache.lookup(ns) # Returns a tuple (name, enabled:bool)
+    return not found or not found[1]
 
 
 def find_vulnerable_image_packages(vulnerability_obj):

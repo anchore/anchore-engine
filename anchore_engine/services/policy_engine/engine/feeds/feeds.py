@@ -593,7 +593,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         if self.metadata and self.metadata.groups:
             # Setup the group name cache
-            ThreadLocalFeedGroupNameCache.add([x.name for x in self.metadata.groups])
+            ThreadLocalFeedGroupNameCache.add([(x.name, x.enabled) for x in self.metadata.groups])
         else:
             ThreadLocalFeedGroupNameCache.flush()
 
