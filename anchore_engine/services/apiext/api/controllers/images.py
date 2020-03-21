@@ -323,7 +323,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                         el[k] = 'None'
 
                 groupels = el.get('feed_group', "").split(":", 2)
-                if len(groupels) == 2 and groupels[0] in ['ubuntu', 'centos', 'alpine', 'debian', 'ol', 'amzn']:
+                if len(groupels) == 2 and groupels[0] in ['ubuntu', 'centos', 'alpine', 'debian', 'ol', 'amzn', 'rhel']:
                     osvulns.append(el)
                 else:
                     nonosvulns.append(el)
