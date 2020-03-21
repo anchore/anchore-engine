@@ -2,7 +2,7 @@ from flask import jsonify
 
 from anchore_engine.common.errors import AnchoreError
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
-from anchore_engine.apis.exceptions import BadRequest, ConflictingRequest, ResourceNotFound, InternalError
+from anchore_engine.apis.exceptions import BadRequest, ConflictingRequest, ResourceNotFound, InternalError, AnchoreApiError
 from anchore_engine.clients.services.simplequeue import LeaseAcquisitionFailedError, LeaseUnavailableError
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.services.policy_engine.api.models import FeedMetadata, FeedGroupMetadata
@@ -107,16 +107,21 @@ def toggle_feed_enabled(feed, enabled):
     session = db.get_session()
     try:
         f = db.set_feed_enabled(session, feed, enabled)
+        if not f:
+            raise ResourceNotFound(feed, detail={})
         session.flush()
 
         updated = _marshall_feed_response(f)
         session.commit()
 
         return jsonify(updated), 200
-    except Exception:
-        log.error('Could not update feed enabled status')
+    except AnchoreApiError:
         session.rollback()
         raise
+    except Exception as e:
+        log.error('Could not update feed enabled status')
+        session.rollback()
+        return jsonify(make_response_error(e, in_httpcode=500)), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -127,12 +132,18 @@ def toggle_group_enabled(feed, group, enabled):
     session = db.get_session()
     try:
         g = db.set_feed_group_enabled(session, feed, group, enabled)
+        if not g:
+            raise ResourceNotFound(group, detail={})
+
         session.flush()
 
         grp = _marshall_group_response(g)
         session.commit()
 
         return jsonify(grp), 200
+    except AnchoreApiError:
+        session.rollback()
+        raise
     except Exception:
         log.error('Could not update feed group enabled status')
         session.rollback()
@@ -148,21 +159,25 @@ def delete_feed(feed):
             raise ResourceNotFound(resource=feed, detail={})
         elif f.enabled:
             raise ConflictingRequest(message='Cannot delete an enabled feed. Disable the feed first', detail={})
+    except AnchoreApiError:
+        raise
+    except Exception as e:
+        return jsonify(make_response_error(e, in_httpcode=500)), 500
     finally:
         session.rollback()
 
     try:
-        sync.DataFeeds.delete_feed(feed)
-    except Exception:
-        log.error('Could not update feed group enabled status')
+        f = sync.DataFeeds.delete_feed(feed)
+        if f:
+            return jsonify(f), 200
+        else:
+            raise ResourceNotFound(feed, detail={})
+    except KeyError as e:
+        raise ResourceNotFound(resource=str(e), detail={'feed': feed})
+    except AnchoreApiError:
         raise
-
-    session = db.get_session()
-    try:
-        fd = db.get_feed_json(db_session=session, feed_name=feed)
-        return jsonify(fd)
-    except Exception:
-        raise
+    except Exception as e:
+        return jsonify(make_response_error(e, in_httpcode=500)), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -171,11 +186,13 @@ def delete_group(feed, group):
     try:
         f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)
         if not f:
-            raise ResourceNotFound(resource=feed, detail={})
+            raise ResourceNotFound(group, detail={})
         elif f.enabled:
             raise ConflictingRequest(message='Cannot delete an enabled feed group. Disable the feed group first', detail={})
-    except KeyError as e:
-        raise ResourceNotFound(str(e), detail={})
+    except AnchoreApiError:
+        raise
+    except Exception as e:
+        return jsonify(make_response_error(e, in_httpcode=500)), 500
     finally:
         session.rollback()
 
@@ -188,6 +205,8 @@ def delete_group(feed, group):
             raise ResourceNotFound(group, detail={})
     except KeyError as e:
         raise ResourceNotFound(resource=str(e), detail={'feed': feed, 'group': group})
-    except Exception:
-        log.error('Could not flush feed group {}/{}'.format(feed, group))
+    except AnchoreApiError:
         raise
+    except Exception as e:
+        log.error('Could not flush feed group {}/{}'.format(feed, group))
+        return jsonify(make_response_error(e, in_httpcode=500)), 500
