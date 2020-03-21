@@ -56,6 +56,7 @@ def sync_feeds(test_env, up_to=None):
     DataFeeds.sync(['vulnerabilities', 'packages'], feed_client=test_env.feed_client)
     logger.info('Sync complete')
 
+
 def test_namespace_support(test_data_env):
     _init_distro_mappings()
     sync_feeds(test_data_env)
@@ -63,12 +64,12 @@ def test_namespace_support(test_data_env):
     # Not exhaustive, only for the feeds directly in the test data set
     expected = [
         DistroNamespace(name='alpine', version='3.6', like_distro='alpine'),
-        DistroNamespace(name='centos', version='7', like_distro='centos'),
-        DistroNamespace(name='centos', version='7.1', like_distro='centos'),
-        DistroNamespace(name='centos', version='7.3', like_distro='centos'),
+        DistroNamespace(name='centos', version='7', like_distro='rhel'),
+        DistroNamespace(name='centos', version='7.1', like_distro='rhel'),
+        DistroNamespace(name='centos', version='7.3', like_distro='rhel'),
 
-        DistroNamespace(name='ol', version='7.3', like_distro='centos'),
-        DistroNamespace(name='rhel', version='7.1', like_distro='centos'),
+        DistroNamespace(name='ol', version='7.3', like_distro='ol'),
+        DistroNamespace(name='rhel', version='7.1', like_distro='rhel'),
 
         DistroNamespace(name='debian', version='9', like_distro='debian'),
 
