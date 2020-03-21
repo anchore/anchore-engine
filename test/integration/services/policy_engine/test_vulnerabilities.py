@@ -192,9 +192,4 @@ def test_distromappings(anchore_db):
 
     assert sorted(DistroMapping.distros_mapped_to('rhel', '7')) == sorted([DistroTuple('rhel','7','RHEL'), DistroTuple('centos', '7', 'RHEL'), DistroTuple('fedora','7', 'RHEL')])
 
-    dist = DistroNamespace('rhel', '7')
-    logger.info('mapped names for rhel:7 = {}'.format(dist.mapped_names()))
-    dist = DistroNamespace('centos', '7')
-    logger.info('mapped names for centos:7 = {}'.format(dist.mapped_names()))
-    assert False
 
