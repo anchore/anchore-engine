@@ -112,11 +112,11 @@ def _init_distro_mappings():
     initial_mappings = [
         DistroMapping(from_distro='alpine', to_distro='alpine', flavor='ALPINE'),
         DistroMapping(from_distro='busybox', to_distro='busybox', flavor='BUSYB'),
-        DistroMapping(from_distro='centos', to_distro='centos', flavor='RHEL'),
+        DistroMapping(from_distro='centos', to_distro='rhel', flavor='RHEL'),
         DistroMapping(from_distro='debian', to_distro='debian', flavor='DEB'),
-        DistroMapping(from_distro='fedora', to_distro='centos', flavor='RHEL'),
+        DistroMapping(from_distro='fedora', to_distro='rhel', flavor='RHEL'),
         DistroMapping(from_distro='ol', to_distro='ol', flavor='RHEL'),
-        DistroMapping(from_distro='rhel', to_distro='centos', flavor='RHEL'),
+        DistroMapping(from_distro='rhel', to_distro='rhel', flavor='RHEL'),
         DistroMapping(from_distro='ubuntu', to_distro='ubuntu', flavor='DEB'),
         DistroMapping(from_distro='amzn', to_distro='amzn', flavor='RHEL')
     ]
