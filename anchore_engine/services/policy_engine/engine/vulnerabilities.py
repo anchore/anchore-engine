@@ -90,7 +90,7 @@ def namespace_has_no_feed(name, version):
     """
     ns = DistroNamespace.as_namespace_name(name, version)
     found = ThreadLocalFeedGroupNameCache.lookup(ns) # Returns a tuple (name, enabled:bool)
-    return not found) or (not found[1]
+    return not found or not found[1]
 
 
 def get_namespace_related_names(distro, version, distro_mapped_names: list):

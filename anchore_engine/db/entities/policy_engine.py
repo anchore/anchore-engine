@@ -1952,7 +1952,7 @@ class ImagePackageVulnerability(Base):
 
     # To support hash functions like set operations, ensure these align with primary key comparisons to ensure two identical records would match as such.
     def __eq__(self, other):
-        return isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == ((other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path))
+        return isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == (other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path)
 
     def __hash__(self):
         return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path))

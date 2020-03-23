@@ -207,11 +207,13 @@ workflows:
   default_workflow:
     jobs:
       - unit_tests
+      - lint
       - integration_tests:
           requires:
             - unit_tests
       - build:
           requires:
+            - lint
             - unit_tests
       - functional_tests:
           requires:
@@ -240,8 +242,12 @@ workflows:
 
   rc_image_workflow:
     jobs:
+      - lint:
+          filters: *filter_rc_tags
       - build:
           filters: *filter_rc_tags
+          requires:
+            - lint
       - e2e_tests:
           name: rc_e2e_tests
           context: e2e-testing
@@ -288,13 +294,17 @@ workflows:
     jobs:
       - unit_tests:
           filters: *filter_rebuild_tags
+      - lint:
+          filters: *filter_rebuild_tags
       - integration_tests:
           filters: *filter_rebuild_tags
           requires:
+            - lint
             - unit_tests
       - build:
           filters: *filter_rebuild_tags
           requires:
+            - lint
             - unit_tests
       - functional_tests:
           filters: *filter_rebuild_tags

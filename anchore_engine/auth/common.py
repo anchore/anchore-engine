@@ -59,5 +59,5 @@ def registry_record_matches(registry_record_str, registry, repository):
     :return: bool true if a match, false if not
     """
 
-    return registry_record_str[-1] == '*' and '{}/{}'.format(registry, repository).startswith(registry_record_str[:-1])) or ('/' in registry_record_str and registry_record_str == '{}/{}'.format(registry, repository)) or (registry_record_str == registry
+    return (registry_record_str[-1] == '*' and '{}/{}'.format(registry, repository).startswith(registry_record_str[:-1])) or ('/' in registry_record_str and registry_record_str == '{}/{}'.format(registry, repository)) or (registry_record_str == registry)
 
