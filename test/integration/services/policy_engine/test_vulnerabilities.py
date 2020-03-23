@@ -3,13 +3,10 @@ import datetime
 import json
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine import vulnerabilities
-from anchore_engine.db.entities.policy_engine import DistroTuple
-from anchore_engine.db import get_thread_scoped_session, end_session, Image, DistroNamespace, DistroMapping
-from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask, rescan_image
+from anchore_engine.db import get_thread_scoped_session, end_session, Image
+from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, rescan_image
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.integration.services.policy_engine.utils import reset_feed_sync_time
-from anchore_engine.services.policy_engine import _init_distro_mappings
-
 
 logger.enable_test_logging()
 
@@ -57,50 +54,6 @@ def sync_feeds(test_env, up_to=None):
     DataFeeds.__scratch_dir__ = '/tmp'
     DataFeeds.sync(['vulnerabilities', 'packages'], feed_client=test_env.feed_client)
     logger.info('Sync complete')
-
-
-def test_namespace_support(test_data_env):
-    _init_distro_mappings()
-    sync_feeds(test_data_env)
-
-    # Not exhaustive, only for the feeds directly in the test data set
-    expected = [
-        DistroNamespace(name='alpine', version='3.6', like_distro='alpine'),
-        DistroNamespace(name='centos', version='7', like_distro='rhel'),
-        DistroNamespace(name='centos', version='7.1', like_distro='rhel'),
-        DistroNamespace(name='centos', version='7.3', like_distro='rhel'),
-
-        DistroNamespace(name='ol', version='7.3', like_distro='ol'),
-        DistroNamespace(name='rhel', version='7.1', like_distro='rhel'),
-
-        DistroNamespace(name='debian', version='9', like_distro='debian'),
-
-        DistroNamespace(name='ubuntu', version='16.10', like_distro='ubuntu')
-    ]
-
-    fail = [
-        DistroNamespace(name='alpine', version='3.1', like_distro='alpine'),
-        DistroNamespace(name='alpine', version='3.1.1', like_distro='alpine'),
-
-        DistroNamespace(name='busybox', version='3', like_distro='busybox'),
-        DistroNamespace(name='linuxmint', version='16', like_distro='debian'),
-        DistroNamespace(name='redhat', version='6', like_distro='centos'),
-
-        DistroNamespace(name='ubuntu', version='1.0', like_distro='ubuntu'),
-        DistroNamespace(name='centos', version='1.0', like_distro='ubuntu'),
-        DistroNamespace(name='debian', version='1.0', like_distro='ubuntu'),
-        DistroNamespace(name='rhel', version='1.0', like_distro='ubuntu'),
-        DistroNamespace(name='busybox', version='1.0', like_distro='busybox'),
-        DistroNamespace(name='alpine', version='11.0', like_distro='ubuntu'),
-        DistroNamespace(name='fedora', version='25', like_distro='fedora'),
-        DistroNamespace(name='mageia', version='5', like_distro='mandriva,fedora')
-    ]
-
-    for i in expected:
-        assert vulnerabilities.have_vulnerabilities_for(i), 'Expected vulns for namespace {}'.format(i.namespace_name)
-
-    for i in fail:
-        assert not vulnerabilities.have_vulnerabilities_for(i), 'Did not expect vulns for namespace {}'.format(i.namespace_name)
 
 
 def check_fix_version(test_env):
@@ -167,29 +120,4 @@ def test_vuln_image_updates(test_data_env):
     logger.info(json.dumps(updated_vulns, indent=2))
 
     #_rescan_cve('7b3dce19c46b752708da38a602decbb1cc4906c8c1f1a19b620158926c199930')
-
-
-def test_have_vulnerabilities_for(test_data_env):
-    _init_distro_mappings()
-    sync_feeds(test_data_env)
-
-    failz = DistroNamespace(name='somecrzy', version='8', like_distro='debian')
-    passes = DistroNamespace(name='debian', version='8', like_distro='debian')
-    assert not vulnerabilities.have_vulnerabilities_for(failz), 'Should not have vulns for ' + failz.namespace_name
-    assert vulnerabilities.have_vulnerabilities_for(passes), 'Should have vulns for ' + passes.namespace_name
-
-
-def test_distromappings(anchore_db):
-    _init_distro_mappings()
-
-    c7 = DistroNamespace(name='centos', version='7', like_distro='centos')
-    assert c7.mapped_names() == []
-    assert c7.like_namespace_names == ['rhel:7']
-
-    r7 = DistroNamespace(name='rhel', version='7', like_distro='centos')
-    assert set(r7.mapped_names()) == {'centos', 'fedora', 'rhel'}
-    assert r7.like_namespace_names == ['rhel:7']
-
-    assert sorted(DistroMapping.distros_mapped_to('rhel', '7')) == sorted([DistroTuple('rhel','7','RHEL'), DistroTuple('centos', '7', 'RHEL'), DistroTuple('fedora','7', 'RHEL')])
-
 
