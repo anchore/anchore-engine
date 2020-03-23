@@ -72,7 +72,7 @@ commands:
             - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           name: run tests
-          command: make test-<< parameters.test_type >>
+          command: make << parameters.test_type >>
       - save_cache:
           paths:
             - ~/project/.tox
@@ -91,7 +91,16 @@ jobs:
     steps:
       - checkout
       - run_tests:
-          test_type: unit
+          test_type: test-unit
+
+  lint:
+    docker:
+      - image: circleci/python:3.6
+    environment: *global_environment_vars
+    steps:
+      - checkout
+      - run_tests:
+          test_type: lint
 
   integration_tests:
     docker:
@@ -105,7 +114,7 @@ jobs:
         environment:
           POSTGRES_PASSWORD: "postgres"
     resource_class: large
-    environment: 
+    environment:
       <<: *global_environment_vars
       ANCHORE_TEST_S3_ACCESS_KEY: "9EB92C7W61YPFQ6QLDOU"
       ANCHORE_TEST_S3_SECRET_KEY: "TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s"
@@ -124,7 +133,7 @@ jobs:
     steps:
       - checkout
       - run_tests:
-          test_type: integration
+          test_type: test-integration
 
   build:
     docker:
@@ -160,7 +169,7 @@ jobs:
       - <<: *load_docker_image
       - <<: *ssh_forward_port
       - run_tests:
-          test_type: functional
+          test_type: test-functional
 
   e2e_tests:
     docker:
