@@ -102,7 +102,7 @@ def run_target_with_queue_ttl(account, queue, visibility_timeout, target, max_wa
     logger.debug('Got msg: {}'.format(qobj))
     if not qobj:
         logger.debug("Got empty message from queue - nothing to do")
-        return(True)
+        return True
 
     receipt_handle = qobj.get('receipt_handle')
     msg_id = qobj.get('id')

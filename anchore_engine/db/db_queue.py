@@ -41,13 +41,13 @@ def create(queueName, userId, session=None, max_outstanding_msgs=-1, visibility_
         ret = _to_dict(record)
         config_cache().cache_it(key=(userId, queueName), obj=copy.deepcopy(ret))
         
-    return(ret)
+    return ret
 
 
 def generate_dataId(inobj):
     datajson = json.dumps(inobj)
     dataId = hashlib.md5(datajson.encode('utf-8')).hexdigest()
-    return(dataId, datajson)
+    return dataId, datajson
 
 
 def is_inqueue(queueName, userId, data, session=None):
@@ -63,7 +63,7 @@ def is_inqueue(queueName, userId, data, session=None):
         ret.update(dbobj)
         ret['data'] = json.loads(dbobj['data'])
 
-    return(ret)
+    return ret
     
 
 def enqueue(queueName, userId, data, qcount=0, max_qcount=0, priority=False, session=None):
@@ -82,7 +82,7 @@ def enqueue(queueName, userId, data, qcount=0, max_qcount=0, priority=False, ses
     rcount = session.query(Queue).filter_by(queueName=queueName, userId=userId).count()
     metarecord.update({'qlen': rcount})
 
-    return(True)
+    return True
 
 
 def dequeue(queueName, userId, visibility_timeout=None, session=None):
@@ -149,7 +149,7 @@ def dequeue(queueName, userId, visibility_timeout=None, session=None):
             # Threshold of outstanding messages exceeded.
             pass
 
-    return(ret)
+    return ret
 
 
 def _not_visible_msg_count(queueName, userId, session):
@@ -195,7 +195,7 @@ def get_qlen(queueName, userId, session=None):
 
     ret = session.query(Queue).filter_by(queueName=queueName, userId=userId).count()
 
-    return(int(ret))
+    return int(ret)
 
 
 def get_queuenames(userId, session=None):
@@ -207,7 +207,7 @@ def get_queuenames(userId, session=None):
     for record in records:
         ret.append(record.queueName)
 
-    return(ret)
+    return ret
 
 
 def get_all(session=None):
@@ -220,7 +220,7 @@ def get_all(session=None):
     for result in our_results:
         ret.append(_to_dict(result))
 
-    return(ret)
+    return ret
 
 
 def get_byuserId(userId, session=None):
@@ -233,7 +233,7 @@ def get_byuserId(userId, session=None):
     for result in our_results:
         ret.append(_to_dict(result))
 
-    return(ret)
+    return ret
 
 
 def get_queue(queueName, userId, session=None):

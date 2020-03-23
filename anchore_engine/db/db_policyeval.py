@@ -34,7 +34,7 @@ def tsadd(policyId, userId, imageDigest, tag, final_action, inobj, session=None)
 #    finally:
 #        session.rollback()
 
-    return(True)
+    return True
 
 def tsget_all(userId, imageDigest, tag, policyId=None, session=None):
     if not session:
@@ -53,7 +53,7 @@ def tsget_all(userId, imageDigest, tag, policyId=None, session=None):
             obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 def tsget_all_bytag(userId, tag, policyId=None, session=None):
     if not session:
@@ -71,7 +71,7 @@ def tsget_all_bytag(userId, tag, policyId=None, session=None):
             obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 
 def tsget_latest(userId, imageDigest, tag, policyId=None, session=None):
@@ -83,7 +83,7 @@ def tsget_latest(userId, imageDigest, tag, policyId=None, session=None):
     if results:
         ret = results[0]
 
-    return(ret)
+    return ret
 
 def tsget_byfilter(userId, session=None, **dbfilter):
     if not session:
@@ -99,7 +99,7 @@ def tsget_byfilter(userId, session=None, **dbfilter):
             obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 def add(policyId, userId, imageDigest, tag, final_action, created_at, inobj, session=None):
     if not session:
@@ -121,7 +121,7 @@ def add(policyId, userId, imageDigest, tag, final_action, created_at, inobj, ses
 #    finally:
 #        session.rollback()
     
-    return(True)
+    return True
 
 def get_all(session=None):
     if not session:
@@ -134,7 +134,7 @@ def get_all(session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get_all_byuserId(userId, limit=None, session=None):
     if not session:
@@ -150,7 +150,7 @@ def get_all_byuserId(userId, limit=None, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get_all_bydigest(userId, imageDigest, session):
     if not session:
@@ -164,7 +164,7 @@ def get_all_bydigest(userId, imageDigest, session):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def add_all_for_digest(userId, records, session):
     """
@@ -201,7 +201,7 @@ def get(userId, imageDigest, tag, policyId=None, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def update(policyId, userId, imageDigest, tag, final_action, created_at, inobj, session=None):
     if not session:
@@ -209,12 +209,12 @@ def update(policyId, userId, imageDigest, tag, final_action, created_at, inobj, 
 
     our_result = session.query(PolicyEval).filter_by(policyId=policyId, userId=userId, imageDigest=imageDigest, tag=tag, final_action=final_action).order_by(desc(PolicyEval.created_at)).first()
     if not our_result:
-        return(add(policyId, userId, imageDigest, tag, final_action, created_at, inobj))
+        return add(policyId, userId, imageDigest, tag, final_action, created_at, inobj)
     else:
         inobj['created_at'] = created_at
         our_result.update(inobj)
 
-    return(True)
+    return True
 
 def delete_record(input_record, session=None):
     if not session:
@@ -227,7 +227,7 @@ def delete_record(input_record, session=None):
         session.delete(result)
         ret = True
 
-    return(ret)
+    return ret
 
 def delete_byfilter(userId, session=None, **dbfilter):
     if not session:
@@ -243,7 +243,7 @@ def delete_byfilter(userId, session=None, **dbfilter):
             session.delete(result)
             ret = True
 
-    return(ret)
+    return ret
 
 def delete(userId, imageDigest, tag, policyId=None, session=None):
     if not session:
@@ -267,4 +267,4 @@ def delete(userId, imageDigest, tag, policyId=None, session=None):
 #        finally:
 #            session.rollback()
     
-    return(ret)
+    return ret

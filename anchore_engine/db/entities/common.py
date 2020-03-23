@@ -81,7 +81,7 @@ def anchore_now():
 
     :return: integer unix epoch time
     """
-    return (int(time.time()))
+    return int(time.time())
 
 
 def anchore_now_datetime():
@@ -100,12 +100,12 @@ def get_entity_tables(entity):
     entity_names = [x[1].__tablename__ for x in [x for x in inspect.getmembers(entity) if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base]]
     ftables = [x for x in Base.metadata.sorted_tables if x.name in entity_names]
 
-    return(ftables)
+    return ftables
 
 # some DB management funcs
 def get_engine():
     global engine
-    return(engine)
+    return engine
 
 def test_connection():
     global engine
@@ -119,7 +119,7 @@ def test_connection():
     finally:
         if test_connection:
             test_connection.close()
-    return(True)
+    return True
 
 def do_connect(db_params):
     global engine, Session, SerializableSession
@@ -163,7 +163,7 @@ def do_connect(db_params):
     # set up thread-local session factory
     init_thread_session()
 
-    return(True)
+    return True
 
 def do_disconnect():
     global engine
@@ -203,7 +203,7 @@ def get_params(localconfig):
         'db_echo': db_echo
     }
     ret = normalize_db_params(db_params)
-    return(ret)
+    return ret
 
 def normalize_db_params(db_params):
     try:
@@ -223,7 +223,7 @@ def normalize_db_params(db_params):
                 db_connect_args['sslmode'] = 'require'
             
 
-    return(db_params)
+    return db_params
         
 
 def do_create(specific_tables=None, base=Base):
@@ -274,7 +274,7 @@ def initialize(localconfig=None, versions=None):
                 log.err("WARN: could not connect to/initialize db, retrying in 5 seconds - exception: " + str(err))
                 time.sleep(5)
 
-    return (ret)
+    return ret
 
 
 def get_session():

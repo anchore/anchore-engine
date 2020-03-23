@@ -79,7 +79,7 @@ class ObjectStorageManager(object):
         my_schemas = set(my_schemas)
         supported = schemas.intersection(my_schemas)
         unsupported = schemas.difference(my_schemas)
-        return (supported, unsupported)
+        return supported, unsupported
 
     def get_document(self, userId: str, bucket: str, archiveId: str):
         """

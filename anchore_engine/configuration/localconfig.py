@@ -140,7 +140,7 @@ def get_host_id():
                     time.sleep(1)
                     pass
 
-    return (ret)
+    return ret
 
 
 def load_defaults(configdir=None):
@@ -152,7 +152,7 @@ def load_defaults(configdir=None):
     localconfig.update(copy.deepcopy(DEFAULT_CONFIG))
     localconfig['service_dir'] = configdir
 
-    return (localconfig)
+    return localconfig
 
 
 def load_config(configdir=None, configfile=None, validate_params=None):
@@ -257,7 +257,7 @@ def load_config(configdir=None, configfile=None, validate_params=None):
         pass
 
     
-    return (localconfig)
+    return localconfig
 
 
 def read_config(configfile=None):
@@ -310,7 +310,7 @@ def read_config(configfile=None):
         except Exception as err:
             raise err
 
-    return (ret)
+    return ret
 
 
 def validate_config(config, validate_params=None):
@@ -395,7 +395,7 @@ def validate_config(config, validate_params=None):
         raise err
 
     # raise Exception("TEST")
-    return (ret)
+    return ret
 
 
 def validate_user_auth_config(config):
@@ -445,7 +445,7 @@ def validate_key_config(config, required=False):
 
 def get_config():
     global localconfig
-    return (localconfig)
+    return localconfig
 
 
 def get_versions():
@@ -455,7 +455,7 @@ def get_versions():
     ret['service_version'] = version.version
     ret['db_version'] = version.db_version
 
-    return (ret)
+    return ret
 
 
 class OauthNotConfiguredError(Exception):

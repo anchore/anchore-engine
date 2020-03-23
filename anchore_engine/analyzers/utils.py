@@ -71,7 +71,7 @@ def init_analyzer_cmdline(argv, name):
                 print("ERROR: cannot find/create input dir '"+ret['dirs'][d]+"'")
                 raise err
 
-    return(ret)
+    return ret
 
 def _default_member_function(tfl, member, a, t=None):
     print ("{} {} - {}".format(a, t, member.name))
@@ -97,7 +97,7 @@ def run_tarfile_member_function(tarfilename, *args, member_regexp=None, func=_de
 
                 ret[member.name] = func(tfl, member, *args, **kwargs)
 
-    return(ret)    
+    return ret    
 
 def run_tarfile_function(tarfile, func=None, *args, **kwargs):
 
@@ -108,7 +108,7 @@ def run_tarfile_function(tarfile, func=None, *args, **kwargs):
     with tarfile.open(tarfile, mode='r', format=tarfile.PAX_FORMAT) as tfl:
         ret = func(tfl, *args, **kwargs)
 
-    return(ret)
+    return ret
 
 def _search_tarfilenames_for_file(tarfilenames, searchfile):
     ret = None
@@ -120,18 +120,18 @@ def _search_tarfilenames_for_file(tarfilenames, searchfile):
         ret = "/{}".format(searchfile)
     elif re.sub("^/", "", searchfile) in tarfilenames:
         ret = re.sub("^/", "", searchfile)
-    return(ret)
+    return ret
 
 def get_memberhash(tfl):
     memberhash = {}
     for member in tfl.getmembers():
         memberhash[member.name] = member
-    return(memberhash)
+    return memberhash
 
 def get_distro_from_squashtar(squashtar, unpackdir=None):
     if unpackdir and os.path.exists(os.path.join(unpackdir, 'analyzer_meta.json')):
         with open(os.path.join(unpackdir, 'analyzer_meta.json'), 'r') as FH:
-            return(json.loads(FH.read()))
+            return json.loads(FH.read())
 
     meta = {
         'DISTRO':None,
@@ -273,10 +273,10 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
     if not meta['LIKEDISTRO']:
         meta['LIKEDISTRO'] = meta['DISTRO']
 
-    return(meta)
+    return meta
 
 def grouper(inlist, chunksize):
-    return (inlist[pos:pos + chunksize] for pos in range(0, len(inlist), chunksize))
+    return inlist[pos:pos + chunksize] for pos in range(0, len(inlist), chunksize)
 
 
 ### Metadata helpers
@@ -337,13 +337,13 @@ def get_distro_flavor(distro, version, likedistro=None):
             ret['version'] = vmaj + "." + vmin
             ret['likeversion'] = vmaj + "." + vmin
 
-    return(ret)
+    return ret
 
 def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memberhash={}):
     ret = None
 
     if member.isreg():
-        return(member)
+        return member
 
     if not memberhash:
         memberhash = get_memberhash(tfl)
@@ -433,7 +433,7 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memb
         else:
             ret = None
 
-    return(ret)
+    return ret
 
 def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={}):
     ret = {}
@@ -459,7 +459,7 @@ def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={
         else:
             ret[ctype] = "DIRECTORY_OR_OTHER"
 
-    return(ret)
+    return ret
 
 def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
     allfiles = {}
@@ -481,7 +481,7 @@ def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
     except Exception as err:
         print("EXC: {}".format(err))
 
-    return(allfiles)
+    return allfiles
         
 def get_files_from_squashtar(squashtar, unpackdir=None):
 
@@ -587,7 +587,7 @@ def get_files_from_squashtar(squashtar, unpackdir=None):
     except Exception as err:
         print ("EXC: {}".format(err))
 
-    return(filemap, allfiles)
+    return filemap, allfiles
 
 
 ### Package helpers
@@ -610,7 +610,7 @@ def rpm_get_all_packages_from_squashtar(unpackdir, squashtar):
         print(err.output)
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    return(rpms, rpmdbdir) 
+    return rpms, rpmdbdir 
 
 def rpm_get_all_pkgfiles(unpackdir):
     rpmfiles = {}
@@ -626,7 +626,7 @@ def rpm_get_all_pkgfiles(unpackdir):
     except Exception as err:
         raise ValueError("could not get file list from RPM database: " + str(err))
 
-    return(rpmfiles)
+    return rpmfiles
 
 def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     rpms = {}
@@ -651,15 +651,15 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     except:
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    return(rpms, rpmdbdir)
+    return rpms, rpmdbdir
 
 def make_anchoretmpdir(tmproot):
     tmpdir = '/'.join([tmproot, str(random.randint(0, 9999999)) + ".anchoretmp"])
     try:
         os.makedirs(tmpdir)
-        return(tmpdir)
+        return tmpdir
     except:
-        return(False)
+        return False
 
 def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
     javatmpdir = os.path.join(unpackdir, "javatmp")
@@ -683,7 +683,7 @@ def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
             tfl.extractall(path=os.path.join(javatmpdir, "rootfs"), members=javamembers)
         ret = os.path.join(javatmpdir, "rootfs")
 
-    return(ret)    
+    return ret    
 
 def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
     pytmpdir = os.path.join(unpackdir, "pytmp")
@@ -718,7 +718,7 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
             tfl.extractall(path=os.path.join(pytmpdir, "rootfs"), members=pymembers)
         ret = os.path.join(pytmpdir, "rootfs")
 
-    return(ret)    
+    return ret    
 
 def apk_prepdb_from_squashtar(unpackdir, squashtar):
     apktmpdir = os.path.join(unpackdir, "apktmp")
@@ -740,7 +740,7 @@ def apk_prepdb_from_squashtar(unpackdir, squashtar):
             tfl.extractall(path=os.path.join(apktmpdir, "rootfs"), members=apkmembers)
         ret = os.path.join(apktmpdir, "rootfs")
 
-    return(ret)    
+    return ret    
 
 def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
     dpkgtmpdir = os.path.join(unpackdir, "dpkgtmp")
@@ -765,7 +765,7 @@ def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
 
         ret = os.path.join(dpkgtmpdir, "rootfs")
 
-    return(ret)
+    return ret
 
 def rpm_prepdb_from_squashtar(unpackdir, squashtar):
     rpmtmpdir = os.path.join(unpackdir, "rpmtmp")
@@ -791,7 +791,7 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
         rc = rpm_prepdb(rpmtmpdir)
         ret = os.path.join(rpmtmpdir, "rpmdbfinal") #, "var", "lib", "rpm")
         
-    return(ret)
+    return ret
 
 def rpm_prepdb(unpackdir):
     origrpmdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
@@ -811,7 +811,7 @@ def rpm_prepdb(unpackdir):
         except:
             pass
 
-    return(ret)
+    return ret
 
 def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     allfiles = {}
@@ -832,7 +832,7 @@ def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
         print("Please ensure the command 'dpkg' is available and try again")
         raise err
 
-    return(allfiles)
+    return allfiles
 
 def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):    
     all_packages = {}
@@ -947,7 +947,7 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
             if p == sp and v != sv:
                 other_packages[p] = [{'version':sv, 'arch':arch}]
 
-    return(all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir)
+    return all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir
 
 def deb_copyright_getlics(licfile):
     ret = {}
@@ -965,7 +965,7 @@ def deb_copyright_getlics(licfile):
                     ret[lic] = True
                     found=True
         FH.close()
-    return(ret)
+    return ret
 
 def apkg_parse_apkdb(apkdbfh):
     apkgs = {}                
@@ -1050,7 +1050,7 @@ def apkg_parse_apkdb(apkdbfh):
                 elif k == 'R':
                     thefiles.append(v)
 
-    return(apkgs)
+    return apkgs
 
 def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     ret = {}
@@ -1064,7 +1064,7 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
         except Exception as err:
             raise ValueError("cannot locate APK installed DB in squashed.tar - exception: {}".format(err))
 
-    return(ret)
+    return ret
 
 def apkg_get_all_pkgfiles(unpackdir):
     apkdb = '/'.join([unpackdir, 'rootfs/lib/apk/db/installed'])
@@ -1076,7 +1076,7 @@ def apkg_get_all_pkgfiles(unpackdir):
     with open(apkdb, 'r') as FH:
         ret = apkg_parse_apkdb(FH)
 
-    return(ret)
+    return ret
 
 def gem_parse_meta(gem):
     ret = {}
@@ -1099,7 +1099,7 @@ def gem_parse_meta(gem):
                 replline = line
                 mat = "\\\\u{.*?}"
                 patt = re.match(r".*("+mat+").*", replline)
-                while(patt):
+                while patt:
                     replstr = ""
                     subpatt = re.match("\\\\u{(.*)}", patt.group(1))
                     if subpatt:
@@ -1152,12 +1152,12 @@ def gem_parse_meta(gem):
 
     except Exception as err:
         print("WARN could not fully parse gemspec file: " + str(name) + ": exception: " + str(err))
-        return({})
+        return {}
 
     if name:
         ret[name] = {'name':name, 'lics':lics, 'versions':versions, 'latest':latest, 'origins':origins, 'sourcepkg':sourcepkg, 'files':rfiles}
 
-    return(ret)
+    return ret
 
 def npm_parse_meta(npm):
 
@@ -1165,7 +1165,7 @@ def npm_parse_meta(npm):
 
     name = npm.pop('name', None)
     if not name:
-        return(record)
+        return record
 
     lics = list()
     versions = list()
@@ -1269,7 +1269,7 @@ def npm_parse_meta(npm):
     if name:
         record[name] = {'name':name, 'lics':lics, 'versions':versions, 'latest':latest, 'origins':origins, 'sourcepkg':sourcepkg}
 
-    return(record)
+    return record
 
 def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     # derived from rpm source code rpmpgp.h
@@ -1334,7 +1334,7 @@ def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     except Exception as err:
         raise Exception("WARN: distro package metadata gathering failed - exception: " + str(err))
 
-    return(result)
+    return result
 
 def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
 
@@ -1465,7 +1465,7 @@ def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
         traceback.print_exc()
         raise Exception("WARN: could not find/parse dpkg info metadata files - exception: " + str(err))
 
-    return(result)
+    return result
 
 def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     # derived from alpine apk checksum logic
@@ -1551,14 +1551,14 @@ def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
         traceback.print_exc()
         raise Exception("WARN: could not parse apk DB file, looking for file checksums - exception: " + str(err))
 
-    return(result)
+    return result
 
 
 ##### File IO helpers
 
 def read_kvfile_todict(file):
     if not os.path.isfile(file):
-        return ({})
+        return {}
 
     ret = {}
     with open(file, 'r') as FH:
@@ -1570,17 +1570,17 @@ def read_kvfile_todict(file):
                 k = re.sub("____", " ", k)
                 ret[k] = v
 
-    return (ret)
+    return ret
 
 def read_plainfile_tostr(file):
     if not os.path.isfile(file):
-        return ("")
+        return ""
 
     with open(file, 'r') as FH:
         ret = FH.read()
         #ret = FH.read().decode('utf8')
 
-    return (ret)
+    return ret
 
 def write_plainfile_fromstr(file, instr):
     with open(file, 'w') as FH:

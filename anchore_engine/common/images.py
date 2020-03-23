@@ -22,7 +22,7 @@ def lookup_registry_image(userId, image_info, registry_creds):
     except Exception as err:
         raise anchore_engine.common.helpers.make_anchore_exception(err, input_message="cannot fetch image digest/manifest from registry", input_httpcode=400)
 
-    return(digest, manifest)
+    return digest, manifest
 
 
 def get_image_info(userId, image_type, input_string, registry_lookup=False, registry_creds=[]):
@@ -66,7 +66,7 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
     else:
         raise Exception("image type ("+str(image_type)+") not supported")
 
-    return(ret)
+    return ret
 
 
 def clean_docker_image_details_for_update(image_details):
@@ -78,7 +78,7 @@ def clean_docker_image_details_for_update(image_details):
             if image_detail[k] != None:
                 el[k] = image_detail[k]
         ret.append(el)
-    return(ret)
+    return ret
 
 
 def make_image_record(userId, image_type, input_string, image_metadata={}, registry_lookup=True, registry_creds=[]):
@@ -116,12 +116,12 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
         parentdigest = image_metadata.get('parentdigest', None)
         created_at = image_metadata.get('created_at', None)
 
-        return(make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, parentdigest=parentdigest, created_at=created_at, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations))
+        return make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, parentdigest=parentdigest, created_at=created_at, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations)
 
     else:
         raise Exception("image type ("+str(image_type)+") not supported")
 
-    return(None)
+    return None
 
 
 def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, parentdigest=None, created_at=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[], annotations={}):
@@ -185,4 +185,4 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
         new_image['image_detail'] = [new_docker_image]
 
     ret = new_image
-    return(ret)
+    return ret

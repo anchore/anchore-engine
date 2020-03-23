@@ -6,16 +6,16 @@ from anchore_engine.subsys import logger
 http = urllib3.PoolManager()
 
 def fpost(url, **kwargs):
-    return(fpost_req(url, **kwargs))
+    return fpost_req(url, **kwargs)
 
 def fget(url, **kwargs):
-    return(fget_req(url, **kwargs))
+    return fget_req(url, **kwargs)
 
 def fput(url, **kwargs):
-    return(fput_req(url, **kwargs))
+    return fput_req(url, **kwargs)
 
 def fdelete(url, **kwargs):
-    return(fdelete_req(url, **kwargs))
+    return fdelete_req(url, **kwargs)
 
 def fpost_urllib(url, **kwargs):
     global http
@@ -48,7 +48,7 @@ def fpost_urllib(url, **kwargs):
     except Exception as err:
         rawdata = str(err)
 
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fpost_req(url, **kwargs):
     httpcode = 500
@@ -67,7 +67,7 @@ def fpost_req(url, **kwargs):
             jsondata = {}
     except Exception as err:
         rawdata = str(err)
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fput_urllib(url, **kwargs):
     global http
@@ -99,7 +99,7 @@ def fput_urllib(url, **kwargs):
     except Exception as err:
         rawdata = str(err)
 
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fput_req(url, **kwargs):
     httpcode = 500
@@ -118,7 +118,7 @@ def fput_req(url, **kwargs):
             jsondata = {}
     except Exception as err:
         rawdata = str(err)
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fget_urllib(url, **kwargs):
     global http
@@ -151,7 +151,7 @@ def fget_urllib(url, **kwargs):
     except Exception as err:
         rawdata = str(err)
 
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fget_req(url, **kwargs):
     httpcode = 500
@@ -171,7 +171,7 @@ def fget_req(url, **kwargs):
     except Exception as err:
         rawdata = str(err)
 
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fdelete_urllib(url, **kwargs):
     global http
@@ -204,7 +204,7 @@ def fdelete_urllib(url, **kwargs):
     except Exception as err:
         rawdata = str(err)
 
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def fdelete_req(url, **kwargs):
     httpcode = 500
@@ -223,7 +223,7 @@ def fdelete_req(url, **kwargs):
             jsondata = {}
     except Exception as err:
         rawdata = str(err)
-    return(httpcode, jsondata, rawdata)
+    return httpcode, jsondata, rawdata
 
 def anchy_get(url, raw=False, **kwargs):
     ret = True
@@ -246,7 +246,7 @@ def anchy_get(url, raw=False, **kwargs):
         e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
         raise e
 
-    return(ret)
+    return ret
 
 def anchy_post(url, raw=False, **kwargs):
     ret = True
@@ -268,7 +268,7 @@ def anchy_post(url, raw=False, **kwargs):
         e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
         raise e
 
-    return(ret)
+    return ret
 
 
 def anchy_put(url, raw=False, **kwargs):
@@ -291,7 +291,7 @@ def anchy_put(url, raw=False, **kwargs):
         e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
         raise e
 
-    return(ret)
+    return ret
 
 
 def anchy_delete(url, raw=False, **kwargs):
@@ -314,7 +314,7 @@ def anchy_delete(url, raw=False, **kwargs):
         e.__dict__.update({'httpcode':httpcode, 'anchore_error_raw':str(rawdata), 'anchore_error_json':jsondata})
         raise e
 
-    return(ret)
+    return ret
 
 def anchy_aa(method, base_urls, url_postfix, **kwargs):
     success = False
@@ -334,4 +334,4 @@ def anchy_aa(method, base_urls, url_postfix, **kwargs):
         else:
             raise Exception("could not run client")
 
-    return(ret)
+    return ret

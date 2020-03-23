@@ -56,7 +56,7 @@ def is_inqueue(queuename, bodycontent):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -70,7 +70,7 @@ def qlen(queuename):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -83,7 +83,7 @@ def enqueue(queuename, bodycontent, forcefirst=None, qcount=0):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -98,7 +98,7 @@ def dequeue(queuename, wait_max_seconds=0, visibility_timeout=0):
         try:
             return_object = simplequeue.dequeue(queuename, visibility_timeout=visibility_timeout)
             if return_object:
-                return (return_object, 200)
+                return return_object, 200
             else:
 
                 # A very rough way to do long-polling, but occupies a thread during the wait
@@ -109,9 +109,9 @@ def dequeue(queuename, wait_max_seconds=0, visibility_timeout=0):
                     wait_expired = True
         except Exception as err:
             return_object = str(err)
-            return (return_object, 500)
+            return return_object, 500
 
-    return (return_object, 200)
+    return return_object, 200
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -134,7 +134,7 @@ def delete_message(queuename, receipt_handle):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -159,7 +159,7 @@ def update_message_visibility_timeout(queuename, receipt_handle, visibility_time
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -173,7 +173,7 @@ def queues():
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -187,7 +187,7 @@ def create_lease(lease_id):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -201,7 +201,7 @@ def list_leases():
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -215,7 +215,7 @@ def describe_lease(lease_id):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -229,7 +229,7 @@ def acquire_lease(lease_id, client_id, ttl):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -243,7 +243,7 @@ def release_lease(lease_id, client_id, epoch):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -257,4 +257,4 @@ def refresh_lease(lease_id, client_id, ttl, epoch):
         return_object = str(err)
         httpcode = 500
 
-    return (return_object, httpcode)
+    return return_object, httpcode

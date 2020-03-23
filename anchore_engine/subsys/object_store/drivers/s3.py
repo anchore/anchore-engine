@@ -111,7 +111,7 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
             resp = self.s3_client.get_object(Bucket=bucket, Key=key)
             content = resp['Body'].read()
             ret = utils.ensure_bytes(content)
-            return(ret)
+            return ret
 
         except Exception as e:
             raise e

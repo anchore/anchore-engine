@@ -21,10 +21,10 @@ def add(queueId, userId, dataId, data, tries, max_tries, session=None):
     #else:
     #    our_result.update(inobj)
 
-    return(True)
+    return True
 
 def add_record(queue_record, session=None):
-    return(add(queue_record['queueId'], queue_record['userId'], queue_record['dataId'], queue_record['data'], queue_record['tries'], queue_record['max_tries'], session=session))
+    return add(queue_record['queueId'], queue_record['userId'], queue_record['dataId'], queue_record['data'], queue_record['tries'], queue_record['max_tries'], session=session)
 
 def get_all(queueId, userId, session=None):
     if not session:
@@ -39,7 +39,7 @@ def get_all(queueId, userId, session=None):
         ret.append(obj)
         #session.delete(result)
 
-    return(ret)
+    return ret
 
 def drain_all(queueId, userId, session=None):
     if not session:
@@ -54,7 +54,7 @@ def drain_all(queueId, userId, session=None):
         ret.append(obj)
         session.delete(result)
 
-    return(ret)
+    return ret
 
 def update_record(queue_record, session=None):
     if not session:
@@ -67,7 +67,7 @@ def update_record(queue_record, session=None):
         dbobj['data'] = json.dumps(queue_record['data'])
         result.update(dbobj)
 
-    return(True)
+    return True
 
 def delete_record(queue_record, session=None):
     if not session:
@@ -80,5 +80,5 @@ def delete_record(queue_record, session=None):
         session.delete(result)
         ret = True
     
-    return(ret)
+    return ret
 

@@ -200,9 +200,9 @@ class Vulnerability(Base):
     def additional_metadata(self):
         if self.metadata_json:
             if isinstance(self.metadata_json, str):
-                return(json.loads(self.metadata_json))
-            return(self.metadata_json)
-        return(None)
+                return json.loads(self.metadata_json)
+            return self.metadata_json
+        return None
 
     @additional_metadata.setter
     def additional_metadata(self, value):
@@ -249,7 +249,7 @@ class Vulnerability(Base):
                 sev = "Unknown"
         except:
             sev = "Unknown"
-        return(sev)
+        return sev
 
     def get_nvd_vulnerabilities(self, cvss_version=3, _nvd_cls=None, _cpe_cls=None):
         ret = []
@@ -268,7 +268,7 @@ class Vulnerability(Base):
         if nvd_records:
             ret = nvd_records
 
-        return(ret)
+        return ret
 
     def get_nvd_identifiers(self,_nvd_cls, _cpe_cls):
         cves = []
@@ -443,7 +443,7 @@ class FixedArtifact(Base):
                 pkgversion = package_obj.fullversion
 
             if langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
-                return(True)
+                return True
 
         # Newer or the same
         return False
@@ -1109,7 +1109,7 @@ class CpeVulnerability(Base):
         except:
             ret = None
 
-        return(ret)
+        return ret
 
     def get_fixed_in(self):
         return []
@@ -1162,7 +1162,7 @@ class CpeV2Vulnerability(Base):
         except:
             ret = None
 
-        return(ret)
+        return ret
 
     def get_cpe23string(self):
         ret = None
@@ -1183,7 +1183,7 @@ class CpeV2Vulnerability(Base):
         except:
             ret = None
 
-        return(ret)
+        return ret
 
     def get_fixed_in(self):
         return []
@@ -1605,7 +1605,7 @@ class ImageCpe(Base):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
     def fixed_in(self):
-        return(None)
+        return None
 
     def get_cpestring(self):
         ret = None
@@ -1621,7 +1621,7 @@ class ImageCpe(Base):
         except:
             ret = None
 
-        return(ret)
+        return ret
 
     def get_cpe23string(self):
         ret = None
@@ -1641,7 +1641,7 @@ class ImageCpe(Base):
             ret = ':'.join(final_cpe)
         except:
             ret = None
-        return(ret)
+        return ret
 
 class FilesystemAnalysis(Base):
     """
@@ -1792,7 +1792,7 @@ class Image(Base):
     def get_packages_by_type(self, pkg_type):
         db = get_thread_scoped_session()
         typed_packages = db.query(ImagePackage).filter(ImagePackage.image_id==self.id, ImagePackage.image_user_id==self.user_id, ImagePackage.pkg_type==pkg_type).all()
-        return(typed_packages)
+        return typed_packages
 
     def vulnerabilities(self):
         """
@@ -1952,7 +1952,7 @@ class ImagePackageVulnerability(Base):
 
     # To support hash functions like set operations, ensure these align with primary key comparisons to ensure two identical records would match as such.
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == ((other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path)))
+        return isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == ((other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path))
 
     def __hash__(self):
         return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path))
@@ -2241,4 +2241,4 @@ def select_nvd_classes(db=None):
         log.warn("could not query for nvdv2 sync: {}".format(err))
 
     log.debug("selected {}/{} nvd classes".format(_nvd_cls, _cpe_cls))
-    return(_nvd_cls, _cpe_cls)
+    return _nvd_cls, _cpe_cls

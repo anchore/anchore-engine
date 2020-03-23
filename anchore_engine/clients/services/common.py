@@ -50,7 +50,7 @@ def update_service_cache(servicename, skipcache=False):
             scache[servicename]['records'] = new_records
             scache[servicename]['last_updated'] = time.time()
 
-    return(fromCache)
+    return fromCache
     
 def get_enabled_services(servicename, skipcache=False):
     global scache, scache_template
@@ -67,7 +67,7 @@ def get_enabled_services(servicename, skipcache=False):
     if not ret:
         logger.debug("no services of type ("+str(servicename)+") are yet available in the system")
        
-    return(ret)
+    return ret
     
 def choose_service(servicename, skipcache=False):
     global scache, scache_template
@@ -84,7 +84,7 @@ def choose_service(servicename, skipcache=False):
     if not ret:
         logger.debug("no service of type ("+str(servicename)+") is yet available in the system")
         
-    return(ret)
+    return ret
     
 def get_service_endpoint(servicename, api_post=None):
     global localconfig
@@ -99,7 +99,7 @@ def get_service_endpoint(servicename, api_post=None):
         base_url = re.sub("/+$", "", localconfig[servicename+'_endpoint'])
         if api_post:
             base_url = '/'.join([base_url, api_post])
-        return(base_url)
+        return base_url
 
     try:
         service_record = choose_service(servicename)
@@ -119,7 +119,7 @@ def get_service_endpoint(servicename, api_post=None):
         raise Exception("could not find valid endpoint for service ("+servicename+") - exception: " + str(err))
     
     logger.debug("got endpoint ("+servicename+"): " + str(base_url))
-    return(base_url)
+    return base_url
 
 def get_service_endpoints(servicename, api_post=None):
     global localconfig
@@ -136,7 +136,7 @@ def get_service_endpoints(servicename, api_post=None):
         if api_post:
             base_url = '/'.join([base_url, api_post])
         base_urls = [base_url]
-        return(base_urls)
+        return base_urls
 
     try:
         service_records = get_enabled_services(servicename)
@@ -161,7 +161,7 @@ def get_service_endpoints(servicename, api_post=None):
         raise Exception("could not find valid endpoint for service ("+servicename+") - exception: " + str(err))
     
     logger.debug("got endpoints ("+servicename+"): " + str([base_urls]))
-    return(base_urls)
+    return base_urls
 
 
 def check_services_ready(servicelist):
@@ -181,4 +181,4 @@ def check_services_ready(servicelist):
         logger.error("could not check service status - exception: " + str(err))
         all_ready = False
 
-    return(all_ready)
+    return all_ready

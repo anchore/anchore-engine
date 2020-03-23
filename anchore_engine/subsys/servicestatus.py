@@ -109,7 +109,7 @@ def handle_service_heartbeat(*args, **kwargs):
     except Exception as err:
         raise Exception("BUG: need to provide service name as first argument to function: " + str(args))
 
-    while (True):
+    while True:
         logger.debug("storing service status: " + str(servicename))
         try:
             logger.debug("local service record: %s", anchore_engine.subsys.servicestatus.get_my_service_record())
