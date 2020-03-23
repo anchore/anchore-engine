@@ -7,6 +7,7 @@ logger.enable_test_logging(level='info')
 def test_namespace_has_no_feed():
     """
     Test the caching mechanisms used during feed syncs to optimize lookups w/o db access
+
     :return:
     """
     # Nothing initially
