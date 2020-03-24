@@ -654,10 +654,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 # rennovation this for new CVSS references
                 cves = ''
                 nvd_list = []
-                all_data = {'nvd_data': nvd_list, 'vendor_data': [], 'advisory_data': {'cves': []}}
-
-                if vuln.vulnerability.additional_metadata:
-                    all_data['advisory_data']['cves'] = vuln.vulnerability.additional_metadata.get('CVE', [])
+                all_data = {'nvd_data': nvd_list, 'vendor_data': []}
 
                 for nvd_record in nvd_records:
                     nvd_list.extend(nvd_record.get_cvss_data_nvd())
