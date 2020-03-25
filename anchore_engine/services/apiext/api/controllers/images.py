@@ -334,7 +334,6 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     all_data = json.loads(row[header.index('CVES')])  # {'nvd_data': [], 'vendor_data': []}
                     el['nvd_data'] = make_cvss_scores(all_data.get('nvd_data', []))
                     el['vendor_data'] = make_cvss_scores(all_data.get('vendor_data', []))
-                    el['advisory_data'] = all_data.get('advisory_data', {})
                     for nvd_el in el['nvd_data']:
                         id_cves_map[nvd_el.get('id')] = el.get('vuln')
 
