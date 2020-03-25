@@ -65,7 +65,11 @@ class FileContentRegexMatchTrigger(BaseTrigger, RetrievedFileMixin):
         file = self.get_file(context)
         compiled_re = re.compile(re_value)
 
-        if file.binary_value is None:
+        if re_value is None or \
+            check_type is None or \
+            compiled_re is None or \
+            file is None or \
+            file.binary_value is None:
             return
 
         # Decode b64
