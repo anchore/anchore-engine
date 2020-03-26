@@ -15,7 +15,7 @@ def initialized_mappings(anchore_db):
 
 
 @pytest.fixture()
-def initialize_feed_metadata(anchore_db):
+def initialized_feed_metadata(anchore_db):
     """
     Add feed metadata records to the test db, but not vulns
     :param anchore_db:
