@@ -1102,6 +1102,7 @@ def upgrade_distro_mappings_rhel_013():
     log.err('Return = {}'.format(rc.rowcount))
     log.err('Mapping updated. All centos, fedora, and rhel images will now get vulnerability data from the vulnerabilities/rhel:* feed groups instead of vulnerabilities/centos:*')
 
+
 def upgrade_flush_centos_vulns_013():
     """
     Disable all centos feeds in the db
@@ -1110,7 +1111,9 @@ def upgrade_flush_centos_vulns_013():
 
     :return:
     """
+    from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, DistroNamespace
     from anchore_engine.services.policy_engine.engine.feeds import sync
+
     engine = anchore_engine.db.entities.common.get_engine()
 
     log.err('Disabling all centos feed groups')
@@ -1118,12 +1121,50 @@ def upgrade_flush_centos_vulns_013():
     log.err('Return = {}'.format(rc.rowcount))
     log.err('Centos feed groups disabled')
 
-    log.err('Flushing all centos group matches. Will be automatically replaced by rhel group matches on the next feed sync')
-    sync.DataFeeds.delete_feed_group('vulnerabilites', 'centos:5')
-    sync.DataFeeds.delete_feed_group('vulnerabilites', 'centos:6')
-    sync.DataFeeds.delete_feed_group('vulnerabilities', 'centos:7')
-    sync.DataFeeds.delete_feed_group('vulnerabilities', 'centos:8')
-    log.err('Centos feed group vuln matches removed. Ready for sync of rhel cve-based vulns')
+    log.err('Updating centos and rhel-based image vulnerability matches to be use the new rhel feed for CVE matches instead of centos feed, which provides RHSA. This is reversible if desired. See documentation')
+    upgrade_centos_rhel_synced_013()
+
+    for v in ['5','6', '7', '8']:
+        centos_ns = 'centos:{}'.format(v)
+        rhel_ns = 'rhel:{}'.format(v)
+        t = time.time()
+        if have_vulnerabilities_for(DistroNamespace('rhel', v, 'rhel')):
+            log.err('Flushing centos:5 feed data since {}} synced and update has migrated matches'.format(rhel_ns))
+            sync.DataFeeds.delete_feed_group('vulnerabilities', '{}'.format(centos_ns))
+            log.err('Took {} seconds for flush of {} data'.format(time.time() - t, centos_ns))
+
+    log.err('Migration of centos & rhel package matches from centos:* group data to rhel:* data and RHSA to CVE matches is complete')
+
+
+def upgrade_centos_rhel_synced_013():
+    """
+    Condition: rhel feeds synced, can move images over
+    Action: Update matched packages against rhel data
+
+    :return:
+    """
+    from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_namespace
+    from anchore_engine.db import session_scope
+
+    log.err('Scanning all images applicable for the rhel data feed to create matches based on new CVE data in rhel:* groups in addition to RHSA-based data from old centos:* groups. This may take a while')
+
+    t = time.time()
+    # Add the RHEL feed matches
+    with session_scope() as db:
+        rescan_namespace(db, 'rhel:5')
+    log.err('Creating rhel:5 matches took {} seconds'.format(time.time() - t))
+
+    with session_scope() as db:
+        rescan_namespace(db, 'rhel:6')
+    log.err('Creating rhel:6 matches took {} seconds'.format(time.time() - t))
+
+    with session_scope() as db:
+        rescan_namespace(db, 'rhel:7')
+    log.err('Creating rhel:7 matches took {} seconds'.format(time.time() - t))
+
+    with session_scope() as db:
+        rescan_namespace(db, 'rhel:8')
+    log.err('Creating rhel:8 matches took {} seconds'.format(time.time() - t))
 
 
 def db_upgrade_012_013():
