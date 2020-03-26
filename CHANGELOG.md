@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 (2020-03-26)
++ Added - Switched based OS for all services to Redhat UBI 8 from Redhat UBI 7
++ Added - New vulnerability data feed and package matching for GitHub Advisory Database (https://github.com/advisories)
++ Added - New vulnerability data feed from RedHat (CVE feed), replaces RHSA as default RPM matching source (RHSA information still available, but primary identifier is now CVE ids for RPM matches)
++ Added - New APIs for granular control of data feeds, including enable/disable toggles and data flush capabilities
++ Improved - Updated third party dependencies and reduced dependency version locks. Addresses #344
++ Improved - More efficient image squasher implementation to improve performance when image layers include many hardlinks
++ Improved - Many new unit/functional tests and better test logging outputs
++ Fix - API change to use query args instead of JSON body when doing an HTTP DELETE. Fixes #366
++ Fix - Update external api version to 0.1.14 due to new feed config operations. Fixes #375
++ Fix - Correctly handle UnsupportedVersionError in policy validation. Fixes #151
++ Fix - Switch logger from policy engine specific passthrough to system default logger, to address incompatible calls to debug_exception. Fixes #346.
++ Fix - Update to improve permissions check, simplify IAM requirements.  Fixes #297
++ Removed - Deprecated kubernetes_webhook service that handles webhook no longer supported in k8s. Fixes #357
++ Additional minor bug fixes, significant test framework improvements, and performance updates in image analysis
+
 ## 0.6.1 (2020-1-30)
 + Improved - Substantial updates to feed sync process in policy engine service to increate transparency in the process, show incremental updates, and use much less memory during the sync. Fixes #284
 + Improved - Adds commented out defaults in docker-compose.yaml embedded in image to easily support starting prometheus and a swagger ui sidecar for API browsing.
