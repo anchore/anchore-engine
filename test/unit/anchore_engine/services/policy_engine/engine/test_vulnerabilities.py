@@ -3,6 +3,7 @@ from anchore_engine.subsys import logger
 
 logger.enable_test_logging(level='info')
 
+
 def test_namespace_has_no_feed():
     """
     Test the caching mechanisms used during feed syncs to optimize lookups w/o db access
@@ -23,3 +24,43 @@ def test_namespace_has_no_feed():
     # Empty
     vulnerabilities.ThreadLocalFeedGroupNameCache.flush()
     assert vulnerabilities.namespace_has_no_feed('debian', '8')
+
+
+def test_get_namespace_related_names():
+    assert vulnerabilities.namespace_has_no_feed('debian', '8')
+
+    # State pre 0.7.0 upgrade
+    # Assume centos -> centos, and all enabled
+    mapped_to_centos = ['centos', 'rhel', 'fedora']
+    mapped_to_rhel = []
+
+    vulnerabilities.ThreadLocalFeedGroupNameCache.add([('centos:8', True), ('rhel:8', True)])
+    # When centos feed updates
+    assert set(vulnerabilities.get_namespace_related_names('centos', '8', mapped_to_centos)) == {'centos', 'fedora'}
+
+    # When rhel feed updates
+    assert set(vulnerabilities.get_namespace_related_names('rhel', '8', mapped_to_rhel)) == {'rhel'}
+
+    vulnerabilities.ThreadLocalFeedGroupNameCache.flush()
+
+    # State post 0.7.0 upgrade
+
+    # Toggle enabled and see
+    mapped_to_centos = []
+    mapped_to_rhel = ['rhel', 'centos', 'fedora']
+    vulnerabilities.ThreadLocalFeedGroupNameCache.add([('centos:7', False), ('rhel:7', True)])
+
+    assert set(vulnerabilities.get_namespace_related_names('centos', '7', mapped_to_centos)) == set()
+    assert set(vulnerabilities.get_namespace_related_names('rhel', '7', mapped_to_rhel)) == {'rhel', 'centos', 'fedora'}
+
+    vulnerabilities.ThreadLocalFeedGroupNameCache.flush()
+
+    # Revert from 0.7.0 upgrade if user wants RHSA again...
+    mapped_to_centos = []
+    mapped_to_rhel = ['rhel', 'centos', 'fedora']
+    vulnerabilities.ThreadLocalFeedGroupNameCache.add([('centos:7', True), ('rhel:7', True)])
+
+    assert set(vulnerabilities.get_namespace_related_names('centos', '7', mapped_to_centos)) == {'centos'}
+    assert set(vulnerabilities.get_namespace_related_names('rhel', '7', mapped_to_rhel)) == {'rhel', 'fedora'}
+
+    vulnerabilities.ThreadLocalFeedGroupNameCache.flush()
