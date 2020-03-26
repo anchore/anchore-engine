@@ -41,7 +41,7 @@ ci: build test push
 
 .PHONY: build
 build: Dockerfile ## build dev image
-	@$(RUN_TASK) build "$(COMMIT_SHA)" "$(GIT_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
+	@$(RUN_TASK) build "$(COMMIT_SHA)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
 .PHONY: push push-dev
 push: push-dev ## push dev image to dockerhub
