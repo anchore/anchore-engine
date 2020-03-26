@@ -12,26 +12,22 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils"
 
 build() {
     local COMMIT_SHA="${1:?'required parameter'}"
-    local GIT_REPO="${2:?'required parameter'}"
-    local GIT_TAG="${3:?'required parameter'}"
-    local TEST_IMAGE_NAME="${4:?'required parameter'}"
+    local GIT_TAG="${2:?'required parameter'}"
+    local TEST_IMAGE_NAME="${3:?'required parameter'}"
 
     local anchore_cli_commit
-    local build_cache
 
-    # dont use the docker build cache if building from a semver tag
     if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
-        print_colorized WARN "building from a git tag - disabling docker build cache and using latest anchore-cli version tag"
+        # Get the latest anchore-cli tag from remote
         anchore_cli_commit="$(git ls-remote --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git | tail -n1 | sed 's/.*\///')"
-        build_cache="--no-cache"
     else
-        anchore_cli_commit="master"
-        build_cache=''
+        # Get commit sha from HEAD of master anchore-cli remote
+        anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git | head -n1 | awk '{print $1}')"
     fi
 
-    print_colorized WARN "building image ${TEST_IMAGE_NAME} - using anchore-cli installed from git@${anchore_cli_commit}"
-    docker build --target anchore-engine-builder ${build_cache} -t "${GIT_REPO}:builder" -f ./Dockerfile .
-    docker build --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" ${build_cache} --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
+    print_colorized WARN "building image ${TEST_IMAGE_NAME} - installing anchore-cli from git@${anchore_cli_commit}"
+    docker build --target anchore-engine-builder -t anchore-engine:builder -f ./Dockerfile .
+    docker build --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
     print_colorized WARN "successfully built image -- ${TEST_IMAGE_NAME}"
 }
 
@@ -55,7 +51,7 @@ unit_tests() {
     hash tox || "${PYTHON}" -m pip install -q tox
 
     print_colorized WARN "running unit tests"
-    tox test/unit
+    tox test/unit --result-json .tox/test-reports.log
 }
 
 integration_tests() {
@@ -68,7 +64,7 @@ integration_tests() {
 
     print_colorized WARN "running integration tests"
     if [[ "${CI:-false}" == true ]]; then
-        tox test/integration
+        tox test/integration --result-json .tox/test-reports.log
     else
         ./scripts/tests/test_with_deps.sh test/integration/
     fi
@@ -85,7 +81,7 @@ functional_tests() {
     print_colorized WARN "running functional tests"
     anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
     anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
-    tox test/functional
+    tox test/functional --result-json .tox/test-reports.log
 }
 
 setup_e2e_tests() {
@@ -95,7 +91,6 @@ setup_e2e_tests() {
     local TEST_IMAGE_NAME="${4:?'required parameter'}"
     local VENV="${5:?'required parameter'}"
 
-    local helm_deploy_name
     local engine_image
 
     activate_venv "${VENV}"
@@ -125,12 +120,13 @@ setup_e2e_tests() {
         kubectl patch serviceaccount default --type=merge --patch '{"imagePullSecrets":[{"name": "anchore-enterprise-pullcreds"}]}'
     fi
 
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com
-    helm_deploy_name="e2e-testing-${RANDOM:0:5}"
-    helm install "${helm_deploy_name}" -f test/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
+    if ! helm list | grep e2e-testing; then
+        helm repo add stable https://kubernetes-charts.storage.googleapis.com
+        helm install e2e-testing -f test/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
+    fi
 
     # Patch anchore-engine-api nodeport to the configured port thats mapped with kind to localhost:8228
-    kubectl patch service "${helm_deploy_name}-anchore-engine-api" --type=json --patch '[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30028}]'
+    kubectl patch service e2e-testing-anchore-engine-api --type=json --patch '[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30028}]'
 }
 
 run_e2e_tests() {
