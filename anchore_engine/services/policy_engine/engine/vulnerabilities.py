@@ -96,7 +96,13 @@ def namespace_has_no_feed(name, version):
 
 def get_namespace_related_names(distro, version, distro_mapped_names: list):
     """
-    Return the refined list of distro names that are served by this distro's feed
+    Return the refined list of distro names that are served by this distro's feed.
+
+    Implements a filter such that any namespace that has an exact matching feed group will never map to another distro's feed.
+    This behavior is an artifact of an older code-based approach to distro mapping before it was data driven.
+
+    This function can probably be removed from code path now that mappings are mutable at runtime and no longer purely
+    dependent on feed groups appearing and automatically switching feeds.
 
     :param distro_mapped_names:
     :return:
@@ -130,8 +136,9 @@ def find_vulnerable_image_packages(vulnerability_obj):
     db = get_thread_scoped_session()
     distro, version = vulnerability_obj.namespace_name.split(':', 1)
     dist = DistroNamespace(distro, version)
-    mapped_names = dist.mapped_names() # Returns list of names that map to this one, not including itself necessarily
-    related_names = get_namespace_related_names(distro, version, mapped_names)
+    related_names = dist.mapped_names() # Returns list of names that map to this one, not including itself necessarily
+    #related_names = get_namespace_related_names(distro, version, mapped_names)
+
 
     # TODO would like a better way to do the pkg_type <-> namespace_name mapping, with other side in ImagePackage.vulnerabilities_for_package
     likematch = None
@@ -394,8 +401,8 @@ def rescan_namespace(db, namespace_name: str):
     total_vulns = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
     log.info('Found {} total vulnerability records in that namespace to re-evaluate against images in the db')
     for vuln in db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name):
-        log.info('Computing matches for vulnerability {}'.format(vuln.id))
+        log.info('Computing matches for {} vulnerability {}'.format(namespace_name, vuln.id))
         updated_images = process_updated_vulnerability(db, vuln)
-        log.info('Updated {} images with a match'.format(len(updated_images) if updated_images else 0))
+        log.info('Updated {} images with a match for {}'.format(len(updated_images) if updated_images else 0, vuln.id))
         i += 1
-        log.info('Completed {} of {} updates'.format(i, total_vulns))
+        log.info('Completed {} of {} updates for {}'.format(i, total_vulns, namespace_name))

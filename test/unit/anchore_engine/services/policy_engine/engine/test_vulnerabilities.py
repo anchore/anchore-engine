@@ -27,6 +27,12 @@ def test_namespace_has_no_feed():
 
 
 def test_get_namespace_related_names():
+    """
+    Tests the older enable-filtering behavior of the namespace selector for which image/distros to update during a given
+    feed sync
+
+    :return:
+    """
     assert vulnerabilities.namespace_has_no_feed('debian', '8')
 
     # State pre 0.7.0 upgrade
