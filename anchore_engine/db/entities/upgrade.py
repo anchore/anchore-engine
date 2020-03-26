@@ -1129,7 +1129,7 @@ def upgrade_flush_centos_vulns_013():
         rhel_ns = 'rhel:{}'.format(v)
         t = time.time()
         if have_vulnerabilities_for(DistroNamespace('rhel', v, 'rhel')):
-            log.err('Flushing centos:5 feed data since {}} synced and update has migrated matches'.format(rhel_ns))
+            log.err('Flushing centos:5 feed data since {} synced and update has migrated matches'.format(rhel_ns))
             sync.DataFeeds.delete_feed_group('vulnerabilities', '{}'.format(centos_ns))
             log.err('Took {} seconds for flush of {} data'.format(time.time() - t, centos_ns))
 
