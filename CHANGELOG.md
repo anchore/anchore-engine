@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0 (2020-03-26)
++ Added - New vulnerability data feed and package matching from the GitHub Advisory Database (https://github.com/advisories).
++ Added - New vulnerability data feed from the Red Hat Security Data API, replaces RHSA as default RPM vulnerability matching data source. NOTE: RHSA information is still available, but the primary identifier is now CVE ids for RPM matches, using this new data source.
++ Added - New APIs for granular control of data feeds, including enable/disable toggles and data flush capabilities.
++ Added - Switched base OS for all services to Redhat UBI 8 from Redhat UBI 7.
++ Improved - Updated third party dependencies and reduced dependency version locks. Addresses #344.
++ Improved - More efficient image squasher implementation to improve performance when image layers include many hardlinks.
++ Improved - Many new unit/functional tests and better test logging outputs.
++ Fix - API change to use query args instead of JSON body when doing an HTTP DELETE. Fixes #366.
++ Fix - Update external api version to 0.1.14 due to new feed config operations. Fixes #375.
++ Fix - Correctly handle UnsupportedVersionError in policy validation. Fixes #151.
++ Fix - Switch logger from policy engine specific passthrough to system default logger, to address incompatible calls to debug_exception. Fixes #346.
++ Fix - Update to improve permissions check, simplify IAM requirements.  Fixes #297. Fixes #94.
++ Fix - Policy evaluation errors out if retrieved_files gate w/content_regex trigger references file not saved.  Fixes #379.
++ Removed - Deprecated kubernetes_webhook service that handles webhook no longer supported in k8s. Fixes #357.
++ Additional minor bug fixes, significant test framework improvements, and performance updates in image analysis.
+
 ## 0.6.1 (2020-1-30)
 + Improved - Substantial updates to feed sync process in policy engine service to increate transparency in the process, show incremental updates, and use much less memory during the sync. Fixes #284
 + Improved - Adds commented out defaults in docker-compose.yaml embedded in image to easily support starting prometheus and a swagger ui sidecar for API browsing.
