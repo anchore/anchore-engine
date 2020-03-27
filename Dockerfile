@@ -61,7 +61,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.1 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.6.1"
+ARG ANCHORE_ENGINE_VERSION="0.7.0"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
