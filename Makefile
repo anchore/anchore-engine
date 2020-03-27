@@ -50,15 +50,15 @@ push-dev:
 
 .PHONY: push-rc
 push-rc: 
-	@$(RUN_TASK) push_rc_image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
+	@$(RUN_TASK) push_rc_image "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
+
+.PHONY: push-prod
+push-prod: 
+	@$(RUN_TASK) push_prod_image_release "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(GIT_TAG)"
 
 .PHONY: push-rebuild
 push-rebuild: 
 	@$(RUN_TASK) push_prod_image_rebuild "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
-
-.PHONY: push-release
-push-release: 
-	@$(RUN_TASK) push_prod_image_release "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(GIT_TAG)"
 
 .PHONY: venv
 venv: $(VENV)/bin/activate ## setup virtual environment

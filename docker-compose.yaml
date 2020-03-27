@@ -108,7 +108,7 @@ services:
     - anchore-scratch:/analysis_scratch
     command: ["anchore-manager", "service", "start", "analyzer"]
   anchore-db:
-    image: "anchore/engine-db-preload:latest"
+    image: "anchore/engine-db-preload:v0.7.0"
     volumes:
     - anchore-db-volume:/var/lib/postgresql/data
     environment:
