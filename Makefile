@@ -50,7 +50,7 @@ push-dev:
 
 .PHONY: push-rc
 push-rc: 
-	@$(RUN_TASK) push_rc_image "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
+	@$(RUN_TASK) push_rc_image "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
 .PHONY: push-prod
 push-prod: 

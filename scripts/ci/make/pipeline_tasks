@@ -19,7 +19,7 @@ build() {
 
     if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
         # Get the latest anchore-cli tag from remote
-        anchore_cli_commit="$(git ls-remote --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git | tail -n1 | sed 's/.*\///')"
+        anchore_cli_commit="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git 'v*' | tail -n1 | sed 's/.*\///')"
     else
         # Get commit sha from HEAD of master anchore-cli remote
         anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git | head -n1 | awk '{print $1}')"
@@ -154,6 +154,8 @@ push_dev_image() {
     local branch_image
 
     dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+    latest_image="${DEV_IMAGE_REPO}:latest"
+    branch_image="${DEV_IMAGE_REPO}:${GIT_BRANCH}"
 
     if [[ "${CI:-false}" == true ]]; then
         # Test for required environment variables exported in CI jobs
@@ -168,13 +170,11 @@ push_dev_image() {
         docker push "${dev_image}"
 
         if [[ "${GIT_BRANCH}" == 'master' ]]; then
-            latest_image="${DEV_IMAGE_REPO}:latest"
             print_colorized WARN "tagging & pushing image -- ${latest_image}"
             docker tag "${dev_image}" "${latest_image}"
             docker push "${latest_image}"
 
         elif [[ "${RELEASE_BRANCHES}" == *"${GIT_BRANCH}"* ]]; then
-            branch_image="${DEV_IMAGE_REPO}:${GIT_BRANCH}"
             print_colorized WARN "tagging & pushing image -- ${branch_image}"
             docker tag "${dev_image}" "${branch_image}"
             docker push "${branch_image}"
@@ -190,24 +190,23 @@ push_dev_image() {
 push_rc_image() {
     local DEV_IMAGE_REPO="${1:?'required parameter'}"
     local GIT_TAG="${2:?'required parameter'}"
+    local TEST_IMAGE_NAME="${3:?'required parameter'}"
 
-    local dev_image
     local rc_image
     local rc_latest_image
+
+    rc_image="${DEV_IMAGE_REPO}:${GIT_TAG}"
+    rc_latest_image="${DEV_IMAGE_REPO}:rc"
 
     if [[ "${CI:-false}" == true ]]; then
         # Test for required environment variables exported in CI jobs
         test "${DOCKER_PASS:?'required environment variable'}"
         test "${DOCKER_USER:?'required environment variable'}"
 
-        dev_image="${DEV_IMAGE_REPO}:dev"
-        rc_image="${DEV_IMAGE_REPO}:${GIT_TAG}"
-        rc_latest_image="${DEV_IMAGE_REPO}:rc"
-
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
 
         print_colorized WARN "tagging and pushing image -- ${rc_image}"
-        docker tag "${dev_image}" "${rc_image}"
+        docker tag "${TEST_IMAGE_NAME}" "${rc_image}"
         docker push "${rc_image}"
 
         print_colorized WARN "tagging and pushing image -- ${rc_latest_image}"
@@ -223,8 +222,13 @@ push_prod_image_release() {
     local GIT_BRANCH="${2:-'required parameter'}"
     local GIT_TAG="${3:?'required parameter'}"
 
+    local latest_image
     local prod_image
     local rc_image
+
+    latest_image="${PROD_IMAGE_REPO}:latest"
+    prod_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
+    rc_image="${DEV_IMAGE_REPO}:$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
 
     if [[ "${CI:-false}" == true ]]; then
         # Test for required environment variables exported in CI jobs
@@ -232,9 +236,6 @@ push_prod_image_release() {
         test "${DOCKER_USER:?'required environment variable'}"
         test "${LATEST_RELEASE_BRANCH:?'required environment variable'}"
         test "${PROD_IMAGE_REPO:?'required environment variable'}"
-
-        rc_image="${DEV_IMAGE_REPO}:$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
-        prod_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
 
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
 
@@ -246,13 +247,12 @@ push_prod_image_release() {
         docker push "${prod_image}"
 
         if [[ "${GIT_BRANCH}" == "${LATEST_RELEASE_BRANCH}" ]] || [[ "${GIT_BRANCH}" == "master" ]]; then
-            local latest_image="${PROD_IMAGE_REPO}:latest"
             print_colorized WARN "tagging and pushing image -- ${latest_image}"
             docker tag "${prod_image}" "${latest_image}"
             docker push "${latest_image}"
         fi
     else
-        print_colorized WARN "CI=true must be set to push image -- ${prod_image}"
+        print_colorized ERROR "CI=true must be set to push image -- ${prod_image}"
     fi
 }
 
@@ -264,14 +264,14 @@ push_prod_image_rebuild() {
     local dev_image
     local rebuild_image
 
+    dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
+    rebuild_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
+
     if [[ "${CI:-false}" == true ]]; then
         # Test for required environment variables exported in CI jobs
         test "${DOCKER_PASS:?'required environment variable'}"
         test "${DOCKER_USER:?'required environment variable'}"
         test "${PROD_IMAGE_REPO:?'required environment variable'}"
-
-        dev_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
-        rebuild_image="${PROD_IMAGE_REPO}:${GIT_TAG}"
 
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
 
@@ -282,6 +282,6 @@ push_prod_image_rebuild() {
         docker tag "${dev_image}" "${rebuild_image}"
         docker push "${rebuild_image}"
     else
-        print_colorized WARN "CI=true must be set to push image -- ${rebuild_image}"
+        print_colorized ERROR "CI=true must be set to push image -- ${rebuild_image}"
     fi
 }
