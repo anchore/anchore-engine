@@ -169,7 +169,7 @@ def delete_feed(feed):
     try:
         f = sync.DataFeeds.delete_feed(feed)
         if f:
-            return jsonify(f), 200
+            return jsonify(_marshall_feed_response(f)), 200
         else:
             raise ResourceNotFound(feed, detail={})
     except KeyError as e:
