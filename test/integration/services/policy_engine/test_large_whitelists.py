@@ -4,29 +4,19 @@ Test for the indexing/optimizations for handling large whitelists (>100 rules)
 
 import pytest
 import json
-import copy
 import time
 
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, ExecutableWhitelist
 from anchore_engine.db import get_thread_scoped_session as get_session, Image
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 
-default_bundle = None
 
 logger.enable_test_logging()
 
 
-@pytest.fixture(scope='module')
-def large_whitelist():
-    global default_bundle
-
-    with open('test/data/bundle-large_whitelist.json') as f:
-        default_bundle = json.load(f)
-
-
-def test_basic_whitelist_evaluation(large_whitelist, test_data_env_with_images_loaded):
+def test_basic_whitelist_evaluation(bundle, test_data_env_with_images_loaded):
+    default_bundle = bundle()
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
     built = build_bundle(default_bundle, for_tag=test_tag)
@@ -45,7 +35,8 @@ def test_basic_whitelist_evaluation(large_whitelist, test_data_env_with_images_l
     logger.info((json.dumps(evaluation.as_table_json(), indent=2)))
 
 
-def test_whitelists(large_whitelist, test_data_env_with_images_loaded):
+def test_whitelists(bundle, test_data_env_with_images_loaded):
+    default_bundle = bundle()
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
 
@@ -86,15 +77,15 @@ def test_whitelists(large_whitelist, test_data_env_with_images_loaded):
 
 
 @pytest.mark.skip('Need to update the logic here to be non-CVE dependent or lock the cve matches to make it reliable')
-def test_regexes(large_whitelist, test_data_env_with_images_loaded):
+def test_regexes(bundle, test_data_env_with_images_loaded):
     """
     Test regular expressions in the trigger_id part of the WL rule
     :return:
     """
+    bundle = bundle()
     logger.info('Building executable bundle from default bundle')
     test_tag = 'docker.io/library/node:latest'
 
-    bundle = copy.deepcopy(default_bundle)
     node_whitelist = [x for x in bundle['whitelists'] if x['id'] == 'wl_jessie'][0]
     node_whitelist['items'] = [x for x in node_whitelist['items'] if 'binutils' in x['trigger_id']]
     node_whitelist['items'].append(

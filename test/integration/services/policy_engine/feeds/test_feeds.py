@@ -1,3 +1,4 @@
+import os
 import time
 import pytest
 
@@ -67,8 +68,9 @@ def test_group_lookups(test_data_env):
     assert df.group_by_name('alpine:3.6'), 'Should have found group alpine:3.6'
 
 
-def test_sync_repo(test_data_env):
-    repo = LocalFeedDataRepo.from_disk('test/data/feeds_repo')
+def test_sync_repo(test_data_env, test_data_path):
+    feeds_repo_path = os.path.join(test_data_path, 'feeds_repo')
+    repo = LocalFeedDataRepo.from_disk(feeds_repo_path)
     assert repo.has_metadata(), 'Repo should have metadata'
     assert repo.has_root(), 'Repo should have root dir already'
     with pytest.raises(Exception):
