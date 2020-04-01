@@ -351,7 +351,8 @@ def start(services, no_auto_upgrade, anchore_module, skip_config_validate, skip_
 
             if not in_sync:
                 raise Exception("this version of anchore-engine requires the anchore DB version (" + str(code_versions['db_version']) + ") but we discovered anchore DB version (" + str(
-                    db_versions['db_version']) + ") in the running DB - please perform the DB upgrade process and retry")
+                    db_versions['db_version']) + ") in the running DB - please perform the DB upgrade process and retry\n"
+                                "See: https://docs.anchore.com/current/docs/engine/engine_installation/upgrade/#advanced--manual-upgrade-procedure")
 
         except Exception as err:
             raise err
