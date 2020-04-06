@@ -1,10 +1,11 @@
 import copy
 import re
 
-from anchore_engine.db import GenericFeedDataRecord, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe, Vulnerability, FixedArtifact
+from anchore_engine.db import GenericFeedDataRecord, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, \
+    VulnDBMetadata, VulnDBCpe, Vulnerability, FixedArtifact, VulnerableArtifact
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.utils import CPE
-
+import json
 log = get_logger()
 
 
@@ -27,6 +28,39 @@ class SingleTypeMapperFactory(object):
 
     def get(self, item):
         return self.__getitem__(item)
+
+
+class MultipleTypeMapperFactory(object):
+    def __init__(self):
+        """
+        Create a multiple mapper factory where each group is mapped to a SingleTypeMapperFactory.
+        """
+
+        self.mapper_factories = dict()
+
+    def add(self, group, single_type_mapper_factory):
+        """
+
+        :param group: name of the group
+        :param single_type_mapper_factory: A SingleTypeMapperFactory to be used for processing group
+        :return:
+        """
+        self.mapper_factories[group] = single_type_mapper_factory
+        return self
+
+    def get(self, item):
+        """
+        Returns the mapper class for the input item. Logic attempts to find an exact match for the group.
+        If one is not found, a regex match will be attempted to find the factory
+
+        :param item:
+        :return:
+        """
+        if item in self.mapper_factories:
+            factory = self.mapper_factories.get(item)
+        else:
+            factory = next(value for key, value in self.mapper_factories.items() if re.match(key, item))
+        return factory.get(item)
 
 
 class FeedDataMapper(object):
@@ -413,5 +447,116 @@ class GithubFeedDataMapper(FeedDataMapper):
             fix.fix_metadata = {'first_patched_version': f['identifier']}
 
             db_rec.fixed_in.append(fix)
+
+        return db_rec
+
+
+class MSRCProductFeedDataMapper(FeedDataMapper):
+    """
+    Maps an MSRC product into GenericFeedDataRecord orm record
+    Example MSRC product
+    {
+      "family": "Windows",
+      "id": "11713",
+      "name": "Windows 10 Version 1909 for x64-based Systems"
+    }
+    """
+
+    def map(self, record_json):
+        db_rec = GenericFeedDataRecord()
+        db_rec.feed = self.feed
+        db_rec.group = self.group
+        db_rec.id = record_json['id']
+        db_rec.data = record_json
+
+        return db_rec
+
+
+class MSRCVulnerabilityFeedDataMapper(FeedDataMapper):
+    """
+    Maps an MSRC vulnerability into Vulnerability and its children AffectedArtifact, FixedArtifact orm records
+    Example MSRC vulnerability
+    {
+      "cvss": {
+        "base_score": 8.8,
+        "temporal_score": 7.9,
+        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H/E:P/RL:O/RC:C"
+      },
+      "fixed_in": [
+        {
+          "id": "4540673",
+          "is_first": true,
+          "is_latest": false,
+          "links": [
+            "https://catalog.update.microsoft.com/v7/site/Search.aspx?q=KB4540673",
+            "https://support.microsoft.com/help/4540673"
+          ]
+        }
+      ],
+      "id": "CVE-2020-0684",
+      "link": "https://portal.msrc.microsoft.com/en-US/security-guidance/advisory/CVE-2020-0684",
+      "product": {
+        "family": "Windows",
+        "id": "11713",
+        "name": "Windows 10 Version 1909 for x64-based Systems"
+      },
+      "severity": "High",
+      "summary": "LNK Remote Code Execution Vulnerability",
+      "vulnerable": [
+        "4524570"
+      ]
+    }
+    """
+
+    def map(self, record_json):
+        vuln_id = record_json['id']
+        prod_id = record_json['product']['id']
+        version_format = 'KB'
+
+        db_rec = Vulnerability()
+
+        db_rec.id = vuln_id
+        db_rec.namespace_name = self.group
+        db_rec.severity = record_json['severity'] if record_json.get('severity', None) else 'Unknown'
+        db_rec.description = record_json['summary'] if record_json.get('summary', None) else ''
+        db_rec.link = record_json['link']
+        if record_json.get('cvss', None):
+            db_rec.cvss2_score = record_json.get('cvss').get('base_score', None)
+            db_rec.cvss2_vectors = record_json.get('cvss').get('vector', None)
+        db_rec.vulnerable_in = []
+        db_rec.fixed_in = []
+
+        # add vulnerable records
+        for vuln_kb in record_json.get('vulnerable', []):
+            va = VulnerableArtifact()
+            va.vulnerability_id = vuln_id
+            va.namespace_name = self.group
+            va.name = prod_id
+            va.version = vuln_kb
+            va.version_format = version_format
+            va.epochless_version = vuln_kb
+            va.include_previous_versions = False
+
+            db_rec.vulnerable_in.append(va)
+
+        # add fixed in records
+        for fixed_kb in record_json.get('fixed_in', []):
+            if not fixed_kb.get('is_latest'):
+                continue  # add the latest records only for now, ignore the non-latest ones
+
+            fa = FixedArtifact()
+            fa.vulnerability_id = vuln_id
+            fa.namespace_name = self.group
+            fa.name = prod_id
+            fa.version = fixed_kb.get('id')
+            fa.version_format = version_format
+            fa.epochless_version = fixed_kb.get('id')
+            fa.include_later_versions = False
+            fa.vendor_no_advisory = False
+            fa.fix_metadata = {'links': fixed_kb.get('links'),
+                               'is_first': fixed_kb.get('is_first'),
+                               'is_latest': fixed_kb.get('is_latest')}
+
+            db_rec.fixed_in.append(fa)
 
         return db_rec

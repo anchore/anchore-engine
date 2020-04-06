@@ -3,14 +3,15 @@ import time
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import get_thread_scoped_session as get_session, FeedMetadata, GenericFeedDataRecord, FeedGroupMetadata, ImagePackageVulnerability, Vulnerability, FixedArtifact, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, \
-    VulnDBMetadata, VulnDBCpe
+    VulnDBMetadata, VulnDBCpe, VulnerableArtifact
 
 from anchore_engine.services.policy_engine.engine.feeds.schemas import DownloadOperationConfiguration, GroupDownloadResult, GroupDownloadOperationParams
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
-        GenericFeedDataMapper, SingleTypeMapperFactory,
-        VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper,
-        NvdV2FeedDataMapper, VulnDBFeedDataMapper, GithubFeedDataMapper
+    GenericFeedDataMapper, SingleTypeMapperFactory, MultipleTypeMapperFactory,
+    VulnerabilityFeedDataMapper, GemPackageDataMapper, NpmPackageDataMapper,
+    NvdV2FeedDataMapper, VulnDBFeedDataMapper, GithubFeedDataMapper, MSRCVulnerabilityFeedDataMapper,
+    MSRCProductFeedDataMapper
 )
 from anchore_engine.services.policy_engine.engine.feeds import mappers
 from anchore_engine.services.policy_engine.engine.vulnerabilities import process_updated_vulnerability, flush_vulnerability_matches, ThreadLocalFeedGroupNameCache
@@ -701,6 +702,53 @@ class GithubFeed(VulnerabilityFeed):
     __group_data_mappers__ = SingleTypeMapperFactory(
         __feed_name__, GithubFeedDataMapper, _cve_key
     )
+
+
+class MicrosoftFeed(AnchoreServiceFeed):  # update this to VulnerabilityFeed since its the same
+    """
+    Feed for Microsoft data served from on-prem enterprise feed service
+    """
+
+    __feed_name__ = 'microsoft'
+    _products_group = 'msrc:products'
+    _cve_key = 'id'
+    __group_data_mappers__ = MultipleTypeMapperFactory() \
+        .add(group=_products_group, single_type_mapper_factory=SingleTypeMapperFactory(__feed_name__, MSRCProductFeedDataMapper, _cve_key)) \
+        .add(group='msrc:.+', single_type_mapper_factory=SingleTypeMapperFactory(__feed_name__, MSRCVulnerabilityFeedDataMapper, _cve_key))
+
+    def _flush_group(self, group_obj, operation_id=None):
+        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
+
+        db = get_session()
+
+        if group_obj.name == MicrosoftFeed._products_group:
+            count = db.query(GenericFeedDataRecord).filter(GenericFeedDataRecord.group == group_obj.name).delete()
+            log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} group records'.format(count)))
+            group_obj.last_sync = None  # Null the update timestamp to reflect the flush
+            group_obj.count = 0
+        else:
+            # VulnerabilityFeed.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+            # count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
+            # log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} fix in records'.format(count)))
+            # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
+            # log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vuln in records'.format(count)))
+            count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
+            log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
+            group_obj.last_sync = None # Null the update timestamp to reflect the flush
+            group_obj.count = 0
+
+        db.flush()
+
+    def record_count(self, group_name, db):
+        try:
+            if group_name == MicrosoftFeed._products_group:
+                return db.query(GenericFeedDataRecord).filter(GenericFeedDataRecord.group == group_name).count()
+            else:
+                return db.query(Vulnerability).filter(Vulnerability.namespace_name == group_name).count()
+        except Exception as e:
+            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
 
 
 def feed_instance_by_name(name: str) -> DataFeed:

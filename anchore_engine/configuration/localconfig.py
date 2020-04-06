@@ -51,7 +51,8 @@ DEFAULT_CONFIG = {
                 'packages': False,
                 'nvdv2': True,
                 'snyk': False,
-                'vulndb': False
+                'vulndb': False,
+                'microsoft': False
             }
         }
     }
