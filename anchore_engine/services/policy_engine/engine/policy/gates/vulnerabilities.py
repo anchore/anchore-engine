@@ -9,6 +9,8 @@ from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, selec
 from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter
 from anchore_engine.clients.services.common import get_service_endpoint
+from anchore_engine.common import nonos_package_types
+
 
 log = get_logger()
 
@@ -112,7 +114,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
         cvss_v3_base_score = self.cvss_v3_base_score.value()
         cvss_v3_base_score_comparison_fn = self.SEVERITY_COMPARISONS.get(self.cvss_v3_base_score_comparison.value(default_if_none=">="))
-        
+
         cvss_v3_exploitability_score = self.cvss_v3_exploitability_score.value()
         cvss_v3_exploitability_score_comparison_fn = self.SEVERITY_COMPARISONS.get(self.cvss_v3_exploitability_score_comparison.value(default_if_none=">="))
 
@@ -153,7 +155,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         if comparison_fn(found_severity_idx, comparison_idx):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:
                                 parameter_data = OrderedDict()
-                                
+
                                 parameter_data['severity'] = sev.upper()
                                 parameter_data['vulnerability_id'] = vulnerability_cpe.vulnerability_id
                                 parameter_data['pkg_class'] = 'non-os'
@@ -199,7 +201,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                     try:
                                         trigger_fname = image_cpe.pkg_path.split("/")[-2]
                                     except:
-                                        trigger_fname = None                                    
+                                        trigger_fname = None
 
                                 if not trigger_fname:
                                     trigger_fname = "-".join([image_cpe.name, image_cpe.version])
@@ -287,7 +289,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 #msg = "Vulnerability found in package {} - matching parameters: ".format(pkgname)
                                 #for i in parameter_data:
                                 #    msg += "{}={} ".format(i, parameter_data[i])
-                                
+
                                 pkgname = image_cpe.pkg_path
                                 msg = "{} Vulnerability found in {} package type ({}) - {} {}{}{}{}({} - {})".format(parameter_data['severity'].upper(), parameter_data['pkg_class'], parameter_data['pkg_type'], pkgname, fix_msg, score_msg, time_msg, vendor_score_msg, parameter_data['vulnerability_id'], parameter_data['link'])
                                 self._fire(instance_id=vulnerability_cpe.vulnerability_id + '+' + trigger_fname, msg=msg)
@@ -309,9 +311,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     parameter_data['severity'] = pkg_vuln.vulnerability.severity.upper()
                     parameter_data['vulnerability_id'] = pkg_vuln.vulnerability_id
-                    parameter_data['pkg_class'] = 'os'
                     parameter_data['pkg_type'] = pkg_vuln.pkg_type
-                    
+                    parameter_data['pkg_class'] = 'non-os' if pkg_vuln.pkg_type in nonos_package_types else 'os'
+
                     # Filter by level first
                     found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
                     if comparison_fn(found_severity_idx, comparison_idx):
@@ -320,7 +322,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             if pkg_vuln.fix_has_no_advisory():
                                 # skip this vulnerability
                                 continue
-                        
+
                         # Check if the vulnerability is to recent for this policy
                         if timeallowed:
                             if calendar.timegm(pkg_vuln.vulnerability.created_at.timetuple()) > timeallowed:
@@ -334,7 +336,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                     continue
                                 else:
                                     parameter_data['max_days_since_fix'] = fix.fix_observed_at.date()
-                        
+
                         vuln_cvss_base_score = -1.0
                         vuln_cvss_exploitability_score = -1.0
                         vuln_cvss_impact_score = -1.0
@@ -526,7 +528,7 @@ class VulnerabilitiesGate(Gate):
             sev = vulnerability_cpe.parent.severity
             if sev not in severity_matches:
                 severity_matches[sev] = []
-            
+
             if image_cpe.pkg_path:
                 if image_cpe.pkg_path not in dedup_hash:
                     dedup_hash[image_cpe.pkg_path] = []
