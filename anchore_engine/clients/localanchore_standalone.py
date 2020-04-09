@@ -287,7 +287,7 @@ def squash(unpackdir, cachedir, layers):
                     b = "/".join(ftoks[0:i])
 
                     if not lftree.get_node(b):
-                        lftree.create_node(f, b, parent=p, data={'latest_layer_tar': l, 'exists': True})
+                        lftree.create_node(f, b, parent=parent, data={'latest_layer_tar': l, 'exists': True})
 
                     lftree[b].data['latest_layer_tar'] = l
                     lftree[b].data['exists'] = True
