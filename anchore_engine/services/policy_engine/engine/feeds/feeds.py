@@ -248,7 +248,10 @@ class AnchoreServiceFeed(DataFeed):
 
             log.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
             group_db_obj = self.group_by_name(group_download_result.group)
-            group_db_obj.last_sync = download_started
+            # There is potential failures that could happen when downloading,
+            # skipping updating the `last_sync` allows the system to retry
+            if group_download_result.status == 'complete':
+                group_db_obj.last_sync = download_started
             group_db_obj.count = self.record_count(group_db_obj.name, db)
             db.add(group_db_obj)
             db.commit()
