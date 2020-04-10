@@ -15,7 +15,7 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services import simplequeue, internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.service import ApiService, LifeCycleStages
-
+from anchore_engine.services.policy_engine.engine.feeds.feeds import VulnerabilityFeed, NvdV2Feed, PackagesFeed, VulnDBFeed, GithubFeed, feed_registry
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
 
@@ -96,7 +96,7 @@ def process_preflight():
     :return:
     """
 
-    preflight_check_functions = [_init_db_content]
+    preflight_check_functions = [init_db_content, init_feed_registry]
 
     for fn in preflight_check_functions:
         try:
@@ -144,13 +144,19 @@ def _init_distro_mappings():
     return True
 
 
-def _init_db_content():
+def init_db_content():
     """
     Initialize the policy engine db with any data necessary at startup.
 
     :return:
     """
     return _init_distro_mappings()
+
+
+def init_feed_registry():
+    for cls in [NvdV2Feed, VulnDBFeed, VulnerabilityFeed, PackagesFeed, GithubFeed]:
+        logger.info('Registering feed handler {}'.format(cls.__feed_name__))
+        feed_registry.register(cls)
 
 
 def do_feed_sync(msg):

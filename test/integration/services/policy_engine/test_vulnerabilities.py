@@ -8,7 +8,7 @@ from anchore_engine.db import get_thread_scoped_session, end_session, Image, Dis
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, FeedsUpdateTask, rescan_image
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from test.integration.services.policy_engine.utils import reset_feed_sync_time
-from anchore_engine.services.policy_engine import _init_distro_mappings
+from anchore_engine.services.policy_engine import _init_distro_mappings, init_feed_registry
 
 
 logger.enable_test_logging()
@@ -180,6 +180,7 @@ def test_have_vulnerabilities_for(test_data_env):
 
 
 def test_distromappings(anchore_db):
+    init_feed_registry()
     _init_distro_mappings()
 
     c7 = DistroNamespace(name='centos', version='7', like_distro='centos')

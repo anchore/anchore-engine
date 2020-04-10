@@ -29,40 +29,7 @@ def build_feed_sync_results(feed=None, status='failure'):
     return {'feed': feed, 'status': status, 'total_time_seconds': 0, 'groups': []}
 
 
-class FeedMeta(type):
-    """
-    Metaclass to create a registry for all subclasses of DataFeed for finding, building, and documenting the gates.
-
-    """
-
-    def __init__(cls, name, bases, dct):
-        if not hasattr(cls, 'registry'):
-            cls.registry = {}
-        else:
-            if '__feed_name__' in dct:
-                feed = dct['__feed_name__'].lower()
-                cls.registry[feed] = cls
-
-        super(FeedMeta, cls).__init__(name, bases, dct)
-
-    def get_feed_by_name(cls, name):
-        # Try direct name
-        found = cls.registry.get(name.lower())
-
-        if found is not None:
-            return found
-        else:
-            found = [x for x in list(cls.registry.values())]
-            if found:
-                return found[0]
-            else:
-                raise KeyError(name)
-
-    def registered_feed_names(cls):
-        return list(cls.registry.keys())
-
-
-class DataFeed(object, metaclass=FeedMeta):
+class DataFeed(object):
     """
     Interface for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
     locally, and mapping data ingesting the feed data itself.
@@ -71,7 +38,7 @@ class DataFeed(object, metaclass=FeedMeta):
     __feed_name__ = None
     __group_data_mappers__ = None  # A dict/map of group names to mapper objects for translating group data into db types
 
-    def __init__(self, metadata: FeedMeta):
+    def __init__(self, metadata: FeedMetadata):
         """
         Instantiates any necessary clients and makes the feed ready to use
         :param metadata: an existing metadata record if available for bootstrapping
@@ -743,7 +710,8 @@ def feed_instance_by_name(name: str) -> DataFeed:
     :param name:
     :return:
     """
-    return DataFeed.get_feed_by_name(name)()
+    #return DataFeed.get_feed_by_name(name)()
+    return feed_registry.get(name)()
 
 
 def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
@@ -766,3 +734,49 @@ def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
 
 def log_msg_ctx(operation_id, feed, group, msg):
     return '{} (operation_id={}, feed={}, group={})'.format(msg, operation_id, feed, group)
+
+
+class FeedRegistry(object):
+    """
+    Registry for feed classes to facilitate lookups etc. Adapted from the metaclass approach but more explicit
+    """
+    def __init__(self):
+        self.registry = {}
+
+    def register(self, feed_cls):
+        """
+        Register the class. The class must have a __feed_name__ class attribute for the lookup
+
+        :param feed_cls:
+        :return:
+        """
+
+        feed = feed_cls.__feed_name__.lower()
+        self.registry[feed] = feed_cls
+
+    def get(cls, name: str):
+        """
+        Lookup a feed class by the feed's name, matched against the __feed_name__ attribute of the feed class.
+
+        Match is done case-insensitive
+
+        :param name:
+        :return:
+        """
+        # Try direct name
+        found = cls.registry.get(name.lower())
+
+        if found is not None:
+            return found
+        else:
+            found = [x for x in list(cls.registry.values())]
+            if found:
+                return found[0]
+            else:
+                raise KeyError(name)
+
+    def registered_feed_names(cls):
+        return list(cls.registry.keys())
+
+# The global registry
+feed_registry = FeedRegistry()
