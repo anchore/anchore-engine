@@ -96,6 +96,12 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         os_overrides = [""]
         if manifest:
             manifest_data = json.loads(manifest)
+
+            # skopeo doesn't support references in manifests for copy/download operations, with oci dest type - if found, override with dir dest_type
+            for l in manifest_data.get('layers', []):
+                if 'foreign.diff' in l.get('mediaType', ""):
+                    dest_type = 'dir'
+
             if parent_manifest:
                 parent_manifest_data = json.loads(parent_manifest)
             else:
