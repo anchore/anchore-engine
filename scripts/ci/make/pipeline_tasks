@@ -22,7 +22,7 @@ build() {
         anchore_cli_commit="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git 'v*' | tail -n1 | sed 's/.*\///')"
     else
         # Get commit sha from HEAD of master anchore-cli remote
-        anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git | head -n1 | awk '{print $1}')"
+        anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git master | cut -f 1)"
     fi
 
     print_colorized WARN "building image ${TEST_IMAGE_NAME} - installing anchore-cli from git@${anchore_cli_commit}"
