@@ -6,8 +6,10 @@ from test.integration.services.policy_engine.utils import LocalTestDataEnvironme
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.db import end_session
 from test.fixtures import anchore_db, cls_anchore_db
+from anchore_engine.services.policy_engine import init_feed_registry
 
 def _init_te(init_feeds=True):
+    init_feed_registry()
     t = LocalTestDataEnvironment(os.getenv('ANCHORE_TEST_DATA_ENV_DIR', 'test/data/test_data_env'))
     if init_feeds:
         t.init_feeds()

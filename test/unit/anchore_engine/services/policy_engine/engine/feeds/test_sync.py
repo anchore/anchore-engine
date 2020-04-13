@@ -1,13 +1,14 @@
 import pytest
 import datetime
-from anchore_engine.services.policy_engine.engine.feeds.feeds import DataFeed
+from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.sync import get_selected_feeds_to_sync, get_feeds_config, DataFeeds, FeedMetadata, VulnDBFeed, VulnerabilityFeed, NvdV2Feed, PackagesFeed
-
+from anchore_engine.services.policy_engine import init_feed_registry
 
 @pytest.fixture
 def feed_db_records():
+    init_feed_registry()
     recs = {}
-    for r in DataFeed.registered_feed_names():
+    for r in feed_registry.registered_feed_names():
         recs[r] = FeedMetadata()
         recs[r].name = r
         recs[r].last_update = datetime.datetime.utcnow()
