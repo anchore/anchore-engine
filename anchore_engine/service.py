@@ -221,6 +221,17 @@ class BaseService(object, metaclass=ServiceMeta):
         self._configure()
         self._process_stage_handlers(LifeCycleStages.post_config)
 
+    def _init_versions(self):
+        """
+        Initialize the service versions
+        :return:
+        """
+        try:
+            self.versions = localconfig.get_versions()
+        except Exception as err:
+            logger.error('cannot detect versions of service: exception - ' + str(err))
+            raise err
+
     def _configure(self):
         """
         Load service configuration
@@ -228,16 +239,11 @@ class BaseService(object, metaclass=ServiceMeta):
         :return:
         """
         logger.info('Loading and initializing global configuration')
+        self._init_versions()
+
         self.configuration = self._get_service_configuration(self.global_configuration)
         self.instance_id = localconfig.get_host_id()
         self.fq_name = (self.name, self.instance_id)
-
-        # get versions of things
-        try:
-            self.versions = localconfig.get_versions()
-        except Exception as err:
-            logger.error('cannot detect versions of service: exception - ' + str(err))
-            raise err
 
         self.task_handlers_enabled = self.configuration.get('task_handlers_enabled', True)
         env_setting = not os.environ.get('ANCHORE_ENGINE_DISABLE_MONITORS', 'false').lower() == 'true'

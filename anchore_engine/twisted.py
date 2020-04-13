@@ -101,12 +101,14 @@ class VersionResource(Resource):
         ret = {
             'service': {
                 'version': self.versions.get('service_version', None),
+                'engine': self.versions.get('engine', self.versions).get('service_version', None)
             },
             'api': {
             },
             'db': {
                 'schema_version': self.versions.get('db_version', None),
-            }
+                'engine': self.versions.get('engine', self.versions).get('db_version', None)
+            },
         }
 
         try:
