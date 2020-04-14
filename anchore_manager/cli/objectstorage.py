@@ -64,9 +64,6 @@ def check(configfile, analysis_archive):
     Test the configuration in the expected anchore-engine config location or override that and use the configuration file provided as an option.
 
     To test, the system will read and write a very small data document to the driver and then delete it on completion.
-
-    :param configfile:
-    :return:
     """
 
     db_conf = db_context()
