@@ -229,6 +229,8 @@ def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=
 
 @objectstorage.command(name='list-migrations', short_help="List any previous migrations and their results/status")
 def list_migrations():
+    db_conf = db_context()
+    db_preflight(db_conf['params'], db_conf['retries'])
 
     with session_scope() as db:
         tasks = db_tasks.get_all(task_type=ArchiveMigrationTask, session=db, json_safe=True)
