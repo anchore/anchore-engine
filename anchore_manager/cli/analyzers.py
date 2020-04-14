@@ -7,7 +7,6 @@ import re
 import random
 import os
 
-from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.skopeo_wrapper import get_image_manifest_skopeo
@@ -16,8 +15,8 @@ from anchore_engine.clients.localanchore_standalone import analyze_image
 from anchore_engine.services.catalog.archiver import ImageArchive, ObjectStoreLocation
 from anchore_engine.utils import ensure_str, ensure_bytes, parse_dockerimage_string, manifest_to_digest
 import anchore_engine.common.helpers
-
-import anchore_manager.cli.utils
+from anchore_manager.util.proc import fail_exit, doexit, ExitCode
+from anchore_manager.util.logging import logger, log_error
 
 config = {}
 click_config = {}
@@ -30,21 +29,6 @@ def analyzers(ctx_config):
 
     config = localconfig.load_config(configdir=ctx_config['configdir'])
     click_config = ctx_config
-
-    try:
-        # do some DB connection/pre-checks here
-        try:
-
-            log_level = 'INFO'
-            if ctx_config['debug']:
-                log_level = 'DEBUG'
-            logger.set_log_level(log_level, log_to_stdout=True)
-        except Exception as err:
-            raise err
-
-    except Exception as err:
-        logger.error(anchore_manager.cli.utils.format_error_output(click_config, 'db', {}, err))
-        sys.exit(2)
 
 
 @analyzers.command()
@@ -238,8 +222,8 @@ def exec(docker_archive, anchore_archive, digest, parent_digest, image_id, tag, 
             raise err
 
     except Exception as err:
-        logger.error(anchore_manager.cli.utils.format_error_output(click_config, 'db', {}, err))
-        sys.exit(2)
+        log_error('db', err)
+        fail_exit()
 
 
     click.echo("Analysis complete for image {} - archive file is located at {}".format(imageDigest, archive_file))

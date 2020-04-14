@@ -1,9 +1,9 @@
 import click
-import logging
 
 from . import db, objectstorage, service, analyzers
 from anchore_manager import version
-from . import utils
+from anchore_manager.util.config import init_all
+
 
 @click.group()
 @click.option('--debug', is_flag=True, help='Debug output to stderr')
@@ -12,20 +12,15 @@ from . import utils
 @click.version_option(version=version.version)
 @click.pass_context
 def main_entry(ctx, debug, json, configdir):
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-
     cli_opts = {
         'json': json,
         'debug': debug,
         'configdir': configdir
     }
 
-    config = utils.setup_config(cli_opts)
-    if config['debug']:
-        logging.basicConfig(level=logging.DEBUG)
-        
+    config = init_all(cli_opts)
     ctx.obj = config
+
 
 main_entry.add_command(db.db)
 main_entry.add_command(objectstorage.objectstorage)
