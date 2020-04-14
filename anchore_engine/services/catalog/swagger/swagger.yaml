@@ -22,6 +22,26 @@ schemes:
 - "http"
 
 paths:
+  /health:
+    get:
+      x-swagger-router-controller: anchore_engine.apis.common
+      operationId: health_check
+      x-anchore-authz-action: None
+      description: Health check, returns 200 and no body if service is running
+      responses:
+        200:
+          description: Empty body on success
+  /version:
+    get:
+      x-swagger-router-controller: anchore_engine.apis.common
+      operationId: version_check
+      x-anchore-authz-action: None
+      description: Returns the version object for the service, including db schema version info
+      responses:
+        200:
+          description: Version object describing version state
+          schema:
+            $ref: "#/definitions/ServiceVersion"
   /status:
     get:
       tags:
@@ -1726,3 +1746,26 @@ definitions:
         items:
           $ref: '#/definitions/TagEntry'
     description: A summary of an image identity, including digest, id (if available), and any tags known to have ever been mapped to the digest
+  ServiceVersion:
+    type: object
+    description: Version information for a service
+    properties:
+      service:
+        type: object
+        properties:
+          version:
+            type: string
+            description: Semantic Version string of the service implementation
+      api:
+        type: object
+        description: Api Version string
+        properties:
+          version:
+            type: string
+            description: Semantic version of the api
+      db:
+        type: object
+        properties:
+          schema_version:
+            type: string
+            description: Semantic version of the db schema

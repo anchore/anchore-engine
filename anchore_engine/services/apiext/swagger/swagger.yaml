@@ -74,8 +74,8 @@ paths:
             type: string
   /health:
     get:
-      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
-      operationId: health_noop
+      x-swagger-router-controller: anchore_engine.apis.common
+      operationId: health_check
       x-anchore-authz-action: None
       description: Health check, returns 200 and no body if service is running
       responses:
@@ -83,8 +83,8 @@ paths:
           description: Empty body on success
   /version:
     get:
-      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
-      operationId: version_noop
+      x-swagger-router-controller: anchore_engine.apis.common
+      operationId: version_check
       x-anchore-authz-action: None
       description: Returns the version object for the service, including db schema version info
       responses:
