@@ -264,8 +264,6 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
         try:
             logger.info("Loading DB routines from module ({})".format(module_name))
             module = importlib.import_module(module_name + ".db.entities.upgrade")
-        #        except TableNotFoundError as ex:
-        #            logger.info("Initialized DB not found.")
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 

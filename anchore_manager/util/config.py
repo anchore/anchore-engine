@@ -20,39 +20,27 @@ def setup_config(cli_opts):
     settings = {}
 
     # load environment if present
-    try:
-        for e in ['ANCHORE_CLI_JSON', 'ANCHORE_CLI_DEBUG', 'ANCHORE_CONFIG_DIR']:
-            if e in os.environ:
-                settings[e] = os.environ[e]
-    except Exception as err:
-        raise err
+    for e in ['ANCHORE_CLI_JSON', 'ANCHORE_CLI_DEBUG', 'ANCHORE_CONFIG_DIR']:
+        if e in os.environ:
+            settings[e] = os.environ[e]
 
     # load cmdline options
-    try:
-        if cli_opts['json']:
-            settings['ANCHORE_CLI_JSON'] = "y"
 
-        if cli_opts['debug']:
-            settings['ANCHORE_CLI_DEBUG'] = "y"
+    if cli_opts['json']:
+        settings['ANCHORE_CLI_JSON'] = "y"
 
-        if cli_opts['configdir']:
-            settings['ANCHORE_CONFIG_DIR'] = cli_opts['configdir']
+    if cli_opts['debug']:
+        settings['ANCHORE_CLI_DEBUG'] = "y"
 
-    except Exception as err:
-        raise err
+    if cli_opts['configdir']:
+        settings['ANCHORE_CONFIG_DIR'] = cli_opts['configdir']
 
-    try:
-        if 'ANCHORE_CLI_JSON' in settings:
-            if settings['ANCHORE_CLI_JSON'].lower() == 'y':
-                ret['jsonmode'] = True
-        if 'ANCHORE_CLI_DEBUG' in settings:
-            if settings['ANCHORE_CLI_DEBUG'].lower() == 'y':
-                ret['debug'] = True
-        if 'ANCHORE_CONFIG_DIR' in settings:
-            ret['configdir'] = settings['ANCHORE_CONFIG_DIR']
-
-    except Exception as err:
-        raise err
+    if settings.get('ANCHORE_CLI_JSON', '').lower() == 'y':
+        ret['jsonmode'] = True
+    if settings.get('ANCHORE_CLI_DEBUG', '').lower() == 'y':
+        ret['debug'] = True
+    if 'ANCHORE_CONFIG_DIR' in settings:
+        ret['configdir'] = settings['ANCHORE_CONFIG_DIR']
 
     return ret
 
