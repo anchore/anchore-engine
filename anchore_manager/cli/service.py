@@ -1,25 +1,25 @@
 import os
 import re
 import sys
-import json
 import time
 import click
 import psutil
 import importlib
-import traceback
 import threading
 import subprocess
-import watchdog
 import anchore_engine.configuration.localconfig
 
 from watchdog.observers import Observer
 from watchdog.events import RegexMatchingEventHandler
 
-from anchore_engine.subsys import logger
-import anchore_engine.db.entities.common
-#from anchore_engine.db.entities.exceptions import TableNotFoundError
+import anchore_manager.util
+import anchore_manager.util.db
+import anchore_manager.util.logging
+import anchore_manager.util.proc
+from anchore_manager.util.proc import ExitCode, fail_exit, doexit
+from anchore_manager.util.logging import log_error, logger
 
-import anchore_manager.cli.utils
+import anchore_engine.db.entities.common
 
 service_map = {
     'analyzer': 'anchore-worker',
@@ -121,7 +121,7 @@ def terminate_service(service, flush_pidfile=False):
                     logger.info("Found pid running but belongs to unrelated process - skipping terminate")
             except Exception as err:
                 thepid_is_theservice = False
-                
+
             if thepid_is_theservice:
                 try:
                     logger.info("Terminating existing service ({}) with pid ({}) using signal 0".format(service, thepid))
@@ -131,7 +131,6 @@ def terminate_service(service, flush_pidfile=False):
                 else:
                     logger.info("Terminating existing service ({}) with pid ({}) using signal 9".format(service, thepid))
                     os.kill(thepid, 9)
-
 
             if flush_pidfile:
                 logger.info("Removing stale pidfile ({}) for service ({})".format(pidfile, service))
@@ -172,8 +171,10 @@ def startup_service(service, configdir):
 
     return (False)
 
+
 config = {}
 module = None
+
 
 @click.group(name='service', short_help='Service operations')
 @click.pass_obj
@@ -181,21 +182,6 @@ def service(ctx_config):
     global config, module
     config = ctx_config
 
-    try:
-        # do some DB connection/pre-checks here
-        try:
-
-            log_level = 'INFO'
-            if config['debug']:
-                log_level = 'DEBUG'
-            logger.set_log_level(log_level, log_to_stdout=True)
-
-        except Exception as err:
-            raise err
-
-    except Exception as err:
-        logger.error(anchore_manager.cli.utils.format_error_output(config, 'service', {}, err))
-        sys.exit(2)
 
 @service.command(name='list', short_help="List valid service names")
 @click.option('--anchore-module', help='Module to list services for', default='anchore_engine')
@@ -207,8 +193,10 @@ def do_list(anchore_module):
     importlib.import_module(anchore_module + '.services')
     for name in BaseService.registry.keys():
         click.echo(name)
-    anchore_manager.cli.utils.doexit(0)
+
+    doexit(ExitCode.ok)
     return
+
 
 @service.command(name='start', short_help="Start anchore-engine")
 @click.argument('services', nargs=-1)
@@ -223,7 +211,7 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
     """
 
     global config
-    ecode = 0
+    ecode = ExitCode.ok
 
     auto_upgrade = True
 
@@ -276,8 +264,8 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
         try:
             logger.info("Loading DB routines from module ({})".format(module_name))
             module = importlib.import_module(module_name + ".db.entities.upgrade")
-#        except TableNotFoundError as ex:
-#            logger.info("Initialized DB not found.")
+        #        except TableNotFoundError as ex:
+        #            logger.info("Initialized DB not found.")
         except Exception as err:
             raise Exception("Input anchore-module (" + str(module_name) + ") cannot be found/imported - exception: " + str(err))
 
@@ -289,7 +277,7 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
                 logger.warn('could not find any services to execute in the config file')
                 sys.exit(1)
 
-            input_services = [ name for name, srv_conf in list(config_services.items()) if srv_conf.get('enabled')]
+            input_services = [name for name, srv_conf in list(config_services.items()) if srv_conf.get('enabled')]
 
         services = []
         for service_conf_name in input_services:
@@ -311,12 +299,11 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
             logger.error("No services found in ANCHORE_ENGINE_SERVICES or as enabled in config.yaml to start - exiting")
             sys.exit(1)
 
-
         # preflight - db checks
         try:
             db_params = anchore_engine.db.entities.common.get_params(localconfig)
-            
-            #override db_timeout since upgrade might require longer db session timeout setting
+
+            # override db_timeout since upgrade might require longer db session timeout setting
             try:
                 if 'timeout' in db_params.get('db_connect_args', {}):
                     db_params['db_connect_args']['timeout'] = 86400
@@ -324,9 +311,9 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
                     db_params['db_connect_args']['connect_timeout'] = 86400
             except Exception as err:
                 pass
-            
-            anchore_manager.cli.utils.connect_database(config, db_params, db_retries=300)
-            code_versions, db_versions = anchore_manager.cli.utils.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=(not skip_db_compat_check))
+
+            anchore_manager.util.db.connect_database(db_params, db_retries=300)
+            code_versions, db_versions = anchore_manager.util.db.init_database(upgrade_module=module, localconfig=localconfig, do_db_compatibility_check=(not skip_db_compat_check))
 
             in_sync = False
             timed_out = False
@@ -352,7 +339,9 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
 
                             in_sync = True
                         else:
-                            logger.warn("this version of anchore-engine requires the anchore DB version ({}) but we discovered anchore DB version ({}) in the running DB - it is safe to run the upgrade while seeing this message - will retry for {} more seconds.".format(str(code_versions['db_version']), str(db_versions['db_version']), str(max_timeout - int(time.time() - timer))))
+                            logger.warn(
+                                "this version of anchore-engine requires the anchore DB version ({}) but we discovered anchore DB version ({}) in the running DB - it is safe to run the upgrade while seeing this message - will retry for {} more seconds.".format(
+                                    str(code_versions['db_version']), str(db_versions['db_version']), str(max_timeout - int(time.time() - timer))))
                             time.sleep(5)
                     else:
                         logger.info("DB version and code version in sync.")
@@ -365,7 +354,8 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
                     timed_out = True
 
             if not in_sync:
-                raise Exception("this version of anchore-engine requires the anchore DB version ("+str(code_versions['db_version'])+") but we discovered anchore DB version ("+str(db_versions['db_version'])+") in the running DB - please perform the DB upgrade process and retry")
+                raise Exception("this version of anchore-engine requires the anchore DB version (" + str(code_versions['db_version']) + ") but we discovered anchore DB version (" + str(
+                    db_versions['db_version']) + ") in the running DB - please perform the DB upgrade process and retry")
 
         except Exception as err:
             raise err
@@ -437,7 +427,7 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
                 try:
                     while True:
                         time.sleep(1)
-                        if localconfig.get('auto_restart_services', False): #'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
+                        if localconfig.get('auto_restart_services', False):  # 'auto_restart_services' in localconfig and localconfig['auto_restart_services']:
                             for service_thread in keepalive_threads:
                                 if not service_thread.thread.is_alive():
                                     logger.info("restarting service: {}".format(service_thread.thread.name))
@@ -452,8 +442,7 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
                 raise err
 
     except Exception as err:
-        logger.error(anchore_manager.cli.utils.format_error_output(config, 'servicestart', {}, err))
-        if not ecode:
-            ecode = 2
-            
-    anchore_manager.cli.utils.doexit(ecode)
+        log_error('servicestart', err)
+        ecode = ExitCode.failed
+
+    doexit(ecode)

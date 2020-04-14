@@ -7,12 +7,13 @@ import datetime
 from prettytable import PrettyTable, PLAIN_COLUMNS
 
 from anchore_engine.subsys import object_store
-from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import load_config, get_config, localconfig
 from anchore_engine.subsys.object_store import migration, config as obj_config
 from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY, ANALYSIS_ARCHIVE_MANAGER_ID
 from anchore_engine.db import db_tasks, ArchiveMigrationTask, session_scope
-from anchore_manager.cli import utils
+from anchore_manager.util.proc import ExitCode, fail_exit, doexit
+from anchore_manager.util.logging import logger, log_error
+from anchore_manager.util.db import db_preflight, init_db_context, db_context
 
 config = {}
 module = None
@@ -30,22 +31,10 @@ def objectstorage(ctx_config, db_connect, db_use_ssl, db_retries, db_timeout, db
     config = ctx_config
 
     try:
-        # do some DB connection/pre-checks here
-        try:
-            log_level = 'INFO'
-            if config['debug']:
-                log_level = 'DEBUG'
-            logger.set_log_level(log_level, log_to_stdout=True)
-
-            # Use db connection from the config file
-            db_params = utils.make_db_params(db_connect=db_connect, db_use_ssl=db_use_ssl, db_timeout=db_timeout, db_connect_timeout=db_connect_timeout)
-            db_params = utils.connect_database(config, db_params, db_retries=db_retries)
-        except Exception as err:
-            raise err
-
+        init_db_context(db_connect, db_use_ssl, db_timeout, db_connect_timeout, db_retries)
     except Exception as err:
-        logger.error(utils.format_error_output(config, 'objectstorage', {}, err))
-        sys.exit(2)
+        log_error('objectstorage', err)
+        fail_exit()
 
 
 @objectstorage.command(name="list-drivers", short_help="Show a list of available drivers that can be a source or destination for conversion.")
@@ -54,17 +43,17 @@ def list_drivers():
     List the available drivers installed locally
     """
 
-    ecode = 0
+    ecode = ExitCode.ok
 
     try:
         drivers = object_store.manager.get_driver_list()
         logger.info("Supported object storage drivers: " + str(drivers))
     except Exception as err:
-        logger.error(utils.format_error_output(config, 'list-drivers', {}, err))
+        log_error('list-drivers', err)
         if not ecode:
-            ecode = 2
+            ecode = ExitCode.failed
 
-    utils.doexit(ecode)
+    doexit(ecode)
 
 
 @objectstorage.command(name='check')
@@ -80,6 +69,9 @@ def check(configfile, analysis_archive):
     :return:
     """
 
+    db_conf = db_context()
+    db_preflight(db_conf['params'], db_conf['retries'])
+
     logger.info('Using config file {}'.format(configfile))
     sys_config = load_config(configfile=configfile)
 
@@ -90,14 +82,14 @@ def check(configfile, analysis_archive):
 
     if not service_config:
         logger.info('No configuration file or content available. Cannot test archive driver configuration')
-        utils.doexit(2)
+        fail_exit()
 
     if analysis_archive:
         try:
             object_store.initialize(service_config, manager_id=ANALYSIS_ARCHIVE_MANAGER_ID, config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID])
         except:
             logger.error('No "analysis_archive" configuration section found in the configuration. To check a config that uses the default backend for analysis archive data, use the regular object storage check')
-            utils.doexit(2)
+            fail_exit()
 
         mgr = object_store.get_manager(ANALYSIS_ARCHIVE_MANAGER_ID)
     else:
@@ -115,7 +107,7 @@ def check(configfile, analysis_archive):
         test_archive_id = 'cliconfigtest2'
         if mgr.exists(test_user_id, test_bucket, test_archive_id):
             logger.error('Found existing records for archive doc to test, aborting test to avoid overwritting any existing data')
-            utils.doexit(1)
+            doexit(1)
 
     logger.info('Creating test document with user_id = {}, bucket = {} and archive_id = {}'.format(test_user_id, test_bucket,
                                                                                              test_archive_id))
@@ -127,18 +119,18 @@ def check(configfile, analysis_archive):
     loaded = str(mgr.get(test_user_id, test_bucket, test_archive_id), 'utf-8')
     if not loaded:
         logger.error('Failed retrieving the written document. Got: {}'.format(loaded))
-        utils.doexit(5)
+        doexit(ExitCode.obj_store_failed)
 
     if str(loaded) != test_data:
         logger.error('Failed retrieving the written document. Got something other than expected. Expected: "{}" Got: "{}"'.format(test_data, loaded))
-        utils.doexit(5)
+        doexit(ExitCode.obj_store_failed)
 
     logger.info('Removing test object')
     mgr.delete(test_user_id, test_bucket, test_archive_id)
 
     if mgr.exists(test_user_id, test_bucket, test_archive_id):
         logger.error('Found archive object after it should have been removed')
-        utils.doexit(5)
+        doexit(ExitCode.obj_store_failed)
 
     logger.info('Archive config check completed successfully')
 
@@ -167,9 +159,13 @@ def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=
 
     """
 
-    ecode = 0
+    ecode = ExitCode.ok
+
     do_migrate = False
     try:
+        db_conf = db_context()
+        db_preflight(db_conf['params'], db_conf['retries'])
+
         logger.info('Loading configs')
         from_raw = copy.deepcopy(load_config(configfile=from_driver_configpath))
         get_config().clear()
@@ -228,11 +224,10 @@ def migrate(from_driver_configpath, to_driver_configpath, from_analysis_archive=
         else:
             logger.info("Skipping conversion.")
     except Exception as err:
-        logger.error(utils.format_error_output(config, 'dbupgrade', {}, err))
-        if not ecode:
-            ecode = 2
+        log_error('migrate', err)
+        fail_exit()
 
-    utils.doexit(ecode)
+    doexit(ecode)
 
 
 @objectstorage.command(name='list-migrations', short_help="List any previous migrations and their results/status")
