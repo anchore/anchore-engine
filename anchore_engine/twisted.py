@@ -53,17 +53,6 @@ class CommonOptions(usage.Options):
     ]
 
 
-# simple twisted resource for health check route
-class EmptyResource(Resource):
-    """
-    A simple resource to return empty if rendered
-    """
-    isLeaf = True
-
-    def render_GET(self, request):
-        return b''
-
-
 class ThreadDumperResource(Resource):
     isLeaf = True
 
@@ -82,39 +71,6 @@ class ThreadDumperResource(Resource):
             return b'Failed'
 
         return b'Sucess'
-
-
-# simple twisted resource for version check route
-class VersionResource(Resource):
-    """
-    A simple resource to return version information if rendered
-    """
-    isLeaf = True
-
-    def __init__(self, versions):
-        super().__init__()
-        self.versions = versions
-
-    def render_GET(self, request):
-        request.responseHeaders.addRawHeader(b"Content-Type", b"application/json")
-
-        ret = {
-            'service': {
-                'version': self.versions.get('service_version', None),
-            },
-            'api': {
-            },
-            'db': {
-                'schema_version': self.versions.get('db_version', None),
-            }
-        }
-
-        try:
-            response = utils.ensure_bytes(json.dumps(ret))
-        except:
-            response = utils.ensure_bytes(json.dumps({}))
-
-        return response
 
 
 def _load_config(config_option, validate_params=None):
@@ -151,12 +107,6 @@ class WsgiApiServiceMaker(object):
     description = None  # e.g. "Anchore Service"
     options = CommonOptions
 
-    # The base child paths served by this service (e.g. /health, /v1/...). A list of web.resource.Resource() objects
-    _default_resource_nodes = {
-        b'health': EmptyResource(),
-        b'version': VersionResource({})
-    }
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -165,7 +115,7 @@ class WsgiApiServiceMaker(object):
         self.anchore_service = None
         self.root_resource = None
         self.twistd_service = None
-        self.resource_nodes = copy.deepcopy(self._default_resource_nodes)
+        self.resource_nodes = {}
 
     def _init_logging(self):
         if self.global_configuration is None:
@@ -235,7 +185,6 @@ class WsgiApiServiceMaker(object):
             assert (issubclass(self.service_cls, ApiService))
             self.anchore_service = self.service_cls(options=options)
             self.anchore_service.initialize(self.global_configuration)
-            self.resource_nodes[b'version'].versions = self.anchore_service.versions
 
             # application object
             application = service.Application("Service-" + '-'.join(self.anchore_service.name))
