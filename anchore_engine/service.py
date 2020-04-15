@@ -439,7 +439,7 @@ class BaseService(object, metaclass=ServiceMeta):
             raise err
 
         service_record = servicestatus.get_my_service_record()
-        servicestatus.set_status(service_record, up=True, available=True, update_db=True)
+        servicestatus.set_status(service_record, up=True, available=True, update_db=True, versions=self.versions)
         logger.info('Service registration complete')
         return True
 
