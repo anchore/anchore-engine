@@ -80,7 +80,7 @@ def get_status():
 @authorizer.requires([])
 def get_service_detail():
     """
-    GET /system/status
+    GET /system
 
     :return: list of service details
     """
@@ -115,17 +115,6 @@ def get_service_detail():
                 except Exception as err:
                     pass
 
-                # Bring back when eventing subsystem is utilized
-                # service_detail['error_event'] = []
-                # try:
-                #    events = catalog.get_event(user_auth)
-                #    for event in events:
-                #        el = {}
-                #        for k in ['message_ts', 'hostId', 'message', 'level']:
-                #            el[k] = event[k]
-                #        service_detail['error_event'].append(el)
-                # except:
-                #    pass
                 httpcode = 200
 
             except Exception as err:
