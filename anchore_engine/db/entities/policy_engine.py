@@ -315,8 +315,8 @@ class VulnerableArtifact(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name],
-                                           refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
+    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
+                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
 
     def __repr__(self):
         return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name,
@@ -374,8 +374,8 @@ class FixedArtifact(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     fix_observed_at = Column(DateTime)
 
-    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name],
-                                           refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
+    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
+                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
 
     @staticmethod
     def _fix_observed_at_update(mapper, connection, target):
@@ -1086,7 +1086,7 @@ class CpeVulnerability(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name, severity), refcolumns=(NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity)),
         Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
         Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
         {}
@@ -1139,7 +1139,7 @@ class CpeV2Vulnerability(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[NvdV2Metadata.name, NvdV2Metadata.namespace_name]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(NvdV2Metadata.name, NvdV2Metadata.namespace_name)),
         Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
         Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name),
         {}
@@ -1214,7 +1214,7 @@ class VulnDBCpe(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[VulnDBMetadata.name, VulnDBMetadata.namespace_name]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(VulnDBMetadata.name, VulnDBMetadata.namespace_name)),
         Index('ix_feed_data_vulndb_affected_cpes_product_version', product, version),
         Index('ix_feed_data_vulndb_affected_cpes_fk', vulnerability_id, namespace_name),
         {}
@@ -1319,8 +1319,8 @@ class ImagePackage(Base):
     pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all', 'delete', 'delete-orphan'])
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
                              Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
                              # TODO: add this index for feed sync performance, needs to be re-tested with new package usage
                              #  Index('ix_image_package_distro_pkgs', distro_name, distro_version, name, normalized_src_pkg, version),
@@ -1505,8 +1505,8 @@ class ImagePackageManifestEntry(Base):
     size = Column(Integer, nullable=True)
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path],
-                             refcolumns=['image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path),
+                             refcolumns=('image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path')),
         {}
     )
 
@@ -1533,8 +1533,8 @@ class ImageNpm(Base):
     image = relationship('Image', back_populates='npms')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id','images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id','images.user_id')),
         Index('idx_npm_seq', seq_id),
         {}
     )
@@ -1567,8 +1567,8 @@ class ImageGem(Base):
     image = relationship('Image', back_populates='gems')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         Index('idx_gem_seq', seq_id),
         {}
     )
@@ -1595,8 +1595,8 @@ class ImageCpe(Base):
     image = relationship('Image', back_populates='cpes')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id','images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id','images.user_id')),
         Index('ix_image_cpe_user_img', image_id, image_user_id),
         {}
     )
@@ -1673,8 +1673,8 @@ class FilesystemAnalysis(Base):
     _files = None
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         {}
     )
 
@@ -1733,8 +1733,8 @@ class AnalysisArtifact(Base):
     image = relationship('Image', back_populates='analysis_artifacts')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         {}
     )
 
@@ -1872,8 +1872,8 @@ class ImagePackageVulnerability(Base):
     vulnerability = relationship('Vulnerability')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path], refcolumns=[ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path]),
-        ForeignKeyConstraint(columns=[vulnerability_id, vulnerability_namespace_name], refcolumns=[Vulnerability.id, Vulnerability.namespace_name]),
+        ForeignKeyConstraint(columns=(pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path), refcolumns=(ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path)),
+        ForeignKeyConstraint(columns=(vulnerability_id, vulnerability_namespace_name), refcolumns=(Vulnerability.id, Vulnerability.namespace_name)),
         {}
     )
 
