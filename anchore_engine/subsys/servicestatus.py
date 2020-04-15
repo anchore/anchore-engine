@@ -1,4 +1,4 @@
-import json 
+import json
 import time
 
 from anchore_engine.db import db_services, session_scope
@@ -10,16 +10,32 @@ import anchore_engine.version
 service_statuses = {}
 my_service_record = None
 
+
 def get_my_service_record():
     global my_service_record
-    return(my_service_record)
+    return my_service_record
+
 
 def set_my_service_record(service_record):
     global my_service_record
     my_service_record = service_record
-    return(True)
+    return True
 
-def set_status(service_record, up=True, available=True, busy=False, message="all good", detail=None, update_db=False):
+
+def set_status(service_record, up=True, available=True, busy=False, message="all good", detail=None, update_db=False, versions=None):
+    """
+    Update the status in the local service state cache, optionally also updating the db record
+
+    :param service_record: dict record to make the new status
+    :param up: bool, is service up
+    :param available: bool, is service available
+    :param busy:
+    :param message:
+    :param detail:
+    :param update_db: boolean, if true will update the db entry for the service as well
+    :param versions: dict with 'service_version' and 'db_version' keys
+    :return:
+    """
     global service_statuses
     hostid = service_record['hostid']
     servicename = service_record['servicename']
@@ -29,19 +45,20 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     if service not in service_statuses:
         service_statuses[service] = {}
 
-    code_version = anchore_engine.version.version
-    db_version = anchore_engine.version.db_version
+    # code_version = anchore_engine.version.version
+    # db_version = anchore_engine.version.db_version
 
-    service_statuses[service]['up']= up
+    service_statuses[service]['up'] = up
     service_statuses[service]['available'] = available
-    service_statuses[service]['busy'] = busy 
+    service_statuses[service]['busy'] = busy
     service_statuses[service]['message'] = message
     service_statuses[service]['detail'] = detail if detail is not None else {}
-    service_statuses[service]['version'] = code_version
-    service_statuses[service]['db_version'] = db_version
+    service_statuses[service]['version'] = versions.get('service_version')
+    service_statuses[service]['db_version'] = versions.get('db_version')
 
     if update_db:
         update_status(service_record)
+
 
 def update_status(service_record):
     global service_statuses, my_service_record
@@ -67,7 +84,8 @@ def update_status(service_record):
         else:
             db_services.add(hostid, servicename, service_record, session=dbsession)
 
-    return(True)
+    return True
+
 
 def get_status(service_record):
     global service_statuses
@@ -80,7 +98,8 @@ def get_status(service_record):
         ret = service_statuses[service]
     else:
         raise Exception("no service status set for service: " + str(service))
-    return(ret)
+    return ret
+
 
 def handle_service_heartbeat(*args, **kwargs):
     cycle_timer = kwargs['mythread']['cycle_timer']
@@ -90,19 +109,18 @@ def handle_service_heartbeat(*args, **kwargs):
     except Exception as err:
         raise Exception("BUG: need to provide service name as first argument to function: " + str(args))
 
-    while(True):
+    while (True):
         logger.debug("storing service status: " + str(servicename))
         try:
-            logger.debug("local service record: {}".format(anchore_engine.subsys.servicestatus.get_my_service_record()))
-            logger.debug("all service records: {}".format(service_statuses))
+            logger.debug("local service record: %s", anchore_engine.subsys.servicestatus.get_my_service_record())
+            logger.debug("all service records: %s", service_statuses)
 
             service_record = anchore_engine.subsys.servicestatus.get_my_service_record()
             update_status(service_record)
-            logger.debug("service status update stored: next in "+str(cycle_timer))
+            logger.debug("service status update stored: next in %s", str(cycle_timer))
         except Exception as err:
             logger.error(str(err))
 
         time.sleep(cycle_timer)
 
-    return(True)
-
+    return True
