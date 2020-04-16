@@ -11,7 +11,6 @@ import urllib.request, urllib.parse, urllib.error
 import uuid
 
 from anchore_engine.db import get_thread_scoped_session as get_session, Image, end_session
-from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
 from anchore_engine.services.policy_engine.engine.vulnerabilities import vulnerabilities_for_image, rescan_image
@@ -23,12 +22,11 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import notify_even
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
 from anchore_engine.subsys.events import FeedSyncTaskStarted, FeedSyncTaskCompleted, FeedSyncTaskFailed
-from anchore_engine.subsys import identities
+from anchore_engine.subsys import identities, logger
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
 
-log = get_logger()
 
 
 def construct_task_from_json(json_obj):
@@ -42,7 +40,7 @@ def construct_task_from_json(json_obj):
         raise ValueError('Cannot determine task type from content')
 
     task = IAsyncTask.tasks[json_obj['type']].from_json(json_obj)
-    log.info('Mapped to task type: {}'.format(task.__class__))
+    logger.info('Mapped to task type: {}'.format(task.__class__))
     return task
 
 
@@ -97,8 +95,8 @@ class EchoTask(IAsyncTask):
         return t
 
     def execute(self):
-        log.info('Executing ECHO task!')
-        log.info('Message: {}'.format(self.msg))
+        logger.info('Executing ECHO task!')
+        logger.info('Message: {}'.format(self.msg))
         return
 
 
@@ -163,7 +161,7 @@ class FeedsUpdateTask(IAsyncTask):
 
             return result
         except Exception:
-            log.exception('Error executing feeds update')
+            logger.exception('Error executing feeds update')
             raise
 
     def __init__(self, feeds_to_sync=None, flush=False):
@@ -176,7 +174,7 @@ class FeedsUpdateTask(IAsyncTask):
         return self.feeds is None
 
     def execute(self):
-        log.info('Starting feed sync. (operation_id={})'.format(self.uuid))
+        logger.info('Starting feed sync. (operation_id={})'.format(self.uuid))
 
         # Feed syncs will update the images with any new cves that are pulled in for a the sync. As such, any images that are loaded while the sync itself is in progress need to be
         # re-scanned for cves since the transaction ordering can result in the images being loaded with data prior to sync but not included in the sync process itself.
@@ -190,18 +188,18 @@ class FeedsUpdateTask(IAsyncTask):
         try:
             notify_event(FeedSyncTaskStarted(groups=self.feeds if self.feeds else 'all'), catalog_client, self.uuid)
         except:
-            log.exception('Ignoring event generation error before feed sync. (operation_id={})'.format(self.uuid))
+            logger.exception('Ignoring event generation error before feed sync. (operation_id={})'.format(self.uuid))
 
         start_time = datetime.datetime.utcnow()
         try:
             start_time = datetime.datetime.utcnow()
             updated_dict = DataFeeds.sync(to_sync=self.feeds, full_flush=self.full_flush, catalog_client=catalog_client, operation_id=self.uuid)
 
-            log.info('Feed sync complete (operation_id={})'.format(self.uuid))
+            logger.info('Feed sync complete (operation_id={})'.format(self.uuid))
             return updated_dict
         except Exception as e:
             error = e
-            log.exception('Failure refreshing and syncing feeds. (operation_id={})'.format(self.uuid))
+            logger.exception('Failure refreshing and syncing feeds. (operation_id={})'.format(self.uuid))
             raise
         finally:
             end_time = datetime.datetime.utcnow()
@@ -212,12 +210,12 @@ class FeedsUpdateTask(IAsyncTask):
                 else:
                     notify_event(FeedSyncTaskCompleted(groups=self.feeds if self.feeds else 'all'), catalog_client, self.uuid)
             except:
-                log.exception('Ignoring event generation error after feed sync (operation_id={})'.format(self.uuid))
+                logger.exception('Ignoring event generation error after feed sync (operation_id={})'.format(self.uuid))
 
             try:
                 self.rescan_images_created_between(from_time=start_time, to_time=end_time)
             except:
-                log.exception('Unexpected exception rescanning vulns for images added during the feed sync. (operation_id={})'.format(self.uuid))
+                logger.exception('Unexpected exception rescanning vulns for images added during the feed sync. (operation_id={})'.format(self.uuid))
                 raise
             finally:
                 end_session()
@@ -237,14 +235,14 @@ class FeedsUpdateTask(IAsyncTask):
         if from_time is None or to_time is None:
             raise ValueError('Cannot process None timestamp')
 
-        log.info('Rescanning images loaded between {} and {} (operation_id={})'.format(from_time.isoformat(), to_time.isoformat(), self.uuid))
+        logger.info('Rescanning images loaded between {} and {} (operation_id={})'.format(from_time.isoformat(), to_time.isoformat(), self.uuid))
         count = 0
 
         db = get_session()
         try:
             # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
             imgs = [(x.id, x.user_id) for x in db.query(Image).filter(Image.created_at >= from_time, Image.created_at <= to_time)]
-            log.info('Detected images: {} for rescan (operation_id={})'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]', self.uuid))
+            logger.info('Detected images: {} for rescan (operation_id={})'.format(' ,'.join([str(x) for x in imgs]) if imgs else '[]', self.uuid))
         finally:
             db.rollback()
 
@@ -258,11 +256,11 @@ class FeedsUpdateTask(IAsyncTask):
                         # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
                         image_obj = db.query(Image).get(img)
                         if image_obj:
-                            log.info('Rescanning image {} post-vuln sync. (operation_id={})'.format(img, self.uuid))
+                            logger.info('Rescanning image {} post-vuln sync. (operation_id={})'.format(img, self.uuid))
                             vulns = rescan_image(image_obj, db_session=db)
                             count += 1
                         else:
-                            log.warn('Failed to lookup image with tuple: {} (operation_id={})'.format(str(img), self.uuid))
+                            logger.warn('Failed to lookup image with tuple: {} (operation_id={})'.format(str(img), self.uuid))
 
                         db.commit()
 
@@ -271,7 +269,7 @@ class FeedsUpdateTask(IAsyncTask):
 
                     break
                 except Exception as e:
-                    log.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying (operation_id={})'.format(img, self.uuid))
+                    logger.exception('Caught exception updating vulnerability scan results for image {}. Waiting and retrying (operation_id={})'.format(img, self.uuid))
                     time.sleep(5)
 
         return count
@@ -359,11 +357,11 @@ class ImageLoadTask(IAsyncTask):
             img = db.query(Image).get((self.image_id, self.user_id))
             if img is not None:
                 if not self.force_reload:
-                    log.info('Image {}/{} already found in the system. Will not re-load.'.format(self.user_id, self.image_id))
+                    logger.info('Image {}/{} already found in the system. Will not re-load.'.format(self.user_id, self.image_id))
                     db.close()
                     return None
                 else:
-                    log.info('Deleting image {}/{} and all associated resources for reload'.format(self.user_id, self.image_id))
+                    logger.info('Deleting image {}/{} and all associated resources for reload'.format(self.user_id, self.image_id))
                     for pkg_vuln in img.vulnerabilities():
                         db.delete(pkg_vuln)
                     db.delete(img)
@@ -373,16 +371,16 @@ class ImageLoadTask(IAsyncTask):
 
             image_obj = self._load_image_analysis()
             if not image_obj:
-                log.error('Could not load image analysis')
+                logger.error('Could not load image analysis')
                 raise ImageLoadError('Failed to load image: user_id = {}, image_id = {}, fetch_url = {}'.format(self.user_id, self.image_id, self.fetch_url))
 
             db = get_session()
             try:
-                log.info("Adding image to db")
+                logger.info("Adding image to db")
                 db.add(image_obj)
 
                 ts = time.time()
-                log.info("Adding image package vulnerabilities to db")
+                logger.info("Adding image package vulnerabilities to db")
                 vulns = vulnerabilities_for_image(image_obj)
                 for vuln in vulns:
                     db.add(vuln)
@@ -390,13 +388,13 @@ class ImageLoadTask(IAsyncTask):
                 db.commit()
                 #log.debug("TIMER TASKS: {}".format(time.time() - ts))
             except:
-                log.exception('Error adding image to db')
+                logger.exception('Error adding image to db')
                 db.rollback()
                 raise
 
             return ImageLoadResult(image_obj, vulns)
         except Exception as e:
-            log.exception('Error loading and scanning image: {}'.format(self.image_id))
+            logger.exception('Error loading and scanning image: {}'.format(self.image_id))
             raise
         finally:
             self.stop_time = datetime.datetime.utcnow()
@@ -407,13 +405,13 @@ class ImageLoadTask(IAsyncTask):
 
         :return:
         """
-        log.info('Loading image analysis for image: {}/{}'.format(self.user_id, self.image_id))
+        logger.info('Loading image analysis for image: {}/{}'.format(self.user_id, self.image_id))
 
         if not self.fetch_url:
-            log.info('No url provided, cannot proceed!')
+            logger.info('No url provided, cannot proceed!')
             raise ValueError('No fetch url provided')
 
-        log.info('Fetching analysis with url: {}'.format(self.fetch_url))
+        logger.info('Fetching analysis with url: {}'.format(self.fetch_url))
         content = self._get_content(self.fetch_url)
 
         try:
@@ -425,10 +423,10 @@ class ImageLoadTask(IAsyncTask):
             result.user_id = self.user_id
             return result
         except KeyError as e:
-            log.exception('Could not locate key in image analysis data that is required: {}'.format(e))
+            logger.exception('Could not locate key in image analysis data that is required: {}'.format(e))
             raise
         except Exception as e:
-            log.exception('Exception in image loader')
+            logger.exception('Exception in image loader')
             raise
 
     def _get_content(self, url):
@@ -458,7 +456,7 @@ class ImageLoadTask(IAsyncTask):
                     doc = timeout_client.get_document(bucket, name)
                 return doc
             except:
-                log.exception('Error retrieving analysis json from the catalog service')
+                logger.exception('Error retrieving analysis json from the catalog service')
                 raise
 
         elif split_url[0].startswith('http'):
@@ -469,11 +467,11 @@ class ImageLoadTask(IAsyncTask):
                     content = data_response.json()
                     return content
                 except requests.HTTPError as ex:
-                    log.exception('HTTP exception: {}. Retrying'.format(ex))
+                    logger.exception('HTTP exception: {}. Retrying'.format(ex))
                     retry = retry - 1
                     time.sleep(retry * 3)  # Backoff and retry
                 except:
-                    log.exception('Non HTTP exception. Retrying')
+                    logger.exception('Non HTTP exception. Retrying')
                     retry = retry - 1
 
         else:

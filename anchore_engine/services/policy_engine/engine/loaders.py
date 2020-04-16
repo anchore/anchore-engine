@@ -6,10 +6,9 @@ import re
 from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.db import DistroNamespace
 from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry, ImageCpe#, ImageJava, ImagePython
-from .logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.util.rpm import split_rpm_filename
 
-log = get_logger()
 
 # this is a static mapping of known package names (keys) to official cpe names for each package
 nomatch_inclusions = {
@@ -59,12 +58,12 @@ class ImageLoader(object):
         :return: an initialized Image() record, not persisted to DB yet
         """
 
-        log.info('Loading image json')
+        logger.info('Loading image json')
 
         if type(self.image_export_json) == list and len(self.image_export_json) == 1:
             image_id = self.image_export_json[0]['image']['imageId']
             self.image_export_json = self.image_export_json[0]['image']['imagedata']
-            log.info('Detected a direct export format for image id: {} rather than a catalog analysis export'.format(
+            logger.info('Detected a direct export format for image id: {} rather than a catalog analysis export'.format(
                 image_id))
 
         analysis_report = self.image_export_json['analysis_report']
@@ -76,7 +75,7 @@ class ImageLoader(object):
         repo_digests = image_report['docker_data'].get('RepoDigests', [])
         repo_tags = image_report['docker_data'].get('RepoTags', [])
         if len(repo_digests) > 1:
-            log.warn(
+            logger.warn(
                 'Found more than one digest for the image {}. Using the first. Digests: {}, Tags: {}'.format(image.id,
                                                                                                              repo_digests,
                                                                                                              repo_tags))
@@ -114,36 +113,36 @@ class ImageLoader(object):
         handled_ptypes = []
 
         # Packages        
-        log.info('Loading image packages')
+        logger.info('Loading image packages')
         os_packages, handled = self.load_and_normalize_packages(analysis_report.get('package_list', {}), image)
         packages = packages + os_packages
         handled_ptypes = handled_ptypes + handled
 
         # FileSystem
-        log.info('Loading image files')
+        logger.info('Loading image files')
         image.fs, handled = self.load_fsdump(analysis_report)
         handled_ptypes = handled_ptypes + handled        
 
         # Npms
-        log.info('Loading image npms')
+        logger.info('Loading image npms')
         npm_image_packages, handled = self.load_npms(analysis_report, image)
         packages = packages + npm_image_packages
         handled_ptypes = handled_ptypes + handled
 
         # Gems
-        log.info('Loading image gems')
+        logger.info('Loading image gems')
         gem_image_packages, handled = self.load_gems(analysis_report, image)
         packages = packages + gem_image_packages
         handled_ptypes = handled_ptypes + handled
 
         ## Python
-        log.info('Loading image python packages')
+        logger.info('Loading image python packages')
         python_packages, handled = self.load_pythons(analysis_report, image)
         packages = packages + python_packages
         handled_ptypes = handled_ptypes + handled
 
         ## Java
-        log.info('Loading image java packages')
+        logger.info('Loading image java packages')
         java_packages, handled = self.load_javas(analysis_report, image)
         packages = packages + java_packages
         handled_ptypes = handled_ptypes + handled
@@ -155,11 +154,11 @@ class ImageLoader(object):
         image.packages = packages
 
         # Package metadata
-        log.info('Loading image package db entries')
+        logger.info('Loading image package db entries')
         self.load_package_verification(analysis_report, image)
 
         # CPEs
-        log.info('Loading image cpes')
+        logger.info('Loading image cpes')
         image.cpes = self.load_cpes(analysis_report, image)
 
         analysis_artifact_loaders = [
@@ -188,7 +187,7 @@ class ImageLoader(object):
         :return: True on success
         """
 
-        log.info('Loading package verification data')
+        logger.info('Loading package verification data')
         analyzer = 'file_package_verify'
         pkgfile_meta = 'distro.pkgfilemeta'
         verify_result = 'distro.verifyresult'
@@ -274,7 +273,7 @@ class ImageLoader(object):
         :param image_obj:
         :return:
         """
-        log.info('Loading retrieved files')
+        logger.info('Loading retrieved files')
         retrieve_files_json = analysis_report.get('retrieve_files')
         if not retrieve_files_json:
             return []
@@ -293,7 +292,7 @@ class ImageLoader(object):
             try:
                 match.binary_value = base64.b64decode(ensure_bytes(match_string))
             except:
-                log.exception('Could not b64 decode the file content for {}'.format(filename))
+                logger.exception('Could not b64 decode the file content for {}'.format(filename))
                 raise
             records.append(match)
 
@@ -306,7 +305,7 @@ class ImageLoader(object):
         :param image_obj:
         :return:
         """
-        log.info('Loading content search results')
+        logger.info('Loading content search results')
         content_search_json = analysis_report.get('content_search')
         if not content_search_json:
             return []
@@ -325,7 +324,7 @@ class ImageLoader(object):
             try:
                 match.json_value = json.loads(match_string)
             except:
-                log.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
+                logger.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
                 match.str_value = match_string
 
             records.append(match)
@@ -339,7 +338,7 @@ class ImageLoader(object):
         :param image_obj:
         :return:
         """
-        log.info('Loading content search results')
+        logger.info('Loading content search results')
         content_search_json = analysis_report.get('secret_search')
         if not content_search_json:
             return []
@@ -358,7 +357,7 @@ class ImageLoader(object):
             try:
                 match.json_value = json.loads(match_string)
             except:
-                log.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
+                logger.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
                 match.str_value = match_string
 
             records.append(match)
@@ -431,7 +430,7 @@ class ImageLoader(object):
         if pkgs:
             return pkgs, handled_pkgtypes
         else:
-            log.warn('Pkg Allinfo not found, reverting to using pkgs.all')
+            logger.warn('Pkg Allinfo not found, reverting to using pkgs.all')
 
         all_pkgs = package_analysis_json['pkgs.all']['base']
         all_pkgs_src = package_analysis_json['pkgs_plus_source.all']['base']
@@ -515,7 +514,7 @@ class ImageLoader(object):
                     'suid': suids.get(path)
                 }
             except KeyError as e:
-                log.exception('Could not find data for {}'.format(e))
+                logger.exception('Could not find data for {}'.format(e))
                 raise
 
             # Increment counters as needed
@@ -950,10 +949,10 @@ class ImageLoader(object):
                                     ret_names.append(candidate)
 
             except Exception as err:
-                log.err(err)
+                logger.err(err)
 
         except Exception as err:
-            log.warn("failed to detect java package name/version guesses - exception: " + str(err))
+            logger.warn("failed to detect java package name/version guesses - exception: " + str(err))
 
         for rname in list(ret_names):
             underscore_name = re.sub("-", "_", rname)

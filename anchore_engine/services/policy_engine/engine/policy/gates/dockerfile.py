@@ -3,9 +3,8 @@ from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import delim_parser, TypeValidator, \
     InputValidator, EnumStringParameter, TriggerParameter, CommaDelimitedStringListParameter, \
     CommaDelimitedNumberListParameter, BooleanStringParameter
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 
-log = get_logger()
 
 DIRECTIVES = [
         'ADD',
@@ -102,7 +101,7 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
         if match and match.groups():
             user = match.groups()[0]
         else:
-            log.warn('Found USER line in dockerfile that does not match expected regex: {}, Line: {}'.format(self._sanitize_regex, user))
+            logger.warn('Found USER line in dockerfile that does not match expected regex: {}, Line: {}'.format(self._sanitize_regex, user))
             return
 
         if is_allowed and user not in rule_users:

@@ -15,10 +15,8 @@ from anchore_engine.services.policy_engine.engine.feeds.mappers import (
 from anchore_engine.services.policy_engine.engine.feeds import mappers
 from anchore_engine.services.policy_engine.engine.vulnerabilities import process_updated_vulnerability, flush_vulnerability_matches, ThreadLocalFeedGroupNameCache
 from anchore_engine.subsys.events import FeedGroupSyncStarted, FeedGroupSyncCompleted, FeedGroupSyncFailed, EventBase
-from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.feeds.db import lookup_feed
-
-log = get_logger()
+from anchore_engine.subsys import logger
 
 
 def build_group_sync_result(group=None, status='failure'):
@@ -125,15 +123,15 @@ class AnchoreServiceFeed(DataFeed):
 
         db = get_session()
         try:
-            log.debug('Updating group counts for feed {}'.format(self.__feed_name__))
+            logger.debug('Updating group counts for feed {}'.format(self.__feed_name__))
             my_meta = lookup_feed(db, self.__feed_name__)
             for group in my_meta.groups:
                 group.count = self.record_count(group.name, db)
-                log.info('Updating feed group {} record count = {}'.format(group.name, group.count))
+                logger.info('Updating feed group {} record count = {}'.format(group.name, group.count))
             db.commit()
         except Exception:
             db.rollback()
-            log.error('Could not update group counts')
+            logger.error('Could not update group counts')
             raise
 
     def _load_mapper(self, group_obj):
@@ -176,7 +174,7 @@ class AnchoreServiceFeed(DataFeed):
             group_db_obj = self.group_by_name(group_download_result.group)
 
         if not group_db_obj:
-            log.error(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Skipping sync for feed group {}, not found in db, record should have been synced already'))
+            logger.error(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Skipping sync for feed group {}, not found in db, record should have been synced already'))
             return result
 
         download_started = group_download_result.started.replace(tzinfo=datetime.timezone.utc)
@@ -184,14 +182,14 @@ class AnchoreServiceFeed(DataFeed):
 
         try:
             if full_flush:
-                log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Performing data flush prior to sync as requested'))
+                logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Performing data flush prior to sync as requested'))
                 self._flush_group(group_db_obj, operation_id=operation_id)
 
             mapper = self._load_mapper(group_db_obj)
 
             # Iterate thru the records and commit
 
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Syncing {} total update records into db in sets of {}'.format(group_download_result.total_records, self.RECORDS_PER_CHUNK)))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Syncing {} total update records into db in sets of {}'.format(group_download_result.total_records, self.RECORDS_PER_CHUNK)))
             count = 0
             for record in local_repo.read(group_download_result.feed, group_download_result.group, 0):
                 mapped = mapper.map(record)
@@ -204,16 +202,16 @@ class AnchoreServiceFeed(DataFeed):
                     group_db_obj.count = self.record_count(group_db_obj.name, db)
                     db.commit()
                     db = get_session()
-                    log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
+                    logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                     count = 0
 
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)
                 db.commit()
                 db = get_session()
-                log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
+                logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
 
-            log.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
+            logger.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
             group_db_obj = self.group_by_name(group_download_result.group)
             # There is potential failures that could happen when downloading,
             # skipping updating the `last_sync` allows the system to retry
@@ -223,14 +221,14 @@ class AnchoreServiceFeed(DataFeed):
             db.add(group_db_obj)
             db.commit()
         except Exception as e:
-            log.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Error syncing'))
+            logger.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Error syncing'))
             db.rollback()
             raise e
         finally:
             sync_time = time.time() - sync_started
             total_group_time = time.time() - download_started.timestamp()
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Sync to db duration: {} sec'.format(sync_time)))
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Total sync, including download, duration: {} sec'.format(total_group_time)))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Sync to db duration: {} sec'.format(sync_time)))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Total sync, including download, duration: {} sec'.format(total_group_time)))
 
         result['updated_record_count'] = total_updated_count
         result['status'] = 'success'
@@ -247,7 +245,7 @@ class AnchoreServiceFeed(DataFeed):
         """
         db = get_session()
 
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
 
         if self.__flush_helper_fn__:
             self.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
@@ -313,17 +311,17 @@ class AnchoreServiceFeed(DataFeed):
         # Each group update is a unique session and can roll itself back.
         t = time.time()
 
-        log.info(log_msg_ctx(operation_id, self.__feed_name__, None, 'Starting feed sync'))
+        logger.info(log_msg_ctx(operation_id, self.__feed_name__, None, 'Starting feed sync'))
 
         # Only iterate thru what was fetched
         for group_download_result in filter(lambda x: x.feed == self.__feed_name__ and (not group or group == x.name), fetched_data.metadata.download_result.results):
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Processing group for db update'))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Processing group for db update'))
 
             try:
                 new_data = self._sync_group(group_download_result, full_flush=full_flush, local_repo=fetched_data, operation_id=operation_id)  # Each group sync is a transaction
                 result['groups'].append(new_data)
             except Exception as e:
-                log.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Failed syncing group data'))
+                logger.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Failed syncing group data'))
                 failed_count += 1
                 fail_result = build_group_sync_result()
                 fail_result['group'] = group_download_result.group
@@ -353,14 +351,14 @@ class AnchoreServiceFeed(DataFeed):
             self.metadata.last_full_sync = self.metadata.last_update
             db.commit()
         except Exception as e:
-            log.exception('Failed updating feed metadata timestamps.')
+            logger.exception('Failed updating feed metadata timestamps.')
             db.rollback()
             raise e
 
     def group_by_name(self, group_name):
         found = [x for x in self.metadata.groups if x.name == group_name] if self.metadata else []
         if len(found) > 1:
-            log.warn('Found more than one group with name {} for feed {} in metadata db, not expected. Groups = {}'.format(group_name, self.__feed_name__, [g.to_json() for g in self.metadata.groups]))
+            logger.warn('Found more than one group with name {} for feed {} in metadata db, not expected. Groups = {}'.format(group_name, self.__feed_name__, [g.to_json() for g in self.metadata.groups]))
         if found:
             return found[0]
         else:
@@ -398,7 +396,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         group_db_obj = self.group_by_name(group_download_result.group)
 
         if not group_db_obj:
-            log.error(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Skipping group sync. Record not found in db, should have been synced already'))
+            logger.error(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Skipping group sync. Record not found in db, should have been synced already'))
             return result
 
         sync_started = time.time()
@@ -408,7 +406,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             updated_images = set() # To get unique set of all images updated by this sync
 
             if full_flush:
-                log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Performing group data flush prior to sync'))
+                logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Performing group data flush prior to sync'))
                 self._flush_group(group_db_obj, operation_id=operation_id)
 
             mapper = self._load_mapper(group_db_obj)
@@ -430,31 +428,31 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                     # Commit
                     group_db_obj.count = self.record_count(group_db_obj.name, db)
                     db.commit()
-                    log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
+                    logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                     db = get_session()
                     count = 0
 
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)
                 db.commit()
-                log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
+                logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'DB Update Progress: {}/{}'.format(total_updated_count, group_download_result.total_records)))
                 db = get_session()
 
-            log.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
+            logger.debug(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Updating last sync timestamp to {}'.format(download_started)))
             group_db_obj = self.group_by_name(group_download_result.group)
             group_db_obj.last_sync = download_started
             group_db_obj.count = self.record_count(group_db_obj.name, db)
             db.add(group_db_obj)
             db.commit()
         except Exception as e:
-            log.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Error syncing group'))
+            logger.exception(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Error syncing group'))
             db.rollback()
             raise e
         finally:
             total_group_time = time.time() - download_started.timestamp()
             sync_time = time.time() - sync_started
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Sync to db duration: {} sec'.format(sync_time)))
-            log.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Total sync, including download, duration: {} sec'.format(total_group_time)))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Sync to db duration: {} sec'.format(sync_time)))
+            logger.info(log_msg_ctx(operation_id, group_download_result.feed, group_download_result.group, 'Total sync, including download, duration: {} sec'.format(total_group_time)))
 
         result['updated_record_count'] = total_updated_count
         result['status'] = 'success'
@@ -476,7 +474,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         if not (vulnerability_a and vulnerability_b) or vulnerability_a.id != vulnerability_b.id or vulnerability_a.namespace_name != vulnerability_b.namespace_name:
             # They aren't the same item reference
-            log.debug('Vuln id or namespaces are different: {} {} {} {}'.format(vulnerability_a.id, vulnerability_b.id, vulnerability_a.namespace_name, vulnerability_b.namespace_name))
+            logger.debug('Vuln id or namespaces are different: {} {} {} {}'.format(vulnerability_a.id, vulnerability_b.id, vulnerability_a.namespace_name, vulnerability_b.namespace_name))
             return False
 
         normalized_fixes_a = {(fix.name, fix.epochless_version, fix.version) for fix in vulnerability_a.fixed_in}
@@ -484,7 +482,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         fix_diff = normalized_fixes_a.symmetric_difference(normalized_fixes_b)
         if fix_diff:
-            log.debug('Fixed In records diff: {}'.format(fix_diff))
+            logger.debug('Fixed In records diff: {}'.format(fix_diff))
             return False
 
         return True
@@ -506,13 +504,13 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             try:
                 existing = db.query(Vulnerability).filter(Vulnerability.id == vulnerability_record.id, Vulnerability.namespace_name == vulnerability_record.namespace_name).one_or_none()
             except:
-                log.debug('No current record found for {}'.format(vulnerability_record))
+                logger.debug('No current record found for {}'.format(vulnerability_record))
                 existing = None
 
             if existing:
                 needs_update = not VulnerabilityFeed._are_match_equivalent(existing, vulnerability_record)
                 if needs_update:
-                    log.debug('Found update that requires an image match update from {} to {}'.format(existing, vulnerability_record))
+                    logger.debug('Found update that requires an image match update from {} to {}'.format(existing, vulnerability_record))
             else:
                 needs_update = True
 
@@ -521,26 +519,26 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             if vulnerability_processing_fn and needs_update:
                 updates = vulnerability_processing_fn(db, merged)
             else:
-                log.debug('Skipping image processing due to no diff: {}'.format(merged))
+                logger.debug('Skipping image processing due to no diff: {}'.format(merged))
 
             return updates
         except Exception as e:
-            log.exception('Error in vulnerability processing')
+            logger.exception('Error in vulnerability processing')
             raise e
 
     def _flush_group(self, group_obj, operation_id=None):
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushing group records'))
 
         db = get_session()
 
         VulnerabilityFeed.__flush_helper_fn__(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} fix records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} fix records'.format(count)))
         # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
         # log.info('Flushed {} vuln_in records'.format(count))
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
         group_obj.last_sync = None # Null the update timestamp to reflect the flush
         group_obj.count = 0
 
@@ -576,7 +574,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         try:
             return db.query(Vulnerability).filter(Vulnerability.namespace_name == group_name).count()
         except Exception as e:
-            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            logger.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
 
 
@@ -604,7 +602,7 @@ class PackagesFeed(AnchoreServiceFeed):
             else:
                 return 0
         except Exception as e:
-            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            logger.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
 
     def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
@@ -617,11 +615,11 @@ class PackagesFeed(AnchoreServiceFeed):
         elif group_obj.name == 'gem':
             ent_cls = GemMetadata
         else:
-            log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Unknown group name {}. Nothing to flush'.format(group_obj.name)))
+            logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Unknown group name {}. Nothing to flush'.format(group_obj.name)))
             return
 
         count = db.query(ent_cls).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} records'.format(count, group_obj.name)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} records'.format(count, group_obj.name)))
 
         group_obj.last_sync = None
         group_obj.count = 0
@@ -643,9 +641,9 @@ class NvdV2Feed(AnchoreServiceFeed):
             flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         count = db.query(CpeV2Vulnerability).filter(CpeV2Vulnerability.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} CpeV2Vuln records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} CpeV2Vuln records'.format(count)))
         count = db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} NvdV2 records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} NvdV2 records'.format(count)))
 
         group_obj.last_sync = None
         group_obj.count = 0
@@ -655,7 +653,7 @@ class NvdV2Feed(AnchoreServiceFeed):
         try:
             return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
         except Exception as e:
-            log.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            logger.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
 
 
@@ -675,9 +673,9 @@ class VulnDBFeed(AnchoreServiceFeed):
             flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
 
         count = db.query(VulnDBCpe).filter(VulnDBCpe.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBCpe records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBCpe records'.format(count)))
         count = db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_obj.name).delete()
-        log.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBMetadata records'.format(count)))
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} VulnDBMetadata records'.format(count)))
 
         group_obj.last_sync = None
         group_obj.count = 0
@@ -687,7 +685,7 @@ class VulnDBFeed(AnchoreServiceFeed):
         try:
             return db.query(VulnDBMetadata).filter(VulnDBMetadata.namespace_name == group_name).count()
         except Exception as e:
-            log.exception('Error getting feed data group record count in vulndb feed for group: {}'.format(group_name))
+            logger.exception('Error getting feed data group record count in vulndb feed for group: {}'.format(group_name))
             raise
 
 
@@ -723,12 +721,12 @@ def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
         try:
             client.add_event(event)
         except Exception as e:
-            log.warn('Error adding feed start event: {}'.format(e))
+            logger.warn('Error adding feed start event: {}'.format(e))
 
     try:
-        log.info('Event: {} (operation_id={})'.format(event.to_json(), operation_id))
+        logger.info('Event: {} (operation_id={})'.format(event.to_json(), operation_id))
     except:
-        log.exception('Error logging event')
+        logger.exception('Error logging event')
 
 
 def log_msg_ctx(operation_id, feed, group, msg):
