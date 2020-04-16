@@ -710,7 +710,6 @@ def feed_instance_by_name(name: str) -> DataFeed:
     :param name:
     :return:
     """
-    #return DataFeed.get_feed_by_name(name)()
     return feed_registry.get(name)()
 
 
@@ -754,7 +753,7 @@ class FeedRegistry(object):
         feed = feed_cls.__feed_name__.lower()
         self.registry[feed] = feed_cls
 
-    def get(cls, name: str):
+    def get(self, name: str):
         """
         Lookup a feed class by the feed's name, matched against the __feed_name__ attribute of the feed class.
 
@@ -764,19 +763,10 @@ class FeedRegistry(object):
         :return:
         """
         # Try direct name
-        found = cls.registry.get(name.lower())
+        return self.registry[name.lower()]
 
-        if found is not None:
-            return found
-        else:
-            found = [x for x in list(cls.registry.values())]
-            if found:
-                return found[0]
-            else:
-                raise KeyError(name)
-
-    def registered_feed_names(cls):
-        return list(cls.registry.keys())
+    def registered_feed_names(self):
+        return list(self.registry.keys())
 
 # The global registry
 feed_registry = FeedRegistry()
