@@ -2,10 +2,8 @@ import copy
 import re
 
 from anchore_engine.db import GenericFeedDataRecord, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe, Vulnerability, FixedArtifact
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.utils import CPE
-
-log = get_logger()
 
 
 class SingleTypeMapperFactory(object):
@@ -161,7 +159,7 @@ class NvdV2FeedDataMapper(FeedDataMapper):
                 newcpe.other = cpe_obj.other
                 db_rec.vulnerable_cpes.append(newcpe)
             except Exception as err:
-                log.warn("failed to convert vulnerable-software-list into database CPEV2 record - exception: " + str(err))
+                logger.warn("failed to convert vulnerable-software-list into database CPEV2 record - exception: " + str(err))
 
         return db_rec
 
@@ -212,7 +210,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                log.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
+                logger.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
 
         for input_cpe in record_json.get('unaffected_cpes', []):
             try:
@@ -236,7 +234,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                log.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
+                logger.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
 
         return db_rec
 

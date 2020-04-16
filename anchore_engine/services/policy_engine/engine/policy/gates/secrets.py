@@ -2,10 +2,8 @@ import re
 import base64
 from anchore_engine.utils import ensure_bytes, ensure_str
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.policy.params import TypeValidator, TriggerParameter, EnumStringParameter
 from anchore_engine.db import AnalysisArtifact
-log = get_logger()
 
 
 default_included_regex_names = ["AWS_ACCESS_KEY", "AWS_SECRET_KEY", "PRIV_KEY", "DOCKER_AUTH", "API_KEY"]

@@ -4,7 +4,7 @@ import copy
 import re
 import itertools
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string
 from anchore_engine.util.matcher import regexify, is_match
 from anchore_engine.services.policy_engine.engine.policy.formatting import policy_json_to_txt, whitelist_json_to_txt
@@ -30,7 +30,6 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
 
-log = get_logger()
 
 
 class VersionedEntityMixin(object):
@@ -436,7 +435,7 @@ class ExecutablePolicyRule(PolicyRule):
 
         try:
             if not self.configured_trigger:
-                log.error('No configured trigger to execute for gate {} and trigger: {}. Returning'.format(self.gate_name, self.trigger_name))
+                logger.error('No configured trigger to execute for gate {} and trigger: {}. Returning'.format(self.gate_name, self.trigger_name))
                 raise TriggerNotFoundError(trigger_name=self.trigger_name, gate_name=self.gate_name)
 
             if self.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
@@ -453,7 +452,7 @@ class ExecutablePolicyRule(PolicyRule):
             except TriggerEvaluationError:
                 raise
             except Exception as e:
-                log.exception('Unmapped exception caught during trigger evaluation')
+                logger.exception('Unmapped exception caught during trigger evaluation')
                 raise TriggerEvaluationError(trigger=self.configured_trigger, message='Could not evaluate trigger')
 
             matches = self.configured_trigger.fired
@@ -464,12 +463,12 @@ class ExecutablePolicyRule(PolicyRule):
                 try:
                     decisions.append(PolicyRuleDecision(trigger_match=match, policy_rule=self))
                 except TriggerEvaluationError as e:
-                    log.exception('Policy rule decision mapping exception: {}'.format(e))
+                    logger.exception('Policy rule decision mapping exception: {}'.format(e))
                     self.errors.append(str(e))
 
             return self.errors, decisions
         except Exception as e:
-            log.exception('Error executing trigger {} on image {}'.format(self.trigger_name, image_obj.id))
+            logger.exception('Error executing trigger {} on image {}'.format(self.trigger_name, image_obj.id))
             raise
 
     def _safe_execute(self, image_obj, exec_context):
@@ -1176,11 +1175,11 @@ class ExecutableBundle(VersionedEntityMixin):
 
             return bundle_exec
         except PolicyError as e:
-            log.exception('Error executing bundle mapping')
+            logger.exception('Error executing bundle mapping')
             bundle_exec.abort_with_failure(e)
             return bundle_exec
         except Exception as e:
-            log.exception('Error executing bundle mapping')
+            logger.exception('Error executing bundle mapping')
             bundle_exec.abort_with_failure(PolicyError.caused_by(e))
             return bundle_exec
 
@@ -1205,7 +1204,7 @@ class ExecutableBundle(VersionedEntityMixin):
                 for evaluated_policy in evaluated_policies:
                     errors, policy_decision = evaluated_policy.execute(image_obj=image_object, context=context)
                     if errors:
-                        log.warn('Evaluation encountered errors/warnings: {}'.format(errors))
+                        logger.warn('Evaluation encountered errors/warnings: {}'.format(errors))
                         bundle_exec.errors += errors
 
 

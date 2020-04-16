@@ -3,10 +3,9 @@ import stat
 import base64
 from anchore_engine.utils import ensure_str, ensure_bytes
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import PipeDelimitedStringListParameter, TriggerParameter, TypeValidator, EnumStringParameter, BooleanStringParameter
 from anchore_engine.db import AnalysisArtifact
-log = get_logger()
 
 
 class ContentMatchTrigger(BaseTrigger):

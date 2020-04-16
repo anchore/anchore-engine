@@ -6,13 +6,10 @@ from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_group
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, select_nvd_classes
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common import nonos_package_types
-
-
-log = get_logger()
 
 
 SEVERITY_ORDERING = [
@@ -170,7 +167,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if cvss_v3_base_score is not None:
                                     vuln_cvss_base_score = vulnerability_cpe.parent.get_max_base_score_nvd()
                                     if not cvss_v3_base_score_comparison_fn(vuln_cvss_base_score, cvss_v3_base_score):
-                                        log.debug("Non-OS vulnerability {} cvss V3 base score {} is not {} than policy cvss V3 base score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
+                                        logger.debug("Non-OS vulnerability {} cvss V3 base score {} is not {} than policy cvss V3 base score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
                                         continue
                                     else:
                                         parameter_data['cvss_v3_base_score'] = vuln_cvss_base_score
@@ -178,7 +175,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if cvss_v3_exploitability_score is not None:
                                     vuln_cvss_exploitability_score = vulnerability_cpe.parent.get_max_exploitability_score_nvd()
                                     if not cvss_v3_exploitability_score_comparison_fn(vuln_cvss_exploitability_score, cvss_v3_exploitability_score):
-                                        log.debug("Non-OS vulnerability {} cvss V3 exploitability sub score {} is not {} than policy cvss V3 exploitability sub score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
+                                        logger.debug("Non-OS vulnerability {} cvss V3 exploitability sub score {} is not {} than policy cvss V3 exploitability sub score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
                                         continue
                                     else:
                                         parameter_data['cvss_v3_exploitability_score'] = vuln_cvss_exploitability_score
@@ -186,7 +183,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if cvss_v3_impact_score is not None:
                                     vuln_cvss_impact_score = vulnerability_cpe.parent.get_max_impact_score_nvd()
                                     if not cvss_v3_impact_score_comparison_fn(vuln_cvss_impact_score, cvss_v3_impact_score):
-                                        log.debug("Non-OS vulnerability {} cvss V3 impact sub score {} is not {} than policy cvss V3 impact score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
+                                        logger.debug("Non-OS vulnerability {} cvss V3 impact sub score {} is not {} than policy cvss V3 impact score {}, skipping".format(vulnerability_cpe.parent.name, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
                                         continue
                                     else:
                                         parameter_data['cvss_v3_impact_score'] = vuln_cvss_impact_score
@@ -255,7 +252,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if vendor_cvss_v3_base_score is not None:
                                     vuln_vendor_cvss_base_score = vulnerability_cpe.parent.get_max_base_score_vendor()
                                     if not vendor_cvss_v3_base_score_comparison_fn(vuln_vendor_cvss_base_score, vendor_cvss_v3_base_score):
-                                        log.debug("Non-OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
+                                        logger.debug("Non-OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
                                         continue
                                     else:
                                         parameter_data['vendor_cvss_v3_base_score'] = vuln_vendor_cvss_base_score
@@ -263,7 +260,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if vendor_cvss_v3_exploitability_score is not None:
                                     vuln_vendor_cvss_exploitability_score = vulnerability_cpe.parent.get_max_exploitability_score_vendor()
                                     if not vendor_cvss_v3_exploitability_score_comparison_fn(vuln_vendor_cvss_exploitability_score, vendor_cvss_v3_exploitability_score):
-                                        log.debug("Non-OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
+                                        logger.debug("Non-OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
                                         continue
                                     else:
                                         parameter_data['vendor_cvss_v3_exploitability_score'] = vuln_vendor_cvss_exploitability_score
@@ -271,7 +268,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if vendor_cvss_v3_impact_score is not None:
                                     vuln_vendor_cvss_impact_score = vulnerability_cpe.parent.get_max_impact_score_vendor()
                                     if not vendor_cvss_v3_impact_score_comparison_fn(vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score):
-                                        log.debug("Non-OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
+                                        logger.debug("Non-OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(vulnerability_cpe.parent.name, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
                                         continue
                                     else:
                                         parameter_data['vendor_cvss_v3_impact_score'] = vuln_vendor_cvss_impact_score
@@ -295,7 +292,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 self._fire(instance_id=vulnerability_cpe.vulnerability_id + '+' + trigger_fname, msg=msg)
 
                 except Exception as err:
-                    log.warn("problem during non-os vulnerability evaluation - exception: {}".format(err))
+                    logger.warn("problem during non-os vulnerability evaluation - exception: {}".format(err))
 
         if self.package_type.value() in ['all', 'os']:
             vulns = context.data.get('loaded_vulnerabilities')
@@ -352,21 +349,21 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                         if cvss_v3_base_score is not None:
                             if not cvss_v3_base_score_comparison_fn(vuln_cvss_base_score, cvss_v3_base_score):
-                                log.debug("OS vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
+                                logger.debug("OS vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
                                 continue
                             else:
                                 parameter_data['cvss_v3_base_score'] = vuln_cvss_base_score
 
                         if cvss_v3_exploitability_score is not None:
                             if not cvss_v3_exploitability_score_comparison_fn(vuln_cvss_exploitability_score, cvss_v3_exploitability_score):
-                                log.debug("OS vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
+                                logger.debug("OS vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
                                 continue
                             else:
                                 parameter_data['cvss_v3_exploitability_score'] = vuln_cvss_exploitability_score
 
                         if cvss_v3_impact_score is not None:
                             if not cvss_v3_impact_score_comparison_fn(vuln_cvss_impact_score, cvss_v3_impact_score):
-                                log.debug("OS vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
+                                logger.debug("OS vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
                                 continue
                             else:
                                 parameter_data['cvss_v3_impact_score'] = vuln_cvss_impact_score
@@ -412,21 +409,21 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                         if vendor_cvss_v3_base_score is not None:
                             if not vendor_cvss_v3_base_score_comparison_fn(vuln_vendor_cvss_base_score, vendor_cvss_v3_base_score):
-                                log.debug("OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
+                                logger.debug("OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
                                 continue
                             else:
                                 parameter_data['vendor_cvss_v3_base_score'] = vuln_vendor_cvss_base_score
 
                         if vendor_cvss_v3_exploitability_score is not None:
                             if not vendor_cvss_v3_exploitability_score_comparison_fn(vuln_vendor_cvss_exploitability_score, vendor_cvss_v3_exploitability_score):
-                                log.debug("OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
+                                logger.debug("OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
                                 continue
                             else:
                                 parameter_data['vendor_cvss_v3_exploitability_score'] = vuln_vendor_cvss_exploitability_score
 
                         if vendor_cvss_v3_impact_score is not None:
                             if not vendor_cvss_v3_impact_score_comparison_fn(vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score):
-                                log.debug("OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
+                                logger.debug("OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
                                 continue
                             else:
                                 parameter_data['vendor_cvss_v3_impact_score'] = vuln_vendor_cvss_impact_score

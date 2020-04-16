@@ -1,10 +1,8 @@
 from anchore_engine.db import FeedMetadata, FeedGroupMetadata, get_session
 from anchore_engine.subsys.caching import local_named_cache
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 
 cache_name = 'feed_group_metadata'
-
-log = get_logger()
 
 
 def lookup_feed(db_session, feed_name):
@@ -100,7 +98,7 @@ def get_all_feeds_detached():
 
         return response
     except Exception as e:
-        log.exception('Could not get feed metadata')
+        logger.exception('Could not get feed metadata')
         raise e
     finally:
         db_session.rollback()
@@ -122,7 +120,7 @@ def get_all_feed_groups_detached(feed_name):
 
         return response
     except Exception as e:
-        log.exception('Could not get feed metadata')
+        logger.exception('Could not get feed metadata')
         raise e
     finally:
         db_session.rollback()
@@ -139,7 +137,7 @@ def get_feed_group_detached(feed_name, group_name):
         group = lookup_feed_group(db_session, feed_name, group_name)
         return group.to_detached() if group else None
     except Exception as e:
-        log.exception('Could not get feed metadata')
+        logger.exception('Could not get feed metadata')
         raise e
     finally:
         db_session.rollback()

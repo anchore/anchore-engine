@@ -1,6 +1,4 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.logs import get_logger
-log = get_logger()
 
 
 class AlwaysFireTrigger(BaseTrigger):

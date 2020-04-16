@@ -17,12 +17,10 @@ from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.services.policy_engine.engine.feeds.feeds import build_feed_sync_results, build_group_sync_result, feed_instance_by_name, notify_event, VulnerabilityFeed, VulnDBFeed, PackagesFeed, NvdV2Feed
 from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.download import FeedDownloader, DownloadOperationConfiguration, LocalFeedDataRepo
-from anchore_engine.services.policy_engine.engine.logs import get_logger
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds, get_all_feeds_detached
 from anchore_engine.subsys.events import FeedSyncStarted, FeedSyncFailed, FeedSyncCompleted, FeedGroupSyncStarted, FeedGroupSyncCompleted, FeedGroupSyncFailed
 from anchore_engine.configuration import localconfig
-
-log = get_logger()
+from anchore_engine.subsys import logger
 
 
 def get_feeds_config(full_config):
@@ -99,7 +97,7 @@ class DataFeeds(object):
 
         db = get_session()
         try:
-            log.info('Syncing feed and group metadata from upstream source (operation_id={})'.format(operation_id))
+            logger.info('Syncing feed and group metadata from upstream source (operation_id={})'.format(operation_id))
 
             source_resp = feed_client.list_feeds()
             if to_sync:
@@ -109,24 +107,24 @@ class DataFeeds(object):
 
             failed = []
             source_feeds = {x.name: {'meta': x, 'groups': feed_client.list_feed_groups(x.name).groups} for x in feeds}
-            log.debug('Upstream feeds available: {}'.format(source_feeds))
+            logger.debug('Upstream feeds available: %s', source_feeds)
             db_feeds = DataFeeds._pivot_and_filter_feeds_by_config(to_sync, list(source_feeds.keys()), get_all_feeds(db))
 
             for feed_name, feed_api_record in source_feeds.items():
                 try:
-                    log.info('Syncing metadata for feed: {} (operation_id={})'.format(feed_name, operation_id))
+                    logger.info('Syncing metadata for feed: {} (operation_id={})'.format(feed_name, operation_id))
 
                     api_feed = feed_api_record['meta']
                     db_feed = db_feeds.get(api_feed.name)
 
                     # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
                     if not db_feed:
-                        log.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_feed.name, operation_id))
+                        logger.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_feed.name, operation_id))
                         db_feed = FeedMetadata(name=api_feed.name, description=api_feed.description, access_tier=api_feed.access_tier, enabled=True)
                         db.add(db_feed)
                         db.flush()
                     else:
-                        log.debug('Feed metadata already in db: {} (operation_id={})'.format(api_feed.name, operation_id))
+                        logger.debug('Feed metadata already in db: {} (operation_id={})'.format(api_feed.name, operation_id))
 
                     # Check for any update
                     db_feed.description = api_feed.description
@@ -137,18 +135,18 @@ class DataFeeds(object):
                         db_group = db_groups.get(api_group.name)
                         # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
                         if not db_group:
-                            log.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_group.name, operation_id))
+                            logger.debug('Adding new feed metadata record to db: {} (operation_id={})'.format(api_group.name, operation_id))
                             db_group = FeedGroupMetadata(name=api_group.name, description=api_group.description, access_tier=api_group.access_tier, feed=db_feed, enabled=True)
                             db_group.last_sync = None
                             db.add(db_group)
                         else:
-                            log.debug('Feed group metadata already in db: {} (operation_id={})'.format(api_group.name, operation_id))
+                            logger.debug('Feed group metadata already in db: {} (operation_id={})'.format(api_group.name, operation_id))
 
                         db_group.access_tier = api_group.access_tier
                         db_group.description = api_group.description
                 except Exception as e:
-                    log.exception('Error syncing feed {}'.format(feed_name))
-                    log.warn('Could not sync metadata for feed: {} (operation_id={})'.format(feed_name, operation_id))
+                    logger.exception('Error syncing feed {}'.format(feed_name))
+                    logger.warn('Could not sync metadata for feed: {} (operation_id={})'.format(feed_name, operation_id))
                     failed.append((feed_name, e))
                 finally:
                     db.flush()
@@ -157,10 +155,10 @@ class DataFeeds(object):
             db_feeds = DataFeeds._pivot_and_filter_feeds_by_config(to_sync, list(source_feeds.keys()), get_all_feeds(db))
 
             db.commit()
-            log.info('Metadata sync from feeds upstream source complete (operation_id={})'.format(operation_id))
+            logger.info('Metadata sync from feeds upstream source complete (operation_id={})'.format(operation_id))
             return db_feeds, failed
         except Exception as e:
-            log.error('Rolling back feed metadata update due to error: {} (operation_id={})'.format(e, operation_id))
+            logger.error('Rolling back feed metadata update due to error: {} (operation_id={})'.format(e, operation_id))
             db.rollback()
             raise
 
@@ -186,16 +184,16 @@ class DataFeeds(object):
             try:
                 t = time.time()
                 try:
-                    log.info('Syncing downloaded feed data into database (operation_id={})'.format(operation_id))
+                    logger.info('Syncing downloaded feed data into database (operation_id={})'.format(operation_id))
                     # Do the sync from the local data
                     result.append(f.sync(fetched_data=fetched_repo, event_client=catalog_client, operation_id=operation_id, full_flush=full_flush))
                 except Exception as e:
-                    log.exception('Failure updating the {} feed from downloaded data (operation_id={})'.format(f.__feed_name__, operation_id))
+                    logger.exception('Failure updating the {} feed from downloaded data (operation_id={})'.format(f.__feed_name__, operation_id))
                     fail_result = build_feed_sync_results(feed=f.__feed_name__)
                     fail_result['total_time_seconds'] = time.time() - t
                     result.append(fail_result)
             except:
-                log.exception('Error syncing feed {} (operation_id={})'.format(f.__feed_name__, operation_id))
+                logger.exception('Error syncing feed {} (operation_id={})'.format(f.__feed_name__, operation_id))
                 raise
 
         return result
@@ -215,7 +213,7 @@ class DataFeeds(object):
                 notify_event(FeedSyncStarted(feed=name), catalog_client, operation_id=operation_id)
                 notify_event(FeedSyncFailed(feed=name, error=error), catalog_client, operation_id=operation_id)
             except:
-                log.exception('Error emitting feed sync failure events')
+                logger.exception('Error emitting feed sync failure events')
             finally:
                 feed_result = build_feed_sync_results(feed=name, status='failure')
                 fail_results.append(feed_result)
@@ -234,7 +232,7 @@ class DataFeeds(object):
         if not feed_client:
             feed_client = get_client()
 
-        log.info('Performing sync of feeds: {} (operation_id={})'.format('all' if to_sync is None else to_sync, operation_id))
+        logger.info('Performing sync of feeds: {} (operation_id={})'.format('all' if to_sync is None else to_sync, operation_id))
 
         updated, failed = DataFeeds.sync_metadata(feed_client=feed_client, to_sync=to_sync, operation_id=operation_id)
         updated_names = set(updated.keys())
@@ -248,9 +246,12 @@ class DataFeeds(object):
         for feed_name in updated_names:
             try:
                 feeds_to_sync.append(feed_instance_by_name(feed_name))
+            except KeyError as e:
+                logger.error('Could not initialize metadata for feed {}. Error: No feed implementation found for feed {}. (operation_id={})'.format(feed_name, str(e), operation_id))
+                failed.append((feed_name, e))
             except Exception as e:
-                log.error('Could not initialize metadata for feed {}. Error: {}. (operation_id={})'.format(feed_name, str(e), operation_id))
-                log.warn('Cannot sync metadata for feed {} from upstream source. Skipping. (operation_id={})'.format(feed_name, operation_id))
+                logger.error('Could not initialize metadata for feed {}. Error: {}. (operation_id={})'.format(feed_name, str(e), operation_id))
+                logger.warn('Cannot sync metadata for feed {} from upstream source. Skipping. (operation_id={})'.format(feed_name, operation_id))
                 failed.append((feed_name, e))
 
         # Process the feeds that failed for any reason pre-data-download
@@ -262,20 +263,20 @@ class DataFeeds(object):
         # Do the fetches
         groups_to_download = []
         for f in feeds_to_sync:
-            log.info('Initialized feed to sync: {} (operation_id={})'.format(f.__feed_name__, operation_id))
+            logger.info('Initialized feed to sync: {} (operation_id={})'.format(f.__feed_name__, operation_id))
             if f.metadata:
                 if f.metadata.enabled:
                     for g in f.metadata.groups:
                         if g.enabled:
                             groups_to_download.append(g)
                         else:
-                            log.info("Will not sync/download group {} of feed {} because group is explicitly disabled".format(g.name, g.feed_name))
+                            logger.info("Will not sync/download group {} of feed {} because group is explicitly disabled".format(g.name, g.feed_name))
                 else:
-                    log.info('Skipping feed {} because it is explicitly not enabled'.format(f.__feed_name__))
+                    logger.info('Skipping feed {} because it is explicitly not enabled'.format(f.__feed_name__))
             else:
-                log.warn('No metadata found for feed {}. Unexpected but not an error (operation_id={})'.format(f.__feed_name__, operation_id))
+                logger.warn('No metadata found for feed {}. Unexpected but not an error (operation_id={})'.format(f.__feed_name__, operation_id))
 
-        log.debug('Groups to download {}'.format(groups_to_download))
+        logger.debug('Groups to download {}'.format(groups_to_download))
 
         if not feed_client:
             feed_client = get_client()
@@ -295,7 +296,7 @@ class DataFeeds(object):
                     notify_event(FeedSyncStarted(feed=f.__feed_name__), catalog_client, operation_id=operation_id)
 
                     groups_to_sync = [x for x in groups_to_download if x.feed_name == f.__feed_name__]
-                    log.debug('Groups to sync {}'.format(groups_to_sync))
+                    logger.debug('Groups to sync {}'.format(groups_to_sync))
 
                     # Filter groups by that feed
                     for g in groups_to_sync:
@@ -304,20 +305,20 @@ class DataFeeds(object):
                         group_download_config = DownloadOperationConfiguration.generate_new(feed_client.feed_url, db_groups_to_sync=[g])
                         downloader = FeedDownloader(download_root_dir=download_dir, config=group_download_config, client=feed_client, fetch_all=full_flush)
 
-                        log.debug('Groups to download {}'.format(downloader.config.groups))
+                        logger.debug('Groups to download {}'.format(downloader.config.groups))
                         try:
                             notify_event(FeedGroupSyncStarted(feed=g.feed_name, group=g.name), catalog_client, operation_id=operation_id)
 
-                            log.info('Beginning feed data fetch (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
+                            logger.info('Beginning feed data fetch (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
                             feed_data_repo = downloader.execute(feed_name=g.feed_name, group_name=g.name)
 
-                            log.info('Download complete. Syncing to db (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
+                            logger.info('Download complete. Syncing to db (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
                             f_result = DataFeeds.sync_from_fetched(feed_data_repo, catalog_client=catalog_client, operation_id=operation_id, full_flush=full_flush)
 
                             # Extract the single group record...
                             group_result = _get_group_result(f_result)
 
-                            log.info('DB Sync complete (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
+                            logger.info('DB Sync complete (feed={}, group={}, operation_id={})'.format(g.feed_name, g.name, operation_id))
 
                             if group_result['status'] == 'success':
                                 notify_event(FeedGroupSyncCompleted(feed=f.__feed_name__, group=g.name, result=group_result), catalog_client, operation_id=operation_id)
@@ -329,19 +330,19 @@ class DataFeeds(object):
                             feed_result['groups'].append(group_result)
 
                         except Exception as e:
-                            log.error('Error syncing {}/{} (operation_id={})'.format(g.feed_name, g.name, operation_id))
+                            logger.error('Error syncing {}/{} (operation_id={})'.format(g.feed_name, g.name, operation_id))
                             notify_event(FeedGroupSyncFailed(feed=g.feed_name, group=g.name, error=e), catalog_client, operation_id)
                             feed_result['status'] = 'failure'
                         finally:
                             try:
                                 feed_data_repo.teardown()
                             except:
-                                log.exception('Could not cleanup download repo due to error')
+                                logger.exception('Could not cleanup download repo due to error')
 
                             feed_data_repo = None
 
                 except Exception as e:
-                    log.error('Error syncing {} (operation_id={})'.format(f, operation_id))
+                    logger.error('Error syncing {} (operation_id={})'.format(f, operation_id))
 
                 if feed_result['status'] == 'success':
                     notify_event(FeedSyncCompleted(feed=f.__feed_name__), catalog_client, operation_id)

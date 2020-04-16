@@ -1,10 +1,9 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import TypeValidator, TriggerParameter
 from anchore_engine.db import NpmMetadata
-from anchore_engine.services.policy_engine.engine.logs import get_logger
+from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_instance_by_name
 
-log = get_logger()
 
 # TODO; generalize these for any feed, with base classes and children per feed type
 
@@ -145,7 +144,7 @@ class NoFeedTrigger(BaseTrigger):
             if feed_meta and feed_meta.last_sync:
                 return
         except Exception as e:
-            log.exception('Error determining feed presence for npms. Defaulting to firing trigger')
+            logger.exception('Error determining feed presence for npms. Defaulting to firing trigger')
 
         self._fire()
         return

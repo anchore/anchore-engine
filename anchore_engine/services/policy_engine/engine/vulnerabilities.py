@@ -20,9 +20,8 @@ from anchore_engine.common import nonos_package_types, os_package_types
 from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_json
 import threading
 
-from .logs import get_logger
+from anchore_engine.subsys import logger
 
-log = get_logger()
 
 # TODO: introduce a match cache for the fix key and package key to optimize the lookup and updates since its common to
 # see a lot of images with the same versions of packages installed.
@@ -187,7 +186,7 @@ def find_vulnerable_image_packages(vulnerability_obj):
 
         return affected
     except Exception as e:
-        log.exception('Failed to query and find packages affected by vulnerability: {}'.format(vulnerability_obj))
+        logger.exception('Failed to query and find packages affected by vulnerability: {}'.format(vulnerability_obj))
         raise
 
 
@@ -223,7 +222,7 @@ def vulnerabilities_for_image(image_obj):
 
         return computed_vulnerabilties
     except Exception as e:
-        log.exception('Error computing full vulnerability set for image {}/{}'.format(image_obj.user_id, image_obj.id))
+        logger.exception('Error computing full vulnerability set for image {}/{}'.format(image_obj.user_id, image_obj.id))
         raise
 
 
@@ -237,13 +236,13 @@ def rescan_image(image_obj, db_session):
     """
 
     current_vulns = image_obj.vulnerabilities()
-    log.debug('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), image_obj.user_id, image_obj.id))
+    logger.debug('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), image_obj.user_id, image_obj.id))
     for v in current_vulns:
         db_session.delete(v)
 
     db_session.flush()
     vulns = vulnerabilities_for_image(image_obj)
-    log.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), image_obj.user_id, image_obj.id))
+    logger.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), image_obj.user_id, image_obj.id))
     for v in vulns:
         db_session.add(v)
     db_session.flush()
@@ -324,7 +323,7 @@ def flush_vulnerability_matches(db, feed_name=None, group_name=None):
     :return:
     """
     count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
-    log.info('Deleted {} vulnerability matches in flush for group {}'.format(count, group_name))
+    logger.info('Deleted {} vulnerability matches in flush for group {}'.format(count, group_name))
 
 
 def process_updated_vulnerability(db, vulnerability):
@@ -336,7 +335,7 @@ def process_updated_vulnerability(db, vulnerability):
     :param: db: The db session to use, should be valid and open
     :return: list of (user_id, image_id) that were affected
     """
-    log.spew('Processing CVE update for: {}'.format(vulnerability.id))
+    logger.spew('Processing CVE update for: {}'.format(vulnerability.id))
     changed_images = []
 
     # Find any packages already matched with the CVE ID.
@@ -344,14 +343,14 @@ def process_updated_vulnerability(db, vulnerability):
 
     # May need to remove vuln from some packages.
     if vulnerability.is_empty():
-        log.spew('Detected an empty CVE. Removing all existing matches on this CVE')
+        logger.spew('Detected an empty CVE. Removing all existing matches on this CVE')
 
         # This is a flush, nothing can be vulnerable to this, so remove it from packages.
         if current_affected:
-            log.debug('Detected {} existing matches on CVE {} to remove'.format(len(current_affected), vulnerability.id))
+            logger.debug('Detected {} existing matches on CVE {} to remove'.format(len(current_affected), vulnerability.id))
 
             for pkgVuln in current_affected:
-                log.debug('Removing match on image: {}/{}'.format(pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
+                logger.debug('Removing match on image: {}/{}'.format(pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
                 db.delete(pkgVuln)
                 changed_images.append((pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
     else:
@@ -361,8 +360,8 @@ def process_updated_vulnerability(db, vulnerability):
         current_match = set(current_affected)
 
         if len(new_vulnerable_packages) > 0:
-            log.debug('Found {} packages vulnerable to cve {}'.format(len(new_vulnerable_packages), vulnerability.id))
-            log.debug('Dedup matches from {} to {}'.format(len(new_vulnerable_packages), len(unique_vuln_pkgs)))
+            logger.debug('Found {} packages vulnerable to cve {}'.format(len(new_vulnerable_packages), vulnerability.id))
+            logger.debug('Dedup matches from {} to {}'.format(len(new_vulnerable_packages), len(unique_vuln_pkgs)))
 
         # Find the diffs of any packages that were vulnerable but are no longer.
         no_longer_affected = current_match.difference(unique_vuln_pkgs)
@@ -370,20 +369,20 @@ def process_updated_vulnerability(db, vulnerability):
         new_matches = unique_vuln_pkgs.difference(current_match)
 
         if len(no_longer_affected) > 0:
-            log.debug('Found {} packages no longer vulnerable to cve {}'.format(len(no_longer_affected), vulnerability.id))
+            logger.debug('Found {} packages no longer vulnerable to cve {}'.format(len(no_longer_affected), vulnerability.id))
             for img_pkg_vuln in no_longer_affected:
-                log.debug('Removing old invalid match for pkg {} on cve {}'.format(img_pkg_vuln, vulnerability.id))
+                logger.debug('Removing old invalid match for pkg {} on cve {}'.format(img_pkg_vuln, vulnerability.id))
                 db.delete(img_pkg_vuln)
             db.flush()
 
         for v in new_matches:
-            log.debug('Adding new vulnerability match: {}'.format(v))
+            logger.debug('Adding new vulnerability match: {}'.format(v))
             db.add(v)
             changed_images.append((v.pkg_user_id, v.pkg_image_id))
 
         db.flush()
 
-    log.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+    logger.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
 
     return changed_images
 
@@ -397,12 +396,12 @@ def rescan_namespace(db, namespace_name: str):
     :return:
     """
     i = 0
-    log.info('Evaluating matches for all vulnerabilities in namespace {}'.format(namespace_name))
+    logger.info('Evaluating matches for all vulnerabilities in namespace {}'.format(namespace_name))
     total_vulns = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
-    log.info('Found {} total vulnerability records in that namespace to re-evaluate against images in the db')
+    logger.info('Found {} total vulnerability records in that namespace to re-evaluate against images in the db')
     for vuln in db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name):
-        log.info('Computing matches for {} vulnerability {}'.format(namespace_name, vuln.id))
+        logger.info('Computing matches for {} vulnerability {}'.format(namespace_name, vuln.id))
         updated_images = process_updated_vulnerability(db, vuln)
-        log.info('Updated {} images with a match for {}'.format(len(updated_images) if updated_images else 0, vuln.id))
+        logger.info('Updated {} images with a match for {}'.format(len(updated_images) if updated_images else 0, vuln.id))
         i += 1
-        log.info('Completed {} of {} updates for {}'.format(i, total_vulns, namespace_name))
+        logger.info('Completed {} of {} updates for {}'.format(i, total_vulns, namespace_name))

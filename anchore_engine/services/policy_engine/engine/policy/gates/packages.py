@@ -4,9 +4,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import NameVersi
     CommaDelimitedStringListParameter, EnumCommaDelimStringListParameter, EnumStringParameter, TypeValidator, TriggerParameter
 from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
 from anchore_engine.util.packages import compare_package_versions
-from anchore_engine.services.policy_engine.engine.logs import get_logger
-
-log = get_logger()
+from anchore_engine.subsys import logger
 
 
 class VerifyTrigger(BaseTrigger):
@@ -208,7 +206,7 @@ class BlackListTrigger(BaseTrigger):
                 for m in matches:
                     self._fire(msg='Package is blacklisted: ' + m.name)
         except Exception as e:
-            log.exception('Error filtering packages for full match')
+            logger.exception('Error filtering packages for full match')
             pass
 
 
