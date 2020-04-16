@@ -1910,7 +1910,7 @@ class ImagePackageVulnerability(Base):
         # NOTE: semver version format indicates a range where package
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
-        if fixed_in.version_format in ['semver']:
+        if fixed_in and fixed_in.version_format in ['semver']:
             # Github Advisories can add the real version where there is a fix if any.
             metadata = fixed_in.fix_metadata or {}
             first_patched_version = metadata.get('first_patched_version')
