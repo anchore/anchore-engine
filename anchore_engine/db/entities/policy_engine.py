@@ -315,8 +315,8 @@ class VulnerableArtifact(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name],
-                                           refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
+    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
+                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
 
     def __repr__(self):
         return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name,
@@ -346,15 +346,12 @@ class VulnerableArtifact(Base):
             return False
 
         # Is it a catch-all record? Explicit 'None' or 'all' versions indicate all versions of the named package are vulnerable.
-        if vuln_obj.epochless_version in ['all', 'None']:
+        # Or is it an exact version match?
+        if vuln_obj.epochless_version in ['all', 'None'] or \
+                (package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version):
             return True
-
-        # Is the package older than the fix?
-        if package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version:
-            return True
-
-        # Newer or the same
-        return False
+        else:
+            return False
 
 
 class FixedArtifact(Base):
@@ -377,8 +374,8 @@ class FixedArtifact(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     fix_observed_at = Column(DateTime)
 
-    __table_args__ = (ForeignKeyConstraint(columns=[vulnerability_id, namespace_name],
-                                           refcolumns=[Vulnerability.id, Vulnerability.namespace_name]), {})
+    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
+                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
 
     @staticmethod
     def _fix_observed_at_update(mapper, connection, target):
@@ -1089,7 +1086,7 @@ class CpeVulnerability(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name, severity], refcolumns=[NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name, severity), refcolumns=(NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity)),
         Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
         Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
         {}
@@ -1142,7 +1139,7 @@ class CpeV2Vulnerability(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[NvdV2Metadata.name, NvdV2Metadata.namespace_name]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(NvdV2Metadata.name, NvdV2Metadata.namespace_name)),
         Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
         Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name),
         {}
@@ -1217,7 +1214,7 @@ class VulnDBCpe(Base):
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=[vulnerability_id, namespace_name], refcolumns=[VulnDBMetadata.name, VulnDBMetadata.namespace_name]),
+        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(VulnDBMetadata.name, VulnDBMetadata.namespace_name)),
         Index('ix_feed_data_vulndb_affected_cpes_product_version', product, version),
         Index('ix_feed_data_vulndb_affected_cpes_fk', vulnerability_id, namespace_name),
         {}
@@ -1319,11 +1316,11 @@ class ImagePackage(Base):
 
     vulnerabilities = relationship('ImagePackageVulnerability', back_populates='package', lazy='dynamic')
     image = relationship('Image', back_populates='packages')
-    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all', 'delete', 'delete-orphan'])
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
                              Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
                              # TODO: add this index for feed sync performance, needs to be re-tested with new package usage
                              #  Index('ix_image_package_distro_pkgs', distro_name, distro_version, name, normalized_src_pkg, version),
@@ -1360,7 +1357,7 @@ class ImagePackage(Base):
                 props[key] = value
         return props
 
-    def vulnerabilities_for_package(self):
+    def find_vulnerabilities(self):
         """
         Given an ImagePackage object, return the vulnerabilities that it matches.
 
@@ -1444,9 +1441,9 @@ class ImagePackage(Base):
                 if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(self):
                     matches.append(candidate)
 
-        #for candidate in vulnerable_candidates:
-        #    if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(package_obj):
-        #        matches.append(candidate)
+            for candidate in vulnerable_candidates:
+               if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(self):
+                   matches.append(candidate)
 
         #log.debug("TIMER DB: {}".format(time.time() - ts))
         return matches
@@ -1474,12 +1471,11 @@ class ImagePackage(Base):
                                                             or_(FixedArtifact.name == package_obj.name, FixedArtifact.name == package_obj.normalized_src_pkg)).all()
 
         # Match the namespace and package name or src pkg name
-        vulnerable_candidates = []
-        #vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
-        #                                                            or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
-
+        vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
+                                                                    or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
 
         return fix_candidates, vulnerable_candidates
+
 
 class ImagePackageManifestEntry(Base):
     """
@@ -1509,8 +1505,8 @@ class ImagePackageManifestEntry(Base):
     size = Column(Integer, nullable=True)
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path],
-                             refcolumns=['image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path),
+                             refcolumns=('image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path')),
         {}
     )
 
@@ -1537,8 +1533,8 @@ class ImageNpm(Base):
     image = relationship('Image', back_populates='npms')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id','images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id','images.user_id')),
         Index('idx_npm_seq', seq_id),
         {}
     )
@@ -1571,8 +1567,8 @@ class ImageGem(Base):
     image = relationship('Image', back_populates='gems')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         Index('idx_gem_seq', seq_id),
         {}
     )
@@ -1599,8 +1595,8 @@ class ImageCpe(Base):
     image = relationship('Image', back_populates='cpes')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id','images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id','images.user_id')),
         Index('ix_image_cpe_user_img', image_id, image_user_id),
         {}
     )
@@ -1677,8 +1673,8 @@ class FilesystemAnalysis(Base):
     _files = None
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         {}
     )
 
@@ -1737,8 +1733,8 @@ class AnalysisArtifact(Base):
     image = relationship('Image', back_populates='analysis_artifacts')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[image_id, image_user_id],
-                             refcolumns=['images.id', 'images.user_id']),
+        ForeignKeyConstraint(columns=(image_id, image_user_id),
+                             refcolumns=('images.id', 'images.user_id')),
         {}
     )
 
@@ -1876,8 +1872,8 @@ class ImagePackageVulnerability(Base):
     vulnerability = relationship('Vulnerability')
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=[pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path], refcolumns=[ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path]),
-        ForeignKeyConstraint(columns=[vulnerability_id, vulnerability_namespace_name], refcolumns=[Vulnerability.id, Vulnerability.namespace_name]),
+        ForeignKeyConstraint(columns=(pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path), refcolumns=(ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path)),
+        ForeignKeyConstraint(columns=(vulnerability_id, vulnerability_namespace_name), refcolumns=(Vulnerability.id, Vulnerability.namespace_name)),
         {}
     )
 
@@ -1914,7 +1910,7 @@ class ImagePackageVulnerability(Base):
         # NOTE: semver version format indicates a range where package
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
-        if fixed_in.version_format in ['semver']:
+        if fixed_in and fixed_in.version_format in ['semver']:
             # Github Advisories can add the real version where there is a fix if any.
             metadata = fixed_in.fix_metadata or {}
             first_patched_version = metadata.get('first_patched_version')

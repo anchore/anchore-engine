@@ -1287,6 +1287,18 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
 
                         namespace_el['affected_packages'].append(pkg_el)
 
+                for v_pkg in vulnerability.vulnerable_in:
+                    if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
+                        pkg_el = {
+                            'name': v_pkg.name,
+                            'version': v_pkg.version,
+                            'type': v_pkg.version_format,
+                        }
+                        if not v_pkg.version or v_pkg.version.lower() == 'none':
+                            pkg_el['version'] = '*'
+
+                        namespace_el['affected_packages'].append(pkg_el)
+
                 if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
                     return_object.append(namespace_el)
 

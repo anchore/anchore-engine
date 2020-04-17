@@ -170,19 +170,19 @@ def find_vulnerable_image_packages(vulnerability_obj):
                     if fix_rec.match_but_not_fixed(candidate):
                         affected.append(candidate)
 
-#        if vulnerability_obj.vulnerable_in:
-#            # Check the vulnerable_in records
-#            for vuln_rec in vulnerability_obj.vulnerable_in:
-#                package_candidates = []
-#                # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
-#                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names),
-#                                                    ImagePackage.distro_version.like(dist.version + '%'),
-#                                                    or_(ImagePackage.name == fix_rec.name,
-#                                                        ImagePackage.normalized_src_pkg == fix_rec.name)).all()
-#               package_candidates += pkgs
-#               for candidate in package_candidates:
-#                   if vuln_rec.match_and_vulnerable(candidate):
-#                       affected.append(candidate)
+        if vulnerability_obj.vulnerable_in:
+            # Check the vulnerable_in records
+            for vuln_rec in vulnerability_obj.vulnerable_in:
+                package_candidates = []
+                # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
+                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names),
+                                                     ImagePackage.distro_version.like(dist.version + '%'),
+                                                     or_(ImagePackage.name == vuln_rec.name,
+                                                         ImagePackage.normalized_src_pkg == vuln_rec.name)).all()
+                package_candidates += pkgs
+                for candidate in package_candidates:
+                    if vuln_rec.match_and_vulnerable(candidate):
+                        affected.append(candidate)
 
         return affected
     except Exception as e:
@@ -205,7 +205,7 @@ def vulnerabilities_for_image(image_obj):
         ts = time.time()
         computed_vulnerabilties = []
         for package in image_obj.packages:
-            pkg_vulnerabilities = package.vulnerabilities_for_package()
+            pkg_vulnerabilities = package.find_vulnerabilities()
             for v in pkg_vulnerabilities:
                 img_v = ImagePackageVulnerability()
                 img_v.pkg_image_id = image_obj.id
