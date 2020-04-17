@@ -3,7 +3,7 @@ import time
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import get_thread_scoped_session as get_session, FeedMetadata, GenericFeedDataRecord, FeedGroupMetadata, ImagePackageVulnerability, Vulnerability, FixedArtifact, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, \
-    VulnDBMetadata, VulnDBCpe
+    VulnDBMetadata, VulnDBCpe, VulnerableArtifact
 
 from anchore_engine.services.policy_engine.engine.feeds.schemas import DownloadOperationConfiguration, GroupDownloadResult, GroupDownloadOperationParams
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo
@@ -535,8 +535,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         count = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == group_obj.name).delete()
         logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} fix records'.format(count)))
-        # count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
-        # log.info('Flushed {} vuln_in records'.format(count))
+        count = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == group_obj.name).delete()
+        logger.info('Flushed %s vuln artifact records', count)
         count = db.query(Vulnerability).filter(Vulnerability.namespace_name == group_obj.name).delete()
         logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} vulnerability records'.format(count)))
         group_obj.last_sync = None # Null the update timestamp to reflect the flush
