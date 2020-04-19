@@ -9,5 +9,5 @@ super_users = ['admin', 'anchore-system']
 image_content_types = ['os', 'files', 'npm', 'gem', 'python', 'java']
 image_metadata_types = ['manifest', 'docker_history', 'dockerfile']
 image_vulnerability_types = ['os', 'non-os']
-os_package_types = ['rpm', 'dpkg', 'APKG']
+os_package_types = ['rpm', 'dpkg', 'apkg', 'kb']
 nonos_package_types = ('java', 'python', 'npm', 'gem', 'maven', 'js', 'composer', 'nuget')
