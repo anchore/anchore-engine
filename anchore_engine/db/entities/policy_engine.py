@@ -276,7 +276,7 @@ class Vulnerability(Base):
             if self.id.startswith('CVE-'):
                 cves = [self.id]
 
-            if self.metadata_json.get("CVE", []):
+            if self.metadata_json and self.metadata_json.get("CVE", []):
                 for cve_el in self.metadata_json.get("CVE", []):
                     if type(cve_el) == dict:
                         # RHSA and ELSA internal elements are dicts
