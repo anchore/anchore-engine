@@ -14,9 +14,9 @@ import time
 
 from sqlalchemy import or_
 
-from anchore_engine.db import DistroNamespace, get_thread_scoped_session, get_session
+from anchore_engine.db import DistroNamespace, get_thread_scoped_session
 from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
-from anchore_engine.common import nonos_package_types, os_package_types
+from anchore_engine.common import nonos_package_types
 from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_json
 import threading
 
