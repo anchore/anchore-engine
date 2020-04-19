@@ -276,7 +276,7 @@ class Vulnerability(Base):
             if self.id.startswith('CVE-'):
                 cves = [self.id]
 
-            if self.metadata_json.get("CVE", []):
+            if self.metadata_json and self.metadata_json.get("CVE", []):
                 for cve_el in self.metadata_json.get("CVE", []):
                     if type(cve_el) == dict:
                         # RHSA and ELSA internal elements are dicts
@@ -419,17 +419,11 @@ class FixedArtifact(Base):
 
         # Is the package older than the fix?
         if flavor == 'RHEL':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
-            if rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0:
-                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
-                return True
+            return rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0
         elif flavor == 'DEB':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
-            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version):
-                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
-                return True
+            return dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version)
         elif flavor == 'ALPINE':  # compare full package version with epochless fixed-in version
-            if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
-                log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
-                return True
+            return apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version)
 
         if package_obj.pkg_type in ['java', 'maven', 'npm', 'gem', 'python', 'js']:
             if package_obj.pkg_type in ['java', 'maven']:
@@ -442,11 +436,10 @@ class FixedArtifact(Base):
             else:
                 pkgversion = package_obj.fullversion
 
-            if langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
-                return(True)
-
-        # Newer or the same
-        return False
+            return langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type)
+        else:
+            # Fall thru to an exact match. Is fixed only if the versions match exactly
+            return fix_obj.version != package_obj.fullversion
 
 
 class NvdMetadata(Base):
@@ -1433,7 +1426,6 @@ class ImagePackage(Base):
                         if record_count > 0:
                             namespace_name_to_use = namespace_name
                             break
-
             fix_candidates, vulnerable_candidates = self.candidates_for_package(namespace_name_to_use)
 
             for candidate in fix_candidates:

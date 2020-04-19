@@ -322,8 +322,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     if el[k] == 'N/A':
                         el[k] = 'None'
 
-                groupels = el.get('feed_group', "").split(":", 2)
-                if len(groupels) == 2 and groupels[0] in ['ubuntu', 'centos', 'alpine', 'debian', 'ol', 'amzn', 'rhel']:
+
+                if el['package_type'].lower() in anchore_engine.common.os_package_types:
                     osvulns.append(el)
                 else:
                     nonosvulns.append(el)
