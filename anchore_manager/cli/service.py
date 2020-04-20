@@ -200,20 +200,18 @@ def do_list(anchore_module):
 
 @service.command(name='start', short_help="Start anchore-engine")
 @click.argument('services', nargs=-1)
-@click.option("--auto-upgrade", is_flag=True, help="Perform automatic upgrade on startup")
+@click.option("--no-auto-upgrade", is_flag=True, default=False, help="Do not perform automatic upgrade on startup")
 @click.option("--anchore-module", nargs=1, help="Name of anchore module to call DB routines from (default=anchore_engine)")
 @click.option("--skip-config-validate", nargs=1, help="Comma-separated list of configuration file sections to skip specific validation processing (e.g. services,credentials,webhooks)")
 @click.option("--skip-db-compat-check", is_flag=True, help="Skip the database compatibility check.")
 @click.option("--all", is_flag=True, default=False)
-def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check, all):
+def start(services, no_auto_upgrade, anchore_module, skip_config_validate, skip_db_compat_check, all):
     """
     Startup and monitor service processes. Specify a list of service names or empty for all.
     """
 
     global config
     ecode = ExitCode.ok
-
-    auto_upgrade = True
 
     if not anchore_module:
         module_name = "anchore_engine"
@@ -323,8 +321,8 @@ def start(services, auto_upgrade, anchore_module, skip_config_validate, skip_db_
 
                 if code_versions and db_versions:
                     if code_versions['db_version'] != db_versions['db_version']:
-                        if auto_upgrade and 'anchore-catalog' in services:
-                            logger.info("Auto-upgrade is set - performing upgrade.")
+                        if not no_auto_upgrade and 'anchore-catalog' in services:
+                            logger.info("Performing upgrade.")
                             try:
                                 # perform the upgrade logic here
                                 rc = module.run_upgrade()
