@@ -438,8 +438,7 @@ class FixedArtifact(Base):
 
             return langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type)
         else:
-            # Fall thru to an exact match. Is fixed only if the versions match exactly
-            return fix_obj.version != package_obj.fullversion
+            return False
 
 
 class NvdMetadata(Base):
