@@ -419,11 +419,17 @@ class FixedArtifact(Base):
 
         # Is the package older than the fix?
         if flavor == 'RHEL':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
-            return rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0
+            if rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0:
+                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
+                return True
         elif flavor == 'DEB':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
-            return dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version)
+            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version):
+                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
+                return True
         elif flavor == 'ALPINE':  # compare full package version with epochless fixed-in version
-            return apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version)
+            if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
+                log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+                return True
 
         if package_obj.pkg_type in ['java', 'maven', 'npm', 'gem', 'python', 'js']:
             if package_obj.pkg_type in ['java', 'maven']:
@@ -436,9 +442,11 @@ class FixedArtifact(Base):
             else:
                 pkgversion = package_obj.fullversion
 
-            return langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type)
-        else:
-            return False
+            if langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
+                return(True)
+
+        # Newer or the same
+        return False
 
 
 class NvdMetadata(Base):
@@ -1425,6 +1433,7 @@ class ImagePackage(Base):
                         if record_count > 0:
                             namespace_name_to_use = namespace_name
                             break
+
             fix_candidates, vulnerable_candidates = self.candidates_for_package(namespace_name_to_use)
 
             for candidate in fix_candidates:
