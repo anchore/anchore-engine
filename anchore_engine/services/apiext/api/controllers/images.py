@@ -365,7 +365,12 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         for k in list(keymap.keys()):
             el[k] = vuln[keymap[k]]
 
-        el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+        if vuln['name'] != vuln['version']:
+            pkg_final = "{}-{}".format(vuln['name'], vuln['version'])
+        else:
+            pkg_final = vuln['name']
+
+        el['package'] = pkg_final
 
         # get nvd scores
         el['nvd_data'] = []

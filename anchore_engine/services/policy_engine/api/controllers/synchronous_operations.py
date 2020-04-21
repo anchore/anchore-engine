@@ -661,11 +661,16 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
                 cves = json.dumps(all_data)
 
+                if vuln.pkg_name != vuln.package.fullversion:
+                    pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
+                else:
+                    pkg_final = vuln.pkg_name
+                    
                 rows.append([
                     vuln.vulnerability_id,
                     vuln.vulnerability.severity,
                     1,
-                    vuln.pkg_name + '-' + vuln.package.fullversion,
+                    pkg_final,
                     str(vuln.fixed_in()),
                     vuln.pkg_image_id,
                     'None', # Always empty this for now
