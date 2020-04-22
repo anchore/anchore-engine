@@ -82,5 +82,10 @@ def mock_feed_data(mock_feed_metadata):
             db.add(v)
 
 
-def test_toggle_group_enabled(mock_feeds):
-    pass
+# def test_toggle_group_enabled(mock_feed_data):
+#     """
+#     Test toggling of feed groups and feeds
+#     :param mock_feed_data:
+#     :return:
+#     """
+#     pass
