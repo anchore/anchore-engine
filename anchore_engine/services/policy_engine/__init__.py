@@ -154,9 +154,10 @@ def init_db_content():
 
 
 def init_feed_registry():
-    for cls in [NvdV2Feed, VulnDBFeed, VulnerabilityFeed, PackagesFeed, GithubFeed]:
-        logger.info('Registering feed handler {}'.format(cls.__feed_name__))
-        feed_registry.register(cls)
+    # Register feeds, the tuple is the class and bool if feed is a distro vulnerability feed or not
+    for cls_tuple in [(NvdV2Feed, False), (VulnDBFeed, False), (VulnerabilityFeed, True), (PackagesFeed, False), (GithubFeed, False)]:
+        logger.info('Registering feed handler {}'.format(cls_tuple[0].__feed_name__))
+        feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
 
 
 def do_feed_sync(msg):

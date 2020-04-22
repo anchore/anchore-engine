@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_group_detached
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for
+from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, select_nvd_classes
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter

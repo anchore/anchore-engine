@@ -1111,7 +1111,8 @@ def upgrade_flush_centos_vulns_013():
 
     :return:
     """
-    from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, DistroNamespace
+    from anchore_engine.services.policy_engine.engine.vulnerabilities import DistroNamespace
+    from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
     from anchore_engine.services.policy_engine.engine.feeds import sync
 
     engine = anchore_engine.db.entities.common.get_engine()

@@ -31,7 +31,8 @@ from anchore_engine.services.policy_engine.engine.policy.bundles import build_bu
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, ValidationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, merge_nvd_metadata, merge_nvd_metadata_image_packages
+from anchore_engine.services.policy_engine.engine.vulnerabilities import merge_nvd_metadata, merge_nvd_metadata_image_packages
+from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
 from anchore_engine.subsys import logger as log
