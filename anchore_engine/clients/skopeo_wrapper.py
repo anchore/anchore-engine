@@ -110,9 +110,11 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
             if parent_manifest_data:
                 for mlist in parent_manifest_data.get('manifests', []):
                     imageos = mlist.get('platform', {}).get('os', "")
-                    if imageos not in ["", 'linux'] and imageos not in os_overrides:
+                    if imageos not in ["", 'linux']:
+                        # add a windows os override to the list of override attempts, to complete the options that are supported by skopeo
                         dest_type = 'dir'
-                        os_overrides.insert(0, imageos)
+                        os_overrides.insert(0, "windows")
+                        break
 
         for os_override in os_overrides:
             success = False
