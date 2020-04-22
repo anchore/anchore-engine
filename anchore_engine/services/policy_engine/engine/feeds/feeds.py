@@ -3,7 +3,7 @@ import time
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import get_thread_scoped_session as get_session, FeedMetadata, GenericFeedDataRecord, FeedGroupMetadata, ImagePackageVulnerability, Vulnerability, FixedArtifact, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, \
-    VulnDBMetadata, VulnDBCpe, VulnerableArtifact
+    VulnDBMetadata, VulnDBCpe, VulnerableArtifact, get_thread_scoped_session
 
 from anchore_engine.services.policy_engine.engine.feeds.schemas import DownloadOperationConfiguration, GroupDownloadResult, GroupDownloadOperationParams
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo
@@ -15,7 +15,7 @@ from anchore_engine.services.policy_engine.engine.feeds.mappers import (
 from anchore_engine.services.policy_engine.engine.feeds import mappers
 from anchore_engine.services.policy_engine.engine.vulnerabilities import process_updated_vulnerability, flush_vulnerability_matches, ThreadLocalFeedGroupNameCache
 from anchore_engine.subsys.events import FeedGroupSyncStarted, FeedGroupSyncCompleted, FeedGroupSyncFailed, EventBase
-from anchore_engine.services.policy_engine.engine.feeds.db import lookup_feed
+from anchore_engine.services.policy_engine.engine.feeds.db import lookup_feed, get_feed_json
 from anchore_engine.subsys import logger
 
 
@@ -740,16 +740,17 @@ class FeedRegistry(object):
     def __init__(self):
         self.registry = {}
 
-    def register(self, feed_cls):
+    def register(self, feed_cls, is_vulnerability_feed=False):
         """
         Register the class. The class must have a __feed_name__ class attribute for the lookup
 
         :param feed_cls:
+        :param is_vulnerability_feed: indicates this feed provides distro-level vulnerability info, necessary for determining which feeds to check for vuln info
         :return:
         """
 
         feed = feed_cls.__feed_name__.lower()
-        self.registry[feed] = feed_cls
+        self.registry[feed] = (feed_cls, is_vulnerability_feed)
 
     def get(self, name: str):
         """
@@ -761,10 +762,35 @@ class FeedRegistry(object):
         :return:
         """
         # Try direct name
-        return self.registry[name.lower()]
+        return self.registry[name.lower()][0]
 
     def registered_feed_names(self):
         return list(self.registry.keys())
 
+    def registered_vulnerability_feed_names(self):
+        return [x[0] for x in self.registry.items() if x[1][1] is True]
+
+
 # The global registry
 feed_registry = FeedRegistry()
+
+
+def have_vulnerabilities_for(distro_namespace_obj):
+    """
+    Does the system have any vulnerabilities for the given distro.
+
+    :param distro_namespace_obj:
+    :return: boolean
+    """
+
+    # All options are the same, no need to loop
+    # Check all options for distro/flavor mappings
+    db = get_thread_scoped_session()
+    for namespace_name in distro_namespace_obj.like_namespace_names:
+        for vuln_feed in feed_registry.registered_vulnerability_feed_names():
+            feed = get_feed_json(db_session=db, feed_name=vuln_feed)
+            if feed and namespace_name in [x['name'] for x in feed.get('groups', [])]:
+                # No records yet, but we have the feed, so may just not have any data yet
+                return True
+    else:
+        return False

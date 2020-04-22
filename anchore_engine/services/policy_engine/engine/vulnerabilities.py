@@ -17,7 +17,6 @@ from sqlalchemy import or_
 from anchore_engine.db import DistroNamespace, get_thread_scoped_session
 from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
 from anchore_engine.common import nonos_package_types
-from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_json
 import threading
 
 from anchore_engine.subsys import logger
@@ -60,26 +59,6 @@ class ThreadLocalFeedGroupNameCache:
             cls.feed_list_cache.vuln_group_list = None
         except AttributeError:
             pass
-
-
-def have_vulnerabilities_for(distro_namespace_obj):
-    """
-    Does the system have any vulnerabilities for the given distro.
-
-    :param distro_namespace_obj:
-    :return: boolean
-    """
-
-    # All options are the same, no need to loop
-    # Check all options for distro/flavor mappings
-    db = get_thread_scoped_session()
-    for namespace_name in distro_namespace_obj.like_namespace_names:
-        feed = get_feed_json(db_session=db, feed_name='vulnerabilities')
-        if feed and namespace_name in [x['name'] for x in feed.get('groups', [])]:
-            # No records yet, but we have the feed, so may just not have any data yet
-            return True
-    else:
-        return False
 
 
 def namespace_has_no_feed(name, version):
