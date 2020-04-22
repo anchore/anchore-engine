@@ -1174,6 +1174,9 @@ def db_upgrade_012_013():
 
     :return:
     """
+    # Setup some policy engine stuff to support feed ops
+    from anchore_engine.services.policy_engine import process_preflight
+    process_preflight()
 
     upgrade_feed_groups_013()
     upgrade_distro_mappings_rhel_013()
