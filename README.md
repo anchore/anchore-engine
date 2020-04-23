@@ -20,18 +20,12 @@ The Anchore Engine is distributed as a [Docker Image](https://hub.docker.com/r/a
 
 ## Quick Start (TLDR)
 
+See [documentation](https://docs.anchore.com/current/docs/engine/quickstart/) for the full quickstart guide.
+
 To quickly bring up an installation of Anchore Engine on a system with docker (and docker-compose) installed, follow these simple steps:
 
 ```
-mkdir ~/aevolume
-cd ~/aevolume
-
-docker pull docker.io/anchore/anchore-engine:latest
-docker create --name ae docker.io/anchore/anchore-engine:latest
-docker cp ae:/docker-compose.yaml ~/aevolume/docker-compose.yaml
-docker rm ae
-
-docker-compose pull
+curl https://docs.anchore.com/current/docs/engine/quickstart/docker-compose.yaml > docker-compose.yaml
 docker-compose up -d
 ```
 
