@@ -197,7 +197,7 @@ def upgrade_db(code_versions: dict, db_versions: dict, upgrade_module):
         return True
 
 
-def do_upgrade(skip_db_compat_check: False):
+def do_upgrade(skip_db_compat_check: False, no_auto_upgrade=False):
     """
     :param skip_db_compat_check: boole to indicate if a preflight check for the db engine type and version (e.g. postgres v9.6+) should be skipped
     :return:
@@ -205,5 +205,6 @@ def do_upgrade(skip_db_compat_check: False):
 
     upgrade_module = load_upgrade_module(ENGINE_UPGRADE_MODULE_NAME)
     code_versions, db_versions = init_database(upgrade_module=upgrade_module, do_db_compatibility_check=(not skip_db_compat_check))
-    upgrade_db(code_versions, db_versions, upgrade_module)
+    if not no_auto_upgrade:
+        upgrade_db(code_versions, db_versions, upgrade_module)
     return True
