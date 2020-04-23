@@ -88,7 +88,7 @@ services:
         max-size: 100m
     environment:
     - ANCHORE_ENDPOINT_HOSTNAME=analyzer
-    - ANCHORE_DB_HOST=anchore-db
+    - ANCHORE_DB_HOST=db
     - ANCHORE_DB_PASSWORD=mysecretpassword
     volumes:
     - /analysis_scratch
