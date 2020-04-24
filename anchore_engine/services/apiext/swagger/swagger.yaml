@@ -3198,6 +3198,11 @@ definitions:
               type: string
             license:
               type: string
+              description: Deprecated in favor of the 'licenses' field"
+            licenses:
+              type: array
+              items:
+                type: string
             location:
               type: string
   ContentJAVAPackageResponse:

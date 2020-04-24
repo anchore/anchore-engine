@@ -1,0 +1,314 @@
+import pytest
+
+from anchore_engine.services.apiext.api.helpers.image_content_response import (
+    _build_os_response,
+    _build_npm_response,
+    _build_gem_response,
+    _build_python_response,
+    _build_java_response,
+    _build_default_response,
+)
+
+
+class TestBuildOsResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "arch": "amd64",
+            "license": "GPLv2+",
+            "origin": "APT Development Team <deity@lists.debian.org> (maintainer)",
+            "release": "N/A",
+            "size": "4064000",
+            "sourcepkg": "apt-1.8.2",
+            "type": "dpkg",
+            "version": "1.8.2",
+        }
+
+    @pytest.fixture
+    def multi_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        response["license"] += " MIT"
+        return response
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "license": "GPLv2+",
+                "licenses": ["GPLv2+"],
+                "origin": "APT Development Team <deity@lists.debian.org> (maintainer)",
+                "package": "apt",
+                "size": "4064000",
+                "type": "dpkg",
+                "version": "1.8.2",
+            }
+        ]
+
+        actual_response = _build_os_response({"apt": content_data_entry})
+
+        assert expected_response == actual_response
+
+    def test_multi_license(self, multi_license_content_data):
+        expected_response = ["GPLv2+", "MIT"]
+
+        actual_response = _build_os_response({"apt": multi_license_content_data})
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
+
+
+class TestBuildNpmResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "latest": None,
+            "lics": ["Artistic-2.0"],
+            "name": "npm-cli-docs",
+            "origins": ["Tanya Brassie <tanyabrassie@tanyascmachine2.home>"],
+            "sourcepkg": "https://github.com/npm/cli",
+            "versions": ["0.1.0"],
+        }
+
+    @pytest.fixture
+    def multi_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        response["lics"].append("MIT")
+        return response
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "license": "Artistic-2.0",
+                "licenses": ["Artistic-2.0"],
+                "location": "/usr/local/lib/node_modules/npm/docs/package.json",
+                "origin": "Tanya Brassie <tanyabrassie@tanyascmachine2.home>",
+                "package": "npm-cli-docs",
+                "type": "NPM",
+                "version": "0.1.0",
+            }
+        ]
+
+        actual_response = _build_npm_response(
+            {"/usr/local/lib/node_modules/npm/docs/package.json": content_data_entry}
+        )
+
+        assert expected_response == actual_response
+
+    def test_multi_license(self, multi_license_content_data):
+        expected_response = ["Artistic-2.0", "MIT"]
+
+        actual_response = _build_npm_response(
+            {
+                "/usr/local/lib/node_modules/npm/docs/package.json": multi_license_content_data
+            }
+        )
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
+
+
+class TestBuildPythonResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "files": [
+                "/usr/local/lib/python3.8/site-packages/../../../bin/pip",
+                "/usr/local/lib/python3.8/site-packages/../../../bin/pip3",
+            ],
+            "license": "MIT",
+            "location": "/usr/local/lib/python3.8/site-packages",
+            "metadata": "some (truncated) metadata!",
+            "name": "pip",
+            "origin": "The pip developers <pypa-dev@groups.google.com>",
+            "type": "python",
+            "version": "20.0.2",
+        }
+
+    @pytest.fixture
+    def multi_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        response["license"] += " GPLv2"
+        return response
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "license": "MIT",
+                "licenses": ["MIT"],
+                "location": "/usr/local/lib/python3.8/site-packages",
+                "origin": "The pip developers <pypa-dev@groups.google.com>",
+                "package": "pip",
+                "type": "PYTHON",
+                "version": "20.0.2",
+            }
+        ]
+
+        actual_response = _build_python_response(
+            {"/usr/local/lib/python3.8/site-packages/pip": content_data_entry}
+        )
+
+        assert expected_response == actual_response
+
+    def test_multi_license(self, multi_license_content_data):
+        expected_response = ["MIT", "GPLv2"]
+
+        actual_response = _build_python_response(
+            {"/usr/local/lib/python3.8/site-packages/pip": multi_license_content_data}
+        )
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
+
+
+class TestBuildGemResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "files": ["exe/rake"],
+            "latest": "13.0.1",
+            "lics": ["MIT"],
+            "name": "rake",
+            "origins": ["Hiroshi SHIBATA", "Eric Hodel", "Jim Weirich"],
+            "sourcepkg": "https://github.com/ruby/rake",
+            "versions": ["13.0.1"],
+        }
+
+    @pytest.fixture
+    def multi_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        response["lics"].append("GPLv2")
+        return response
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "license": "MIT",
+                "licenses": ["MIT"],
+                "location": "/usr/local/lib/ruby/gems/2.7.0/specifications/rake-13.0.1.gemspec",
+                "origin": "Hiroshi SHIBATA,Eric Hodel,Jim Weirich",
+                "package": "rake",
+                "type": "GEM",
+                "version": "13.0.1",
+            }
+        ]
+
+        actual_response = _build_gem_response(
+            {
+                "/usr/local/lib/ruby/gems/2.7.0/specifications/rake-13.0.1.gemspec": content_data_entry
+            }
+        )
+
+        assert expected_response == actual_response
+
+    def test_multi_license(self, multi_license_content_data):
+        expected_response = ["MIT", "GPLv2"]
+
+        actual_response = _build_gem_response(
+            {
+                "/usr/local/lib/ruby/gems/2.7.0/specifications/rake-13.0.1.gemspec": multi_license_content_data
+            }
+        )
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
+
+
+class TestBuildJavaResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "implementation-version": "N/A",
+            "location": "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar",
+            "maven-version": "N/A",
+            "metadata": {"MANIFEST.MF": "(truncated manifest data)"},
+            "name": "charsets",
+            "origin": "N/A",
+            "specification-version": "N/A",
+            "type": "java-jar",
+        }
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "implementation-version": "N/A",
+                "location": "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar",
+                "maven-version": "N/A",
+                "origin": "N/A",
+                "package": "charsets",
+                "specification-version": "N/A",
+                "type": "JAVA-JAR",
+            }
+        ]
+
+        actual_response = _build_java_response(
+            {
+                "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar": content_data_entry
+            }
+        )
+
+        assert expected_response == actual_response
+
+
+
+class TestBuildDefaultResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "license": "MIT",
+            "location": "someplace",
+            "metadata": "some (truncated) metadata",
+            "name": "something",
+            "origin": "someone",
+            "type": "atype",
+            "version": "20.0.2",
+        }
+
+    @pytest.fixture
+    def multi_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        response["license"] += " GPLv2"
+        return response
+
+    @pytest.fixture
+    def missing_license_content_data(self, content_data_entry):
+        response = content_data_entry.copy()
+        del response["license"]
+        return response
+
+    def test_go_case(self, content_data_entry):
+        expected_response = [
+            {
+                "license": "MIT",
+                "licenses": ["MIT"],
+                "location": "someplace",
+                "origin": "someone",
+                "package": "something",
+                "type": "ATYPE",
+                "version": "20.0.2",
+            }
+        ]
+
+        actual_response = _build_default_response(
+            {"a-place": content_data_entry}
+        )
+
+        assert expected_response == actual_response
+
+    def test_multi_license(self, multi_license_content_data):
+        expected_response = ["MIT", "GPLv2"]
+
+        actual_response = _build_default_response(
+            {"someplace": multi_license_content_data}
+        )
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
+
+    def test_missing_license(self, missing_license_content_data):
+        expected_response = ['Unknown']
+
+        actual_response = _build_default_response(
+            {"someplace": missing_license_content_data}
+        )
+        actual_pkg_response = actual_response[0]["licenses"]
+
+        assert expected_response == actual_pkg_response
