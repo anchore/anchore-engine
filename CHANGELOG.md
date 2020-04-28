@@ -8,7 +8,6 @@
 + Fix - Errors during feed data download can cause mismatched timestamps and missed feed data on sync. Fixes #406
 + Fix - Removed variable reference before assignment in squasher. Fixes #401
 + Fix - Fixes mis-labeled GHSA matches on python packages in policy evaluation to be correctly non-os matches. Fixes #400
-+ Removed
 + Additional minor bug fixes, enhancements, and test framework improvements.
 
 ## 0.7.0 (2020-03-26)
