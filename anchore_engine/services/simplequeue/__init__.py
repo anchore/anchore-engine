@@ -41,7 +41,7 @@ queues = {}
 def handle_metrics(*args, **kwargs):
 
     cycle_timer = kwargs['mythread']['cycle_timer']
-    while(True):
+    while True:
         try:
             for qname in anchore_engine.subsys.simplequeue.get_queuenames():
                 try:

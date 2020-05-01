@@ -86,7 +86,7 @@ def get_status():
     except Exception as err:
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 class ImageMessageMapper(object):
@@ -205,7 +205,7 @@ def delete_image(user_id, image_id):
             db.rollback()
 
         # Idempotently return 204. This isn't properly RESTY, but idempotency on delete makes clients much cleaner.
-        return (None, 204)
+        return None, 204
     except HTTPException:
         raise
     except Exception as e:
@@ -932,7 +932,7 @@ def _get_imageId_to_record(userId, dbsession=None):
                 'tag_history': tag_history[x['imageId']],
             }
 
-    return(imageId_to_record)
+    return imageId_to_record
 
 
 def query_images_by_package(dbsession, request_inputs):
@@ -1021,7 +1021,7 @@ def query_images_by_package(dbsession, request_inputs):
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 advisory_cache = {}
@@ -1032,7 +1032,7 @@ def check_no_advisory(image):
     if phash not in advisory_cache:
         advisory_cache[phash] = image.fix_has_no_advisory()
 
-    return(advisory_cache.get(phash))
+    return advisory_cache.get(phash)
 
 
 def query_images_by_vulnerability(dbsession, request_inputs):
@@ -1146,7 +1146,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_filter, namespace):
@@ -1314,7 +1314,7 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1334,7 +1334,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1350,7 +1350,7 @@ def query_images_by_package_get(user_id, name=None, version=None, package_type=N
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1366,7 +1366,7 @@ def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=N
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)

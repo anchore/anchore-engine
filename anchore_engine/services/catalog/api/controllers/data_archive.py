@@ -67,7 +67,7 @@ def create_archive(bucket, archiveid, bodycontent):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -84,4 +84,4 @@ def delete_archive(bucket, archiveid):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return (return_object, httpcode)
+    return return_object, httpcode

@@ -133,4 +133,4 @@ def parse_dockerimage_string(instr):
     else:
         ret['pullstring'] = None
 
-    return(ret)
+    return ret

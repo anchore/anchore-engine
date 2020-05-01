@@ -34,7 +34,7 @@ def make_response_registry(user_auth, registry_record, params):
     for removekey in ['record_state_val', 'record_state_key']:
         ret.pop(removekey, None)
 
-    return (ret)
+    return ret
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_registries():
@@ -62,7 +62,7 @@ def list_registries():
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -91,7 +91,7 @@ def get_registry(registry):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def create_registry(registrydata, validate=True):
@@ -139,7 +139,7 @@ def create_registry(registrydata, validate=True):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_registry(registry, registrydata, validate=True):
@@ -183,7 +183,7 @@ def update_registry(registry, registrydata, validate=True):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -212,4 +212,4 @@ def delete_registry(registry):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode

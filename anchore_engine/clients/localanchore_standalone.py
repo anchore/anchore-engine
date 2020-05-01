@@ -54,17 +54,17 @@ def get_layertarfile(unpackdir, cachedir, layer):
                     os.utime(layer_candidate, None)
                 except:
                     pass
-                return(layer_candidate)
+                return layer_candidate
         except:
             pass
 
-    return(None)
+    return None
 
 def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata={}):
 
     if not unpackdir or not rootfsdir or not handled_post_metadata:
         # nothing to do
-        return(True)
+        return True
 
     logger.debug("handling post with metadata: {}".format(handled_post_metadata))
     if handled_post_metadata.get('temporary_file_adds', []):
@@ -86,7 +86,7 @@ def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata=
                     except:
                         pass
 
-    return(True)
+    return True
 
 def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cachedir=None, layer=None, layertar=None, layers=[]):
     handled = False
@@ -178,7 +178,7 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
         raise err
 
     logger.debug("tar error handled: {}".format(handled))
-    return(handled, handled_post_metadata)
+    return handled, handled_post_metadata
 
 def get_tar_filenames(layertar):
     ret = []
@@ -210,11 +210,11 @@ def get_tar_filenames(layertar):
         if layertarfile:
             layertarfile.close()
 
-    return(ret)
+    return ret
 
 def tree_id(id):
     toks = id.split('/')
-    return(toks[-1], id, '/'.join(toks[:-1]))
+    return toks[-1], id, '/'.join(toks[:-1])
 
 def tree_create_branch(ftree, id, data, stree=None, populate_intermediate_nodes=False):
     ftoks = id.split("/")
@@ -238,7 +238,7 @@ def squash(unpackdir, cachedir, layers):
     rootfsdir = unpackdir + "/rootfs"
 
     if os.path.exists(unpackdir + "/squashed.tar"):
-        return (True)
+        return True
     
 
     tree_time = time.time()
@@ -438,7 +438,7 @@ def squash(unpackdir, cachedir, layers):
     if os.path.exists(os.path.join(unpackdir,"squashed.tar")):
         imageSize = os.path.getsize(os.path.join(unpackdir, "squashed.tar"))
 
-    return ("done", imageSize)
+    return "done", imageSize
                 
 
 def make_staging_dirs(rootdir, use_cache_dir=None):
@@ -465,7 +465,7 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
         except Exception as err:
             raise Exception("unable to prep staging directory - exception: " + str(err))
 
-    return(ret)
+    return ret
 
 def _rmtree_error_handler(infunc, inpath, inerr):
     (cls, exc, trace) = inerr
@@ -490,7 +490,7 @@ def rmtree_force(inpath):
             if os.path.exists(inpath):
                 shutil.rmtree(inpath)
 
-    return(True)
+    return True
 
 def delete_staging_dirs(staging_dirs):
     for k in list(staging_dirs.keys()):
@@ -509,7 +509,7 @@ def delete_staging_dirs(staging_dirs):
         else:
             logger.debug("keep_image_analysis_tmpfiles is enabled - leaving analysis tmpdir in place {}".format(staging_dirs))
 
-    return(True)
+    return True
 
 def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, parent_manifest=None, dest_type='oci'):
     outputdir = staging_dirs['outputdir']
@@ -535,7 +535,7 @@ def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, paren
     except Exception as err:
         raise err
 
-    return(True)
+    return True
 
 def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
     outputdir = staging_dirs['outputdir']
@@ -619,7 +619,7 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
 
     layers.reverse()
 
-    return(docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch)
+    return docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch
 
 
 def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
@@ -643,7 +643,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
             image_config = os.path.join(copydir, ifile)
             break
 
-    if (image_config):
+    if image_config:
         try:
             with open(image_config, 'r') as FH:
                 configdata = json.loads(FH.read())
@@ -759,7 +759,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
     elif not dockerfile_mode:
         dockerfile_mode = "Actual"
 
-    return(docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch)
+    return docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch
 
 def unpack(staging_dirs, layers):
     outputdir = staging_dirs['outputdir']
@@ -771,7 +771,7 @@ def unpack(staging_dirs, layers):
         squashtar, imageSize = squash(unpackdir, cachedir, layers)
     except Exception as err:
         raise err
-    return(imageSize)
+    return imageSize
 
 
 def list_analyzers():
@@ -835,7 +835,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
         if not analyzer_report[analyzer_output]:
             analyzer_report.pop(analyzer_output, None)
 
-    return(analyzer_report)
+    return analyzer_report
 
 def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, rdigest, analyzer_manifest):
     image_report = []
@@ -876,7 +876,7 @@ def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, i
             }
         }
     )
-    return(image_report)
+    return image_report
 
 def get_manifest_from_staging(staging_dirs):
     copydir = staging_dirs['copydir']
@@ -888,7 +888,7 @@ def get_manifest_from_staging(staging_dirs):
         with open(dfile, 'r') as FFH:
             ret = FFH.read()
 
-    return(ret)
+    return ret
 
 def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None, image_source='registry', image_source_meta=None, parent_manifest=None):
     # need all this
@@ -1004,7 +1004,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
     if not image_report:
         raise Exception("failed to analyze")
 
-    return(image_report, manifest)
+    return image_report, manifest
 
 
 class AnalysisError(AnchoreException):
@@ -1117,7 +1117,7 @@ def get_anchorelock(lockId=None, driver=None):
     else:
         ret = anchorelock
 
-    return(ret)
+    return ret
 
 
 def get_config():
@@ -1133,5 +1133,5 @@ def get_config():
         except Exception as err:
             logger.error(str(err))
 
-    return(ret)
+    return ret
 

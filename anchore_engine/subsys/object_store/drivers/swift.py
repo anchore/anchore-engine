@@ -104,7 +104,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
                 if 'contents' in obj and obj['action'] == 'download_object':
                     content = b''.join([x for x in obj['contents']])
                     ret = utils.ensure_bytes(content)     
-                    return (ret)
+                    return ret
                 elif obj['action'] == 'download_object' and not obj['success']:
                     raise ObjectKeyNotFoundError(bucket='', key='', userId='', caused_by=None)
                 raise Exception('Unexpected operation/action from swift: {}'.format(obj['action']))

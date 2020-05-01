@@ -23,7 +23,7 @@ def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
     fulla = '-'.join([str(pkg_a), str(ver_a)])
     fullb = '-'.join([str(pkg_b), str(ver_b)])
     if fulla == fullb:
-        return (0)
+        return 0
 
     if distro_flavor == "RHEL":
         if rpm_compare_versions(ver_a, ver_b) < 0:

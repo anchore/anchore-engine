@@ -25,7 +25,7 @@ def add(policyId, userId, active, inobj, session=None):
         inobj['last_updated'] = anchore_now()
         our_result.update(inobj)
 
-    return(True)
+    return True
 
 def get_all(session=None):
     if not session:
@@ -38,7 +38,7 @@ def get_all(session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get_all_byuserId(userId, limit=None, session=None):
     if not session:
@@ -54,7 +54,7 @@ def get_all_byuserId(userId, limit=None, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get_byfilter(userId, session=None, **dbfilter):
     if not session:
@@ -70,7 +70,7 @@ def get_byfilter(userId, session=None, **dbfilter):
             obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get(userId, policyId, session=None):
     if not session:
@@ -83,7 +83,7 @@ def get(userId, policyId, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def get_active_policy(userId, session=None):
     if not session:
@@ -96,7 +96,7 @@ def get_active_policy(userId, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def set_active_policy(policyId, userId, session=None):
     if not session:
@@ -112,10 +112,10 @@ def set_active_policy(policyId, userId, session=None):
         for result in results:
             result.update({'active':False})
 
-    return(True)
+    return True
 
 def update(policyId, userId, active, inobj, session=None):
-    return(add(policyId, userId, active, inobj, session=session))
+    return add(policyId, userId, active, inobj, session=session)
 
 def update_record(input_record, session=None):
     if not session:
@@ -125,7 +125,7 @@ def update_record(input_record, session=None):
     if our_result:
         our_result.update(input_record)
         
-    return(True)
+    return True
 
 def delete(policyId, userId, session=None):
     if not session:
@@ -138,5 +138,5 @@ def delete(policyId, userId, session=None):
         session.delete(result)
         ret = True
 
-    return(ret)
+    return ret
 

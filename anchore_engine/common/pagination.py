@@ -7,7 +7,7 @@ def do_simple_pagination(input_items, page=1, limit=None, dosort=True, sortfunc=
     page = int(page)
     next_page = None
     if not limit:
-        return(1, None, input_items)
+        return 1, None, input_items
 
     limit = int(limit)
     if dosort:
@@ -22,7 +22,7 @@ def do_simple_pagination(input_items, page=1, limit=None, dosort=True, sortfunc=
     if len(paginated_items) == limit and (paginated_items[-1] != input_items[-1]):
         next_page = page + 1
 
-    return(page, next_page, paginated_items)
+    return page, next_page, paginated_items
 
 
 pagination_cache = {}
@@ -36,10 +36,10 @@ def get_cached_pagination(query_digest=""):
     elif pagination_cache.get(query_digest, {}).get('ttl', 0.0) < current_time:
         logger.debug("expiring query cache content: {}".format(query_digest))
         el = pagination_cache.pop(query_digest, None)
-        del(el)
+        del el
         raise Exception("document is expired in pagination cache.")
 
-    return(pagination_cache[query_digest]['content'])
+    return pagination_cache[query_digest]['content']
 
 
 def do_cached_pagination(input_items, page=None, limit=None, dosort=True, sortfunc=lambda x: x, query_digest="", ttl=0.0):
@@ -53,7 +53,7 @@ def do_cached_pagination(input_items, page=None, limit=None, dosort=True, sortfu
             'ttl': current_time + float(ttl),
             'content': list(input_items),
         }
-    return(do_simple_pagination(input_items, page=page, limit=limit, dosort=dosort, sortfunc=sortfunc, query_digest=query_digest, ttl=ttl))
+    return do_simple_pagination(input_items, page=page, limit=limit, dosort=dosort, sortfunc=sortfunc, query_digest=query_digest, ttl=ttl)
 
 
 def make_response_paginated_envelope(input_items, envelope_key='result', page="1", limit=None, dosort=True, sortfunc=lambda x: x, pagination_func=do_simple_pagination, query_digest="", ttl=0.0):
@@ -67,4 +67,4 @@ def make_response_paginated_envelope(input_items, envelope_key='result', page="1
     if next_page:
         return_object['next_page'] = "{}".format(next_page)
 
-    return(return_object)
+    return return_object

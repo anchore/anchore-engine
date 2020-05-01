@@ -95,5 +95,5 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
     ret['authorizationToken'] = utils.ensure_str(base64.decodebytes(utils.ensure_bytes(ecr_data['authorizationToken'])))
     ret['expiresAt'] = int(ecr_data['expiresAt'].strftime('%s'))
 
-    return(ret)
+    return ret
 

@@ -43,7 +43,7 @@ def manifest_to_digest_shellout(rawmanifest):
         if tmpmanifest:
             os.remove(tmpmanifest)
 
-    return(ret)
+    return ret
 
 def copy_image_from_docker_archive(source_archive, dest_dir):
     cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(source_archive, dest_dir)
@@ -160,7 +160,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
     except Exception as err:
         raise err
 
-    return(True)
+    return True
 
 def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, lookuptag=None):
     try:
@@ -218,7 +218,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
     if not repotags:
         raise Exception("no tags found for input repo from skopeo")
 
-    return(repotags)
+    return repotags
 
 def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     ret = None
@@ -283,7 +283,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     except Exception as err:
         raise err
 
-    return(ret)
+    return ret
 
 def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True, topmanifest=None):
     manifest = {}
@@ -329,7 +329,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
     if not manifest or not digest:
         raise SkopeoError(msg="No digest/manifest from skopeo")
 
-    return(manifest, digest, topdigest, topmanifest)
+    return manifest, digest, topdigest, topmanifest
 
 class SkopeoError(AnchoreException):
 

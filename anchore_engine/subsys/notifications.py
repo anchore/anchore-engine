@@ -28,7 +28,7 @@ def queue_notification(userId, subscription_key, subscription_type, payload):
         logger.warn("failed to create/enqueue notification")
         raise err
 
-    return(rc)
+    return rc
 
 def make_notification(user_record, subscription_type, notification):
     ret = {}
@@ -44,7 +44,7 @@ def make_notification(user_record, subscription_type, notification):
     except Exception as err:
         raise Exception("cannot prepare notification - exception: " + str(err))
 
-    return(ret)
+    return ret
 
 def notify(user_record, notification):
     notification_modes = ['webhook']
@@ -54,7 +54,7 @@ def notify(user_record, notification):
         if notification_mode == 'webhook':
             rc = do_notify_webhook(user_record, notification)
 
-    return(True)
+    return True
 
 def do_notify_webhook(user_record, notification):
     #logger.spew("webhook notify user: " + json.dumps(user_record, indent=4))
@@ -103,10 +103,10 @@ def do_notify_webhook(user_record, notification):
                     headers = {'Content-Type': 'application/json'}
                     result = http.anchy_post(url, data=payload, auth=auth, timeout=2.0, verify=verify, headers=headers)
                     logger.debug("webhook response: " + str(result))
-                    return(True)
+                    return True
                 except Exception as err:
                     raise Exception("failed to post notification to webhook - exception: " + str(err))
             
     logger.debug("warning: notification generated, but no matching webhook could be found in config to send it to - dropping notification")
-    return(False)
+    return False
 

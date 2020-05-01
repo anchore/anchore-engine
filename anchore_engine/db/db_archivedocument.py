@@ -25,7 +25,7 @@ def add(userId, bucket, archiveId, documentName, inobj, session=None):
         our_result.update(dbobj)
         dbobj.clear()
 
-    return(True)
+    return True
 
 def get_all_iter(session=None):
     if not session:
@@ -47,7 +47,7 @@ def get_all(session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get(userId, bucket, archiveId, session=None):
     ret = {}
@@ -57,7 +57,7 @@ def get(userId, bucket, archiveId, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.update(obj)
 
-    return(ret)
+    return ret
 
 def get_onlymeta(userId, bucket, archiveId, session=None):
     ret = {}
@@ -68,7 +68,7 @@ def get_onlymeta(userId, bucket, archiveId, session=None):
             k = list(result.keys())[i]
             ret[k] = result[i]
 
-    return(ret)
+    return ret
 
 def get_byname(userId, documentName, session=None):
     if not session:
@@ -82,7 +82,7 @@ def get_byname(userId, documentName, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def exists(userId, bucket, archiveId, session=None):
     if not session:
@@ -97,7 +97,7 @@ def exists(userId, bucket, archiveId, session=None):
             k = list(result.keys())[i]
             ret[k] = result[i]
 
-    return(ret)
+    return ret
 
 def list_all_notempty(session=None):
     ret = []
@@ -111,7 +111,7 @@ def list_all_notempty(session=None):
         if obj:
             ret.append(obj)
     
-    return(ret)
+    return ret
 
 def list_all(session=None, **dbfilter):
     if not session:
@@ -128,7 +128,7 @@ def list_all(session=None, **dbfilter):
         if obj:
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 def list_all_byuserId(userId, session=None, **dbfilter):
     if not session:
@@ -148,10 +148,10 @@ def list_all_byuserId(userId, session=None, **dbfilter):
         if obj:
             ret.append(obj)
 
-    return(ret)
+    return ret
 
 def update(userId, bucket, archiveId, documentName, inobj, session=None):
-    return(add(userId, bucket, archiveId, documentName, inobj, session=session))
+    return add(userId, bucket, archiveId, documentName, inobj, session=session)
 
 def delete_byfilter(userId, remove=True, session=None, **dbfilter):
     if not session:
@@ -168,7 +168,7 @@ def delete_byfilter(userId, remove=True, session=None, **dbfilter):
                 result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
             ret = True
     
-    return(ret)
+    return ret
 
 def delete(userId, bucket, archiveId, remove=True, session=None):
     if not session:
@@ -181,5 +181,5 @@ def delete(userId, bucket, archiveId, remove=True, session=None):
         else:
             result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
     
-    return(True)
+    return True
 

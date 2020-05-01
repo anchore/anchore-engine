@@ -43,7 +43,7 @@ def perform_analyze(userId, manifest, image_record, registry_creds, layer_cache_
 def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, layer_cache_enable=False, parent_manifest=None):
     ret_analyze = {}
     ret_query = {}
-    
+
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
         tmpdir = localconfig['tmp_dir']
@@ -66,7 +66,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
     except Exception as err:
         image_detail = pullstring = fulltag = None
         raise Exception("failed to extract requisite information from image_record - exception: " + str(err))
-        
+
     timer = int(time.time())
     logger.spew("timing: analyze start: " + str(int(time.time()) - timer))
     logger.info("performing analysis on image: " + str([userId, pullstring, fulltag]))
@@ -79,7 +79,7 @@ def perform_analyze_nodocker(userId, manifest, image_record, registry_creds, lay
 
     logger.info("performing analysis on image complete: " + str(pullstring))
 
-    return (ret_analyze)
+    return ret_analyze
 
 
 def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
@@ -90,8 +90,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
     userId = None
     imageDigest = None
 
-    localconfig = anchore_engine.configuration.localconfig.get_config()    
-    myconfig = localconfig['services']['analyzer']    
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    myconfig = localconfig['services']['analyzer']
 
     try:
         logger.debug('dequeued object: {}'.format(qobj))
@@ -110,13 +110,13 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 raise Exception("empty image record from catalog")
         except Exception as err:
             logger.warn("dequeued image cannot be fetched from catalog - skipping analysis (" + str(imageDigest) + ") - exception: " + str(err))
-            return (True)
+            return True
 
         logger.info("image dequeued for analysis: " + str(userId) + " : " + str(imageDigest))
         if image_record['analysis_status'] != anchore_engine.subsys.taskstate.base_state('analyze'):
             logger.debug("dequeued image is not in base state - skipping analysis")
-            return(True)
-        
+            return True
+
         try:
             logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
 
@@ -147,7 +147,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 err = CatalogClientError(msg='Failed to upload analysis data to catalog', cause=e)
                 event = events.SaveAnalysisFailed(user_id=userId, image_digest=imageDigest, error=err.to_dict())
                 analysis_events.append(event)
-                raise err            
+                raise err
 
             if rc:
                 try:
@@ -170,14 +170,14 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
 
                     except Exception as err:
-                        raise err                            
+                        raise err
 
                 except Exception as err:
                     import traceback
                     traceback.print_exc()
                     logger.warn("could not store image content metadata to archive - exception: " + str(err))
 
-                logger.info("adding image to policy engine: userid={} imageId={} imageDigest={}".format(userId, imageId, imageDigest))                
+                logger.info("adding image to policy engine: userid={} imageId={} imageDigest={}".format(userId, imageId, imageDigest))
                 try:
                     if not imageId:
                         raise Exception("cannot add image to policy engine without an imageId")
@@ -205,11 +205,11 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                             client_success = True
                             break
                         except Exception as e:
-                            logger.warn("attempt failed, will retry - exception: {}".format(e))                            
+                            logger.warn("attempt failed, will retry - exception: {}".format(e))
                             last_exception = e
                             time.sleep(retry_wait)
                     if not client_success:
-                        raise last_exception                                                        
+                        raise last_exception
 
                 except Exception as err:
                     newerr = PolicyEngineClientError(msg='Adding image to policy-engine failed', cause=str(err))
@@ -218,7 +218,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                     raise newerr
 
                 logger.debug("updating image catalog record analysis_status")
-                
+
                 last_analysis_status = image_record['analysis_status']
                 image_record['analysis_status'] = anchore_engine.subsys.taskstate.complete_state('analyze')
                 image_record['analyzed_at'] = int(time.time())
@@ -250,7 +250,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         npayload['subscription_type'] = 'analysis_update'
                         event = events.UserAnalyzeImageCompleted(user_id=userId, full_tag=fulltag, data=npayload)
                         analysis_events.append(event)
-                            
+
                 except Exception as err:
                     logger.warn("failed to enqueue notification on image analysis state update - exception: " + str(err))
 
@@ -283,7 +283,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
 
             if userId and imageDigest:
                 for image_detail in image_record['image_detail']:
-                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']                
+                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
                     event = events.UserAnalyzeImageFailed(user_id=userId, full_tag=fulltag, error=str(err))
                     analysis_events.append(event)
         finally:
@@ -299,7 +299,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
         logger.warn("job processing bailed - exception: " + str(err))
         raise err
 
-    return (True)
+    return True
 
 # TODO should probably be defined in and raised by the clients
 class CatalogClientError(AnchoreException):
@@ -351,12 +351,12 @@ def handle_layer_cache(**kwargs):
                     totalsize = totalsize + layerstat.st_size
                     layersizes[layerfile] = layerstat.st_size
                     layertimes[layerfile] = max([layerstat.st_mtime, layerstat.st_ctime, layerstat.st_atime])
-                    
+
                 if totalsize > cachemax:
                     logger.debug("layer cache total size ("+str(totalsize)+") exceeds configured cache max ("+str(cachemax)+") - performing cleanup")
                     currsize = totalsize
                     sorted_layers = sorted(list(layertimes.items()), key=operator.itemgetter(1))
-                    while(currsize > cachemax):
+                    while currsize > cachemax:
                         rmlayer = sorted_layers.pop(0)
                         logger.debug("removing cached layer: " + str(rmlayer))
                         os.remove(rmlayer[0])
@@ -364,12 +364,12 @@ def handle_layer_cache(**kwargs):
                         logger.debug("currsize after remove: " + str(currsize))
 
             except Exception as err:
-                raise(err)
-        
-    except Exception as err:
-        raise(err)
+                raise err
 
-    return(True)
+    except Exception as err:
+        raise err
+
+    return True
 
 def handle_image_analyzer(*args, **kwargs):
     """
@@ -388,7 +388,7 @@ def handle_image_analyzer(*args, **kwargs):
 
     threads = []
     layer_cache_dirty = True
-    while(True):
+    while True:
         logger.debug("analyzer thread cycle start")
         try:
             myconfig = localconfig['services']['analyzer']
@@ -418,7 +418,7 @@ def handle_image_analyzer(*args, **kwargs):
                 logger.debug("all workers are busy")
 
             alive_threads = []
-            while(threads):
+            while threads:
                 athread = threads.pop()
                 if not athread.isAlive():
                     try:
@@ -444,13 +444,13 @@ def handle_image_analyzer(*args, **kwargs):
 
         logger.debug("analyzer thread cycle complete: next in "+str(cycle_timer))
         time.sleep(cycle_timer)
-    return(True)
+    return True
 
 def handle_metrics(*args, **kwargs):
 
     cycle_timer = kwargs['mythread']['cycle_timer']
 
-    while(True):
+    while True:
         try:
             localconfig = anchore_engine.configuration.localconfig.get_config()
             try:
@@ -465,7 +465,7 @@ def handle_metrics(*args, **kwargs):
 
         time.sleep(cycle_timer)
 
-    return(True)
+    return True
 
 # monitor infrastructure
 

@@ -182,7 +182,7 @@ class WsgiApiServiceMaker(object):
 
             #logger.enable_bootstrap_logging(self.tapname)
 
-            assert (issubclass(self.service_cls, ApiService))
+            assert issubclass(self.service_cls, ApiService)
             self.anchore_service = self.service_cls(options=options)
             self.anchore_service.initialize(self.global_configuration)
 
@@ -308,7 +308,7 @@ class WsgiApiServiceMaker(object):
 
         ret_svc = StreamServerEndpointService(endpoint=endpoint, factory=site)
         ret_svc.setName(self.anchore_service.name)
-        
+
         return ret_svc
 
     def _default_version_rewrite(self, request):

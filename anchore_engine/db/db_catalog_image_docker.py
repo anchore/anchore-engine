@@ -15,7 +15,7 @@ def update_record(record, session=None):
     if our_result:
         our_result.update(record)
 
-    return(True)
+    return True
 
 def add_record(record, session=None):
     if not session:
@@ -26,7 +26,7 @@ def add_record(record, session=None):
         our_result = CatalogImageDocker(**record)
         session.add(our_result)
 
-    return(True)
+    return True
 
 def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, tag_detected_at=None, session=None):
     if not session:
@@ -51,10 +51,10 @@ def add(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=No
     else:
         our_result.update(dbobj)
 
-    return(True)
+    return True
 
 def update(imageDigest, userId, tag, registry=None, user=None, repo=None, digest=None, imageId=None, dockerfile=None, tag_detected_at=None, session=None):
-    return(add(imageDigest, userId, tag, registry=registry, user=user, repo=repo, digest=digest, imageId=imageId, dockerfile=dockerfile, session=session))
+    return add(imageDigest, userId, tag, registry=registry, user=user, repo=repo, digest=digest, imageId=imageId, dockerfile=dockerfile, session=session)
 
 def get_byfilter(userId, session=None, **kwargs):
     if not session:
@@ -69,7 +69,7 @@ def get_byfilter(userId, session=None, **kwargs):
         dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(dbobj)
 
-    return(ret)
+    return ret
 
 def get_alltags(imageDigest, userId, session=None):
     if not session:
@@ -85,7 +85,7 @@ def get_alltags(imageDigest, userId, session=None):
             #dbobj.pop('_sa_instance_state', None)
             ret.append(dbobj)
 
-    return(ret)
+    return ret
 
 def get(imageDigest, userId, tag, session=None):
     if not session:
@@ -98,7 +98,7 @@ def get(imageDigest, userId, tag, session=None):
         dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = dbobj
 
-    return(ret)
+    return ret
 
 def get_all(userId, session=None):
     if not session:
@@ -112,13 +112,13 @@ def get_all(userId, session=None):
             dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(dbobj)
             
-    return(ret)
+    return ret
 
 def delete(imageDigest, userId, tag, session=None):
     if not session:
         session = db.Session
 
-    return(True)
+    return True
 
 
 def get_tag_histories(session, userId, registries=None, repositories=None, tags=None):

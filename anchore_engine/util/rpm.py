@@ -175,7 +175,7 @@ def rpm_ver_cmp(a, b):
         # different types: one numeric, the other alpha (i.e. empty)
         # numeric segments are always newer than alpha segments
         # XXX See patch #60884 (and details) from bugzilla #50977.
-        # if (two == str2) return (isnum ? 1 : -1);
+        # if (two == str2) return isnum ? 1 : -1;
         if l_b == b_seg:
             return 1 if is_num else -1
 

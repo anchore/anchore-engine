@@ -53,7 +53,7 @@ def query_vulnerabilities(id=None, page=1, limit=None, affected_package=None, af
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def query_images_by_vulnerability(vulnerability_id=None, severity=None, namespace=None, affected_package=None, page=1, limit=None, vendor_only=True):
@@ -83,7 +83,7 @@ def query_images_by_vulnerability(vulnerability_id=None, severity=None, namespac
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def query_images_by_package(name=None, version=None, package_type=None, page=1, limit=None):
@@ -113,6 +113,6 @@ def query_images_by_package(name=None, version=None, package_type=None, page=1, 
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
