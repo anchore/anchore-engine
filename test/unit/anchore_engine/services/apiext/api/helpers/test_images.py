@@ -6,6 +6,9 @@ from anchore_engine.services.apiext.api.helpers.image_content_response import (
     _build_gem_response,
     _build_python_response,
     _build_java_response,
+    _build_docker_history_response,
+    _build_dockerfile_response,
+    _build_manifest_response,
     _build_default_response,
 )
 
@@ -312,3 +315,102 @@ class TestBuildDefaultResponse:
         actual_pkg_response = actual_response[0]["licenses"]
 
         assert expected_response == actual_pkg_response
+
+class TestBuildDockerHistoryResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return {
+            "history": [
+                {
+                    "created": "2020-04-14T19:19:53.444488372Z",
+                    "created_by": "/bin/sh -c #(nop) ADD file:xyz in / "
+                },
+                {
+                    "created": "2020-04-14T19:19:53.590635493Z",
+                    "created_by": "/bin/sh -c #(nop)  CMD ['sh']",
+                }
+            ]
+        }
+
+    @pytest.fixture
+    def bad_data_entry(self):
+        return object()
+
+    def test_go_case(self, content_data_entry):
+        expected_response = """eyJoaXN0b3J5IjogW3siY3JlYXRlZCI6ICIyMDIwLTA0LTE0VDE5OjE5OjUzLjQ0NDQ4ODM3Mloi
+LCAiY3JlYXRlZF9ieSI6ICIvYmluL3NoIC1jICMobm9wKSBBREQgZmlsZTp4eXogaW4gLyAifSwg
+eyJjcmVhdGVkIjogIjIwMjAtMDQtMTRUMTk6MTk6NTMuNTkwNjM1NDkzWiIsICJjcmVhdGVkX2J5
+IjogIi9iaW4vc2ggLWMgIyhub3ApICBDTUQgWydzaCddIn1dfQ==
+"""
+
+        actual_response = _build_docker_history_response(content_data_entry)
+
+        assert expected_response == actual_response
+
+    def test_parse_error_results_in_empty_response(self, bad_data_entry):
+        expected_response = ""
+        actual_response = _build_docker_history_response(bad_data_entry)
+        assert expected_response == actual_response
+
+
+
+class TestBuildDockerfileResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return "FROM ubuntu:14.04\nRUN cowsay"
+
+    @pytest.fixture
+    def bad_data_entry(self):
+        return object()
+
+    def test_go_case(self, content_data_entry):
+        expected_response = 'RlJPTSB1YnVudHU6MTQuMDQKUlVOIGNvd3NheQ==\n'
+
+        actual_response = _build_dockerfile_response(content_data_entry)
+
+        assert expected_response == actual_response
+
+    def test_parse_error_results_in_empty_response(self, bad_data_entry):
+        expected_response = ""
+        actual_response = _build_dockerfile_response(bad_data_entry)
+        assert expected_response == actual_response
+
+
+
+class TestBuildManifestResponse:
+    @pytest.fixture
+    def content_data_entry(self):
+        return """[
+            {
+                "Config": "be5888e67be651f1fbb59006f0fd791b44ed3fceaa6323ab4e37d5928874345a.json",
+                "RepoTags": [
+                "busybox:latest"
+                ],
+                "Layers": [
+                "2a47214c4c9baacdb87c8db31b69daf5215add111e37eb7b07f2c1913483f9cc/layer.tar"
+                ]
+            }
+        ]"""
+
+    @pytest.fixture
+    def bad_data_entry(self):
+        return object()
+
+    def test_go_case(self, content_data_entry):
+        expected_response = """WwogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAiQ29uZmlnIjogImJlNTg4OGU2N2JlNjUx
+ZjFmYmI1OTAwNmYwZmQ3OTFiNDRlZDNmY2VhYTYzMjNhYjRlMzdkNTkyODg3NDM0NWEuanNvbiIs
+CiAgICAgICAgICAgICAgICAiUmVwb1RhZ3MiOiBbCiAgICAgICAgICAgICAgICAiYnVzeWJveDps
+YXRlc3QiCiAgICAgICAgICAgICAgICBdLAogICAgICAgICAgICAgICAgIkxheWVycyI6IFsKICAg
+ICAgICAgICAgICAgICIyYTQ3MjE0YzRjOWJhYWNkYjg3YzhkYjMxYjY5ZGFmNTIxNWFkZDExMWUz
+N2ViN2IwN2YyYzE5MTM0ODNmOWNjL2xheWVyLnRhciIKICAgICAgICAgICAgICAgIF0KICAgICAg
+ICAgICAgfQogICAgICAgIF0=
+"""
+
+        actual_response = _build_manifest_response(content_data_entry)
+
+        assert expected_response == actual_response
+
+    def test_parse_error_results_in_empty_response(self, bad_data_entry):
+        expected_response = ""
+        actual_response = _build_manifest_response(bad_data_entry)
+        assert expected_response == actual_response

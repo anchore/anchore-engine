@@ -156,30 +156,26 @@ def _build_files_response(content_data):
     return response
 
 
-def _build_docker_history_response(content_data):
+def _safe_base64_encode(data_provider):
     try:
         return utils.ensure_str(
-            base64.encodebytes(utils.ensure_bytes(json.dumps(content_data)))
+            base64.encodebytes(utils.ensure_bytes(data_provider()))
         )
     except Exception as err:
-        logger.warn("could not convert content to json/base64 encode - exception: %s", err)
+        logger.warn("could not base64 encode content - exception: %s", err)
     return ""
+
+
+def _build_docker_history_response(content_data):
+    return _safe_base64_encode(lambda: json.dumps(content_data))
 
 
 def _build_dockerfile_response(content_data):
-    try:
-        return utils.ensure_str(base64.encodebytes(utils.ensure_bytes(content_data)))
-    except Exception as err:
-        logger.warn("could not base64 encode content - exception: %s", err)
-    return ""
+    return _safe_base64_encode(lambda: content_data)
 
 
 def _build_manifest_response(content_data):
-    try:
-        return utils.ensure_str(base64.encodebytes(utils.ensure_bytes(content_data)))
-    except Exception as err:
-        logger.warn("could not base64 encode content - exception: %s", err)
-    return ""
+   return _safe_base64_encode(lambda: content_data)
 
 
 def _build_default_response(content_data):
