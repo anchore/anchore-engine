@@ -17,7 +17,7 @@ def add(userId, bucket, archiveId, documentName, content_url=None, metadata=None
 
     doc_record = ObjectStorageMetadata(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName, content_url=content_url, document_metadata=metadata, is_compressed=is_compressed, digest=content_digest, size=size)
     merged_result = session.merge(doc_record)
-    return (True)
+    return True
 
 
 def get_all(session=None):
@@ -31,7 +31,7 @@ def get_all(session=None):
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def get(userId, bucket, archiveId, session=None):
@@ -42,7 +42,7 @@ def get(userId, bucket, archiveId, session=None):
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret.update(obj)
 
-    return (ret)
+    return ret
 
 
 def get_onlymeta(userId, bucket, archiveId, session=None):
@@ -67,7 +67,7 @@ def get_byname(userId, documentName, session=None):
         obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return (ret)
+    return ret
 
 
 def exists(userId, bucket, archiveId, session=None):
@@ -114,7 +114,7 @@ def list_all_notempty(session=None):
         if obj:
             ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def list_all(session=None, **dbfilter):
@@ -135,7 +135,7 @@ def list_all(session=None, **dbfilter):
         #if obj:
         #    ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def list_all_byuserId(userId, limit=None, session=None, **dbfilter):
@@ -161,11 +161,11 @@ def list_all_byuserId(userId, limit=None, session=None, **dbfilter):
         #if obj:
         #    ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def update(userId, bucket, archiveId, documentName, content_url=None, metadata=None, session=None):
-    return (add(userId, bucket, archiveId, documentName, content_url, metadata, session=session))
+    return add(userId, bucket, archiveId, documentName, content_url, metadata, session=session)
 
 
 def delete_byfilter(userId, remove=True, session=None, **dbfilter):
@@ -183,7 +183,7 @@ def delete_byfilter(userId, remove=True, session=None, **dbfilter):
                 result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
             ret = True
 
-    return (ret)
+    return ret
 
 
 def delete(userId, bucket, archiveId, remove=True, session=None):
@@ -197,4 +197,4 @@ def delete(userId, bucket, archiveId, remove=True, session=None):
         else:
             result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
 
-    return (True)
+    return True

@@ -105,7 +105,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
 
     if not vulnerability_data:
         logger.warn("empty query data given to format - returning empty result")
-        return (ret)
+        return ret
 
     eltemplate = {
         'vuln': 'None',
@@ -253,7 +253,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     else:
         ret = vulnerability_data
 
-    return (ret)
+    return ret
 
 
 def make_response_policyeval(eval_record, params, catalog_client):
@@ -289,7 +289,7 @@ def make_response_policyeval(eval_record, params, catalog_client):
     except Exception as err:
         raise Exception("failed to format policy eval response: " + str(err))
 
-    return (ret)
+    return ret
 
 
 def make_response_image(image_record, include_detail=True):
@@ -341,7 +341,7 @@ def make_response_image(image_record, include_detail=True):
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
 
-    return (ret)
+    return ret
 
 
 def lookup_imageDigest_from_imageId(request_inputs, imageId):
@@ -366,7 +366,7 @@ def lookup_imageDigest_from_imageId(request_inputs, imageId):
         logger.debug("operation exception: " + str(err))
         raise err
 
-    return (ret)
+    return ret
 
 def vulnerability_query(account, digest, vulnerability_type, force_refresh=False, vendor_only=True, doformat=False):
     # user_auth = request_inputs['auth']
@@ -423,7 +423,7 @@ def vulnerability_query(account, digest, vulnerability_type, force_refresh=False
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 def get_content(request_inputs, content_type, doformat=False):
     user_auth = request_inputs['auth']
@@ -494,7 +494,7 @@ def get_content(request_inputs, content_type, doformat=False):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 # repositories
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -547,7 +547,7 @@ def repositories(request_inputs):
         httpcode = return_object['httpcode']
 
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 # images CRUD
@@ -891,12 +891,12 @@ def get_image_content_by_type(imageDigest, ctype):
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_files(imageDigest):
-    return(get_image_content_by_type(imageDigest, 'files'))
+    return get_image_content_by_type(imageDigest, 'files')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_javapackage(imageDigest):
-    return(get_image_content_by_type(imageDigest, 'java'))
+    return get_image_content_by_type(imageDigest, 'java')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -919,12 +919,12 @@ def get_image_content_by_type_imageId(imageId, ctype):
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_files(imageId):
-    return(get_image_content_by_type_imageId(imageId, 'files'))
+    return get_image_content_by_type_imageId(imageId, 'files')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_javapackage(imageId):
-    return(get_image_content_by_type_imageId(imageId, 'java'))
+    return get_image_content_by_type_imageId(imageId, 'java')
 
 
 @flask_metrics.do_not_track()
@@ -1258,7 +1258,7 @@ def images_imageDigest(request_inputs, imageDigest):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 def images_check_impl(request_inputs, image_records):
@@ -1341,7 +1341,7 @@ def images_check_impl(request_inputs, image_records):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 def images_imageDigest_check(request_inputs, imageDigest):
@@ -1369,7 +1369,7 @@ def images_imageDigest_check(request_inputs, imageDigest):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 

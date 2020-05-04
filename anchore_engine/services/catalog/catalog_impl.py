@@ -49,7 +49,7 @@ def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
         logger.error("failed to add/check image: " + str(err))
         raise err
 
-    return(resp)
+    return resp
 
 def registry_lookup(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -93,7 +93,7 @@ def registry_lookup(dbsession, request_inputs):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def repo(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
@@ -184,7 +184,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def image_tags(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -202,7 +202,7 @@ def image_tags(dbsession, request_inputs):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def image(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
@@ -410,7 +410,7 @@ def image(dbsession, request_inputs, bodycontent=None):
         logger.exception('Error processing image request')
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
     method = request_inputs['method']
@@ -473,7 +473,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 #def image_import(dbsession, request_inputs, bodycontent=None):
 #    user_auth = request_inputs['auth']
@@ -650,7 +650,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
         logger.exception('Error handling subscriptions')
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def events(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
@@ -788,7 +788,7 @@ def events(dbsession, request_inputs, bodycontent=None):
         logger.exception('Error in events handler')
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def events_eventId(dbsession, request_inputs, eventId):
     user_auth = request_inputs['auth']
@@ -820,7 +820,7 @@ def events_eventId(dbsession, request_inputs, eventId):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def system(dbsession, request_inputs):
@@ -838,7 +838,7 @@ def system(dbsession, request_inputs):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def system_services(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -856,7 +856,7 @@ def system_services(dbsession, request_inputs):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def system_services_servicename(dbsession, request_inputs, inservicename):
     user_auth = request_inputs['auth']
@@ -877,7 +877,7 @@ def system_services_servicename(dbsession, request_inputs, inservicename):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def system_services_servicename_hostId(dbsession, request_inputs, inservicename, inhostId):
     user_auth = request_inputs['auth']
@@ -914,7 +914,7 @@ def system_services_servicename_hostId(dbsession, request_inputs, inservicename,
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def system_registries(dbsession, request_inputs, bodycontent={}):
     user_auth = request_inputs['auth']
@@ -993,7 +993,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def refresh_registry_creds(registry_records, dbsession):
 
@@ -1019,7 +1019,7 @@ def refresh_registry_creds(registry_records, dbsession):
                     db_registries.update_record(registry_record, session=dbsession)
 
         logger.debug("registry up-to-date: " + str(registry_record['userId']) + " : " + str(registry_record['registry']) + " : " + str(registry_record['registry_type']))
-    return(True)
+    return True
 
 def system_registries_registry(dbsession, request_inputs, registry, bodycontent={}):
     user_auth = request_inputs['auth']
@@ -1090,7 +1090,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def system_subscriptions(dbsession, request_inputs):
     user_auth = request_inputs['auth']
@@ -1107,7 +1107,7 @@ def system_subscriptions(dbsession, request_inputs):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 ################################################################################
@@ -1211,7 +1211,7 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
             except Exception as err:
                 logger.warn("failed to enqueue notification - exception: " + str(err))
 
-    return(True)
+    return True
 
 def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, policyId=None, interactive=False, newest_only=False):
     ret = {}
@@ -1344,7 +1344,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
         # done
 
-    return(curr_evaluation_record, curr_evaluation_result)
+    return curr_evaluation_record, curr_evaluation_result
 
 def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}, parent_manifest=None):
     ret = []
@@ -1506,7 +1506,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
     for imageDigest in list(addlist.keys()):
         ret.append(addlist[imageDigest])
 
-    return(ret)
+    return ret
 
 
 def do_image_delete(userId, image_record, dbsession, force=False):
@@ -1602,7 +1602,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
         logger.warn("DELETE failed - exception: " + str(err))
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def do_subscription_delete(userId, subscription_record, dbsession, force=False):
     return_object = False
@@ -1619,7 +1619,7 @@ def do_subscription_delete(userId, subscription_record, dbsession, force=False):
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def do_policy_delete(userId, policy_record, dbsession, cleanup_evals=False, force=False):
     return_object = False
@@ -1644,7 +1644,7 @@ def do_policy_delete(userId, policy_record, dbsession, cleanup_evals=False, forc
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def do_evaluation_delete(userId, eval_record, dbsession, force=False):
     return_object = False
@@ -1660,7 +1660,7 @@ def do_evaluation_delete(userId, eval_record, dbsession, force=False):
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
         
 def do_archive_delete(userId, archive_document, session, force=False):
     return_object = False
@@ -1677,7 +1677,7 @@ def do_archive_delete(userId, archive_document, session, force=False):
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def do_registry_delete(userId, registry_record, dbsession, force=False):
@@ -1695,7 +1695,7 @@ def do_registry_delete(userId, registry_record, dbsession, force=False):
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def add_event(event, dbsession, quiet=True):

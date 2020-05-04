@@ -16,7 +16,7 @@ def get(session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def add(service_version, db_version, inobj, session=None):
     if not session:
@@ -41,10 +41,10 @@ def add(service_version, db_version, inobj, session=None):
 #    finally:
 #        session.rollback()
     
-    return(True)
+    return True
 
 def update(service_version, db_version, scanner_version, inobj, session=None):
-    return(add(service_version, db_version, scanner_version, inobj, session=session))
+    return add(service_version, db_version, scanner_version, inobj, session=session)
 
 def update_record(input_record, session=None):
     if not session:
@@ -54,4 +54,4 @@ def update_record(input_record, session=None):
     if our_result:
         our_result.update(input_record)
         
-    return(True)
+    return True

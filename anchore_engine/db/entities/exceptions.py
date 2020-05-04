@@ -36,7 +36,7 @@ def _get_pgcode_from_ex(ex):
     if not pgcode:
         logger.warn("cannot extract PG code from driver exception - exception details: {}".format(ex))
 
-    return(pgcode)
+    return pgcode
 
 def is_unique_violation(ex):
     """
@@ -49,7 +49,7 @@ def is_unique_violation(ex):
     pgcode = _get_pgcode_from_ex(ex)
     if pgcode and pgcode == PG_UNIQUE_CONSTRAINT_VIOLATION_CODE:
         ret = True
-    return(ret)
+    return ret
     #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_UNIQUE_CONSTRAINT_VIOLATION_CODE
 
 
@@ -64,7 +64,7 @@ def is_lock_acquisition_error(ex):
     pgcode = _get_pgcode_from_ex(ex)
     if pgcode and pgcode == PG_COULD_NOT_GET_ROWLOCK_CODE:
         ret = True
-    return(ret)
+    return ret
     #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and str(ex.orig.args[2]) == PG_COULD_NOT_GET_ROWLOCK_CODE
 
 
@@ -73,5 +73,5 @@ def is_table_not_found(ex):
     pgcode = _get_pgcode_from_ex(ex)
     if pgcode and pgcode == PG_RELATION_NOT_FOUND_CODE:
         ret = True
-    return(ret)
+    return ret
     #return isinstance(ex, ProgrammingError) and hasattr(ex, 'orig') and str(ex.orig.args[0]) == 'ERROR' and (str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE or str(ex.orig.args[2]) == PG_RELATION_NOT_FOUND_CODE)

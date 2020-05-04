@@ -373,7 +373,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                 logger.debug("attempt failed: " + str(err))
                 ret['content'] = ensure_bytes("server error: " + str(err))
 
-        return (ret)
+        return ret
 
 
 class AnchoreIOClientError(AnchoreException):

@@ -13,7 +13,7 @@ def create_queue(name, max_outstanding_msgs=0, visibility_timeout=0):
     except Exception as err:
         raise err
             
-    return(True)
+    return True
 
 
 def get_queuenames():
@@ -25,14 +25,14 @@ def get_queuenames():
     except Exception as err:
         raise err
 
-    return(ret)
+    return ret
 
 
 def get_queue(name):
     try:
         with db.session_scope() as dbsession:
             ret = db_queue.get_queue(name, 'system', session=dbsession)
-            return(ret)
+            return ret
     except Exception as err:
         raise err
 
@@ -41,7 +41,7 @@ def qlen(name):
     queuenames = get_queuenames()
     
     if name not in queuenames:
-        return(0)
+        return 0
 
     try:
         with db.session_scope() as dbsession:
@@ -49,7 +49,7 @@ def qlen(name):
     except Exception as err:
         raise err
 
-    return(ret)
+    return ret
 
 
 def enqueue(name, inobj, qcount=0, forcefirst=False):
@@ -64,7 +64,7 @@ def enqueue(name, inobj, qcount=0, forcefirst=False):
         except Exception as err:
             raise err
 
-    return(ret)
+    return ret
 
 
 def dequeue(name, visibility_timeout=None):
@@ -76,12 +76,12 @@ def dequeue(name, visibility_timeout=None):
     ret = {}
     queue = get_queue(name)
     if queue is None:
-        return(None)
+        return None
         
     try:
         with db.session_scope() as dbsession:
             ret = db_queue.dequeue(name, 'system', visibility_timeout=visibility_timeout, session=dbsession)
-        return (ret)
+        return ret
     except Exception as err:
         raise err
 
@@ -99,12 +99,12 @@ def update_visibility_timeout(name, receipt_handle, visibility_timeout):
     ret = {}
     queue = get_queue(name)
     if queue is None:
-        return (None)
+        return None
 
     try:
         with db.session_scope() as dbsession:
             ret = db_queue.update_visibility_by_handle(name, 'system', receipt_handle, visibility_timeout, session=dbsession)
-        return (ret)
+        return ret
     except Exception as err:
         raise err
 
@@ -114,7 +114,7 @@ def delete_msg(name, receipt_handle):
     queue = get_queue(name)
 
     if not queue:
-        return(None)
+        return None
 
     try:
         with db.session_scope() as dbsession:
@@ -122,7 +122,7 @@ def delete_msg(name, receipt_handle):
     except Exception as err:
         raise err
 
-    return (ret)
+    return ret
 
 
 def is_inqueue(name, inobj):
@@ -130,7 +130,7 @@ def is_inqueue(name, inobj):
     queuenames = get_queuenames()
 
     if name not in queuenames:
-        return({})
+        return {}
 
     try:
         with db.session_scope() as dbsession:
@@ -138,4 +138,4 @@ def is_inqueue(name, inobj):
     except Exception as err:
         raise err
         
-    return(ret)
+    return ret

@@ -21,7 +21,7 @@ def get_docker_registry_userpw(registry_record):
         logger.error("cannot fetch registry creds from registry record - exception: " + str(err))
         raise err
 
-    return(user, pw)
+    return user, pw
 
 
 def get_creds_by_registry(registry, repository, registry_creds=None):
@@ -47,7 +47,7 @@ def get_creds_by_registry(registry, repository, registry_creds=None):
         except Exception as err:
             raise err
 
-    return(user, pw, registry_verify)
+    return user, pw, registry_verify
 
 
 def registry_record_matches(registry_record_str, registry, repository):

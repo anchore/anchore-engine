@@ -28,7 +28,7 @@ def status():
     except Exception as err:
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
@@ -40,7 +40,7 @@ def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={})
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -53,7 +53,7 @@ def image_tags_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -68,7 +68,7 @@ def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, hist
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -99,7 +99,7 @@ def add_image(image_metadata=None, tag=None, digest=None, created_at=None, from_
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route('/image/<imageDigest>', methods=['GET', 'PUT', 'DELETE'])
@@ -115,7 +115,7 @@ def get_image(imageDigest):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -129,7 +129,7 @@ def update_image(imageDigest, image):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -143,7 +143,7 @@ def delete_image(imageDigest, force=False):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route('/registry_lookup', methods=['GET'])
@@ -159,7 +159,7 @@ def registry_lookup(tag=None, digest=None):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route('/import', methods=['POST'])
@@ -174,7 +174,7 @@ def registry_lookup(tag=None, digest=None):
 #        httpcode = 500
 #        return_object = str(err)
 #
-#    return (return_object, httpcode)
+#    return return_object, httpcode
 
 
 
@@ -195,7 +195,7 @@ def subscriptions_get(subscription_key=None, subscription_type=None):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -209,7 +209,7 @@ def subscriptions_post(bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route('/subscriptions/<subscriptionId>', methods=['GET', 'PUT', 'DELETE'])
@@ -225,7 +225,7 @@ def subscriptions_subscriptionId_get(subscriptionId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -239,7 +239,7 @@ def subscriptions_subscriptionId_put(subscriptionId, bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -253,7 +253,7 @@ def subscriptions_subscriptionId_delete(subscriptionId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -278,7 +278,7 @@ def events_get(source_servicename=None, source_hostid=None, resource_type=None, 
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -293,7 +293,7 @@ def events_post(bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -308,7 +308,7 @@ def events_delete(since=None, before=None, level=None):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -323,7 +323,7 @@ def events_eventId_get(eventId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -338,7 +338,7 @@ def events_eventId_delete(eventId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 # user calls
 # @api.route("/users", methods=['GET'])
@@ -353,7 +353,7 @@ def users_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/users/<inuserId>", methods=['GET', 'DELETE'])
@@ -369,7 +369,7 @@ def users_userId_get(inuserId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -383,7 +383,7 @@ def users_userId_delete(inuserId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 # system/service calls
 # @api.route("/system", methods=['GET'])
@@ -398,7 +398,7 @@ def system_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/services", methods=['GET'])
@@ -413,7 +413,7 @@ def system_services_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/services/<servicename>", methods=['GET'])
@@ -429,7 +429,7 @@ def system_services_servicename_get(servicename):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/services/<servicename>/<hostId>", methods=['GET', 'DELETE'])
@@ -445,7 +445,7 @@ def system_services_servicename_hostId_get(servicename, hostId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -459,7 +459,7 @@ def system_services_servicename_hostId_delete(servicename, hostId):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/registries", methods=['GET', 'POST'])
@@ -474,7 +474,7 @@ def system_registries_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def system_registries_post(bodycontent, validate=True):
@@ -487,7 +487,7 @@ def system_registries_post(bodycontent, validate=True):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/registries/<registry>", methods=['GET', 'DELETE', 'PUT'])
@@ -503,7 +503,7 @@ def system_registries_registry_get(registry):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -518,7 +518,7 @@ def system_registries_registry_delete(registry):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @flask_metrics.do_not_track()
@@ -533,7 +533,7 @@ def system_registries_registry_put(registry, bodycontent, validate=True):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 # @api.route("/system/subscriptions", methods=['GET'])
@@ -549,5 +549,5 @@ def system_subscriptions_get():
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 

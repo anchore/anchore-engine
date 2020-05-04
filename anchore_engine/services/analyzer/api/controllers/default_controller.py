@@ -21,7 +21,7 @@ def status():
     except Exception as err:
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def interactive_analyze(bodycontent):
@@ -76,5 +76,5 @@ def interactive_analyze(bodycontent):
         logger.error(str(err))
         return_object = str(err)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
     #return(json.dumps(return_object, indent=4)+"\n", httpcode)

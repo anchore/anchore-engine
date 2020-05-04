@@ -19,7 +19,7 @@ def add(registry, userId, inobj, session=None):
     else:
         our_service.update(inobj)
 
-    return(True)
+    return True
 
 def delete(registry, userId, session=None):
     if not session:
@@ -29,11 +29,11 @@ def delete(registry, userId, session=None):
     if our_service:
         session.delete(our_service)
 
-    return(True)
+    return True
 
 # add and update amount to the same operation since we're using upserts                
 def update(registry, userId, inobj, session=None):
-    return(add(registry, userId, inobj, session=session))
+    return add(registry, userId, inobj, session=session)
 
 def update_record(input_record, session=None):
     if not session:
@@ -43,7 +43,7 @@ def update_record(input_record, session=None):
     if our_result:
         our_result.update(input_record)
         
-    return(True)
+    return True
 
 # get all services from the DB for all registered services/hosts
 def get_all(session=None):
@@ -56,10 +56,10 @@ def get_all(session=None):
     for result in our_results:
         ret.append(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
-    return(ret)
+    return ret
 
 def get_all_byuserId(userId, limit=None, session=None):
-    return(get_byuserId(userId, limit=limit, session=session))
+    return get_byuserId(userId, limit=limit, session=session)
 
 def get_byuserId(userId, limit=None, session=None):
     if not session:
@@ -74,7 +74,7 @@ def get_byuserId(userId, limit=None, session=None):
     for result in our_results:
         ret.append(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
 
-    return(ret)
+    return ret
     
 def get(registry, userId, session=None):
     if not session:
@@ -90,4 +90,4 @@ def get(registry, userId, session=None):
     if record:
         ret.append(record)
 
-    return(ret)
+    return ret

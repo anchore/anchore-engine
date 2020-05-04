@@ -79,7 +79,7 @@ def do_user_resources_delete(userId):
     return_object['all_deleted'] = all_deleted
     
     httpcode = 200
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 def handle_account_resource_cleanup(*args, **kwargs):
     watcher = str(kwargs['mythread']['taskType'])
@@ -129,7 +129,7 @@ def handle_account_resource_cleanup(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 def handle_vulnerability_scan(*args, **kwargs):
     global feed_sync_updated
@@ -148,7 +148,7 @@ def handle_vulnerability_scan(*args, **kwargs):
                 kwargs['mythread']['last_return'] = False
             except:
                 pass
-            return (True)
+            return True
 
         with db.session_scope() as dbsession:
             mgr = manager_factory.for_session(dbsession)
@@ -226,7 +226,7 @@ def handle_vulnerability_scan(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def handle_service_watcher(*args, **kwargs):
@@ -237,7 +237,7 @@ def handle_service_watcher(*args, **kwargs):
     max_service_orphaned_timer = 3600
     max_service_cleanup_timer = 86400
 
-    while (True):
+    while True:
         logger.debug("FIRING: service watcher")
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -371,7 +371,7 @@ def handle_service_watcher(*args, **kwargs):
             pass
 
         time.sleep(cycle_timer)
-    return (True)
+    return True
 
 
 def handle_repo_watcher(*args, **kwargs):
@@ -526,7 +526,7 @@ def handle_repo_watcher(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def handle_image_watcher(*args, **kwargs):
@@ -746,12 +746,12 @@ def handle_image_watcher(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def check_feedmeta_update(dbsession):
     global feed_sync_updated
-    return (feed_sync_updated)
+    return feed_sync_updated
 
 
 def check_policybundle_update(userId, dbsession):
@@ -766,7 +766,7 @@ def check_policybundle_update(userId, dbsession):
             last_bundle_update = active_policy_record['last_updated']
         else:
             logger.warn("user has no active policy - queueing just in case" + str(userId))
-            return (is_updated)
+            return is_updated
 
         if userId not in bundle_user_last_updated:
             bundle_user_last_updated[userId] = last_bundle_update
@@ -783,7 +783,7 @@ def check_policybundle_update(userId, dbsession):
         bundle_user_last_updated[userId] = 0
         is_updated = True
 
-    return (is_updated)
+    return is_updated
 
 
 def handle_policyeval(*args, **kwargs):
@@ -803,7 +803,7 @@ def handle_policyeval(*args, **kwargs):
                 kwargs['mythread']['last_return'] = False
             except:
                 pass
-            return (True)
+            return True
 
         with db.session_scope() as dbsession:
             feed_updated = check_feedmeta_update(dbsession)
@@ -881,7 +881,7 @@ def handle_policyeval(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def handle_analyzer_queue(*args, **kwargs):
@@ -909,7 +909,7 @@ def handle_analyzer_queue(*args, **kwargs):
             kwargs['mythread']['last_return'] = False
         except:
             pass
-        return (True)
+        return True
 
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
@@ -1008,7 +1008,7 @@ def handle_analyzer_queue(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def handle_notifications(*args, **kwargs):
@@ -1065,7 +1065,7 @@ def handle_notifications(*args, **kwargs):
                         err))
                 qlen = 0
 
-            while (qlen > 0):
+            while qlen > 0:
                 pupdate_record = q_client.dequeue(subscription_type)
                 if pupdate_record:
                     logger.debug("got notification from queue: " + json.dumps(pupdate_record, indent=4))
@@ -1151,13 +1151,13 @@ def handle_notifications(*args, **kwargs):
         anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
                                                       function=watcher, status="fail")
 
-    return (True)
+    return True
 
 
 def handle_metrics(*args, **kwargs):
     cycle_timer = kwargs['mythread']['cycle_timer']
 
-    while (True):
+    while True:
 
         # perform some DB read/writes for metrics gathering
         if anchore_engine.subsys.metrics.is_enabled():
@@ -1258,7 +1258,7 @@ default_lease_ttl = 60  # 1 hour ttl, should be more than enough in most cases
 def watcher_func(*args, **kwargs):
     global system_user_auth
 
-    while (True):
+    while True:
         logger.debug("starting generic watcher")
         all_ready = anchore_engine.clients.services.common.check_services_ready(['simplequeue'])
         if not all_ready:
@@ -1305,7 +1305,7 @@ def schedule_watcher(watcher):
 
     if watcher not in watchers:
         logger.warn("input watcher {} not in list of available watchers {}".format(watcher, list(watchers.keys())))
-        return (False)
+        return False
 
     if watchers[watcher]['taskType']:
         logger.debug("should queue job: " + watcher)
@@ -1324,7 +1324,7 @@ def schedule_watcher(watcher):
         except Exception as err:
             logger.warn("failed to enqueue watcher task: " + str(err))
 
-    return (True)
+    return True
 
 
 def monitor_func(**kwargs):
@@ -1333,10 +1333,10 @@ def monitor_func(**kwargs):
     if click < 5:
         click = click + 1
         logger.debug("Catalog monitor starting in: " + str(5 - click))
-        return (True)
+        return True
 
     if running or ((time.time() - last_run) < kwargs['kick_timer']):
-        return (True)
+        return True
 
     logger.debug("FIRING: catalog_monitor")
     try:

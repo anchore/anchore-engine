@@ -132,7 +132,7 @@ class DpkgVersion(object):
 
         for i in range(max(len(list_a), len(list_b))):
             first_diff = 0
-            while (list_a and not list_a[0].isdigit() or (list_b and not list_b[0].isdigit())):
+            while (list_a and not list_a[0].isdigit() or list_b and not list_b[0].isdigit()):
                 ac = DpkgVersion._order(list_a[0] if list_a else None)
                 bc = DpkgVersion._order(list_b[0] if list_b else None)
 

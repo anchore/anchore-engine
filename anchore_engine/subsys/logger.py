@@ -169,38 +169,38 @@ def safe_formatter(message, args):
 
 
 def spew(msg_string):
-    return (_msg(msg_string, msg_log_level='SPEW'))
+    return _msg(msg_string, msg_log_level='SPEW')
 
 
 @bootstrap_logger_intercept(logging.DEBUG)
 def debug(msg_string, *args):
     msg_string = safe_formatter(msg_string, args)
-    return (_msg(msg_string, msg_log_level='DEBUG'))
+    return _msg(msg_string, msg_log_level='DEBUG')
 
 
 @bootstrap_logger_intercept(logging.INFO)
 def info(msg_string, *args):
     msg_string = safe_formatter(msg_string, args)
-    return (_msg(msg_string, msg_log_level='INFO'))
+    return _msg(msg_string, msg_log_level='INFO')
 
 
 @bootstrap_logger_intercept(logging.WARN)
 def warn(msg_string, *args):
     msg_string = safe_formatter(msg_string, args)
-    return (_msg(msg_string, msg_log_level='WARN'))
+    return _msg(msg_string, msg_log_level='WARN')
 
 
 @bootstrap_logger_intercept(logging.ERROR)
 def error(msg_string, *args):
     msg_string = safe_formatter(msg_string, args)
-    return (_msg(msg_string, msg_log_level='ERROR'))
+    return _msg(msg_string, msg_log_level='ERROR')
 
 
 @bootstrap_logger_intercept('EXCEPTION')
 def exception(msg_string):
     import traceback
     traceback.print_exc()
-    return (_msg(msg_string, msg_log_level='ERROR'))
+    return _msg(msg_string, msg_log_level='ERROR')
 
 
 @bootstrap_logger_intercept('EXCEPTION')
@@ -215,12 +215,12 @@ def debug_exception(msg_string):
         import traceback
         traceback.print_exc()
 
-    return (_msg(msg_string, msg_log_level='ERROR'))
+    return _msg(msg_string, msg_log_level='ERROR')
 
 
 @bootstrap_logger_intercept(logging.FATAL)
 def fatal(msg_string):
-    return (_msg(msg_string, msg_log_level='FATAL'))
+    return _msg(msg_string, msg_log_level='FATAL')
 
 
 def set_log_level(new_log_level, log_to_stdout=False, log_to_db=False):

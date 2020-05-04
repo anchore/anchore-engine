@@ -213,7 +213,7 @@ class BaseService(object, metaclass=ServiceMeta):
         :param global_config:
         :return: service configuration for this service
         """
-        assert(self.__service_name__ in global_config['services'])
+        assert self.__service_name__ in global_config['services']
         return global_config['services'][self.__service_name__]
 
     def configure(self):
@@ -522,7 +522,7 @@ class ApiService(BaseService):
                 enable_swagger_ui = self.configuration.get('enable_swagger_ui')
             elif self.global_configuration.get('enable_swagger_ui', None) is not None:
                 enable_swagger_ui = self.global_configuration.get('enable_swagger_ui')
-                
+
             flask_app_options = {'swagger_ui': enable_swagger_ui}
             self._application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir, options=flask_app_options)
             flask_app = self._application.app

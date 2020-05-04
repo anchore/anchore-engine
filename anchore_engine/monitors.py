@@ -31,12 +31,12 @@ def default_monitor_func(**kwargs):
     if click < 5:
         click = click + 1
         logger.debug("service ("+str(servicename)+") starting in: " + str(5 - click))
-        return (True)
+        return True
 
     if round(time.time() - last_run) < kwargs['kick_timer']:
         logger.spew(
             "timer hasn't kicked yet: " + str(round(time.time() - last_run)) + " : " + str(kwargs['kick_timer']))
-        return (True)
+        return True
 
     try:
         running = True

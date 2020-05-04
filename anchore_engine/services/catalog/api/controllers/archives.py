@@ -335,4 +335,4 @@ def import_archive(imageDigest, archive_file):
         logger.exception('Failed to import image archive')
         return make_response_error('Error importing image archive: {}'.format(ex), in_httpcode=500), 500
     
-    return("Success", 200)
+    return "Success", 200
