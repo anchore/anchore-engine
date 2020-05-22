@@ -42,7 +42,7 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
                     logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
                 except:
                     pass
-    return(ret)
+    return ret
 
 
 def make_anchore_exception(err, input_message=None, input_httpcode=None, input_detail=None, override_existing=False, input_error_codes=None):
@@ -95,7 +95,7 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
         if error_codes:
             ret.anchore_error_json['detail']['error_codes'].extend(error_codes)
                                    
-    return(ret)
+    return ret
 
 
 def make_response_routes(apiversion, inroutes):
@@ -115,7 +115,7 @@ def make_response_routes(apiversion, inroutes):
         httpcode = 200
         return_object = routes
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def update_image_record_with_analysis_data(image_record, image_data):
@@ -158,7 +158,7 @@ def update_image_record_with_analysis_data(image_record, image_data):
             logger.debug("setting image_detail: ")
             image_detail['dockerfile'] = str(base64.b64encode(dockerfile_content.encode('utf-8')), 'utf-8')
 
-    return(True)
+    return True
 
 
 def extract_dockerfile_content(image_data):
@@ -172,7 +172,7 @@ def extract_dockerfile_content(image_data):
         dockerfile_content = ""
         dockerfile_mode = "Guessed"
 
-    return(dockerfile_content, dockerfile_mode)
+    return dockerfile_content, dockerfile_mode
 
 
 def extract_analyzer_content(image_data, content_type, manifest=None):
@@ -284,7 +284,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
         logger.warn("exception: " + str(err))
         raise err
 
-    return(ret)
+    return ret
 
 
 def make_policy_record(userId, bundle, policy_source="local", active=False):
@@ -298,7 +298,7 @@ def make_policy_record(userId, bundle, policy_source="local", active=False):
     payload['policybundle'] = bundle
     payload['policy_source'] = policy_source
 
-    return(payload)
+    return payload
 
 
 def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, eval_url):
@@ -314,4 +314,4 @@ def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, e
     payload["created_at"] = int(time.time())
     payload["last_updated"] = payload['created_at']
 
-    return(payload)
+    return payload

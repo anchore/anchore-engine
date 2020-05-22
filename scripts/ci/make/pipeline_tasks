@@ -39,8 +39,9 @@ lint() {
     hash pylint || "${PYTHON}" -m pip install -q pylint
 
     print_colorized WARN "linting project"
-    pylint anchore_engine
-    pylint anchore_manager
+    # This is specifically enabling checks because the output is too large to
+    # fix in one go. As cleanups are done, more checks can be enabled
+    pylint -s n --disable=all --enable=C0325 anchore_engine
 }
 
 unit_tests() {

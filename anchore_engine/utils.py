@@ -192,11 +192,11 @@ def filter_record_keys(record_list, whitelist_keys):
 def run_sanitize(cmd_list):
     def shellcheck(x):
         if not re.search("[;&<>]", x):
-            return(x)
+            return x
         else:
             raise Exception("bad character in shell input")
 
-    return([x for x in cmd_list if shellcheck(x)])
+    return [x for x in cmd_list if shellcheck(x)]
 
 def run_command_list(cmd_list, env=None):
     """
@@ -222,7 +222,7 @@ def run_command_list(cmd_list, env=None):
     #sout = ensure_str(sout)
     #serr = ensure_str(serr)
 
-    return(rc, sout, serr)
+    return rc, sout, serr
 
 
 def run_command(cmdstr, env=None):
@@ -240,7 +240,7 @@ def manifest_to_digest(rawmanifest):
         ret = manifest_to_digest_shellout(rawmanifest)
 
     ret = ensure_str(ret)
-    return(ret)
+    return ret
 
 
 def get_threadbased_id(guarantee_uniq=False):
@@ -369,7 +369,7 @@ def parse_dockerimage_string(instr):
     else:
         ret['pullstring'] = None
 
-    return(ret)
+    return ret
 
 
 def ensure_bytes(obj):
@@ -408,7 +408,7 @@ def rfc3339str_to_datetime(rfc3339_str):
     if ret is None:
         raise Exception("could not convert input created_at value ({}) into datetime using formats in {}".format(rfc3339_str, rfc3339_date_input_fmts))
 
-    return(ret)
+    return ret
 
 def datetime_to_rfc3339(dt_obj):
     """

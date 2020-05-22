@@ -2,13 +2,40 @@
 
 For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://docs.anchore.com)
 
-The Anchore Engine is an open source project that provides a centralized service for inspection, analysis and certification of container images. The Anchore engine is provided as a Docker container image that can be run standalone, or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
+The Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. The Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
 
-The Anchore engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
+The Anchore Engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
 
-With a deployment of Anchore Engine running in your environment, container images are downloaded and analyzed from Docker V2 compatible container registries, and then evaluated against user customizable policies to perform security, compliance and best practices enforcement checks.  Anchore Engine is appropriate to use stand alone/interactively, as a service integrated with your CI/CD to bring security/compliance/best-practice enforcement to your build pipeline, or as a component integrated into existing container monitoring and control frameworks via integration with its RESTful API.
+With a deployment of Anchore Engine running in your environment, container images are downloaded and analyzed from Docker V2 compatible container registries and then evaluated against user-customizable policies to perform security, compliance, and best practices enforcement checks.
+
+Anchore Engine can be used in several ways:
+
+* Standalone or interactively.
+* As a service integrated with your CI/CD to bring security/compliance/best-practice enforcement to your build pipeline
+* As a component integrated into existing container monitoring and control frameworks via integration with its RESTful API.
 
 Anchore Engine is also the OSS foundation for [Anchore Enterprise](https://anchore.com/enterprise), which adds a graphical UI (providing policy management, user management, a summary dashboard, security and policy evaluation reports, and many other graphical client controls), and other back-end features and modules.
+
+**Supported Operating Systems**
+
+- Alpine
+- Amazon Linux 2
+- CentOS
+- Debian
+- Google Distroless
+- Oracle Linux
+- Red Hat Enterprise Linux
+- Red Hat Universal Base Image (UBI)
+- Ubuntu
+
+
+**Supported Packages**
+
+- GEM
+- Java Archive (jar, war, ear)
+- NPM
+- Python (PIP)
+
 
 ## Installation
 
@@ -20,18 +47,12 @@ The Anchore Engine is distributed as a [Docker Image](https://hub.docker.com/r/a
 
 ## Quick Start (TLDR)
 
+See [documentation](https://docs.anchore.com/current/docs/engine/quickstart/) for the full quickstart guide.
+
 To quickly bring up an installation of Anchore Engine on a system with docker (and docker-compose) installed, follow these simple steps:
 
 ```
-mkdir ~/aevolume
-cd ~/aevolume
-
-docker pull docker.io/anchore/anchore-engine:latest
-docker create --name ae docker.io/anchore/anchore-engine:latest
-docker cp ae:/docker-compose.yaml ~/aevolume/docker-compose.yaml
-docker rm ae
-
-docker-compose pull
+curl https://docs.anchore.com/current/docs/engine/quickstart/docker-compose.yaml > docker-compose.yaml
 docker-compose up -d
 ```
 
@@ -41,18 +62,18 @@ Once the Engine is up and running, you can begin to interact with the system usi
 
 The [Anchore CLI](https://github.com/anchore/anchore-cli) is an easy way to control and interact with the Anchore Engine.
 
-The Anchore CLI can be installed using the Python pip command, or by running the CLI from the [Anchore Engine CLI](https://hub.docker.com/r/anchore/engine-cli) container image.  See the [Anchore CLI](https://github.com/anchore/anchore-cli) project on github for code and more installation options and usage.
+The Anchore CLI can be installed using the Python pip command, or by running the CLI from the [Anchore Engine CLI](https://hub.docker.com/r/anchore/engine-cli) container image.  See the [Anchore CLI](https://github.com/anchore/anchore-cli) project on Github for code and more installation options and usage.
 
 ## CLI Quick Start (TLDR)
 
-By default the Anchore CLI will try to connect to the Anchore Engine at http://localhost:8228/v1 with no authentication.
-The username, password and URL for the server can be passed to the Anchore CLI as command line arguments:
+By default, the Anchore CLI tries to connect to the Anchore Engine at http://localhost:8228/v1 with no authentication.
+The username, password, and URL for the server can be passed to the Anchore CLI as command-line arguments:
 
     --u   TEXT   Username     eg. admin
     --p   TEXT   Password     eg. foobar
     --url TEXT   Service URL  eg. http://localhost:8228/v1
 
-Rather than passing these parameters for every call to the cli, they can also be set as environment variables:
+Rather than passing these parameters for every call to the tool, they can also be set as environment variables:
 
     ANCHORE_CLI_URL=http://myserver.example.com:8228/v1
     ANCHORE_CLI_USER=admin
@@ -74,7 +95,7 @@ Get image overview and summary information:
 
     anchore-cli image get docker.io/library/debian:latest
 
-List feeds and wait for at least one vulnerability data feed sync to complete (first sync can take some time (20-30 minutes), thereafter syncs will only merge deltas)
+List feeds and wait for at least one vulnerability data feed sync to complete. The first sync can take some time (20-30 minutes) after that syncs will only merge deltas.
 
     anchore-cli system feeds list
     anchore-cli system wait
@@ -104,5 +125,5 @@ Each service implements its own API, and all APIs are defined in Swagger/OpenAPI
 
 ## More Information
 
-For further details on use of the Anchore CLI with the Anchore Engine please refer to the [Anchore Engine Documentation](https://docs.anchore.com)
+For further details on the use of the Anchore CLI with the Anchore Engine, please refer to the [Anchore Engine Documentation](https://docs.anchore.com)
 

@@ -89,7 +89,7 @@ class FileAttributeMatchTrigger(BaseTrigger):
         mode_op = self.mode_op.value(default_if_none='equals')
 
         skip_if_file_missing = self.skip_if_file_missing.value(default_if_none=True)
-        
+
         files = []
         if hasattr(context, 'data'):
             filedetails = context.data.get('filedetail')
@@ -98,7 +98,7 @@ class FileAttributeMatchTrigger(BaseTrigger):
         filedetail = filedetails.get(filename, None)
 
         if filedetail:
-            
+
             # checksum checks
 
             if checksum and checksum_op and checksum_algo:
@@ -114,10 +114,10 @@ class FileAttributeMatchTrigger(BaseTrigger):
                     return
 
             # mode checks
-                
+
             if mode and mode_op:
                 file_mode = filedetail.get('mode', 0)
-                
+
                 file_mode_cmp = oct(stat.S_IMODE(file_mode))
                 input_mode_cmp = oct(int(mode, 8))
 
@@ -132,14 +132,14 @@ class FileAttributeMatchTrigger(BaseTrigger):
             if skip_if_file_missing:
                 return
             fire_params['skip'] = "skip_missing=False"
-                
+
         if fire_params:
             msg = "filename={}".format(filename)
             for k in fire_params.keys():
                 msg += " and {}".format(fire_params[k])
-                
+
             self._fire(msg=msg)
-            
+
 class SuidCheckTrigger(BaseTrigger):
     __trigger_name__ = 'suid_or_guid_set'
     __description__ = 'Fires for each file found to have suid or sgid bit set.'
@@ -152,7 +152,7 @@ class SuidCheckTrigger(BaseTrigger):
         if not files:
             return
 
-        found = [x for x in list(files.items()) if (int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID))]
+        found = [x for x in list(files.items()) if int(x[1].get('mode', 0)) & (stat.S_ISUID | stat.S_ISGID)]
         for path, entry in found:
             self._fire(msg='SUID or SGID found set on file {}. Mode: {}'.format(path, oct(entry.get('mode'))))
 

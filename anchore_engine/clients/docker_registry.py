@@ -62,7 +62,7 @@ def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=N
     except Exception as err:
         raise err
 
-    return(manifest, digest)
+    return manifest, digest
 
 def ping_docker_registry_v2(base_url, u, p, verify=True):
     httpcode = 500
@@ -164,7 +164,7 @@ def ping_docker_registry_v2(base_url, u, p, verify=True):
     except Exception as err:
         message = "{}".format(err)
 
-    return(httpcode, message)
+    return httpcode, message
 
 def ping_docker_registry(registry_record):
     ret = False
@@ -193,7 +193,7 @@ def ping_docker_registry(registry_record):
         logger.warn("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
         raise Exception("failed check to access registry ("+str(url)+","+str(user)+") - exception: " + str(err))
 
-    return(ret)
+    return ret
 
 
 def get_repo_tags(userId, image_info, registry_creds=None):
@@ -222,7 +222,7 @@ def get_repo_tags(userId, image_info, registry_creds=None):
 
     alltags = get_repo_tags_skopeo(url, registry, repo, lookuptag=lookuptag, user=user, pw=pw, verify=registry_verify)
         
-    return(alltags)
+    return alltags
 
 def get_image_manifest(userId, image_info, registry_creds):
     logger.debug("get_image_manifest input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
@@ -272,7 +272,7 @@ def get_image_manifest(userId, image_info, registry_creds):
         err = ex
 
     if manifest and digest:
-        return(manifest, digest, parentdigest, parentmanifest)
+        return manifest, digest, parentdigest, parentmanifest
 
     logger.error("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
     if err:

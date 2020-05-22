@@ -32,7 +32,7 @@ def add(userId, subscription_key, subscription_type, inobj, session=None):
     else:
         our_result.update(inobj)
 
-    return (True)
+    return True
 
 
 def get_all_byuserId(userId, limit=None, session=None):
@@ -48,7 +48,7 @@ def get_all_byuserId(userId, limit=None, session=None):
     for result in our_results:
         ret.append(result.to_dict())
 
-    return (ret)
+    return ret
 
 
 def get_all(session=None):
@@ -61,7 +61,7 @@ def get_all(session=None):
     for result in our_results:
         ret.append(result.to_dict())
 
-    return (ret)
+    return ret
 
 
 def get(userId, subscription_id, session=None):
@@ -75,7 +75,7 @@ def get(userId, subscription_id, session=None):
     if result:
         ret = result.to_dict()
 
-    return (ret)
+    return ret
 
 
 def get_byfilter(userId, session=None, **dbfilter):
@@ -91,7 +91,7 @@ def get_byfilter(userId, session=None, **dbfilter):
         for result in results:
             ret.append(result.to_dict())
 
-    return (ret)
+    return ret
 
 
 def get_bysubscription_key(userId, subscription_key, session=None):
@@ -107,11 +107,11 @@ def get_bysubscription_key(userId, subscription_key, session=None):
             obj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def update(userId, subscription_key, subscription_type, inobj, session=None):
-    return (add(userId, subscription_key, subscription_type, inobj, session=session))
+    return add(userId, subscription_key, subscription_type, inobj, session=session)
 
 
 def delete(userId, subscriptionId, remove=False, session=None):
@@ -131,7 +131,7 @@ def delete(userId, subscriptionId, remove=False, session=None):
 
             ret = True
 
-    return (ret)
+    return ret
 
 
 def delete_bysubscription_key(userId, subscription_key, remove=False, session=None):
@@ -150,7 +150,7 @@ def delete_bysubscription_key(userId, subscription_key, remove=False, session=No
 
             ret = True
 
-    return (ret)
+    return ret
 
 
 def delete_byfilter(userId, remove=False, session=None, **dbfilter):
@@ -170,4 +170,4 @@ def delete_byfilter(userId, remove=False, session=None, **dbfilter):
                 result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
             ret = True
 
-    return (ret)
+    return ret

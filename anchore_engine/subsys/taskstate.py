@@ -67,40 +67,40 @@ state_graphs = {
 
 def init_state(state_type, current_state, reset=False):
     if reset:
-        return(reset_state(state_type))
+        return reset_state(state_type)
     else:
         if current_state == None:
-            return(base_state(state_type))
+            return base_state(state_type)
         else:
-            return(current_state)
+            return current_state
 
 def reset_state(state_type):
-    return(base_state(state_type))
+    return base_state(state_type)
 
 def base_state(state_type):
-    return(state_graphs[state_type]['base_state'])
+    return state_graphs[state_type]['base_state']
 
 def fault_state(state_type):
-    return(state_graphs[state_type]['fault_state'])
+    return state_graphs[state_type]['fault_state']
 
 def queued_state(state_type):
-    return(state_graphs[state_type]['queued_state'])
+    return state_graphs[state_type]['queued_state']
 
 def working_state(state_type):
-    return(state_graphs[state_type]['working_state'])
+    return state_graphs[state_type]['working_state']
 
 def next_state(state_type, current_state):
     if not current_state:
-        return(state_graphs[state_type]['transisitions']['init'])
+        return state_graphs[state_type]['transisitions']['init']
 
-    return(state_graphs[state_type]['transitions'][current_state])
+    return state_graphs[state_type]['transitions'][current_state]
 
 def complete_state(state_type):
-    return(state_graphs[state_type]['complete_state'])
+    return state_graphs[state_type]['complete_state']
 
 def orphaned_state(state_type):
     if 'orphaned_state' in state_graphs[state_type]:
         ret = state_graphs[state_type]['orphaned_state']
     else:
         ret = state_graphs[state_type]['fault_state']
-    return(ret)
+    return ret

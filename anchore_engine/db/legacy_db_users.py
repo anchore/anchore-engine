@@ -28,7 +28,7 @@ def add(userId, password, inobj, session=None):
         inobj['password'] = password
         our_result.update(inobj)
 
-    return(True)
+    return True
 
 def get_all(session=None):
     if not session:
@@ -42,7 +42,7 @@ def get_all(session=None):
         obj.update(dict((key,value) for key, value in vars(result).items() if not key.startswith('_')))
         ret.append(obj)
 
-    return(ret)
+    return ret
 
 def get(userId, session=None):
     if not session:
@@ -56,10 +56,10 @@ def get(userId, session=None):
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = obj
 
-    return(ret)
+    return ret
 
 def update(userId, password, inobj, session=None):
-    return(add(userId, password, inobj, session=session))
+    return add(userId, password, inobj, session=session)
 
 def delete(userId, session=None):
     if not session:
@@ -80,5 +80,5 @@ def delete(userId, session=None):
 #        finally:
 #            session.rollback()
     
-    return(ret)
+    return ret
 

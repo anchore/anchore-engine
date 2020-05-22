@@ -65,7 +65,7 @@ def make_response_policy(policy_record, params):
     for removekey in ['record_state_val', 'record_state_key']:
         ret.pop(removekey, None)
 
-    return (ret)
+    return ret
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -100,7 +100,7 @@ def list_policies(detail=None):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -130,7 +130,7 @@ def add_policy(bundle):
             if not response.get('valid', False):
                 httpcode = 400
                 return_object = anchore_engine.common.helpers.make_response_error('Bundle failed validation', in_httpcode=400, details={'validation_details': response.get('validation_details')})
-                return (return_object, httpcode)
+                return return_object, httpcode
 
         except Exception as err:
             raise Exception('Error response from policy service during bundle validation. Validation could not be performed: {}'.format(err))
@@ -157,7 +157,7 @@ def add_policy(bundle):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -192,7 +192,7 @@ def get_policy(policyId, detail=None):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -251,7 +251,7 @@ def update_policy(bundle, policyId, active=False):
                     httpcode = 400
                     return_object = anchore_engine.common.helpers.make_response_error('Bundle failed validation',
                                                                                       in_httpcode=400, details={'validation_details': response.get('validation_details')})
-                    return (return_object, httpcode)
+                    return return_object, httpcode
 
             except Exception as err:
                 raise Exception(
@@ -267,7 +267,7 @@ def update_policy(bundle, policyId, active=False):
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -311,4 +311,4 @@ def delete_policy(policyId):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode

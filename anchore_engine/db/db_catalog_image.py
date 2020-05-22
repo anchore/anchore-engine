@@ -31,7 +31,7 @@ def add_record(input_image_record, session=None):
         our_result = CatalogImage(**image_record)
         session.add(our_result)
     
-    return(True)
+    return True
 
 def update_record(input_image_record, session=None):
     if not session:
@@ -69,7 +69,7 @@ def update_record(input_image_record, session=None):
 
         our_result.update(image_record)
     
-    return(True)
+    return True
 
 def update_record_image_detail(input_image_record, updated_image_detail, session=None):
     if not session:
@@ -85,9 +85,9 @@ def update_record_image_detail(input_image_record, updated_image_detail, session
         for tag_record in updated_image_detail:
             if tag_record not in image_record['image_detail']:
                 image_record['image_detail'].append(tag_record)
-                return(update_record(image_record, session=session))
+                return update_record(image_record, session=session)
 
-    return(image_record)
+    return image_record
 
 def get(imageDigest, userId, session=None):
     if not session:
@@ -104,7 +104,7 @@ def get(imageDigest, userId, session=None):
             imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
             ret['image_detail'] = imgobj
 
-    return(ret)
+    return ret
 
 def get_docker_created_at(record):
     latest_ts = 0
@@ -118,12 +118,12 @@ def get_docker_created_at(record):
                 pass
     except:
         pass
-    return(latest_ts)
+    return latest_ts
 
 def get_created_at(record):
     if 'created_at' in record and record['created_at']:
-        return(record['created_at'])
-    return(0)
+        return record['created_at']
+    return 0
 
 def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session=None):
     if not session:
@@ -151,16 +151,16 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
         if latest:
             ret = [latest]
 
-    return(ret)
+    return ret
 
 def get_all_tagsummary(userId, session=None):
     
     results = session.query(CatalogImage.imageDigest, CatalogImage.parentDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImageDocker.created_at, CatalogImageDocker.imageId, CatalogImage.analyzed_at, CatalogImageDocker.tag_detected_at).filter(and_(CatalogImage.userId == userId, CatalogImage.imageDigest == CatalogImageDocker.imageDigest, CatalogImageDocker.userId == userId))
     def mymap(x):
-        return({'imageDigest': x[0], 'parentDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5], 'created_at': x[6], 'imageId': x[7], 'analyzed_at': x[8], 'tag_detected_at': x[9]})
+        return {'imageDigest': x[0], 'parentDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5], 'created_at': x[6], 'imageId': x[7], 'analyzed_at': x[8], 'tag_detected_at': x[9]}
     ret = list(map(mymap, list(results)))
 
-    return(ret)
+    return ret
 
 def get_all_byuserId(userId, limit=None, session=None):
     if not session:
@@ -192,7 +192,7 @@ def get_all_byuserId(userId, limit=None, session=None):
                     dbobj['image_detail'] = []                
 
             ret.append(dbobj)
-    return(ret)
+    return ret
 
 def get_all_iter(session=None):
     if not session:
@@ -225,7 +225,7 @@ def get_all(session=None):
                 dbobj['image_detail'] = imgobj
             ret.append(dbobj)
 
-    return(ret)
+    return ret
 
 def get_byfilter(userId, session=None, **kwargs):
     if not session:
@@ -246,7 +246,7 @@ def get_byfilter(userId, session=None, **kwargs):
                 dbobj['image_detail'] = imgobj
             ret.append(dbobj)
 
-    return(ret)
+    return ret
 
 def delete(imageDigest, userId, session=None):
     if not session:
@@ -262,7 +262,7 @@ def delete(imageDigest, userId, session=None):
     for result in our_results:
         session.delete(result)
 
-    return(True)
+    return True
 
 #
 # def get_tags_by_time_range(session, userId, start=None, end=None):

@@ -31,7 +31,7 @@ def make_response_subscription(subscription_record, params):
     for removekey in ['record_state_val', 'record_state_key']:
         ret.pop(removekey, None)
 
-    return (ret)
+    return ret
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -58,7 +58,7 @@ def list_subscriptions(subscription_key=None, subscription_type=None):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -83,7 +83,7 @@ def get_subscription(subscriptionId):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def add_subscription(subscription):
@@ -113,7 +113,7 @@ def add_subscription(subscription):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_subscription(subscriptionId, subscription):
@@ -144,7 +144,7 @@ def update_subscription(subscriptionId, subscription):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def delete_subscription(subscriptionId):
@@ -172,4 +172,4 @@ def delete_subscription(subscriptionId):
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode

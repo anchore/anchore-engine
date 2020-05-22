@@ -45,4 +45,4 @@ def do_request_prep(request, default_params=None):
         logger.error("error processing request parameters - exception: " + str(err))
         raise err
 
-    return(ret)
+    return ret

@@ -45,7 +45,7 @@ def get_metadata(userId, bucket, key, session=None):
                 ret[k] = json.loads(result[i])
             else:
                 ret[k] = result[i]
-    return (ret)
+    return ret
 
 
 def exists(userId, bucket, key, session=None):
@@ -72,7 +72,7 @@ def list_all(session=None, **dbfilter):
         if obj:
             ret.append(obj)
 
-    return (ret)
+    return ret
 
 
 def delete(userId, bucket, key, session=None):
@@ -83,4 +83,4 @@ def delete(userId, bucket, key, session=None):
     if result:
         session.delete(result)
 
-    return (True)
+    return True

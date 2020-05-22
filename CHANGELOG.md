@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1 (2020-04-28)
++ Added - anchore-manager command now has --no-auto-upgrade option to support more deployment and upgrade control
++ Improved - Bumped twisted and requests dependencies
++ Improved - Removes the docker-compose.yaml, prometheus.yaml, and nginx swagger ui configs from within the image, moving those to documentation for easier update/iteration without builds. Fixes #435
++ Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430
++ Fix - Errors during feed data download can cause mismatched timestamps and missed feed data on sync. Fixes #406
++ Fix - Removed variable reference before assignment in squasher. Fixes #401
++ Fix - Fixes mis-labeled GHSA matches on python packages in policy evaluation to be correctly non-os matches. Fixes #400
++ Additional minor bug fixes, enhancements, and test framework improvements.
+
 ## 0.7.0 (2020-03-26)
 + Added - New vulnerability data feed and package matching from the GitHub Advisory Database (https://github.com/advisories).
 + Added - New vulnerability data feed from the Red Hat Security Data API, replaces RHSA as default RPM vulnerability matching data source. NOTE: RHSA information is still available, but the primary identifier is now CVE ids for RPM matches, using this new data source.

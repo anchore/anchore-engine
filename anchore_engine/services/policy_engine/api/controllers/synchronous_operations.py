@@ -31,7 +31,8 @@ from anchore_engine.services.policy_engine.engine.policy.bundles import build_bu
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, ValidationError
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext, Gate
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, merge_nvd_metadata, merge_nvd_metadata_image_packages
+from anchore_engine.services.policy_engine.engine.vulnerabilities import merge_nvd_metadata, merge_nvd_metadata_image_packages
+from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
 from anchore_engine.subsys import logger as log
@@ -85,7 +86,7 @@ def get_status():
     except Exception as err:
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 class ImageMessageMapper(object):
@@ -204,7 +205,7 @@ def delete_image(user_id, image_id):
             db.rollback()
 
         # Idempotently return 204. This isn't properly RESTY, but idempotency on delete makes clients much cleaner.
-        return (None, 204)
+        return None, 204
     except HTTPException:
         raise
     except Exception as e:
@@ -661,11 +662,16 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
                 cves = json.dumps(all_data)
 
+                if vuln.pkg_name != vuln.package.fullversion:
+                    pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
+                else:
+                    pkg_final = vuln.pkg_name
+                    
                 rows.append([
                     vuln.vulnerability_id,
                     vuln.vulnerability.severity,
                     1,
-                    vuln.pkg_name + '-' + vuln.package.fullversion,
+                    pkg_final,
                     str(vuln.fixed_in()),
                     vuln.pkg_image_id,
                     'None', # Always empty this for now
@@ -926,7 +932,7 @@ def _get_imageId_to_record(userId, dbsession=None):
                 'tag_history': tag_history[x['imageId']],
             }
 
-    return(imageId_to_record)
+    return imageId_to_record
 
 
 def query_images_by_package(dbsession, request_inputs):
@@ -1015,7 +1021,7 @@ def query_images_by_package(dbsession, request_inputs):
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 advisory_cache = {}
@@ -1026,7 +1032,7 @@ def check_no_advisory(image):
     if phash not in advisory_cache:
         advisory_cache[phash] = image.fix_has_no_advisory()
 
-    return(advisory_cache.get(phash))
+    return advisory_cache.get(phash)
 
 
 def query_images_by_vulnerability(dbsession, request_inputs):
@@ -1140,7 +1146,7 @@ def query_images_by_vulnerability(dbsession, request_inputs):
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_filter, namespace):
@@ -1287,6 +1293,18 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
 
                         namespace_el['affected_packages'].append(pkg_el)
 
+                for v_pkg in vulnerability.vulnerable_in:
+                    if (not package_name_filter or package_name_filter == v_pkg.name) and (not package_version_filter or package_version_filter == v_pkg.version):
+                        pkg_el = {
+                            'name': v_pkg.name,
+                            'version': v_pkg.version,
+                            'type': v_pkg.version_format,
+                        }
+                        if not v_pkg.version or v_pkg.version.lower() == 'none':
+                            pkg_el['version'] = '*'
+
+                        namespace_el['affected_packages'].append(pkg_el)
+
                 if not package_name_filter or (package_name_filter and namespace_el['affected_packages']):
                     return_object.append(namespace_el)
 
@@ -1296,7 +1314,7 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
         log.error("{}".format(err))
         return_object = make_response_error(err, in_httpcode=httpcode)
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1316,7 +1334,7 @@ def query_vulnerabilities_get(id=None, affected_package=None, affected_package_v
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1332,7 +1350,7 @@ def query_images_by_package_get(user_id, name=None, version=None, package_type=N
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -1348,7 +1366,7 @@ def query_images_by_vulnerability_get(user_id, vulnerability_id=None, severity=N
     finally:
         session.close()
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)

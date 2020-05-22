@@ -32,7 +32,7 @@ def do_db_compatibility_check():
     try:
         engine = anchore_engine.db.entities.common.get_engine()
         if engine.dialect.server_version_info >= required_pg_version:
-            return (True)
+            return True
         else:
             raise Exception("discovered db version {} is not >= required db version {}".format(engine.dialect.server_version_info, required_pg_version))
     except Exception as err:
@@ -65,7 +65,7 @@ def get_versions():
         else:
             raise Exception("Cannot find existing/populated anchore DB tables in connected database - has anchore-engine initialized this DB?\n\nDB - exception: " + str(err))
 
-    return (code_versions, db_versions)
+    return code_versions, db_versions
 
 
 def do_version_update(db_versions, code_versions):
@@ -74,7 +74,7 @@ def do_version_update(db_versions, code_versions):
     with session_scope() as dbsession:
         db_anchore.add(code_versions['service_version'], code_versions['db_version'], code_versions, session=dbsession)
 
-    return (True)
+    return True
 
 
 @contextmanager
@@ -105,7 +105,7 @@ def do_create_tables(specific_tables=None):
     except Exception as err:
         raise err
     print("DB Tables created")
-    return (True)
+    return True
 
 
 def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
@@ -207,7 +207,7 @@ def do_upgrade(inplace, incode):
         print(("upgrading service: from=" + str(inplace['service_version']) + " to=" + str(incode['service_version'])))
 
     ret = True
-    return (ret)
+    return ret
 
 
 ### Individual upgrade routines - be sure to add to the function map at the end of this module if adding a new routine here
@@ -256,7 +256,7 @@ def db_upgrade_001_002():
     except Exception as err:
         raise Exception("failed to perform DB policy_bundle table upgrade - exception: " + str(err))
 
-    return (True)
+    return True
 
 
 def db_upgrade_002_003():
@@ -1111,7 +1111,8 @@ def upgrade_flush_centos_vulns_013():
 
     :return:
     """
-    from anchore_engine.services.policy_engine.engine.vulnerabilities import have_vulnerabilities_for, DistroNamespace
+    from anchore_engine.services.policy_engine.engine.vulnerabilities import DistroNamespace
+    from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
     from anchore_engine.services.policy_engine.engine.feeds import sync
 
     engine = anchore_engine.db.entities.common.get_engine()
@@ -1173,6 +1174,9 @@ def db_upgrade_012_013():
 
     :return:
     """
+    # Setup some policy engine stuff to support feed ops
+    from anchore_engine.services.policy_engine import process_preflight
+    process_preflight()
 
     upgrade_feed_groups_013()
     upgrade_distro_mappings_rhel_013()

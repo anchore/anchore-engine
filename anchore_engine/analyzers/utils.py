@@ -41,7 +41,7 @@ def init_analyzer_cmdline(argv, name):
             ret['analyzer_config'] = anchore_analyzer_config[name]
 
     ret['name'] = name
-    
+
     with open(argv[0], 'r') as FH:
         ret['selfcsum'] = hashlib.md5(FH.read().encode('utf-8')).hexdigest()
 
@@ -71,7 +71,7 @@ def init_analyzer_cmdline(argv, name):
                 print("ERROR: cannot find/create input dir '"+ret['dirs'][d]+"'")
                 raise err
 
-    return(ret)
+    return ret
 
 def _default_member_function(tfl, member, a, t=None):
     print ("{} {} - {}".format(a, t, member.name))
@@ -97,7 +97,7 @@ def run_tarfile_member_function(tarfilename, *args, member_regexp=None, func=_de
 
                 ret[member.name] = func(tfl, member, *args, **kwargs)
 
-    return(ret)    
+    return ret
 
 def run_tarfile_function(tarfile, func=None, *args, **kwargs):
 
@@ -108,7 +108,7 @@ def run_tarfile_function(tarfile, func=None, *args, **kwargs):
     with tarfile.open(tarfile, mode='r', format=tarfile.PAX_FORMAT) as tfl:
         ret = func(tfl, *args, **kwargs)
 
-    return(ret)
+    return ret
 
 def _search_tarfilenames_for_file(tarfilenames, searchfile):
     ret = None
@@ -120,18 +120,18 @@ def _search_tarfilenames_for_file(tarfilenames, searchfile):
         ret = "/{}".format(searchfile)
     elif re.sub("^/", "", searchfile) in tarfilenames:
         ret = re.sub("^/", "", searchfile)
-    return(ret)
+    return ret
 
 def get_memberhash(tfl):
     memberhash = {}
     for member in tfl.getmembers():
         memberhash[member.name] = member
-    return(memberhash)
+    return memberhash
 
 def get_distro_from_squashtar(squashtar, unpackdir=None):
     if unpackdir and os.path.exists(os.path.join(unpackdir, 'analyzer_meta.json')):
         with open(os.path.join(unpackdir, 'analyzer_meta.json'), 'r') as FH:
-            return(json.loads(FH.read()))
+            return json.loads(FH.read())
 
     meta = {
         'DISTRO':None,
@@ -150,7 +150,7 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
             "debian_version": _search_tarfilenames_for_file(tarfilenames, "etc/debian_version"),
         }
 
-        
+
         success = False
         if not success and metamap['os-release'] in tarfilenames:
             try:
@@ -173,7 +173,7 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
             except:
                 success = False
 
-        if not success and metamap['system-release-cpe'] in tarfilenames: 
+        if not success and metamap['system-release-cpe'] in tarfilenames:
             try:
                 with tfl.extractfile(tfl.getmember(metamap['system-release-cpe'])) as FH:
                     for l in FH.readlines():
@@ -199,7 +199,7 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
             except:
                 success = False
 
-        if not success and metamap["redhat-release"] in tarfilenames: 
+        if not success and metamap["redhat-release"] in tarfilenames:
             try:
                 with tfl.extractfile(tfl.getmember(metamap["redhat-release"])) as FH:
                     for l in FH.readlines():
@@ -250,7 +250,7 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
             except:
                 success = False
 
-        if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and metamap["debian_version"] in tarfilenames: 
+        if meta['DISTRO'] == 'debian' and not meta['DISTROVERS'] and metamap["debian_version"] in tarfilenames:
             try:
                 with tfl.extractfile(tfl.getmember(metamap["debian_version"])) as FH:
                     meta['DISTRO'] = 'debian'
@@ -273,7 +273,7 @@ def get_distro_from_squashtar(squashtar, unpackdir=None):
     if not meta['LIKEDISTRO']:
         meta['LIKEDISTRO'] = meta['DISTRO']
 
-    return(meta)
+    return meta
 
 def grouper(inlist, chunksize):
     return (inlist[pos:pos + chunksize] for pos in range(0, len(inlist), chunksize))
@@ -337,17 +337,17 @@ def get_distro_flavor(distro, version, likedistro=None):
             ret['version'] = vmaj + "." + vmin
             ret['likeversion'] = vmaj + "." + vmin
 
-    return(ret)
+    return ret
 
 def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memberhash={}):
     ret = None
 
     if member.isreg():
-        return(member)
+        return member
 
     if not memberhash:
         memberhash = get_memberhash(tfl)
-        
+
     if deref_symlink and member.issym():
         if not alltfiles:
             alltfiles = {}
@@ -363,7 +363,7 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memb
 
         while not done and count < max_links:
             newmember = None
-            
+
             # attempt to get the softlink destination
             if nmember.linkname[1:] in alltfiles:
                 #newmember = tfl.getmember(nmember.linkname[1:])
@@ -433,7 +433,7 @@ def _get_extractable_member(tfl, member, deref_symlink=False, alltfiles={}, memb
         else:
             ret = None
 
-    return(ret)
+    return ret
 
 def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={}):
     ret = {}
@@ -459,7 +459,7 @@ def _checksum_member_function(tfl, member, csums=['sha256', 'md5'], memberhash={
         else:
             ret[ctype] = "DIRECTORY_OR_OTHER"
 
-    return(ret)
+    return ret
 
 def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
     allfiles = {}
@@ -477,17 +477,17 @@ def get_checksums_from_squashtar(squashtar, csums=['sha256', 'md5']):
             if not fkey or fkey[0] != '/':
                 fkey = "/{}".format(filename)
             if fkey not in allfiles:
-                allfiles[fkey] = results[filename]        
+                allfiles[fkey] = results[filename]
     except Exception as err:
         print("EXC: {}".format(err))
 
-    return(allfiles)
-        
+    return allfiles
+
 def get_files_from_squashtar(squashtar, unpackdir=None):
 
     filemap = {}
     allfiles = {}
-    
+
     tfl = None
     try:
         with tarfile.open(squashtar, mode='r', format=tarfile.PAX_FORMAT) as tfl:
@@ -500,10 +500,10 @@ def get_files_from_squashtar(squashtar, unpackdir=None):
                     filename = "/"
                 if not re.match("^/", filename):
                     filename = "/{}".format(filename)
-                
+
                 finfo = {}
                 finfo['name'] = filename
-                finfo['fullpath'] = filename 
+                finfo['fullpath'] = filename
                 finfo['size'] = member.size
                 #finfo['mode'] = member.mode
                 modemask = 0o00000000
@@ -553,7 +553,7 @@ def get_files_from_squashtar(squashtar, unpackdir=None):
                         dstlist = finfo['linkdst'].split('/')
                         srclist = finfo['name'].split('/')
                         srcpath = srclist[0:-1]
-                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], filename)) 
+                        fullpath = os.path.normpath(os.path.join(finfo['linkdst'], filename))
                     finfo['linkdst_fullpath'] = fullpath
 
                 fullpath = finfo['fullpath']
@@ -587,7 +587,7 @@ def get_files_from_squashtar(squashtar, unpackdir=None):
     except Exception as err:
         print ("EXC: {}".format(err))
 
-    return(filemap, allfiles)
+    return filemap, allfiles
 
 
 ### Package helpers
@@ -610,7 +610,7 @@ def rpm_get_all_packages_from_squashtar(unpackdir, squashtar):
         print(err.output)
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    return(rpms, rpmdbdir) 
+    return rpms, rpmdbdir
 
 def rpm_get_all_pkgfiles(unpackdir):
     rpmfiles = {}
@@ -626,7 +626,7 @@ def rpm_get_all_pkgfiles(unpackdir):
     except Exception as err:
         raise ValueError("could not get file list from RPM database: " + str(err))
 
-    return(rpmfiles)
+    return rpmfiles
 
 def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     rpms = {}
@@ -651,15 +651,15 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     except:
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    return(rpms, rpmdbdir)
+    return rpms, rpmdbdir
 
 def make_anchoretmpdir(tmproot):
     tmpdir = '/'.join([tmproot, str(random.randint(0, 9999999)) + ".anchoretmp"])
     try:
         os.makedirs(tmpdir)
-        return(tmpdir)
+        return tmpdir
     except:
-        return(False)
+        return False
 
 def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
     javatmpdir = os.path.join(unpackdir, "javatmp")
@@ -667,7 +667,7 @@ def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
         try:
             os.makedirs(javatmpdir)
         except Exception as err:
-            raise (err)
+            raise err
 
     ret = os.path.join(javatmpdir, "rootfs")
     javafilepatt = re.compile(java_file_regexp)
@@ -683,7 +683,7 @@ def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
             tfl.extractall(path=os.path.join(javatmpdir, "rootfs"), members=javamembers)
         ret = os.path.join(javatmpdir, "rootfs")
 
-    return(ret)    
+    return ret
 
 def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
     pytmpdir = os.path.join(unpackdir, "pytmp")
@@ -691,7 +691,7 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
         try:
             os.makedirs(pytmpdir)
         except Exception as err:
-            raise (err)
+            raise err
 
     ret = os.path.join(pytmpdir, "rootfs")
 
@@ -718,7 +718,7 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
             tfl.extractall(path=os.path.join(pytmpdir, "rootfs"), members=pymembers)
         ret = os.path.join(pytmpdir, "rootfs")
 
-    return(ret)    
+    return ret
 
 def apk_prepdb_from_squashtar(unpackdir, squashtar):
     apktmpdir = os.path.join(unpackdir, "apktmp")
@@ -726,7 +726,7 @@ def apk_prepdb_from_squashtar(unpackdir, squashtar):
         try:
             os.makedirs(apktmpdir)
         except Exception as err:
-            raise (err)
+            raise err
 
     ret = os.path.join(apktmpdir, "rootfs")
 
@@ -740,7 +740,7 @@ def apk_prepdb_from_squashtar(unpackdir, squashtar):
             tfl.extractall(path=os.path.join(apktmpdir, "rootfs"), members=apkmembers)
         ret = os.path.join(apktmpdir, "rootfs")
 
-    return(ret)    
+    return ret
 
 def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
     dpkgtmpdir = os.path.join(unpackdir, "dpkgtmp")
@@ -748,7 +748,7 @@ def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
         try:
             os.makedirs(dpkgtmpdir)
         except Exception as err:
-            raise (err)
+            raise err
 
     ret = os.path.join(dpkgtmpdir, "rootfs")
 
@@ -765,7 +765,7 @@ def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
 
         ret = os.path.join(dpkgtmpdir, "rootfs")
 
-    return(ret)
+    return ret
 
 def rpm_prepdb_from_squashtar(unpackdir, squashtar):
     rpmtmpdir = os.path.join(unpackdir, "rpmtmp")
@@ -773,7 +773,7 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
         try:
             os.makedirs(rpmtmpdir)
         except Exception as err:
-            raise (err)
+            raise err
 
     ret = os.path.join(rpmtmpdir, "rpmdbfinal")
 
@@ -790,8 +790,8 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
 
         rc = rpm_prepdb(rpmtmpdir)
         ret = os.path.join(rpmtmpdir, "rpmdbfinal") #, "var", "lib", "rpm")
-        
-    return(ret)
+
+    return ret
 
 def rpm_prepdb(unpackdir):
     origrpmdir = os.path.join(unpackdir, 'rootfs', 'var', 'lib', 'rpm')
@@ -811,7 +811,7 @@ def rpm_prepdb(unpackdir):
         except:
             pass
 
-    return(ret)
+    return ret
 
 def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     allfiles = {}
@@ -825,28 +825,28 @@ def dpkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
             l = str(l, 'utf-8')
             #l = l.decode('utf8')
             allfiles[l] = True
-            
+
     except Exception as err:
         print("Could not run command: " + str(' '.join(cmd)))
         print("Exception: " + str(err))
         print("Please ensure the command 'dpkg' is available and try again")
         raise err
 
-    return(allfiles)
+    return allfiles
 
-def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):    
+def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     all_packages = {}
     actual_packages = {}
     all_packages_simple = {}
     other_packages = {}
-    
+
     dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
     dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
     dpkgstatusddir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg", "status.d")
 
     package_tuples = {}
-    
+
     cmd = ["dpkg-query", "--admindir={}".format(dpkgdbdir), "-W", "-f="+"${Package}|ANCHORETOK|${Version}|ANCHORETOK|${Architecture}|ANCHORETOK|${Installed-Size}|ANCHORETOK|${source:Package}|ANCHORETOK|${source:Version}|ANCHORETOK|${Maintainer}|ANCHORETOK|${db:Status-Abbrev}\\n"]
     try:
         sout = subprocess.check_output(cmd)
@@ -859,7 +859,7 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                 # skip this package if the status is returned, and is not reporting as explicitly installed (ii*)
                 continue
             if p not in package_tuples:
-                package_tuples[p] = (p,v,arch,rawsize,sp,sv,vendor,status) 
+                package_tuples[p] = (p,v,arch,rawsize,sp,sv,vendor,status)
 
     except Exception as err:
         print("Could not run command: {} - exception: {}".format(str(cmd), err))
@@ -947,7 +947,7 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
             if p == sp and v != sv:
                 other_packages[p] = [{'version':sv, 'arch':arch}]
 
-    return(all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir)
+    return all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir
 
 def deb_copyright_getlics(licfile):
     ret = {}
@@ -965,10 +965,10 @@ def deb_copyright_getlics(licfile):
                     ret[lic] = True
                     found=True
         FH.close()
-    return(ret)
+    return ret
 
 def apkg_parse_apkdb(apkdbfh):
-    apkgs = {}                
+    apkgs = {}
     apkg = {
         'version':"N/A",
         'sourcepkg':"N/A",
@@ -1024,7 +1024,7 @@ def apkg_parse_apkdb(apkdbfh):
                         (vers, rel) = vpatt.group(1, 2)
                     else:
                         vers = v
-                        rel = "N/A"                    
+                        rel = "N/A"
                     apkg['version'] = vers
                     apkg['release'] = rel
                 elif k == 'm':
@@ -1050,7 +1050,7 @@ def apkg_parse_apkdb(apkdbfh):
                 elif k == 'R':
                     thefiles.append(v)
 
-    return(apkgs)
+    return apkgs
 
 def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
     ret = {}
@@ -1064,11 +1064,11 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
         except Exception as err:
             raise ValueError("cannot locate APK installed DB in squashed.tar - exception: {}".format(err))
 
-    return(ret)
+    return ret
 
 def apkg_get_all_pkgfiles(unpackdir):
     apkdb = '/'.join([unpackdir, 'rootfs/lib/apk/db/installed'])
-    
+
     if not os.path.exists(apkdb):
         raise ValueError("cannot locate APK installed DB '"+str(apkdb)+"'")
 
@@ -1076,7 +1076,7 @@ def apkg_get_all_pkgfiles(unpackdir):
     with open(apkdb, 'r') as FH:
         ret = apkg_parse_apkdb(FH)
 
-    return(ret)
+    return ret
 
 def gem_parse_meta(gem):
     ret = {}
@@ -1099,7 +1099,7 @@ def gem_parse_meta(gem):
                 replline = line
                 mat = "\\\\u{.*?}"
                 patt = re.match(r".*("+mat+").*", replline)
-                while(patt):
+                while patt:
                     replstr = ""
                     subpatt = re.match("\\\\u{(.*)}", patt.group(1))
                     if subpatt:
@@ -1152,12 +1152,12 @@ def gem_parse_meta(gem):
 
     except Exception as err:
         print("WARN could not fully parse gemspec file: " + str(name) + ": exception: " + str(err))
-        return({})
+        return {}
 
     if name:
         ret[name] = {'name':name, 'lics':lics, 'versions':versions, 'latest':latest, 'origins':origins, 'sourcepkg':sourcepkg, 'files':rfiles}
 
-    return(ret)
+    return ret
 
 def npm_parse_meta(npm):
 
@@ -1165,7 +1165,7 @@ def npm_parse_meta(npm):
 
     name = npm.pop('name', None)
     if not name:
-        return(record)
+        return record
 
     lics = list()
     versions = list()
@@ -1269,7 +1269,7 @@ def npm_parse_meta(npm):
     if name:
         record[name] = {'name':name, 'lics':lics, 'versions':versions, 'latest':latest, 'origins':origins, 'sourcepkg':sourcepkg}
 
-    return(record)
+    return record
 
 def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     # derived from rpm source code rpmpgp.h
@@ -1321,7 +1321,7 @@ def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
 
                         if fname not in result:
                             result[fname] = []
-                            
+
                         el = copy.deepcopy(record_template)
                         el.update({'digest': fdigest or None, 'digestalgo': fdigestalgo or None, 'mode': fmode or None, 'group': fgroup or None, 'user': fuser or None, 'size': fsize or None, 'package': fpackage or None, 'conffile': cfile})
                         result[fname].append(el)
@@ -1334,7 +1334,7 @@ def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     except Exception as err:
         raise Exception("WARN: distro package metadata gathering failed - exception: " + str(err))
 
-    return(result)
+    return result
 
 def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
 
@@ -1342,10 +1342,10 @@ def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     record_template = {'digest': None, 'digestalgo': None, 'mode': None, 'group': None, 'user': None, 'size': None, 'package': None, 'conffile': False}
 
     conffile_csums = {}
-    
+
     dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
     dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
-    dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")    
+    dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
     statuspath = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg", "status")
 
     try:
@@ -1404,7 +1404,7 @@ def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
                         pkg = patt.group(1)
                     else:
                         pkg = pkgraw
-                        
+
                     conffiles[pkg] = os.path.join(metapath, f)
         else:
             raise Exception("no dpkg info path found in image: " + str(metapath))
@@ -1465,21 +1465,21 @@ def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
         traceback.print_exc()
         raise Exception("WARN: could not find/parse dpkg info metadata files - exception: " + str(err))
 
-    return(result)
+    return result
 
 def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
     # derived from alpine apk checksum logic
-    # 
+    #
     # a = "Q1XxRCAhhQ6eotekmwp6K9/4+DLwM="
     # sha1sum = a[2:].decode('base64').encode('hex')
-    # 
+    #
 
     result = {}
     record_template = {'digest': None, 'digestalgo': None, 'mode': None, 'group': None, 'user': None, 'size': None, 'package': None, 'conffile': False}
-    
+
     apk_db_base_dir = apk_prepdb_from_squashtar(unpackdir, squashtar)
     apkdbpath = os.path.join(apk_db_base_dir, 'lib', 'apk', 'db', 'installed')
-    
+
     try:
         if os.path.exists(apkdbpath):
             buf = None
@@ -1543,7 +1543,7 @@ def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
 
                             el = copy.deepcopy(record_template)
                             el.update({"package": pkg or None, "digest": sha1sum or None, "digestalgo": "sha1", "mode": fmode or None, "group": gid or None, "user": uid or None})
-                            result[fname].append(el)                                
+                            result[fname].append(el)
                             fmode = raw_csum = uid = gid = sha1sum = fname = therealfile_apk = therealfile_fs = None
 
     except Exception as err:
@@ -1551,14 +1551,14 @@ def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
         traceback.print_exc()
         raise Exception("WARN: could not parse apk DB file, looking for file checksums - exception: " + str(err))
 
-    return(result)
+    return result
 
 
 ##### File IO helpers
 
 def read_kvfile_todict(file):
     if not os.path.isfile(file):
-        return ({})
+        return {}
 
     ret = {}
     with open(file, 'r') as FH:
@@ -1570,17 +1570,17 @@ def read_kvfile_todict(file):
                 k = re.sub("____", " ", k)
                 ret[k] = v
 
-    return (ret)
+    return ret
 
 def read_plainfile_tostr(file):
     if not os.path.isfile(file):
-        return ("")
+        return ""
 
     with open(file, 'r') as FH:
         ret = FH.read()
         #ret = FH.read().decode('utf8')
 
-    return (ret)
+    return ret
 
 def write_plainfile_fromstr(file, instr):
     with open(file, 'w') as FH:

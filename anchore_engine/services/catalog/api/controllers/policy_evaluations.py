@@ -40,7 +40,7 @@ def get_evals(policyId=None, imageDigest=None, tag=None, evalId=None, newest_onl
     except Exception as err:
         return str(anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)), 500
 
-    # return (return_object, httpcode)
+    # return return_object, httpcode
     #     httpcode = 500
     #     return_object = str(err)
 
@@ -64,7 +64,7 @@ def add_eval(bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -86,7 +86,7 @@ def update_eval(bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -120,7 +120,7 @@ def delete_eval(bodycontent):
         httpcode = 500
         return_object = str(err)
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 def list_evals_impl(dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None, newest_only=False, interactive=False):

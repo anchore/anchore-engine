@@ -227,7 +227,7 @@ class Subscription(Base, UtilMixin):
         m = inspect(self)
         for c in m.attrs:
             ret[c.key] = None
-        return (ret)
+        return ret
 
     def __repr__(self):
         return "userId='%s' subscription_type='%s' subscription_key='%s'" % (
@@ -254,7 +254,7 @@ class Subscription(Base, UtilMixin):
 #             for c in m.attrs:
 #                 ret[c.key] = None
 #
-#             return (ret)
+#             return ret
 #
 #         def __repr__(self):
 #             return "registry='%s'" % (self.registry)
@@ -293,7 +293,7 @@ class CatalogImage(Base, UtilMixin):
         for c in m.attrs:
             ret[c.key] = None
 
-        return (ret)
+        return ret
 
     def __repr__(self):
         return "imageDigest='%s'" % (self.imageDigest)
@@ -322,7 +322,7 @@ class CatalogImageDocker(Base, UtilMixin):
         m = inspect(self)
         for c in m.attrs:
             ret[c.key] = None
-        return (ret)
+        return ret
 
     def __repr__(self):
         return '<{} {}/{}:{},digest={},detected_at={}>'.format(super().__repr__(), self.registry, self.repo, self.tag, self.imageDigest, self.tag_detected_at)
@@ -528,7 +528,7 @@ class PolicyEval(Base, UtilMixin):
         m = inspect(self)
         for c in m.attrs:
             ret[c.key] = None
-        return (ret)
+        return ret
 
     def content_compare(self, other):
         selfdata = dict((key, value) for key, value in vars(self).items() if not key.startswith('_'))
@@ -536,10 +536,10 @@ class PolicyEval(Base, UtilMixin):
         for k in ['userId', 'imageDigest', 'tag', 'policyId', 'final_action']:
             try:
                 if selfdata[k] != otherdata[k]:
-                    return (False)
+                    return False
             except:
-                return (False)
-        return (True)
+                return False
+        return True
 
     def __repr__(self):
         return "policyId='%s' userId='%s' imageDigest='%s' tag='%s'" % (
@@ -569,7 +569,7 @@ class Service(Base, UtilMixin):
         m = inspect(self)
         for c in m.attrs:
             ret[c.key] = None
-        return (ret)
+        return ret
 
     def __repr__(self):
         return "hostid='%s'" % (self.hostid)

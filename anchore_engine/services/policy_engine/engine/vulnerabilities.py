@@ -14,10 +14,9 @@ import time
 
 from sqlalchemy import or_
 
-from anchore_engine.db import DistroNamespace, get_thread_scoped_session, get_session
+from anchore_engine.db import DistroNamespace, get_thread_scoped_session
 from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
-from anchore_engine.common import nonos_package_types, os_package_types
-from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_json
+from anchore_engine.common import nonos_package_types
 import threading
 
 from anchore_engine.subsys import logger
@@ -62,26 +61,6 @@ class ThreadLocalFeedGroupNameCache:
             pass
 
 
-def have_vulnerabilities_for(distro_namespace_obj):
-    """
-    Does the system have any vulnerabilities for the given distro.
-
-    :param distro_namespace_obj:
-    :return: boolean
-    """
-
-    # All options are the same, no need to loop
-    # Check all options for distro/flavor mappings
-    db = get_thread_scoped_session()
-    for namespace_name in distro_namespace_obj.like_namespace_names:
-        feed = get_feed_json(db_session=db, feed_name='vulnerabilities')
-        if feed and namespace_name in [x['name'] for x in feed.get('groups', [])]:
-            # No records yet, but we have the feed, so may just not have any data yet
-            return True
-    else:
-        return False
-
-
 def namespace_has_no_feed(name, version):
     """
     Returns true if the given namespace has no direct CVE feed and false if it does.
@@ -90,7 +69,7 @@ def namespace_has_no_feed(name, version):
     """
     ns = DistroNamespace.as_namespace_name(name, version)
     found = ThreadLocalFeedGroupNameCache.lookup(ns) # Returns a tuple (name, enabled:bool)
-    return (not found) or (not found[1])
+    return not found or not found[1]
 
 
 def get_namespace_related_names(distro, version, distro_mapped_names: list):
@@ -170,19 +149,19 @@ def find_vulnerable_image_packages(vulnerability_obj):
                     if fix_rec.match_but_not_fixed(candidate):
                         affected.append(candidate)
 
-#        if vulnerability_obj.vulnerable_in:
-#            # Check the vulnerable_in records
-#            for vuln_rec in vulnerability_obj.vulnerable_in:
-#                package_candidates = []
-#                # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
-#                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names),
-#                                                    ImagePackage.distro_version.like(dist.version + '%'),
-#                                                    or_(ImagePackage.name == fix_rec.name,
-#                                                        ImagePackage.normalized_src_pkg == fix_rec.name)).all()
-#               package_candidates += pkgs
-#               for candidate in package_candidates:
-#                   if vuln_rec.match_and_vulnerable(candidate):
-#                       affected.append(candidate)
+        if vulnerability_obj.vulnerable_in:
+            # Check the vulnerable_in records
+            for vuln_rec in vulnerability_obj.vulnerable_in:
+                package_candidates = []
+                # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
+                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names),
+                                                     ImagePackage.distro_version.like(dist.version + '%'),
+                                                     or_(ImagePackage.name == vuln_rec.name,
+                                                         ImagePackage.normalized_src_pkg == vuln_rec.name)).all()
+                package_candidates += pkgs
+                for candidate in package_candidates:
+                    if vuln_rec.match_and_vulnerable(candidate):
+                        affected.append(candidate)
 
         return affected
     except Exception as e:
@@ -205,7 +184,7 @@ def vulnerabilities_for_image(image_obj):
         ts = time.time()
         computed_vulnerabilties = []
         for package in image_obj.packages:
-            pkg_vulnerabilities = package.vulnerabilities_for_package()
+            pkg_vulnerabilities = package.find_vulnerabilities()
             for v in pkg_vulnerabilities:
                 img_v = ImagePackageVulnerability()
                 img_v.pkg_image_id = image_obj.id

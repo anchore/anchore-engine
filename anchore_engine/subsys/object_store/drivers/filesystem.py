@@ -125,7 +125,7 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             path = self._parse_uri(uri)
             content = self._load_content(path)
             ret = utils.ensure_bytes(content)
-            return (ret)
+            return ret
         except Exception as e:
             raise ObjectKeyNotFoundError(userId='', bucket='', key='', caused_by=e)
 

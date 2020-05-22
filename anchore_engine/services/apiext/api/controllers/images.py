@@ -23,175 +23,13 @@ from anchore_engine.subsys import taskstate, logger
 import anchore_engine.subsys.metrics
 from anchore_engine.utils import parse_dockerimage_string
 from anchore_engine.services.apiext.api.controllers.utils import normalize_image_add_source, validate_image_add_source
+from anchore_engine.services.apiext.api import helpers
 
 from anchore_engine.subsys.metrics import flask_metrics
 
 
 authorizer = get_authorizer()
 
-
-def make_response_content(content_type, content_data):
-    ret = []
-
-    localconfig = anchore_engine.configuration.localconfig.get_config()
-    all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])
-    if content_type not in all_content_types:    
-        logger.warn("input content_type (" + str(content_type) +") not supported (" + str(
-            all_content_types) + ")")
-        return(ret)
-
-    if not content_data:
-        logger.warn("empty content data given to format - returning empty result")
-        return(ret)
-
-    # type-specific formatting of content data
-    if content_type == 'os':
-        elkeys = ['license', 'origin', 'size', 'type', 'version']
-        for package in list(content_data.keys()):
-            el = {}
-            try:
-                el['package'] = package
-                for k in elkeys:
-                    if k in content_data[package]:
-                        el[k] = content_data[package][k]
-                    else:
-                        el[k] = None
-
-                # Special formatting for rpms
-                if content_data[package].get('type', "").lower() in ['rpm']:
-                    v = content_data[package].get('version', None)
-                    r = content_data[package].get('release', None)
-                    if (v and r) and (v.lower() != 'n/a') and r.lower() != 'n/a':
-                        el['version'] = "{}-{}".format(v, r)
-
-            except:
-                el = {}
-            if el:
-                ret.append(el)
-
-    elif content_type == 'npm':
-        for package in list(content_data.keys()):
-            el = {}
-            try:
-                el['package'] = content_data[package]['name']
-                el['type'] = 'NPM'
-                el['location'] = package
-                el['version'] = content_data[package]['versions'][0]
-                el['origin'] = ','.join(content_data[package]['origins']) or 'Unknown'
-                el['license'] = ' '.join(content_data[package]['lics']) or 'Unknown'
-            except:
-                el = {}
-            if el:
-                ret.append(el)
-
-    elif content_type == 'gem':
-        for package in list(content_data.keys()):
-            el = {}
-            try:
-                el['package'] = content_data[package]['name']
-                el['type'] = 'GEM'
-                el['location'] = package
-                el['version'] = content_data[package]['versions'][0]
-                el['origin'] = ','.join(content_data[package]['origins']) or 'Unknown'
-                el['license'] = ' '.join(content_data[package]['lics']) or 'Unknown'
-            except:
-                el = {}
-            if el:
-                ret.append(el)
-
-    elif content_type == 'python':
-        for package in list(content_data.keys()):
-            el = {}
-            try:
-                el['package'] = content_data[package]['name']
-                el['type'] = 'PYTHON'
-                el['location'] = content_data[package]['location']
-                el['version'] = content_data[package]['version']
-                el['origin'] = content_data[package]['origin'] or 'Unknown'
-                el['license'] = content_data[package]['license'] or 'Unknown'
-            except:
-                el = {}
-            if el:
-                ret.append(el)
-
-    elif content_type == 'java':
-        for package in list(content_data.keys()):
-            el = {}
-            try:
-                el['package'] = content_data[package]['name']
-                el['type'] = content_data[package]['type'].upper()
-                el['location'] = content_data[package]['location']
-                el['specification-version'] = content_data[package]['specification-version']
-                el['implementation-version'] = content_data[package]['implementation-version']
-                el['maven-version'] = content_data[package]['maven-version']
-                el['origin'] = content_data[package]['origin'] or 'Unknown'
-            except:
-                el = {}
-            if el:
-                ret.append(el)
-    elif content_type == 'files':
-        elmap = {
-            'linkdst': 'linkdest',
-            'size': 'size',
-            'mode': 'mode',
-            'sha256': 'sha256',
-            'type': 'type',
-            'uid': 'uid',
-            'gid': 'gid'
-        }
-        for filename in list(content_data.keys()):
-            el = {}
-            try:
-                el['filename'] = filename
-                for elkey in list(elmap.keys()):
-                    try:
-                        el[elmap[elkey]] = content_data[filename][elkey]
-                    except:
-                        el[elmap[elkey]] = None
-
-                # special formatting
-                el['mode'] = format(stat.S_IMODE(el['mode']), '05o')
-                if el['sha256'] == 'DIRECTORY_OR_OTHER':
-                    el['sha256'] = None
-
-            except Exception as err:
-                el = {}
-            if el:
-                ret.append(el)
-    elif content_type in ['docker_history']:
-        try:
-            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(json.dumps(content_data))))
-        except Exception as err:
-            logger.warn("could not convert content to json/base64 encode - exception: {}".format(err))
-            ret = ""
-    elif content_type in ['manifest', 'dockerfile']:
-        try:
-            ret = utils.ensure_str(base64.encodebytes(utils.ensure_bytes(content_data)))
-        except Exception as err:
-            logger.warn("could not base64 encode content - exception: {}".format(err))
-            ret = ""
-    else:
-        try:
-            for package in list(content_data.keys()):
-                el = {}
-                try:
-                    el['package'] = content_data[package]['name']
-                    el['type'] = content_data[package]['type'].upper()
-                    el['location'] = content_data[package].get('location', None) or 'Unknown'
-                    el['version'] = content_data[package].get('version', None) or 'Unknown'
-                    el['origin'] = content_data[package].get('origin', None) or 'Unknown'
-                    el['license'] = content_data[package].get('license', None) or 'Unknown'
-                except Exception as err:
-                    el = {}
-                if el:
-                    ret.append(el)
-            if not ret:
-                raise Exception("empty return list after generic element parse")
-        except Exception as err:
-            logger.debug("couldn't parse any generic package elements, returning raw content_data - exception: {}".format(err))
-            ret = content_data
-
-    return(ret)
 
 def make_cvss_scores(metrics):
     """
@@ -267,7 +105,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
 
     if not vulnerability_data:
         logger.warn("empty query data given to format - returning empty result")
-        return (ret)
+        return ret
 
     eltemplate = {
         'vuln': 'None',
@@ -322,8 +160,8 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     if el[k] == 'N/A':
                         el[k] = 'None'
 
-                groupels = el.get('feed_group', "").split(":", 2)
-                if len(groupels) == 2 and groupels[0] in ['ubuntu', 'centos', 'alpine', 'debian', 'ol', 'amzn', 'rhel']:
+
+                if el['package_type'].lower() in anchore_engine.common.os_package_types:
                     osvulns.append(el)
                 else:
                     nonosvulns.append(el)
@@ -365,7 +203,12 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         for k in list(keymap.keys()):
             el[k] = vuln[keymap[k]]
 
-        el['package'] = "{}-{}".format(vuln['name'], vuln['version'])
+        if vuln['name'] != vuln['version']:
+            pkg_final = "{}-{}".format(vuln['name'], vuln['version'])
+        else:
+            pkg_final = vuln['name']
+
+        el['package'] = pkg_final
 
         # get nvd scores
         el['nvd_data'] = []
@@ -410,7 +253,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     else:
         ret = vulnerability_data
 
-    return (ret)
+    return ret
 
 
 def make_response_policyeval(eval_record, params, catalog_client):
@@ -446,7 +289,7 @@ def make_response_policyeval(eval_record, params, catalog_client):
     except Exception as err:
         raise Exception("failed to format policy eval response: " + str(err))
 
-    return (ret)
+    return ret
 
 
 def make_response_image(image_record, include_detail=True):
@@ -498,24 +341,8 @@ def make_response_image(image_record, include_detail=True):
     for removekey in ['record_state_val', 'record_state_key']:
         image_record.pop(removekey, None)
 
-    return (ret)
+    return ret
 
-
-def impl_template(request_inputs):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
-
-    return_object = {}
-    httpcode = 500
-    try:
-        pass
-    except Exception as err:
-        return_object = make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return (return_object, httpcode)
 
 def lookup_imageDigest_from_imageId(request_inputs, imageId):
     user_auth = request_inputs['auth']
@@ -539,7 +366,7 @@ def lookup_imageDigest_from_imageId(request_inputs, imageId):
         logger.debug("operation exception: " + str(err))
         raise err
 
-    return (ret)
+    return ret
 
 def vulnerability_query(account, digest, vulnerability_type, force_refresh=False, vendor_only=True, doformat=False):
     # user_auth = request_inputs['auth']
@@ -596,7 +423,7 @@ def vulnerability_query(account, digest, vulnerability_type, force_refresh=False
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 def get_content(request_inputs, content_type, doformat=False):
     user_auth = request_inputs['auth']
@@ -609,7 +436,7 @@ def get_content(request_inputs, content_type, doformat=False):
     userId, pw = user_auth
     try:
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])        
+        all_content_types = localconfig.get('image_content_types', []) + localconfig.get('image_metadata_types', [])
         if content_type not in all_content_types:
             httpcode = 404
             raise Exception("content type ("+str(content_type)+") not available")
@@ -659,7 +486,7 @@ def get_content(request_inputs, content_type, doformat=False):
                 httpcode = 404
                 raise Exception("image content of type ("+str(content_type)+") was not an available type at analysis time for this image")
 
-        return_object[imageDigest] = make_response_content(content_type, image_content_data[content_type])
+        return_object[imageDigest] = helpers.make_image_content_response(content_type, image_content_data[content_type])
 
         httpcode = 200
     except Exception as err:
@@ -667,7 +494,7 @@ def get_content(request_inputs, content_type, doformat=False):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 # repositories
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -720,7 +547,7 @@ def repositories(request_inputs):
         httpcode = return_object['httpcode']
 
 
-    return(return_object, httpcode)
+    return return_object, httpcode
 
 
 # images CRUD
@@ -1064,12 +891,12 @@ def get_image_content_by_type(imageDigest, ctype):
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_files(imageDigest):
-    return(get_image_content_by_type(imageDigest, 'files'))
+    return get_image_content_by_type(imageDigest, 'files')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_javapackage(imageDigest):
-    return(get_image_content_by_type(imageDigest, 'java'))
+    return get_image_content_by_type(imageDigest, 'java')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
@@ -1092,12 +919,12 @@ def get_image_content_by_type_imageId(imageId, ctype):
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_files(imageId):
-    return(get_image_content_by_type_imageId(imageId, 'files'))
+    return get_image_content_by_type_imageId(imageId, 'files')
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId_javapackage(imageId):
-    return(get_image_content_by_type_imageId(imageId, 'java'))
+    return get_image_content_by_type_imageId(imageId, 'java')
 
 
 @flask_metrics.do_not_track()
@@ -1431,7 +1258,7 @@ def images_imageDigest(request_inputs, imageDigest):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 def images_check_impl(request_inputs, image_records):
@@ -1514,7 +1341,7 @@ def images_check_impl(request_inputs, image_records):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 def images_imageDigest_check(request_inputs, imageDigest):
@@ -1542,7 +1369,7 @@ def images_imageDigest_check(request_inputs, imageDigest):
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
 
-    return (return_object, httpcode)
+    return return_object, httpcode
 
 
 

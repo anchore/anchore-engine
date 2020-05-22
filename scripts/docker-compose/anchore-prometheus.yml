@@ -9,62 +9,62 @@ alerting:
     scheme: http
     timeout: 10s
 scrape_configs:
-- job_name: anchore-api
+- job_name: api
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - engine-api:8228
+    - api:8228
   basic_auth:
     username: admin
     password: foobar
 
-- job_name: anchore-catalog
+- job_name: catalog
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - engine-catalog:8228
+    - catalog:8228
   basic_auth:
     username: admin
     password: foobar
 
-- job_name: anchore-simplequeue
+- job_name: simplequeue
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - engine-simpleq:8228
+    - queue:8228
   basic_auth:
     username: admin
     password: foobar
 
-- job_name: anchore-analyzer
+- job_name: analyzer
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - engine-analyzer:8228
+    - analyzer:8228
   basic_auth:
     username: admin
     password: foobar
 
-- job_name: anchore-policy-engine
+- job_name: policy-engine
   scrape_interval: 15s
   scrape_timeout: 10s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
-    - engine-policy-engine:8228
+    - policy-engine:8228
   basic_auth:
     username: admin
     password: foobar

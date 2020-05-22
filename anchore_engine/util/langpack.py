@@ -134,7 +134,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
     if inrange:
         versionmatch = True
 
-    return(versionmatch)
+    return versionmatch
 
 
 def compare_versions(rawsemver, rawpkgver, language='python'):
@@ -143,4 +143,4 @@ def compare_versions(rawsemver, rawpkgver, language='python'):
         raise Exception("empty version range passed as input")
     normal_semver = rawsemver
     ret = normalized_version_match(normal_semver, rawpkgver, language=language)
-    return(ret)
+    return ret
