@@ -108,5 +108,4 @@ ENV/
 .vscode/
 
  # CI scripts
- anchore-ci/
- anchore-ci*/
+anchore-ci*/
