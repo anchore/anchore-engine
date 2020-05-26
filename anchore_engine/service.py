@@ -640,7 +640,7 @@ class UserFacingApiService(ApiService):
     def parse_swagger(path):
         with open(path) as f:
             if path.endswith('yaml') or path.endswith('yml'):
-                return yaml.load(f, Loader=yaml.FullLoader)
+                return yaml.safe_load(f)
             else:
                 return json.load(f)
 
