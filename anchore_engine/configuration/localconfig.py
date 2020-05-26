@@ -304,7 +304,7 @@ def read_config(configfile=None):
                 else:
                     confbuf = confbufcopy
 
-            confdata = yaml.load(confbuf, Loader=yaml.FullLoader)
+            confdata = yaml.safe_load(confbuf)
             if confdata:
                 ret.update(confdata)
         except Exception as err:
