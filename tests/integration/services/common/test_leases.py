@@ -6,7 +6,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import time
 import uuid
 import pytest
-from test.fixtures import anchore_db
+from tests.fixtures import anchore_db
 
 from anchore_engine.db import db_locks, session_scope, Lease
 from anchore_engine.subsys import logger

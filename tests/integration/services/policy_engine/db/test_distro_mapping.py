@@ -1,4 +1,4 @@
-from test.integration.services.policy_engine.utils import init_distro_mappings
+from tests.integration.services.policy_engine.utils import init_distro_mappings
 from anchore_engine.subsys import logger
 from anchore_engine.db.entities.policy_engine import DistroMapping, DistroTuple, VersionPreservingDistroMapper, get_thread_scoped_session
 

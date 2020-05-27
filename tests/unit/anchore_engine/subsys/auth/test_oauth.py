@@ -9,8 +9,8 @@ logger.enable_test_logging()
 
 def test_load_keys():
     config1 = {
-        'public_key_path': 'test/data/certs/public.pem',
-        'private_key_path': 'test/data/certs/private.pem'
+        'public_key_path': 'tests/data/certs/public.pem',
+        'private_key_path': 'tests/data/certs/private.pem'
     }
 
     cfg = load_keys(config1)
@@ -28,16 +28,16 @@ def test_load_keys():
     assert cfg['secret'] == b'abc123'
 
     bad_config = {
-        'public_key_path': 'test/data/certs/public.pem',
-        'private_key_path': 'test/data/certs/private.pemz'
+        'public_key_path': 'tests/data/certs/public.pem',
+        'private_key_path': 'tests/data/certs/private.pemz'
     }
 
     with pytest.raises(Exception) as ex:
         load_keys(bad_config)
 
     bad_config = {
-        'public_key_path': 'test/data/certs/public.pemz',
-        'private_key_path': 'test/data/certs/private.pem'
+        'public_key_path': 'tests/data/certs/public.pemz',
+        'private_key_path': 'tests/data/certs/private.pem'
     }
 
     with pytest.raises(Exception) as ex:
@@ -102,8 +102,8 @@ def test_token_manager_secret():
 
 def test_token_manager_keys():
     mgr = JwtTokenManager(oauth_config={'enabled': True, 'default_token_expiration_seconds': 180}, keys_config={
-        'public_key_path': 'test/data/certs/public.pem',
-        'private_key_path': 'test/data/certs/private.pem'
+        'public_key_path': 'tests/data/certs/public.pem',
+        'private_key_path': 'tests/data/certs/private.pem'
     })
 
     t = mgr.generate_token('testuser')

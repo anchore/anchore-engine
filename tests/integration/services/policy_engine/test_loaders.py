@@ -33,7 +33,7 @@ def test_feed_task(test_data_env, anchore_db):
         assert len(feeds) == 4 # packages, vulns, snyk, nvd
 
         feed_groups = db.query(FeedGroupMetadata).all()
-        # See the test/data/test_data_env/feeds dir for the proper count here
+        # See the tests/data/test_data_env/feeds dir for the proper count here
         logger.info('{}'.format(feed_groups))
         assert len(feed_groups) == 11
 

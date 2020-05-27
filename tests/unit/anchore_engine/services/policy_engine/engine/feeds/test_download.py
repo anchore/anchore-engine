@@ -8,7 +8,7 @@ import tempfile
 import json
 import os
 
-from test.utils import init_test_logging
+from tests.utils import init_test_logging
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.feeds.download import FeedDataFileJsonIterator, FileListJsonIterator, LocalFeedDataRepo, FeedDownloader
 from anchore_engine.services.policy_engine.engine.feeds.schemas import LocalFeedDataRepoMetadata, DownloadOperationResult

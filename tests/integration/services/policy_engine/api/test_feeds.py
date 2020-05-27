@@ -1,5 +1,5 @@
 import pytest
-from test.fixtures import anchore_db
+from tests.fixtures import anchore_db
 from anchore_engine.db import session_scope
 from anchore_engine.db import Image, ImagePackage, ImagePackageVulnerability, Vulnerability, FeedMetadata, FeedGroupMetadata, VulnerableArtifact, FixedArtifact
 

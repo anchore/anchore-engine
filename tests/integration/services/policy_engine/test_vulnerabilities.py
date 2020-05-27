@@ -6,7 +6,7 @@ from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask, rescan_image
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from test.integration.services.policy_engine.utils import reset_feed_sync_time
+from tests.integration.services.policy_engine.utils import reset_feed_sync_time
 from anchore_engine.services.policy_engine import _init_distro_mappings, init_feed_registry
 
 

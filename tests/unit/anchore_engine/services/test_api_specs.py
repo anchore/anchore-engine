@@ -8,7 +8,7 @@ from connexion.mock import MockResolver
 import os
 import signal
 import time
-from test.utils import init_test_logging
+from tests.utils import init_test_logging
 from anchore_engine.subsys import logger
 
 init_test_logging()

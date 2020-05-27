@@ -5,9 +5,9 @@ from anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities i
     VulnerabilityMatchTrigger
 
 from anchore_engine.db import Image, get_thread_scoped_session
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 from anchore_engine.subsys import logger
-from test.integration.services.policy_engine.engine.policy.gates import cls_fully_loaded_test_env, cls_no_feeds_test_env
+from tests.integration.services.policy_engine.engine.policy.gates import cls_fully_loaded_test_env, cls_no_feeds_test_env
 
 logger.enable_test_logging()
 

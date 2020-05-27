@@ -1,5 +1,5 @@
 import pytest
-from test.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_no_feeds_test_env
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest, cls_no_feeds_test_env
 from anchore_engine.db import Image, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.policy.gates.packages import PackagesCheckGate, RequiredPackageTrigger, VerifyTrigger, BlackListTrigger
 from anchore_engine.db import get_thread_scoped_session

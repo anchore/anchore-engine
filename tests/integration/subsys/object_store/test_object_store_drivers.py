@@ -9,8 +9,8 @@ from anchore_engine.subsys.object_store.drivers.s3 import S3ObjectStorageDriver
 from anchore_engine.subsys.object_store.drivers.swift import SwiftObjectStorageDriver
 from anchore_engine.subsys.object_store import exc
 from anchore_engine.subsys import logger
-from test.fixtures import anchore_db
-from test.integration.subsys.object_store.conftest import test_s3_region, test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key
+from tests.fixtures import anchore_db
+from tests.integration.subsys.object_store.conftest import test_s3_region, test_s3_secret_key, test_s3_key, test_s3_bucket, test_s3_url, test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key
 
 
 class TestS3OjbectStorageDriver:

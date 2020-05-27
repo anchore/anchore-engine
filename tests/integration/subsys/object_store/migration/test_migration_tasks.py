@@ -3,8 +3,8 @@ from anchore_engine.subsys import object_store
 from anchore_engine.subsys.object_store.config import DEFAULT_OBJECT_STORE_MANAGER_ID, ALT_OBJECT_STORE_CONFIG_KEY
 from anchore_engine.subsys.object_store import migration
 from anchore_engine.subsys import logger
-from test.fixtures import anchore_db
-from test.integration.subsys.object_store.conftest import test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key, test_s3_bucket, test_s3_region, test_s3_url, test_s3_key, test_s3_secret_key
+from tests.fixtures import anchore_db
+from tests.integration.subsys.object_store.conftest import test_swift_container, test_swift_auth_url, test_swift_user, test_swift_key, test_s3_bucket, test_s3_region, test_s3_url, test_s3_key, test_s3_secret_key
 
 logger.enable_test_logging()
 
