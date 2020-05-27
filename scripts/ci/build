@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+COMMIT_SHA="${1:?'required parameter'}"
+GIT_TAG="${2:?'required parameter'}"
+TEST_IMAGE_NAME="${3:?'required parameter'}"
+
+# Optional - only used for print_colorized
+source anchore-ci/utils
+
+if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
+    # Get the latest anchore-cli tag from remote
+    anchore_cli_commit="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git 'v*' | tail -n1 | sed 's/.*\///')"
+else
+    # Get commit sha from HEAD of master anchore-cli remote
+    anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git master | cut -f 1)"
+fi
+
+print_colorized WARN "building image ${TEST_IMAGE_NAME} - installing anchore-cli from git@${anchore_cli_commit}"
+docker build --target anchore-engine-builder -t anchore-engine:builder -f ./Dockerfile .
+docker build --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
+print_colorized WARN "successfully built image -- ${TEST_IMAGE_NAME}"

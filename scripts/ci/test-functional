@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Optional - only used for print_colorized
+source anchore-ci/utils
+
+hash tox || python -m pip install tox
+hash anchore-cli || python -m pip install -q anchorecli
+
+print_colorized INFO "Running Anchore Engine functional tests."; echo
+
+anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
+anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
+
+tox tests/functional --result-json .tox/test-reports.log
+
+print_colorized INFO "Finished running Anchore Engine functional tests."; echo

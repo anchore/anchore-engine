@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Optional - only used for print_colorized
+source anchore-ci/utils
+
+hash pylint || python -m pip install -q pylint
+
+print_colorized INFO "Linting Anchore Engine code."; echo
+
+# This is specifically enabling checks because the output is too large to
+# fix in one go. As cleanups are done, more checks can be enabled
+pylint -s n --disable=all --enable=C0325 anchore_engine
+
+print_colorized INFO "Finished linting Anchore Engine code."; echo
