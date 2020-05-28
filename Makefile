@@ -59,14 +59,16 @@ CI_CMD := anchore-ci/local_ci
 #### Make targets
 ############################################################
 
-.PHONY: ci build push push-dev push-rc push-prod push-rebuild
-.PHONY: test test-unit test-integration test-functional test-e2e
-.PHONY: setup-test-e2e run-test-e2e
+.PHONY: ci build push-dev push-rc push-prod push-rebuild
 .PHONY: compose-up compose-down cluster-up cluster-down
-.PHONY: venv install install-dev lint clean printvars help
+.PHONY: test test-unit test-integration
+.PHONY: setup-and-test-functional test-functional
+.PHONY: setup-test-e2e test-e2e
+.PHONY: venv install install-dev lint clean clean-noprompt
+.PHONY: printvars help
 
 ci: VERBOSE := true ## run full ci pipeline locally
-ci: build test push
+ci: build test push-dev
 
 anchore-ci: ## Fetch test artifacts for local CI
 	rm -rf /tmp/test-infra; git clone $(TEST_HARNESS_REPO) /tmp/test-infra
@@ -82,13 +84,13 @@ build: Dockerfile anchore-ci ## build dev image
 push-dev: anchore-ci ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
 
-push-rc:
+push-rc: ## Push RC Anchore Engine Docker image to Docker Hub (not available outside of CI)
 	@$(CI_CMD) push-rc-image "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
-push-prod:
+push-prod: ## Push release Anchore Engine Docker image to Docker Hub (not available outside of CI
 	@$(CI_CMD) push-prod-image-release "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(GIT_TAG)"
 
-push-rebuild:
+push-rebuild: ## Rebuild and push prod Anchore Engine docker image to Docker Hub (not available outside of CI)
 	@$(CI_CMD) push-prod-image-rebuild "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
 
 install: venv setup.py requirements.txt ## Install to virtual environment
@@ -97,10 +99,10 @@ install: venv setup.py requirements.txt ## Install to virtual environment
 install-dev: venv setup.py requirements.txt ## Install to virtual environment in editable mode
 	@$(ACTIVATE_VENV) && $(PYTHON) -m pip install --editable .
 
-compose-up: venv anchore-ci scripts/ci/docker-compose-ci.yaml ## run docker compose with dev image
+compose-up: venv anchore-ci ## Stand up/start docker-compose with dev image
 	@$(ACTIVATE_VENV) && $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
 
-compose-down: venv anchore-ci scripts/ci/docker-compose-ci.yaml ## stop docker compose
+compose-down: venv anchore-ci ## Tear down/stop docker compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) compose-down "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
 
 install-cluster-deps: anchore-ci venv ## Install kind, helm, and kubectl (unless installed)
@@ -109,7 +111,7 @@ install-cluster-deps: anchore-ci venv ## Install kind, helm, and kubectl (unless
 cluster-up: anchore-ci venv ## Set up and run kind cluster
 	@$(MAKE) install-cluster-deps
 	$(ACTIVATE_VENV) && $(CI_CMD) cluster-up "$(CLUSTER_NAME)" "$(CLUSTER_CONFIG)" "$(K8S_VERSION)"
-	
+
 cluster-down: anchore-ci venv ## Tear down/stop kind cluster
 	@$(MAKE) install-cluster-deps
 	$(ACTIVATE_VENV) && $(CI_CMD) cluster-down "$(CLUSTER_NAME)"
@@ -117,31 +119,43 @@ cluster-down: anchore-ci venv ## Tear down/stop kind cluster
 lint: venv anchore-ci ## lint code using pylint
 	@$(ACTIVATE_VENV) && $(CI_CMD) lint
 
-test: test-unit test-integration test-functional test-e2e ## run all test make recipes -- test-unit, test-integration, test-functional, test-e2e
+test: test-unit test-integration setup-and-test-functional setup-and-test-e2e ## Run all tests
 
 test-unit: venv anchore-ci ## Run unit tests (tox)
 	TOX_ENV="py36" $(CI_CMD) test-unit
 
-test-integration: venv anchore-ci
+test-integration: venv anchore-ci ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
-setup-and-test-functional: venv anchore-ci ## Set up and run functional tests
+setup-test-functional: venv anchore-ci ## Stand up/start docker-compose for functional tests
 	@$(MAKE) compose-up
-	@$(MAKE) test-functional
-	@$(MAKE) compose-down
 
 test-functional: venv anchore-ci ## Run functional tests, assuming compose is running
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional
 
-test-e2e: setup-test-e2e
-	@$(MAKE) run-test-e2e
+setup-and-test-functional: venv anchore-ci ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
+	@$(MAKE) compose-up
+	@$(MAKE) test-functional
+	@$(MAKE) compose-down
+
+setup-test-e2e: anchore-ci venv ## Start kind cluster and set up end to end tests
+	@$(MAKE) cluster-up
+	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
+
+test-e2e: anchore-ci venv ## Run end to end tests (assuming cluster is running and set up has been run)
+	@$(ACTIVATE_VENV) && $(CI_CMD) e2e-tests
+
+# Local CI scripts (setup-e2e-tests and e2e-tests)
+setup-and-test-e2e: anchore-ci venv ## Set up and run end to end tests
+	@$(MAKE) setup-e2e-tests
+	@$(MAKE) e2e-tests
 	@$(MAKE) cluster-down
 
 clean: ## Clean up project directory and delete dev Docker image
-	@$(CI_CMD) clean "$(TEST_IMAGE_NAME)"
+	@$(CI_CMD) clean "$(VENV)" "$(TEST_IMAGE_NAME)"
 
 clean-noprompt: ## Clean up project directory and delete dev Docker image, without asking
-	@$(CI_CMD) clean-noprompt "$(TEST_IMAGE_NAME)"
+	@$(CI_CMD) clean-noprompt "$(VENV)" "$(TEST_IMAGE_NAME)"
 
 printvars: ## Print make variables
 	@$(foreach V,$(sort $(.VARIABLES)),$(if $(filter-out environment% default automatic,$(origin $V)),$(warning $V=$($V) ($(value $V)))))
