@@ -8,11 +8,13 @@
 #### Docker Hub, git repos
 ############################################################
 DEV_IMAGE_REPO := anchore/anchore-engine-dev
+#TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
 TEST_HARNESS_REPO := https://github.com/robertp/test-infra.git
 
 
 #### CircleCI environment variables
 ############################################################
+export VERBOSE ?= false
 export CI ?= false
 export DOCKER_USER ?=
 export DOCKER_PASS ?=
@@ -35,11 +37,15 @@ GIT_TAG ?= $(shell echo $${CIRCLE_TAG:=null})
 
 CLUSTER_NAME := e2e-testing
 
+
 # Make environment configuration
+############################################################
 VENV := venv
 ACTIVATE_VENV := . $(VENV)/bin/activate
 PYTHON := $(VENV)/bin/python3
 .DEFAULT_GOAL := help # Running `Make` will run the help target
+CLUSTER_CONFIG := tests/e2e/kind-config.yaml
+K8S_VERSION := 1.15.7
 
 # Run make serially. Note that recursively invoked make will still
 # run recipes in parallel (unless they also contain .NOTPARALLEL)
@@ -47,13 +53,7 @@ PYTHON := $(VENV)/bin/python3
 
 CI_COMPOSE_FILE := scripts/ci/docker-compose-ci.yaml
 
-# RUN_TASK is a wrapper script used to invoke commands found in scripts/ci/make/*_tasks
-# These scripts are where all individual tasks for the pipeline belong
-RUN_TASK := scripts/ci/run_make_task
-
 CI_CMD := anchore-ci/local_ci
-
-export VERBOSE ?= false
 
 
 #### Make targets
@@ -107,11 +107,8 @@ install-cluster-deps: anchore-ci venv ## Install kind, helm, and kubectl (unless
 	$(CI_CMD) install-cluster-deps "$(VENV)"
 
 cluster-up: anchore-ci venv ## Set up and run kind cluster
-cluster-up: CLUSTER_CONFIG := tests/e2e/kind-config.yaml
-cluster-up: KUBERNETES_VERSION := 1.15.7
-cluster-up: tests/e2e/kind-config.yaml
 	@$(MAKE) install-cluster-deps
-	$(ACTIVATE_VENV) && $(CI_CMD) cluster-up "$(CLUSTER_NAME)" "$(CLUSTER_CONFIG)" "$(KUBERNETES_VERSION)"
+	$(ACTIVATE_VENV) && $(CI_CMD) cluster-up "$(CLUSTER_NAME)" "$(CLUSTER_CONFIG)" "$(K8S_VERSION)"
 	
 cluster-down: anchore-ci venv ## Tear down/stop kind cluster
 	@$(MAKE) install-cluster-deps
@@ -122,26 +119,23 @@ lint: venv anchore-ci ## lint code using pylint
 
 test: test-unit test-integration test-functional test-e2e ## run all test make recipes -- test-unit, test-integration, test-functional, test-e2e
 
-test-unit: venv anchore-ci
+test-unit: venv anchore-ci ## Run unit tests (tox)
 	TOX_ENV="py36" $(CI_CMD) test-unit
 
 test-integration: venv anchore-ci
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
-test-functional: venv anchore-ci ## Run functional tests
+setup-and-test-functional: venv anchore-ci ## Set up and run functional tests
 	@$(MAKE) compose-up
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional
+	@$(MAKE) test-functional
 	@$(MAKE) compose-down
+
+test-functional: venv anchore-ci ## Run functional tests, assuming compose is running
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional
 
 test-e2e: setup-test-e2e
 	@$(MAKE) run-test-e2e
 	@$(MAKE) cluster-down
-
-setup-test-e2e: cluster-up
-	@$(RUN_TASK) setup_e2e_tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)" "$(VENV)"
-
-run-test-e2e: venv
-	@$(RUN_TASK) run_e2e_tests "$(PYTHON)" "$(VENV)"
 
 clean: ## Clean up project directory and delete dev Docker image
 	@$(CI_CMD) clean "$(TEST_IMAGE_NAME)"

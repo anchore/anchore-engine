@@ -1,45 +1,44 @@
 #!/usr/bin/env bash
 
-# Optional - only used for print_colorized
-source anchore-ci/utils
-
 COMMIT_SHA="${1:?'Missing required parameter: COMMIT_SHA'}"
 DEV_IMAGE_REPO="${2:?'Missing required parameter: DEV_IMAGE_REPO'}"
 GIT_TAG="${3:?'Missing required parameter: GIT_TAG'}"
 TEST_IMAGE_NAME="${4:?'Missing required parameter: TEST_IMAGE_NAME'}"
-VENV="${5:?'Missing required parameter: VENV'}"
 
-engine_image
+# Optional - only used for print_colorized
+source anchore-ci/utils
 
-activate_venv "${VENV}"
+print_colorized INFO "Setting up Anchore Engine end-to-end tests."; echo
 
+# Get the latest RC git tag for this semver & use it for the image tag
 if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then
-    # get the latest rc git tag for this semver & use it for the image tag
     engine_image="${DEV_IMAGE_REPO}:$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
-    print_colorized WARN "detected semver git tag, using RC image for e2e testing -- ${engine_image}"
+    print_colorized INFO "Detected semver git tag, using RC image for e2e testing: ${engine_image}."
 elif docker inspect "${TEST_IMAGE_NAME}" &> /dev/null; then
     engine_image="${TEST_IMAGE_NAME}"
-    print_colorized WARN "using local dev image for e2e testing -- ${engine_image}"
+    print_colorized INFO "Using local dev image for e2e testing: ${engine_image}."
     kind load docker-image "${engine_image}" --name e2e-testing
 else
     engine_image="${DEV_IMAGE_REPO}:${COMMIT_SHA}"
-    print_colorized WARN "using remote dev image for e2e testing -- ${engine_image}"
+    print_colorized INFO "Using remote dev image for e2e testing: ${engine_image}."
 fi
 
+# Test for required environment variables exported in CI jobs
 if [[ "${CI:-false}" == true ]]; then
-    # Test for required environment variables exported in CI jobs
     test "${DOCKER_USER:?'Missing required environment variable: DOCKER_USER'}"
     test "${DOCKER_PASS:?'Missing required environment variable: DOCKER_PASS'}"
 
-    # create k8s secret using $DOCKER_USER & $DOCKER_PASS and set as default imagePullCreds
+    # Create k8s secret using $DOCKER_USER & $DOCKER_PASS and set as default imagePullCreds
     kubectl create secret docker-registry anchore-enterprise-pullcreds --docker-server=docker.io --docker-username="${DOCKER_USER}" --docker-password="${DOCKER_PASS}" --docker-email=anchoreci@anchore.com
     kubectl patch serviceaccount default --type=merge --patch '{"imagePullSecrets":[{"name": "anchore-enterprise-pullcreds"}]}'
 fi
 
 if ! helm list | grep e2e-testing; then
     helm repo add stable https://kubernetes-charts.storage.googleapis.com
-    helm install e2e-testing -f test/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
+    helm install e2e-testing -f tests/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
 fi
 
 # Patch anchore-engine-api nodeport to the configured port thats mapped with kind to localhost:8228
 kubectl patch service e2e-testing-anchore-engine-api --type=json --patch '[{"op": "replace", "path": "/spec/ports/0/nodePort", "value":30028}]'
+
+print_colorized INFO "Finished setting up Anchore Engine end-to-end tests."; echo

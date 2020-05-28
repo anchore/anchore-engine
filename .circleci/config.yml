@@ -7,7 +7,8 @@
 #
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
-  PROD_IMAGE_REPO: anchore/anchore-engine-dev
+  # PROD_IMAGE_REPO: anchore/anchore-engine-dev
+  PROD_IMAGE_REPO: robertp/anchore-engine-dev
   RELEASE_BRANCHES: 0.2 0.3 0.4 0.5 0.6 0.7
   VERBOSE: true
   TERM: xterm
@@ -232,11 +233,12 @@ workflows:
             - functional_tests
             - integration_tests
             - e2e_tests
-      - anchore/image_scan:
+      - nchore/image_scan:
           context: dockerhub
           requires:
             - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          # image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          image_name: robertp/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
           timeout: '2000'
 
@@ -266,7 +268,8 @@ workflows:
           filters: *filter_rc_tags
           requires:
             - push_rc_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
+          # image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
+          image_name: robertp/anchore-engine-dev:${CIRCLE_TAG}
           private_registry: true
           timeout: '2000'
           policy_failure: true
@@ -329,7 +332,8 @@ workflows:
           context: dockerhub
           requires:
             - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          # image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          image_name: robertp/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
           timeout: '2000'
           policy_failure: true
