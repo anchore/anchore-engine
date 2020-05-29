@@ -7,7 +7,10 @@
 
 #### Docker Hub, git repos
 ############################################################
-DEV_IMAGE_REPO := anchore/anchore-engine-dev
+#DEV_IMAGE_REPO := anchore/anchore-engine-dev
+DEV_IMAGE_REPO := robertprince/anchore-engine-dev
+#CLI_REPO := git://github.com/anchore/anchore-cli.git
+CLI_REPO := git://github.com/robertp/anchore-cli.git
 #TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
 TEST_HARNESS_REPO := https://github.com/robertp/test-infra.git
 
@@ -53,7 +56,7 @@ K8S_VERSION := 1.15.7
 
 CI_COMPOSE_FILE := scripts/ci/docker-compose-ci.yaml
 
-CI_CMD := anchore-ci/local_ci
+CI_CMD := anchore-ci/ci_harness
 
 
 #### Make targets
@@ -63,8 +66,9 @@ CI_CMD := anchore-ci/local_ci
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: test test-unit test-integration
 .PHONY: setup-and-test-functional test-functional
-.PHONY: setup-test-e2e test-e2e
-.PHONY: venv install install-dev lint clean clean-noprompt
+.PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
+.PHONY: venv install install-dev lint
+.PHONY: clean clean-noprompt clean-venv clean-tox clean-dist clean-image clean-py-cache
 .PHONY: printvars help
 
 ci: VERBOSE := true ## run full ci pipeline locally
@@ -79,7 +83,7 @@ $(VENV)/bin/activate:
 	python3 -m venv $(VENV)
 
 build: Dockerfile anchore-ci ## build dev image
-	@$(CI_CMD) build "$(COMMIT_SHA)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
+	@$(CI_CMD) build "$(COMMIT_SHA)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)" "$(CLI_REPO)"
 
 push-dev: anchore-ci ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
@@ -138,7 +142,7 @@ setup-and-test-functional: venv anchore-ci ## Stand up/start docker-compose, run
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
 
-setup-test-e2e: anchore-ci venv ## Start kind cluster and set up end to end tests
+setup-e2e-tests: anchore-ci venv ## Start kind cluster and set up end to end tests
 	@$(MAKE) cluster-up
 	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
@@ -148,14 +152,29 @@ test-e2e: anchore-ci venv ## Run end to end tests (assuming cluster is running a
 # Local CI scripts (setup-e2e-tests and e2e-tests)
 setup-and-test-e2e: anchore-ci venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
-	@$(MAKE) e2e-tests
+	@$(MAKE) test-e2e
 	@$(MAKE) cluster-down
 
-clean: ## Clean up project directory and delete dev Docker image
+clean: ## Clean everything (with prompts)
 	@$(CI_CMD) clean "$(VENV)" "$(TEST_IMAGE_NAME)"
 
-clean-noprompt: ## Clean up project directory and delete dev Docker image, without asking
+clean-noprompt: ## Clean everything, without prompts
 	@$(CI_CMD) clean-noprompt "$(VENV)" "$(TEST_IMAGE_NAME)"
+
+clean-venv: ## Delete virtual environment
+	@$(CI_CMD) clean-venv "$(VENV)" "$(TEST_IMAGE_NAME)"
+
+clean-dist: ## Delete build and dist data
+	@$(CI_CMD) clean-dist
+
+clean-tox: ## Delete .tox directory
+	@$(CI_CMD) clean-tox
+
+clean-image: ## Delete Docker test image
+	@$(CI_CMD) clean-image "$(TEST_IMAGE_NAME)"
+
+clean-py-cache: ## Delete local python cache files
+	@$(CI_CMD) clean-py-cache
 
 printvars: ## Print make variables
 	@$(foreach V,$(sort $(.VARIABLES)),$(if $(filter-out environment% default automatic,$(origin $V)),$(warning $V=$($V) ($(value $V)))))

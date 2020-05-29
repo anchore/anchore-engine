@@ -3,16 +3,17 @@
 COMMIT_SHA="${1:?'Missing required parameter: COMMIT_SHA'}"
 GIT_TAG="${2:?'Missing required parameter: GIT_TAG'}"
 TEST_IMAGE_NAME="${3:?'Missing required parameter: TEST_IMAGE_NAME'}"
+CLI_REPO="${4:?'Missing required parameter: CLI_REPO'}"
 
 # Optional - only used for print_colorized
 source anchore-ci/utils
 
 # Get the latest anchore-cli tag from remote
 if [[ "${GIT_TAG}" =~ ^v[0-9]+(\.[0-9]+)*.*$ ]]; then
-    anchore_cli_commit="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --tags --refs --sort="v:refname" git://github.com/anchore/anchore-cli.git 'v*' | tail -n1 | sed 's/.*\///')"
+    anchore_cli_commit="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --tags --refs --sort="v:refname" ${CLI_REPO} 'v*' | tail -n1 | sed 's/.*\///')"
 # Or, get commit SHA from HEAD of master anchore-cli remote
 else
-    anchore_cli_commit="$(git ls-remote git://github.com/anchore/anchore-cli.git master | cut -f 1)"
+    anchore_cli_commit="$(git ls-remote ${CLI_REPO} master | cut -f 1)"
 fi
 
 print_colorized INFO "Building Anchore Engine image ${TEST_IMAGE_NAME}; installing anchore-cli from git@${anchore_cli_commit}."; echo
