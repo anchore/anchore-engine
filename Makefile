@@ -16,6 +16,8 @@ TEST_HARNESS_REPO := https://github.com/robertp/test-infra.git
 
 
 #### CircleCI environment variables
+# DOCKER_USER and DOCKER_PASS are declared in CircleCI contexts
+# LATEST_RELEASE_BRANCH is declared in CircleCI project env variables settings
 ############################################################
 export VERBOSE ?= false
 export CI ?= false
