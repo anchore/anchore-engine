@@ -169,8 +169,9 @@ jobs:
       - <<: *attach_workspace
       - <<: *load_docker_image
       - <<: *ssh_forward_port
-      - run_tests:
-          test_type: test-functional
+      - run:
+          name: Run functional tests
+          command: make setup-and-test-functional
 
   e2e_tests:
     docker:
@@ -185,7 +186,7 @@ jobs:
       - <<: *ssh_forward_port
       - run:
           name: Run e2e tests
-          command: make test-e2e
+          command: make setup-and-test-e2e
 
   push_image:
     description: Uses make script to push images to DockerHub - dev, rc, prod
