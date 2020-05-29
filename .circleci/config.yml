@@ -238,8 +238,7 @@ workflows:
           context: dockerhub
           requires:
             - push_dev_image
-          # image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          image_name: robertp/anchore-engine-dev:${CIRCLE_SHA1}
+          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
           timeout: '2000'
 
@@ -269,8 +268,7 @@ workflows:
           filters: *filter_rc_tags
           requires:
             - push_rc_image
-          # image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
-          image_name: robertp/anchore-engine-dev:${CIRCLE_TAG}
+          image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           private_registry: true
           timeout: '2000'
           policy_failure: true
