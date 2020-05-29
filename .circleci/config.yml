@@ -233,7 +233,7 @@ workflows:
             - functional_tests
             - integration_tests
             - e2e_tests
-      - nchore/image_scan:
+      - anchore/image_scan:
           context: dockerhub
           requires:
             - push_dev_image
