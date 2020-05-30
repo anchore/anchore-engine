@@ -56,6 +56,9 @@ def process_java_archive(prefix, filename, inZFH=None):
         # set up the zipfile handle
         try:
             if not inZFH:
+                if not os.access(fullpath, os.R_OK):
+                    os.chmod(fullpath, 0o444)
+
                 if zipfile.is_zipfile(fullpath):
                     ZFH = zipfile.ZipFile(fullpath, 'r')
                     location = filename
@@ -187,9 +190,6 @@ try:
 
     for f in list(allfiles.keys()):
         if allfiles[f]['type'] == 'file':
-            #prefix = '/'.join([unpackdir, 'rootfs'])
-            #els = process_java_archive(prefix, f)
-                        
             patt = re.match(java_library_file, f)
             els = []
             if patt:
