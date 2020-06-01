@@ -7,7 +7,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseT
 from anchore_engine.services.policy_engine.engine.feeds.feeds import have_vulnerabilities_for
 from anchore_engine.db import DistroNamespace, ImageCpe, CpeVulnerability, select_nvd_classes
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter
+from anchore_engine.services.policy_engine.engine.policy.params import BooleanStringParameter, IntegerStringParameter, EnumCommaDelimStringListParameter, EnumStringParameter, FloatStringParameter, SimpleStringParameter, CommaDelimitedStringListParameter
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common import nonos_package_types
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
@@ -496,13 +496,57 @@ class UnsupportedDistroTrigger(BaseTrigger):
             self._fire(msg="Feed data unavailable, cannot perform CVE scan for distro: "+str(image_obj.distro_namespace))
 
 
+class VulnerabilityBlacklistTrigger(BaseTrigger):
+    __trigger_name__ = 'blacklist'
+    __description__ = "Triggers if any of a list of specified vulnerabilities has been detected in the image."
+
+    vulnerability_ids = CommaDelimitedStringListParameter(name='vulnerability_ids', example_str='CVE-2019-1234', description='List of vulnerability IDs, will cause the trigger to fire if any are detected.', is_required=True, sort_order=1)
+    vendor_only = BooleanStringParameter(name='vendor_only', example_str='true', description='If set to True, discard matches against this vulnerability if vendor has marked as will not fix in the vulnerability record.', is_required=False, sort_order=2)
+    
+    def evaluate(self, image_obj, context):
+        vids = self.vulnerability_ids.value()
+        is_vendor_only = self.vendor_only.value(default_if_none=True)
+
+        found_vids = []
+        
+        for vid in vids:
+            found = False
+
+            # search for vid in OS vulns
+            vulns = context.data.get('loaded_vulnerabilities')
+            for vuln in vulns:
+                if is_vendor_only:
+                    if vuln.fix_has_no_advisory():
+                        continue
+                if vid == vuln.vulnerability_id:
+                    found = True
+                    break
+
+            if not found:
+                # search for vid in non-os vulns
+                cpevulns = context.data.get('loaded_cpe_vulnerabilities')
+                for sev in list(cpevulns.keys()):
+                    for image_cpe, vulnerability_cpe in cpevulns[sev]:
+                        if vid == vulnerability_cpe.vulnerability_id:
+                            found = True
+                            break
+                    if found:
+                        break
+            if found:
+                found_vids.append(vid)
+                
+        if found_vids:
+            self._fire(msg="Blacklisted vulnerabilities detected: {}".format(found_vids))
+
+
 class VulnerabilitiesGate(Gate):
     __gate_name__ = 'vulnerabilities'
     __description__ = 'CVE/Vulnerability checks.'
     __triggers__ = [
         VulnerabilityMatchTrigger,
         FeedOutOfDateTrigger,
-        UnsupportedDistroTrigger
+        UnsupportedDistroTrigger,
+        VulnerabilityBlacklistTrigger
     ]
 
     def prepare_context(self, image_obj, context):
