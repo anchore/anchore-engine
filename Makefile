@@ -48,7 +48,7 @@ CLUSTER_NAME := e2e-testing
 VENV := venv
 ACTIVATE_VENV := . $(VENV)/bin/activate
 PYTHON := $(VENV)/bin/python3
-.DEFAULT_GOAL := help # Running `Make` will run the help target
+.DEFAULT_GOAL := help # Running make without args will run the help target
 CLUSTER_CONFIG := tests/e2e/kind-config.yaml
 K8S_VERSION := 1.15.7
 
@@ -73,7 +73,7 @@ CI_CMD := anchore-ci/ci_harness
 .PHONY: clean clean-noprompt clean-venv clean-tox clean-dist clean-image clean-py-cache
 .PHONY: printvars help
 
-ci: VERBOSE := true ## run full ci pipeline locally
+ci: VERBOSE := true ## Run full cCI pipeline, locally
 ci: build test push-dev
 
 anchore-ci: ## Fetch test artifacts for local CI
@@ -91,7 +91,7 @@ push-dev: anchore-ci ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
 
 push-rc: ## Push RC Anchore Engine Docker image to Docker Hub (not available outside of CI)
-	@$(CI_CMD) push-rc-image "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
+	@$(CI_CMD) push-rc-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
 
 push-prod: ## Push release Anchore Engine Docker image to Docker Hub (not available outside of CI
 	@$(CI_CMD) push-prod-image-release "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(GIT_TAG)"
@@ -127,8 +127,9 @@ lint: venv anchore-ci ## lint code using pylint
 
 test: test-unit test-integration setup-and-test-functional setup-and-test-e2e ## Run all tests
 
-test-unit: venv anchore-ci ## Run unit tests (tox)
-	TOX_ENV="py36" $(CI_CMD) test-unit
+test-unit: export TOX_ENV = py36 ## Run unit tests (tox)
+test-unit: venv anchore-ci
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-unit
 
 test-integration: venv anchore-ci ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
