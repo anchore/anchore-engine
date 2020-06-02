@@ -3,7 +3,7 @@ import time
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import get_thread_scoped_session as get_session, FeedMetadata, GenericFeedDataRecord, FeedGroupMetadata, ImagePackageVulnerability, Vulnerability, FixedArtifact, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, \
-    VulnDBMetadata, VulnDBCpe, VulnerableArtifact, get_thread_scoped_session
+    VulnDBMetadata, VulnDBCpe, VulnerableArtifact, get_thread_scoped_session, NvdMetadata, CpeVulnerability
 
 from anchore_engine.services.policy_engine.engine.feeds.schemas import DownloadOperationConfiguration, GroupDownloadResult, GroupDownloadOperationParams
 from anchore_engine.services.policy_engine.engine.feeds.download import LocalFeedDataRepo
@@ -653,6 +653,47 @@ class NvdV2Feed(AnchoreServiceFeed):
         try:
             return db.query(NvdV2Metadata).filter(NvdV2Metadata.namespace_name == group_name).count()
         except Exception as e:
+            logger.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
+            raise
+
+
+class NvdFeed(AnchoreServiceFeed):
+    """
+    Legacy NVD feed, no longer used. Replaced by NVDv2. This is added back in to support clean removal of those records.
+
+    Feed for package data, served from the anchore feed service backend
+    """
+
+    __feed_name__ = 'nvd'
+    _cve_key = '@id'
+    __group_data_mappers__ = {}
+
+    def sync(self, fetched_data: LocalFeedDataRepo, full_flush: bool = False, event_client: CatalogClient = None, operation_id=None, group=None) -> dict:
+        logger.warn('Sync not supported for legacy nvd feed')
+        result = build_feed_sync_results(feed='nvd', status='failed')
+        result['status'] = 'failed'
+        return result
+
+    def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
+
+        db = get_session()
+        if flush_helper_fn:
+            flush_helper_fn(db=db, feed_name=group_obj.feed_name, group_name=group_obj.name)
+
+        count = db.query(CpeVulnerability).filter(CpeVulnerability.namespace_name == group_obj.name).delete()
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} CpeVulnerability records'.format(count)))
+        count = db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_obj.name).delete()
+        logger.info(log_msg_ctx(operation_id, group_obj.name, group_obj.feed_name, 'Flushed {} Nvddb records'.format(count)))
+
+        db.flush()
+
+    def record_count(self, group_name, db):
+        try:
+            if 'nvddb' in group_name:
+                return db.query(NvdMetadata).filter(NvdMetadata.namespace_name == group_name).count()
+            else:
+                return 0
+        except Exception:
             logger.exception('Error getting feed data group record count in package feed for group: {}'.format(group_name))
             raise
 
