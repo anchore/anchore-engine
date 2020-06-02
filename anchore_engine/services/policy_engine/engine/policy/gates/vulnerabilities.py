@@ -295,161 +295,166 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 except Exception as err:
                     logger.warn("problem during non-os vulnerability evaluation - exception: {}".format(err))
 
-        if self.package_type.value() in ['all', 'os']:
-            vulns = context.data.get('loaded_vulnerabilities')
+        # Process vulnerabilities that match using ImagePackageVulnerability objects, which can include all types as well
+        vulns = context.data.get('loaded_vulnerabilities')
 
-            if vulns:
-                # get nvd classes from context or select them once and be done
-                _nvd_cls, _cpe_cls = context.data.get('nvd_cpe_cls', (None, None))
-                if not _nvd_cls or not _cpe_cls:
-                    _nvd_cls, _cpe_cls = select_nvd_classes()
+        if vulns:
+            # get nvd classes from context or select them once and be done
+            _nvd_cls, _cpe_cls = context.data.get('nvd_cpe_cls', (None, None))
+            if not _nvd_cls or not _cpe_cls:
+                _nvd_cls, _cpe_cls = select_nvd_classes()
 
-                for pkg_vuln in vulns:
-                    parameter_data = OrderedDict()
+            pkg_type_value = self.package_type.value()
+            for pkg_vuln in vulns:
+                parameter_data = OrderedDict()
 
-                    parameter_data['severity'] = pkg_vuln.vulnerability.severity.upper()
-                    parameter_data['vulnerability_id'] = pkg_vuln.vulnerability_id
-                    parameter_data['pkg_type'] = pkg_vuln.pkg_type
-                    parameter_data['pkg_class'] = 'non-os' if pkg_vuln.pkg_type in nonos_package_types else 'os'
+                parameter_data['severity'] = pkg_vuln.vulnerability.severity.upper()
+                parameter_data['vulnerability_id'] = pkg_vuln.vulnerability_id
+                parameter_data['pkg_type'] = pkg_vuln.pkg_type
+                parameter_data['pkg_class'] = 'non-os' if pkg_vuln.pkg_type in nonos_package_types else 'os'
 
-                    # Filter by level first
-                    found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
-                    if comparison_fn(found_severity_idx, comparison_idx):
-                        # Check vendor_only flag specified by the user in policy
-                        if is_vendor_only:
-                            if pkg_vuln.fix_has_no_advisory():
-                                # skip this vulnerability
-                                continue
+                # Filter first by package class, if rule has a filter
+                if pkg_type_value != 'all' and pkg_type_value != parameter_data['pkg_class']:
+                    continue
 
-                        # Check if the vulnerability is to recent for this policy
-                        if timeallowed:
-                            if calendar.timegm(pkg_vuln.vulnerability.created_at.timetuple()) > timeallowed:
-                                continue
-                            parameter_data['max_days_since_creation'] = pkg_vuln.vulnerability.created_at.date()
+                # Filter by level first
+                found_severity_idx = SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower()) if pkg_vuln.vulnerability.severity else 0
+                if comparison_fn(found_severity_idx, comparison_idx):
+                    # Check vendor_only flag specified by the user in policy
+                    if is_vendor_only:
+                        if pkg_vuln.fix_has_no_advisory():
+                            # skip this vulnerability
+                            continue
 
-                        if is_fix_available and fix_timeallowed is not None:
-                            fix = pkg_vuln.fixed_artifact()
-                            if fix.version and fix.version != 'None':
-                                if fix.fix_observed_at and calendar.timegm(fix.fix_observed_at.timetuple()) > fix_timeallowed:
-                                    continue
-                                else:
-                                    parameter_data['max_days_since_fix'] = fix.fix_observed_at.date()
+                    # Check if the vulnerability is to recent for this policy
+                    if timeallowed:
+                        if calendar.timegm(pkg_vuln.vulnerability.created_at.timetuple()) > timeallowed:
+                            continue
+                        parameter_data['max_days_since_creation'] = pkg_vuln.vulnerability.created_at.date()
 
-                        vuln_cvss_base_score = -1.0
-                        vuln_cvss_exploitability_score = -1.0
-                        vuln_cvss_impact_score = -1.0
-
-                        for nvd_record in pkg_vuln.vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls):
-                            cvss_score = nvd_record.get_max_cvss_score_nvd()
-                            if cvss_score.get('base_score', -1.0) > vuln_cvss_base_score:
-                                vuln_cvss_base_score = cvss_score.get('base_score', -1.0)
-                            if cvss_score.get('exploitability_score', -1.0) > vuln_cvss_exploitability_score:
-                                vuln_cvss_exploitability_score = cvss_score.get('exploitability_score', -1.0)
-                            if cvss_score.get('impact_score', -1.0) > vuln_cvss_impact_score:
-                                vuln_cvss_impact_score = cvss_score.get('impact_score', -1.0)
-
-                        if cvss_v3_base_score is not None:
-                            if not cvss_v3_base_score_comparison_fn(vuln_cvss_base_score, cvss_v3_base_score):
-                                logger.debug("OS vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
+                    if is_fix_available and fix_timeallowed is not None:
+                        fix = pkg_vuln.fixed_artifact()
+                        if fix.version and fix.version != 'None':
+                            if fix.fix_observed_at and calendar.timegm(fix.fix_observed_at.timetuple()) > fix_timeallowed:
                                 continue
                             else:
-                                parameter_data['cvss_v3_base_score'] = vuln_cvss_base_score
+                                parameter_data['max_days_since_fix'] = fix.fix_observed_at.date()
 
-                        if cvss_v3_exploitability_score is not None:
-                            if not cvss_v3_exploitability_score_comparison_fn(vuln_cvss_exploitability_score, cvss_v3_exploitability_score):
-                                logger.debug("OS vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
-                                continue
-                            else:
-                                parameter_data['cvss_v3_exploitability_score'] = vuln_cvss_exploitability_score
+                    vuln_cvss_base_score = -1.0
+                    vuln_cvss_exploitability_score = -1.0
+                    vuln_cvss_impact_score = -1.0
 
-                        if cvss_v3_impact_score is not None:
-                            if not cvss_v3_impact_score_comparison_fn(vuln_cvss_impact_score, cvss_v3_impact_score):
-                                logger.debug("OS vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
-                                continue
-                            else:
-                                parameter_data['cvss_v3_impact_score'] = vuln_cvss_impact_score
+                    for nvd_record in pkg_vuln.vulnerability.get_nvd_vulnerabilities(_nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls):
+                        cvss_score = nvd_record.get_max_cvss_score_nvd()
+                        if cvss_score.get('base_score', -1.0) > vuln_cvss_base_score:
+                            vuln_cvss_base_score = cvss_score.get('base_score', -1.0)
+                        if cvss_score.get('exploitability_score', -1.0) > vuln_cvss_exploitability_score:
+                            vuln_cvss_exploitability_score = cvss_score.get('exploitability_score', -1.0)
+                        if cvss_score.get('impact_score', -1.0) > vuln_cvss_impact_score:
+                            vuln_cvss_impact_score = cvss_score.get('impact_score', -1.0)
 
-                        # Check fix_available status if specified by user in policy
-                        if is_fix_available is not None:
-                            # Must to a fix_available check
-                            fix_available_in = pkg_vuln.fixed_in()
+                    if cvss_v3_base_score is not None:
+                        if not cvss_v3_base_score_comparison_fn(vuln_cvss_base_score, cvss_v3_base_score):
+                            logger.debug("OS vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_base_score, self.cvss_v3_base_score_comparison.value(), cvss_v3_base_score))
+                            continue
+                        else:
+                            parameter_data['cvss_v3_base_score'] = vuln_cvss_base_score
 
-                            if is_fix_available == (fix_available_in is not None):
-                                # explicit fix state check matches fix availability
-                                if is_fix_available:
-                                    parameter_data['fixed_version'] = fix_available_in
-                            else:
-                                continue
+                    if cvss_v3_exploitability_score is not None:
+                        if not cvss_v3_exploitability_score_comparison_fn(vuln_cvss_exploitability_score, cvss_v3_exploitability_score):
+                            logger.debug("OS vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_exploitability_score, self.cvss_v3_exploitability_score_comparison.value(), cvss_v3_exploitability_score))
+                            continue
+                        else:
+                            parameter_data['cvss_v3_exploitability_score'] = vuln_cvss_exploitability_score
 
-                        parameter_data['link'] = pkg_vuln.vulnerability.link
+                    if cvss_v3_impact_score is not None:
+                        if not cvss_v3_impact_score_comparison_fn(vuln_cvss_impact_score, cvss_v3_impact_score):
+                            logger.debug("OS vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_cvss_impact_score, self.cvss_v3_impact_score_comparison.value(), cvss_v3_impact_score))
+                            continue
+                        else:
+                            parameter_data['cvss_v3_impact_score'] = vuln_cvss_impact_score
 
-                        fix_msg = ''
-                        if parameter_data.get('fixed_version', None):
-                            fix_msg = "(fixed in: {})".format(parameter_data.get('fixed_version'))
+                    # Check fix_available status if specified by user in policy
+                    if is_fix_available is not None:
+                        # Must to a fix_available check
+                        fix_available_in = pkg_vuln.fixed_in()
 
-                        score_msg = ''
-                        score_tuples = []
-                        for s in ['cvss_v3_base_score', 'cvss_v3_exploitability_score', 'cvss_v3_impact_score']:
-                            if parameter_data.get(s, None):
-                                score_tuples.append("{}={}".format(s, parameter_data.get(s)))
-                        if score_tuples:
-                            score_msg = "({})".format(' '.join(score_tuples))
+                        if is_fix_available == (fix_available_in is not None):
+                            # explicit fix state check matches fix availability
+                            if is_fix_available:
+                                parameter_data['fixed_version'] = fix_available_in
+                        else:
+                            continue
 
-                        time_msg = ''
-                        time_tuples = []
-                        for s in ['max_days_since_creation', 'max_days_since_fix']:
-                            if parameter_data.get(s, None):
-                                time_tuples.append("{}={}".format(s, parameter_data.get(s)))
-                        if time_tuples:
-                            time_msg = "({})".format(' '.join(time_tuples))
+                    parameter_data['link'] = pkg_vuln.vulnerability.link
 
-                        # vendor vulnerability scores not currently available for os packages, this is a pass through
-                        vuln_vendor_cvss_base_score = -1.0
-                        vuln_vendor_cvss_exploitability_score = -1.0
-                        vuln_vendor_cvss_impact_score = -1.0
+                    fix_msg = ''
+                    if parameter_data.get('fixed_version', None):
+                        fix_msg = "(fixed in: {})".format(parameter_data.get('fixed_version'))
 
-                        if vendor_cvss_v3_base_score is not None:
-                            if not vendor_cvss_v3_base_score_comparison_fn(vuln_vendor_cvss_base_score, vendor_cvss_v3_base_score):
-                                logger.debug("OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
-                                continue
-                            else:
-                                parameter_data['vendor_cvss_v3_base_score'] = vuln_vendor_cvss_base_score
+                    score_msg = ''
+                    score_tuples = []
+                    for s in ['cvss_v3_base_score', 'cvss_v3_exploitability_score', 'cvss_v3_impact_score']:
+                        if parameter_data.get(s, None):
+                            score_tuples.append("{}={}".format(s, parameter_data.get(s)))
+                    if score_tuples:
+                        score_msg = "({})".format(' '.join(score_tuples))
 
-                        if vendor_cvss_v3_exploitability_score is not None:
-                            if not vendor_cvss_v3_exploitability_score_comparison_fn(vuln_vendor_cvss_exploitability_score, vendor_cvss_v3_exploitability_score):
-                                logger.debug("OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
-                                continue
-                            else:
-                                parameter_data['vendor_cvss_v3_exploitability_score'] = vuln_vendor_cvss_exploitability_score
+                    time_msg = ''
+                    time_tuples = []
+                    for s in ['max_days_since_creation', 'max_days_since_fix']:
+                        if parameter_data.get(s, None):
+                            time_tuples.append("{}={}".format(s, parameter_data.get(s)))
+                    if time_tuples:
+                        time_msg = "({})".format(' '.join(time_tuples))
 
-                        if vendor_cvss_v3_impact_score is not None:
-                            if not vendor_cvss_v3_impact_score_comparison_fn(vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score):
-                                logger.debug("OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
-                                continue
-                            else:
-                                parameter_data['vendor_cvss_v3_impact_score'] = vuln_vendor_cvss_impact_score
+                    # vendor vulnerability scores not currently available for os packages, this is a pass through
+                    vuln_vendor_cvss_base_score = -1.0
+                    vuln_vendor_cvss_exploitability_score = -1.0
+                    vuln_vendor_cvss_impact_score = -1.0
 
-                        vendor_score_msg = ''
-                        vendor_score_tuples = []
-                        for s in ['vendor_cvss_v3_base_score', 'vendor_cvss_v3_exploitability_score', 'vendor_cvss_v3_impact_score']:
-                            if parameter_data.get(s, None):
-                                vendor_score_tuples.append("{}={}".format(s, parameter_data.get(s)))
-                        if vendor_score_tuples:
-                            vendor_score_msg = "({})".format(' '.join(vendor_score_tuples))
+                    if vendor_cvss_v3_base_score is not None:
+                        if not vendor_cvss_v3_base_score_comparison_fn(vuln_vendor_cvss_base_score, vendor_cvss_v3_base_score):
+                            logger.debug("OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_base_score, self.vendor_cvss_v3_base_score_comparison.value(), vendor_cvss_v3_base_score))
+                            continue
+                        else:
+                            parameter_data['vendor_cvss_v3_base_score'] = vuln_vendor_cvss_base_score
 
-                        # new detail message approach
-                        #pkgname = pkg_vuln.pkg_name
-                        #if pkg_vuln.pkg_version != 'None':
-                        #    pkgname += "-{}".format(pkg_vuln.pkg_version)
-                        #msg = "Vulnerability found in package {} - matching parameters: ".format(pkgname)
-                        #for i in parameter_data:
-                        #    msg += "{}={} ".format(i, parameter_data[i])
+                    if vendor_cvss_v3_exploitability_score is not None:
+                        if not vendor_cvss_v3_exploitability_score_comparison_fn(vuln_vendor_cvss_exploitability_score, vendor_cvss_v3_exploitability_score):
+                            logger.debug("OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_exploitability_score, self.vendor_cvss_v3_exploitability_score_comparison.value(), vendor_cvss_v3_exploitability_score))
+                            continue
+                        else:
+                            parameter_data['vendor_cvss_v3_exploitability_score'] = vuln_vendor_cvss_exploitability_score
 
-                        # original detail message approach
-                        pkgname = pkg_vuln.pkg_name
-                        msg = "{} Vulnerability found in {} package type ({}) - {} {}{}{}{}({} - {})".format(parameter_data['severity'].upper(), parameter_data['pkg_class'], parameter_data['pkg_type'], pkgname, fix_msg, score_msg, time_msg, vendor_score_msg, parameter_data['vulnerability_id'], parameter_data['link'])
+                    if vendor_cvss_v3_impact_score is not None:
+                        if not vendor_cvss_v3_impact_score_comparison_fn(vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score):
+                            logger.debug("OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(pkg_vuln.vulnerability_id, vuln_vendor_cvss_impact_score, self.vendor_cvss_v3_impact_score_comparison.value(), vendor_cvss_v3_impact_score))
+                            continue
+                        else:
+                            parameter_data['vendor_cvss_v3_impact_score'] = vuln_vendor_cvss_impact_score
 
-                        self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=msg)
+                    vendor_score_msg = ''
+                    vendor_score_tuples = []
+                    for s in ['vendor_cvss_v3_base_score', 'vendor_cvss_v3_exploitability_score', 'vendor_cvss_v3_impact_score']:
+                        if parameter_data.get(s, None):
+                            vendor_score_tuples.append("{}={}".format(s, parameter_data.get(s)))
+                    if vendor_score_tuples:
+                        vendor_score_msg = "({})".format(' '.join(vendor_score_tuples))
+
+                    # new detail message approach
+                    #pkgname = pkg_vuln.pkg_name
+                    #if pkg_vuln.pkg_version != 'None':
+                    #    pkgname += "-{}".format(pkg_vuln.pkg_version)
+                    #msg = "Vulnerability found in package {} - matching parameters: ".format(pkgname)
+                    #for i in parameter_data:
+                    #    msg += "{}={} ".format(i, parameter_data[i])
+
+                    # original detail message approach
+                    pkgname = pkg_vuln.pkg_name
+                    msg = "{} Vulnerability found in {} package type ({}) - {} {}{}{}{}({} - {})".format(parameter_data['severity'].upper(), parameter_data['pkg_class'], parameter_data['pkg_type'], pkgname, fix_msg, score_msg, time_msg, vendor_score_msg, parameter_data['vulnerability_id'], parameter_data['link'])
+
+                    self._fire(instance_id=pkg_vuln.vulnerability_id + '+' + pkg_vuln.pkg_name, msg=msg)
 
 class FeedOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = 'stale_feed_data'
