@@ -7,7 +7,7 @@
 #
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
-  PROD_IMAGE_REPO: anchore/anchore-engine-dev
+  PROD_IMAGE_REPO: anchore/anchore-engine
   RELEASE_BRANCHES: 0.2 0.3 0.4 0.5 0.6 0.7
   VERBOSE: true
   TERM: xterm
