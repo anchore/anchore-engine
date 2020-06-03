@@ -15,7 +15,7 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services import simplequeue, internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.service import ApiService, LifeCycleStages
-from anchore_engine.services.policy_engine.engine.feeds.feeds import VulnerabilityFeed, NvdV2Feed, PackagesFeed, VulnDBFeed, GithubFeed, feed_registry
+from anchore_engine.services.policy_engine.engine.feeds.feeds import VulnerabilityFeed, NvdV2Feed, PackagesFeed, VulnDBFeed, GithubFeed, feed_registry, NvdFeed
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
 
@@ -155,7 +155,7 @@ def init_db_content():
 
 def init_feed_registry():
     # Register feeds, the tuple is the class and bool if feed is a distro vulnerability feed or not
-    for cls_tuple in [(NvdV2Feed, False), (VulnDBFeed, False), (VulnerabilityFeed, True), (PackagesFeed, False), (GithubFeed, False)]:
+    for cls_tuple in [(NvdV2Feed, False), (VulnDBFeed, False), (VulnerabilityFeed, True), (PackagesFeed, False), (GithubFeed, False), (NvdFeed, False)]:
         logger.info('Registering feed handler {}'.format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
 
