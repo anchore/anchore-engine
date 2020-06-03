@@ -4,7 +4,7 @@
 + Added - anchore-manager command now has --no-auto-upgrade option to support more deployment and upgrade control
 + Improved - Bumped twisted and requests dependencies
 + Improved - Removes the docker-compose.yaml, prometheus.yaml, and nginx swagger ui configs from within the image, moving those to documentation for easier update/iteration without builds. Fixes #435
-+ Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430
++ Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430 (CVE-2020-11075 / GHSA-w4rm-w22x-h7m5)
 + Fix - Errors during feed data download can cause mismatched timestamps and missed feed data on sync. Fixes #406
 + Fix - Removed variable reference before assignment in squasher. Fixes #401
 + Fix - Fixes mis-labeled GHSA matches on python packages in policy evaluation to be correctly non-os matches. Fixes #400
