@@ -1,10 +1,21 @@
 # Changelog
 
+## 0.7.2 (2020-06-04)
++ Added - CVE Blacklisting via new policy rule. Implements #173
++ Added - New "licenses" field in API response for content (pkgs etc) that is an array type for easier parsing. Supplements existing "license" field that is a comma-delimited list. Implements #313
++ Improved - Update base docker image to UBI 8.2 from 8.1. Fixes #465
++ Fix - package_type parameter now handles GHSA matches correctly as non-os types. Fixes #450
++ Fix - Correctly finds java content in cases where file permissions prevent a read. Fixes #476
++ Fix - Updates pyyaml dependency to 5.3.1. Fixes #456
++ Fix - Fixes API documentation in swagger spec for registry digest-style POST /image call. Fixes #462
++ Fix - Fixes db upgrade failure during upgrades of deployments that still have the 'nvd' data from the deprecated driver. Fixes #473
++ Additional minor bug fixes and enhancements
+
 ## 0.7.1 (2020-04-28)
 + Added - anchore-manager command now has --no-auto-upgrade option to support more deployment and upgrade control
 + Improved - Bumped twisted and requests dependencies
 + Improved - Removes the docker-compose.yaml, prometheus.yaml, and nginx swagger ui configs from within the image, moving those to documentation for easier update/iteration without builds. Fixes #435
-+ Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430
++ Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430 (CVE-2020-11075 / GHSA-w4rm-w22x-h7m5)
 + Fix - Errors during feed data download can cause mismatched timestamps and missed feed data on sync. Fixes #406
 + Fix - Removed variable reference before assignment in squasher. Fixes #401
 + Fix - Fixes mis-labeled GHSA matches on python packages in policy evaluation to be correctly non-os matches. Fixes #400
