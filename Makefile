@@ -7,12 +7,9 @@
 
 #### Docker Hub, git repos
 ############################################################
-#DEV_IMAGE_REPO := anchore/anchore-engine-dev
-DEV_IMAGE_REPO := robertprince/anchore-engine-dev
-#CLI_REPO := git://github.com/anchore/anchore-cli.git
-CLI_REPO := git://github.com/robertp/anchore-cli.git
-#TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
-TEST_HARNESS_REPO := https://github.com/robertp/test-infra.git
+DEV_IMAGE_REPO := anchore/anchore-engine-dev
+CLI_REPO := git://github.com/anchore/anchore-cli.git
+TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
 
 
 #### CircleCI environment variables
