@@ -7,8 +7,10 @@
 
 #### Docker Hub, git repos
 ############################################################
-DEV_IMAGE_REPO := anchore/anchore-engine-dev
-CLI_REPO := git://github.com/anchore/anchore-cli.git
+#DEV_IMAGE_REPO := anchore/anchore-engine-dev
+#CLI_REPO := git://github.com/anchore/anchore-cli.git
+DEV_IMAGE_REPO := robertprince/anchore-engine-dev
+CLI_REPO := git://github.com/robertp/anchore-cli.git
 TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
 
 
