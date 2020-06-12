@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euvo pipefail
+
 # Optional - only used for print_colorized
 source anchore-ci/utils
 

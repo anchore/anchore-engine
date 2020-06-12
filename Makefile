@@ -18,7 +18,6 @@ TEST_HARNESS_REPO := https://github.com/anchore/test-infra.git
 # DOCKER_USER and DOCKER_PASS are declared in CircleCI contexts
 # LATEST_RELEASE_BRANCH is declared in CircleCI project env variables settings
 ############################################################
-export VERBOSE ?= false
 export CI ?= false
 export DOCKER_USER ?=
 export DOCKER_PASS ?=
@@ -72,8 +71,7 @@ CI_CMD := anchore-ci/ci_harness
 .PHONY: clean clean-noprompt clean-venv clean-tox clean-dist clean-image clean-py-cache
 .PHONY: printvars help
 
-ci: VERBOSE := true ## Run full cCI pipeline, locally
-ci: build test push-dev
+ci: build test push-dev ## Run full CI pipeline, locally
 
 anchore-ci: ## Fetch test artifacts for local CI
 	rm -rf /tmp/test-infra; git clone $(TEST_HARNESS_REPO) /tmp/test-infra

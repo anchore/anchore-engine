@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euvo pipefail
+
 COMMIT_SHA="${1:?'Missing required parameter: COMMIT_SHA'}"
 GIT_TAG="${2:?'Missing required parameter: GIT_TAG'}"
 TEST_IMAGE_NAME="${3:?'Missing required parameter: TEST_IMAGE_NAME'}"
