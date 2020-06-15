@@ -24,8 +24,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing anchore" && \
     pip3 wheel --wheel-dir=/build_output/wheels . && \
-    # pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
-    pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/robertp/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
+    pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh 
