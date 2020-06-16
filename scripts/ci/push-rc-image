@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -euvo pipefail
+
+# Optional - only used for print_colorized
+source anchore-ci/utils
+
+DEV_IMAGE_REPO="${1:?'Missing required parameter: DEV_IMAGE_REPO.'}"
+GIT_TAG="${2:?'Missing required parameter: GIT_TAG.'}"
+TEST_IMAGE_NAME="${3:?'Missing required parameter: TEST_IMAGE_NAME.'}"
+
+rc_image="${DEV_IMAGE_REPO}:${GIT_TAG}"
+rc_latest_image="${DEV_IMAGE_REPO}:rc"
+
+# Test for required environment variables exported in CI jobs
+if [[ "${CI:-false}" == true ]]; then
+    test "${DOCKER_USER:?'Missing required environment variable: DOCKER_USER'}"
+    test "${DOCKER_PASS:?'Missing required environment variable: DOCKER_PASS'}"
+
+    echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+    print_colorized INFO "Tagging and pushing image ${rc_image}."; echo
+    docker tag "${TEST_IMAGE_NAME}" "${rc_image}"
+    docker push "${rc_image}"
+
+    print_colorized INFO "Tagging and pushing image ${rc_latest_image}."
+    docker tag "${rc_image}" "${rc_latest_image}"
+    docker push "${rc_latest_image}"
+else
+    print_colorized ERROR "RC images can only be pushed in the CI enviornment."; echo
+fi
