@@ -155,4 +155,4 @@ def update_queueid(name, src_queueId, dst_queueId):
     except Exception as err:
         raise err
     
-    return(ret)        
+    return ret

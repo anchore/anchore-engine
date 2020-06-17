@@ -77,7 +77,7 @@ def update_queueid(queueName, userId, src_queueId, dst_queueId, session=None):
         result.update({'queueId': dst_queueId})
         ret = True
 
-    return(ret)
+    return ret
 
     
 def enqueue(queueName, userId, data, qcount=0, max_qcount=0, priority=False, session=None):
