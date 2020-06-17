@@ -139,3 +139,20 @@ def is_inqueue(name, inobj):
         raise err
         
     return ret
+
+
+def update_queueid(name, src_queueId, dst_queueId):
+    ret = False
+
+    queuenames = get_queuenames()
+
+    if name not in queuenames:
+        return ret
+
+    try:
+        with db.session_scope() as dbsession:
+            ret = db_queue.update_queueid(name, 'system', src_queueId=src_queueId, dst_queueId=dst_queueId, session=dbsession)
+    except Exception as err:
+        raise err
+    
+    return(ret)        

@@ -66,6 +66,20 @@ def is_inqueue(queueName, userId, data, session=None):
     return ret
     
 
+def update_queueid(queueName, userId, src_queueId, dst_queueId, session=None):
+    if not session:
+        session = db.Session
+        
+    ret = False
+
+    result = session.query(Queue).filter_by(queueName=queueName, userId=userId, popped=False, queueId=src_queueId).first()
+    if result:
+        result.update({'queueId': dst_queueId})
+        ret = True
+
+    return(ret)
+
+    
 def enqueue(queueName, userId, data, qcount=0, max_qcount=0, priority=False, session=None):
     if not session:
         session = db.Session

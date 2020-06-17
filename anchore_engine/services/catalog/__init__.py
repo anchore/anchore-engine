@@ -894,14 +894,22 @@ def handle_analyzer_queue(*args, **kwargs):
     logger.debug("FIRING: " + str(watcher))
 
     localconfig = anchore_engine.configuration.localconfig.get_config()
-
+    
     obj_mgr = object_store.get_manager()
 
+    max_working_time = 36000    
     try:
         max_working_time = int(localconfig['image_analyze_timeout_seconds'])
     except:
         max_working_time = 36000
 
+    fair_share_enabled = True        
+    try:
+        if str(localconfig.get('services', {}).get('catalog', {}).get('fair_share_image_analysis_queueing', 'True')).lower() == 'false':
+            fair_share_enabled = False
+    except:
+        fair_share_enabled = True
+        
     all_ready = anchore_engine.clients.services.common.check_services_ready(['policy_engine', 'simplequeue'])
     if not all_ready:
         logger.debug("FIRING DONE: analyzer queuer (skipping due to required services not being available)")
@@ -916,14 +924,17 @@ def handle_analyzer_queue(*args, **kwargs):
         accounts = mgr.list_accounts(include_service=False)
 
     q_client = internal_client_for(SimpleQueueClient, userId=None)
-    
+    queue_rebalance = {}
+    highest_neg_queueId = -1 * (1024 * 1000)  # choose a high value in the negative space as a starting point - this needs to be a value that fits when stored as 'big integer' SQL type
     for account in accounts:
         userId = account['name']
-        if account['type'] == AccountTypes.service:  # userId == 'anchore-system':
+        if account['type'] == AccountTypes.service:
             continue
 
-        # do this in passes, for each analysis_status state
+        if userId not in queue_rebalance:
+            queue_rebalance[userId] = {}
 
+        # do this in passes, for each analysis_status state
         with db.session_scope() as dbsession:
             dbfilter = {'analysis_status': taskstate.working_state('analyze')}
             workingstate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
@@ -945,17 +956,12 @@ def handle_analyzer_queue(*args, **kwargs):
         # next, look for any image in base state (not_analyzed) for queuing
         with db.session_scope() as dbsession:
             dbfilter = {'analysis_status': taskstate.base_state('analyze')}
-            # dbfilter = {}
             basestate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
         for basestate_image_record in basestate_image_records:
             imageDigest = basestate_image_record['imageDigest']
 
             image_record = basestate_image_record
-            # dbfilter = {'imageDigest': imageDigest}
-            # with db.session_scope() as dbsession:
-            #    image_records = db.db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
-            #    image_record = image_records[0]
 
             if image_record['image_status'] == taskstate.complete_state('image_status'):
                 logger.debug("image check")
@@ -979,22 +985,39 @@ def handle_analyzer_queue(*args, **kwargs):
                     qobj['parent_manifest'] = parent_manifest
 
                     try:
-                        if not q_client.is_inqueue('images_to_analyze', qobj):
+                        q_record = q_client.is_inqueue('images_to_analyze', qobj)
+                        if not q_record:
                             # queue image for analysis
-                            logger.debug("queued image for analysis: " + str(imageDigest))
-                            qobj = q_client.enqueue('images_to_analyze', qobj)
-
-                            # set the appropriate analysis state for image 
-                            # image_record['analysis_status'] = taskstate.queued_state('analyze')
-                            # image_record['analysis_status'] = taskstate.working_state('analyze')
-                            # with db.session_scope() as dbsession:
-                            #    rc = db.db_catalog_image.update_record(image_record, session=dbsession)
+                            priority = False
+                            logger.debug("queued image for analysis (priority={}): {}".format(priority, str(imageDigest)))
+                            qobj = q_client.enqueue('images_to_analyze', qobj, forcefirst=priority)
 
                         else:
                             logger.debug("image already queued")
+                            # track and store the account's lowest queueId in the task queue, as well as the global highest negative space queueId across all accounts
+                            try:
+                                lowest_queueId = queue_rebalance[userId].get('lowest_queueId', None)
+                                if not lowest_queueId or q_record.get('queueId') < lowest_queueId:
+                                    queue_rebalance[userId]['lowest_queueId'] = q_record.get('queueId')
+                                if q_record.get('queueId') < 0 and q_record.get('queueId') >= highest_neg_queueId:
+                                    highest_neg_queueId = q_record.get('queueId')
+                            except Exception as err:
+                                logger.error("failed to store image current queueID - excpetion: {}".format(err))
+                                
                     except Exception as err:
                         logger.error("failed to check/queue image for analysis - exception: " + str(err))
 
+    # promote queued tasks into the analysis queue such that one image from each account is prioritized, to implement a simple 'fair share' across accounts
+    if fair_share_enabled:
+        for userId in queue_rebalance.keys():
+            user_lowest_queueId = queue_rebalance[userId].get('lowest_queueId', None)
+            if user_lowest_queueId and user_lowest_queueId > 0:
+                # shuffle the task into neg space
+                highest_neg_queueId += 1
+                if highest_neg_queueId <= -1:
+                    logger.debug("prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(userId, user_lowest_queueId, highest_neg_queueId))
+                    c = q_client.update_queueid('images_to_analyze', src_queueId=user_lowest_queueId, dst_queueId=highest_neg_queueId)
+        
     logger.debug("FIRING DONE: " + str(watcher))
     try:
         kwargs['mythread']['last_return'] = handler_success

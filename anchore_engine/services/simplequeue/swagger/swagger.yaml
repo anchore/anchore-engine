@@ -225,6 +225,33 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"
+  /queues/{queuename}/update_queueid:
+    post:
+      tags:
+      - "simplequeue"
+      summary: "Update the queueId of a queue record"
+      description: ""
+      operationId: "update_queueid"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "queuename"
+        in: path
+        type: string
+        description: "name of queue"
+        required: true
+      - name: "bodycontent"
+        in: body
+        schema:
+          type: object
+        description: "input queue id src and dst"
+        required: true
+      responses:
+        200:
+          description: "Boolean to indicate success or failure"
+          schema:
+            type: string
+      x-swagger-router-controller: "anchore_engine.services.simplequeue.api.controllers.default_controller"      
   /queues/{queuename}/qlen:
     get:
       tags:
