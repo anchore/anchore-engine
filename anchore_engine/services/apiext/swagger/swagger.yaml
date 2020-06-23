@@ -2722,7 +2722,7 @@ definitions:
         description: A digest-based pullstring (e.g. docker.io/nginx@sha256:123abc)
       tag:
         type: string
-        description: A docker pull string (e.g. docker.io/nginx:latest, or docker.io/nginx@sha256:abd) to retrieve the image
+        description: A valid docker tag reference (e.g. docker.io/nginx:latest) that will be associated with the image but not used to pull the image.
       creation_timestamp_override:
         type: string
         format: date-time

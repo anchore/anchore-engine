@@ -64,8 +64,11 @@ class DataFeeds(object):
     @staticmethod
     def update_counts():
         for feed in get_all_feeds_detached():
-            f = feed_instance_by_name(feed.name)
-            f.update_counts()
+            try:
+                f = feed_instance_by_name(feed.name)
+                f.update_counts()
+            except KeyError:
+                logger.warn('Could not find feed instance for name %s. Cannot update counts', feed.name)
 
     @staticmethod
     def _pivot_and_filter_feeds_by_config(to_sync: list, source_found: list, db_found: list):

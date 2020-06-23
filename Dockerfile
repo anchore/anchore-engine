@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.1 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -51,13 +51,13 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.1 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.7.1"
+ARG ANCHORE_ENGINE_VERSION="0.7.2"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step

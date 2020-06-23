@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euvo pipefail
+
+# Optional - only used for print_colorized
+source anchore-ci/utils
+
+hash tox || python -m pip install tox
+hash docker-compose || python -m pip install docker-compose
+
+print_colorized INFO "Running Anchore Engine integration tests."; echo
+
+if [[ "${CI:-false}" == true ]]; then
+    tox tests/integration --result-json .tox/test-reports.log
+else
+    ./scripts/tests/test_with_deps.sh tests/integration/
+fi
+
+print_colorized INFO "Finished running Anchore Engine integration tests."; echo

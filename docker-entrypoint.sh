@@ -18,14 +18,12 @@ if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; 
     for file in /home/anchore/certs/*; do
         if grep -q 'BEGIN CERTIFICATE' "${file}"; then
             cat "${file}" >> /home/anchore/certs_override/python/cacert.pem
-            cat "${file}" >> /home/anchore/certs_override/python/cacert.pem
         fi
     done
     ### for OS (go, openssl)
     cp -a /etc/pki/tls/certs/* /home/anchore/certs_override/os/
     for file in /home/anchore/certs/*; do
         if grep -q 'BEGIN CERTIFICATE' "${file}"; then
-            cat "${file}" >> /home/anchore/certs_override/os/anchore.bundle.crt
             cat "${file}" >> /home/anchore/certs_override/os/anchore.bundle.crt
         fi
     done
