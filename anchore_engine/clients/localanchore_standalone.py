@@ -21,12 +21,16 @@ import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
 from anchore_engine.analyzers.utils import read_kvfile_todict
 from anchore_engine.utils import AnchoreException
-
+import retrying
 
 from anchore_engine import utils
 
 anchorelock = threading.Lock()
 anchorelocks = {}
+
+IMAGE_PULL_RETRIES=3
+IMAGE_PULL_RETRY_WAIT_MS=1000
+IMAGE_PULL_RETRY_WAIT_INCREMENT_MS=1000
 
 
 try:
@@ -524,9 +528,37 @@ def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, par
 
     # download
     logger.info("Downloading image {} for analysis to {}".format(pullstring, copydir))
-    rc = anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir, dest_type=dest_type)
+    return anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir, dest_type=dest_type)
 
-    return True
+
+@retrying.retry(stop_max_attempt_number=IMAGE_PULL_RETRIES,
+                wait_incrementing_start=IMAGE_PULL_RETRY_WAIT_MS,
+                wait_incrementing_increment=IMAGE_PULL_RETRY_WAIT_INCREMENT_MS
+                )
+def retrying_pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type=None):
+    """
+    Retry-wrapper on pull image
+
+    :param staging_dirs:
+    :param registry_creds:
+    :param manifest:
+    :param parent_manifest:
+    :param dest_type:
+    :return:
+    """
+
+    try:
+        result = pull_image(staging_dirs, pullstring, registry_creds, manifest, parent_manifest, dest_type)
+        if not result:
+            # This is an unexpected case, pull_image() will return True or throw exception, but handle weird case anyway to ensure retry works
+            raise Exception('Could not pull image for unknown reason. This is an unexpected error path')
+    except Exception as err:
+        # Intentionally broad, just for logging since retry will swallow individual errors
+        logger.debug_exception("Could not pull image due to error: {}. Will retry".format(str(err)))
+        raise
+
+    return result
+
 
 def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
     outputdir = staging_dirs['outputdir']
@@ -929,7 +961,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
 
         if image_source != 'docker-archive':
             try:
-                rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest, dest_type=dest_type)
+                rc = retrying_pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest, dest_type=dest_type)
             except Exception as err:
                 raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
