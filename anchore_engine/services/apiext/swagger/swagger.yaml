@@ -429,6 +429,37 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+    delete:
+      tags:
+      - Images
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: delete_images_async
+      x-anchore-authz-action: deleteImage
+      summary: Bulk mark images for deletion
+      description: Delete analysis for image digests in the list asynchronously
+      parameters:
+      - name: imageDigests
+        in: query
+        required: true
+        x-nullable: false
+        type: array
+        items:
+          type: string
+        collectionFormat: csv
+      - name: force
+        in: query
+        required: false
+        type: boolean
+      - $ref: "#/parameters/AsAccountParameter"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeleteImagesResponseList"
+        500:
+          description: Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
   /import/images:
     post:
       tags:
@@ -2864,6 +2895,29 @@ definitions:
         - id
       value:
         type: string
+  DeleteImagesResponse:
+    type: object
+    description: Image deletion response containing status and details
+    required:
+    - digest
+    - status
+    properties:
+      digest:
+        type: string
+      status:
+        type: string
+        description: Current status of the image deletion
+        enum:
+        - not_found
+        - deleting
+        - delete_failed
+      detail:
+        type: string
+  DeleteImagesResponseList:
+    type: array
+    description: A list of delete image responses
+    items:
+      $ref: "#/definitions/DeleteImagesResponse"
   Policy:
     type: object
     required:

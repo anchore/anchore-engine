@@ -27,7 +27,13 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
-import anchore_engine.subsys.events 
+import anchore_engine.subsys.events
+from collections import namedtuple
+import threading
+from anchore_engine import db
+
+DeleteImageResponse = namedtuple('DeleteImageResponse', ['digest', 'status', 'detail'])
+
 
 def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
     """
@@ -471,6 +477,39 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
                 raise Exception("image not found")
 
     except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+
+    return return_object, httpcode
+
+
+def delete_images_async(account_id, db_session, image_digests, force=False):
+    return_object = []
+    httpcode = 500
+
+    try:
+        for digest in image_digests:
+            ret = None
+            try:
+                image_record = db_catalog_image.get(digest, account_id, session=db_session)
+                if image_record:
+                    can_delete, message, image_ids, image_fulltags = _delete_image_prep(account_id, image_record, db_session, force=force)
+                    if can_delete:
+                        ret = DeleteImageResponse(digest, 'deleting', None)
+                        # delete the image in a different thread
+                        ImageDeleterThread(account_id, image_record, image_ids, image_fulltags).start()
+                    else:
+                        ret = DeleteImageResponse(digest, 'delete_failed', message)
+                else:
+                    ret = DeleteImageResponse(digest, 'not_found', 'No image found with the digest')
+            except Exception as e:
+                ret = DeleteImageResponse(digest, 'delete_failed', str(e))
+            finally:
+                if ret:
+                    return_object.append(ret._asdict())
+
+            httpcode = 200
+    except Exception as err:
+        httpcode = 500
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return return_object, httpcode
@@ -1509,89 +1548,118 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
     return ret
 
 
+def _delete_image_prep(userId, image_record, dbsession, force=False):
+
+    dodelete = False
+    msgdelete = "could not make it though delete checks"
+    image_ids = []
+    image_fulltags = []
+
+    # do some checking before delete
+    try:
+        # check one - don't delete anything that is being analyzed
+        if image_record['analysis_status'] == taskstate.working_state('analyze'):
+            if not force:
+                raise Exception("cannot delete image that is being analyzed")
+
+        # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
+        for image_detail in image_record['image_detail']:
+            fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+            image_fulltags.append(fulltag)
+
+            if 'imageId' in image_detail and image_detail['imageId']:
+                image_ids.append(image_detail['imageId'])
+
+            dbfilter = {}
+            dbfilter['registry'] = image_detail['registry']
+            dbfilter['repo'] = image_detail['repo']
+            dbfilter['tag'] = image_detail['tag']
+
+            latest_image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
+                                                                      onlylatest=True, session=dbsession)
+            for latest_image_record in latest_image_records:
+                if latest_image_record['imageDigest'] == image_record['imageDigest']:
+                    dbfilter = {}
+                    dbfilter['subscription_key'] = fulltag
+                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                    for subscription_record in subscription_records:
+                        if subscription_record['active']:
+                            if not force:
+                                raise Exception(
+                                    "cannot delete image that is the latest of its tags, and has active subscription")
+                            else:
+                                subscription_record['active'] = False
+                                db_subscriptions.update(userId, subscription_record['subscription_key'],
+                                                        subscription_record['subscription_type'], subscription_record,
+                                                        session=dbsession)
+
+        # checked out - do the delete
+        dodelete = True
+
+    except Exception as err:
+        msgdelete = str(err)
+        dodelete = False
+
+    return dodelete, msgdelete, image_ids, image_fulltags
+
+
+class ImageDeleterThread(threading.Thread):
+    def __init__(self, userId, image_record, image_ids, image_fulltags):
+        super(ImageDeleterThread, self).__init__()
+        self.userId = userId
+        self.image_record = image_record
+        self.image_ids = image_ids
+        self.image_fulltags = image_fulltags
+
+    def run(self) -> None:
+        with db.session_scope() as session:
+            _delete_image_for_real(self.userId, self.image_record, session, self.image_ids, self.image_fulltags)
+
+
+def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
+    obj_store = anchore_engine.subsys.object_store.manager.get_manager()
+    imageDigest = image_record['imageDigest']
+
+    logger.debug("DELETEing image from catalog")
+    rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
+
+    # digest-based archiveId buckets
+    for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data',
+                   'parent_manifest_data']:
+        archiveId = imageDigest
+        logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
+        rc = obj_store.delete(userId, bucket, archiveId)
+
+    # digest/tag-based archiveId buckets
+    for bucket in ['vulnerability_scan']:
+        for fulltag in image_fulltags:
+            archiveId = "{}/{}".format(imageDigest, fulltag)
+            logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
+            rc = obj_store.delete(userId, bucket, archiveId)
+
+    logger.debug("DELETEing image from policy_engine")
+
+    # prepare inputs
+    try:
+        pe_client = internal_client_for(PolicyEngineClient, userId=userId)
+        for img_id in set(image_ids):
+            logger.debug("DELETING image from policy engine userId = {} imageId = {}".format(userId, img_id))
+            rc = pe_client.delete_image(user_id=userId, image_id=img_id)
+    except:
+        logger.exception('Failed deleting image from policy engine')
+        raise
+
+
 def do_image_delete(userId, image_record, dbsession, force=False):
     return_object = False
     httpcode = 500
 
-    obj_store = anchore_engine.subsys.object_store.manager.get_manager()
-
     try:
-        imageDigest = image_record['imageDigest']
-        dodelete = False
-        msgdelete = "could not make it though delete checks"
-        image_ids = []
-        image_fulltags = []
-
         if True:
-            # do some checking before delete
-            try:
-                # check one - don't delete anything that is being analyzed
-                if image_record['analysis_status'] == taskstate.working_state('analyze'):
-                    if not force:
-                        raise Exception("cannot delete image that is being analyzed")
-
-                # check two - don't delete anything that is the latest of any of its tags, and has an active subscription
-                for image_detail in image_record['image_detail']:
-                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
-                    image_fulltags.append(fulltag)
-
-                    if 'imageId' in image_detail and image_detail['imageId']:
-                        image_ids.append(image_detail['imageId'])
-
-                    dbfilter = {}
-                    dbfilter['registry'] = image_detail['registry']
-                    dbfilter['repo'] = image_detail['repo']
-                    dbfilter['tag'] = image_detail['tag']
-
-                    latest_image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, onlylatest=True, session=dbsession)
-                    for latest_image_record in latest_image_records:
-                        if latest_image_record['imageDigest'] == image_record['imageDigest']:
-                            dbfilter = {}
-                            dbfilter['subscription_key'] = fulltag
-                            subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
-                            for subscription_record in subscription_records:
-                                if subscription_record['active']:
-                                    if not force:
-                                        raise Exception("cannot delete image that is the latest of its tags, and has active subscription")
-                                    else:
-                                        subscription_record['active'] = False
-                                        db_subscriptions.update(userId, subscription_record['subscription_key'], subscription_record['subscription_type'], subscription_record, session=dbsession)
-
-                # checked out - do the delete
-                dodelete = True
-
-            except Exception as err:
-                msgdelete = str(err)
-                dodelete = False
+            dodelete, msgdelete, image_ids, image_fulltags = _delete_image_prep(userId, image_record, dbsession, force)
 
         if dodelete:
-            logger.debug("DELETEing image from catalog")
-            rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
-
-            # digest-based archiveId buckets
-            for bucket in ['analysis_data', 'query_data', 'image_content_data', 'image_summary_data', 'manifest_data', 'parent_manifest_data']:
-                archiveId = imageDigest
-                logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-                rc = obj_store.delete(userId, bucket, archiveId)
-
-            # digest/tag-based archiveId buckets
-            for bucket in ['vulnerability_scan']:
-                for fulltag in image_fulltags:
-                    archiveId = "{}/{}".format(imageDigest, fulltag)
-                    logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-                    rc = obj_store.delete(userId, bucket, archiveId)
-
-            logger.debug("DELETEing image from policy_engine")
-
-            # prepare inputs
-            try:
-                pe_client = internal_client_for(PolicyEngineClient, userId=userId)
-                for img_id in set(image_ids):
-                    logger.debug("DELETING image from policy engine userId = {} imageId = {}".format(userId, img_id))
-                    rc = pe_client.delete_image(user_id=userId, image_id=img_id)
-            except:
-                logger.exception('Failed deleting image from policy engine')
-                raise
+            _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags)
 
             return_object = True
             httpcode = 200
