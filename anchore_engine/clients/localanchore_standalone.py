@@ -510,9 +510,7 @@ def delete_staging_dirs(staging_dirs):
     return True
 
 
-def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, parent_manifest=None, dest_type='oci'):
-    outputdir = staging_dirs['outputdir']
-    unpackdir = staging_dirs['unpackdir']
+def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type='oci'):
     copydir = staging_dirs['copydir']
     cachedir = staging_dirs['cachedir']
 
