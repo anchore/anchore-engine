@@ -189,6 +189,36 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+    delete:
+      tags:
+      - "catalog"
+      summary: "Bulk delete images from DB"
+      description: ""
+      operationId: "delete_images_async"
+      parameters:
+      - name: 'imageDigests'
+        in: query
+        required: true
+        x-nullable: false
+        type: array
+        items:
+          type: string
+        collectionFormat: csv
+      - name: 'force'
+        in: query
+        type: boolean
+        description: "force delete"
+        required: false
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: array
+            items:
+              type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /images/{imageDigest}:
     get:
       tags:

@@ -146,6 +146,21 @@ def delete_image(imageDigest, force=False):
     return return_object, httpcode
 
 
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def delete_images_async(imageDigests, force=False):
+    try:
+        account_id = ApiRequestContextProxy.namespace()
+        with db.session_scope() as session:
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.delete_images_async(account_id, session, imageDigests, force)
+
+    except Exception as err:
+        httpcode = 500
+        return_object = str(err)
+
+    return return_object, httpcode
+
+
 # @api.route('/registry_lookup', methods=['GET'])
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
