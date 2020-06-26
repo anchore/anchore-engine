@@ -47,6 +47,7 @@
       - /^[0-9]+(\.[0-9]+)$/
       - master
       - /^ci-.*/
+      - /^v[0-9]+(\.[0-9]+)*-dev$/
 
 .filter_semver_tags: &filter_semver_tags
   branches:
