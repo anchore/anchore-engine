@@ -85,13 +85,13 @@ build: Dockerfile anchore-ci ## build dev image
 push-dev: anchore-ci ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
 
-push-rc: ## Push RC Anchore Engine Docker image to Docker Hub (not available outside of CI)
+push-rc: anchore-ci ## Push RC Anchore Engine Docker image to Docker Hub (not available outside of CI)
 	@$(CI_CMD) push-rc-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
 
-push-prod: ## Push release Anchore Engine Docker image to Docker Hub (not available outside of CI
+push-prod: anchore-ci ## Push release Anchore Engine Docker image to Docker Hub (not available outside of CI
 	@$(CI_CMD) push-prod-image-release "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(GIT_TAG)"
 
-push-rebuild: ## Rebuild and push prod Anchore Engine docker image to Docker Hub (not available outside of CI)
+push-rebuild: anchore-ci ## Rebuild and push prod Anchore Engine docker image to Docker Hub (not available outside of CI)
 	@$(CI_CMD) push-prod-image-rebuild "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
 
 install: venv setup.py requirements.txt ## Install to virtual environment
