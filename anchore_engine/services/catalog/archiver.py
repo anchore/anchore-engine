@@ -49,8 +49,8 @@ def init_events(handler_fn=None):
     global _add_event_fn, event_init_lock
     with event_init_lock:
         if not handler_fn and _add_event_fn is None:
-            from anchore_engine.services.catalog import _add_event
-            _add_event_fn = _add_event
+            from anchore_engine.services.catalog.catalog_impl import add_event
+            _add_event_fn = add_event
 
 
 def add_event(event):
