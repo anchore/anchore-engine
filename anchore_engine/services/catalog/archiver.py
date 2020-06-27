@@ -1,7 +1,6 @@
 """
 Module for handling archive tasks
 """
-import copy
 import json
 import datetime
 import tarfile
@@ -11,7 +10,6 @@ import io
 import time
 import uuid
 
-from sqlalchemy import or_, and_
 from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
 from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
@@ -21,7 +19,6 @@ from anchore_engine.subsys.object_store.manager import ObjectStorageManager
 from anchore_engine.db import db_catalog_image, db_catalog_image_docker, db_policyeval, session_scope, db_archived_images, ArchivedImage, \
     CatalogImageDocker, CatalogImage, Session, ArchiveTransitionRule, ArchiveTransitions
 
-from anchore_engine.db.entities import exceptions as db_exceptions
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.catalog.catalog_impl import image_imageDigest
 from anchore_engine.subsys.events import ImageArchiveDeleted, ImageRestored, ImageArchived, ImageArchiveDeleteFailed, ImageArchivingFailed, ImageRestoreFailed
@@ -49,8 +46,8 @@ def init_events(handler_fn=None):
     global _add_event_fn, event_init_lock
     with event_init_lock:
         if not handler_fn and _add_event_fn is None:
-            from anchore_engine.services.catalog.catalog_impl import add_event
-            _add_event_fn = add_event
+            from anchore_engine.services.catalog.catalog_impl import isolated_add_event
+            _add_event_fn = isolated_add_event
 
 
 def add_event(event):
