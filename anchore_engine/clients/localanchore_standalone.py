@@ -21,12 +21,16 @@ import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
 from anchore_engine.analyzers.utils import read_kvfile_todict
 from anchore_engine.utils import AnchoreException
-
+import retrying
 
 from anchore_engine import utils
 
 anchorelock = threading.Lock()
 anchorelocks = {}
+
+IMAGE_PULL_RETRIES=3
+IMAGE_PULL_RETRY_WAIT_MS=1000
+IMAGE_PULL_RETRY_WAIT_INCREMENT_MS=1000
 
 
 try:
@@ -35,13 +39,14 @@ try:
     from twisted.python import log
 except:
     import logging
+
     logger = logging.getLogger(__name__)
     logger.setLevel("DEBUG")
     log = logger
 
-def get_layertarfile(unpackdir, cachedir, layer):
 
-    layer_candidates = [os.path.join(unpackdir, 'raw', layer+".tar"), os.path.join(unpackdir, 'raw', layer), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
+def get_layertarfile(unpackdir, cachedir, layer):
+    layer_candidates = [os.path.join(unpackdir, 'raw', layer + ".tar"), os.path.join(unpackdir, 'raw', layer), os.path.join(unpackdir, 'raw', 'blobs', 'sha256', layer)]
     if cachedir:
         layer_candidates.append(os.path.join(cachedir, 'sha256', layer))
 
@@ -60,8 +65,8 @@ def get_layertarfile(unpackdir, cachedir, layer):
 
     return None
 
-def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata={}):
 
+def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata={}):
     if not unpackdir or not rootfsdir or not handled_post_metadata:
         # nothing to do
         return True
@@ -87,6 +92,7 @@ def handle_tar_error_post(unpackdir=None, rootfsdir=None, handled_post_metadata=
                         pass
 
     return True
+
 
 def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cachedir=None, layer=None, layertar=None, layers=[]):
     handled = False
@@ -129,7 +135,7 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
         if missingfiles:
             logger.info("found {} missing hardlink destination files to extract from lower layers".format(len(missingfiles)))
 
-            for l in layers[layers.index("sha256:"+layer)::-1]:
+            for l in layers[layers.index("sha256:" + layer)::-1]:
                 dighash, lname = l.split(":")
                 ltar = get_layertarfile(unpackdir, cachedir, lname)
 
@@ -140,7 +146,7 @@ def handle_tar_error(tarcmd, rc, sout, serr, unpackdir=None, rootfsdir=None, cac
                 rc, sout, serr = utils.run_command_list(tarcmd_list)
                 sout = utils.ensure_str(sout)
                 serr = utils.ensure_str(serr)
-                #logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd_list[:16], rc, serr, sout))
+                # logger.debug("RESULT attempting to run command to extract missing hardlink target: {} : rc={} : serr={} : sout={}".format(tarcmd_list[:16], rc, serr, sout))
 
                 newmissingfiles = []
                 logger.debug("missing file count before extraction at layer {}: {}".format(l, len(missingfiles)))
@@ -209,9 +215,11 @@ def get_tar_filenames(layertar):
 
     return ret
 
+
 def tree_id(id):
     toks = id.split('/')
     return toks[-1], id, '/'.join(toks[:-1])
+
 
 def tree_create_branch(ftree, id, data, stree=None, populate_intermediate_nodes=False):
     ftoks = id.split("/")
@@ -230,6 +238,7 @@ def tree_create_branch(ftree, id, data, stree=None, populate_intermediate_nodes=
     (fname, fid, fparent) = tree_id(id)
     if not ftree.get_node(fid):
         ftree.create_node(fname, fid, parent=fparent, data=data)
+
 
 def squash(unpackdir, cachedir, layers):
     rootfsdir = unpackdir + "/rootfs"
@@ -251,8 +260,8 @@ def squash(unpackdir, cachedir, layers):
         logger.debug("Layers to process: {}".format(layers))
         logger.debug("Pass 1: generating layer file timeline")
         for l in layers:
-            htype, layer = l.split(":",1)
-            #layertar = os.path.join(copydir, layer)
+            htype, layer = l.split(":", 1)
+            # layertar = os.path.join(copydir, layer)
             layertar = get_layertarfile(unpackdir, cachedir, layer)
             logger.debug("processing layer {} - {}".format(l, layertar))
             tarfiles[l] = tarfile.open(layertar, mode='r', format=tarfile.PAX_FORMAT)
@@ -276,10 +285,10 @@ def squash(unpackdir, cachedir, layers):
                 tree_create_branch(lftree, filename, {'latest_layer_tar': l, 'exists': True}, stree=ftree, populate_intermediate_nodes=True)
 
                 ftoks = filename.split("/")
-                #logger.debug("FILENAME: {} {}".format(filename, time.time()))
+                # logger.debug("FILENAME: {} {}".format(filename, time.time()))
                 for i in range(1, len(ftoks)):
                     f = ftoks[0:i][-1]
-                    parent = "/".join(ftoks[0:i-1])
+                    parent = "/".join(ftoks[0:i - 1])
                     b = "/".join(ftoks[0:i])
 
                     if not lftree.get_node(b):
@@ -299,7 +308,7 @@ def squash(unpackdir, cachedir, layers):
                 if whopqpatt.match(os.path.basename(filename)):
                     lftree[filename].data['exists'] = False
                     fsub = re.sub(r"\.wh\.\.wh\.\.opq", "", filename, 1)
-                    fsub = re.sub("/+$","", fsub)
+                    fsub = re.sub("/+$", "", fsub)
 
                     if not lftree.get_node(fsub):
                         (fname, fid, fparent) = tree_id(fsub)
@@ -356,7 +365,6 @@ def squash(unpackdir, cachedir, layers):
                     }
                     hardlink_destinations[member.linkname].append(el)
 
-
             for filename in lftree.expand_tree():
                 if filename in hardlink_destinations:
                     for el in hardlink_destinations[filename]:
@@ -370,9 +378,6 @@ def squash(unpackdir, cachedir, layers):
                     (fname, fid, fparent) = tree_id(n)
                     ftree.create_node(fname, fid, parent=fparent, data={})
                 ftree[n].data.update(lftree[n].data)
-
-
-
 
         logger.debug("Pass 2: creating squashtar from layers")
         allexcludes = []
@@ -431,7 +436,7 @@ def squash(unpackdir, cachedir, layers):
                     logger.error("failure closing tarfile {} - exception: {}".format(l, err))
 
     imageSize = 0
-    if os.path.exists(os.path.join(unpackdir,"squashed.tar")):
+    if os.path.exists(os.path.join(unpackdir, "squashed.tar")):
         imageSize = os.path.getsize(os.path.join(unpackdir, "squashed.tar"))
 
     return "done", imageSize
@@ -439,7 +444,7 @@ def squash(unpackdir, cachedir, layers):
 
 def make_staging_dirs(rootdir, use_cache_dir=None):
     if not os.path.exists(rootdir):
-        raise Exception("passed in root directory must exist ("+str(rootdir)+")")
+        raise Exception("passed in root directory must exist (" + str(rootdir) + ")")
 
     rando = str(uuid.uuid4())
     ret = {
@@ -463,6 +468,7 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
 
     return ret
 
+
 def _rmtree_error_handler(infunc, inpath, inerr):
     (cls, exc, trace) = inerr
     try:
@@ -478,7 +484,6 @@ def _rmtree_error_handler(infunc, inpath, inerr):
 
 
 def rmtree_force(inpath):
-
     if os.path.exists(inpath):
         try:
             shutil.rmtree(inpath, False, _rmtree_error_handler)
@@ -487,6 +492,7 @@ def rmtree_force(inpath):
                 shutil.rmtree(inpath)
 
     return True
+
 
 def delete_staging_dirs(staging_dirs):
     for k in list(staging_dirs.keys()):
@@ -507,9 +513,8 @@ def delete_staging_dirs(staging_dirs):
 
     return True
 
-def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, parent_manifest=None, dest_type='oci'):
-    outputdir = staging_dirs['outputdir']
-    unpackdir = staging_dirs['unpackdir']
+
+def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type='oci'):
     copydir = staging_dirs['copydir']
     cachedir = staging_dirs['cachedir']
 
@@ -523,9 +528,37 @@ def pull_image(staging_dirs, pullstring, registry_creds=[], manifest=None, paren
 
     # download
     logger.info("Downloading image {} for analysis to {}".format(pullstring, copydir))
-    rc = anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir, dest_type=dest_type)
+    return anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir, dest_type=dest_type)
 
-    return True
+
+@retrying.retry(stop_max_attempt_number=IMAGE_PULL_RETRIES,
+                wait_incrementing_start=IMAGE_PULL_RETRY_WAIT_MS,
+                wait_incrementing_increment=IMAGE_PULL_RETRY_WAIT_INCREMENT_MS
+                )
+def retrying_pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type=None):
+    """
+    Retry-wrapper on pull image
+
+    :param staging_dirs:
+    :param registry_creds:
+    :param manifest:
+    :param parent_manifest:
+    :param dest_type:
+    :return:
+    """
+
+    try:
+        result = pull_image(staging_dirs, pullstring, registry_creds, manifest, parent_manifest, dest_type)
+        if not result:
+            # This is an unexpected case, pull_image() will return True or throw exception, but handle weird case anyway to ensure retry works
+            raise Exception('Could not pull image for unknown reason. This is an unexpected error path')
+    except Exception as err:
+        # Intentionally broad, just for logging since retry will swallow individual errors
+        logger.debug_exception("Could not pull image due to error: {}. Will retry".format(str(err)))
+        raise
+
+    return result
+
 
 def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, dockerfile_contents="", dockerfile_mode=""):
     outputdir = staging_dirs['outputdir']
@@ -552,7 +585,7 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
 
     try:
         hfinal = []
-        count=0
+        count = 0
         for rawhel in manifest_data['history']:
             hel = json.loads(rawhel['v1Compatibility'])
             try:
@@ -670,7 +703,7 @@ def get_image_metadata_v2(staging_dirs, imageDigest, imageId, manifest_data, doc
         else:
             raise Exception("could not find final digest - no blob config file found in digest file: {}".format(dfile))
 
-    done=False
+    done = False
     idx = 0
 
     # add support for cases where image metadata does not contain a history element at all
@@ -769,6 +802,7 @@ def list_analyzers():
     result.sort()
     return result
 
+
 def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     outputdir = staging_dirs['outputdir']
     unpackdir = staging_dirs['unpackdir']
@@ -787,9 +821,9 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
                 sout = utils.ensure_str(sout)
                 serr = utils.ensure_str(serr)
                 if rc != 0:
-                    raise Exception("command failed: cmd="+str(cmdstr)+" exitcode="+str(rc)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    raise Exception("command failed: cmd=" + str(cmdstr) + " exitcode=" + str(rc) + " stdout=" + str(sout).strip() + " stderr=" + str(serr).strip())
                 else:
-                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    logger.debug("command succeeded: cmd=" + str(cmdstr) + " stdout=" + str(sout).strip() + " stderr=" + str(serr).strip())
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
             logger.debug("timing: specific analyzer time: {} - {}".format(f, time.time() - timer))
@@ -814,46 +848,48 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
     return analyzer_report
 
+
 def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, rdigest, analyzer_manifest):
     image_report = []
     image_report.append(
         {
             'image':
-            {
-                'imageId': imageId,
-                'imagedata':
                 {
-                    'analyzer_manifest': analyzer_manifest,
-                    'analysis_report': analyzer_report,
-                    'image_report': {
-                        'meta': {
-                            'shortparentId': '',
-                            'sizebytes': imageSize,
-                            'imageId': imageId,
-                            'usertype': None,
-                            'shortId': imageId[0:12],
-                            'imagename': imageId,
-                            'parentId': '',
-                            'shortname': imageId[0:12],
-                            'humanname': fulltag
-                        },
-                        'docker_history': docker_history,
-                        'dockerfile_mode': dockerfile_mode,
-                        'dockerfile_contents': dockerfile_contents,
-                        #'dockerfile': utils.ensure_str(base64.encodebytes(dockerfile_contents.encode('utf-8'))),
-                        'layers': layers,
-                        'familytree': familytree,
-                        'docker_data': {
-                            'Architecture': imageArch,
-                            'RepoDigests': [rdigest],
-                            'RepoTags': [fulltag]
+                    'imageId': imageId,
+                    'imagedata':
+                        {
+                            'analyzer_manifest': analyzer_manifest,
+                            'analysis_report': analyzer_report,
+                            'image_report': {
+                                'meta': {
+                                    'shortparentId': '',
+                                    'sizebytes': imageSize,
+                                    'imageId': imageId,
+                                    'usertype': None,
+                                    'shortId': imageId[0:12],
+                                    'imagename': imageId,
+                                    'parentId': '',
+                                    'shortname': imageId[0:12],
+                                    'humanname': fulltag
+                                },
+                                'docker_history': docker_history,
+                                'dockerfile_mode': dockerfile_mode,
+                                'dockerfile_contents': dockerfile_contents,
+                                # 'dockerfile': utils.ensure_str(base64.encodebytes(dockerfile_contents.encode('utf-8'))),
+                                'layers': layers,
+                                'familytree': familytree,
+                                'docker_data': {
+                                    'Architecture': imageArch,
+                                    'RepoDigests': [rdigest],
+                                    'RepoTags': [fulltag]
+                                }
+                            }
                         }
-                    }
                 }
-            }
         }
     )
     return image_report
+
 
 def get_manifest_from_staging(staging_dirs):
     copydir = staging_dirs['copydir']
@@ -866,6 +902,7 @@ def get_manifest_from_staging(staging_dirs):
             ret = FFH.read()
 
     return ret
+
 
 def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, registry_creds=[], use_cache_dir=None, image_source='registry', image_source_meta=None, parent_manifest=None):
     # need all this
@@ -920,11 +957,11 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
             else:
                 dest_type = 'oci'
         except Exception as err:
-            raise Exception("cannot load manifest as JSON rawmanifest="+str(manifest)+") - exception: " + str(err))
+            raise Exception("cannot load manifest as JSON rawmanifest=" + str(manifest) + ") - exception: " + str(err))
 
         if image_source != 'docker-archive':
             try:
-                rc = pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest, dest_type=dest_type)
+                rc = retrying_pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest, dest_type=dest_type)
             except Exception as err:
                 raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
@@ -971,8 +1008,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         if staging_dirs:
             delete_staging_dirs(staging_dirs)
 
-
-    #if not imageDigest or not imageId or not manifest or not image_report:
+    # if not imageDigest or not imageId or not manifest or not image_report:
     if not image_report:
         raise Exception("failed to analyze")
 
@@ -1030,6 +1066,7 @@ class AnalysisReportGenerationError(AnalysisError):
     def __init__(self, cause, pull_string, tag, msg='Failed to generate image report'):
         super(AnalysisReportGenerationError, self).__init__(cause, pull_string, tag, msg)
 
+
 def get_anchorelock(lockId=None, driver=None):
     global anchorelock, anchorelocks
     ret = anchorelock
@@ -1044,7 +1081,7 @@ def get_anchorelock(lockId=None, driver=None):
         anchore_config = localconfig['anchore_scanner_config']
         anchore_data_dir = anchore_config['anchore_data_dir']
     else:
-        #anchore_data_dir = "/root/.anchore"
+        # anchore_data_dir = "/root/.anchore"
         anchore_data_dir = "{}/.anchore".format(os.getenv("HOME", "/tmp/anchoretmp"))
         if not os.path.exists(os.path.join(anchore_data_dir, 'conf')):
             try:
@@ -1053,7 +1090,8 @@ def get_anchorelock(lockId=None, driver=None):
                 pass
 
     try:
-        for src,dst in [(localconfig['anchore_scanner_analyzer_config_file'], os.path.join(anchore_data_dir, 'conf', 'analyzer_config.yaml')), (os.path.join(localconfig['service_dir'], 'anchore_config.yaml'), os.path.join(anchore_data_dir, 'conf', 'config.yaml'))]:
+        for src, dst in [(localconfig['anchore_scanner_analyzer_config_file'], os.path.join(anchore_data_dir, 'conf', 'analyzer_config.yaml')),
+                         (os.path.join(localconfig['service_dir'], 'anchore_config.yaml'), os.path.join(anchore_data_dir, 'conf', 'config.yaml'))]:
             logger.debug("checking defaults against installed: " + src + " : " + dst)
             if os.path.exists(src):
                 default_file = src
@@ -1067,9 +1105,9 @@ def get_anchorelock(lockId=None, driver=None):
                 except:
                     do_copy = True
 
-                #if not filecmp.cmp(default_file, installed_file):
+                # if not filecmp.cmp(default_file, installed_file):
                 if do_copy:
-                    logger.debug("checking source yaml ("+str(default_file)+")")
+                    logger.debug("checking source yaml (" + str(default_file) + ")")
                     # check that it is at least valid yaml before copying in place
                     with open(default_file, 'r') as FH:
                         yaml.safe_load(FH)
@@ -1106,4 +1144,3 @@ def get_config():
             logger.error(str(err))
 
     return ret
-

@@ -46,6 +46,8 @@ def enable_test_logging(level='WARN', outfile=None):
     else:
         level = 'INFO'
 
+    log_level = log_level_map.get(level)
+    
     prefix = 'test'
     if outfile:
         logging.basicConfig(
