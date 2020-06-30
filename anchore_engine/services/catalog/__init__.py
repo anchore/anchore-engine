@@ -1009,14 +1009,10 @@ def handle_analyzer_queue(*args, **kwargs):
 
     # promote queued tasks into the analysis queue such that one image from each account is prioritized, to implement a simple 'fair share' across accounts
     if fair_share_enabled:
-        for userId in queue_rebalance.keys():
-            user_lowest_queueId = queue_rebalance[userId].get('lowest_queueId', None)
-            if user_lowest_queueId and user_lowest_queueId > 0:
-                # shuffle the task into neg space
-                highest_neg_queueId += 1
-                if highest_neg_queueId <= -1:
-                    logger.debug("prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(userId, user_lowest_queueId, highest_neg_queueId))
-                    c = q_client.update_queueid('images_to_analyze', src_queueId=user_lowest_queueId, dst_queueId=highest_neg_queueId)
+        try:
+            _perform_queue_rebalance(q_client, queue_rebalance, highest_neg_queueId)
+        except:
+            logger.exception('Ignoring errors rebalancing analysis queue')            
         
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -1033,7 +1029,17 @@ def handle_analyzer_queue(*args, **kwargs):
 
     return True
 
-
+def _perform_queue_rebalance(q_client, queue_rebalance, highest_neg_queueId):
+    for userId in queue_rebalance.keys():
+        user_lowest_queueId = queue_rebalance[userId].get('lowest_queueId', None)
+        if user_lowest_queueId and user_lowest_queueId > 0:
+            # shuffle the task into neg space
+            highest_neg_queueId += 1
+            if highest_neg_queueId <= -1:
+                logger.debug("prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(userId, user_lowest_queueId, highest_neg_queueId))
+                c = q_client.update_queueid('images_to_analyze', src_queueId=user_lowest_queueId, dst_queueId=highest_neg_queueId)
+    return True
+    
 def handle_notifications(*args, **kwargs):
     global system_user_auth
 
