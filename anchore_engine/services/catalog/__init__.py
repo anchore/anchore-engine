@@ -1010,7 +1010,9 @@ def handle_analyzer_queue(*args, **kwargs):
     # promote queued tasks into the analysis queue such that one image from each account is prioritized, to implement a simple 'fair share' across accounts
     if fair_share_enabled:
         try:
-            _perform_queue_rebalance(q_client, queue_rebalance, highest_neg_queueId)
+            queue_id_updates = _perform_queue_rebalance(queue_rebalance, highest_neg_queueId)
+            for src,dst in queue_id_updates:
+                q_client.update_queueid('images_to_analyze', src_queueId=src, dst_queueId=dst)
         except:
             logger.exception('Ignoring errors rebalancing analysis queue')            
         
@@ -1029,16 +1031,17 @@ def handle_analyzer_queue(*args, **kwargs):
 
     return True
 
-def _perform_queue_rebalance(q_client, queue_rebalance, highest_neg_queueId):
+def _perform_queue_rebalance(queue_rebalance, highest_neg_queueId):
+    ret = []
     for userId in queue_rebalance.keys():
         user_lowest_queueId = queue_rebalance[userId].get('lowest_queueId', None)
         if user_lowest_queueId and user_lowest_queueId > 0:
             # shuffle the task into neg space
             highest_neg_queueId += 1
             if highest_neg_queueId <= -1:
-                logger.debug("prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(userId, user_lowest_queueId, highest_neg_queueId))
-                c = q_client.update_queueid('images_to_analyze', src_queueId=user_lowest_queueId, dst_queueId=highest_neg_queueId)
-    return True
+                logger.spew("prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(userId, user_lowest_queueId, highest_neg_queueId))
+                ret.append( (user_lowest_queueId, highest_neg_queueId) )
+    return ret
     
 def handle_notifications(*args, **kwargs):
     global system_user_auth
