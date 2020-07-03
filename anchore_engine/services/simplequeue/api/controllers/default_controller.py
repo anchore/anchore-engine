@@ -10,7 +10,6 @@ from anchore_engine.subsys import logger
 import time
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
-
 authorizer = get_authorizer()
 
 def normalize_errors(f):
@@ -51,6 +50,23 @@ def is_inqueue(queuename, bodycontent):
     request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
     try:
         return_object = simplequeue.is_inqueue(queuename, bodycontent)
+        httpcode = 200
+    except Exception as err:
+        return_object = str(err)
+        httpcode = 500
+
+    return return_object, httpcode
+
+
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def update_queueid(queuename, bodycontent):
+    request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+    try:
+        src_queueId = bodycontent.get('src_queueId', None)
+        dst_queueId = bodycontent.get('dst_queueId', None)
+
+        count = simplequeue.update_queueid(queuename, src_queueId=src_queueId, dst_queueId=dst_queueId)
+        return_object = str(count)
         httpcode = 200
     except Exception as err:
         return_object = str(err)
