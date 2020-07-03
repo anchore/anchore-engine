@@ -534,8 +534,6 @@ def get_image_metadata_v1(staging_dirs, imageDigest, imageId, manifest_data, doc
 
     docker_history = []
     layers = []
-    dockerfile_mode = "Guessed"
-    dockerfile_contents = dockerfile_contents
     imageArch = ""
 
     try:
