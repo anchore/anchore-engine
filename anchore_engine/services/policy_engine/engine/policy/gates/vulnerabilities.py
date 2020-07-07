@@ -1,5 +1,6 @@
 import calendar
 import time
+from datetime import datetime
 from collections import OrderedDict
 
 from anchore_engine.services.policy_engine.engine.feeds.db import get_feed_group_detached
@@ -218,10 +219,20 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                                     if is_fix_available and fix_timeallowed is not None:
                                         if fix_available_in:
-                                            if calendar.timegm(vulnerability_cpe.created_at.timetuple()) > fix_timeallowed:
+                                            fix_date = vulnerability_cpe.created_at
+
+                                            vuln = vulnerability_cpe.parent
+
+                                            # VulnDB entries might have a solution_date which is more accurate than the CPE created_at field
+                                            if hasattr(vuln, 'vuln_metadata') and vuln.vuln_metadata:
+                                                vulndb_solution_date = vuln.vuln_metadata.get('solution_date')
+                                                if vulndb_solution_date:
+                                                    fix_date = datetime.strptime(vulndb_solution_date, '%Y-%m-%dT%H:%M:%SZ')
+
+                                            if calendar.timegm(fix_date.timetuple()) > fix_timeallowed:
                                                 continue
                                             else:
-                                                parameter_data['max_days_since_fix'] = vulnerability_cpe.created_at.date()
+                                                parameter_data['max_days_since_fix'] = fix_date.date()
 
                                 if not vulnerability_cpe.parent.link:
                                     if not api_endpoint:
