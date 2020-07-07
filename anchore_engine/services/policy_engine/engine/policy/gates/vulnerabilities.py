@@ -2,6 +2,7 @@ import calendar
 import re
 import time
 from collections import OrderedDict
+from datetime import datetime
 
 from anchore_engine.common import nonos_package_types
 from anchore_engine.db import DistroNamespace
@@ -357,20 +358,25 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         ] = match_obj.detected_at.date()
 
                     if is_fix_available and fix_timeallowed is not None:
-                        fix_observed_at = (
-                            fix_obj.observed_at if fix_available_in else None
-                        )
+                        if fix_available_in:
+                            fix_date = fix_obj.observed_at
 
-                        if fix_observed_at:
-                            if (
-                                calendar.timegm(fix_observed_at.timetuple())
-                                > fix_timeallowed
-                            ):
+                            vuln = vulnerability_obj.parent
+
+                            # VulnDB entries might have a solution_date which is more accurate than the CPE created_at field
+                            if hasattr(vuln, "vuln_metadata") and vuln.vuln_metadata:
+                                vulndb_solution_date = vuln.vuln_metadata.get(
+                                    "solution_date"
+                                )
+                                if vulndb_solution_date:
+                                    fix_date = datetime.strptime(
+                                        vulndb_solution_date, "%Y-%m-%dT%H:%M:%SZ"
+                                    )
+
+                            if calendar.timegm(fix_date.timetuple()) > fix_timeallowed:
                                 continue
                             else:
-                                parameter_data[
-                                    "max_days_since_fix"
-                                ] = fix_observed_at.date()
+                                parameter_data["max_days_since_fix"] = fix_date.date()
 
                     vuln_cvss_base_score = -1.0
                     vuln_cvss_exploitability_score = -1.0
