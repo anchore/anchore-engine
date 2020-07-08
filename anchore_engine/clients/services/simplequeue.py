@@ -35,6 +35,13 @@ class SimpleQueueClient(InternalServiceClient):
     def enqueue(self, name, inobj, qcount=0, forcefirst=False):
         return self.round_robin_call_api(http.anchy_post, 'queues/{queue}', path_params={'queue': name}, query_params={'qcount': str(qcount), 'forcefirst': str(forcefirst)}, body=json.dumps(inobj))
 
+    def update_queueid(self, name, src_queueId, dst_queueId):
+        payload = {
+            'src_queueId': src_queueId,
+            'dst_queueId': dst_queueId,
+        }
+        return self.round_robin_call_api(http.anchy_post, 'queues/{queue}/update_queueid', path_params={'queue': name}, body=json.dumps(payload))
+        
     def delete_message(self, name, receipt_handle):
         return self.round_robin_call_api(http.anchy_delete, path='queues/{queue}', path_params={'queue': name}, query_params={'receipt_handle': receipt_handle})
 

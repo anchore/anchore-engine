@@ -68,6 +68,9 @@ class CatalogClient(InternalServiceClient):
     def delete_image(self, imageDigest, force=False):
         return self.call_api(http.anchy_delete, 'images/{imageDigest}', path_params={'imageDigest': imageDigest}, query_params={'force': force})
 
+    def delete_images_async(self, imageDigests, force=False):
+        return self.call_api(http.anchy_delete, 'images', query_params={'force': force, 'imageDigests': ','.join(imageDigests)})
+
 #    def import_image(self, anchore_data):
 #        return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
 

@@ -653,6 +653,33 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
     return return_object, httpcode
 
 
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def delete_images_async(imageDigests, force=False):
+    return_object = {}
+    httpcode = 500
+
+    try:
+        logger.debug('Handling DELETE on imageDigests: %s' % imageDigests)
+
+        client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
+
+        rc = client.delete_images_async(imageDigests, force=force)
+
+        if rc:
+            return_object = rc
+            httpcode = 200
+        else:
+            httpcode = 500
+            raise Exception('Operation failed due to an error/connectivity issue with catalog')
+
+    except Exception as err:
+        logger.exception('Error in asynchronous deletion of images')
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
 def validate_pullstring_is_tag(pullstring):
     try:
         parsed = parse_dockerimage_string(pullstring)
