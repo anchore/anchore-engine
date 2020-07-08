@@ -5,7 +5,7 @@ import stat
 import anchore_engine.configuration.localconfig
 from anchore_engine import utils
 from anchore_engine.subsys import logger
-
+from anchore_engine.common import os_package_types
 
 def make_image_content_response(content_type, content_data):
     localconfig = anchore_engine.configuration.localconfig.get_config()
@@ -41,8 +41,8 @@ def _build_os_response(content_data):
                     else:
                         el["licenses"] = []
 
-            # Special formatting for rpms
-            if package_info.get("type", "").lower() in ["rpm"]:
+            # Special formatting for os packages. Ensure that if there is a release field it is added to the version string
+            if package_info.get("type", "").lower() in os_package_types:
                 v = package_info.get("version", None)
                 r = package_info.get("release", None)
                 if (v and r) and (v.lower() != "n/a") and r.lower() != "n/a":

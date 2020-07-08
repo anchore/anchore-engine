@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.3 (2020-07-07)
++ Fix - Adds release to version string for all os package types if one is present. Fixes #504
++ Fix - Fixes global analysis archive rule application for non-admin accounts. Fixes #503
++ Improved - Adds retry wrapper on image download operations on analyzer. Implements #483
++ Additional minor fixes and enhancements
+
 ## 0.7.2 (2020-06-04)
 + Added - CVE Blacklisting via new policy rule. Implements #173
 + Added - New "licenses" field in API response for content (pkgs etc) that is an array type for easier parsing. Supplements existing "license" field that is a comma-delimited list. Implements #313
