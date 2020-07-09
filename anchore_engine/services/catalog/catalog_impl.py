@@ -17,17 +17,16 @@ import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, object_store, notifications
+from anchore_engine.subsys import taskstate, logger, notifications
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
 from anchore_engine.db import db_subscriptions, db_catalog_image, db_policybundle, db_policyeval, db_events,\
     db_registries, db_services
-from sqlalchemy.orm import Session
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
 import anchore_engine.subsys.events
+from anchore_engine.db import session_scope
 from collections import namedtuple
 import threading
 from anchore_engine import db
@@ -1777,7 +1776,27 @@ def add_event(event, dbsession, quiet=True):
     :param quiet:
     :return:
     """
-    return add_event_json(event.to_dict(), dbsession, quiet)
+
+    if dbsession is None:
+        # Create a new session for this with its own transaction
+        with session_scope() as session:
+            return add_event_json(event.to_dict(), session, quiet)
+    else:
+        return add_event_json(event.to_dict(), dbsession, quiet)
+
+
+def isolated_add_event(event, quiet=True):
+    """
+    Add an event object, but in its own transaction, not bound to an existing transaction scope
+
+    Returns a dict object of the event as was added to the system
+
+    :param event: event object
+    :param quiet: boolean indicating if false then exceptions on event add should be swallowed to prevent blocking the caller. If false, exceptions are raised
+    :return:
+    """
+    with session_scope() as session:
+        return add_event_json(event.to_dict(), session, quiet)
 
 
 def add_event_json(event_json, dbsession, quiet=True):

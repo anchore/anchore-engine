@@ -1245,28 +1245,31 @@ def handle_archive_tasks(*args, **kwargs):
     :return:
     """
     watcher = str(kwargs['mythread']['taskType'])
-    handler_success = True
 
     start_time = time.time()
     logger.debug("FIRING: " + str(watcher))
     task_id = None
+    account_names = []
     try:
         logger.info('Starting analysis archive transition rule processor')
         with db.session_scope() as session:
-            # Get accounts that have rules
-            accounts = session.query(ArchiveTransitionRule.account).distinct(ArchiveTransitionRule.account).all()
+            # Get all enabled accounts
+            mgr = manager_factory.for_session(session)
+            accounts = mgr.list_accounts(with_state=AccountStates.enabled, include_service=False)
+
             if accounts:
-                accounts = [x[0] for x in accounts]
+                account_names = [x['name'] for x in accounts]
+
             logger.debug('Found accounts {} with transition rules'.format(accounts))
 
-        for account in accounts:
+        for account in account_names:
             task = archiver.ArchiveTransitionTask(account)
             task_id = task.task_id
             logger.info('Starting archive transition task {} for account {}'.format(task.task_id, account))
             task.run()
             logger.info('Archive transition task {} complete'.format(task.task_id))
 
-    except Exception as ex:
+    except Exception:
         logger.exception('Caught unexpected exception')
     finally:
         logger.debug('Analysis archive task {} execution time: {} seconds'.format(task_id, time.time() - start_time))
