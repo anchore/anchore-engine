@@ -91,11 +91,8 @@ def process_java_archive(prefix, filename, inZFH=None):
                     top_el['metadata']['MANIFEST.MF'] = anchore_engine.utils.ensure_str(MFH.read())
 
                 manifest = java_util.parse_manifest(top_el['metadata']['MANIFEST.MF'].splitlines())
-                if 'Specification-Version' in manifest:
-                    top_el['specification-version'] = manifest['Specification-Version']
-                if 'Implementation-Version' in manifest:
-                    top_el['implementation-version'] = manifest['Implementation-Version']
-
+                top_el['specification-version'] = manifest.get('Specification-Version', 'N/A')
+                top_el['implementation-version'] = manifest.get('Implementation-Version', 'N/A')
                 if 'Specification-Vendor' in manifest:
                     top_el['origin'] = manifest['Specification-Vendor']
                 elif 'Implementation-Vendor' in manifest:
