@@ -83,8 +83,6 @@ def process_java_archive(prefix, filename, inZFH=None):
             'name': name
         }
 
-        sname = sversion = svendor = iname = iversion = ivendor = None
-
         filenames = ZFH.namelist()
 
         if 'META-INF/MANIFEST.MF' in filenames:
@@ -93,22 +91,12 @@ def process_java_archive(prefix, filename, inZFH=None):
                     top_el['metadata']['MANIFEST.MF'] = anchore_engine.utils.ensure_str(MFH.read())
 
                 manifest = java_util.parse_manifest(top_el['metadata']['MANIFEST.MF'].splitlines())
-                sname = manifest['Specification-Title']
-                sversion = manifest['Specification-Version']
-                svendor = manifest['Specification-Vendor']
-                iname = manifest['Implementation-Title']
-                iversion = manifest['Implementation-Version']
-                ivendor = manifest['Implementation-Vendor']
-
-                if sversion:
-                    top_el['specification-version'] = sversion
-                if iversion:
-                    top_el['implementation-version'] = iversion
-
-                if svendor:
-                    top_el['origin'] = svendor
-                elif ivendor:
-                    top_el['origin'] = ivendor
+                top_el['specification-version'] = manifest.get('Specification-Version', 'N/A')
+                top_el['implementation-version'] = manifest.get('Implementation-Version', 'N/A')
+                if 'Specification-Vendor' in manifest:
+                    top_el['origin'] = manifest['Specification-Vendor']
+                elif 'Implementation-Vendor' in manifest:
+                    top_el['origin'] = manifest['Implementation-Vendor']
 
             except:
                 # no manifest could be parsed out, leave the el values unset
