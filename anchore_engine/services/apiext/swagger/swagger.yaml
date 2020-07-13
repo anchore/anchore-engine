@@ -1139,6 +1139,11 @@ paths:
         type: string
         description: "use specified existing tag to perform repo scan (default is 'latest')"
         required: false
+      - name: 'dryrun'
+        in: query
+        type: boolean
+        description: "flag to return tags in the repository without actually watching the repository, default is false"
+        required: false
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:

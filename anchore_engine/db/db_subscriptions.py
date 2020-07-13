@@ -5,29 +5,52 @@ from anchore_engine import db
 from anchore_engine.db import Subscription
 
 
-def add(userId, subscription_key, subscription_type, inobj, session=None):
-    if not session:
-        session = db.Session
+def _compute_subscription_id(userId, subscription_key, subscription_type):
+    return hashlib.md5('+'.join([userId, subscription_key, subscription_type]).encode('utf-8')).hexdigest()
 
+
+def _prep_payload(subscription_id, inobj):
     # prep the input object
     if not inobj:
         inobj = {}
 
-    subscription_id = hashlib.md5('+'.join([userId, subscription_key, subscription_type]).encode('utf-8')).hexdigest()
     inobj['subscription_id'] = subscription_id
 
     inobj.pop('userId', None)
     inobj.pop('last_updated', None)
     inobj.pop('created_at', None)
 
+    return inobj
+
+
+def _new_subscription_record(userId, subscription_id, subscription_key, subscription_type, inobj):
+    our_result = Subscription(subscription_id=subscription_id, userId=userId, subscription_key=subscription_key,
+                              subscription_type=subscription_type)
+    our_result.update(inobj)
+
+    return our_result
+
+
+def create_without_saving(userId, subscription_key, subscription_type, inobj):
+    subscription_id = _compute_subscription_id(userId, subscription_key, subscription_type)
+    inobj = _prep_payload(subscription_id, inobj)
+    our_result = _new_subscription_record(userId, subscription_id, subscription_key, subscription_type, inobj)
+
+    return our_result.to_dict()
+
+
+def add(userId, subscription_key, subscription_type, inobj, session=None):
+    if not session:
+        session = db.Session
+
+    subscription_id = _compute_subscription_id(userId, subscription_key, subscription_type)
+    inobj = _prep_payload(subscription_id, inobj)
+
     our_result = session.query(Subscription).filter_by(subscription_id=subscription_id, userId=userId,
                                                        subscription_key=subscription_key,
                                                        subscription_type=subscription_type).first()
     if not our_result:
-        our_result = Subscription(subscription_id=subscription_id, userId=userId, subscription_key=subscription_key,
-                                  subscription_type=subscription_type)
-
-        our_result.update(inobj)
+        our_result = _new_subscription_record(userId, subscription_id, subscription_key, subscription_type, inobj)
         session.add(our_result)
     else:
         our_result.update(inobj)

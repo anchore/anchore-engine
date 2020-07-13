@@ -122,6 +122,10 @@ def repo(dbsession, request_inputs, bodycontent={}):
     if params and 'lookuptag' in params and params['lookuptag']:
         lookuptag = str(params['lookuptag'])
 
+    dryrun = False
+    if params and 'dryrun' in params:
+        dryrun = params['dryrun']
+
     fulltag = regrepo + ":" + lookuptag
 
     try:
@@ -145,27 +149,39 @@ def repo(dbsession, request_inputs, bodycontent={}):
             try:
                 regrepo = image_info['registry']+"/"+image_info['repo']
 
-                dbfilter = {
-                    'subscription_type': 'repo_update',
-                    'subscription_key': regrepo
-                }
-                
-                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
-                if not subscription_records:
-                    rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe, 'lookuptag': lookuptag, 'tagcount': len(repotags)})}, session=dbsession)
-                    if not rc:
-                        raise Exception ("adding required subscription failed")
-
+                if dryrun:
+                    subscription_records = [
+                        db_subscriptions.create_without_saving(
+                            userId=userId,
+                            subscription_key=regrepo,
+                            subscription_type='repo_update',
+                            inobj={'active': False, 'subscription_value': json.dumps(
+                                {'autosubscribe': autosubscribe, 'lookuptag': lookuptag, 'tagcount': len(repotags)})}
+                        )
+                    ]
                 else:
-                    # update new metadata
-                    subscription_record = subscription_records[0]
-                    subscription_value = json.loads(subscription_record['subscription_value'])
-                    subscription_value['autosubscribe'] = autosubscribe
-                    subscription_value['lookuptag'] = lookuptag
-                    rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+                    dbfilter = {
+                        'subscription_type': 'repo_update',
+                        'subscription_key': regrepo
+                    }
 
-                subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
+                    if not subscription_records:
+                        rc = db_subscriptions.add(userId, regrepo, 'repo_update', {'active': True, 'subscription_value': json.dumps({'autosubscribe': autosubscribe, 'lookuptag': lookuptag, 'tagcount': len(repotags)})}, session=dbsession)
+                        if not rc:
+                            raise Exception ("adding required subscription failed")
+
+                    else:
+                        # update new metadata
+                        subscription_record = subscription_records[0]
+                        subscription_value = json.loads(subscription_record['subscription_value'])
+                        subscription_value['autosubscribe'] = autosubscribe
+                        subscription_value['lookuptag'] = lookuptag
+                        rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+
+                    subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             except Exception as err:
+                logger.exception("could not add the required subscription to anchore-engine")
                 httpcode = 500
                 raise Exception("could not add the required subscription to anchore-engine")
                 

@@ -80,6 +80,11 @@ paths:
         type: string
         description: "specify a tag to use for scanning a repo (default is 'latest')"
         required: false
+      - name: 'dryrun'
+        in: query
+        type: boolean
+        description: "flag to return tags in the repository without actually watching the repository, default is false"
+        required: false
       responses:
         200:
           description: "success"
