@@ -498,9 +498,9 @@ def get_content(request_inputs, content_type, doformat=False):
 
 # repositories
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def add_repository(repository=None, autosubscribe=False):
+def add_repository(repository=None, autosubscribe=False, dryrun=False):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'autosubscribe':autosubscribe, 'repository':repository})
+        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'autosubscribe':autosubscribe, 'repository':repository, 'dryrun':dryrun})
         return_object, httpcode = repositories(request_inputs)
     except Exception as err:
         httpcode = 500
@@ -528,13 +528,17 @@ def repositories(request_inputs):
     if params and 'lookuptag' in params:
         lookuptag = params['lookuptag']
 
+    dryrun = False
+    if params and 'dryrun' in params:
+        dryrun = params['dryrun']
+
     try:
         if method == 'POST':
             logger.debug("handling POST: ")
             try:
                 client = internal_client_for(CatalogClient, request_inputs['userId'])
                 return_object = []
-                repo_records = client.add_repo(regrepo=input_repo, autosubscribe=autosubscribe, lookuptag=lookuptag)
+                repo_records = client.add_repo(regrepo=input_repo, autosubscribe=autosubscribe, lookuptag=lookuptag, dryrun=dryrun)
                 for repo_record in repo_records:
                     return_object.append(repo_record)
                 httpcode = 200

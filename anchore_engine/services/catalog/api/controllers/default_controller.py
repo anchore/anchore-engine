@@ -31,9 +31,9 @@ def status():
     return return_object, httpcode
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, bodycontent={}):
+def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, dryrun=False, bodycontent={}):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'regrepo': regrepo, 'autosubscribe': autosubscribe, 'lookuptag': lookuptag, 'dryrun': dryrun})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.repo(session, request_inputs, bodycontent=bodycontent)
     except Exception as err:
