@@ -1995,7 +1995,6 @@ def read_plainfile_tostr(file):
 
     with open(file, 'r') as FH:
         ret = FH.read()
-        #ret = FH.read().decode('utf8')
 
     return ret
 
@@ -2014,6 +2013,14 @@ def write_kvfile_fromlist(file, list, delim=' '):
             OFH.write(thestr)
 
 def write_kvfile_fromdict(file, indict):
+    """
+    Writes a file with each line as 'key value' using a dict as input.
+    Expects the value of each key in the dict to be a string
+
+    :param file:
+    :param indict:
+    :return:
+    """
     dict = indict.copy()
 
     with open(file, 'w') as OFH:
@@ -2021,6 +2028,9 @@ def write_kvfile_fromdict(file, indict):
             if not dict[k]:
                 dict[k] = "none"
             cleank = re.sub(r"\s+", "____", k)
+            if type(dict[k]) != str:
+                raise TypeError('Expected value of key {} to be a string, found {}'.format(k, type(dict[k])))
+
             thestr = ' '.join([cleank, dict[k], '\n'])
             #thestr = thestr.encode('utf8')
             OFH.write(thestr)

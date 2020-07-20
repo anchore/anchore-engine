@@ -175,6 +175,93 @@ def extract_dockerfile_content(image_data):
     return dockerfile_content, dockerfile_mode
 
 
+def extract_files_content(image_data):
+    """
+    Extract analyzed files content
+
+    :param image_data:
+    :return:
+    """
+    try:
+        ret = {}
+        fcsums = {}
+        if 'files.sha256sums' in image_data['imagedata']['analysis_report']['file_checksums']:
+            adata = image_data['imagedata']['analysis_report']['file_checksums']['files.sha256sums']['base']
+            for k in list(adata.keys()):
+                fcsums[k] = adata[k]
+
+        if 'files.allinfo' in image_data['imagedata']['analysis_report']['file_list']:
+            adata = image_data['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
+            for k in list(adata.keys()):
+                avalue = json.loads(adata[k])
+                if k in fcsums:
+                    avalue['sha256'] = fcsums[k]
+                ret[k] = avalue
+        return ret
+    except Exception as err:
+        raise Exception("could not extract/parse content info - exception: " + str(err))
+
+
+def extract_os_content(image_data):
+    ret = {}
+    if 'pkgs.allinfo' in image_data['imagedata']['analysis_report']['package_list']:
+        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
+        for k in list(adata.keys()):
+            avalue = json.loads(adata[k])
+            ret[k] = avalue
+    return ret
+
+
+def extract_npm_content(image_data):
+    ret = {}
+    if 'pkgs.npms' in image_data['imagedata']['analysis_report']['package_list']:
+        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
+        for k in list(adata.keys()):
+            avalue = json.loads(adata[k])
+            ret[k] = avalue
+    return ret
+
+
+def extract_gem_content(image_data):
+    ret = {}
+    if 'pkgs.gems' in image_data['imagedata']['analysis_report']['package_list']:
+        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
+        for k in list(adata.keys()):
+            avalue = json.loads(adata[k])
+            ret[k] = avalue
+    return ret
+
+
+def extract_python_content(image_data):
+    ret = {}
+    if 'pkgs.python' in image_data['imagedata']['analysis_report']['package_list']:
+        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
+        for k in list(adata.keys()):
+            avalue = json.loads(adata[k])
+            ret[k] = avalue
+    return ret
+
+
+def extract_java_content(image_data):
+    ret = {}
+    if 'pkgs.java' in image_data['imagedata']['analysis_report']['package_list']:
+        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.java']['base']
+        for k in list(adata.keys()):
+            avalue = json.loads(adata[k])
+            ret[k] = avalue
+    return ret
+
+
+def extract_pkg_content(image_data, content_type):
+    # catchall for additional pkg types
+    ret = {}
+    adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
+    for k in list(adata.keys()):
+        avalue = json.loads(adata[k])
+        ret[k] = avalue
+    return ret
+
+
 def extract_analyzer_content(image_data, content_type, manifest=None):
     ret = {}
     try:
@@ -182,83 +269,22 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
         imageId = idata['imageId']
 
         if content_type == 'files':
-            try:
-                fcsums = {}
-                if 'files.sha256sums' in idata['imagedata']['analysis_report']['file_checksums']:
-                    adata = idata['imagedata']['analysis_report']['file_checksums']['files.sha256sums']['base']
-                    for k in list(adata.keys()):
-                        fcsums[k] = adata[k]
-
-                if 'files.allinfo' in idata['imagedata']['analysis_report']['file_list']:
-                    adata = idata['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        if k in fcsums:
-                            avalue['sha256'] = fcsums[k]
-                        ret[k] = avalue
-
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_files_content(idata)
         elif content_type == 'os':
-            try:
-                if 'pkgs.allinfo' in idata['imagedata']['analysis_report']['package_list']:
-                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_os_content(idata)
         elif content_type == 'npm':
-            try:
-                if 'pkgs.npms' in idata['imagedata']['analysis_report']['package_list']:
-                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_npm_content(idata)
         elif content_type == 'gem':
-            try:
-                if 'pkgs.gems' in idata['imagedata']['analysis_report']['package_list']:
-                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_gem_content(idata)
         elif content_type == 'python':
-            try:
-                if 'pkgs.python' in idata['imagedata']['analysis_report']['package_list']:
-                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_python_content(idata)
         elif content_type == 'java':
-            try:
-                if 'pkgs.java' in idata['imagedata']['analysis_report']['package_list']:
-                    adata = idata['imagedata']['analysis_report']['package_list']['pkgs.java']['base']
-                    for k in list(adata.keys()):
-                        avalue = json.loads(adata[k])
-                        ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            return extract_java_content(idata)
         elif 'pkgs.{}'.format(content_type) in idata['imagedata']['analysis_report']['package_list']:
-            # catchall for additional pkg types
-            try:
-                adata = idata['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
-                for k in list(adata.keys()):
-                    avalue = json.loads(adata[k])
-                    ret[k] = avalue
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))            
+            return extract_pkg_content(image_data, content_type)
         elif content_type == 'metadata':
-            try:
-                if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
-                    ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
-            except Exception as err:
-                raise Exception("could not extract/parse content info - exception: " + str(err))
+            if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
+                ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
         elif content_type == 'manifest':
             ret = {}
             try:
@@ -281,7 +307,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
                 ret = ""
 
     except Exception as err:
-        logger.warn("exception: " + str(err))
+        logger.error("could not extract/parse content info - exception: " + str(err))
         raise err
 
     return ret
