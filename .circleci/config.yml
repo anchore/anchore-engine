@@ -8,8 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  RELEASE_BRANCHES: 0.2 0.3 0.4 0.5 0.6 0.7
-  VERBOSE: true
+  LATEST_RELEASE_MAJOR_VERSION: 0.7
   TERM: xterm
 
 .attach_workspace: &attach_workspace
@@ -58,7 +57,8 @@
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1.6.5
+  anchore: anchore/anchore-engine@1
+
 commands:
   run_tests:
     description: |
@@ -244,12 +244,8 @@ workflows:
 
   rc_image_workflow:
     jobs:
-      - lint:
-          filters: *filter_rc_tags
       - build:
           filters: *filter_rc_tags
-          requires:
-            - lint
       - e2e_tests:
           name: rc_e2e_tests
           context: e2e-testing
@@ -287,6 +283,13 @@ workflows:
       - push_image:
           name: push_prod_image
           make_job: push-prod
+          context: dockerhub-prod
+          filters: *filter_semver_tags
+          requires:
+            - hold_for_approval
+      - push_image:
+          name: push_redhat_image
+          make_job: push-redhat
           context: dockerhub-prod
           filters: *filter_semver_tags
           requires:
