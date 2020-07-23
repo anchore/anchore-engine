@@ -1388,7 +1388,7 @@ class ImagePackage(Base):
                     likematch = '%java%'
                     do_langscan = True
 
-        elif self.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python', 'nuget', 'dotnet']:
+        elif self.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python', 'nuget', 'dotnet', 'binary']:
             pkgkey = self.name
             pkgversion = self.version
             if self.pkg_type in ['ruby', 'gem']:
@@ -1402,6 +1402,9 @@ class ImagePackage(Base):
                 do_langscan = True
             elif self.pkg_type in ['nuget', 'dotnet']:
                 likematch = '%nuget%'
+                do_langscan = True
+            elif self.pkg_type in ['binary']:
+                likematch = '%binary%'
                 do_langscan = True
         else:
             do_osscan = True
