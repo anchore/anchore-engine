@@ -1278,6 +1278,68 @@ def handle_archive_tasks(*args, **kwargs):
     return True
 
 
+def handle_image_gc(*args, **kwargs):
+    """
+    Periodic handler for cleaning up images that are marked for deletion, can be extended to cover other states in the future
+    Serializes image deletion across the board to minimize the load on database
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    watcher = str(kwargs['mythread']['taskType'])
+    handler_success = True
+
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
+    try:
+        # iterate over all images marked for deletion
+        with db.session_scope() as dbsession:
+            dbfilter = {'image_status': taskstate.queued_state('image_status')}
+            queued_images = db_catalog_image.get_all_by_filter(session=dbsession, **dbfilter)
+
+        for to_be_deleted in queued_images:
+            try:
+                account = to_be_deleted['userId']
+                digest = to_be_deleted['imageDigest']
+
+                # state transition to deleting before doing anything for other processes keying off the state
+                logger.debug('Transitioning image status to deleting, account: {}, digest: {}'.format(account, digest))
+                with db.session_scope() as dbsession:
+                    db_catalog_image.update_image_status(account, digest, taskstate.working_state('image_status'), dbsession)
+
+                # delete the image for reals
+                logger.debug('Garbage collecting image, account: {}, digest: {}'.format(account, digest))
+                with db.session_scope() as dbsession:
+                    # set force to true since all deletion checks should be cleared at this point
+                    retobj, httpcode = catalog_impl.do_image_delete(account, to_be_deleted, dbsession, force=True)
+                    if httpcode != 200:
+                        logger.warn('Image deletion failed with error: {}'.format(retobj))
+
+                # not necessary to state transition to deleted as the records should have gone
+            except:
+                logger.exception('Error deleting image, may retry on next cycle')
+                #TODO state transition to faulty to avoid further usage?
+    except Exception as err:
+        logger.warn("failure in handler - exception: " + str(err))
+
+    logger.debug("FIRING DONE: " + str(watcher))
+    try:
+        kwargs['mythread']['last_return'] = handler_success
+    except:
+        pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
+                                                      function=watcher, status="success")
+    else:
+        anchore_engine.subsys.metrics.summary_observe('anchore_monitor_runtime_seconds', time.time() - timer,
+                                                      function=watcher, status="fail")
+
+    return True
+
+
 click = 0
 running = False
 last_run = 0
@@ -1581,6 +1643,10 @@ watchers = {
                        'last_return': False, 'initialized': False},
     'archive_tasks': {'handler': handle_archive_tasks, 'task_lease_id': 'archive_transitions', 'taskType': 'handle_archive_tasks', 'args': [], 'cycle_timer': 43200,
                            'min_cycle_timer': 60, 'max_cycle_timer': 86400 * 5, 'last_queued': 0, 'last_return': False,
+                           'initialized': False},
+    'image_gc': {'handler': handle_image_gc, 'task_lease_id': 'image_gc',
+                           'taskType': 'handle_image_gc', 'args': [], 'cycle_timer': 60,
+                           'min_cycle_timer': 60, 'max_cycle_timer': 86400, 'last_queued': 0, 'last_return': False,
                            'initialized': False},
 }
 
