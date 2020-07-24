@@ -89,13 +89,20 @@ def update_record_image_detail(input_image_record, updated_image_detail, session
 
     return image_record
 
+
+def _lookup_image(account_id, image_digest, session):
+    return session.query(CatalogImage).filter(
+        or_(CatalogImage.imageDigest == image_digest, CatalogImage.parentDigest == image_digest),
+        CatalogImage.userId == account_id).order_by(desc(CatalogImage.created_at)).first()
+
+
 def get(imageDigest, userId, session=None):
     if not session:
         session = db.Session
 
     ret = {}
 
-    result = session.query(CatalogImage).filter(or_(CatalogImage.imageDigest==imageDigest, CatalogImage.parentDigest==imageDigest), CatalogImage.userId==userId).order_by(desc(CatalogImage.created_at)).first()
+    result = _lookup_image(userId, imageDigest, session)
     if result:
         dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         ret = dbobj
@@ -105,6 +112,18 @@ def get(imageDigest, userId, session=None):
             ret['image_detail'] = imgobj
 
     return ret
+
+
+def update_image_status(account_id, image_digest, new_image_status, session=None):
+    if not session:
+        session = db.Session
+
+    result = _lookup_image(account_id, image_digest, session)
+    if result and result.image_status != new_image_status:
+        result.image_status = new_image_status
+
+    return result
+
 
 def get_docker_created_at(record):
     latest_ts = 0
@@ -154,11 +173,33 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
     return ret
 
 def get_all_tagsummary(userId, session=None):
-    
-    results = session.query(CatalogImage.imageDigest, CatalogImage.parentDigest, CatalogImageDocker.registry, CatalogImageDocker.repo, CatalogImageDocker.tag, CatalogImage.analysis_status, CatalogImageDocker.created_at, CatalogImageDocker.imageId, CatalogImage.analyzed_at, CatalogImageDocker.tag_detected_at).filter(and_(CatalogImage.userId == userId, CatalogImage.imageDigest == CatalogImageDocker.imageDigest, CatalogImageDocker.userId == userId))
-    def mymap(x):
-        return {'imageDigest': x[0], 'parentDigest': x[1], 'fulltag': x[2]+"/"+x[3]+":"+x[4], 'analysis_status': x[5], 'created_at': x[6], 'imageId': x[7], 'analyzed_at': x[8], 'tag_detected_at': x[9]}
-    ret = list(map(mymap, list(results)))
+    results = session.query(CatalogImage.imageDigest,
+                            CatalogImage.parentDigest,
+                            CatalogImageDocker.registry,
+                            CatalogImageDocker.repo,
+                            CatalogImageDocker.tag,
+                            CatalogImage.analysis_status,
+                            CatalogImageDocker.created_at,
+                            CatalogImageDocker.imageId,
+                            CatalogImage.analyzed_at,
+                            CatalogImageDocker.tag_detected_at,
+                            CatalogImage.image_status).filter(and_(CatalogImage.userId == userId,
+                                                                   CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
+                                                                   CatalogImageDocker.userId == userId))
+
+    ret = []
+    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in results:
+        ret.append({
+            'imageDigest': idig,
+            'parentDigest': pdig,
+            'fulltag': reg + "/" + repo + ":" + tag,
+            'analysis_status': astat,
+            'created_at': cat,
+            'imageId': iid,
+            'analyzed_at': anat,
+            'tag_detected_at': dat,
+            'image_status': istat
+        })
 
     return ret
 
@@ -247,6 +288,26 @@ def get_byfilter(userId, session=None, **kwargs):
             ret.append(dbobj)
 
     return ret
+
+
+def get_all_by_filter(session=None, **kwargs):
+    if not session:
+        session = db.Session
+
+    ret = []
+
+    query = session.query(CatalogImage).filter_by(**kwargs).order_by(desc(CatalogImage.created_at))
+    for result in query:
+        dbobj = dict((key, value) for key, value in vars(result).items() if not key.startswith('_'))
+        imageDigest = dbobj['imageDigest']
+        userId = dbobj['userId']
+        if dbobj['image_type'] == 'docker':
+            imgobj = db.db_catalog_image_docker.get_alltags(imageDigest, userId, session=session)
+            dbobj['image_detail'] = imgobj
+        ret.append(dbobj)
+
+    return ret
+
 
 def delete(imageDigest, userId, session=None):
     if not session:

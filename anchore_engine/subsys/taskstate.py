@@ -30,12 +30,14 @@ state_graphs = {
     'image_status': {
         'base_state': 'active',
         'fault_state': 'inactive',
-        'queued_state': 'active',
-        'working_state': 'active',
+        'queued_state': 'delete_queued',
+        'working_state': 'deleting',
         'complete_state': 'active',
         'transitions': {
             'init': 'active',
-            'active':'active'
+            'active': 'delete_queued',
+            'delete_queued': 'deleting',
+            'deleting': 'deleted'
         }
     },
     'service_status': {
