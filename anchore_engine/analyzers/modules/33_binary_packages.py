@@ -12,8 +12,14 @@ from collections import OrderedDict
 import anchore_engine.analyzers.utils, anchore_engine.utils
 
 def get_python_evidence(tfl, member, memberhash, evidence):
+    global binary_package_el
+    
     fullpath = "/{}".format(member.name)    
     filename = os.path.basename(fullpath)
+
+    el = {}
+    el.update(binary_package_el)    
+    
     patt_bin = re.match("^python([0-9]+\.[0-9]+)$", filename)
     patt_lib = re.match("^libpython([0-9]+\.[0-9]+).so.*$", filename)
     if (patt_bin or patt_lib) and member.isreg():
@@ -31,7 +37,10 @@ def get_python_evidence(tfl, member, memberhash, evidence):
                     if patt and f_vers:
                         b_vers = "{}.{}".format(f_vers, anchore_engine.utils.ensure_str(patt.group(1)))
                         if b_vers.startswith(f_vers):
-                            evidence['python']['binary'].append( (b_vers, fullpath) )
+                            el['name'] = 'python'
+                            el['version'] = b_vers
+                            el['location'] = fullpath
+                            evidence['python']['binary'].append( el )
                             break
                 except Exception as err:
                     raise err                    
@@ -44,12 +53,21 @@ def get_python_evidence(tfl, member, memberhash, evidence):
                 patt = re.match(b".*#define +PY_VERSION +\"*([0-9\.\-_a-zA-Z]+)\"*", line)
                 if patt:
                     h_vers = anchore_engine.utils.ensure_str(patt.group(1))
-                    evidence['python']['devel'].append((h_vers, fullpath))
+                    el['name'] = 'python'
+                    el['version'] = h_vers
+                    el['location'] = fullpath
+                    evidence['python']['devel'].append(el)
                     break
 
 def get_golang_evidence(tfl, member, memberhash, evidence):
+    global binary_package_el
+    
     fullpath = "/{}".format(member.name)
     filename = os.path.basename(fullpath)
+
+    el = {}
+    el.update(binary_package_el)
+    
     if filename in ['go'] and member.isreg():
         with tfl.extractfile(member) as FH:
             for line in FH.readlines():
@@ -59,7 +77,10 @@ def get_golang_evidence(tfl, member, memberhash, evidence):
                     patt = re.match(anchore_engine.utils.ensure_bytes(the_re), subline)
                     if patt:
                         vers = anchore_engine.utils.ensure_str(patt.group(1))
-                        evidence['go']['binary'].append( (vers, fullpath) )
+                        el['name'] = 'go'
+                        el['version'] = vers
+                        el['location'] = fullpath
+                        evidence['go']['binary'].append( el )
                         break
                 except Exception as err:
                     raise err                    
@@ -73,9 +94,34 @@ def get_golang_evidence(tfl, member, memberhash, evidence):
                     final_loc = fullpath
                     if memberhash.get(os.path.join(os.path.dirname(member.name), 'bin', 'go'), None):
                         final_loc = os.path.join("/", os.path.dirname(member.name), 'bin', 'go')
-                    evidence['go']['devel'].append( (vers, final_loc) )
+
+                    el['name'] = 'go'
+                    el['version'] = vers
+                    el['location'] = final_loc
+                    evidence['go']['devel'].append( el )
                     break    
 
+def get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
+    global binary_package_el
+
+    fullpath = "/{}".format(member.name)
+    filename = os.path.basename(fullpath)
+
+    if filename == "busybox" and (member.isreg() or member.islnk()):
+        # Perform any specific checks using prior metadata
+        if distrodict.get('flavor', "") == 'BUSYB':
+            patt = re.match(".*([0-9]+\.[0-9]+\.[0-9]+).*", distrodict.get('fullversion', ""))
+            if patt:
+                version = anchore_engine.utils.ensure_str(patt.group(1))
+                el = {}
+                el.update(binary_package_el)
+
+                el['name'] = 'busybox'
+                el['version'] = version
+                el['location'] = fullpath
+                
+                evidence['busybox']['binary'].append(el)
+                
 analyzer_name = "package_list"
 
 try:
@@ -92,7 +138,16 @@ squashtar = os.path.join(unpackdir, "squashed.tar")
 
 resultlist = {}
 version_found_map = {}
-
+binary_package_el = {
+    'name': None,
+    'version': None,
+    'location': None,
+    'type': 'binary',
+    'files': [],
+    'license': 'N/A',
+    'origin': 'N/A',
+    'metadata': json.dumps({})
+}
 try:
     allfiles = {}
     if os.path.exists(unpackdir + "/anchore_allfiles.json"):
@@ -106,17 +161,18 @@ try:
     # read in previous analyzer output for helping to increase accuracy of findings
     fname = os.path.join(outputdir, 'pkgfiles.all')
     pkgfilesall = anchore_engine.analyzers.utils.read_kvfile_todict(fname)
-    
-    evidence = OrderedDict()
 
-    evidence['python'] = OrderedDict()
-    evidence['python']['binary'] = []
-    evidence['python']['devel'] = []    
+    meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir)
+    distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])    
     
-    evidence['go'] = OrderedDict()
-    evidence['go']['binary'] = []
-    evidence['go']['devel'] = []        
-    
+    # set up ordered dictionary structure for the runtimes and evidence types
+    evidence = OrderedDict()
+    for runtime in ['python', 'go', 'busybox']:
+        evidence[runtime] = OrderedDict()
+        for etype in ['binary', 'devel']:
+            evidence[runtime][etype] = []
+            
+    # Perform a per file routine to evaluate files for gathering binary package version evidence
     with tarfile.open(os.path.join(unpackdir, "squashed.tar"), mode='r', format=tarfile.PAX_FORMAT) as tfl:
         alltnames = tfl.getnames()
         alltfiles = {}
@@ -135,28 +191,31 @@ try:
             except Exception as err:
                 print ("WARN: caught exception evaluating file ({}) for golang runtime evidence: {}".format(member.name, str(err)))
 
-        resultlist = {}
-        for runtime in evidence.keys(): #['python', 'go']:
-            for e in evidence[runtime].keys(): #['binary', 'devel']:
-                for t in evidence[runtime][e]:
-                    version, location = t
-                    if location in pkgfilesall:
-                        print ("INFO: Skipping evidence {} - file is owned by OS package".format(location))
-                    else:
-                        key = "{}-{}".format(runtime, version)
-                        if key not in version_found_map:
-                            result = {
-                                'name': runtime,
-                                'version': version,
-                                'location': location,
-                                'type': 'binary',
-                                'files': [],
-                                'license': 'N/A',
-                                'origin': 'N/A',
-                                'metadata': json.dumps({"evidence_type": e})
-                            }
-                            resultlist[location] = json.dumps(result)
-                            version_found_map[key] = True
+            try:
+                get_busybox_evidence(tfl, member, memberhash, distrodict, evidence)
+            except Exception as err:
+                print ("WARN: caught exception evaluating file ({}) for busybox runtime evidence: {}".format(member.name, str(err)))                
+                
+
+    resultlist = {}
+    for runtime in evidence.keys(): #['python', 'go']:
+        for e in evidence[runtime].keys(): #['binary', 'devel']:
+            for t in evidence[runtime][e]:
+
+                version = t.get('version')
+                location = t.get('location')
+                
+                if location in pkgfilesall:
+                    print ("INFO: Skipping evidence {} - file is owned by OS package".format(location))
+                else:
+                    key = "{}-{}".format(runtime, version)
+                    if key not in version_found_map:
+                        result = {}
+                        result.update(binary_package_el)
+                        result.update(t)
+                        result['metadata'] = json.dumps({"evidence_type": e})
+                        resultlist[location] = json.dumps(result)
+                        version_found_map[key] = True
 except Exception as err:
     import traceback
     traceback.print_exc()
@@ -165,5 +224,6 @@ except Exception as err:
 if resultlist:
     ofile = os.path.join(outputdir, 'pkgs.binary')
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
+    #print ("RESULT: {}".format(resultlist))
 
 sys.exit(0)
