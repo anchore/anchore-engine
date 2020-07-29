@@ -1614,8 +1614,8 @@ def _queue_image_for_deletion(account_id, digest, db_session, force=False):
             else:
                 can_delete, message, image_ids, image_fulltags = _image_deletion_checks_and_prep(account_id, image_record, db_session, force)
                 if can_delete:  # queue the image for deletion
-                    db_catalog_image.update_image_status(account_id, digest, taskstate.queued_state('image_status'), db_session)
-                    return_object = DeleteImageResponse(digest, 'delete_queued', None)
+                    db_catalog_image.update_image_status(account_id, digest, taskstate.queued_state('image_status'), session=db_session)
+                    return_object = DeleteImageResponse(digest, taskstate.queued_state('image_status'), None)
                 else:
                     return_object = DeleteImageResponse(digest, 'delete_failed', message)
         else:

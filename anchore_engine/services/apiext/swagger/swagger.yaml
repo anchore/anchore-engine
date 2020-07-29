@@ -2916,7 +2916,7 @@ definitions:
         description: Current status of the image deletion
         enum:
         - not_found
-        - delete_queued
+        - deleting
         - delete_failed
       detail:
         type: string
