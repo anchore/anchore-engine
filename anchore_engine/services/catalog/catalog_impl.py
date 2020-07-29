@@ -455,22 +455,7 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
                 raise Exception("image not found in DB")
 
         elif method == 'DELETE':
-            try:
-                image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
-                if image_record:
-                    
-                    return_object, httpcode = do_image_delete(userId, image_record, dbsession, force=params['force'])
-                    if httpcode not in list(range(200,299)):
-                        raise Exception(return_object)
-
-                else:
-                    return_object = True
-                    httpcode = 200
-
-            except Exception as err:
-                #httpcode = 500
-                raise err
-            
+            return_object, httpcode = _queue_image_for_deletion(userId, imageDigest, dbsession, force=params['force'])
         elif method == 'PUT':
             # update an image
 
@@ -496,38 +481,6 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
 
     return return_object, httpcode
 
-
-def delete_images_async(account_id, db_session, image_digests, force=False):
-    return_object = []
-    httpcode = 500
-
-    try:
-        for digest in image_digests:
-            ret = None
-            try:
-                image_record = db_catalog_image.get(digest, account_id, session=db_session)
-                if image_record:
-                    can_delete, message, image_ids, image_fulltags = _delete_image_prep(account_id, image_record, db_session, force=force)
-                    if can_delete:
-                        ret = DeleteImageResponse(digest, 'deleting', None)
-                        # delete the image in a different thread
-                        ImageDeleterThread(account_id, image_record, image_ids, image_fulltags).start()
-                    else:
-                        ret = DeleteImageResponse(digest, 'delete_failed', message)
-                else:
-                    ret = DeleteImageResponse(digest, 'not_found', 'No image found with the digest')
-            except Exception as e:
-                ret = DeleteImageResponse(digest, 'delete_failed', str(e))
-            finally:
-                if ret:
-                    return_object.append(ret._asdict())
-
-            httpcode = 200
-    except Exception as err:
-        httpcode = 500
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-
-    return return_object, httpcode
 
 #def image_import(dbsession, request_inputs, bodycontent=None):
 #    user_auth = request_inputs['auth']
@@ -1563,7 +1516,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
     return ret
 
 
-def _delete_image_prep(userId, image_record, dbsession, force=False):
+def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False):
 
     dodelete = False
     msgdelete = "could not make it though delete checks"
@@ -1618,19 +1571,6 @@ def _delete_image_prep(userId, image_record, dbsession, force=False):
     return dodelete, msgdelete, image_ids, image_fulltags
 
 
-class ImageDeleterThread(threading.Thread):
-    def __init__(self, userId, image_record, image_ids, image_fulltags):
-        super(ImageDeleterThread, self).__init__()
-        self.userId = userId
-        self.image_record = image_record
-        self.image_ids = image_ids
-        self.image_fulltags = image_fulltags
-
-    def run(self) -> None:
-        with db.session_scope() as session:
-            _delete_image_for_real(self.userId, self.image_record, session, self.image_ids, self.image_fulltags)
-
-
 def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
     imageDigest = image_record['imageDigest']
@@ -1665,13 +1605,58 @@ def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_ful
         raise
 
 
+def _queue_image_for_deletion(account_id, digest, db_session, force=False):
+    try:
+        image_record = db_catalog_image.get(digest, account_id, db_session)
+        if image_record:
+            if image_record.get('image_status', None) == taskstate.queued_state('image_status'):  # image already queued for deletion, nothing to do here
+                return_object = DeleteImageResponse(digest, taskstate.queued_state('image_status'), None)
+            else:
+                can_delete, message, image_ids, image_fulltags = _image_deletion_checks_and_prep(account_id, image_record, db_session, force)
+                if can_delete:  # queue the image for deletion
+                    db_catalog_image.update_image_status(account_id, digest, taskstate.queued_state('image_status'), db_session)
+                    return_object = DeleteImageResponse(digest, 'delete_queued', None)
+                else:
+                    return_object = DeleteImageResponse(digest, 'delete_failed', message)
+        else:
+            return_object = DeleteImageResponse(digest, 'not_found', 'No image found with the digest')
+
+        httpcode = 200
+    except Exception as e:
+        return_object = DeleteImageResponse(digest, 'delete_failed', str(e))
+        httpcode = 500
+
+    return return_object._asdict(), httpcode
+
+
+def delete_images_async(account_id, db_session, image_digests, force=False):
+    return_object = []
+    httpcode = 500
+
+    try:
+        for digest in image_digests:
+            ret = None
+            try:
+                ret, _ = _queue_image_for_deletion(account_id, digest, db_session, force)
+            finally:
+                if ret:
+                    return_object.append(ret)
+
+        httpcode = 200
+    except Exception as err:
+        httpcode = 500
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+
+    return return_object, httpcode
+
+
 def do_image_delete(userId, image_record, dbsession, force=False):
     return_object = False
     httpcode = 500
 
     try:
         if True:
-            dodelete, msgdelete, image_ids, image_fulltags = _delete_image_prep(userId, image_record, dbsession, force)
+            dodelete, msgdelete, image_ids, image_fulltags = _image_deletion_checks_and_prep(userId, image_record, dbsession, force)
 
         if dodelete:
             _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags)

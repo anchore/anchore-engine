@@ -528,6 +528,8 @@ paths:
       responses:
         200:
           description: Image deletion success
+          schema:
+            $ref: "#/definitions/DeleteImagesResponse"
   /images/by_id/{imageId}:
     get:
       tags:
@@ -2914,7 +2916,7 @@ definitions:
         description: Current status of the image deletion
         enum:
         - not_found
-        - deleting
+        - delete_queued
         - delete_failed
       detail:
         type: string
@@ -3077,6 +3079,8 @@ definitions:
         type: integer
       tag_detected_at:
         type: integer
+      image_status:
+        type: string
   AnchoreImage:
     description: A unique image in the engine. May have multiple tags or references. Unique to an image content across registries or repositories.
     type: object
