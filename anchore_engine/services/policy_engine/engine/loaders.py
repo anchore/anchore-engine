@@ -1209,5 +1209,45 @@ class ImageLoader(object):
                                 cpe.image_id = containing_image.id
 
                                 cpes.append(cpe)
+                                
+        bin_json_raw = analysis_json.get('package_list', {}).get('pkgs.binary', {}).get('base')
+        if bin_json_raw:
+            for path, bin_str in list(bin_json_raw.items()):
+                bin_json = json.loads(bin_str)
+                #guessed_names = self._fuzzy_npm(npm_json['name'])
+                #guessed_versions = npm_json['versions']]
+                guessed_names = [bin_json['name']]
+                guessed_versions = [bin_json['version']]            
+                for n in guessed_names:
+                    for v in guessed_versions:
+                        rawcpe = "cpe:/a:-:{}:{}:-:".format(n, v)
 
+                        toks = rawcpe.split(":")
+                        final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                        for i in range(1, len(final_cpe)):
+                            try:
+                                if toks[i]:
+                                    final_cpe[i] = toks[i]
+                                else:
+                                    final_cpe[i] = '-'
+                            except:
+                                final_cpe[i] = '-'
+                        cpekey = ':'.join(final_cpe + [path])
+
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
+
+                            cpe = ImageCpe()
+                            cpe.pkg_type = "binary"
+                            cpe.pkg_path = path
+                            cpe.cpetype = final_cpe[1]
+                            cpe.vendor = final_cpe[2]
+                            cpe.name = final_cpe[3]
+                            cpe.version = final_cpe[4]
+                            cpe.update = final_cpe[5]
+                            cpe.meta = final_cpe[6]
+                            cpe.image_user_id = containing_image.user_id
+                            cpe.image_id = containing_image.id
+
+                            cpes.append(cpe)
         return cpes
