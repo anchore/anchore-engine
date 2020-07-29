@@ -25,6 +25,9 @@ outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 squashtar = os.path.join(unpackdir, "squashed.tar")
 
+# known modules that generate false positives since they are part of core Python (2) runtime, for which vulnerabilities are handled separately
+omit_pymods = ['Python']
+
 resultlist = {}
 try:
     allfiles = {}
@@ -45,54 +48,57 @@ try:
             distributions = pkg_resources.find_distributions(candidate)
             for distribution in distributions:
                 el = {}
-                try:
-                    el['name'] = distribution.project_name
-                    el['version'] = distribution.version
-                    el['type'] = 'python'
-
-                    #prefix = '/'.join([unpackdir, 'rootfs'])
-                    el['location'] = f #re.sub("^/*"+prefix+"/*", "/", candidate)
-
-                    # extract file info if available
-                    el['files'] = []
+                if distribution.project_name in omit_pymods:
+                    print ("INFO: skipping module ({}) as it is a member of omit list".format(distribution.project_name))
+                else:
                     try:
-                        record = distribution.get_metadata('RECORD')
-                        for line in record.splitlines():
-                            pfile, other = line.split(",", 1)
-                            el['files'].append('/'.join([el['location'], pfile]))
-                    except:
-                        pass
+                        el['name'] = distribution.project_name
+                        el['version'] = distribution.version
+                        el['type'] = 'python'
 
-                    # extract metadata if available
-                    el['license'] = 'N/A'
-                    el['metadata'] = 'N/A'
-                    el['origin'] = 'N/A'
-                    try:
-                        el['metadata'] = distribution.get_metadata(distribution.PKG_INFO)
-                        for line in el['metadata'].splitlines():
-                            k = v = None
-                            try:
-                                k, v = line.split(": ", 1)
-                            except:
-                                pass
-                            if k and v:
-                                if k == 'License':
-                                    el['license'] = v
-                                elif k == 'Author':
-                                    author = v
-                                elif k == 'Author-email':
-                                    author_email = v
+                        #prefix = '/'.join([unpackdir, 'rootfs'])
+                        el['location'] = f #re.sub("^/*"+prefix+"/*", "/", candidate)
+
+                        # extract file info if available
+                        el['files'] = []
                         try:
-                            el['origin'] = author + " <" + author_email +">"
+                            record = distribution.get_metadata('RECORD')
+                            for line in record.splitlines():
+                                pfile, other = line.split(",", 1)
+                                el['files'].append('/'.join([el['location'], pfile]))
                         except:
                             pass
-                    except:
-                        pass
 
-                except Exception as err:
-                    traceback.print_exc()
-                    print("WARN: could not extract information about python module from distribution - exception: " + str(err))
-                    el = {}
+                        # extract metadata if available
+                        el['license'] = 'N/A'
+                        el['metadata'] = 'N/A'
+                        el['origin'] = 'N/A'
+                        try:
+                            el['metadata'] = distribution.get_metadata(distribution.PKG_INFO)
+                            for line in el['metadata'].splitlines():
+                                k = v = None
+                                try:
+                                    k, v = line.split(": ", 1)
+                                except:
+                                    pass
+                                if k and v:
+                                    if k == 'License':
+                                        el['license'] = v
+                                    elif k == 'Author':
+                                        author = v
+                                    elif k == 'Author-email':
+                                        author_email = v
+                            try:
+                                el['origin'] = author + " <" + author_email +">"
+                            except:
+                                pass
+                        except:
+                            pass
+
+                    except Exception as err:
+                        traceback.print_exc()
+                        print("WARN: could not extract information about python module from distribution - exception: " + str(err))
+                        el = {}
 
                 if el:
                     resultlist[el['location'] + "/" + el['name']] = json.dumps(el)
