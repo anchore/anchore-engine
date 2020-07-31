@@ -216,6 +216,21 @@ try:
                         result['metadata'] = json.dumps({"evidence_type": e})
                         resultlist[location] = json.dumps(result)
                         version_found_map[key] = True
+
+
+    
+    squashtar = os.path.join(unpackdir, "squashed.tar")
+    hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
+    for pkg in hints.get('packages', []):
+        pkg_type = pkg.get('type', "").lower()
+
+        if pkg_type == 'binary':
+            pkg_key, el = anchore_engine.analyzers.utils._hints_to_binary(pkg)
+            try:
+                resultlist[pkg_key] = json.dumps(el)
+            except Exception as err:
+                print ("WARN: unable to add binary package ({}) from hints - excpetion: {}".format(pkg_key, err))
+                
 except Exception as err:
     import traceback
     traceback.print_exc()
