@@ -54,18 +54,21 @@ try:
                     traceback.print_exc()
                     print("WARN: found package.json but cannot parse (" + str(tfile) +") - exception: " + str(err))
 
-    squashtar = os.path.join(unpackdir, "squashed.tar")
-    hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
-    for pkg in hints.get('packages', []):
-        pkg_type = pkg.get('type', "").lower()
+    try:
+        squashtar = os.path.join(unpackdir, "squashed.tar")
+        hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
+        for pkg in hints.get('packages', []):
+            pkg_type = pkg.get('type', "").lower()
 
-        if pkg_type == 'npm':
-            pkg_key, el = anchore_engine.analyzers.utils._hints_to_npm(pkg)
-            try:
-                pkglist[pkg_key] = json.dumps(el)
-            except Exception as err:
-                print ("WARN: unable to add npm package ({}) from hints - excpetion: {}".format(pkg_key, err))
-                
+            if pkg_type == 'npm':
+                pkg_key, el = anchore_engine.analyzers.utils._hints_to_npm(pkg)
+                try:
+                    pkglist[pkg_key] = json.dumps(el)
+                except Exception as err:
+                    print ("WARN: unable to add npm package ({}) from hints - excpetion: {}".format(pkg_key, err))
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))
+        
 except Exception as err:
     import traceback
     traceback.print_exc()

@@ -45,17 +45,20 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    squashtar = os.path.join(unpackdir, "squashed.tar")
-    hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
-    for pkg in hints.get('packages', []):
-        pkg_type = pkg.get('type', "").lower()
+    try:
+        squashtar = os.path.join(unpackdir, "squashed.tar")
+        hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
+        for pkg in hints.get('packages', []):
+            pkg_type = pkg.get('type', "").lower()
 
-        if pkg_type == 'go':
-            pkg_key, el = anchore_engine.analyzers.utils._hints_to_go(pkg)
-            try:
-                resultlist[pkg_key] = json.dumps(el)
-            except Exception as err:
-                print ("WARN: unable to add go package ({}) from hints - excpetion: {}".format(pkg_key, err))
+            if pkg_type == 'go':
+                pkg_key, el = anchore_engine.analyzers.utils._hints_to_go(pkg)
+                try:
+                    resultlist[pkg_key] = json.dumps(el)
+                except Exception as err:
+                    print ("WARN: unable to add go package ({}) from hints - excpetion: {}".format(pkg_key, err))
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))
         
 except Exception as err:
     import traceback

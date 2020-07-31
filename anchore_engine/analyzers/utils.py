@@ -651,18 +651,22 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
     except:
         raise ValueError("could not get package list from RPM database: " + str(err))
 
-    hints = get_hintsfile(unpackdir, squashtar)
-    for hpkg in hints.get('packages', []):
-        if hpkg.get('type', "").lower() == 'rpm':
-            name = hpkg.get('name', "")
-            if name:
-                # construct compatible elements for RPM
-                try:
-                    el = _hints_to_rpm(hpkg)
-                    rpms.update(el)                    
-                except Exception as err:
-                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
-            
+    try:
+        hints = get_hintsfile(unpackdir, squashtar)
+        for hpkg in hints.get('packages', []):
+            if hpkg.get('type', "").lower() == 'rpm':
+                name = hpkg.get('name', "")
+                if name:
+                    # construct compatible elements for RPM
+                    try:
+                        el = _hints_to_rpm(hpkg)
+                        rpms.update(el)                    
+                    except Exception as err:
+                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))                                
+
+                    
     return rpms, rpmdbdir
 
 
@@ -1122,18 +1126,19 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
         if p and v and sp and sv:
             if p == sp and v != sv:
                 other_packages[p] = [{'version':sv, 'arch':arch}]
-
-    hints = get_hintsfile(unpackdir, squashtar)
-    for hpkg in hints.get('packages', []):
-        if hpkg.get('type', "").lower() == 'dpkg':
-            name = hpkg.get('name', "")
-            if name:
-                try:
-                    el = _hints_to_dpkg(hpkg)
-                    all_packages.update(el)
-                except Exception as err:
-                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
-
+    try:
+        hints = get_hintsfile(unpackdir, squashtar)
+        for hpkg in hints.get('packages', []):
+            if hpkg.get('type', "").lower() == 'dpkg':
+                name = hpkg.get('name', "")
+                if name:
+                    try:
+                        el = _hints_to_dpkg(hpkg)
+                        all_packages.update(el)
+                    except Exception as err:
+                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))                                
                 
     return all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir
 
@@ -1282,17 +1287,20 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
             ret = apkg_parse_apkdb(memberfd)
         except Exception as err:
             raise ValueError("cannot locate APK installed DB in squashed.tar - exception: {}".format(err))
-
-    hints = get_hintsfile(unpackdir, squashtar)
-    for hpkg in hints.get('packages', []):
-        if hpkg.get('type', "").lower() == 'apkg':
-            name = hpkg.get('name', "")
-            if name:
-                try:
-                    el = _hints_to_apkg(hpkg)
-                    ret.update(el)
-                except Exception as err:
-                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))        
+    try:
+        hints = get_hintsfile(unpackdir, squashtar)
+        for hpkg in hints.get('packages', []):
+            if hpkg.get('type', "").lower() == 'apkg':
+                name = hpkg.get('name', "")
+                if name:
+                    try:
+                        el = _hints_to_apkg(hpkg)
+                        ret.update(el)
+                    except Exception as err:
+                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))
+        
     return ret
 
 def _hints_to_apkg(pkg):
