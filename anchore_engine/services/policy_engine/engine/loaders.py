@@ -147,6 +147,7 @@ class ImageLoader(object):
         packages = packages + java_packages
         handled_ptypes = handled_ptypes + handled
 
+        logger.info("Loading image generic package types")
         generic_packages, handled = self.load_generic_packages(analysis_report, image, excludes=handled_ptypes)
         packages = packages + generic_packages
         handled_ptypes = handled_ptypes + handled        
@@ -686,6 +687,7 @@ class ImageLoader(object):
             
         return pkgs, handled_pkgtypes
 
+    
     def load_javas(self, analysis_json, containing_image):
         handled_pkgtypes = ['pkgs.java']        
         pkgs_json = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
@@ -796,6 +798,19 @@ class ImageLoader(object):
                         pkgs.append(n)
                     
         return pkgs, handled_pkgtypes
+
+    def _fuzzy_go(self, input_el_name, input_el_version):
+        ret_names = [input_el_name]
+        ret_versions = [input_el_version]
+        
+        patt = re.match(".*([0-9]+\.[0-9]+\.[0-9]+).*", input_el_version)
+        if patt:
+            candidate_version = patt.group(1)
+            
+        if candidate_version not in ret_versions:
+            ret_versions.append(candidate_version)
+            
+        return ret_names, ret_versions
     
     def _fuzzy_python(self, input_el):
         global nomatch_inclusions
@@ -1095,44 +1110,6 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-        if False:
-            gems = containing_image.get_packages_by_type("gem")
-            if gems:
-                for gem in gems:
-                    guessed_names = self._fuzzy_gem(gem.name)
-                    for n in guessed_names:
-                        for version in [gem.version]:
-                            rawcpe = "cpe:/a:-:{}:{}:-:~~~ruby~~".format(n, version)
-
-                            toks = rawcpe.split(":")
-                            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-                            for i in range(1, len(final_cpe)):
-                                try:
-                                    if toks[i]:
-                                        final_cpe[i] = toks[i]
-                                    else:
-                                        final_cpe[i] = '-'
-                                except:
-                                    final_cpe[i] = '-'
-                            cpekey = ':'.join(final_cpe + [gem.pkg_path])
-
-                            if cpekey not in allcpes:
-                                allcpes[cpekey] = True
-
-                                cpe = ImageCpe()
-                                cpe.pkg_type = "gem"
-                                cpe.pkg_path = gem.pkg_path
-                                cpe.cpetype = final_cpe[1]
-                                cpe.vendor = final_cpe[2]
-                                cpe.name = final_cpe[3]
-                                cpe.version = final_cpe[4]
-                                cpe.update = final_cpe[5]
-                                cpe.meta = final_cpe[6]
-                                cpe.image_user_id = containing_image.user_id
-                                cpe.image_id = containing_image.id
-
-                                cpes.append(cpe)
-
         npm_json_raw = analysis_json.get('package_list', {}).get('pkgs.npms', {}).get('base')
         if npm_json_raw:
             for path, npm_str in list(npm_json_raw.items()):
@@ -1172,50 +1149,50 @@ class ImageLoader(object):
 
                             cpes.append(cpe)
 
-        if False:
-            npms = containing_image.get_packages_by_type("npm")
-            if npms:
-                for npm in npms:
-                    guessed_names = self._fuzzy_npm(npm.name)
-                    for n in guessed_names:
-                        for version in [npm.version]:
-                            rawcpe = "cpe:/a:-:{}:{}:-:~~~node.js~~".format(n, version)
+        go_json_raw = analysis_json.get('package_list', {}).get('pkgs.go', {}).get('base')
+        if go_json_raw:
+            for path, go_str in list(go_json_raw.items()):
+                go_json = json.loads(go_str)
+                guessed_names, guessed_versions = self._fuzzy_go(go_json['name'], go_json['version'])
+                #guessed_names = [go_json['name']]
+                #guessed_versions = [go_json['version']]  
+                for n in guessed_names:
+                    for v in guessed_versions:
+                        rawcpe = "cpe:/a:-:{}:{}:-:".format(n, v)
 
-                            toks = rawcpe.split(":")
-                            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
-                            for i in range(1, len(final_cpe)):
-                                try:
-                                    if toks[i]:
-                                        final_cpe[i] = toks[i]
-                                    else:
-                                        final_cpe[i] = '-'
-                                except:
+                        toks = rawcpe.split(":")
+                        final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+                        for i in range(1, len(final_cpe)):
+                            try:
+                                if toks[i]:
+                                    final_cpe[i] = toks[i]
+                                else:
                                     final_cpe[i] = '-'
-                            cpekey = ':'.join(final_cpe + [npm.pkg_path])
+                            except:
+                                final_cpe[i] = '-'
+                        cpekey = ':'.join(final_cpe + [path])
 
-                            if cpekey not in allcpes:
-                                allcpes[cpekey] = True
+                        if cpekey not in allcpes:
+                            allcpes[cpekey] = True
 
-                                cpe = ImageCpe()
-                                cpe.pkg_type = "npm"
-                                cpe.pkg_path = npm.pkg_path
-                                cpe.cpetype = final_cpe[1]
-                                cpe.vendor = final_cpe[2]
-                                cpe.name = final_cpe[3]
-                                cpe.version = final_cpe[4]
-                                cpe.update = final_cpe[5]
-                                cpe.meta = final_cpe[6]
-                                cpe.image_user_id = containing_image.user_id
-                                cpe.image_id = containing_image.id
+                            cpe = ImageCpe()
+                            cpe.pkg_type = "go"
+                            cpe.pkg_path = path
+                            cpe.cpetype = final_cpe[1]
+                            cpe.vendor = final_cpe[2]
+                            cpe.name = final_cpe[3]
+                            cpe.version = final_cpe[4]
+                            cpe.update = final_cpe[5]
+                            cpe.meta = final_cpe[6]
+                            cpe.image_user_id = containing_image.user_id
+                            cpe.image_id = containing_image.id
 
-                                cpes.append(cpe)
-                                
+                            cpes.append(cpe)
+                            
         bin_json_raw = analysis_json.get('package_list', {}).get('pkgs.binary', {}).get('base')
         if bin_json_raw:
             for path, bin_str in list(bin_json_raw.items()):
                 bin_json = json.loads(bin_str)
-                #guessed_names = self._fuzzy_npm(npm_json['name'])
-                #guessed_versions = npm_json['versions']]
                 guessed_names = [bin_json['name']]
                 guessed_versions = [bin_json['version']]            
                 for n in guessed_names:
