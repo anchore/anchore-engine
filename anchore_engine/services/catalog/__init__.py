@@ -1304,19 +1304,19 @@ def handle_image_gc(*args, **kwargs):
                 account = to_be_deleted['userId']
                 digest = to_be_deleted['imageDigest']
 
-                # state transition to deleting before doing anything for other processes keying off the state
-                logger.debug('Transitioning image status to deleting, account: {}, digest: {}'.format(account, digest))
-                with db.session_scope() as dbsession:
-                    db_catalog_image.update_image_status(account, digest, taskstate.working_state('image_status'), dbsession)
+                logger.debug('Starting image gc for account id: %s, digest: %s' % (account, digest))
 
-                # delete the image for reals
-                logger.debug('Garbage collecting image, account: {}, digest: {}'.format(account, digest))
                 with db.session_scope() as dbsession:
-                    # set force to true since all deletion checks should be cleared at this point
-                    retobj, httpcode = catalog_impl.do_image_delete(account, to_be_deleted, dbsession, force=True)
-                    if httpcode != 200:
-                        logger.warn('Image deletion failed with error: {}'.format(retobj))
-
+                    logger.debug('Checking image status one final time')
+                    expected_status = taskstate.queued_state('image_status')
+                    current_status = db_catalog_image.get_image_status(account, digest, dbsession)
+                    if current_status and current_status == expected_status:
+                        # set force to true since all deletion checks should be cleared at this point
+                        retobj, httpcode = catalog_impl.do_image_delete(account, to_be_deleted, dbsession, force=True)
+                        if httpcode != 200:
+                            logger.warn('Image deletion failed with error: {}'.format(retobj))
+                    else:
+                        logger.warn('Skipping image gc due to status check mismatch. account id: %s, digest: %s, current status: %s, expected status: %s' % (account, digest, current_status, expected_status))
                 # not necessary to state transition to deleted as the records should have gone
             except:
                 logger.exception('Error deleting image, may retry on next cycle')

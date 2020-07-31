@@ -114,13 +114,28 @@ def get(imageDigest, userId, session=None):
     return ret
 
 
-def update_image_status(account_id, image_digest, new_image_status, session=None):
+def get_image_status(account_id, image_digest, session=None):
     if not session:
         session = db.Session
 
     result = _lookup_image(account_id, image_digest, session)
-    if result and result.image_status != new_image_status:
-        result.image_status = new_image_status
+
+    if result:
+        return result.image_status
+    else:
+        raise Exception('No image found with digest %s' % image_digest)
+
+
+def update_image_status(account_id, image_digest, new_status, session=None):
+    if not session:
+        session = db.Session
+
+    result = _lookup_image(account_id, image_digest, session)
+
+    if result and result.image_status != new_status:
+        result.image_status = new_status
+    else:
+        raise Exception('No image found with digest %s' % image_digest)
 
     return result
 
