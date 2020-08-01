@@ -165,12 +165,8 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         logger.debug("adding image content data to archive")
                         rc = catalog_client.put_document('image_content_data', imageDigest, image_content_data)
 
-                    try:
                         logger.debug("adding image analysis data to image_record")
                         anchore_engine.common.helpers.update_image_record_with_analysis_data(image_record, image_data)
-
-                    except Exception as err:
-                        raise err
 
                 except Exception as err:
                     import traceback

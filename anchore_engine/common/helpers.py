@@ -262,6 +262,24 @@ def extract_pkg_content(image_data, content_type):
     return ret
 
 
+def extract_malware_content(image_data):
+    # Extract malware scan
+    ret = []
+    clamav_content_name = 'clamav'
+    malware_scans = image_data['imagedata']['analysis_report'].get('malware', {}).get('malware', {}).get('base', {})
+
+    for scanner_name, output in malware_scans.items():
+        finding = json.loads(output)
+        ret.append(finding)
+
+        # ret[scanner_name]
+        # name = finding.get('name')
+        # for result in finding.get('findings'):
+        #     ret[path] = {'scanner': clamav_content_name, 'findings': path_findings }
+
+    return ret
+
+
 def extract_analyzer_content(image_data, content_type, manifest=None):
     ret = {}
     try:
@@ -280,6 +298,8 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
             return extract_python_content(idata)
         elif content_type == 'java':
             return extract_java_content(idata)
+        elif content_type == 'malware':
+            return extract_malware_content(idata)
         elif 'pkgs.{}'.format(content_type) in idata['imagedata']['analysis_report']['package_list']:
             return extract_pkg_content(image_data, content_type)
         elif content_type == 'metadata':

@@ -931,6 +931,11 @@ def get_image_content_by_type_javapackage(imageDigest):
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def get_image_content_by_type_malware(imageDigest):
+    return get_image_content_by_type(imageDigest, 'malware')
+
+@flask_metrics.do_not_track()
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})

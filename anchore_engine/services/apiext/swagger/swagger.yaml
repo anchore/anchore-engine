@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.14"
+  version: "0.1.15"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -920,6 +920,31 @@ paths:
           description: Content of specified type from the image
           schema:
             $ref: "#/definitions/ContentJAVAPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/malware:
+    get:
+      tags:
+        - Images
+        - Image Content
+        - Queries
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_malware
+      x-anchore-authz-action: getImage
+      summary: Get the content of an image by type malware
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+        - $ref: "#/parameters/AsAccountParameter"
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentMalwareResponse"
         500:
           description: Internal error
           schema:
@@ -3268,6 +3293,43 @@ definitions:
                 type: string
             location:
               type: string
+  ContentMalwareResponse:
+    type: object
+    description: Malware listing response
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        description: List of malware scan results, one per scanner configured to run
+        type: array
+        items:
+          $ref: '#/definitions/MalwareScan'
+  MalwareScan:
+    description: A single scan from a scanner
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Indicates if the scanner is enabled
+      scanner:
+        type: string
+        description: The name of the scanner that produced the finding
+      metadata:
+        type: object
+        description: Open schema for scanner-specific metadata related to the scan result
+      findings:
+        type: array
+        items:
+          type: object
+          properties:
+            path:
+              type: string
+              description: A path for a file in the image's rootfs
+            signature:
+              type: string
+              description: The malware signature found at the path
   ContentJAVAPackageResponse:
     type: object
     description: "Java package content listings from images"
