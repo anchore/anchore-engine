@@ -1218,14 +1218,14 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                 newstate = taskstate.init_state('analyze', None)
             elif force or currstate == taskstate.fault_state('analyze'):
                 newstate = taskstate.reset_state('analyze')
-            elif image_record['image_status'] == 'deleted':
+            elif image_record['image_status'] != taskstate.base_state('image_status'):
                 newstate = taskstate.reset_state('analyze')
             else:
                 newstate = currstate
 
             if (currstate != newstate) or (force):
                 logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
-                image_record.update({'image_status': 'active', 'analysis_status': newstate})
+                image_record.update({'image_status': taskstate.reset_state('image_status'), 'analysis_status': newstate})
                 updated_image_record = client.update_image(imageDigest, image_record)
                 if updated_image_record:
                     image_record = updated_image_record[0]
