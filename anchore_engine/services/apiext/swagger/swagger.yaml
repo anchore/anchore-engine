@@ -349,6 +349,12 @@ paths:
       summary: List all visible image digests and tags
       description: List all image tags visible to the user
       parameters:
+      - name: 'all'
+        in: query
+        type: boolean
+        description: "flag to return all images in any state including those marked for deletion"
+        required: false
+        default: false
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -419,6 +425,12 @@ paths:
         required: false
         type: string
         description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
+      - name: 'all'
+        in: query
+        type: boolean
+        description: "flag to return all images in any state including those marked for deletion"
+        required: false
+        default: false
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:

@@ -44,9 +44,9 @@ def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, dryrun=False, b
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_tags_get():
+def image_tags_get(all=False):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'all': all})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(session, request_inputs)
     except Exception as err:
@@ -57,10 +57,10 @@ def image_tags_get():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
+def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, history=False, all=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
-                                                             default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history})
+                                                             default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history, 'all': all})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs)
 

@@ -187,8 +187,8 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
 
     return ret
 
-def get_all_tagsummary(userId, session=None):
-    results = session.query(CatalogImage.imageDigest,
+def get_all_tagsummary(userId, session=None, image_status_filter='active'):
+    query = session.query(CatalogImage.imageDigest,
                             CatalogImage.parentDigest,
                             CatalogImageDocker.registry,
                             CatalogImageDocker.repo,
@@ -202,8 +202,11 @@ def get_all_tagsummary(userId, session=None):
                                                                    CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
                                                                    CatalogImageDocker.userId == userId))
 
+    if image_status_filter:
+        query = query.filter(CatalogImage.image_status == image_status_filter)  # not using taskstate.py to avoid import loop)
+
     ret = []
-    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in results:
+    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
         ret.append({
             'imageDigest': idig,
             'parentDigest': pdig,
@@ -218,13 +221,17 @@ def get_all_tagsummary(userId, session=None):
 
     return ret
 
-def get_all_byuserId(userId, limit=None, session=None):
+def get_all_byuserId(userId, limit=None, session=None, image_status_filter='active'):
     if not session:
         session = db.Session
 
     ret = []
 
     results = session.query(CatalogImage).filter_by(userId=userId).order_by(desc(CatalogImage.created_at))
+
+    if image_status_filter:
+        results = results.filter(CatalogImage.image_status == image_status_filter)
+
     if limit:
         results = results.limit(int(limit))
 

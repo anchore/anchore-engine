@@ -556,7 +556,7 @@ def repositories(request_inputs):
 
 # images CRUD
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_imagetags():
+def list_imagetags(all=False):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
 
@@ -570,7 +570,7 @@ def list_imagetags():
 
         client = internal_client_for(CatalogClient, request_inputs['userId'])
 
-        return_object = client.get_imagetags()
+        return_object = client.get_imagetags(all)
         httpcode = 200
 
     except Exception as err:
@@ -634,7 +634,7 @@ def import_image_archive(archive_file):
     return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
+def list_images(history=None, image_to_get=None, fulltag=None, detail=False, all=False):
 
     httpcode = 500
     try:
@@ -644,7 +644,7 @@ def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
         else:
             digest = None
 
-        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history)
+        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history, all=all)
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
         return_object = make_response_error(err, in_httpcode=err.__response_code__)
@@ -1070,12 +1070,12 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
 #    return(return_object, httpcode)
 
 
-def do_list_images(account, filter_tag=None, filter_digest=None, history=False):
+def do_list_images(account, filter_tag=None, filter_digest=None, history=False, all=False):
     client = internal_client_for(CatalogClient, account)
 
     try:
         # Query param fulltag has precedence for search
-        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history)
+        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, all=all)
 
         return [make_response_image(image_record, include_detail=True) for image_record in image_records]
 
