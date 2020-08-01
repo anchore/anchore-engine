@@ -659,7 +659,7 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                     el = _hints_to_rpm(pkg)
                     rpms.update(el)                    
                 except Exception as err:
-                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+                    print ("WARN: could not convert hints package to valid RPM analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))                                
 
@@ -731,7 +731,10 @@ def _hints_to_python(pkg):
     
     if not pkg_name or not pkg_version or not pkg_type:
         raise Exception("bad hints record, all hints records must supply at least a name, version and type")
-    
+    for inp in [pkg_files]:
+        if type(inp) is not list:
+            raise Exception("bad hints record ({}), versions, licenses, origins, and files if specified must be list types".format(pkg_name))
+        
     if not pkg_location:
         pkg_location = "/virtual/pypkg/site-packages"
         pkg_key = "{}/{}-{}".format(pkg_location, pkg_name, pkg_version)
@@ -792,7 +795,9 @@ def _hints_to_binary(pkg):
 
     if not pkg_name or not pkg_version or not pkg_type:
         raise Exception("bad hints record, all hints records must supply at least a name, version and type")
-
+    for inp in [pkg_files]:
+        if type(inp) is not list:
+            raise Exception("bad hints record ({}), versions, licenses, origins, and files if specified must be list types".format(pkg_name))
     el = {
         'name': pkg_name,
         'version': pkg_version,
@@ -824,7 +829,6 @@ def get_hintsfile(unpackdir, squashtar):
                     hints_member = memberhash[hintsfile]
 
             if hints_member:
-                print("MH: {}".format(hints_member))
                 try:
                     with tfl.extractfile(hints_member) as FH:
                         ret = json.loads(FH.read())
@@ -832,7 +836,6 @@ def get_hintsfile(unpackdir, squashtar):
                     print ("WARN: hintsfile found in squashtar, but cannot be read - exception: {}".format(err))
                     ret = {}
             else:
-                print("No hints detected")
                 ret = {}
 
     if ret and not os.path.exists(os.path.join(unpackdir, "anchore_hints.json")):
@@ -1143,7 +1146,7 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                     el = _hints_to_dpkg(pkg)
                     all_packages.update(el)
                 except Exception as err:
-                    print ("WARN: could not convert hints package to valid dpkg analyzer output - exception: {}".format(err))
+                    print ("WARN: could not convert hints package to valid DPKG analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))                                
                 
@@ -1306,7 +1309,7 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
                     el = _hints_to_apkg(pkg)
                     ret.update(el)
                 except Exception as err:
-                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+                    print ("WARN: could not convert hints package to valid APK analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))
         
@@ -1326,6 +1329,9 @@ def _hints_to_apkg(pkg):
 
     if not pkg_name or not pkg_version or not pkg_type:
         raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    for inp in [pkg_files]:
+        if type(inp) is not list:
+            raise Exception("bad hints record ({}), versions, licenses, origins, and files if specified must be list types".format(pkg_name))    
     
     if not pkg_release:
         try:
@@ -1463,6 +1469,10 @@ def _hints_to_gem(pkg):
 
     if not pkg_name or not (pkg_version or pkg_versions) or not pkg_type:
         raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+
+    for inp in [pkg_versions, pkg_licenses, pkg_origins, pkg_files]:
+        if type(inp) is not list:
+            raise Exception("bad hints record ({}), versions, licenses, origins, and files if specified must be list types".format(pkg_name))
     
     if pkg_license and not pkg_licenses:
         pkg_licenses = [pkg_license]
@@ -1479,7 +1489,7 @@ def _hints_to_gem(pkg):
         pkg_location = "/virtual/gempkg/{}-{}".format(pkg_name, pkg_latest)
 
     pkg_key = pkg_location
-    
+
     el = {
         'name': pkg_name,
         'versions': pkg_versions,
@@ -1619,7 +1629,10 @@ def _hints_to_npm(pkg):
 
     if not pkg_name or not (pkg_version or pkg_versions) or not pkg_type:
         raise Exception("bad hints record, all hints records must supply at least a name, version and type")
-    
+    for inp in [pkg_versions, pkg_licenses, pkg_origins, pkg_files]:
+        if type(inp) is not list:
+            raise Exception("bad hints record ({}), versions, licenses, origins, and files if specified must be list types".format(pkg_name))
+        
     if pkg_license and not pkg_licenses:
         pkg_licenses = [pkg_license]
 

@@ -807,6 +807,12 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     copydir = staging_dirs['copydir']
     configdir = localconfig['service_dir']
 
+    myconfig = localconfig.get('services', {}).get('analyzer', {})
+    if not myconfig.get('enable_hints', False):
+        # install an empty hints file to ensure that any discovered hints overrides is ignored during analysis
+        with open(os.path.join(unpackdir, "anchore_hints.json"), 'w') as OFH:
+            OFH.write(json.dumps({}))
+    
     # run analyzers
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
