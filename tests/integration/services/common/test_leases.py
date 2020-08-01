@@ -6,6 +6,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import time
 import uuid
 import pytest
+from datetime import datetime, timedelta
+import dateutil.parser
 from tests.fixtures import anchore_db
 
 from anchore_engine.db import db_locks, session_scope, Lease
@@ -143,3 +145,25 @@ def test_threads(anchore_db):
         # Wait for completion
         r = thread.result()
         logger.info(('Thread result {}'.format(r)))
+
+
+def test_refresh_lease(anchore_db):
+    # Setup
+    client_id = uuid.uuid4().hex
+    lease_id = 'testlease'
+    db_locks.init_lease(lease_id)
+    initial_ttl = 30
+    db_locks.acquire_lease(lease_id, client_id, ttl=initial_ttl, timeout=5)
+
+    # Attempt to refresh the lease
+    later_ttl = 60
+    db_locks.refresh_lease(lease_id, client_id, epoch=1, ttl=later_ttl)
+
+    # Assert that the lease was refreshed
+    # (Make sure the new TTL is later than the initial TTL)
+    lease = db_locks.get(lease_id)
+    lease_expiration = dateutil.parser.parse(lease['expires_at'])
+    assert lease_expiration > datetime.now() + timedelta(seconds=initial_ttl)
+
+    # Cleanup
+    db_locks.release_lease(lease_id, client_id, epoch=1000)
