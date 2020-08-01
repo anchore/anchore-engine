@@ -110,12 +110,15 @@ try:
             pkg_type = pkg.get('type', "").lower()
 
             if pkg_type == 'python':
-                pkg_key, el = anchore_engine.analyzers.utils._hints_to_python(pkg)
-
                 try:
-                    resultlist[pkg_key] = json.dumps(el)
+                    pkg_key, el = anchore_engine.analyzers.utils._hints_to_python(pkg)
+                    try:
+                        resultlist[pkg_key] = json.dumps(el)
+                    except Exception as err:
+                        print ("WARN: unable to add python package ({}) from hints - exception: {}".format(pkg_key, err))
                 except Exception as err:
-                    print ("WARN: unable to add python package ({}) from hints - excpetion: {}".format(pkg_key, err))
+                    print ("WARN: bad hints record encountered - exception: {}".format(err))
+                        
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))
         

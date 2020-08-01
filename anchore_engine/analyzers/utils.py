@@ -653,16 +653,13 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
 
     try:
         hints = get_hintsfile(unpackdir, squashtar)
-        for hpkg in hints.get('packages', []):
-            if hpkg.get('type', "").lower() == 'rpm':
-                name = hpkg.get('name', "")
-                if name:
-                    # construct compatible elements for RPM
-                    try:
-                        el = _hints_to_rpm(hpkg)
-                        rpms.update(el)                    
-                    except Exception as err:
-                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+        for pkg in hints.get('packages', []):
+            if pkg.get('type', "").lower() == 'rpm':
+                try:
+                    el = _hints_to_rpm(pkg)
+                    rpms.update(el)                    
+                except Exception as err:
+                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))                                
 
@@ -671,15 +668,18 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
 
 
 def _hints_to_rpm(pkg):
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_arch = pkg.get('arch', 'x86_64')
-    pkg_release = pkg.get('release')
-    pkg_source = pkg.get('source')
-    pkg_origin = pkg.get('origin', "")
-    pkg_license = pkg.get('license', "")
-    pkg_size = str(pkg.get('size', "0"))
+    pkg_type = 'rpm'
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_arch = anchore_engine.utils.ensure_str(pkg.get('arch', 'x86_64'))
+    pkg_release = anchore_engine.utils.ensure_str(pkg.get('release', ""))
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_size = anchore_engine.utils.ensure_str(str(pkg.get('size', "0")))
 
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
     if not pkg_release or not pkg_source:
         from anchore_engine.util.rpm import split_rpm_filename
         p_name, p_parsed_version, p_release, p_epoch, p_arch = split_rpm_filename("{}-{}.{}.rpm".format(pkg_name, pkg_version, pkg_arch))
@@ -720,15 +720,18 @@ def _hints_to_rpm(pkg):
     return el
 
 def _hints_to_python(pkg):
-    pkg_type = pkg.get('type', "python").lower()    
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_location = pkg.get('location', None)
-    pkg_license = pkg.get('license', "")
-    pkg_origin = pkg.get('origin', "")
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "python")).lower()    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
     pkg_files = pkg.get('files', [])
     pkg_metadata = json.dumps(pkg.get('metadata', {}))
-
+    
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     if not pkg_location:
         pkg_location = "/virtual/pypkg/site-packages"
         pkg_key = "{}/{}-{}".format(pkg_location, pkg_name, pkg_version)
@@ -748,17 +751,20 @@ def _hints_to_python(pkg):
     return pkg_key, el
 
 def _hints_to_go(pkg):
-    pkg_type = pkg.get('type', "go").lower()    
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_location = pkg.get('location', "/virtual/gopkg/{}-{}".format(pkg_name, pkg_version))
-    pkg_license = pkg.get('license', "")
-    pkg_origin = pkg.get('origin', "")
-    pkg_source = pkg.get('source', pkg_name)
-    pkg_arch = pkg.get('arch', "x86_64")
-    pkg_size = pkg.get('size', "0")
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "go")).lower()    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', "/virtual/gopkg/{}-{}".format(pkg_name, pkg_version)))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', pkg_name))
+    pkg_arch = anchore_engine.utils.ensure_str(pkg.get('arch', "x86_64"))
+    pkg_size = anchore_engine.utils.ensure_str(str(pkg.get('size', "0")))
     pkg_metadata = json.dumps(pkg.get('metadata', {}))
 
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     el = {
         'name': pkg_name,
         'version': pkg_version,
@@ -775,14 +781,17 @@ def _hints_to_go(pkg):
     return pkg_location, el    
     
 def _hints_to_binary(pkg):
-    pkg_type = pkg.get('type', "binary").lower()    
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_location = pkg.get('location', "/virtual/binarypkg/{}-{}".format(pkg_name, pkg_version))
-    pkg_license = pkg.get('license', "")
-    pkg_origin = pkg.get('origin', "")
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "binary")).lower()    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', "/virtual/binarypkg/{}-{}".format(pkg_name, pkg_version)))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
     pkg_files = pkg.get('files', [])
     pkg_metadata = json.dumps(pkg.get('metadata', {}))
+
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
 
     el = {
         'name': pkg_name,
@@ -1128,15 +1137,13 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
                 other_packages[p] = [{'version':sv, 'arch':arch}]
     try:
         hints = get_hintsfile(unpackdir, squashtar)
-        for hpkg in hints.get('packages', []):
-            if hpkg.get('type', "").lower() == 'dpkg':
-                name = hpkg.get('name', "")
-                if name:
-                    try:
-                        el = _hints_to_dpkg(hpkg)
-                        all_packages.update(el)
-                    except Exception as err:
-                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+        for pkg in hints.get('packages', []):
+            if pkg.get('type', "").lower() == 'dpkg':
+                try:
+                    el = _hints_to_dpkg(pkg)
+                    all_packages.update(el)
+                except Exception as err:
+                    print ("WARN: could not convert hints package to valid dpkg analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))                                
                 
@@ -1144,18 +1151,22 @@ def dpkg_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
 
 
 def _hints_to_dpkg(pkg):
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_arch = pkg.get('arch', 'amd64')
-    pkg_release = pkg.get('release')
-    pkg_source = pkg.get('source')
-    pkg_origin = pkg.get('origin', "")
-    pkg_license = pkg.get('license', "")
-    pkg_size = str(pkg.get('size', "0"))
+    pkg_type = 'dpkg'    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name'))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version'))
+    pkg_arch = anchore_engine.utils.ensure_str(pkg.get('arch', 'amd64'))
+    pkg_release = anchore_engine.utils.ensure_str(pkg.get('release', ""))
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_size = anchore_engine.utils.ensure_str(str(pkg.get('size', "0")))
 
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     if not pkg_source:
         pkg_source = "{}-{}".format(pkg_name, pkg_version)
-    pkg_type = 'dpkg'
+
     pkg_release = 'N/A'
 
     el = {
@@ -1289,31 +1300,33 @@ def apkg_get_all_pkgfiles_from_squashtar(unpackdir, squashtar):
             raise ValueError("cannot locate APK installed DB in squashed.tar - exception: {}".format(err))
     try:
         hints = get_hintsfile(unpackdir, squashtar)
-        for hpkg in hints.get('packages', []):
-            if hpkg.get('type', "").lower() == 'apkg':
-                name = hpkg.get('name', "")
-                if name:
-                    try:
-                        el = _hints_to_apkg(hpkg)
-                        ret.update(el)
-                    except Exception as err:
-                        print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
+        for pkg in hints.get('packages', []):
+            if pkg.get('type', "").lower() == 'apkg':
+                try:
+                    el = _hints_to_apkg(pkg)
+                    ret.update(el)
+                except Exception as err:
+                    print ("WARN: could not convert hints package to valid rpm analyzer output - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))
         
     return ret
 
 def _hints_to_apkg(pkg):
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_arch = pkg.get('arch', 'x86_64')
-    pkg_release = pkg.get('release')
-    pkg_source = pkg.get('source')
-    pkg_origin = pkg.get('origin', "")
-    pkg_license = pkg.get('license', "")
-    pkg_size = str(pkg.get('size', "0"))
+    pkg_type = 'apkg'        
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_arch = anchore_engine.utils.ensure_str(pkg.get('arch', 'x86_64'))
+    pkg_release = anchore_engine.utils.ensure_str(pkg.get('release', ""))
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', ""))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
+    pkg_size = anchore_engine.utils.ensure_str(str(pkg.get('size', "0")))
     pkg_files = pkg.get('files', [])
 
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     if not pkg_release:
         try:
             (v, r) = pkg_version.split('-', 2)
@@ -1325,8 +1338,6 @@ def _hints_to_apkg(pkg):
 
     if not pkg_source:
         pkg_source = pkg_name
-
-    pkg_type = 'APKG'
 
     el = {
         pkg_name: {
@@ -1438,18 +1449,21 @@ def gem_parse_meta(gem):
     return ret
 
 def _hints_to_gem(pkg):
-    pkg_type = pkg.get('type', "gem").lower()    
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "gem")).lower()    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
     pkg_versions = pkg.get('versions', [])    
-    pkg_location = pkg.get('location', None)
-    pkg_license = pkg.get('license', "")
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
     pkg_licenses = pkg.get('licenses', [])
     pkg_files = pkg.get('files', [])
-    pkg_origin = pkg.get('origin', "")
-    pkg_origins = pkg.get('origins', [])    
-    pkg_source = pkg.get('source', pkg_name)
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
+    pkg_origins = pkg.get('origins', [])
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', pkg_name))
 
+    if not pkg_name or not (pkg_version or pkg_versions) or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     if pkg_license and not pkg_licenses:
         pkg_licenses = [pkg_license]
 
@@ -1591,18 +1605,21 @@ def npm_parse_meta(npm):
     return record
 
 def _hints_to_npm(pkg):
-    pkg_type = pkg.get('type', "npm").lower()    
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "npm")).lower()    
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
     pkg_versions = pkg.get('versions', [])    
-    pkg_location = pkg.get('location', None)
-    pkg_license = pkg.get('license', "")
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', ""))
+    pkg_license = anchore_engine.utils.ensure_str(pkg.get('license', ""))
     pkg_licenses = pkg.get('licenses', [])
     pkg_files = pkg.get('files', [])
-    pkg_origin = pkg.get('origin', "")
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
     pkg_origins = pkg.get('origins', [])    
-    pkg_source = pkg.get('source', pkg_name)
+    pkg_source = anchore_engine.utils.ensure_str(pkg.get('source', pkg_name))
 
+    if not pkg_name or not (pkg_version or pkg_versions) or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     if pkg_license and not pkg_licenses:
         pkg_licenses = [pkg_license]
 
@@ -1632,15 +1649,18 @@ def _hints_to_npm(pkg):
     return pkg_key, el
 
 def _hints_to_java(pkg):
-    pkg_type = pkg.get('type', "java").lower()
+    pkg_type = anchore_engine.utils.ensure_str(pkg.get('type', "java")).lower()
     pkg_jtype = '{}-jar'.format(pkg_type)
     
-    pkg_name = pkg.get('name')
-    pkg_version = pkg.get('version')
-    pkg_location = pkg.get('location', "/virtual/javapkg/{}-{}.jar".format(pkg_name, pkg_version))
-    pkg_origin = pkg.get('origin', "")
+    pkg_name = anchore_engine.utils.ensure_str(pkg.get('name', ""))
+    pkg_version = anchore_engine.utils.ensure_str(pkg.get('version', ""))
+    pkg_location = anchore_engine.utils.ensure_str(pkg.get('location', "/virtual/javapkg/{}-{}.jar".format(pkg_name, pkg_version)))
+    pkg_origin = anchore_engine.utils.ensure_str(pkg.get('origin', ""))
     pkg_metadata = pkg.get('metadata', {})
 
+    if not pkg_name or not pkg_version or not pkg_type:
+        raise Exception("bad hints record, all hints records must supply at least a name, version and type")
+    
     pkg_key = pkg_location
     
     el = {
