@@ -648,7 +648,7 @@ def rpm_get_all_packages_detail_from_squashtar(unpackdir, squashtar):
 
             vendor = vendor + " (vendor)"
             rpms[name] = {'version':vers, 'release':rel, 'arch':arch, 'size':size, 'license':lic, 'sourcepkg':source, 'origin':vendor, 'type':'rpm'}
-    except:
+    except Exception as err:
         raise ValueError("could not get package list from RPM database: " + str(err))
 
     try:
