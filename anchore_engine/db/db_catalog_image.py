@@ -221,7 +221,7 @@ def get_all_tagsummary(userId, session=None, image_status_filter='active'):
 
     return ret
 
-def get_all_byuserId(userId, limit=None, session=None, image_status_filter='active'):
+def get_all_byuserId(userId, limit=None, session=None, image_status_filter='active', analysis_status_filter=None):
     if not session:
         session = db.Session
 
@@ -229,8 +229,12 @@ def get_all_byuserId(userId, limit=None, session=None, image_status_filter='acti
 
     results = session.query(CatalogImage).filter_by(userId=userId).order_by(desc(CatalogImage.created_at))
 
-    if image_status_filter:
+    # Treat 'all' as no filter
+    if image_status_filter and image_status_filter != 'all':
         results = results.filter(CatalogImage.image_status == image_status_filter)
+
+    if analysis_status_filter:
+        results = results.filter(CatalogImage.analysis_status == analysis_status_filter)
 
     if limit:
         results = results.limit(int(limit))
