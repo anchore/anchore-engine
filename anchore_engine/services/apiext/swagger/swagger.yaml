@@ -414,12 +414,6 @@ paths:
         type: boolean
         required: false
         description: Include image history in the response
-      - name: image_to_get
-        in: body
-        required: false
-        x-nullable: true
-        schema:
-          $ref: "#/definitions/ImageFilter"
       - name: fulltag
         in: query
         required: false

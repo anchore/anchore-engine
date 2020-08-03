@@ -634,17 +634,13 @@ def import_image_archive(archive_file):
     return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_images(history=None, image_to_get=None, fulltag=None, detail=False, all=False):
+def list_images(history=None, fulltag=None, detail=False, all=False):
 
     httpcode = 500
     try:
-        if image_to_get and not fulltag:
-            fulltag = image_to_get.get('tag')
-            digest = image_to_get.get('digest')
-        else:
-            digest = None
-
+        digest = None
         return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history, all=all)
+
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
         return_object = make_response_error(err, in_httpcode=err.__response_code__)
