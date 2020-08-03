@@ -45,14 +45,24 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
             OFH.write(json.dumps(allfiles))
 
-    # leaving this as an example of the expected format for a go package - in the below example a package named 'text' is created and will match against CVE-2020-14040
-    #el = {}
-    #el.update(go_package_el)
-    #el['name'] = 'text'
-    #el['version'] = 'v0.3.3-1234-abcd'
-    #el['location'] = '/fake/path/to/text'
-    #resultlist[el['location']] = json.dumps(el)
-    
+    try:
+        squashtar = os.path.join(unpackdir, "squashed.tar")
+        hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
+        for pkg in hints.get('packages', []):
+            pkg_type = pkg.get('type', "").lower()
+
+            if pkg_type == 'go':
+                try:
+                    pkg_key, el = anchore_engine.analyzers.utils._hints_to_go(pkg)
+                    try:
+                        resultlist[pkg_key] = json.dumps(el)
+                    except Exception as err:
+                        print ("WARN: unable to add go package ({}) from hints - excpetion: {}".format(pkg_key, err))
+                except Exception as err:
+                    print ("WARN: bad hints record encountered - exception: {}".format(err))                                                
+    except Exception as err:
+        print ("WARN: problem honoring hints file - exception: {}".format(err))
+        
 except Exception as err:
     import traceback
     traceback.print_exc()
