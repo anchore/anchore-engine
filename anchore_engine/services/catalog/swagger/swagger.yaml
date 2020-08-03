@@ -98,6 +98,13 @@ paths:
       summary: "Get image digest and tags summary list from DB"
       description: ""
       operationId: "image_tags_get"
+      parameters:
+      - name: 'all'
+        in: query
+        type: boolean
+        description: "flag to return all images in any state including those marked for deletion"
+        required: false
+        default: false
       produces:
       - "application/json"
       responses:
@@ -139,6 +146,12 @@ paths:
         in: query
         type: boolean
         description: "get all matching records for given tag"
+        required: false
+        default: false
+      - name: 'all'
+        in: query
+        type: boolean
+        description: "flag to return all images in any state including those marked for deletion and other non-active states"
         required: false
         default: false
       produces:

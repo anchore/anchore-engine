@@ -193,7 +193,8 @@ def handle_vulnerability_scan(*args, **kwargs):
                     current_imageDigest = image_records[0]['imageDigest']
 
                 for image_record in image_records:
-                    if image_record['analysis_status'] == taskstate.complete_state('analyze'):
+                    if image_record['analysis_status'] == taskstate.complete_state('analyze') \
+                            and image_record['image_status'] == taskstate.base_state('image_status'):
                         imageDigest = image_record['imageDigest']
 
                         if imageDigest not in digests:
@@ -846,7 +847,8 @@ def handle_policyeval(*args, **kwargs):
                 if len(image_records) > 0:
                     digests.add(image_records[0]['imageDigest'])
                 for image_record in image_records:
-                    if image_record['analysis_status'] == taskstate.complete_state('analyze'):
+                    if image_record['analysis_status'] == taskstate.complete_state('analyze') \
+                            and image_record['image_status'] == taskstate.base_state('image_status'):
                         imageDigest = image_record['imageDigest']
 
                         if imageDigest not in digests:
@@ -936,7 +938,7 @@ def handle_analyzer_queue(*args, **kwargs):
 
         # do this in passes, for each analysis_status state
         with db.session_scope() as dbsession:
-            dbfilter = {'analysis_status': taskstate.working_state('analyze')}
+            dbfilter = {'analysis_status': taskstate.working_state('analyze'), 'image_status': taskstate.base_state('image_status')}
             workingstate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
         # first, evaluate images looking for those that have been in working state for too long and reset
@@ -955,7 +957,7 @@ def handle_analyzer_queue(*args, **kwargs):
 
         # next, look for any image in base state (not_analyzed) for queuing
         with db.session_scope() as dbsession:
-            dbfilter = {'analysis_status': taskstate.base_state('analyze')}
+            dbfilter = {'analysis_status': taskstate.base_state('analyze'), 'image_status': taskstate.base_state('image_status')}
             basestate_image_records = db_catalog_image.get_byfilter(userId, session=dbsession, **dbfilter)
 
         for basestate_image_record in basestate_image_records:

@@ -216,10 +216,15 @@ def image_tags(dbsession, request_inputs):
     return_object = {}
     httpcode = 500
 
+    all = False
+    if params and 'all' in params:
+        all = params['all']
+
     try:
         if method == 'GET':
             httpcode = 200
-            return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
+            return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession,
+                                                                image_status_filter=None if all else taskstate.base_state('image_status'))
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
@@ -246,6 +251,10 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
+    all = False
+    if params and 'all' in params:
+        all = params['all']
+
     httpcode = 500
     try:
         for t in ['tag', 'digest', 'imageId']:
@@ -259,7 +268,8 @@ def image(dbsession, request_inputs, bodycontent=None):
         if method == 'GET':
             if not input_string:
                 httpcode = 200
-                return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession)
+                return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession,
+                                                                  image_status_filter=None if all else taskstate.base_state('image_status'))
             else:
                 if registry_lookup:
                     try:
