@@ -419,12 +419,26 @@ paths:
         required: false
         type: string
         description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
-      - name: 'all'
+      - name: image_status
         in: query
-        type: boolean
-        description: "flag to return all images in any state including those marked for deletion"
         required: false
-        default: false
+        type: string
+        description: Filter by image_status value on the record. Default if omitted is 'active'.
+        enum:
+          - all
+          - active
+          - deleting
+        default: active
+      - name: analysis_status
+        in: query
+        required: false
+        type: string
+        description: Filter by analysis_status value on the record.
+        enum:
+          - not_analyzed
+          - analyzed
+          - analyzing
+          - analysis_failed
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:

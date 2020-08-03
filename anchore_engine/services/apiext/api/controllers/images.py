@@ -634,12 +634,12 @@ def import_image_archive(archive_file):
     return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_images(history=None, fulltag=None, detail=False, all=False):
+def list_images(history=None, fulltag=None, detail=False, image_status='active', analysis_status=None):
 
     httpcode = 500
     try:
         digest = None
-        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history, all=all)
+        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history, image_status=image_status, analysis_status=analysis_status)
 
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
@@ -1071,12 +1071,12 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
 #    return(return_object, httpcode)
 
 
-def do_list_images(account, filter_tag=None, filter_digest=None, history=False, all=False):
+def do_list_images(account, filter_tag=None, filter_digest=None, history=False, image_status=None, analysis_status=None):
     client = internal_client_for(CatalogClient, account)
 
     try:
         # Query param fulltag has precedence for search
-        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, all=all)
+        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, image_status=image_status, analysis_status=analysis_status)
 
         return [make_response_image(image_record, include_detail=True) for image_record in image_records]
 
