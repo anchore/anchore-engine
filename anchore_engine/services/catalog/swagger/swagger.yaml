@@ -99,12 +99,20 @@ paths:
       description: ""
       operationId: "image_tags_get"
       parameters:
-      - name: 'all'
+      - name: 'image_status'
         in: query
-        type: boolean
-        description: "flag to return all images in any state including those marked for deletion"
+        type: array
+        items:
+          type: string
+          enum:
+          - all
+          - active
+          - deleting
+        collectionFormat: csv
         required: false
-        default: false
+        default:
+        - active
+        description: "Filter images in one or more states such as active, deleting. Defaults to active images only if unspecified"
       produces:
       - "application/json"
       responses:

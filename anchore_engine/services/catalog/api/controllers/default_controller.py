@@ -44,11 +44,12 @@ def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, dryrun=False, b
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_tags_get(all=False):
+def image_tags_get(image_status=None):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={'all': all})
+        account_id = ApiRequestContextProxy.namespace()
         with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(session, request_inputs)
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(account_id, session, image_status)
+
     except Exception as err:
         httpcode = 500
         return_object = str(err)
