@@ -173,7 +173,7 @@ services:
     port: ${ANCHORE_SERVICE_PORT}
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: ${ANCHORE_EXTERNAL_TLS}
-    enable_hints: ${ANCHORE_HINTS_ENABLE}
+    enable_hints: ${ANCHORE_HINTS_ENABLED}
   policy_engine:
     enabled: true
     require_auth: true
