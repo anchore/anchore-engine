@@ -226,7 +226,7 @@ def image(dbsession, request_inputs, bodycontent=None):
     method = request_inputs['method']
     params = request_inputs['params']
     userId = request_inputs['userId']
-    
+
     return_object = {}
     httpcode = 500
 
@@ -242,9 +242,9 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
-    all = False
-    if params and 'all' in params:
-        all = params['all']
+    if params:
+        image_status = params.get('image_status')
+        analysis_status = params.get('analysis_status')
 
     httpcode = 500
     try:
@@ -256,11 +256,15 @@ def image(dbsession, request_inputs, bodycontent=None):
                     image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                     break
 
+
+        image_status_filter = image_status if image_status and image_status != 'all' else None
+        analysis_status_filter = analysis_status if analysis_status and analysis_status != 'all' else None
+
         if method == 'GET':
             if not input_string:
                 httpcode = 200
                 return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession,
-                                                                  image_status_filter=None if all else taskstate.base_state('image_status'))
+                                                                  image_status_filter=image_status_filter, analysis_status_filter=analysis_status_filter)
             else:
                 if registry_lookup:
                     try:
@@ -296,6 +300,11 @@ def image(dbsession, request_inputs, bodycontent=None):
                         for k in filterkeys:
                             if k in image_info and image_info[k]:
                                 dbfilter[k] = image_info[k]
+
+                        if image_status_filter:
+                            dbfilter['image_status'] = image_status_filter
+                        if analysis_status_filter:
+                            dbfilter['analysis_status'] = analysis_status_filter
 
                         logger.debug("image DB lookup filter: " + json.dumps(dbfilter, indent=4))
                         if history:

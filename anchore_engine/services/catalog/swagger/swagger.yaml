@@ -156,12 +156,26 @@ paths:
         description: "get all matching records for given tag"
         required: false
         default: false
-      - name: 'all'
+      - name: 'image_status'
         in: query
-        type: boolean
-        description: "flag to return all images in any state including those marked for deletion and other non-active states"
         required: false
-        default: false
+        type: string
+        description: Filter by image_status value on the record. Default if omitted is 'active'.
+        enum:
+          - all
+          - active
+          - deleting
+        default: active
+      - name: 'analysis_status'
+        in: query
+        required: false
+        type: string
+        description: Filter by analysis_status value on the record.
+        enum:
+          - not_analyzed
+          - analyzed
+          - analyzing
+          - analysis_failed
       produces:
       - "application/json"
       responses:
