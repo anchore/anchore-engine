@@ -44,8 +44,8 @@ class CatalogClient(InternalServiceClient):
 
         return self.call_api(http.anchy_post, 'images', query_params={'tag': tag, 'digest': digest, 'created_at': created_at, 'from_archive': from_archive, 'allow_dockerfile_update': allow_dockerfile_update}, body=json.dumps(payload))
 
-    def get_imagetags(self, all=False):
-        return self.call_api(http.anchy_get, 'summaries/imagetags', query_params={'all': all})
+    def get_imagetags(self, image_status=None):
+        return self.call_api(http.anchy_get, 'summaries/imagetags', query_params={'image_status': ','.join(image_status) if image_status and isinstance(image_status, list) else None})
 
     def get_image(self, imageDigest):
         return self.call_api(http.anchy_get, 'images/{imageDigest}', path_params={'imageDigest': imageDigest})

@@ -556,7 +556,7 @@ def repositories(request_inputs):
 
 # images CRUD
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_imagetags(all=False):
+def list_imagetags(image_status=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
 
@@ -570,7 +570,7 @@ def list_imagetags(all=False):
 
         client = internal_client_for(CatalogClient, request_inputs['userId'])
 
-        return_object = client.get_imagetags(all)
+        return_object = client.get_imagetags(image_status)
         httpcode = 200
 
     except Exception as err:

@@ -207,28 +207,19 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
     return return_object, httpcode
 
-def image_tags(dbsession, request_inputs):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
 
-    return_object = {}
+def image_tags(account_id, dbsession, image_status):
+    return_object = []
     httpcode = 500
 
-    all = False
-    if params and 'all' in params:
-        all = params['all']
-
     try:
-        if method == 'GET':
-            httpcode = 200
-            return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession,
-                                                                image_status_filter=None if all else taskstate.base_state('image_status'))
+        return_object = db_catalog_image.get_all_tagsummary(account_id, session=dbsession, image_status=image_status)
+        httpcode = 200
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return return_object, httpcode
+
 
 def image(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
