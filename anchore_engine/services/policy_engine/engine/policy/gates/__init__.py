@@ -12,6 +12,7 @@ from .secrets import SecretCheckGate
 from .image_metadata import ImageMetadataGate
 from .always import AlwaysGate
 from .retrieved_files import RetrievedFileChecksGate
+from .malware import MalwareGate
 
 # Bring in deprecated gates
 from .deprecated import *
