@@ -203,6 +203,25 @@ def _build_default_response(content_data):
     return response
 
 
+def _build_malware_response(content_data):
+    return content_data
+    # response = []
+    # try:
+    #     logger.debug('Malware data to build: %s', content_data)
+    #
+    #     for result in content_data:
+    #         name = result.get('name')
+    #         response.extend([{'scanner': name, 'path': finding.get('path'), 'signature': finding.get('signature'), 'metadata': result.get('metadata')} for finding in result.get('findings')])
+    #
+    #     if not response:
+    #         raise Exception("empty return list after generic element parse")
+    # except Exception as err:
+    #     logger.debug_exception("couldn't parse any generic package elements, returning raw content_data: %s", err)
+    #     response = content_data
+    #
+    # return response
+
+
 CONTENT_RESPONSE_BUILDER_DISPATCH = {
     "os": _build_os_response,
     "npm": _build_npm_response,
@@ -213,4 +232,5 @@ CONTENT_RESPONSE_BUILDER_DISPATCH = {
     "docker_history": _build_docker_history_response,
     "dockerfile": _build_dockerfile_response,
     "manifest": _build_manifest_response,
+    "malware": _build_malware_response
 }
