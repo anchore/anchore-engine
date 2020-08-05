@@ -2670,7 +2670,7 @@ definitions:
         description: List of references including
         items:
           $ref: "#/definitions/VulnerabilityReference"
-    description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
+    description: A single vulnerability record in a single namespace, the unique key is the combination of the id and namespace
   VulnerabilityReference:
     description: An external link/reference
     type: object
@@ -4340,6 +4340,5 @@ definitions:
       resource_type:
         type: string
         description: The type of resource this event is generated from
-
 
 
