@@ -159,7 +159,7 @@ def get_created_at(record):
         return record['created_at']
     return 0
 
-def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session=None):
+def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_status='active', analysis_status=None, session=None):
     if not session:
         session = db.Session
 
@@ -173,11 +173,12 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
             imageDigest = result['imageDigest']
             dbobj = get(imageDigest, userId, session=session)
 
-            if not latest:
-                latest = dbobj
+            if (image_status is None or dbobj['image_status'] == image_status) and (analysis_status is None or dbobj['analysis_status'] == analysis_status):
+                if not latest:
+                    latest = dbobj
 
-            ret_results.append(dbobj)
-            
+                ret_results.append(dbobj)
+
     ret = []
     if not onlylatest:
         ret = ret_results
