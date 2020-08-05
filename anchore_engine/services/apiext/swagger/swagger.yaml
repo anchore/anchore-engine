@@ -483,7 +483,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/DeleteImagesResponseList"
+            $ref: "#/definitions/DeleteImageResponseList"
         500:
           description: Internal Error
           schema:
@@ -557,7 +557,7 @@ paths:
         200:
           description: Image deletion success
           schema:
-            $ref: "#/definitions/DeleteImagesResponse"
+            $ref: "#/definitions/DeleteImageResponse"
   /images/by_id/{imageId}:
     get:
       tags:
@@ -601,6 +601,8 @@ paths:
       responses:
         200:
           description: Image deletion success
+          schema:
+            $ref: "#/definitions/DeleteImageResponse"
         500:
           description: Internal error
           schema:
@@ -2955,7 +2957,7 @@ definitions:
         - id
       value:
         type: string
-  DeleteImagesResponse:
+  DeleteImageResponse:
     type: object
     description: Image deletion response containing status and details
     required:
@@ -2973,11 +2975,11 @@ definitions:
         - delete_failed
       detail:
         type: string
-  DeleteImagesResponseList:
+  DeleteImageResponseList:
     type: array
     description: A list of delete image responses
     items:
-      $ref: "#/definitions/DeleteImagesResponse"
+      $ref: "#/definitions/DeleteImageResponse"
   Policy:
     type: object
     required:
