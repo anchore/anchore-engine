@@ -242,9 +242,8 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
-    if params:
-        image_status = params.get('image_status')
-        analysis_status = params.get('analysis_status')
+    image_status = params.get('image_status') if params else None
+    analysis_status = params.get('analysis_status') if params else None
 
     httpcode = 500
     try:
@@ -255,7 +254,6 @@ def image(dbsession, request_inputs, bodycontent=None):
                     input_type = t
                     image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                     break
-
 
         image_status_filter = image_status if image_status and image_status != 'all' else None
         analysis_status_filter = analysis_status if analysis_status and analysis_status != 'all' else None
@@ -301,16 +299,11 @@ def image(dbsession, request_inputs, bodycontent=None):
                             if k in image_info and image_info[k]:
                                 dbfilter[k] = image_info[k]
 
-                        if image_status_filter:
-                            dbfilter['image_status'] = image_status_filter
-                        if analysis_status_filter:
-                            dbfilter['analysis_status'] = analysis_status_filter
-
                         logger.debug("image DB lookup filter: " + json.dumps(dbfilter, indent=4))
                         if history:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, session=dbsession)
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, session=dbsession)
                         else:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter,
                                                                                onlylatest=True, session=dbsession)
 
                         if image_records:

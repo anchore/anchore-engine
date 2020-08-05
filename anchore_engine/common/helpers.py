@@ -301,7 +301,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
         elif content_type == 'malware':
             return extract_malware_content(idata)
         elif 'pkgs.{}'.format(content_type) in idata['imagedata']['analysis_report']['package_list']:
-            return extract_pkg_content(image_data, content_type)
+            return extract_pkg_content(idata, content_type)
         elif content_type == 'metadata':
             if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
                 ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
