@@ -2662,7 +2662,29 @@ definitions:
         $ref: "#/definitions/NvdDataList"
       vendor_data:
         $ref: "#/definitions/VendorDataList"
+      description:
+        type: string
+        description: Description of the vulnerability if available
+      references:
+        type: array
+        description: List of references including
+        items:
+          $ref: "#/definitions/VulnerabilityReference"
     description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
+  VulnerabilityReference:
+    description: An external link/reference
+    type: object
+    properties:
+      source:
+        type: string
+        description: The reference source
+      tags:
+        type: array
+        items:
+          type: string
+      url:
+        type: string
+        description: The reference url
   ImageReference:
     type: object
     properties:
