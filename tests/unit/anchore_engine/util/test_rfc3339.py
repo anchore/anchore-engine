@@ -49,3 +49,10 @@ def test_rfc3339():
         print ("\tdatetime_to_rfc3339: {}".format(rc))        
         assert(rc == assert_targets['rfc3339'])
         print("\tdatetime assertion passed")        
+
+def test_dt_to_epoch():
+    for dt, assert_targets in dt_examples:
+        print("testing input datetime: {}".format(dt))
+        epoch = utils.datetime_to_epoch(dt)
+        print("\tdatetime_to_epoch: {}".format(epoch))
+        assert(epoch == assert_targets['epoch'])

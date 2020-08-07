@@ -430,6 +430,15 @@ def epoch_to_rfc3339(epoch_int):
     """
     return datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(epoch_int))
 
+def datetime_to_epoch(dt_obj):
+    """
+    Simple utility function. Convert a DateTime object to epoch timestamp (no tz conversion)
+
+    :param dt_obj: datetime object from std datetime lib
+    :return: int representing epoch timestamp
+    """
+    return int(dt_obj.timestamp())
+
 
 def convert_bytes_size(size_str):
     """

@@ -1160,11 +1160,16 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                     image_check = client.get_image(digest)
                     if not image_check:
                         raise Exception('No image found for digest {}'.format(digest))
+                    if not ts:
+                        # Timestamp required for analysis by digest & tag (if none specified,
+                        # default to previous image's timestamp)
+                        ts = image_check['created_at']
                 except Exception as err:
                     raise ValueError("image digest must already exist to force re-analyze using tag+digest")
             elif not ts:
-                # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history properly
-                raise ValueError("must supply creation_timestamp_override when adding a new image by tag+digest")
+                # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history
+                # properly. Therefore, if no timestamp is provided, we use the current time
+                ts = utils.datetime_to_epoch(datetime.datetime.now())
         else:
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
 
