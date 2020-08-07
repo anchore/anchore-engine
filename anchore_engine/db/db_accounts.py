@@ -70,7 +70,7 @@ def update_state(name, new_state, session=None):
     if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.enabled and new_state == AccountStates.deleting):
         raise InvalidStateError(accnt.state, new_state)
 
-    # Both Account Name and Type should be admin, but just to be safe...
+    # Both Account Name and Type should be equal to "admin" for the Admin Account, but just to be safe...
     if (accnt.name == 'admin' or accnt.type == 'admin') and new_state != AccountStates.enabled:
         raise DisableAdminAccountError()
 
