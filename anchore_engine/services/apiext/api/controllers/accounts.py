@@ -307,9 +307,7 @@ def update_account_state(accountname, desired_state):
                 return account_db_to_status_msg(result), 200
             else:
                 return make_response_error('Error updating account state'), 500
-    except InvalidStateError as ex:
-        return make_response_error(str(ex), in_httpcode=400), 400
-    except DisableAdminAccountError as ex:
+    except (InvalidStateError, DisableAdminAccountError) as ex:
         return make_response_error(str(ex), in_httpcode=400), 400
     except AccountNotFoundError as ex:
         return make_response_error('Account not found', in_httpcode=404), 404
