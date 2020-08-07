@@ -1163,7 +1163,7 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                     if not ts:
                         # Timestamp required for analysis by digest & tag (if none specified,
                         # default to previous image's timestamp)
-                        ts = image_check['created_at']
+                        ts = image_check.get('created_at', utils.datetime_to_epoch(datetime.datetime.now()))
                 except Exception as err:
                     raise ValueError("image digest must already exist to force re-analyze using tag+digest")
             elif not ts:
