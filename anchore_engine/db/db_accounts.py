@@ -24,6 +24,11 @@ class InvalidStateError(Exception):
         self.desired_state = desired_state
 
 
+class DisableAdminAccountError(Exception):
+    def __init__(self):
+        super(DisableAdminAccountError, self).__init__('Cannot disable the admin account')
+
+
 def add(account_name, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
 
@@ -45,8 +50,8 @@ def update_state(name, new_state, session=None):
     """
     Update state of the account. Allowed transitions:
 
-    active -> disabled
-    disabled -> active
+    enabled -> disabled (if account is not the admin one)
+    disabled -> enabled
     disabled -> deleting
 
     Deleting is a terminal state, and can be reached only from disabled
@@ -64,6 +69,10 @@ def update_state(name, new_state, session=None):
     # Deleting state is terminal. Must deactivate account prior to deleting it.
     if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.enabled and new_state == AccountStates.deleting):
         raise InvalidStateError(accnt.state, new_state)
+
+    # Both Account Name and Type should be admin, but just to be safe...
+    if (accnt.name == 'admin' or accnt.type == 'admin') and new_state != AccountStates.enabled:
+        raise DisableAdminAccountError()
 
     accnt.state = new_state
     return accnt.to_dict()

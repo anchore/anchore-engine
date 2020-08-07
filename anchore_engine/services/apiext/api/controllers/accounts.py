@@ -8,7 +8,7 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.apis import ApiRequestContextProxy
 from anchore_engine.db import AccountTypes, UserAccessCredentialTypes, session_scope, AccountStates, UserTypes
-from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError, InvalidStateError
+from anchore_engine.db.db_accounts import AccountAlreadyExistsError, AccountNotFoundError, InvalidStateError, DisableAdminAccountError
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
@@ -299,8 +299,6 @@ def update_account_state(accountname, desired_state):
     """
 
     try:
-
-
         with session_scope() as session:
             mgr = manager_factory.for_session(session)
             verify_account(accountname, mgr)
@@ -310,6 +308,8 @@ def update_account_state(accountname, desired_state):
             else:
                 return make_response_error('Error updating account state'), 500
     except InvalidStateError as ex:
+        return make_response_error(str(ex), in_httpcode=400), 400
+    except DisableAdminAccountError as ex:
         return make_response_error(str(ex), in_httpcode=400), 400
     except AccountNotFoundError as ex:
         return make_response_error('Account not found', in_httpcode=404), 404
