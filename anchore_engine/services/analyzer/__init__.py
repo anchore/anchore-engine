@@ -235,15 +235,11 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                         npayload = {
                             'last_eval': last_payload,
                             'curr_eval': curr_payload,
+                            'subscription_type': 'analysis_update'
                         }
                         if annotations:
                             npayload['annotations'] = annotations
 
-                        #original method
-                        #rc = anchore_engine.subsys.notifications.queue_notification(userId, fulltag, 'analysis_update', npayload)
-
-                        # new method
-                        npayload['subscription_type'] = 'analysis_update'
                         event = events.UserAnalyzeImageCompleted(user_id=userId, full_tag=fulltag, data=npayload)
                         analysis_events.append(event)
 
