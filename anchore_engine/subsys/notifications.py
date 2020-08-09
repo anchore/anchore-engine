@@ -46,7 +46,45 @@ def make_notification(user_record, subscription_type, notification):
 
     return ret
 
+
 def notify(user_record, notification):
+    """
+    Notifications are sent periodically based on polling a queue for a particular type of subscription
+    (anchore_engine.common.subscription_types + [event_log_type])
+
+    This method is responsible for actually distributing notifications according to the notification_modes defined
+    below (currently only webhook supported)
+    Note: The notification passed in is not coming from make_notification method above, but rather from
+    db_queues.get_all, which passes a QueueItem (see anchore_engine/subsys/catalog.py) serialized as a dict
+    (data field is a json)
+
+    :param user_record: the account sending the notification
+    :param notification: a dict loaded from db_queues.get_all. Ex:
+        {
+          "queueId": "subscription type actual",
+          "userId": "acct name",
+          "queueName": "string",
+          "dataId": "notificationId",
+          "created_at": 981173106,
+          "last_updated": 981173106,
+          "record_state_key": "active",
+          "record_state_val": "",
+          "tries": 0,
+          "max_tries": 981173206,
+          "data": {
+            "notification_user": "account name",
+            "notification_user_email": "account email",
+            "notification_type": "same as subscription type",
+            "notification_payload": {
+              "userId": "from original notification",
+              "notificationId": "from original notification",
+              "subscription_type": " from event details",
+              "subscription_key": "from event resource id"
+            }
+          }
+        }
+    :return: boolean (True if successful)
+    """
     notification_modes = ['webhook']
 
     logger.debug("sending notification: " + json.dumps(notification, indent=4))
@@ -56,9 +94,8 @@ def notify(user_record, notification):
 
     return True
 
+
 def do_notify_webhook(user_record, notification):
-    #logger.spew("webhook notify user: " + json.dumps(user_record, indent=4))
-    #logger.debug("webhook notify user: " + json.dumps(notification, indent=4))
 
     notification_type = notification['data']['notification_type']
     user = pw = None

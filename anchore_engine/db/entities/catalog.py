@@ -8,6 +8,7 @@ import time
 from sqlalchemy import Column, Integer, String, Boolean, BigInteger, DateTime, LargeBinary, Index, JSON, Enum
 from sqlalchemy import inspect
 from sqlalchemy.orm import relationship
+from genson import SchemaBuilder
 
 from .common import Base, anchore_now, anchore_uuid, UtilMixin, StringJSON, anchore_now_datetime
 
@@ -154,6 +155,92 @@ class QueueItem(Base, UtilMixin):
 
     def __repr__(self):
         return "queueId='%s'" % (self.queueId)
+
+    @staticmethod
+    def to_schema():
+        """
+        This method uses an example object to generate a json schema of a notification payload that may be sent by
+        an Anchore webhook.
+
+        The nested object in the "data" key is generated using the anchore_engine/subsys/notifications.make_notification
+        method.
+
+        The values in this example object are either descriptive of possible values or placeholders (e.g. timestamps).
+
+        :return: This will return a JSON representation of the QueueItem JSON Schema.
+        TODO: can be improved with descriptions, examples, see http://jsonschema.net for a more robust schema
+        {
+           "$schema":"http://json-schema.org/schema#",
+           "type":"object",
+           "properties":{
+              "queueId":{
+                 "type":"string"
+              },
+              ...
+              "data":{
+                 "type":"object",
+                 "properties":{
+                    "notification_user":{
+                       "type":"string"
+                    },
+                    ...
+                    "notification_payload":{
+                       "type":"object",
+                       "properties":{
+                          "userId":{
+                             "type":"string"
+                          },
+                          "notificationId":{
+                             "type":"string"
+                          },
+                          ...
+                       },
+                       "required":[
+                          "notificationId",
+                          "subscription_key",
+                          ...
+                       ]
+                    }
+                 },
+                 "required":[
+                    "notification_payload",
+                    "notification_user",
+                    ...
+                 ]
+              }
+           },
+           "required":[
+              "data",
+              "queueId",
+              ...
+           ]
+        """
+        builder = SchemaBuilder()
+        builder.add_schema({"type": "object", "properties": {}})
+        builder.add_object({
+          "queueId": "subscription type actual",
+          "userId": "acct name",
+          "queueName": "string",
+          "dataId": "notificationId",
+          "created_at": 981173106,
+          "last_updated": 981173106,
+          "record_state_key": "active",
+          "record_state_val": "",
+          "tries": 0,
+          "max_tries": 981173206,
+          "data": {
+            "notification_user": "account name",
+            "notification_user_email": "account email",
+            "notification_type": "same as subscription type",
+            "notification_payload": {
+              "userId": "from original notification",
+              "notificationId": "from original notification",
+              "subscription_type": " from event details",
+              "subscription_key": "from event resource id"
+            }
+          }
+        })
+        return builder.to_schema()
 
 
 class QueueMeta(Base, UtilMixin):
