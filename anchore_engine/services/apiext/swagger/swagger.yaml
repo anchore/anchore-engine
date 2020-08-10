@@ -2599,6 +2599,32 @@ paths:
         200:
           description: the JSON Schema
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.webhooks
+  /webhooks/test/{webhook_type}:
+    get:
+      summary: Adds the capabilities to test a webhook delivery
+      description: Loads the Webhook configuration for webhookType
+      operationId: test_webhook
+      x-anchore-authz-action: None
+      tags:
+        - Webhooks
+      parameters:
+        - name: webhook_type
+          in: path
+          required: true
+          type: string
+          description: The Webhook Type that we should test (defaults to 'general')
+      responses:
+        200:
+          description: The Webhook was sent successfully
+        400:
+          description: The Webhook failed to send due to misconfiguration
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+        500:
+          description: The Webhook failed to send due to an Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.webhooks
 definitions:
   PaginationProperties:
     type: object

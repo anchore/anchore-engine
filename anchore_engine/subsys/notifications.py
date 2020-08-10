@@ -1,11 +1,12 @@
 import json
 import uuid
 
-from anchore_engine.clients.services import http
 import anchore_engine.configuration.localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.clients.services import http
 from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.subsys import logger
+
 
 def queue_notification(userId, subscription_key, subscription_type, payload):
     
@@ -98,7 +99,6 @@ def notify(user_record, notification):
 def do_notify_webhook(user_record, notification):
 
     notification_type = notification['data']['notification_type']
-    user = pw = None
     subvars = [('<userId>', user_record['name']), ('<notification_type>', notification_type)]
 
     try:
@@ -120,30 +120,41 @@ def do_notify_webhook(user_record, notification):
         for ntype in [notification_type, 'general']:
             if ntype in webhooks:
                 webhook = webhooks[ntype]
-                
-                user = webhook.pop('webhook_user', rootuser)
-                pw = webhook.pop('webhook_pass', rootpw)
-                verify = webhook.pop('ssl_verify', rootverify)
-
-                if not user and not pw:
-                    auth=None
-                else:
-                    auth = (user, pw)
-
-                url = webhook['url']
-                for subkey,subval in subvars:
-                    url = url.replace(subkey, subval)
-
-                try:
-                    logger.debug("webhook post: " + str(url) + " : " + str(notification))
-                    #result = http.post(url, data=payload, auth=auth, timeout=2.0, verify=verify)
-                    headers = {'Content-Type': 'application/json'}
-                    result = http.anchy_post(url, data=payload, auth=auth, timeout=2.0, verify=verify, headers=headers)
-                    logger.debug("webhook response: " + str(result))
-                    return True
-                except Exception as err:
-                    raise Exception("failed to post notification to webhook - exception: " + str(err))
+                rc = do_notify_webhook_type(webhook=webhook, user=webhook.pop('webhook_user', rootuser),
+                                            pw=webhook.pop('webhook_pass', rootpw),
+                                            verify=webhook.pop('ssl_verify', rootverify), subvars=subvars,
+                                            payload=payload)
             
     logger.debug("warning: notification generated, but no matching webhook could be found in config to send it to - dropping notification")
     return False
 
+
+def do_notify_webhook_type(**kwargs):
+    webhook = kwargs['webhook']
+    user = kwargs['user']
+    pw = kwargs['pw']
+    verify = kwargs['verify']
+    subvars = kwargs['subvars']
+    payload = kwargs['payload']
+
+    if not user and not pw:
+        auth = None
+    else:
+        auth = (user, pw)
+
+    url = webhook['url']
+
+    if not url:
+        raise Exception('Cannot send webhook, no URL configured')
+
+    for subkey, subval in subvars:
+        url = url.replace(subkey, subval)
+
+    try:
+        logger.info("webhook post: " + str(url) + " : " + payload)
+        headers = {'Content-Type': 'application/json'}
+        result = http.anchy_post(url, data=payload, auth=auth, timeout=2.0, verify=verify, headers=headers)
+        logger.info("webhook response: " + str(result))
+        return result
+    except Exception as err:
+        raise Exception("failed to post notification to webhook - exception: " + str(err))
