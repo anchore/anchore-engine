@@ -546,6 +546,7 @@ class ApiService(BaseService):
 
             return self._application
         except Exception as err:
+            logger.exception('Error initializing WSGI application: {}'.format(err))
             traceback.print_exc()
             raise err
 
