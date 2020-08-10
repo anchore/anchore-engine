@@ -15,9 +15,9 @@ from anchore_engine import db
 from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.configuration import localconfig
 from anchore_engine.db.entities.catalog import QueueItem
+from anchore_engine.subsys import logger
 from anchore_engine.subsys import notifications
 from anchore_engine.subsys.identities import IdentityManagerFactory
-from anchore_engine.subsys import logger
 
 authorizer = get_authorizer()
 manager_factory = IdentityManagerFactory(localconfig.get_config())
@@ -155,11 +155,14 @@ def get_test_notification(webhook_type, request_inputs):
     data['notification_type'] = webhook_type
 
     notification_id = TEST_NOTIFICATION_TEMPLATE['data']['notification_payload']['notificationId'].format(uuid.uuid4())
-    notification_payload = {'userId': request_inputs['userId'],
-                            'notificationId': notification_id,
-                            'subscription_type': webhook_type,
-                            'subscription_key': TEST_NOTIFICATION_TEMPLATE['data']['notification_payload'][
-                                'subscription_key'].format(uuid.uuid4())}
+    subscription_key = TEST_NOTIFICATION_TEMPLATE['data']['notification_payload']['subscription_key']\
+        .format(uuid.uuid4())
+    notification_payload = {
+        'userId': request_inputs['userId'],
+        'notificationId': notification_id,
+        'subscription_type': webhook_type,
+        'subscription_key': subscription_key
+    }
 
     data['notification_payload'] = notification_payload
     notification['data'] = data
