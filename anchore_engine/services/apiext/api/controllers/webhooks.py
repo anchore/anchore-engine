@@ -14,7 +14,6 @@ import anchore_engine.subsys.servicestatus
 from anchore_engine import db
 from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.configuration import localconfig
-from anchore_engine.db.entities.catalog import QueueItem
 from anchore_engine.subsys import logger
 from anchore_engine.subsys import notifications
 from anchore_engine.subsys.identities import IdentityManagerFactory
@@ -53,13 +52,14 @@ def test_webhook(webhook_type='general'):
 
     :param webhook_type: the type of webhook to send
     """
-    logger.info('test webhook endpoint called')
+    logger.debug("Testing webhook for type '{}'".format(webhook_type))
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
     return_object = {}
     httpcode = 500
     try:
         webhooks = {}
 
+        # Load Webhook configurations, and select webhook according to webhook_type
         localconfig = anchore_engine.configuration.localconfig.get_config()
         if 'webhooks' in localconfig:
             webhooks.update(localconfig['webhooks'])
@@ -79,35 +79,7 @@ def test_webhook(webhook_type='general'):
             )
             return return_object, httpcode
 
-        rootuser = webhooks.pop('webhook_user', None)
-        rootpw = webhooks.pop('webhook_pass', None)
-        rootverify = webhooks.pop('ssl_verify', None)
-
-        subvars = [('<userId>', request_inputs['userId']), ('<notification_type>', 'test')]
-
-        logger.info('build test notification obj')
-        try:
-            notification = get_test_notification(webhook_type, request_inputs)
-        except Exception as err:
-            return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-            return return_object, httpcode
-
-        logger.info('build payload')
-        try:
-            payload = json.dumps(notification)
-        except Exception as err:
-            return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-            return return_object, httpcode
-
-        logger.info('send to notifications')
-        return_object = notifications.do_notify_webhook_type(webhook=webhook,
-                                                             user=webhook.pop('webhook_user', rootuser),
-                                                             pw=webhook.pop('webhook_pass', rootpw),
-                                                             verify=webhook.pop('ssl_verify', rootverify),
-                                                             subvars=subvars,
-                                                             payload=payload)
-
-        httpcode = 200
+        return send_test_notification(webhooks, webhook, request_inputs, webhook_type)
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object['httpcode']
@@ -152,4 +124,44 @@ def get_test_notification(webhook_type, request_inputs):
     data['notification_payload'] = notification_payload
     notification['data'] = data
 
+    logger.debug("Test Notification JSON: {}".format(notification))
+
     return notification
+
+
+def send_test_notification(webhooks, webhook, request_inputs, webhook_type):
+    """
+    This Method actually gathers all the parameters needed for notifications to actually send the webhook
+
+    :param webhooks: webhooks loaded from localconfig
+    :param webhook: the webhook object for webhook_type
+    :param request_inputs: the request inputs (used to resolve userId)
+    :param webhook_type: webhook type to send (used to build payload)
+    :return: result of webhook and http code (200 if successful, 500 if we fail to build test notification or payload
+    """
+    httpcode = 500
+    rootuser = webhooks.pop('webhook_user', None)
+    rootpw = webhooks.pop('webhook_pass', None)
+    rootverify = webhooks.pop('ssl_verify', None)
+
+    subvars = [('<userId>', request_inputs['userId']), ('<notification_type>', 'test')]
+
+    try:
+        notification = get_test_notification(webhook_type, request_inputs)
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return return_object, httpcode
+
+    logger.info('build payload')
+    try:
+        payload = json.dumps(notification)
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return return_object, httpcode
+
+    return notifications.do_notify_webhook_type(webhook=webhook,
+                                                user=webhook.pop('webhook_user', rootuser),
+                                                pw=webhook.pop('webhook_pass', rootpw),
+                                                verify=webhook.pop('ssl_verify', rootverify),
+                                                subvars=subvars,
+                                                payload=payload), 200
