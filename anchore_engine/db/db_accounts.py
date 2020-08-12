@@ -3,6 +3,7 @@ Interface to the accounts table. Data format is dicts, not objects.
 """
 from anchore_engine.db import Account, AccountTypes, AccountStates
 from anchore_engine.db.entities.common import anchore_now
+from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 
 
 class AccountNotFoundError(Exception):
@@ -71,7 +72,7 @@ def update_state(name, new_state, session=None):
         raise InvalidStateError(accnt.state, new_state)
 
     # Both Account Name and Type should be equal to "admin" for the Admin Account, but just to be safe...
-    if (accnt.name == 'admin' or accnt.type == 'admin') and new_state != AccountStates.enabled:
+    if (accnt.name == ADMIN_ACCOUNT_NAME or accnt.type == AccountTypes.admin) and new_state != AccountStates.enabled:
         raise DisableAdminAccountError()
 
     accnt.state = new_state
