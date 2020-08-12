@@ -222,7 +222,7 @@ def create_account(account):
         return make_response_error('Error creating account', in_httpcode=500), 500
 
 
-@authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN, target=ParameterBoundValue('accountname'))])
+@authorizer.requires([ActionBoundPermission(domain=ParameterBoundValue('accountname'))])
 def get_account(accountname):
     """
     GET /accounts/{accountname}
