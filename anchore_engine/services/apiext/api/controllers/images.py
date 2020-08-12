@@ -1,6 +1,7 @@
 import json
 import stat
 import datetime
+import time
 import base64
 import re
 import tarfile
@@ -16,7 +17,8 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
 import anchore_engine.common
-from anchore_engine.common.helpers import make_response_error, make_anchore_exception, make_eval_record, make_policy_record, make_response_routes
+from anchore_engine.common.helpers import make_response_error, make_anchore_exception
+from anchore_engine.db.entities.common import anchore_now
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import taskstate, logger
@@ -1163,13 +1165,13 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                     if not ts:
                         # Timestamp required for analysis by digest & tag (if none specified,
                         # default to previous image's timestamp)
-                        ts = image_check.get('created_at', utils.datetime_to_epoch(datetime.datetime.now()))
+                        ts = image_check.get('created_at', anchore_now())
                 except Exception as err:
                     raise ValueError("image digest must already exist to force re-analyze using tag+digest")
             elif not ts:
                 # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history
                 # properly. Therefore, if no timestamp is provided, we use the current time
-                ts = utils.datetime_to_epoch(datetime.datetime.now())
+                ts = anchore_now()
         else:
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
 
