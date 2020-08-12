@@ -47,21 +47,6 @@ TEST_NOTIFICATION_TEMPLATE = {
 
 
 @authorizer.requires([])
-def get_webhook_schema():
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    return_object = {}
-    httpcode = 500
-    try:
-        return_object = QueueItem.to_schema()
-        httpcode = 200
-    except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
-
-    return return_object, httpcode
-
-
-@authorizer.requires([])
 def test_webhook(webhook_type='general'):
     """
     This method adds the capability to test a Webhook delivery of a test notification
