@@ -2587,8 +2587,8 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
-  /webhooks/test/{webhook_type}:
-    get:
+  /system/webhooks/{webhook_type}/test:
+    post:
       summary: Adds the capabilities to test a webhook delivery
       description: Loads the Webhook configuration for webhookType
       operationId: test_webhook
