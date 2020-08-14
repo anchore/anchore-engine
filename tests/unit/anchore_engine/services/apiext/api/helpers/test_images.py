@@ -1,5 +1,9 @@
 import pytest
+from unittest.mock import MagicMock
 
+
+from anchore_engine import utils
+from anchore_engine.db.entities import common
 from anchore_engine.services.apiext.api.helpers.image_content_response import (
     _build_os_response,
     _build_npm_response,
@@ -10,6 +14,9 @@ from anchore_engine.services.apiext.api.helpers.image_content_response import (
     _build_dockerfile_response,
     _build_manifest_response,
     _build_default_response,
+)
+from anchore_engine.services.apiext.api.helpers.images import (
+    add_image_from_source,
 )
 
 
@@ -414,3 +421,111 @@ ICAgICAgfQogICAgICAgIF0=
         expected_response = ""
         actual_response = _build_manifest_response(bad_data_entry)
         assert expected_response == actual_response
+
+class TestAddImageFromSource:
+    @pytest.fixture
+    def timestamp(self):
+        return '2019-01-01T01:01:01Z'
+
+    @pytest.fixture
+    def client(self):
+        return MagicMock(get_image=MagicMock(return_value=None), add_image=MagicMock())
+
+    @pytest.fixture
+    def client_with_existing_image(self, timestamp):
+        epoch = utils.rfc3339str_to_epoch(timestamp)
+        return MagicMock(get_image=MagicMock(return_value={"something": "here"}), add_image=MagicMock())
+
+    @pytest.fixture
+    def client_with_existing_image_with_timestamp(self, timestamp):
+        epoch = utils.rfc3339str_to_epoch(timestamp)
+        return MagicMock(get_image=MagicMock(return_value={"created_at": epoch}), add_image=MagicMock())
+
+    @pytest.fixture
+    def anchore_now_timestamp(self, monkeypatch):
+        timestamp = '2020-02-02T02:02:02Z'
+        the_mock = MagicMock(return_value=utils.rfc3339str_to_epoch(timestamp))
+        monkeypatch.setattr(common, "anchore_now", the_mock)
+        return timestamp
+
+    def test_timestamp_override(self, client, timestamp):
+        expected_timestamp = utils.rfc3339str_to_epoch(timestamp)
+        source = {
+                    'digest': {
+                        'pullstring': 'docker.io/library/nginx@sha256:0123456789012345678901234567890123456789012345678901234567890123',
+                        'tag': 'docker.io/library/nginx:latest',
+                        'creation_timestamp_override': timestamp
+                    }
+                }
+
+        add_image_from_source(client, source)
+
+        client.add_image.assert_called_once()
+
+        for args, kwargs in client.add_image.call_args_list:
+            assert kwargs["created_at"] == expected_timestamp
+
+    def test_no_timestamp_override(self, client, anchore_now_timestamp):
+        expected_timestamp = utils.rfc3339str_to_epoch(anchore_now_timestamp)
+        source = {
+                    'digest': {
+                        'pullstring': 'docker.io/library/nginx@sha256:0123456789012345678901234567890123456789012345678901234567890123',
+                        'tag': 'docker.io/library/nginx:latest',
+                    }
+                }
+
+        add_image_from_source(client, source)
+
+        client.add_image.assert_called_once()
+
+        for args, kwargs in client.add_image.call_args_list:
+            assert kwargs["created_at"] == expected_timestamp
+
+    def test_force_no_existing_image(self, client, timestamp):
+        expected_timestamp = utils.rfc3339str_to_epoch(timestamp)
+        source = {
+                    'digest': {
+                        'pullstring': 'docker.io/library/nginx@sha256:0123456789012345678901234567890123456789012345678901234567890123',
+                        'tag': 'docker.io/library/nginx:latest',
+                    }
+                }
+
+        with pytest.raises(ValueError) as excinfo:
+            add_image_from_source(client, source, force=True)
+
+        assert "image digest must already exist to force re-analyze using tag+digest" in str(excinfo.value)
+
+
+    def test_force_existing_image(self, client_with_existing_image, anchore_now_timestamp):
+        client = client_with_existing_image
+        expected_timestamp = utils.rfc3339str_to_epoch(anchore_now_timestamp)
+        source = {
+                    'digest': {
+                        'pullstring': 'docker.io/library/nginx@sha256:0123456789012345678901234567890123456789012345678901234567890123',
+                        'tag': 'docker.io/library/nginx:latest',
+                    }
+                }
+
+        add_image_from_source(client, source, force=True)
+
+        client.add_image.assert_called_once()
+
+        for args, kwargs in client.add_image.call_args_list:
+            assert kwargs["created_at"] == expected_timestamp
+
+    def test_force_existing_image_with_timestamp(self, client_with_existing_image_with_timestamp, timestamp, anchore_now_timestamp):
+        client = client_with_existing_image_with_timestamp
+        expected_timestamp = utils.rfc3339str_to_epoch(timestamp)
+        source = {
+                    'digest': {
+                        'pullstring': 'docker.io/library/nginx@sha256:0123456789012345678901234567890123456789012345678901234567890123',
+                        'tag': 'docker.io/library/nginx:latest',
+                    }
+                }
+
+        add_image_from_source(client, source, force=True)
+
+        client.add_image.assert_called_once()
+
+        for args, kwargs in client.add_image.call_args_list:
+            assert kwargs["created_at"] == expected_timestamp

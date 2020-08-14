@@ -18,7 +18,6 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
 import anchore_engine.common
 from anchore_engine.common.helpers import make_response_error, make_anchore_exception
-from anchore_engine.db.entities.common import anchore_now
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import taskstate, logger
@@ -1086,7 +1085,6 @@ def do_list_images(account, filter_tag=None, filter_digest=None, history=False, 
         logger.debug("operation exception: " + str(err))
         raise err
 
-
 def analyze_image(account, source, force=False, enable_subscriptions=None, annotations=None):
     """
     Analyze an image from a source where a source can be one of:
@@ -1119,65 +1117,11 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
         raise Exception('Must have source to fetch image or analysis from')
 
     client = internal_client_for(CatalogClient, account)
-    tag = None
-    digest = None
-    ts = None
-    is_from_archive = False
-    dockerfile = None
-    image_check = None
+
     try:
         logger.debug("handling POST: source={}, force={}, enable_subscriptions={}, annotations={}".format(source, force, enable_subscriptions, annotations))
 
-        # if not, add it and set it up to be analyzed
-        if source.get('archive'):
-            img_source = source.get('archive')
-            # Do archive-based add
-            digest = img_source['digest']
-            is_from_archive = True
-        elif source.get('tag'):
-            # Do tag-based add
-            img_source= source.get('tag')
-            tag = img_source['pullstring']
-            dockerfile = img_source.get('dockerfile')
-
-        elif source.get('digest'):
-            # Do digest-based add
-            img_source = source.get('digest')
-
-            tag = img_source['tag']
-            digest_info = anchore_engine.utils.parse_dockerimage_string(img_source['pullstring'])
-            digest = digest_info['digest']
-            dockerfile = img_source.get('dockerfile')
-
-            ts = img_source.get('creation_timestamp_override')
-            if ts:
-                try:
-                    ts = utils.rfc3339str_to_epoch(ts)
-                except Exception as err:
-                    raise api_exceptions.InvalidDateFormat('source.creation_timestamp_override', ts)
-
-            if force:
-                # Grab the trailing digest sha section and ensure it exists
-                try:
-                    image_check = client.get_image(digest)
-                    if not image_check:
-                        raise Exception('No image found for digest {}'.format(digest))
-                    if not ts:
-                        # Timestamp required for analysis by digest & tag (if none specified,
-                        # default to previous image's timestamp)
-                        ts = image_check.get('created_at', anchore_now())
-                except Exception as err:
-                    raise ValueError("image digest must already exist to force re-analyze using tag+digest")
-            elif not ts:
-                # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history
-                # properly. Therefore, if no timestamp is provided, we use the current time
-                ts = anchore_now()
-        else:
-            raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
-
-        # add the image to the catalog
-        image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
-                                        created_at=ts, from_archive=is_from_archive, allow_dockerfile_update=force)
+        image_record = helpers.add_image_from_source(client, source, force, enable_subscriptions, annotations)
 
         imageDigest = image_record['imageDigest']
 
