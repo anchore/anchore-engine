@@ -44,8 +44,6 @@ tags:
   description: Get and operate on the authenticated user's identity
 - name: Archives
   description: Data Archiving Management
-- name: Webhooks
-  description: Customizable HTTP receivers of Anchore Engine Notifications
 basePath: "/"
 schemes:
 - "http"
@@ -2594,7 +2592,7 @@ paths:
       operationId: test_webhook
       x-anchore-authz-action: None
       tags:
-        - Webhooks
+        - System
       parameters:
         - name: webhook_type
           in: path
