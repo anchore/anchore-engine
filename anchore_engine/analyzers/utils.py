@@ -870,6 +870,8 @@ def java_prepdb_from_squashtar(unpackdir, squashtar, java_file_regexp):
             for member in tfl.getmembers():
                 filename = member.name
                 if javafilepatt.match(filename): #re.match(java_file_regexp, filename):
+                    if member.mode == 0:
+                        member.mode = 0o755
                     javamembers.append(member)
 
             tfl.extractall(path=os.path.join(javatmpdir, "rootfs"), members=javamembers)
@@ -904,6 +906,8 @@ def python_prepdb_from_squashtar(unpackdir, squashtar, py_file_regexp):
                     filename = member.name
                     for candidate in candidates.keys():
                         if filename == candidate or filename.startswith(candidate):
+                            if member.mode == 0:
+                                member.mode = 0o755                            
                             pymembers.append(member)
                             break
 
@@ -928,7 +932,12 @@ def apk_prepdb_from_squashtar(unpackdir, squashtar):
             apkdbfile = _search_tarfilenames_for_file(tarfilenames, "lib/apk/db/installed")
 
             apkmembers = []
-            apkmembers.append(tfl.getmember(apkdbfile))
+
+            member = tfl.getmember(apkdbfile)
+            if member.mode == 0:
+                member.mode = 0o755            
+            apkmembers.append(member)
+            
             tfl.extractall(path=os.path.join(apktmpdir, "rootfs"), members=apkmembers)
         ret = os.path.join(apktmpdir, "rootfs")
 
@@ -952,6 +961,8 @@ def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
                 filename = member.name
                 filename = re.sub(r"^\./|^/", "", filename)
                 if filename.startswith("var/lib/dpkg") or filename.startswith("usr/share/doc"):
+                    if member.mode == 0:
+                        member.mode = 0o755                                                
                     dpkgmembers.append(member)
             tfl.extractall(path=os.path.join(dpkgtmpdir, "rootfs"), members=dpkgmembers)
 
@@ -976,6 +987,8 @@ def rpm_prepdb_from_squashtar(unpackdir, squashtar):
                 filename = member.name
                 filename = re.sub(r"^\./|^/", "", filename)
                 if filename.startswith("var/lib/rpm"):
+                    if member.mode == 0:
+                        member.mode = 0o755                                                
                     rpmmembers.append(member)
 
             tfl.extractall(path=os.path.join(rpmtmpdir, "rootfs"), members=rpmmembers)
