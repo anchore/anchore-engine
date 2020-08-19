@@ -96,7 +96,7 @@ def get_entity_tables(entity):
     global Base
 
     import inspect
-            
+
     entity_names = [x[1].__tablename__ for x in [x for x in inspect.getmembers(entity) if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base]]
     ftables = [x for x in Base.metadata.sorted_tables if x.name in entity_names]
 
@@ -135,6 +135,8 @@ def do_connect(db_params):
         db_engine_args['max_overflow'] = db_params.get('db_pool_max_overflow', 100)
     if 'db_echo' in db_params:
         db_engine_args['echo'] = db_params.get('db_echo', False)
+    if db_params.get('db_pool_recycle', None):
+        db_engine_args['pool_recycle'] = db_params.get('db_pool_recycle', -1)
 
     if db_connect:
         try:
@@ -180,6 +182,7 @@ def get_params(localconfig):
         db_pool_size = 30
         db_pool_max_overflow = 75
         db_echo = False
+        db_pool_recycle = -1
 
         if 'db_connect' in db_auth and db_auth['db_connect']:
             db_connect = db_auth['db_connect']
@@ -191,6 +194,9 @@ def get_params(localconfig):
             db_pool_max_overflow = int(db_auth['db_pool_max_overflow'])
         if 'db_echo' in db_auth:
             db_echo = db_auth['db_echo'] in [True, 'True', 'true']
+        if 'db_pool_recycle' in db_auth:
+            db_pool_recycle = int(db_auth['db_pool_recycle'])
+
     except:
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
@@ -200,7 +206,8 @@ def get_params(localconfig):
         'db_connect_args': db_connect_args,
         'db_pool_size': db_pool_size,
         'db_pool_max_overflow': db_pool_max_overflow,
-        'db_echo': db_echo
+        'db_echo': db_echo,
+        'db_pool_recycle': db_pool_recycle
     }
     ret = normalize_db_params(db_params)
     return ret
@@ -221,10 +228,8 @@ def normalize_db_params(db_params):
             ssl = db_connect_args.pop('ssl')
             if ssl:
                 db_connect_args['sslmode'] = 'require'
-            
 
     return db_params
-        
 
 def do_create(specific_tables=None, base=Base):
     engine = get_engine()

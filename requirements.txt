@@ -19,7 +19,7 @@ requests==2.23.0
 retrying==1.3.3
 semantic-version==2.6.0
 six==1.14.0
-SQLAlchemy==1.3.12
+SQLAlchemy==1.3.18
 swagger-spec-validator==2.4.3
 toastedmarshmallow==2.15.2.post1
 treelib==1.5.5

@@ -1,0 +1,11 @@
+Service policy_engine (anchore-anchore-engine-policy-868df75b96-xm6hc, http://anchore-anchore-engine-policy:8087): down (unavailable)
+Service apiext (anchore-anchore-engine-api-6fd85777bc-txptf, http://anchore-anchore-engine-api:8228): up
+Service analyzer (anchore-anchore-engine-analyzer-77f744ffb4-9jhhg, http://anchore-anchore-engine-analyzer:8084): up
+Service simplequeue (anchore-anchore-engine-simplequeue-5764b9f88b-69tkk, http://anchore-anchore-engine-simplequeue:8083): up
+Service policy_engine (anchore-anchore-engine-policy-868df75b96-7fxcf, http://anchore-anchore-engine-policy:8087): up
+Service policy_engine (anchore-anchore-engine-policy-868df75b96-pmqzf, http://anchore-anchore-engine-policy:8087): down (orphaned)
+Service catalog (anchore-anchore-engine-catalog-7984bfc649-fqn28, http://anchore-anchore-engine-catalog:8082): up
+
+Engine DB Version: 0.0.13
+Engine Code Version: 0.7.3
+
