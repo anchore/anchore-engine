@@ -165,7 +165,8 @@ class ImageLoader(object):
         analysis_artifact_loaders = [
             self.load_retrieved_files,
             self.load_content_search,
-            self.load_secret_search
+            self.load_secret_search,
+            self.load_malware_findings
             #self.load_package_verification
         ]
 
@@ -339,7 +340,7 @@ class ImageLoader(object):
         :param image_obj:
         :return:
         """
-        logger.info('Loading content search results')
+        logger.info('Loading secret search results')
         content_search_json = analysis_report.get('secret_search')
         if not content_search_json:
             return []
@@ -362,6 +363,58 @@ class ImageLoader(object):
                 match.str_value = match_string
 
             records.append(match)
+
+        return records
+
+    def load_malware_findings(self, analysis_report, image_obj):
+        """
+        Load malware results from analysis if present.
+
+        Example malware analysis result:
+        {
+        ...
+        "malware": {
+              "malware": {
+                "base": {
+                  "clamav": "{\"scanner\": \"clamav\", \"findings\": [{\"path\": \"elf_payload1\", \"signature\": \"Unix.Trojan.MSShellcode-40\"}], \"metadata\": {\"db_version\": {\"daily\": \"\", \"main\": \"59\", \"bytecode\": \"331\"}}}"
+                }
+              }
+            },
+        ...
+        }
+
+        The key is the scanner name, and the result is the findings for that scanner (e.g. clamav)
+
+        :param analysis_report:
+        :param image_obj:
+        :return:
+        """
+        malware_analyzer_name = 'malware'
+        base_default = 'base'
+
+        logger.info('Loading malware scan findings')
+        malware_json = analysis_report.get(malware_analyzer_name)
+        if not malware_json:
+            return []
+
+        matches = malware_json.get(malware_analyzer_name, {}).get(base_default, {})
+        records = []
+
+        for scanner_name, scan_result in matches.items():
+            scan_artifact = AnalysisArtifact()
+            scan_artifact.image_user_id = image_obj.user_id
+            scan_artifact.image_id = image_obj.id
+            scan_artifact.analyzer_id = malware_analyzer_name
+            scan_artifact.analyzer_type = 'base'
+            scan_artifact.analyzer_artifact = malware_analyzer_name
+            scan_artifact.artifact_key = scanner_name
+            try:
+                scan_artifact.json_value = json.loads(scan_result)
+            except:
+                logger.exception('json decode failed for malware scan result on {}. Saving as raw text'.format(scan_result))
+                scan_artifact.str_value = scan_result
+
+            records.append(scan_artifact)
 
         return records
 

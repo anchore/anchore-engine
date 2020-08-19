@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0 (2020-08-06)
++ Added - Changed image deletion to asynchronous behavior to make API more responsive and throttle db load during image deletes
++ Added - New dry-run mode for repository scan request to return list of tags that would be scanned without actually scanning. Implements #510
++ Added - Support for a "hints" json file in the image. JSON file to pass additional metadata to augment analyzer findings. Fixes #550
++ Added - Adds API support for deleting multiple images in a single call. Implements #502
++ Added - Support for malware scanning using ClamAV and new 'malware' content type in API and policy gate to trigger on findings. Disabled by default. Implements #498     
++ Added - Support for content type 'binary' with analyzers to detect specific binaries: python, golang, busybox not installed by package manager. Implements #531, #533, #534, #340
++ Added - Query parameter filters for GET /images calls to filter by image_status and analysis_status. Implements #561
++ Improved - Change image analysis queue processing behavior from first come first served to fair share accross account. Implements #491.
++ Improved - Removes image_to_get property in GET body of /images route, since body in GET operations is not standard behavior. Fixes #562
++ Fix - Handle scratch images correctly in files gate behavior. Fixes #530
++ Fix - Add missing fields in swagger json spec for GET /query/vulnerabilities. Fixes #558
++ Fix - Better handling of java packages missing certain metadata in MANIFEST.MF files. Fixes #524
++ Additional minor fixes and enhancements
+
 ## 0.7.3 (2020-07-07)
 + Fix - Adds release to version string for all os package types if one is present. Fixes #504
 + Fix - Fixes global analysis archive rule application for non-admin accounts. Fixes #503

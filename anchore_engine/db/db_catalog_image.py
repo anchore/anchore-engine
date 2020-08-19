@@ -159,7 +159,7 @@ def get_created_at(record):
         return record['created_at']
     return 0
 
-def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session=None):
+def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_status='active', analysis_status=None, session=None):
     if not session:
         session = db.Session
 
@@ -173,11 +173,12 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
             imageDigest = result['imageDigest']
             dbobj = get(imageDigest, userId, session=session)
 
-            if not latest:
-                latest = dbobj
+            if (image_status is None or dbobj['image_status'] == image_status) and (analysis_status is None or dbobj['analysis_status'] == analysis_status):
+                if not latest:
+                    latest = dbobj
 
-            ret_results.append(dbobj)
-            
+                ret_results.append(dbobj)
+
     ret = []
     if not onlylatest:
         ret = ret_results
@@ -187,8 +188,9 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, session
 
     return ret
 
-def get_all_tagsummary(userId, session=None):
-    results = session.query(CatalogImage.imageDigest,
+
+def get_all_tagsummary(userId, session=None, image_status=None):
+    query = session.query(CatalogImage.imageDigest,
                             CatalogImage.parentDigest,
                             CatalogImageDocker.registry,
                             CatalogImageDocker.repo,
@@ -202,8 +204,11 @@ def get_all_tagsummary(userId, session=None):
                                                                    CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
                                                                    CatalogImageDocker.userId == userId))
 
+    if image_status and isinstance(image_status, list) and 'all' not in image_status:  # filter only if specific states are input and != all
+        query = query.filter(CatalogImage.image_status.in_(image_status))
+
     ret = []
-    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in results:
+    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
         ret.append({
             'imageDigest': idig,
             'parentDigest': pdig,
@@ -218,13 +223,21 @@ def get_all_tagsummary(userId, session=None):
 
     return ret
 
-def get_all_byuserId(userId, limit=None, session=None):
+def get_all_byuserId(userId, limit=None, session=None, image_status_filter='active', analysis_status_filter=None):
     if not session:
         session = db.Session
 
     ret = []
 
     results = session.query(CatalogImage).filter_by(userId=userId).order_by(desc(CatalogImage.created_at))
+
+    # Treat 'all' as no filter
+    if image_status_filter and image_status_filter != 'all':
+        results = results.filter(CatalogImage.image_status == image_status_filter)
+
+    if analysis_status_filter:
+        results = results.filter(CatalogImage.analysis_status == analysis_status_filter)
+
     if limit:
         results = results.limit(int(limit))
 

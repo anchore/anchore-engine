@@ -29,3 +29,10 @@ secret_search:
     - "PRIV_KEY=(?i)-+BEGIN(.*)PRIVATE KEY-+"
     - "DOCKER_AUTH=(?i).*\"auth\": *\".+\""
     - "API_KEY=(?i).*api(-|_)key( *=+ *).*(?<![A-Z0-9])[A-Z0-9]{20,60}(?![A-Z0-9]).*"
+
+malware:
+  clamav:
+    # Set this to true to enable the malware scan
+    enabled: false
+    # Set this to false to turn off the db refresh on each scan
+    db_update_enabled: true

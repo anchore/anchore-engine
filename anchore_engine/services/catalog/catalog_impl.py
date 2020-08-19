@@ -207,30 +207,26 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
     return return_object, httpcode
 
-def image_tags(dbsession, request_inputs):
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
-    userId = request_inputs['userId']
 
-    return_object = {}
+def image_tags(account_id, dbsession, image_status):
+    return_object = []
     httpcode = 500
 
     try:
-        if method == 'GET':
-            httpcode = 200
-            return_object = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
+        return_object = db_catalog_image.get_all_tagsummary(account_id, session=dbsession, image_status=image_status)
+        httpcode = 200
     except Exception as err:
         return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
 
     return return_object, httpcode
+
 
 def image(dbsession, request_inputs, bodycontent=None):
     user_auth = request_inputs['auth']
     method = request_inputs['method']
     params = request_inputs['params']
     userId = request_inputs['userId']
-    
+
     return_object = {}
     httpcode = 500
 
@@ -246,6 +242,9 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
+    image_status = params.get('image_status') if params else None
+    analysis_status = params.get('analysis_status') if params else None
+
     httpcode = 500
     try:
         for t in ['tag', 'digest', 'imageId']:
@@ -256,10 +255,14 @@ def image(dbsession, request_inputs, bodycontent=None):
                     image_info = anchore_engine.common.images.get_image_info(userId, "docker", input_string, registry_lookup=False, registry_creds=(None, None))
                     break
 
+        image_status_filter = image_status if image_status and image_status != 'all' else None
+        analysis_status_filter = analysis_status if analysis_status and analysis_status != 'all' else None
+
         if method == 'GET':
             if not input_string:
                 httpcode = 200
-                return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession)
+                return_object = db_catalog_image.get_all_byuserId(userId, session=dbsession,
+                                                                  image_status_filter=image_status_filter, analysis_status_filter=analysis_status_filter)
             else:
                 if registry_lookup:
                     try:
@@ -298,9 +301,9 @@ def image(dbsession, request_inputs, bodycontent=None):
 
                         logger.debug("image DB lookup filter: " + json.dumps(dbfilter, indent=4))
                         if history:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, session=dbsession)
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, session=dbsession)
                         else:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter,
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter,
                                                                                onlylatest=True, session=dbsession)
 
                         if image_records:

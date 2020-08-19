@@ -98,6 +98,21 @@ paths:
       summary: "Get image digest and tags summary list from DB"
       description: ""
       operationId: "image_tags_get"
+      parameters:
+      - name: 'image_status'
+        in: query
+        type: array
+        items:
+          type: string
+          enum:
+          - all
+          - active
+          - deleting
+        collectionFormat: csv
+        required: false
+        default:
+        - active
+        description: "Filter images in one or more states such as active, deleting. Defaults to active images only if unspecified"
       produces:
       - "application/json"
       responses:
@@ -141,6 +156,26 @@ paths:
         description: "get all matching records for given tag"
         required: false
         default: false
+      - name: 'image_status'
+        in: query
+        required: false
+        type: string
+        description: Filter by image_status value on the record. Default if omitted is 'active'.
+        enum:
+          - all
+          - active
+          - deleting
+        default: active
+      - name: 'analysis_status'
+        in: query
+        required: false
+        type: string
+        description: Filter by analysis_status value on the record.
+        enum:
+          - not_analyzed
+          - analyzed
+          - analyzing
+          - analysis_failed
       produces:
       - "application/json"
       responses:

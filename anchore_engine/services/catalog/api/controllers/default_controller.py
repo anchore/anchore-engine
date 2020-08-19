@@ -44,11 +44,12 @@ def repo_post(regrepo=None, autosubscribe=False, lookuptag=None, dryrun=False, b
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def image_tags_get():
+def image_tags_get(image_status=None):
     try:
-        request_inputs = anchore_engine.apis.do_request_prep(connexion.request, default_params={})
+        account_id = ApiRequestContextProxy.namespace()
         with db.session_scope() as session:
-            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(session, request_inputs)
+            return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image_tags(account_id, session, image_status)
+
     except Exception as err:
         httpcode = 500
         return_object = str(err)
@@ -57,14 +58,15 @@ def image_tags_get():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, history=False):
+def list_images(tag=None, digest=None, imageId=None, registry_lookup=False, history=False, image_status='active', analysis_status=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(connexion.request,
-                                                             default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history})
+                                                             default_params={'tag': tag, 'digest': digest, 'imageId': imageId, 'registry_lookup': registry_lookup, 'history': history, 'image_status': image_status, 'analysis_status': analysis_status})
         with db.session_scope() as session:
             return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs)
 
     except Exception as err:
+        logger.debug_exception('Error listing images')
         httpcode = 500
         return_object = str(err)
 

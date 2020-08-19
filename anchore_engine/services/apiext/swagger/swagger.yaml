@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.14"
+  version: "0.1.15"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -349,6 +349,20 @@ paths:
       summary: List all visible image digests and tags
       description: List all image tags visible to the user
       parameters:
+      - name: 'image_status'
+        in: query
+        type: array
+        items:
+          type: string
+          enum:
+          - all
+          - active
+          - deleting
+        collectionFormat: csv
+        required: false
+        default:
+        - active
+        description: "Filter images in one or more states such as active, deleting. Defaults to active images only if unspecified"
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -408,17 +422,31 @@ paths:
         type: boolean
         required: false
         description: Include image history in the response
-      - name: image_to_get
-        in: body
-        required: false
-        x-nullable: true
-        schema:
-          $ref: "#/definitions/ImageFilter"
       - name: fulltag
         in: query
         required: false
         type: string
         description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
+      - name: image_status
+        in: query
+        required: false
+        type: string
+        description: Filter by image_status value on the record. Default if omitted is 'active'.
+        enum:
+          - all
+          - active
+          - deleting
+        default: active
+      - name: analysis_status
+        in: query
+        required: false
+        type: string
+        description: Filter by analysis_status value on the record.
+        enum:
+          - not_analyzed
+          - analyzed
+          - analyzing
+          - analysis_failed
       - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -455,7 +483,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/DeleteImagesResponseList"
+            $ref: "#/definitions/DeleteImageResponseList"
         500:
           description: Internal Error
           schema:
@@ -529,7 +557,7 @@ paths:
         200:
           description: Image deletion success
           schema:
-            $ref: "#/definitions/DeleteImagesResponse"
+            $ref: "#/definitions/DeleteImageResponse"
   /images/by_id/{imageId}:
     get:
       tags:
@@ -573,6 +601,8 @@ paths:
       responses:
         200:
           description: Image deletion success
+          schema:
+            $ref: "#/definitions/DeleteImageResponse"
         500:
           description: Internal error
           schema:
@@ -920,6 +950,31 @@ paths:
           description: Content of specified type from the image
           schema:
             $ref: "#/definitions/ContentJAVAPackageResponse"
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/content/malware:
+    get:
+      tags:
+        - Images
+        - Image Content
+        - Queries
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_content_by_type_malware
+      x-anchore-authz-action: getImage
+      summary: Get the content of an image by type malware
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+        - $ref: "#/parameters/AsAccountParameter"
+      responses:
+        200:
+          description: Content of specified type from the image
+          schema:
+            $ref: "#/definitions/ContentMalwareResponse"
         500:
           description: Internal error
           schema:
@@ -2609,7 +2664,29 @@ definitions:
         $ref: "#/definitions/NvdDataList"
       vendor_data:
         $ref: "#/definitions/VendorDataList"
-    description: A single vulnerability record in a single namespace, the unique key is the combinatino of the id and namespace
+      description:
+        type: string
+        description: Description of the vulnerability if available
+      references:
+        type: array
+        description: List of references including
+        items:
+          $ref: "#/definitions/VulnerabilityReference"
+    description: A single vulnerability record in a single namespace, the unique key is the combination of the id and namespace
+  VulnerabilityReference:
+    description: An external link/reference
+    type: object
+    properties:
+      source:
+        type: string
+        description: The reference source
+      tags:
+        type: array
+        items:
+          type: string
+      url:
+        type: string
+        description: The reference url
   ImageReference:
     type: object
     properties:
@@ -2902,7 +2979,7 @@ definitions:
         - id
       value:
         type: string
-  DeleteImagesResponse:
+  DeleteImageResponse:
     type: object
     description: Image deletion response containing status and details
     required:
@@ -2920,11 +2997,11 @@ definitions:
         - delete_failed
       detail:
         type: string
-  DeleteImagesResponseList:
+  DeleteImageResponseList:
     type: array
     description: A list of delete image responses
     items:
-      $ref: "#/definitions/DeleteImagesResponse"
+      $ref: "#/definitions/DeleteImageResponse"
   Policy:
     type: object
     required:
@@ -3268,6 +3345,43 @@ definitions:
                 type: string
             location:
               type: string
+  ContentMalwareResponse:
+    type: object
+    description: Malware listing response
+    properties:
+      imageDigest:
+        type: string
+      content_type:
+        type: string
+      content:
+        description: List of malware scan results, one per scanner configured to run
+        type: array
+        items:
+          $ref: '#/definitions/MalwareScan'
+  MalwareScan:
+    description: A single scan from a scanner
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Indicates if the scanner is enabled
+      scanner:
+        type: string
+        description: The name of the scanner that produced the finding
+      metadata:
+        type: object
+        description: Open schema for scanner-specific metadata related to the scan result
+      findings:
+        type: array
+        items:
+          type: object
+          properties:
+            path:
+              type: string
+              description: A path for a file in the image's rootfs
+            signature:
+              type: string
+              description: The malware signature found at the path
   ContentJAVAPackageResponse:
     type: object
     description: "Java package content listings from images"
@@ -4228,6 +4342,5 @@ definitions:
       resource_type:
         type: string
         description: The type of resource this event is generated from
-
 
 

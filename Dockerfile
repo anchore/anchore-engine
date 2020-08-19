@@ -27,7 +27,8 @@ RUN set -ex && \
     pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
-    cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh 
+    cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
+    cp -R ./conf/clamav /build_output/configs/
 
 # stage anchore dependency binaries
 RUN set -ex && \
@@ -45,7 +46,7 @@ RUN set -ex && \
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg
+    yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
 
 RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
@@ -57,7 +58,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.7.3"
+ARG ANCHORE_ENGINE_VERSION="0.8.0"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -84,10 +85,11 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_SERVICE_DIR=/anchore_service \
     ANCHORE_LOG_LEVEL=INFO \
-    ANCHORE_ENABLE_METRICS=false \
+    ANCHORE_ENABLE_METRICS=false \    
     ANCHORE_DISABLE_METRICS_AUTH=false \
     ANCHORE_INTERNAL_SSL_VERIFY=false \
     ANCHORE_WEBHOOK_DESTINATION_URL=null \
+    ANCHORE_HINTS_ENABLED=false \    
     ANCHORE_FEEDS_ENABLED=true \
     ANCHORE_FEEDS_SELECTIVE_ENABLED=true \
     ANCHORE_FEEDS_SSL_VERIFY=true \
@@ -121,7 +123,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_ENABLED=false \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
-    AUTHLIB_INSECURE_TRANSPORT=true
+    AUTHLIB_INSECURE_TRANSPORT=true 
 # Insecure transport required in case for things like tls sidecars
 
 # Container run environment settings
@@ -152,9 +154,11 @@ RUN set -ex && \
     mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
     mkdir -p /workspace && chown -R anchore:anchore /workspace && \
     mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service && \
+    mkdir -p /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
+    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && chown -R anchore:anchore /home/anchore/clamav && chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
 
@@ -167,7 +171,7 @@ RUN set -ex && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
-    yum install -y /build_output/deps/dpkg*.rpm && \
+    yum install -y /build_output/deps/*.rpm && \
     rm -rf /build_output /root/.cache
 
 # Container runtime instructions

@@ -16,6 +16,7 @@ anchore_url = os.environ.get('ANCHORE_CLI_URL', 'http://localhost:8228/v1')
 base_url = anchore_url
 base_auth = (anchore_user, anchore_pass)
 
+
 class SimpleClient(object):
     def __init__(self, username, password, base_url=None):
         self.auth = (username, password)
@@ -170,7 +171,10 @@ def assert_account_state(resp, state_str):
     else:
         print('Got expected account state: {}'.format(found))
 
+
 runtest = False
+
+
 def test_engine_version():
     global runtest
 
@@ -178,6 +182,7 @@ def test_engine_version():
     if version:
         if LooseVersion(version) >= LooseVersion("0.3.0"):
             runtest = True
+
 
 def test_account_lifecycle():
     if runtest:
@@ -202,9 +207,10 @@ def test_account_lifecycle():
         assert_ok(user_client.account())
 
         assert_denied(user_client.list_accounts())
-        assert_denied(user_client.get_account(account_name))
+        assert_ok(user_client.get_account(account_name))
+        assert_denied(user_client.get_account('anotheraccount'))
         assert_denied(user_client.get_user('admin', 'admin'))
-        assert_ok(user_client.get_user(account_name, username)) # can get itself
+        assert_ok(user_client.get_user(account_name, username))  # can get itself
 
         assert_ok(admin_client.deactivate_account(account_name))
         print('Sleeping for cache flush')

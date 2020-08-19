@@ -90,7 +90,7 @@ class FileAttributeMatchTrigger(BaseTrigger):
 
         skip_if_file_missing = self.skip_if_file_missing.value(default_if_none=True)
 
-        files = []
+        filedetails = {}
         if hasattr(context, 'data'):
             filedetails = context.data.get('filedetail')
 
@@ -177,6 +177,9 @@ class FileCheckGate(Gate):
         :param context:
         :return:
         """
+        context.data['filenames'] = []
+        context.data['filedetail'] = {}
+
         if image_obj.fs:
             extracted_files_json = image_obj.fs.files
 

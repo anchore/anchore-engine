@@ -556,7 +556,7 @@ def repositories(request_inputs):
 
 # images CRUD
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_imagetags():
+def list_imagetags(image_status=None):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
 
@@ -570,7 +570,7 @@ def list_imagetags():
 
         client = internal_client_for(CatalogClient, request_inputs['userId'])
 
-        return_object = client.get_imagetags()
+        return_object = client.get_imagetags(image_status)
         httpcode = 200
 
     except Exception as err:
@@ -634,17 +634,13 @@ def import_image_archive(archive_file):
     return return_object, httpcode
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-def list_images(history=None, image_to_get=None, fulltag=None, detail=False):
+def list_images(history=None, fulltag=None, detail=False, image_status='active', analysis_status=None):
 
     httpcode = 500
     try:
-        if image_to_get and not fulltag:
-            fulltag = image_to_get.get('tag')
-            digest = image_to_get.get('digest')
-        else:
-            digest = None
+        digest = None
+        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history, image_status=image_status, analysis_status=analysis_status)
 
-        return_object = do_list_images(account=ApiRequestContextProxy.namespace(), filter_digest=digest, filter_tag=fulltag, history=history)
         httpcode = 200
     except api_exceptions.AnchoreApiError as err:
         return_object = make_response_error(err, in_httpcode=err.__response_code__)
@@ -931,6 +927,11 @@ def get_image_content_by_type_javapackage(imageDigest):
 
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def get_image_content_by_type_malware(imageDigest):
+    return get_image_content_by_type(imageDigest, 'malware')
+
+@flask_metrics.do_not_track()
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_content_by_type_imageId(imageId, ctype):
     try:
         request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
@@ -1070,12 +1071,12 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
 #    return(return_object, httpcode)
 
 
-def do_list_images(account, filter_tag=None, filter_digest=None, history=False):
+def do_list_images(account, filter_tag=None, filter_digest=None, history=False, image_status=None, analysis_status=None):
     client = internal_client_for(CatalogClient, account)
 
     try:
         # Query param fulltag has precedence for search
-        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history)
+        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, image_status=image_status, analysis_status=analysis_status)
 
         return [make_response_image(image_record, include_detail=True) for image_record in image_records]
 
@@ -1218,14 +1219,14 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
                 newstate = taskstate.init_state('analyze', None)
             elif force or currstate == taskstate.fault_state('analyze'):
                 newstate = taskstate.reset_state('analyze')
-            elif image_record['image_status'] == 'deleted':
+            elif image_record['image_status'] != taskstate.base_state('image_status'):
                 newstate = taskstate.reset_state('analyze')
             else:
                 newstate = currstate
 
             if (currstate != newstate) or (force):
                 logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
-                image_record.update({'image_status': 'active', 'analysis_status': newstate})
+                image_record.update({'image_status': taskstate.reset_state('image_status'), 'analysis_status': newstate})
                 updated_image_record = client.update_image(imageDigest, image_record)
                 if updated_image_record:
                     image_record = updated_image_record[0]

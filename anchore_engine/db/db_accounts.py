@@ -3,6 +3,7 @@ Interface to the accounts table. Data format is dicts, not objects.
 """
 from anchore_engine.db import Account, AccountTypes, AccountStates
 from anchore_engine.db.entities.common import anchore_now
+from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 
 
 class AccountNotFoundError(Exception):
@@ -22,6 +23,11 @@ class InvalidStateError(Exception):
         super(InvalidStateError, self).__init__('Invalid account state change requested. Cannot go from state {} to state {}'.format(current_state.value, desired_state.value))
         self.current_state = current_state
         self.desired_state = desired_state
+
+
+class DisableAdminAccountError(Exception):
+    def __init__(self):
+        super(DisableAdminAccountError, self).__init__('Cannot disable the admin account')
 
 
 def add(account_name, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
@@ -45,8 +51,8 @@ def update_state(name, new_state, session=None):
     """
     Update state of the account. Allowed transitions:
 
-    active -> disabled
-    disabled -> active
+    enabled -> disabled (if account is not the admin one)
+    disabled -> enabled
     disabled -> deleting
 
     Deleting is a terminal state, and can be reached only from disabled
@@ -64,6 +70,10 @@ def update_state(name, new_state, session=None):
     # Deleting state is terminal. Must deactivate account prior to deleting it.
     if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.enabled and new_state == AccountStates.deleting):
         raise InvalidStateError(accnt.state, new_state)
+
+    # Both Account Name and Type should be equal to "admin" for the Admin Account, but just to be safe...
+    if (accnt.name == ADMIN_ACCOUNT_NAME or accnt.type == AccountTypes.admin) and new_state != AccountStates.enabled:
+        raise DisableAdminAccountError()
 
     accnt.state = new_state
     return accnt.to_dict()
