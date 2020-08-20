@@ -2856,7 +2856,6 @@ definitions:
     required:
       - pullstring
       - tag
-      - creation_timestamp_override
     properties:
       pullstring:
         type: string
