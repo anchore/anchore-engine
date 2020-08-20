@@ -364,7 +364,7 @@ class StringJSON(types.TypeDecorator):
 
         if value is not None:
             if type(value) == str and value.startswith('like_raw:'):
-                return value[4:]
+                return value[9:]
             else:
                 value = json.dumps(value)
                 return value
