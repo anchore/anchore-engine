@@ -4,8 +4,10 @@ Docker-related utilities for interacting with docker entities and mechanisms.
 """
 import re
 
+from anchore_engine.subsys import logger
 
-def parse_dockerimage_string(instr):
+
+def parse_dockerimage_string(instr, strict=True):
     """
     Parses a string you'd give 'docker pull' into its consitutent parts: registry, repository, tag and/or digest.
     Returns a dict with keys:
@@ -26,6 +28,8 @@ def parse_dockerimage_string(instr):
     Copied from the drogue code
 
     :param instr:
+    :param strict: enforce that the input string input has all valid chars
+    :raises: ValueError on invalid input (unless strict=False)
     :return: dict with keys described above
     """
 
@@ -40,31 +44,38 @@ def parse_dockerimage_string(instr):
     digest = None
     imageId = None
 
-    if re.match("^sha256:.*", instr):
+    logger.debug("input string to parse: {}".format(instr))
+    instr = instr.strip()
+    if strict is True:
+        bad_chars = re.findall(r"[^a-zA-Z0-9@:/_\.\-]", instr)
+        if bad_chars:
+            raise ValueError("bad character(s) {} in dockerimage string input ({})".format(bad_chars, instr))
+
+    if re.match(r"^sha256:.*", instr):
         registry = 'docker.io'
         digest = instr
 
-    elif len(instr) == 64 and not re.findall("[^0-9a-fA-F]+",instr):
+    elif len(instr) == 64 and not re.findall(r"[^0-9a-fA-F]+", instr):
         imageId = instr
     else:
 
         # get the host/port
-        patt = re.match("(.*?)/(.*)", instr)
+        patt = re.match(r"(.*?)/(.*)", instr)
         if patt:
             a = patt.group(1)
             remain = patt.group(2)
-            patt = re.match("(.*?):(.*)", a)
+            patt = re.match(r"(.*?):(.*)", a)
             if patt:
                 host = patt.group(1)
                 port = patt.group(2)
             elif a == 'docker.io':
                 host = 'docker.io'
                 port = None
-            elif a == 'localhost' or a == 'localhost.localdomain':
+            elif a in ('localhost', 'localhost.localdomain', 'localbuild'):
                 host = a
                 port = None
             else:
-                patt = re.match(".*\..*", a)
+                patt = re.match(r".*\..*", a)
                 if patt:
                     host = a
                 else:
@@ -78,12 +89,12 @@ def parse_dockerimage_string(instr):
             remain = instr
 
         # get the repo/tag
-        patt = re.match("(.*)@(.*)", remain)
+        patt = re.match(r"(.*)@(.*)", remain)
         if patt:
             repo = patt.group(1)
             digest = patt.group(2)
         else:
-            patt = re.match("(.*):(.*)", remain)
+            patt = re.match(r"(.*):(.*)", remain)
             if patt:
                 repo = patt.group(1)
                 tag = patt.group(2)

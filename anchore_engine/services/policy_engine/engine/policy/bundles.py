@@ -696,7 +696,7 @@ class MappingRule(object):
         if not tag:
             raise ValueError('Tag cannot be empty or null for matching evaluation')
         else:
-            match_target = parse_dockerimage_string(tag)
+            match_target = parse_dockerimage_string(tag, strict=False)
 
         # Must match registry and repo first
         if not (self._registry_match(match_target.get('registry')) and self._repository_match(match_target.get('repo'))):
