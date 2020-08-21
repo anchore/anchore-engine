@@ -146,21 +146,19 @@ WORKDIR /anchore-engine
 RUN set -ex && \
     groupadd --gid 1000 anchore && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
-    mkdir ${ANCHORE_SERVICE_DIR} && \
     mkdir /config && \
     mkdir /licenses && \
-    mkdir -p /var/log/anchore && chown -R anchore:anchore /var/log/anchore && \
-    mkdir -p /var/run/anchore && chown -R anchore:anchore /var/run/anchore && \
-    mkdir -p /analysis_scratch && chown -R anchore:anchore /analysis_scratch && \
-    mkdir -p /workspace && chown -R anchore:anchore /workspace && \
-    mkdir -p ${ANCHORE_SERVICE_DIR} && chown -R anchore:anchore /anchore_service && \
-    mkdir -p /home/anchore/clamav/db && \
+    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
-    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && chown -R anchore:anchore /home/anchore/clamav && chmod -R ug+rw /home/anchore/clamav && \
+    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
+    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav && \    
+    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav && \    
+    chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
+    
 
 # Perform any base OS specific setup
 
@@ -179,7 +177,7 @@ RUN set -ex && \
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
 
-USER anchore:anchore
+USER 1000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]
