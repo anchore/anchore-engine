@@ -350,9 +350,24 @@ class StringJSON(types.TypeDecorator):
     impl = types.TEXT
 
     def process_bind_param(self, value, dialect):
+        """
+        Bind the param to a value, with a bit of a strange exception to allow handling 'like' queries against the json strings.
+
+        In that case, use a prefix in the value of 'like_raw:' and it will not json dump the result but use the input string as-is after stripping the leading "like_raw:" prefix.
+        E.g. db.query(SomeEntity).filter(SomeEntity.myjson_column.like('like_raw:[\"first_element\",%')
+        Will match a value in the db of: '["first_element", "second_element"]'
+
+        :param value:
+        :param dialect:
+        :return:
+        """
+
         if value is not None:
-            value = json.dumps(value)
-            return value
+            if type(value) == str and value.startswith('like_raw:'):
+                return value[9:]
+            else:
+                value = json.dumps(value)
+                return value
 
     def process_result_value(self, value, dialect):
         if value is not None:
