@@ -73,7 +73,7 @@ def get_golang_evidence(tfl, member, memberhash, evidence):
             for line in FH.readlines():
                 subline = line
                 try:
-                    the_re = ".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)).*"
+                    the_re = ".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)*).*"
                     patt = re.match(anchore_engine.utils.ensure_bytes(the_re), subline)
                     if patt:
                         vers = anchore_engine.utils.ensure_str(patt.group(1))
@@ -88,7 +88,7 @@ def get_golang_evidence(tfl, member, memberhash, evidence):
         with tfl.extractfile(member) as FH:
             for line in FH.readlines():
                 line = line.strip()
-                patt = re.match(b".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)).*", line)
+                patt = re.match(b".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)*).*", line)
                 if patt:
                     vers = anchore_engine.utils.ensure_str(patt.group(1))
                     final_loc = fullpath
