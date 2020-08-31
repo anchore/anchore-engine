@@ -20,15 +20,23 @@ def summarize(session: Session):
     """
 
     image_count = session.query(ArchivedImage).count()
-    archive_bytes = session.query(func.sum(ArchivedImage.archive_size_bytes)).scalar()
-    tag_count = session.query(ArchivedImageDocker).count()
-    most_recent = session.query(func.max(ArchivedImage.last_updated)).scalar()
+    archive_bytes = 0
+    tag_count = 0
+    most_recent = ''
+
+    if image_count > 0:
+        logger.debug('Image Count: {}'.format(image_count))
+        archive_bytes = session.query(func.sum(ArchivedImage.archive_size_bytes)).scalar()
+        tag_count = session.query(ArchivedImageDocker).count()
+        most_recent_epoch = session.query(func.max(ArchivedImage.last_updated)).scalar()
+        if most_recent_epoch:
+            most_recent = epoch_to_rfc3339(most_recent_epoch)
 
     return {
         'total_image_count': image_count,
         'total_tag_count': tag_count,
         'total_data_bytes': int(archive_bytes),
-        'last_updated': epoch_to_rfc3339(most_recent)
+        'last_updated': most_recent
     }
 
 
