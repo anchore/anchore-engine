@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 (2020-08-31)
++ Added - Additional trigger 'scan_not_run' in malware gate to fire if no scan run. Implements #552
++ Improved - Do not always require created_timestamp_override field for analysis by digest. Implements #552
++ Fix - Image analysis scratch space cleanup can fail if image files have non-readable modes. Fixes #579
++ Fix - Prevent admin account from being disabled. Fixes #522
++ Fix - Make permissions consistent for /account and /accounts/{accountname} routes. Fixes #565
++ Additional minor fixes and enhancements
+
 ## 0.8.0 (2020-08-06)
 + Added - Changed image deletion to asynchronous behavior to make API more responsive and throttle db load during image deletes
 + Added - New dry-run mode for repository scan request to return list of tags that would be scanned without actually scanning. Implements #510
