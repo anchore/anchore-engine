@@ -1992,7 +1992,7 @@ paths:
         in: query
         type: string
         enum:
-          - active
+          - enabled
           - disabled
           - deleting
         required: false
