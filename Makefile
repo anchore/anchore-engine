@@ -73,7 +73,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: lint clean clean-all test
 .PHONY: test-unit test-integration test-functional
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
-.PHONY: push-dev push-rc push-prod push-rebuild push-redhat
+.PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: setup-test-infra venv printvars help
 
@@ -135,6 +135,9 @@ setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 
 # Release targets
 #######################
+
+push-nightly: setup-test-infra ## Push nightly Anchore Engine Docker image to Docker Hub
+	@$(CI_CMD) push-nightly-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
 
 push-dev: setup-test-infra ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
