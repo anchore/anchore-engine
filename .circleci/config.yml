@@ -244,11 +244,11 @@ workflows:
   nightly_build:
     triggers:
       - schedule:
-          cron: "58 20 * * *"
+          cron: "05 21 * * *"
           filters:
             branches:
               only:
-                - master
+                - rprince/nightly-build
     jobs:
       - unit_tests
       - lint
