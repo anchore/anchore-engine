@@ -225,11 +225,6 @@ workflows:
       - functional_tests:
           requires:
             - build
-      - e2e_tests:
-          context: e2e-testing
-          filters: *filter_release_branch
-          requires:
-            - build
       - push_image:
           name: push_dev_image
           make_job: push-dev
@@ -238,7 +233,6 @@ workflows:
           requires:
             - functional_tests
             - integration_tests
-            - e2e_tests
       - anchore/image_scan:
           context: dockerhub
           requires:
@@ -248,13 +242,13 @@ workflows:
           timeout: '2000'
 
   nightly_build:
-    #    triggers:
-    #  - schedule:
-    #      cron: "0 9 * * *"
-    #      filters:
-    #        branches:
-    #          only:
-    #            - master
+    triggers:
+      - schedule:
+          cron: "0 9 * * *"
+          filters:
+            branches:
+              only:
+                - master
     jobs:
       - unit_tests
       - lint
@@ -265,9 +259,9 @@ workflows:
           requires:
             - lint
             - unit_tests
-              #- functional_tests:
-              #requires:
-              #- build
+      - functional_tests:
+          requires:
+            - build
       - e2e_tests:
           context: e2e-testing
           filters: *filter_nightly
@@ -279,17 +273,16 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            #- functional_tests
+            - functional_tests
             - integration_tests
             - e2e_tests
-              #- anchore/image_scan:
-              #          context: dockerhub
-              #          requires:
-              #            - push_nightly_image
-              #          image_name: anchore/anchore-engine-dev:nightly
-              #          private_registry: true
-              #          timeout: '2000'
-
+      - anchore/image_scan:
+          context: dockerhub
+          requires:
+            - push_nightly_image
+          image_name: anchore/anchore-engine-dev:nightly
+          private_registry: true
+          timeout: '2000'
 
   rc_image_workflow:
     jobs:
