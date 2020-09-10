@@ -30,7 +30,7 @@ PYTHON := $(VENV)/bin/python3
 CI_COMPOSE_FILE = scripts/ci/docker-compose-ci.yaml
 CLUSTER_CONFIG = tests/e2e/kind-config.yaml
 CLUSTER_NAME = e2e-testing
-K8S_VERSION = 1.15.7
+K8S_VERSION = 1.19.0
 TEST_IMAGE_NAME = $(GIT_REPO):dev
 
 
@@ -71,7 +71,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 
 .PHONY: ci build install install-dev
 .PHONY: lint clean clean-all test
-.PHONY: test-unit test-integration test-functional
+.PHONY: test-unit test-integration test-functional test-cli
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
@@ -127,9 +127,13 @@ setup-e2e-tests: setup-test-infra venv ## Start kind cluster and set up end to e
 test-e2e: setup-test-infra venv ## Run end to end tests (assuming cluster is running and set up has been run)
 	@$(ACTIVATE_VENV) && $(CI_CMD) e2e-tests
 
+test-cli: setup-test-infra venv ## Run cli-driven end to end tests (assuming cluster is running and set up has been run)
+	@$(ACTIVATE_VENV) && $(PYTHON) -m pip install faker && $(PYTHON) anchore-ci/cli_driver.py
+
 setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
-	@$(MAKE) test-e2e
+#	@$(MAKE) test-e2e
+	@$(MAKE) test-cli
 	@$(MAKE) cluster-down
 
 

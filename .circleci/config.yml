@@ -225,6 +225,11 @@ workflows:
       - functional_tests:
           requires:
             - build
+      - e2e_tests:
+          context: e2e-testing
+          filters: *filter_release_branch
+          requires:
+            - build
       - push_image:
           name: push_dev_image
           make_job: push-dev
