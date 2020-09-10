@@ -128,7 +128,7 @@ test-e2e: setup-test-infra venv ## Run end to end tests (assuming cluster is run
 	@$(ACTIVATE_VENV) && $(CI_CMD) e2e-tests
 
 test-cli: setup-test-infra venv ## Run cli-driven end to end tests (assuming cluster is running and set up has been run)
-	@$(ACTIVATE_VENV) && $(PYTHON) -m pip install faker && $(PYTHON) anchore-ci/cli_driver.py
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-cli
 
 setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
