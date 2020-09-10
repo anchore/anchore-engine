@@ -125,15 +125,14 @@ setup-e2e-tests: setup-test-infra venv ## Start kind cluster and set up end to e
 	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
 test-e2e: setup-test-infra venv ## Run end to end tests (assuming cluster is running and set up has been run)
-	@$(ACTIVATE_VENV) && $(CI_CMD) e2e-tests
+	@$(MAKE) test-cli
 
 test-cli: setup-test-infra venv ## Run cli-driven end to end tests (assuming cluster is running and set up has been run)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-cli
 
 setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
-#	@$(MAKE) test-e2e
-	@$(MAKE) test-cli
+	@$(MAKE) test-e2e
 	@$(MAKE) cluster-down
 
 
