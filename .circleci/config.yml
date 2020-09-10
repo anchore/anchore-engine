@@ -225,11 +225,6 @@ workflows:
       - functional_tests:
           requires:
             - build
-      - e2e_tests:
-          context: e2e-testing
-          filters: *filter_release_branch
-          requires:
-            - build
       - push_image:
           name: push_dev_image
           make_job: push-dev
@@ -247,13 +242,13 @@ workflows:
           timeout: '2000'
 
   nightly_build:
-    triggers:
-      - schedule:
-          cron: "05 21 * * *"
-          filters:
-            branches:
-              only:
-                - rprince/nightly-build
+    #    triggers:
+    #      - schedule:
+    #          cron: "05 21 * * *"
+    #          filters:
+    #            branches:
+    #              only:
+    #                - rprince/nightly-build
     jobs:
       - unit_tests
       - lint
