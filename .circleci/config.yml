@@ -191,6 +191,7 @@ jobs:
       - <<: *ssh_forward_port
       - run:
           name: Run e2e tests
+          no_output_timeout: 30m
           command: make setup-and-test-e2e
 
   push_image:
