@@ -4168,6 +4168,18 @@ definitions:
       last_updated:
         type: string
         format: date-time
+      exclude:
+        $ref: "#/definitions/AnalysisArchiveTransitionRuleExclude"
+  AnalysisArchiveTransitionRuleExclude:
+    type: object
+    description: Which Images to exclude from auto-archiving logic
+    properties:
+      selector:
+        $ref: "#/definitions/ImageSelector"
+      expiration_days:
+        type: integer
+        description: How long the image selected will be excluded from the archive transition
+        default: -1
   AnalysisArchiveTransitionHistory:
     type: object
     description: A rule for auto-archiving image analysis by time and/or tag-history

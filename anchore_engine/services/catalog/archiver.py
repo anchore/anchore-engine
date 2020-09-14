@@ -1,31 +1,33 @@
 """
 Module for handling archive tasks
 """
-import json
 import datetime
+import io
+import json
+import os
+import fnmatch
 import tarfile
 import tempfile
-import os
-import io
 import time
 import uuid
 
-from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
-from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
-from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.clients.services import internal_client_for
-from anchore_engine.subsys import logger, archive, object_store
-from anchore_engine.subsys.object_store.manager import ObjectStorageManager
-from anchore_engine.db import db_catalog_image, db_catalog_image_docker, db_policyeval, session_scope, db_archived_images, ArchivedImage, \
-    CatalogImageDocker, CatalogImage, Session, ArchiveTransitionRule, ArchiveTransitions
-
-from anchore_engine.configuration import localconfig
-from anchore_engine.services.catalog.catalog_impl import image_imageDigest
-from anchore_engine.subsys.events import ImageArchiveDeleted, ImageRestored, ImageArchived, ImageArchiveDeleteFailed, ImageArchivingFailed, ImageRestoreFailed
-
-
 # Json serialization stuff...
 from marshmallow import fields, post_load
+
+from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+from anchore_engine.configuration import localconfig
+from anchore_engine.db import db_catalog_image, db_catalog_image_docker, db_policyeval, session_scope, \
+    db_archived_images, ArchivedImage, \
+    CatalogImageDocker, CatalogImage, Session, ArchiveTransitionRule, ArchiveTransitions
+from anchore_engine.db.entities.common import anchore_now_datetime
+from anchore_engine.services.catalog.catalog_impl import image_imageDigest
+from anchore_engine.subsys import logger, archive, object_store
+from anchore_engine.subsys.events import ImageArchiveDeleted, ImageRestored, ImageArchived, ImageArchiveDeleteFailed, \
+    ImageArchivingFailed, ImageRestoreFailed
+from anchore_engine.subsys.object_store.manager import ObjectStorageManager
+from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
 
 DRY_RUN_ENV_VAR = 'ANCHORE_ANALYSIS_ARCHIVE_DRYRUN_ENABLED'
 DRY_RUN_MODE = (os.getenv(DRY_RUN_ENV_VAR, 'false').lower() == 'true')
@@ -422,20 +424,28 @@ class ImageAnalysisArchiver(object):
         else:
             tags = None
 
-        tag_histories_qry = db_catalog_image_docker.get_tag_histories(session, self.account, registries=registries, repositories=repositories, tags=tags)
+        # This will load all the images matched by the selector of the rule for archiving
+        tag_histories_qry = db_catalog_image_docker.get_tag_histories(session, self.account, registries=registries,
+                                                                      repositories=repositories, tags=tags)
 
         if min_time > 0:
             tag_histories_qry = tag_histories_qry.filter(CatalogImage.analyzed_at < min_time)
 
-        return self._evaluate_tag_history(rule, tag_histories_qry)
+        return self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
 
-    def _evaluate_tag_history(self, rule, image_tuple_generator):
+    def _evaluate_tag_history_and_exclude(self, rule, image_tuple_generator):
         candidates = []
         current_tag = None
         history_depth = 0
 
         for tag_rec, image in image_tuple_generator:
             logger.debug('Checking tag: {}, image: {}'.format(tag_rec, image))
+
+            # If the image matches the exclude selector, we do not consider it to be a candidate for transition,
+            # therefore, we should skip it
+            if self._is_exclude_match(rule, image):
+                continue
+
             if not current_tag:
                 current_tag = tag_rec
                 history_depth = 0
@@ -453,6 +463,34 @@ class ImageAnalysisArchiver(object):
             current_tag = tag_rec
 
         return candidates
+
+    def _is_exclude_match(self, rule, image):
+        """
+        If the exclude match is not expired,
+        Evaluate a Rule Exclude selector from lead granular to most granular level of image (registry -> repo -> tag)
+        """
+        if self._is_exclude_expired(rule, image):
+            return False
+
+        # Use fnmatch because it supports glob expression evaluation. Therefore, an exclude block could look like:
+        #   {"exclude": {"registry": "docker.io", "repository": "alpine", "tag": "*"}} which should mean that
+        # No docker.io/alpine images should ever be transitioned (archived/deleted) according to this rule
+        return fnmatch.filter([image.registry], rule.exclude_selector_registry) and \
+               fnmatch.filter([image.repo], rule.exclude_selector_repository) and \
+               fnmatch.filter([image.tag], rule.exclude_selector_tag)
+
+    def _is_exclude_expired(self, rule, image):
+        """
+        If the exclude block is configured to never expire, i.e. has a value of -1 OR
+        It has been less than the exclude's expiration_days since the image was analyzed, then the exclude block is NOT
+        expired
+        """
+        image_analyzed_at_dt = datetime.datetime.utcfromtimestamp(image.analyzed_at)
+        time_delta = anchore_now_datetime() - image_analyzed_at_dt
+        if rule.exclude_expiration_days is not None and \
+                (rule.exclude_expiration_days == -1 or rule.exclude_expiration_days > time_delta.days):
+            return False
+        return True
 
 
 class ArchivedAnalysisDeleter(ImageAnalysisArchiver):

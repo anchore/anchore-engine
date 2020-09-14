@@ -133,7 +133,7 @@ def test_transitions_selector():
     rule.selector_tag = None
     rule.selector_repository = None
     rule.selector_registry = None
-    result = task._evaluate_tag_history(rule, data_generator())
+    result = task._evaluate_tag_history_and_exclude(rule, data_generator())
 
     print('Transitions found: {} results'.format(result))
 
