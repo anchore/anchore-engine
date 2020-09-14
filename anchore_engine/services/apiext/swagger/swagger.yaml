@@ -2576,6 +2576,25 @@ paths:
       description: Request a jwt token for subsequent operations, this request is authenticated with normal HTTP auth
       consumes:
         - application/x-www-form-urlencoded
+      parameters:
+        - name: grant_type
+          in: formData
+          description: 'OAuth Grant type for token'
+          type: string
+          default: password
+        - name: username
+          in: formData
+          type: string
+          description: 'User to assign OAuth token to'
+        - name: password
+          in: formData
+          type: string
+          description: 'Password for corresponding user'
+        - name: client_id
+          in: formData
+          description: 'The type of client used for the OAuth token'
+          type: string
+          default: anonymous
       responses:
         200:
           description: Resulting JWT token
