@@ -61,7 +61,7 @@ base_metrics_key = 'base_metrics'
 cvss_v3_key = 'cvss_v3'
 cvss_v2_key = 'cvss_v2'
 
-
+# TODO 3.0: keep, modify for sqlite tracking on sync operations
 # Feeds
 class FeedMetadata(Base, UtilMixin):
     __tablename__ = 'feeds'
@@ -93,6 +93,7 @@ class FeedMetadata(Base, UtilMixin):
         return j
 
 
+# TODO 3.0: remove! question: should we allow for a pass through to sqlite? or remove this operation altogether.
 class FeedGroupMetadata(Base, UtilMixin):
     __tablename__ = 'feed_groups'
 
@@ -120,7 +121,7 @@ class FeedGroupMetadata(Base, UtilMixin):
 
         return j
 
-
+# TODO 3.0: remove!
 class GenericFeedDataRecord(Base):
     """
     A catch-all record for feed data without a specific schema mapping
@@ -134,7 +135,7 @@ class GenericFeedDataRecord(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     data = Column(StringJSON, nullable=False) # TODO: make this a JSON type for dbs that support it
 
-
+# TODO 3.0: remove!
 class GemMetadata(Base):
     __tablename__ = 'feed_data_gem_packages'
 
@@ -154,7 +155,7 @@ class GemMetadata(Base):
     def key_tuple(self):
         return self.name
 
-
+# TODO 3.0: remove!
 class NpmMetadata(Base):
     __tablename__ = 'feed_data_npm_packages'
 
@@ -173,7 +174,7 @@ class NpmMetadata(Base):
     def key_tuple(self):
         return self.name
 
-
+# TODO 3.0: remove!
 class Vulnerability(Base):
     """
     A vulnerability/CVE record. Can come from many sources. Includes some specific fields and also a general
@@ -294,7 +295,7 @@ class Vulnerability(Base):
 
         return cves
 
-
+# TODO 3.0: remove!
 class VulnerableArtifact(Base):
     """
     An entity affected by a vulnerability, typically an os or application package.
@@ -353,7 +354,7 @@ class VulnerableArtifact(Base):
         else:
             return False
 
-
+# TODO 3.0: remove!
 class FixedArtifact(Base):
     """
     A record indicating an artifact version that marks a fix for a vulnerability
@@ -448,7 +449,7 @@ class FixedArtifact(Base):
         # Newer or the same
         return False
 
-
+# TODO 3.0: remove!
 class NvdMetadata(Base):
     __tablename__ = 'feed_data_nvd_vulnerabilities'
 
@@ -575,7 +576,7 @@ class NvdMetadata(Base):
     def key_tuple(self):
         return self.name
 
-
+# TODO 3.0: remove!
 class NvdV2Metadata(Base):
     __tablename__ = 'feed_data_nvdv2_vulnerabilities'
 
@@ -685,7 +686,7 @@ class NvdV2Metadata(Base):
     def key_tuple(self):
         return self.name
 
-
+# TODO 3.0: remove!
 class VulnDBMetadata(Base):
     __tablename__ = 'feed_data_vulndb_vulnerabilities'
 
@@ -1065,7 +1066,7 @@ class VulnDBMetadata(Base):
     def key_tuple(self):
         return self.name
 
-
+# TODO 3.0: remove!
 class CpeVulnerability(Base):
     __tablename__ = 'feed_data_cpe_vulnerabilities'
 
@@ -1114,7 +1115,7 @@ class CpeVulnerability(Base):
     def get_fixed_in(self):
         return []
 
-
+# TODO 3.0: remove!
 class CpeV2Vulnerability(Base):
     __tablename__ = 'feed_data_cpev2_vulnerabilities'
 
@@ -1188,7 +1189,7 @@ class CpeV2Vulnerability(Base):
     def get_fixed_in(self):
         return []
 
-
+# TODO 3.0: remove!
 class VulnDBCpe(Base):
     __tablename__ = 'feed_data_vulndb_cpes'
 
@@ -1279,6 +1280,7 @@ class VulnDBCpe(Base):
 
 # Analysis Data for Images
 
+# TODO 3.0: remove!
 class ImagePackage(Base):
     """
     A package detected in an image by analysis
@@ -1405,7 +1407,7 @@ class ImagePackage(Base):
                 do_langscan = True
             elif self.pkg_type in ['go']:
                 likematch = '%go%'
-                do_langscan = True                
+                do_langscan = True
             elif self.pkg_type in ['binary']:
                 likematch = '%binary%'
                 do_langscan = True
@@ -1482,7 +1484,7 @@ class ImagePackage(Base):
 
         return fix_candidates, vulnerable_candidates
 
-
+# TODO 3.0: remove!
 class ImagePackageManifestEntry(Base):
     """
     An entry from the package manifest (e.g. rpm, deb, apk) for verifying package contents in a generic way.
@@ -1518,6 +1520,8 @@ class ImagePackageManifestEntry(Base):
 
 
 NPM_SEQ = Sequence('image_npms_seq_id_seq', metadata=Base.metadata)
+
+# TODO 3.0: remove! (deprecated)
 class ImageNpm(Base):
     """
     NOTE: This is a deprecated class used for legacy support and upgrade. Image NPMs are now stored in the ImagePackage type
@@ -1550,6 +1554,8 @@ class ImageNpm(Base):
 
 
 GEM_SEQ = Sequence('image_gems_seq_id_seq', metadata=Base.metadata)
+
+# TODO 3.0: remove! (deprecated)
 class ImageGem(Base):
     """
     NOTE: This is a deprecated class used for legacy support. Gems are now loaded as types of packages for the ImagePackage class
@@ -1583,6 +1589,7 @@ class ImageGem(Base):
         return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
 
 
+# TODO 3.0: remove!
 class ImageCpe(Base):
     __tablename__ = 'image_cpes'
 
@@ -1649,6 +1656,7 @@ class ImageCpe(Base):
             ret = None
         return ret
 
+# TODO 3.0: remove!
 class FilesystemAnalysis(Base):
     """
     A unified and compressed record of the filesystem-level entries in an image. An alternative to the FilesystemItem approach,
@@ -1714,7 +1722,7 @@ class FilesystemAnalysis(Base):
         self.compression_algorithm = 'gzip'
         self.compressed_content_hash = hashlib.sha256(self.compressed_file_json).hexdigest()
 
-
+# TODO 3.0: remove!
 class AnalysisArtifact(Base):
     """
     A generic container for an analysis result that doesn't require significant structure.
@@ -1744,7 +1752,7 @@ class AnalysisArtifact(Base):
         {}
     )
 
-
+# TODO 3.0: remove!
 class Image(Base):
     """
     The core image analysis record. Contains metadata about the image itself.
@@ -1853,7 +1861,7 @@ class Image(Base):
     def __repr__(self):
         return '<Image user_id={}, id={}, distro={}, distro_version={}, created_at={}, last_modified={}>'.format(self.user_id, self.id, self.distro_name, self.distro_version, self.created_at, self.last_modified)
 
-
+# TODO 3.0: remove!
 class ImagePackageVulnerability(Base):
     """
     Provides a mapping between ImagePackage and Vulnerabilities
@@ -1963,7 +1971,7 @@ class ImagePackageVulnerability(Base):
     def __hash__(self):
         return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path))
 
-
+# TODO 3.0: remove!
 class IDistroMapper(object):
     """
     Interface for a distro mapper object
@@ -1996,7 +2004,7 @@ class IDistroMapper(object):
     def _map_flavor(self, distro_name, distro_version, like_distro, found_mapping=None):
         pass
 
-
+# TODO 3.0: remove!
 class VersionPreservingDistroMapper(IDistroMapper):
     def _do_mapping(self):
         """
@@ -2068,7 +2076,7 @@ class VersionPreservingDistroMapper(IDistroMapper):
 
         return [distro_version]
 
-
+# TODO 3.0: remove!
 class DistroMapping(Base):
     """
     A mapping entry between a distro with known cve feed and other similar distros.
@@ -2113,6 +2121,7 @@ class DistroMapping(Base):
     def __str__(self):
         return '<DistroMapping>from={} to={}, flavor={}'.format(self.from_distro, self.to_distro, self.flavor)
 
+# TODO 3.0: remove!
 class DistroNamespace(object):
     """
     A helper object for holding and converting distro names and namespaces between image and vulnerability records.
@@ -2166,7 +2175,7 @@ class DistroNamespace(object):
         """
         return [x.distro for x in DistroMapping.distros_mapped_to(self.name, self.version)]
 
-
+# TODO 3.0: keep!
 class CachedPolicyEvaluation(Base):
     __tablename__ = 'policy_engine_evaluation_cache'
 

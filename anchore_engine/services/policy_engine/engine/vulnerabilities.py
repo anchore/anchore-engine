@@ -183,6 +183,35 @@ def vulnerabilities_for_image(image_obj):
     try:
         ts = time.time()
         computed_vulnerabilties = []
+
+        # caveat:
+        # - grype DB is static, where the postgres feeds data is dynamic
+
+        # unknowns:
+        # - where does the SBOM info come from? (image_obj.packages)
+        # - analyzer scripts which get stored to the DB... keep using this
+
+        # implication:
+        # - grype needs to take SBOM input (any format) instead of img/dir
+        # - add syft output as analyzer output for SBOM info
+        # - no longer call package.find_vulnerabilities() ,  instead call grype, and transform into models and return
+
+
+        # Potential approach 1:
+
+        # add analyzer that adds SBOM info... this makes it downstream
+
+        # we are given SBOM info...
+        # translate that SBOM info into grype input (json document)
+
+        # feed the json SBOm into grype
+
+        # grype returns json with vulnerability findings
+
+        # translate the json vulerabilities into ImagePackageVulnerability models
+
+        # return ImagePackageVulnerability list
+
         for package in image_obj.packages:
             pkg_vulnerabilities = package.find_vulnerabilities()
             for v in pkg_vulnerabilities:

@@ -568,6 +568,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_only=True):
+    # TODO 3.0: this doc string is out of date (the legacy report), yes?
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
     to do so.
@@ -666,7 +667,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
                 else:
                     pkg_final = vuln.pkg_name
-                    
+
                 rows.append([
                     vuln.vulnerability_id,
                     vuln.vulnerability.severity,
@@ -1177,7 +1178,7 @@ def query_vulnerabilities(dbsession, ids, package_name_filter, package_version_f
             'namespace': None,
             'severity': None,
             'link': None,
-            'affected_packages': None,
+            'affected_packages': None, # TODO 3.0: we would not have this if we're calling the grype DB... show stopper?
             'description': None,
             'references': None,
             'nvd_data': None,

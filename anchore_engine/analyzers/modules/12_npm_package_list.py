@@ -68,14 +68,27 @@ try:
                     except Exception as err:
                         print ("WARN: unable to add npm package ({}) from hints - excpetion: {}".format(pkg_key, err))
                 except Exception as err:
-                    print ("WARN: bad hints record encountered - exception: {}".format(err))                        
+                    print ("WARN: bad hints record encountered - exception: {}".format(err))
     except Exception as err:
         print ("WARN: problem honoring hints file - exception: {}".format(err))
-        
+
 except Exception as err:
     import traceback
     traceback.print_exc()
     raise err
+
+dummy = {
+        'name': "DUMMY-ALEX",
+        'versions': ["v0.1.0"],
+        'latest': "v0.1.0",
+        'sourcepkg': "DUMMY-ALEX",
+        'files': [],
+        'origins': [],
+        'lics': [],
+        'type': "npm"
+    }
+
+pkglist["/virtual/npmpkg/{}-{}".format(dummy['name'], dummy['latest'])] = json.dumps(dummy)
 
 if pkglist:
     ofile = os.path.join(outputdir, 'pkgs.npms')

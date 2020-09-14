@@ -345,6 +345,7 @@ class ImageLoadTask(IAsyncTask):
         return img
 
     def execute(self):
+        # TODO 3.0: will this be DB operations vs cache (catalog calls)?
         """
         Execute a load.
         Fetch from the catalog and send to loader.
@@ -438,8 +439,8 @@ class ImageLoadTask(IAsyncTask):
         http(s)://
         catalog://<userId>/<bucket>/<name>
 
-        :param url: 
-        :return: 
+        :param url:
+        :return:
         """
 
         split_url = urllib.parse.splittype(url)

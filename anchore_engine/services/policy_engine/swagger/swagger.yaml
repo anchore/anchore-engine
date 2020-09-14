@@ -14,6 +14,7 @@ schemes:
 - http
 
 paths:
+  # TODO 3.0: should this health indicator include if the grype DB is pulled?
   /health:
     get:
       x-swagger-router-controller: anchore_engine.apis.common
@@ -65,6 +66,7 @@ paths:
           description: Set cache status
           schema:
             $ref: "#/definitions/PolicyEvaluationCacheEnabledStatus"
+  # TODO (Alex): learn more about policy
   /policy_spec:
     get:
       summary: Describe the policy language spec implemented by this service.
@@ -189,6 +191,8 @@ paths:
             $ref: "#/definitions/ImageIngressResponse"
         400:
           description: "Bad request"
+  # TODO 3.0: can we eliminate this endpoint? the smallest unit of work (and storage) will be an image and it's results, no?
+  # alternative is to break down the grype results being stored into by-vulnerability.
   /users/{user_id}/query/images/by_vulnerability:
     get:
       x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
@@ -230,6 +234,8 @@ paths:
           description: "Vulnerable image listing"
           schema:
             type: object
+  # TODO 3.0: can we eliminate this endpoint? the smallest unit of work (and storage) will be an image and it's results, no?
+  # alternative is to break down the grype results being stored into by-package.
   /users/{user_id}/query/images/by_package:
     get:
       x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
@@ -261,12 +267,13 @@ paths:
           description: "Matched image listing"
           schema:
             type: object
+  # TODO 3.0: does this get deleted? or does this call the sqlite DB (this is our guess)?
   /query/vulnerabilities:
     get:
       x-swagger-router-controller: "anchore_engine.services.policy_engine.api.controllers.synchronous_operations"
       operationId: query_vulnerabilities_get
       summary: "Return vulnerability information for specified vulnerability ID"
-      description: "Return vulnerability information for specified vulnerability ID" 
+      description: "Return vulnerability information for specified vulnerability ID"
       produces:
       - "application/json"
       parameters:
@@ -295,6 +302,7 @@ paths:
           description: "Matched vulnerability record"
           schema:
             type: object
+  # TODO 3.0: uncertain about the distro_namespace in the response (and how that plays into grype input), otherwise no change
   /users/{user_id}/images:
     get:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
@@ -342,6 +350,7 @@ paths:
           description: "Image not found"
         500:
           description: "Internal Error"
+  # TODO 3.0: this will be refactored to get the last grype report findings
   /users/{user_id}/images/{image_id}/vulnerabilities:
     get:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
@@ -426,6 +435,7 @@ paths:
         in: path
         type: string
         required: true
+      # TODO 3.0: is this os, python, etc? or something else?
       - name: artifact_type
         in: path
         required: true
@@ -466,6 +476,7 @@ paths:
         500:
           description: "Internal server error processing the request."
   /feeds:
+    # TODO 3.0: should this be an indicator of the DB or of the individual feeds?
     get:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
       operationId: list_feeds
@@ -492,6 +503,7 @@ paths:
             type: array
             items:
               $ref: "#/definitions/FeedMetadata"
+    # TODO 3.0: this syncs all feeds
     post:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
       operationId: sync_feeds
@@ -505,6 +517,7 @@ paths:
         in: query
         required: false
         type: boolean
+      # TODO 3.0: why is this parameter needed? this syncs all feeds, not individual feeds, yes?
       - name: feed
         in: query
         required: false
@@ -521,6 +534,7 @@ paths:
           description: "Internal server error processing the request. Retry expected"
         400:
           description: "Bad request, fix and resend"
+  # TODO 3.0: this entire endpoint gets deleted
   /feeds/{feed}:
     put:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
@@ -568,6 +582,7 @@ paths:
           description: "Internal server error processing the request. Retry expected"
         404:
           description: "Not found"
+  # TODO 3.0: this entire endpoint needs to be removed
   /feeds/{feed}/{group}:
     put:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.feeds
@@ -629,6 +644,7 @@ definitions:
   Image:
     type: object
     properties:
+      # TODO 3.0: add which DB version scanned this image.
       id:
         type: string
       digest:
@@ -760,7 +776,7 @@ definitions:
         - "processing"
         - "complete"
         - "failed"
-  PolicyBundle:  
+  PolicyBundle:
     description: "Formal schema for Anchore Policy Bundle documents"
     type: object
     required:
@@ -948,12 +964,15 @@ definitions:
         type: string
       image_id:
         type: string
+      # TODO 3.0: delete this since it's deprecated?
       legacy_report:
         $ref: "#/definitions/LegacyVulnerabilityReport"
+      # TODO 3.0: change this key to something else (not "cpe_")
       cpe_report:
         type: array
         items:
           $ref: "#/definitions/CpeVulnerabilityReport"
+  # TODO 3.0: clarification, is this for all kinds of vulnerabilities? can we rename it to "VulnerabilityReport"?
   CpeVulnerabilityReport:
     type: object
     description: "Generic object container for the cpe vulnerability report"
@@ -1267,6 +1286,7 @@ definitions:
         items:
           $ref: "#/definitions/PolicyEvaluationProblem"
   FeedMetadata:
+    # TODO 3.0: we may need to expand the grype DB to include this metadata for each data source
     type: object
     description: Metadata on a single feed based on what the engine finds from querying the endpoints
     properties:
