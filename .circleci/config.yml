@@ -249,7 +249,7 @@ workflows:
           filters:
             branches:
               only:
-                - rprince/nightly-build
+                - master
     jobs:
       - unit_tests
       - lint
