@@ -2,10 +2,10 @@
 Module for handling archive tasks
 """
 import datetime
+import fnmatch
 import io
 import json
 import os
-import fnmatch
 import tarfile
 import tempfile
 import time
@@ -431,7 +431,17 @@ class ImageAnalysisArchiver(object):
         if min_time > 0:
             tag_histories_qry = tag_histories_qry.filter(CatalogImage.analyzed_at < min_time)
 
-        return self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
+        candidates = self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
+
+        # Do an additional query to retrieve images which exceed the max image count
+        # NOTE: only applies to system rules that have the max_images_per_account set to a positive integer
+        if rule.system_global and rule.max_images_per_account is not None and rule.max_images_per_account > 0:
+            old_images_exceeding_max_count = db_catalog_image.get_oldest_images_with_limit(session,
+                                                                                           self.account,
+                                                                                           rule.max_images_per_account)
+            for tag_rec, image in old_images_exceeding_max_count:
+                candidates.append((tag_rec, image))
+        return candidates
 
     def _evaluate_tag_history_and_exclude(self, rule, image_tuple_generator):
         candidates = []
@@ -1167,21 +1177,3 @@ class ArchiveImageTask(object):
         except Exception as ex:
             logger.exception("Error flushing policy engine state for image")
             raise ex
-
-    # Removed since the archive task should not affect any sources
-    # def flush_source_objects(self, src_mgr, artifacts):
-    #     for artifact in artifacts:
-    #         logger.debug('Flushing source artifact: {}'.format(artifact.name))
-    #         if artifact.source and artifact.source.bucket:
-    #             src_mgr.delete(self.account, artifact.source.bucket, artifact.source.key)
-    #
-    #     with session_scope() as session:
-    #         db_catalog_image.delete(self.image_digest, self.account, session)
-    #
-    # def flush_policy_engine(self, image_id):
-    #     try:
-    #         pe_client = internal_client_for(PolicyEngineClient, userId=self.account)
-    #         pe_client.delete_image(self.account, image_id)
-    #     except Exception as ex:
-    #         logger.exception("Error flushing policy engine state for image")
-    #         raise ex

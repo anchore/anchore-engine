@@ -1,6 +1,4 @@
-from sqlalchemy import desc, and_, or_
-from sqlalchemy.orm import load_only, Load
-import time
+from sqlalchemy import desc, and_, or_, func
 
 from anchore_engine import db
 import anchore_engine.db.db_catalog_image_docker
@@ -353,26 +351,41 @@ def delete(imageDigest, userId, session=None):
 
     return True
 
-#
-# def get_tags_by_time_range(session, userId, start=None, end=None):
-#     """
-#     Return the images with a created_at timestamp between the two parameters. Only returns the CatalogImageDocker record, not the source image.
-#
-#     :param session: active sqlachemy session
-#     :param userId:
-#     :param start:
-#     :param end:
-#     :return:
-#     """
-#
-#     if start and end:
-#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at >= start,
-#                                                   CatalogImageDocker.created_at <= end).all()
-#     elif start:
-#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at >= start).all()
-#     elif end:
-#         imgs = session.query(CatalogImageDocker).filter(CatalogImageDocker.userId == userId, CatalogImageDocker.created_at <= end).all()
-#     else:
-#         raise Exception('Must specify either start or end or both parameters')
-#
-#     return [x.to_dict() for x in imgs]
+
+def get_oldest_images_with_limit(session, account, max_images):
+    """
+    This method will return the oldest images which exceed the max_images limit
+
+    Ex. max_images = 1000
+        images_in_anchore = 1100
+
+    This method will return the image digests of the oldest 100 images (regardless of account)
+
+    :param session: DB Session
+    :param account: The account name (maps to userId in catalog_images)
+    :param max_images: This is the maximum image count for the Anchore Deployment. Must be a positive integer.
+                       Based on the number of images in Anchore, this will determine the number returned images
+    """
+    if max_images < 0:
+        return
+
+    image_count = session.query(func.count()).order_by(None).scalar()
+    limit = image_count - max_images
+
+    if limit <= 0:
+        return
+
+    select_fields = [
+        CatalogImageDocker,
+        CatalogImage
+    ]
+
+    qry = session.query(*select_fields)\
+        .join(CatalogImage,
+              and_(CatalogImageDocker.userId == CatalogImage.userId,
+                   CatalogImageDocker.imageDigest == CatalogImage.imageDigest))\
+        .filter(and_(CatalogImage.analysis_status == 'analyzed', CatalogImage.userId == account))\
+        .order_by([CatalogImage.analyzed_at.asc()])\
+        .limit(limit)
+
+    return qry

@@ -4170,6 +4170,9 @@ definitions:
         format: date-time
       exclude:
         $ref: "#/definitions/AnalysisArchiveTransitionRuleExclude"
+      max_images_per_account:
+        type: integer
+        description: This is the maximum number of image analyses an account can have. Can only be set on system_global rules
   AnalysisArchiveTransitionRuleExclude:
     type: object
     description: Which Images to exclude from auto-archiving logic

@@ -1,11 +1,9 @@
-import time
-
-from sqlalchemy import desc
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, desc
 
 from anchore_engine import db
 from anchore_engine.db import CatalogImageDocker, CatalogImage
 from anchore_engine.subsys import logger
+
 
 def update_record(record, session=None):
     if not session:
@@ -63,7 +61,7 @@ def get_byfilter(userId, session=None, **kwargs):
     ret = []
 
     kwargs['userId'] = userId
-    
+
     results = session.query(CatalogImageDocker).filter_by(**kwargs).order_by(desc(CatalogImageDocker.created_at))
     for result in results:
         dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
@@ -111,7 +109,7 @@ def get_all(userId, session=None):
         for result in results:
             dbobj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
             ret.append(dbobj)
-            
+
     return ret
 
 def delete(imageDigest, userId, tag, session=None):
@@ -178,3 +176,4 @@ def get_tag_histories(session, userId, registries=None, repositories=None, tags=
 
     logger.debug('Constructed tag history query: {}'.format(qry))
     return qry
+

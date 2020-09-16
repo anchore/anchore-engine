@@ -7,6 +7,7 @@ import json
 import uuid
 from sqlalchemy import or_, and_
 from anchore_engine import db
+from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 from anchore_engine.db import session_scope, db_catalog_image, ArchivedImage, ArchivedImageDocker, CatalogImage, db_archived_images, ArchiveTransitionRule, ArchiveTransitionHistoryEntry, ArchiveTransitions
 from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
@@ -144,6 +145,17 @@ def create_analysis_archive_rule(rule):
 
     try:
         with session_scope() as session:
+            # Validate that only one system_global rule has max_images_per_account set
+            qry = session.query(ArchiveTransitionRule)\
+                .filter(and_(ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(),
+                             ArchiveTransitionRule.system_global == True,
+                             ArchiveTransitionRule.max_images_per_account != None))
+            if qry.first() is not None:
+                raise BadRequest(
+                    'A system_global Archive Transition Rule already exists with max_images_per_account set',
+                    {'existingRule': repr(qry.first())}
+                )
+
             r = ArchiveTransitionRule()
             r.account = ApiRequestContextProxy.namespace()
             r.rule_id = uuid.uuid4().hex
@@ -163,6 +175,7 @@ def create_analysis_archive_rule(rule):
             r.exclude_selector_repository = exclude_selector.get('repository', '')
             r.exclude_selector_tag = exclude_selector.get('tag', '')
             r.exclude_expiration_days = exclude.get('expiration_days', -1)
+            r.max_images_per_account = rule.get('max_images_per_account', None)
 
             session.add(r)
             session.flush()
