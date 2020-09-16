@@ -57,7 +57,7 @@
 .filter_nightly: &filter_nightly
   branches:
     only:
-      - rprince/nightly-build
+      - master
 
 # Start circleci configuration
 version: 2.1
@@ -243,13 +243,13 @@ workflows:
           timeout: '2000'
 
   nightly_build:
-    #    triggers:
-    #      - schedule:
-    #          cron: "05 21 * * *"
-    #          filters:
-    #            branches:
-    #              only:
-    #                - rprince/nightly-build
+    triggers:
+      - schedule:
+          cron: "0 10 * * *"
+          filters:
+            branches:
+              only:
+                - rprince/nightly-build
     jobs:
       - unit_tests
       - lint
