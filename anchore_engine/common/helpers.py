@@ -29,19 +29,24 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
 
     if isinstance(errmsg, Exception):
         if 'anchore_error_json' in errmsg.__dict__:
-            if {'message', 'httpcode', 'detail'}.issubset(set(errmsg.__dict__['anchore_error_json'])):
-                ret.update(errmsg.__dict__['anchore_error_json'])
+            # Try to load it as json
+            try:
+                err_json = json.loads(errmsg.__dict__.get('anchore_error_json', None))
+            except ValueError:
+                # Then it may just be a string, we cannot do anything with it
+                logger.debug('Failed to parse anchore_error_json as json')
+                return ret
+
+            if {'message', 'httpcode', 'detail'}.issubset(set(err_json)):
+                ret.update(err_json)
 
             try:
-                if {'error_code'}.issubset(set(errmsg.__dict__['anchore_error_json'])) and errmsg.__dict__['anchore_error_json'].get('error_code', None):
+                if {'error_code'}.issubset(set(err_json)) and err_json.get('error_code', None):
                     if 'error_codes' not in ret['detail']:
                         ret['detail']['error_codes'] = []
-                    ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))
-            except Exception as err:
-                try:
-                    logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
-                except:
-                    pass
+                    ret['detail']['error_codes'].append(err_json.get('error_code'))
+            except KeyError:
+                logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
     return ret
 
 
