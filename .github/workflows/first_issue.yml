@@ -1,6 +1,6 @@
 name: Greetings
 
-on: [issues]
+on: [pull_request, issues]
 
 jobs:
   greeting:
@@ -14,8 +14,18 @@ jobs:
 
           Thank you for being part of the Anchore community!
 
-          [Thank you](https://github.com/anchore/anchore-engine/raw/master/scripts/ci/thank-you.png)
+          ![Thank you](https://github.com/anchore/anchore-engine/raw/master/scripts/ci/thank-you.png)
 
           An Anchorite will look at your issue soon. We also have great [documentation](https://docs.anchore.com/current/), including [FAQs](https://docs.anchore.com/current/docs/faq/) and [release notes](https://docs.anchore.com/current/docs/releasenotes/).
 
           You can also find our [contribution guidelines here](https://github.com/anchore/anchore-engine/blob/master/CONTRIBUTING.rst). Thank you again!
+        pr-message: |-
+          Hello ${{ github.actor }},
+
+          Thank you for being part of the Anchore community!
+
+          ![Thank you](https://github.com/anchore/anchore-engine/raw/master/scripts/ci/thank-you.png)
+
+          An Anchorite will look at your PR soon. We value your contribution.
+
+          Please review our [contribution guidelines here](https://github.com/anchore/anchore-engine/blob/master/CONTRIBUTING.rst). Thank you again!
