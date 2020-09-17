@@ -71,7 +71,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 
 .PHONY: ci build install install-dev
 .PHONY: lint clean clean-all test
-.PHONY: test-unit test-integration test-functional test-cli
+.PHONY: test-unit test-integration test-functional
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
@@ -125,9 +125,6 @@ setup-e2e-tests: setup-test-infra venv ## Start kind cluster and set up end to e
 	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
 test-e2e: setup-test-infra venv ## Run end to end tests (assuming cluster is running and set up has been run)
-	@$(MAKE) test-cli
-
-test-cli: setup-test-infra venv ## Run cli-driven end to end tests (assuming cluster is running and set up has been run)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-cli
 
 setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests

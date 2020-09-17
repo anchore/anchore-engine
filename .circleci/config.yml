@@ -251,16 +251,21 @@ workflows:
               only:
                 - master
     jobs:
-      - unit_tests
-      - lint
+      - unit_tests:
+          filters: *filter_nightly
+      - lint:
+          filters: *filter_nightly
       - integration_tests:
+          filters: *filter_nightly
           requires:
             - unit_tests
       - build:
+          filters: *filter_nightly
           requires:
             - lint
             - unit_tests
       - functional_tests:
+          filters: *filter_nightly
           requires:
             - build
       - e2e_tests:
@@ -279,6 +284,7 @@ workflows:
             - e2e_tests
       - anchore/image_scan:
           context: dockerhub
+          filters: *filter_nightly
           requires:
             - push_nightly_image
           image_name: anchore/anchore-engine-dev:nightly
