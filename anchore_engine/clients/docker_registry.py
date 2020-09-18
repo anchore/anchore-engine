@@ -8,7 +8,8 @@ import requests
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
 from anchore_engine.subsys import logger
-from anchore_engine.clients.skopeo_wrapper import get_image_manifest_skopeo, get_repo_tags_skopeo
+from anchore_engine.clients.skopeo_wrapper import get_image_manifest_skopeo, get_repo_tags_skopeo, get_image_manifest_v2 as skopeo_get_image_manifest
+from anchore_engine.utils import ImageInfo
 
 
 def get_image_manifest_docker_registry(url, registry, repo, tag, user=None, pw=None, verify=True):
@@ -279,3 +280,48 @@ def get_image_manifest(userId, image_info, registry_creds):
         raise err
     else:
         raise Exception("could not get manifest/digest for image ({}) from registry ({}) - error: {}".format(fulltag, url, err))
+
+
+def get_image_manifest_v2(userId, image_info, registry_creds, default=None) -> ImageInfo:
+    logger.debug("get_image_manifest_list input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
+    logger.info("nightfury get_image_manifest_list input: " + str(userId) + " : " + str(image_info) + " : " + str(time.time()))
+
+    registry = image_info['registry']
+    try:
+        user, pw, registry_verify = anchore_engine.auth.common.get_creds_by_registry(registry, image_info['repo'], registry_creds=registry_creds)
+    except Exception as err:
+        raise err
+
+    if registry == 'docker.io':
+        url = "https://index.docker.io"
+        if not re.match(".*/.*", image_info['repo']):
+            repo = "library/"+image_info['repo']
+        else:
+            repo = image_info['repo']
+    else:
+        url = "https://"+registry
+        repo = image_info['repo']
+
+    if image_info['digest']:
+        tag = None
+        input_digest = image_info['digest']
+        fulltag = "{}/{}@{}".format(registry, repo, input_digest)
+    else:
+        input_digest = None
+        tag = image_info['tag']
+        fulltag = "{}/{}:{}".format(registry, repo, tag)
+
+    logger.debug("trying to get v2 manifest/digest for image ("+str(fulltag)+")")
+    logger.info("nightfury trying to get v2 manifest/digest for image ("+str(fulltag)+")")
+    try:
+        if tag:
+            result = skopeo_get_image_manifest(url, registry, repo, intag=tag, user=user, pw=pw, verify=registry_verify)
+        elif input_digest:
+            result = skopeo_get_image_manifest(url, registry, repo, indigest=input_digest, user=user, pw=pw, verify=registry_verify)
+        else:
+            raise Exception("neither tag nor digest was given as input")
+    except Exception:
+        logger.exception("could not get manifest/digest for image ({}) from registry ({})".format(fulltag, url))
+        raise
+
+    return result

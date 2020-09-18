@@ -21,7 +21,7 @@ from ijson.backends import python as ijpython
 
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string
-
+from typing import List
 
 K_BYTES = 1024
 M_BYTES = 1024 * K_BYTES
@@ -722,3 +722,18 @@ def mapped_parser_item_iterator(input_stream, item_path):
     """
     events = map(ijson_decimal_to_float, ijpython.parse(input_stream))
     return ijcommon.items(events, item_path)
+
+
+class ManifestDigestArch(object):
+
+    def __init__(self, manifest, digest, arch=None):
+        self.manifest = manifest
+        self.digest = digest
+        self.arch = arch
+
+
+class ImageInfo(object):
+
+    def __init__(self, parent: ManifestDigestArch, children: List[ManifestDigestArch] = None):
+        self.parent = parent
+        self.children = children

@@ -1176,71 +1176,77 @@ def analyze_image(account, source, force=False, enable_subscriptions=None, annot
             raise ValueError("The source property must have at least one of tag, digest, or archive set to non-null")
 
         # add the image to the catalog
-        image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
+        # image_record = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
+        #                                 created_at=ts, from_archive=is_from_archive, allow_dockerfile_update=force)
+        image_records = client.add_image(tag=tag, digest=digest, dockerfile=dockerfile, annotations=annotations,
                                         created_at=ts, from_archive=is_from_archive, allow_dockerfile_update=force)
 
-        imageDigest = image_record['imageDigest']
+        results = []
+        for image_record in image_records:
+            imageDigest = image_record['imageDigest']
 
-        # finally, do any state updates and return
-        if image_record:
-            logger.debug("added image: " + str(imageDigest))
+            # finally, do any state updates and return
+            if image_record:
+                logger.debug("added image: " + str(imageDigest))
 
-            # auto-subscribe for NOW
-            for image_detail in image_record['image_detail']:
-                fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
+                # auto-subscribe for NOW
+                for image_detail in image_record['image_detail']:
+                    fulltag = image_detail['registry'] + "/" + image_detail['repo'] + ":" + image_detail['tag']
 
-                foundtypes = []
-                try:
-                    subscription_records = client.get_subscription(subscription_key=fulltag)
-                except Exception as err:
-                    subscription_records = []
+                    foundtypes = []
+                    try:
+                        subscription_records = client.get_subscription(subscription_key=fulltag)
+                    except Exception as err:
+                        subscription_records = []
 
-                for subscription_record in subscription_records:
-                    if subscription_record['subscription_key'] == fulltag:
-                        foundtypes.append(subscription_record['subscription_type'])
+                    for subscription_record in subscription_records:
+                        if subscription_record['subscription_key'] == fulltag:
+                            foundtypes.append(subscription_record['subscription_type'])
 
-                sub_types = anchore_engine.common.subscription_types
-                for sub_type in sub_types:
-                    if sub_type in ['repo_update']:
-                        continue
-                    if sub_type not in foundtypes:
-                        try:
-                            default_active = False
-                            if enable_subscriptions and sub_type in enable_subscriptions:
-                                logger.debug("auto-subscribing image: " + str(sub_type))
-                                default_active = True
-                            client.add_subscription({'active': default_active, 'subscription_type': sub_type,
-                                                     'subscription_key': fulltag})
-                        except:
+                    sub_types = anchore_engine.common.subscription_types
+                    for sub_type in sub_types:
+                        if sub_type in ['repo_update']:
+                            continue
+                        if sub_type not in foundtypes:
                             try:
-                                client.update_subscription({'subscription_type': sub_type, 'subscription_key': fulltag})
+                                default_active = False
+                                if enable_subscriptions and sub_type in enable_subscriptions:
+                                    logger.debug("auto-subscribing image: " + str(sub_type))
+                                    default_active = True
+                                client.add_subscription({'active': default_active, 'subscription_type': sub_type,
+                                                         'subscription_key': fulltag})
                             except:
-                                pass
-                    else:
-                        if enable_subscriptions and sub_type in enable_subscriptions:
-                            client.update_subscription({'active': True, 'subscription_type': sub_type, 'subscription_key': fulltag})
+                                try:
+                                    client.update_subscription({'subscription_type': sub_type, 'subscription_key': fulltag})
+                                except:
+                                    pass
+                        else:
+                            if enable_subscriptions and sub_type in enable_subscriptions:
+                                client.update_subscription({'active': True, 'subscription_type': sub_type, 'subscription_key': fulltag})
 
-            # set the state of the image appropriately
-            currstate = image_record['analysis_status']
-            if not currstate:
-                newstate = taskstate.init_state('analyze', None)
-            elif force or currstate == taskstate.fault_state('analyze'):
-                newstate = taskstate.reset_state('analyze')
-            elif image_record['image_status'] != taskstate.base_state('image_status'):
-                newstate = taskstate.reset_state('analyze')
-            else:
-                newstate = currstate
+                # set the state of the image appropriately
+                currstate = image_record['analysis_status']
+                if not currstate:
+                    newstate = taskstate.init_state('analyze', None)
+                elif force or currstate == taskstate.fault_state('analyze'):
+                    newstate = taskstate.reset_state('analyze')
+                elif image_record['image_status'] != taskstate.base_state('image_status'):
+                    newstate = taskstate.reset_state('analyze')
+                else:
+                    newstate = currstate
 
-            if (currstate != newstate) or (force):
-                logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
-                image_record.update({'image_status': taskstate.reset_state('image_status'), 'analysis_status': newstate})
-                updated_image_record = client.update_image(imageDigest, image_record)
-                if updated_image_record:
-                    image_record = updated_image_record[0]
-            else:
-                logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
+                if (currstate != newstate) or (force):
+                    logger.debug("state change detected: " + str(currstate) + " : " + str(newstate))
+                    image_record.update({'image_status': taskstate.reset_state('image_status'), 'analysis_status': newstate})
+                    updated_image_record = client.update_image(imageDigest, image_record)
+                    if updated_image_record:
+                        image_record = updated_image_record[0]
+                else:
+                    logger.debug("no state change detected: " + str(currstate) + " : " + str(newstate))
 
-            return [make_response_image(image_record, include_detail=True)]
+                results.append(make_response_image(image_record, include_detail=True))
+
+            return results
     except Exception as err:
         logger.debug("operation exception: " + str(err))
         raise err

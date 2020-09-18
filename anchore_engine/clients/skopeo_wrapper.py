@@ -4,7 +4,7 @@ import re
 import tempfile
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
+from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException, ManifestDigestArch, ImageInfo
 from anchore_engine.subsys import logger
 from anchore_engine.common.errors import AnchoreError
 
@@ -330,6 +330,133 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
         raise SkopeoError(msg="No digest/manifest from skopeo")
 
     return manifest, digest, topdigest, topmanifest
+
+
+def get_digest_arch(pullstring, user=None, pw=None, verify=True):
+    ret = None
+    try:
+        proc_env = os.environ.copy()
+        if user and pw:
+            proc_env['SKOPUSER'] = user
+            proc_env['SKOPPASS'] = pw
+            credstr = '--creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
+        else:
+            credstr = ""
+
+        if verify:
+            tlsverifystr = "--tls-verify=true"
+        else:
+            tlsverifystr = "--tls-verify=false"
+
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        try:
+            global_timeout = int(global_timeout)
+            if global_timeout < 0:
+                global_timeout = 0
+        except:
+            global_timeout = 0
+
+        if global_timeout:
+            global_timeout_str = "--command-timeout {}s".format(global_timeout)
+        else:
+            global_timeout_str = ""
+
+        os_override_strs = ["", "--override-os windows"]
+        try:
+            success = False
+            for os_override_str in os_override_strs:
+                cmd = ["/bin/sh", "-c",
+                       "skopeo {} {} inspect {} {} docker://{}".format(global_timeout_str, os_override_str,
+                                                                       tlsverifystr, credstr, pullstring)]
+                cmdstr = ' '.join(cmd)
+                try:
+                    rc, sout, serr = run_command_list(cmd, env=proc_env)
+                    if rc != 0:
+                        skopeo_error = SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+                        if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
+                            raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
+                    else:
+                        logger.debug(
+                            "command succeeded: cmd=" + str(cmdstr) + " stdout=" + str(sout).strip() + " stderr=" + str(
+                                serr).strip())
+                        success = True
+                except Exception as err:
+                    logger.error("command failed with exception - " + str(err))
+                    raise err
+
+                if success:
+                    sout = str(sout, 'utf-8') if sout else None
+                    ret = sout
+                    break
+
+            if not success:
+                logger.error("could not retrieve manifest")
+                raise Exception("could not retrieve manifest")
+
+        except Exception as err:
+            raise err
+    except Exception as err:
+        raise err
+
+    return ret
+
+def _get_image_manifest_digest(registry, repo, tag=None, digest=None, user=None, pw=None, verify=True):
+    if digest:
+        pull_string = registry + "/" + repo + "@" + digest
+    elif tag:
+        pull_string = registry + "/" + repo + ":" + tag
+    else:
+        raise Exception("invalid input - must supply either an intag or indigest")
+
+    try:
+        raw_manifest = get_image_manifest_skopeo_raw(pull_string, user=user, pw=pw, verify=verify)
+        s_manifest = json.loads(raw_manifest)
+        s_digest = manifest_to_digest(raw_manifest)
+        return s_manifest, s_digest
+    except Exception as err:
+        logger.warn("CMD failed - exception: " + str(err))
+        raise err
+
+
+def get_image_manifest_v2(url, registry, repo, intag=None, indigest=None, user=None, pw=None, verify=True, default=None):
+    try:
+        s_manifest, s_digest = _get_image_manifest_digest(registry, repo, intag, indigest, user, pw, verify)
+        result = ImageInfo(parent=ManifestDigestArch(s_manifest, s_digest, None), children=[])
+
+        if s_manifest.get('schemaVersion') == 2 and s_manifest.get('mediaType') == 'application/vnd.docker.distribution.manifest.list.v2+json':
+            for entry in s_manifest.get('manifests'):
+                child_platform = entry.get('platform')
+                child_digest = entry.get('digest')
+                if child_digest and child_platform and child_platform.get('os') in ['linux', 'windows']:
+                    child_arch = child_platform.get('architecture')
+                    if not default:
+                        s_manifest, s_digest = _get_image_manifest_digest(registry, repo, None, child_digest, user, pw, verify)
+                        result.children.append(ManifestDigestArch(s_manifest, s_digest, child_arch))
+                    elif child_arch in default:
+                        s_manifest, s_digest = _get_image_manifest_digest(registry, repo, None, child_digest, user, pw, verify)
+                        result.children.append(ManifestDigestArch(s_manifest, s_digest, child_arch))
+                        break
+                    # else:
+                    #     continue
+        else:
+            try:
+                pull_string = registry + "/" + repo + "@" + s_digest
+                raw_inspect_out = get_digest_arch(pull_string, user=user, pw=pw, verify=verify)
+                inspect_out = json.loads(raw_inspect_out)
+                result.parent.arch = inspect_out.get('Architecture')
+            except Exception as err:
+                logger.warn("CMD failed - exception: " + str(err))
+                raise err
+    except Exception as err:
+        logger.exception("Failed to fetch skopeo image manifest", err)
+        raise err
+
+    if not result:
+        raise SkopeoError(msg="No digest/manifest from skopeo")
+
+    return result
+
 
 class SkopeoError(AnchoreException):
 
