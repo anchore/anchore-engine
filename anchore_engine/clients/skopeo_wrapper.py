@@ -430,12 +430,14 @@ def get_image_manifest_v2(url, registry, repo, intag=None, indigest=None, user=N
                 child_digest = entry.get('digest')
                 if child_digest and child_platform and child_platform.get('os') in ['linux', 'windows']:
                     child_arch = child_platform.get('architecture')
+                    child_variant = child_platform.get('variant')
+                    arch_var = '{}_{}'.format(child_arch, child_variant) if child_variant else child_arch
                     if not default:
                         s_manifest, s_digest = _get_image_manifest_digest(registry, repo, None, child_digest, user, pw, verify)
-                        result.children.append(ManifestDigestArch(s_manifest, s_digest, child_arch))
+                        result.children.append(ManifestDigestArch(s_manifest, s_digest, arch_var))
                     elif child_arch in default:
                         s_manifest, s_digest = _get_image_manifest_digest(registry, repo, None, child_digest, user, pw, verify)
-                        result.children.append(ManifestDigestArch(s_manifest, s_digest, child_arch))
+                        result.children.append(ManifestDigestArch(s_manifest, s_digest, arch_var))
                         break
                     # else:
                     #     continue
