@@ -3160,6 +3160,8 @@ definitions:
     properties:
       imageDigest:
         type: string
+      architecture:
+        type: string
       parentDigest:
         type: string
       imageId:

@@ -191,26 +191,28 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_s
 
 def get_all_tagsummary(userId, session=None, image_status=None):
     query = session.query(CatalogImage.imageDigest,
-                            CatalogImage.parentDigest,
-                            CatalogImageDocker.registry,
-                            CatalogImageDocker.repo,
-                            CatalogImageDocker.tag,
-                            CatalogImage.analysis_status,
-                            CatalogImageDocker.created_at,
-                            CatalogImageDocker.imageId,
-                            CatalogImage.analyzed_at,
-                            CatalogImageDocker.tag_detected_at,
-                            CatalogImage.image_status).filter(and_(CatalogImage.userId == userId,
-                                                                   CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
-                                                                   CatalogImageDocker.userId == userId))
+                          CatalogImage.arch,
+                          CatalogImage.parentDigest,
+                          CatalogImageDocker.registry,
+                          CatalogImageDocker.repo,
+                          CatalogImageDocker.tag,
+                          CatalogImage.analysis_status,
+                          CatalogImageDocker.created_at,
+                          CatalogImageDocker.imageId,
+                          CatalogImage.analyzed_at,
+                          CatalogImageDocker.tag_detected_at,
+                          CatalogImage.image_status).filter(and_(CatalogImage.userId == userId,
+                                                                 CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
+                                                                 CatalogImageDocker.userId == userId))
 
     if image_status and isinstance(image_status, list) and 'all' not in image_status:  # filter only if specific states are input and != all
         query = query.filter(CatalogImage.image_status.in_(image_status))
 
     ret = []
-    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
+    for idig, arch, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
         ret.append({
             'imageDigest': idig,
+            'architecture': arch,
             'parentDigest': pdig,
             'fulltag': reg + "/" + repo + ":" + tag,
             'analysis_status': astat,
