@@ -242,6 +242,11 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
+    architecture = None
+    if params:
+        architecture = params.get('architecture')
+
+
     image_status = params.get('image_status') if params else None
     analysis_status = params.get('analysis_status') if params else None
 
@@ -301,10 +306,10 @@ def image(dbsession, request_inputs, bodycontent=None):
 
                         logger.debug("image DB lookup filter: " + json.dumps(dbfilter, indent=4))
                         if history:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, session=dbsession)
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, arch=architecture, session=dbsession)
                         else:
                             image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter,
-                                                                               onlylatest=True, session=dbsession)
+                                                                               onlylatest=True, arch=architecture, session=dbsession)
 
                         if image_records:
                             return_object = image_records

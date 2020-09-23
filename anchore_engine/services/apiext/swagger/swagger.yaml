@@ -427,6 +427,11 @@ paths:
         required: false
         type: string
         description: "Full docker-pull string to filter results by (e.g. docker.io/library/nginx:latest, or myhost.com:5000/testimages:v1.1.1)"
+      - name: architecture
+        in: query
+        required: false
+        type: string
+        description: Filter by just architecture such as amd64 or or architecture and variant separated by _ such as arm_v6
       - name: image_status
         in: query
         required: false

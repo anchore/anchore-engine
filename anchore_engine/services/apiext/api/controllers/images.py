@@ -1073,12 +1073,12 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
 #    return(return_object, httpcode)
 
 
-def do_list_images(account, filter_tag=None, filter_digest=None, history=False, image_status=None, analysis_status=None):
+def do_list_images(account, filter_tag=None, filter_digest=None, history=False, image_status=None, analysis_status=None, architecture=None):
     client = internal_client_for(CatalogClient, account)
 
     try:
         # Query param fulltag has precedence for search
-        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, image_status=image_status, analysis_status=analysis_status)
+        image_records = client.list_images(tag=filter_tag, digest=filter_digest, history=history, image_status=image_status, analysis_status=analysis_status, architecture=architecture)
 
         return [make_response_image(image_record, include_detail=True) for image_record in image_records]
 
