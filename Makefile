@@ -30,7 +30,7 @@ PYTHON := $(VENV)/bin/python3
 CI_COMPOSE_FILE = scripts/ci/docker-compose-ci.yaml
 CLUSTER_CONFIG = tests/e2e/kind-config.yaml
 CLUSTER_NAME = e2e-testing
-K8S_VERSION = 1.15.7
+K8S_VERSION = 1.19.0
 TEST_IMAGE_NAME = $(GIT_REPO):dev
 
 
@@ -73,7 +73,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: lint clean clean-all test
 .PHONY: test-unit test-integration test-functional
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
-.PHONY: push-dev push-rc push-prod push-rebuild push-redhat
+.PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: setup-test-infra venv printvars help
 
@@ -125,7 +125,7 @@ setup-e2e-tests: setup-test-infra venv ## Start kind cluster and set up end to e
 	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
 
 test-e2e: setup-test-infra venv ## Run end to end tests (assuming cluster is running and set up has been run)
-	@$(ACTIVATE_VENV) && $(CI_CMD) e2e-tests
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-cli
 
 setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
@@ -135,6 +135,9 @@ setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 
 # Release targets
 #######################
+
+push-nightly: setup-test-infra ## Push nightly Anchore Engine Docker image to Docker Hub
+	@$(CI_CMD) push-nightly-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
 
 push-dev: setup-test-infra ## Push dev Anchore Engine Docker image to Docker Hub
 	@$(CI_CMD) push-dev-image "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_BRANCH)" "$(TEST_IMAGE_NAME)"
