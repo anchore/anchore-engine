@@ -6,7 +6,8 @@ import anchore_engine.utils
 from anchore_engine import db
 from anchore_engine.clients import docker_registry
 from anchore_engine.subsys import logger
-
+from copy import deepcopy
+from anchore_engine.utils import ManifestDigestArch
 
 def lookup_registry_image(userId, image_info, registry_creds):
     digest = None
@@ -69,6 +70,68 @@ def get_image_info(userId, image_type, input_string, registry_lookup=False, regi
     return ret
 
 
+def _make_image_info_dict(common_info, parent: ManifestDigestArch, child: ManifestDigestArch):
+    image_info = deepcopy(common_info)
+    image_info['digest'] = child.digest
+    image_info['fulldigest'] = image_info['registry'] + "/" + image_info['repo'] + "@" + child.digest
+    image_info['manifest'] = child.manifest
+    image_info['architecture'] = child.arch
+    image_info['parentmanifest'] = parent.manifest
+    image_info['parentdigest'] = parent.digest
+
+    # if we got a manifest, and the image_info does not yet contain an imageId, try to get it from the manifest
+    if image_info['manifest'] and not image_info['imageId']:
+        try:
+            imageId = re.sub("^sha256:", "", child.manifest['config']['digest'])
+            image_info['imageId'] = imageId
+        except Exception as err:
+            logger.debug("could not extract imageId from fetched manifest - exception: " + str(err))
+            logger.debug("using digest hash as imageId due to incomplete manifest (" + str(
+                image_info['fulldigest']) + ")")
+            htype, image_info['imageId'] = image_info['digest'].split(":", 1)
+
+    return image_info
+
+
+def get_image_infos(userId, image_type, input_string, registry_lookup=False, registry_creds=[]):
+    ret = []
+
+    if image_type == 'docker':
+        try:
+            common_info = anchore_engine.utils.parse_dockerimage_string(input_string)
+        except Exception as err:
+            raise anchore_engine.common.helpers.make_anchore_exception(err,
+                                                                       input_message="cannot handle image input string",
+                                                                       input_httpcode=400)
+
+        # ret.update(common_info)
+
+        if registry_lookup and common_info['registry'] != 'localbuild':
+            # digest, manifest = lookup_registry_image(userId, image_info, registry_creds)
+            try:
+                result = docker_registry.get_image_manifest_v2(userId, common_info, registry_creds)
+            except Exception as err:
+                raise anchore_engine.common.helpers.make_anchore_exception(err,
+                                                                           input_message="cannot fetch image digest/manifest from registry",
+                                                                           input_httpcode=400)
+
+            parent = result.parent
+            if result.children:
+                ret = [_make_image_info_dict(common_info, parent, child) for child in result.children]
+            else:
+                ret.append(_make_image_info_dict(common_info, parent, parent))
+        else:
+            image_info = deepcopy(common_info)
+            image_info['manifest'] = {}
+            image_info['parentmanifest'] = {}
+            image_info['architecture'] = 'unknown'
+            ret.append(image_info)
+    else:
+        raise Exception("image type (" + str(image_type) + ") not supported")
+
+    return ret
+
+
 def clean_docker_image_details_for_update(image_details):
     ret = []
 
@@ -81,7 +144,7 @@ def clean_docker_image_details_for_update(image_details):
     return ret
 
 
-def make_image_record(userId, image_type, input_string, image_metadata={}, registry_lookup=True, registry_creds=[]):
+def make_image_record(userId, image_type, input_string, image_metadata={}, registry_lookup=True, registry_creds=[], arch=None):
     if image_type == 'docker':
         try:
             dockerfile = image_metadata.get('dockerfile', None)
@@ -116,7 +179,7 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
         parentdigest = image_metadata.get('parentdigest', None)
         created_at = image_metadata.get('created_at', None)
 
-        return make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, parentdigest=parentdigest, created_at=created_at, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations)
+        return make_docker_image(userId, input_string=input_string, tag=tag, digest=digest, imageId=imageId, parentdigest=parentdigest, created_at=created_at, dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, registry_lookup=registry_lookup, registry_creds=registry_creds, annotations=annotations, arch=arch)
 
     else:
         raise Exception("image type ("+str(image_type)+") not supported")
@@ -124,7 +187,7 @@ def make_image_record(userId, image_type, input_string, image_metadata={}, regis
     return None
 
 
-def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, parentdigest=None, created_at=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[], annotations={}):
+def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=None, parentdigest=None, created_at=None, dockerfile=None, dockerfile_mode=None, registry_lookup=True, registry_creds=[], annotations={}, arch=None):
     ret = {}
 
     if input_string:
@@ -152,6 +215,7 @@ def make_docker_image(userId, input_string=None, tag=None, digest=None, imageId=
     new_input['userId'] = userId
     new_input['image_type'] = 'docker'
     new_input['dockerfile_mode'] = dockerfile_mode
+    new_input['arch'] = arch
 
     if not parentdigest:
         parentdigest = imageDigest

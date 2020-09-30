@@ -134,6 +134,10 @@ paths:
         type: string
         description: "tag of image to get"
         required: false
+      - name: 'architecture'
+        in: query
+        required: false
+        type: string
       - name: 'digest'
         in: query
         type: string

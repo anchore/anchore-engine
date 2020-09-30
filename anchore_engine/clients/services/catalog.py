@@ -53,10 +53,10 @@ class CatalogClient(InternalServiceClient):
     def get_image_by_id(self, imageId):
         return self.call_api(http.anchy_get, 'images', query_params={'imageId': imageId})
 
-    def list_images(self, tag=None, digest=None, imageId=None, registry_lookup=False, history=False, image_status='active', analysis_status=None):
+    def list_images(self, tag=None, digest=None, imageId=None, registry_lookup=False, history=False, image_status='active', analysis_status=None, architecture=None):
         return self.call_api(http.anchy_get, 'images',
                              query_params={'tag': tag, 'history': history, 'registry_lookup': registry_lookup,
-                                           'digest': digest, 'imageId': imageId, 'image_status': image_status, 'analysis_status': analysis_status})
+                                           'digest': digest, 'imageId': imageId, 'image_status': image_status, 'analysis_status': analysis_status, 'architecture': architecture})
 
     def update_image(self, imageDigest, image_record=None):
         payload = {}

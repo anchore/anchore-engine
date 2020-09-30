@@ -159,23 +159,24 @@ def get_created_at(record):
         return record['created_at']
     return 0
 
-def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_status='active', analysis_status=None, session=None):
+def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_status='active', analysis_status=None, arch=None, session=None):
     if not session:
         session = db.Session
 
     ret = []
 
     ret_results = []
+    latest_tuple_dict = dict()
     if image_type == 'docker':
         results = db.db_catalog_image_docker.get_byfilter(userId, session=session, **dbfilter)
-        latest = None
         for result in results:
             imageDigest = result['imageDigest']
             dbobj = get(imageDigest, userId, session=session)
 
-            if (image_status is None or dbobj['image_status'] == image_status) and (analysis_status is None or dbobj['analysis_status'] == analysis_status):
-                if not latest:
-                    latest = dbobj
+            if (image_status is None or dbobj['image_status'] == image_status) and (analysis_status is None or dbobj['analysis_status'] == analysis_status) and (arch and arch == dbobj['arch']):
+                tag_arch_tuple = (result['registry'], result('repo'), result['tag'], dbobj['arch'])
+                if tag_arch_tuple not in latest_tuple_dict:
+                    latest_tuple_dict[tag_arch_tuple] = dbobj
 
                 ret_results.append(dbobj)
 
@@ -183,34 +184,36 @@ def get_byimagefilter(userId, image_type, dbfilter={}, onlylatest=False, image_s
     if not onlylatest:
         ret = ret_results
     else:
-        if latest:
-            ret = [latest]
+        if latest_tuple_dict:
+            ret = list(latest_tuple_dict.values())
 
     return ret
 
 
 def get_all_tagsummary(userId, session=None, image_status=None):
     query = session.query(CatalogImage.imageDigest,
-                            CatalogImage.parentDigest,
-                            CatalogImageDocker.registry,
-                            CatalogImageDocker.repo,
-                            CatalogImageDocker.tag,
-                            CatalogImage.analysis_status,
-                            CatalogImageDocker.created_at,
-                            CatalogImageDocker.imageId,
-                            CatalogImage.analyzed_at,
-                            CatalogImageDocker.tag_detected_at,
-                            CatalogImage.image_status).filter(and_(CatalogImage.userId == userId,
-                                                                   CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
-                                                                   CatalogImageDocker.userId == userId))
+                          CatalogImage.arch,
+                          CatalogImage.parentDigest,
+                          CatalogImageDocker.registry,
+                          CatalogImageDocker.repo,
+                          CatalogImageDocker.tag,
+                          CatalogImage.analysis_status,
+                          CatalogImageDocker.created_at,
+                          CatalogImageDocker.imageId,
+                          CatalogImage.analyzed_at,
+                          CatalogImageDocker.tag_detected_at,
+                          CatalogImage.image_status).filter(and_(CatalogImage.userId == userId,
+                                                                 CatalogImage.imageDigest == CatalogImageDocker.imageDigest,
+                                                                 CatalogImageDocker.userId == userId))
 
     if image_status and isinstance(image_status, list) and 'all' not in image_status:  # filter only if specific states are input and != all
         query = query.filter(CatalogImage.image_status.in_(image_status))
 
     ret = []
-    for idig, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
+    for idig, arch, pdig, reg, repo, tag, astat, cat, iid, anat, dat, istat in query:
         ret.append({
             'imageDigest': idig,
+            'architecture': arch,
             'parentDigest': pdig,
             'fulltag': reg + "/" + repo + ":" + tag,
             'analysis_status': astat,

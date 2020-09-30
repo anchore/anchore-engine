@@ -242,6 +242,11 @@ def image(dbsession, request_inputs, bodycontent=None):
     if params and 'history' in params:
         history = params['history']
 
+    architecture = None
+    if params:
+        architecture = params.get('architecture')
+
+
     image_status = params.get('image_status') if params else None
     analysis_status = params.get('analysis_status') if params else None
 
@@ -301,10 +306,10 @@ def image(dbsession, request_inputs, bodycontent=None):
 
                         logger.debug("image DB lookup filter: " + json.dumps(dbfilter, indent=4))
                         if history:
-                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, session=dbsession)
+                            image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter, arch=architecture, session=dbsession)
                         else:
                             image_records = db_catalog_image.get_byimagefilter(userId, 'docker', dbfilter=dbfilter, image_status=image_status_filter, analysis_status=analysis_status_filter,
-                                                                               onlylatest=True, session=dbsession)
+                                                                               onlylatest=True, arch=architecture, session=dbsession)
 
                         if image_records:
                             return_object = image_records
@@ -347,7 +352,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                 annotations = jsondata['annotations']
 
 
-            image_record = {}
+            added_image_records = []
             try:
                 registry_creds = db_registries.get_byuserId(userId, session=dbsession)
                 try:
@@ -375,7 +380,8 @@ def image(dbsession, request_inputs, bodycontent=None):
                     logger.debug("INPUT IMAGE INFO: {}".format(image_info))
                     logger.debug("INPUT IMAGE INFO OVERRIDES: {}".format(image_info_overrides))
                     try:
-                        image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                        # image_info = anchore_engine.common.images.get_image_info(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
+                        image_info_list = anchore_engine.common.images.get_image_infos(userId, 'docker', input_string, registry_lookup=True, registry_creds=registry_creds)
                     except Exception as err:
                         fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(user_id=userId, image_pull_string=input_string, data=err.__dict__)
                         try:
@@ -385,32 +391,39 @@ def image(dbsession, request_inputs, bodycontent=None):
                         raise err
 
                     if image_info_overrides:
-                        image_info.update(image_info_overrides)
+                        # image_info.update(image_info_overrides)
+                        for item in image_info_list:
+                            item.update(image_info_overrides)
 
-                    logger.debug("INPUT FINAL IMAGE INFO: {}".format(image_info))
+                    logger.debug("INPUT FINAL IMAGE INFOs: {}".format(json.dumps(image_info_list, indent=2)))
 
-                    manifest = None
-                    try:
-                        if 'manifest' in image_info:
-                            manifest = json.dumps(image_info['manifest'])
-                        else:
-                            raise Exception("no manifest from get_image_info")
-                    except Exception as err:
-                        raise Exception("could not fetch/parse manifest - exception: " + str(err))
+                    errs = []
+                    for item in image_info_list:
 
-                    parent_manifest = json.dumps(image_info.get('parentmanifest', {}))
+                        manifest = None
+                        try:
+                            if 'manifest' in item:
+                                manifest = json.dumps(item['manifest'])
+                            else:
+                                raise Exception("no manifest from get_image_info")
+                        except Exception as err:
+                            # raise Exception("could not fetch/parse manifest - exception: " + str(err))
+                            continue
+
+                        parent_manifest = json.dumps(item.get('parentmanifest', {}))
                     
-                    logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
+                        logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(item))
 
-                    # Check for dockerfile updates to an existing image
-                    if not allow_dockerfile_update and dockerfile and dockerfile_mode.lower() == 'actual':
-                        found_img = db_catalog_image.get(imageDigest=image_info['digest'], userId=userId, session=dbsession)
-                        if found_img:
-                            raise BadRequest('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis', detail={'digest': image_info['digest'], 'tag': image_info['fulltag']})
+                        # Check for dockerfile updates to an existing image
+                        if not allow_dockerfile_update and dockerfile and dockerfile_mode.lower() == 'actual':
+                            found_img = db_catalog_image.get(imageDigest=item['digest'], userId=userId, session=dbsession)
+                            if found_img:
+                                raise BadRequest('Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis', detail={'digest': item['digest'], 'tag': item['fulltag']})
 
-                    image_records = add_or_update_image(dbsession, userId, image_info['imageId'], tags=[image_info['fulltag']], digests=[image_info['fulldigest']], parentdigest=image_info.get('parentdigest', None), created_at=image_info.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, parent_manifest=parent_manifest, annotations=annotations)
-                    if image_records:
-                        image_record = image_records[0]
+                        image_records = add_or_update_image(dbsession, userId, item['imageId'], tags=[item['fulltag']], digests=[item['fulldigest']], parentdigest=item.get('parentdigest', None), created_at=item.get('created_at_override', None), dockerfile=dockerfile, dockerfile_mode=dockerfile_mode, manifest=manifest, parent_manifest=parent_manifest, annotations=annotations, arch=item['architecture'])
+                        if image_records:
+                            # image_record = image_records[0]
+                            added_image_records.append(image_records[0])
 
             except AnchoreApiError:
                 raise
@@ -419,9 +432,9 @@ def image(dbsession, request_inputs, bodycontent=None):
                 httpcode = 404
                 raise err
 
-            if image_record:
+            if added_image_records:
                 httpcode = 200
-                return_object = image_record
+                return_object = added_image_records
             else:
                 httpcode = 404
                 raise Exception("could not add input image")
@@ -1356,7 +1369,7 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
 
     return curr_evaluation_record, curr_evaluation_result
 
-def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}, parent_manifest=None):
+def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentdigest=None, created_at=None, anchore_data=None, dockerfile=None, dockerfile_mode=None, manifest=None, annotations={}, parent_manifest=None, arch=None):
     ret = []
     logger.debug("adding based on input tags/digests for imageId ("+str(imageId)+") tags="+str(tags)+" digests="+str(digests))
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
@@ -1413,7 +1426,7 @@ def add_or_update_image(dbsession, userId, imageId, tags=[], digests=[], parentd
                 fulldigest = registry + "/" + repo + "@" + d
                 for t in tags:
                     fulltag = registry + "/" + repo + ":" + t
-                    new_image_record = anchore_engine.common.images.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'parentdigest': parentdigest, 'created_at': created_at, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None))
+                    new_image_record = anchore_engine.common.images.make_image_record(userId, 'docker', None, image_metadata={'tag':fulltag, 'digest':fulldigest, 'imageId':imageId, 'parentdigest': parentdigest, 'created_at': created_at, 'dockerfile':dockerfile, 'dockerfile_mode': dockerfile_mode, 'annotations': annotations}, registry_lookup=False, registry_creds=(None, None), arch=arch)
                     imageDigest = new_image_record['imageDigest']
                     image_record = db_catalog_image.get(imageDigest, userId, session=dbsession)
                     if not image_record:
