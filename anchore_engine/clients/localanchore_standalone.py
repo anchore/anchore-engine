@@ -812,7 +812,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
         # install an empty hints file to ensure that any discovered hints overrides is ignored during analysis
         with open(os.path.join(unpackdir, "anchore_hints.json"), 'w') as OFH:
             OFH.write(json.dumps({}))
-    
+
     # run analyzers
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
@@ -849,6 +849,8 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
         if not analyzer_report[analyzer_output]:
             analyzer_report.pop(analyzer_output, None)
+
+    # <---- invoke fetch_analysis() function, get dictionary result, merge with analyzer_report
 
     return analyzer_report
 
