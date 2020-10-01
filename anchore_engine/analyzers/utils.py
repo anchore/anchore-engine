@@ -62,6 +62,7 @@ def init_analyzer_cmdline(argv, name):
     ret['dirs']['datadir'] = argv[3]
     ret['dirs']['outputdir'] = '/'.join([argv[4], "analyzer_output", name])
     ret['dirs']['unpackdir'] = argv[5]
+    ret['dirs']['copydir'] = argv[6]
 
     for d in list(ret['dirs'].keys()):
         if not os.path.isdir(ret['dirs'][d]):

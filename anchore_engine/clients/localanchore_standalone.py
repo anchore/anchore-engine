@@ -817,7 +817,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
     for f in list_analyzers():
-        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
+        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir, copydir])
         if True:
             timer = time.time()
             try:

@@ -17,6 +17,7 @@ if __name__ == "__main__":
 
     try:
         config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, "syft_cataloger")
+        print(config['dirs'])
     except Exception as err:
         # TODO: improve me
         print(str(err))
