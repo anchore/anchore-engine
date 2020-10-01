@@ -30,7 +30,7 @@ watchdog==0.9.0
 Werkzeug==0.16.0
 yosai==0.3.2
 zope.component==4.6
-zope.interface==4.7.1
+zope.interface==4.7.2
 ijson==2.5.1
 
 # Optional and third-party/integration dependencies
