@@ -5,7 +5,7 @@ import shlex
 from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 
-def catalog_image(image):
+def run_syft(image):
     proc_env = os.environ.copy()
     cmd = "syft -vv -o json {image}".format(image=image)
 

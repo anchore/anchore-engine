@@ -10,6 +10,7 @@ import tarfile
 import copy
 import time
 import treelib
+import collections
 
 import yaml
 from pkg_resources import resource_filename
@@ -20,6 +21,7 @@ import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
 from anchore_engine.analyzers.utils import read_kvfile_todict
+import anchore_engine.analyzers.syft
 from anchore_engine.utils import AnchoreException
 import retrying
 
@@ -817,7 +819,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     anchore_module_root = resource_filename("anchore_engine", "analyzers")
     analyzer_root = os.path.join(anchore_module_root, "modules")
     for f in list_analyzers():
-        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir, copydir])
+        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
         if True:
             timer = time.time()
             try:
@@ -832,27 +834,16 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
                 logger.error("command failed with exception - " + str(err))
             logger.debug("timing: specific analyzer time: {} - {}".format(f, time.time() - timer))
 
-    analyzer_report = {}
+    analyzer_report = collections.defaultdict(dict)
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
-        if analyzer_output not in analyzer_report:
-            analyzer_report[analyzer_output] = {}
-
         for analyzer_output_el in os.listdir(os.path.join(outputdir, "analyzer_output", analyzer_output)):
-            if analyzer_output_el not in analyzer_report[analyzer_output]:
-                analyzer_report[analyzer_output][analyzer_output_el] = {'base': {}}
-
             data = read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
             if data:
-                analyzer_report[analyzer_output][analyzer_output_el]['base'] = read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
-            else:
-                analyzer_report[analyzer_output].pop(analyzer_output_el, None)
+                analyzer_report[analyzer_output][analyzer_output_el] = {'base': data }
 
-        if not analyzer_report[analyzer_output]:
-            analyzer_report.pop(analyzer_output, None)
+    syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
 
-    # <---- invoke fetch_analysis() function, get dictionary result, merge with analyzer_report
-
-    return analyzer_report
+    return dict(analyzer_report.update(syft_results))
 
 
 def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, rdigest, analyzer_manifest):
