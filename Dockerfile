@@ -153,8 +153,8 @@ RUN set -ex && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
     cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
-    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav && \    
-    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav && \    
+    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore && \
+    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore && \
     chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
