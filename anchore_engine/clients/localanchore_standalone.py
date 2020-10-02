@@ -843,7 +843,9 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
     syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
 
-    return dict(analyzer_report.update(syft_results))
+    analyzer_report.update(syft_results)
+
+    return dict(analyzer_report)
 
 
 def generate_image_export(staging_dirs, imageDigest, imageId, analyzer_report, imageSize, fulltag, docker_history, dockerfile_mode, dockerfile_contents, layers, familytree, imageArch, rdigest, analyzer_manifest):
