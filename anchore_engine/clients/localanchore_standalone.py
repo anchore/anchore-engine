@@ -986,10 +986,10 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         familytree = layers
 
         timer = time.time()
-        try:
-            analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
-        except Exception as err:
-            raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
+        # try:
+        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
+        # except Exception as err:
+        #     raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
         logger.debug("timing: total analyzer time: {} - {}".format(pullstring, time.time() - timer))
 
         try:
@@ -997,10 +997,10 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         except Exception as err:
             raise AnalysisReportGenerationError(cause=err, pull_string=pullstring, tag=fulltag)
 
-    except AnchoreException:
-        raise
-    except Exception as err:
-        raise AnalysisError(cause=err, pull_string=pullstring, tag=fulltag, msg='failed to download, unpack, analyze, and generate image export')
+    # except AnchoreException:
+    #     raise
+    # except Exception as err:
+    #     raise AnalysisError(cause=err, pull_string=pullstring, tag=fulltag, msg='failed to download, unpack, analyze, and generate image export')
     finally:
         if staging_dirs:
             delete_staging_dirs(staging_dirs)

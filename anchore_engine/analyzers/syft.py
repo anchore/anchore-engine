@@ -50,15 +50,21 @@ def catalog_image(image):
     }
 
     # transform output into analyzer-module/service json doc
-    packages_by_location = collections.defaultdict(dict)
+    findings = collections.defaultdict(lambda: collections.defaultdict(dict))
     for artifact in partial_results:
         artifact_type = artifact['type']
-        engine_index = indexLookup[artifact_type]
         engine_type = typeLookup[artifact_type]
+        engine_index = indexLookup[engine_type]
         engine_key, engine_artifact = handlerLookup[engine_type](artifact)
-        packages_by_location[engine_index][engine_key] = engine_artifact
+        findings[engine_index]['base'][engine_key] = engine_artifact
 
-    return packages_by_location
+    return defaultdict_to_dict(findings)
+
+def defaultdict_to_dict(d):
+    if isinstance(d, collections.defaultdict):
+        d = {k: defaultdict_to_dict(v) for k, v in d.items()}
+    return d
+
 
 # def write_results(results, output_dir):
 #     # write out results
