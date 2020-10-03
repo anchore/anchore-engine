@@ -1392,10 +1392,10 @@ class ImagePackage(Base):
             pkgkey = self.name
             pkgversion = self.version
             if self.pkg_type in ['ruby', 'gem']:
-                likematch = '%ruby%'
+                likematch = '%gem%'
                 do_langscan = True
             elif self.pkg_type in ['npm', 'js']:
-                likematch = '%js%'
+                likematch = '%npm%'
                 do_langscan = True
             elif self.pkg_type in ['python']:
                 likematch = '%python%'
