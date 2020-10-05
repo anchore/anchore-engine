@@ -1883,30 +1883,51 @@ class ImagePackageVulnerability(Base):
         {}
     )
 
+    def fix_candidates(self) -> list:
+        """
+        Return the list of FixedArtifact record given a package has been matched to the vulnerability by package/src-package
+        name. Does not perform a version check. Will return empty list if no matches
+
+        :return: the name-matched FixedArtifact record list
+
+        """
+
+        if self.vulnerability.fixed_in:
+            name_matches = [self.pkg_name, self.package.normalized_src_pkg]
+            return [x for x in self.vulnerability.fixed_in if x.name in name_matches]
+        return []
+
     def fixed_artifact(self):
         """
         Return the FixedArtifact record given a package has been matched to the vulnerability
+
         :return: the matched FixedArtifact record or None if not found
         """
-        if self.vulnerability.fixed_in:
-            name_matches = [self.pkg_name, self.package.normalized_src_pkg]
-            fixed_artifacts = [x for x in self.vulnerability.fixed_in if x.name in name_matches]
-            if fixed_artifacts and len(fixed_artifacts) == 1:
-                fixed_in = fixed_artifacts[0]
-            elif fixed_artifacts and len(fixed_artifacts) > 1:
-                # TODO version comparision logic to select the correct fixed in record.
-                # Temporary workaround: return the first match after sorting by name
-                fixed_in = sorted(fixed_artifacts, key=lambda fixed_artifact: fixed_artifact.name)[0]
-            else:
-                fixed_in = None
-        else:
-            fixed_in = None
+
+        candidates = self.fix_candidates()
+        candidate_count = len(candidates) if candidates else 0
+        if candidate_count == 0:
+            return None
+
+        fixed_in = None
+
+        # candidate_count >= 1
+        # Do version checks. This package must be affected by the range but not fixed.
+        matched = [x for x in candidates if x.match_but_not_fixed(self.package)]
+
+        if len(matched) == 1:
+            fixed_in = matched[0]
+        elif len(matched) > 1:
+            matched.sort(key=lambda x: x.updated_at, reverse=True)
+            fixed_in = matched[0]
+            # This shouldn't happen since it means there isn't consistency in the data
 
         return fixed_in
 
     def fixed_in(self):
         """
-        Return the fixed_in value given a package matched (in case there are multiple packages specified in the vuln.
+        Return the fixed_in version string value given a package matched (in case there are multiple packages specified in the vuln.
+
         :param package: package to find a fix version for, if available
         :return: the fixed in version string if any or None if not found
         """
