@@ -28,23 +28,25 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
         ret['detail']['error_codes'] = []
 
     if isinstance(errmsg, Exception):
-        if 'anchore_error_json' in errmsg.__dict__:
-            # Try to load it as json
-            try:
-                err_json = json.loads(errmsg.__dict__.get('anchore_error_json', None))
-            except ValueError:
-                # Then it may just be a string, we cannot do anything with it
-                logger.debug('Failed to parse anchore_error_json as json')
-                return ret
+        anchore_error = errmsg.__dict__.get('anchore_error_json', None)
+        if anchore_error:
+            if isinstance(anchore_error, (str, bytes, bytearray)):
+                # Try to load it as json only if its a str, bytes or bytearray
+                try:
+                    anchore_error = json.loads(anchore_error)
+                except (ValueError, TypeError):
+                    # Then it may just be a string, we cannot do anything with it
+                    logger.debug('Failed to parse anchore_error_json as json')
+                    return ret
 
-            if {'message', 'httpcode', 'detail'}.issubset(set(err_json)):
-                ret.update(err_json)
+            if {'message', 'httpcode', 'detail'}.issubset(set(anchore_error)):
+                ret.update(anchore_error)
 
             try:
-                if {'error_code'}.issubset(set(err_json)) and err_json.get('error_code', None):
+                if {'error_code'}.issubset(set(anchore_error)) and anchore_error.get('error_code', None):
                     if 'error_codes' not in ret['detail']:
                         ret['detail']['error_codes'] = []
-                    ret['detail']['error_codes'].append(err_json.get('error_code'))
+                    ret['detail']['error_codes'].append(anchore_error.get('error_code'))
             except KeyError:
                 logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
     return ret
