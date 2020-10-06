@@ -126,7 +126,9 @@ def do_connect(db_params):
 
     db_connect = db_params.get('db_connect', None)
     db_connect_args = db_params.get('db_connect_args', None)
-    db_engine_args = db_params.get('db_engine_args', {})
+    db_engine_args = db_params.get('db_engine_args')
+    if db_engine_args is None:
+        db_engine_args = {}
 
     # for bkwds compat
     if db_params.get('db_pool_size', None):
@@ -143,8 +145,6 @@ def do_connect(db_params):
                 engine = sqlalchemy.create_engine(db_connect, echo=True)
             else:
                 logger.debug("db_connect_args {} db_engine_args={}".format(db_connect_args, db_engine_args))
-                #engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, echo=db_echo,
-                #                                  pool_size=db_pool_size, max_overflow=db_pool_max_overflow)
                 engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, **db_engine_args)
 
         except Exception as err:
@@ -155,7 +155,6 @@ def do_connect(db_params):
 
     # set up the global session
     try:
-        #                SerializableSession = sessionmaker(bind=engine.execution_options(isolation_level='SERIALIZABLE'))
         Session = sessionmaker(bind=engine)
     except Exception as err:
         raise Exception("could not create DB session - exception: " + str(err))
@@ -170,40 +169,25 @@ def do_disconnect():
     if engine:
         engine.dispose()
 
+
 def get_params(localconfig):
     try:
         db_auth = localconfig['credentials']['database']
-
-        # connect to DB using db_connect from configuration
-        db_connect = None
-        db_connect_args = {}
-        db_pool_size = 30
-        db_pool_max_overflow = 75
-        db_echo = False
-
-        if 'db_connect' in db_auth and db_auth['db_connect']:
-            db_connect = db_auth['db_connect']
-        if 'db_connect_args' in db_auth and db_auth['db_connect_args']:
-            db_connect_args = db_auth['db_connect_args']
-        if 'db_pool_size' in db_auth:
-            db_pool_size = int(db_auth['db_pool_size'])
-        if 'db_pool_max_overflow' in db_auth:
-            db_pool_max_overflow = int(db_auth['db_pool_max_overflow'])
-        if 'db_echo' in db_auth:
-            db_echo = db_auth['db_echo'] in [True, 'True', 'true']
     except:
         raise Exception(
             "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
 
     db_params = {
-        'db_connect': db_connect,
-        'db_connect_args': db_connect_args,
-        'db_pool_size': db_pool_size,
-        'db_pool_max_overflow': db_pool_max_overflow,
-        'db_echo': db_echo
+        'db_connect': db_auth.get('db_connect'),
+        'db_connect_args': db_auth.get('db_connect_args', {}),
+        'db_pool_size': int(db_auth.get('db_pool_size', 30)),
+        'db_pool_max_overflow': int(db_auth.get('db_pool_max_overflow', 75)),
+        'db_echo': db_auth.get('db_echo', False) in [True, 'True', 'true'],
+        'db_engine_args': db_auth.get('db_engine_args', None)
     }
     ret = normalize_db_params(db_params)
     return ret
+
 
 def normalize_db_params(db_params):
     try:
