@@ -20,7 +20,7 @@ import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
-from anchore_engine.analyzers.utils import read_kvfile_todict
+import anchore_engine.analyzers.utils
 import anchore_engine.analyzers.syft
 from anchore_engine.utils import AnchoreException
 import retrying
@@ -837,13 +837,13 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     analyzer_report = collections.defaultdict(dict)
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
         for analyzer_output_el in os.listdir(os.path.join(outputdir, "analyzer_output", analyzer_output)):
-            data = read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
+            data = anchore_engine.analyzers.utils.read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
             if data:
                 analyzer_report[analyzer_output][analyzer_output_el] = {'base': data }
 
     syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
 
-    analyzer_report.update(syft_results)
+    anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, syft_results)
 
     return dict(analyzer_report)
 
@@ -988,10 +988,10 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         familytree = layers
 
         timer = time.time()
-        # try:
-        analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
-        # except Exception as err:
-        #     raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
+        try:
+            analyzer_report = run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig)
+        except Exception as err:
+            raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
         logger.debug("timing: total analyzer time: {} - {}".format(pullstring, time.time() - timer))
 
         try:
@@ -999,10 +999,10 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
         except Exception as err:
             raise AnalysisReportGenerationError(cause=err, pull_string=pullstring, tag=fulltag)
 
-    # except AnchoreException:
-    #     raise
-    # except Exception as err:
-    #     raise AnalysisError(cause=err, pull_string=pullstring, tag=fulltag, msg='failed to download, unpack, analyze, and generate image export')
+    except AnchoreException:
+        raise
+    except Exception as err:
+        raise AnalysisError(cause=err, pull_string=pullstring, tag=fulltag, msg='failed to download, unpack, analyze, and generate image export')
     finally:
         if staging_dirs:
             delete_staging_dirs(staging_dirs)
