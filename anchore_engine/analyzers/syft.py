@@ -9,11 +9,10 @@ import anchore_engine.analyzers.utils
 from anchore_engine.clients.syft_wrapper import run_syft
 
 
+def handle_gem(findings, artifact):
+    pkg_key = artifact['locations'][0]['path']
 
-def handle_gem(artifact):
-    pkg_key = "/virtual/gempkg/{}-{}".format(artifact['name'], artifact['version'])
-
-    return pkg_key, {
+    pkg_value = {
             'name': artifact['name'],
             'versions': [artifact['version']],
             'latest': artifact['version'],
@@ -21,8 +20,9 @@ def handle_gem(artifact):
             'files': [], # TODO enhance
             'origins': [],
             'lics': [], # TODO enhance
-            'type': 'gem',
         }
+
+    findings['package_list']['pkgs.gems']['base'][pkg_key] = pkg_value
 
 def filter_artifacts(artifact):
     # TODO: allow for more types as we go
@@ -50,13 +50,13 @@ def catalog_image(image):
     }
 
     # transform output into analyzer-module/service json doc
-    findings = collections.defaultdict(lambda: collections.defaultdict(dict))
+    nested_dict = lambda: collections.defaultdict(nested_dict)
+    findings = nested_dict()
     for artifact in partial_results:
         artifact_type = artifact['type']
         engine_type = typeLookup[artifact_type]
-        engine_index = indexLookup[engine_type]
-        engine_key, engine_artifact = handlerLookup[engine_type](artifact)
-        findings[engine_index]['base'][engine_key] = engine_artifact
+
+        handlerLookup[engine_type](findings, artifact)
 
     return defaultdict_to_dict(findings)
 

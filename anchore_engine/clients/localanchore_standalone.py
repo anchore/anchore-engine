@@ -843,7 +843,22 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
     syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
 
-    analyzer_report.update(syft_results)
+    def merge(a, b, path=None):
+        "merges b into a"
+        if path is None: path = []
+        for key in b:
+            if key in a:
+                if isinstance(a[key], dict) and isinstance(b[key], dict):
+                    merge(a[key], b[key], path + [str(key)])
+                elif a[key] == b[key]:
+                    pass # same leaf value
+                else:
+                    raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+            else:
+                a[key] = b[key]
+        return a
+
+    merge(analyzer_report, syft_results)
 
     return dict(analyzer_report)
 
