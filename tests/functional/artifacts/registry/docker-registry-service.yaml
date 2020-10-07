@@ -1,0 +1,20 @@
+---
+version: '2.1'
+services:
+  # This Docker Registry is used to support the functional tests, the image can be created via
+  # make setup-local-docker-registry
+  docker-registry:
+    image: anchore-local-docker-registry:latest
+    container_name: docker-registry
+    ports:
+      - "5000:5000"
+    environment:
+      - REGISTRY_AUTH=htpasswd
+      - REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm
+      - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
+      - REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt
+      - REGISTRY_HTTP_TLS_KEY=/certs/domain.key
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m

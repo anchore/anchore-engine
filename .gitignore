@@ -109,3 +109,5 @@ ENV/
 
 # CI scripts
 anchore-ci*/
+
+tags

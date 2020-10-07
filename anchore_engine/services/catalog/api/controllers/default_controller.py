@@ -4,6 +4,7 @@ import anchore_engine.apis
 from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
 import anchore_engine.common
+from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
@@ -95,7 +96,9 @@ def add_image(image_metadata=None, tag=None, digest=None, created_at=None, from_
 
             with db.session_scope() as session:
                 return_object, httpcode = anchore_engine.services.catalog.catalog_impl.image(session, request_inputs, bodycontent=image_metadata)
-
+    except ImageConflict as img_err:
+        httpcode = 409
+        return_object = str(img_err)
     except Exception as err:
         logger.exception('Error processing image add')
         httpcode = 500
