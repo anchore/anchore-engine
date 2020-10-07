@@ -105,7 +105,7 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
 
         if error_codes:
             ret.anchore_error_json['detail']['error_codes'].extend(error_codes)
-                                   
+
     return ret
 
 
@@ -369,9 +369,7 @@ def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, e
 
 def safe_extract_json_value(value):
     # support the legacy serialized json string
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except json.decoder.JSONDecodeError:
-            pass
-    return value
+    try:
+        return json.loads(value)
+    except (TypeError, json.decoder.JSONDecodeError):
+        return value
