@@ -1203,16 +1203,12 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
                 npayload = {
                     'diff_vulnerability_result': vdiff,
                     'imageDigest': imageDigest,
+                    'subscription_type': 'vuln_update'
                 }
                 
                 if annotations:
                     npayload['annotations'] = annotations
 
-                # original method
-                #rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
-
-                # new method
-                npayload['subscription_type'] = 'vuln_update'
                 success_event = anchore_engine.subsys.events.TagVulnerabilityUpdated(user_id=userId, full_tag=scantag, data=npayload)
                 try:
                     add_event(success_event, dbsession)
@@ -1332,15 +1328,14 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             if doqueue:            
                 try:
                     logger.debug("queueing policy eval notification")
+                    # Note: if this schema is changed, it should be updated in Swagger
                     npayload = {
                         'last_eval': last_evaluation_result,
                         'curr_eval': curr_evaluation_result,
-                        }
+                        'subscription_type': 'policy_eval'
+                    }
                     if annotations:
                         npayload['annotations'] = annotations
-
-                    # original method    
-                    #rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
 
                     # new method
                     npayload['subscription_type'] = 'policy_eval'

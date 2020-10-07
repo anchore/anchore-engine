@@ -1,22 +1,23 @@
-from connexion import request
-import copy
 import json
-import datetime
+
+from connexion import request
 
 # anchore modules
 import anchore_engine.apis
-from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission
-
+import anchore_engine.common
 import anchore_engine.common.helpers
+from anchore_engine.configuration import localconfig
+import anchore_engine.subsys.servicestatus
+from anchore_engine import db
+from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission
+from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-import anchore_engine.common
-import anchore_engine.subsys.servicestatus
-import anchore_engine.configuration.localconfig
-from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
-from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.common.errors import AnchoreError
+from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
+from anchore_engine.subsys import logger, notifications
+from anchore_engine.subsys.identities import manager_factory
 
 authorizer = get_authorizer()
 
@@ -376,3 +377,101 @@ def describe_error_codes():
         httpcode = return_object['httpcode']
 
     return return_object, httpcode
+
+
+@authorizer.requires_account(with_names=[localconfig.ADMIN_ACCOUNT_NAME])
+def test_webhook(webhook_type='general', notification_type='tag_update'):
+    """
+    This method adds the capability to test a Webhook delivery of a test notification
+
+    :param webhook_type: the type of webhook to send
+    """
+    logger.debug("Testing webhook for type '{}'".format(webhook_type))
+    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
+    return_object = {}
+    httpcode = 500
+    try:
+        webhooks = {}
+
+        # Load Webhook configurations, and select webhook according to webhook_type
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        if 'webhooks' in localconfig:
+            webhooks.update(localconfig['webhooks'])
+
+        if not webhooks:
+            httpcode = 400
+            return_object = anchore_engine.common.helpers.make_response_error('Webhooks Configuration not found',
+                                                                              in_httpcode=httpcode)
+            return return_object, httpcode
+
+        webhook = webhooks[webhook_type]
+        if not webhook:
+            httpcode = 400
+            return_object = anchore_engine.common.helpers.make_response_error(
+                "No Webhook Configuration found for type={}".format(webhook_type),
+                in_httpcode=httpcode
+            )
+            return return_object, httpcode
+
+        return send_test_notification(webhooks, webhook, request_inputs, webhook_type, notification_type)
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object['httpcode']
+
+    return return_object, httpcode
+
+
+def get_test_notification(notification_type, request_inputs):
+    """
+    Build a test notification payload (format should mirror what's returned by get_webhook_schema)
+    :param notification_type: type of notification to send
+    :param request_inputs: metadata from request to test webhook
+    """
+
+    with db.session_scope() as dbsession:
+        mgr = manager_factory.for_session(dbsession)
+        notification = notifications.Notification(notification_type,
+                                                  request_inputs['userId'],
+                                                  mgr.get_account(request_inputs['userId'])['email'])
+
+    logger.debug("Test Notification JSON: {}".format(notification.to_json()))
+
+    return notification
+
+
+def send_test_notification(webhooks, webhook, request_inputs, webhook_type, notification_type):
+    """
+    This Method actually gathers all the parameters needed for notifications to actually send the webhook
+
+    :param webhooks: webhooks loaded from localconfig
+    :param webhook: the webhook object for webhook_type
+    :param request_inputs: the request inputs (used to resolve userId)
+    :param webhook_type: webhook type to send (used to build payload)
+    :return: result of webhook and http code (200 if successful, 500 if we fail to build test notification or payload
+    """
+    httpcode = 500
+    rootuser = webhooks.pop('webhook_user', None)
+    rootpw = webhooks.pop('webhook_pass', None)
+    rootverify = webhooks.pop('ssl_verify', None)
+
+    subvars = [('<userId>', request_inputs['userId']), ('<notification_type>', 'test')]
+
+    try:
+        notification = get_test_notification(notification_type, request_inputs)
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return return_object, httpcode
+
+    logger.debug('build payload: {}'.format(notification.to_json()))
+    try:
+        payload = notification.to_json()
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return return_object, httpcode
+
+    return notifications.do_notify_webhook_type(webhook=webhook,
+                                                user=webhook.pop('webhook_user', rootuser),
+                                                pw=webhook.pop('webhook_pass', rootpw),
+                                                verify=webhook.pop('ssl_verify', rootverify),
+                                                subvars=subvars,
+                                                payload=payload), 200
