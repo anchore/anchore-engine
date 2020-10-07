@@ -1,0 +1,520 @@
+{
+  "blacklisted_images": [],
+  "description": "",
+  "id": "09ec6050-c6c7-466d-8e7c-4f7ef121bab6",
+  "last_updated": 1597953600,
+  "mappings": [
+    {
+      "id": "dd1fa363-f181-4b0e-9067-addd4c26337f",
+      "image": {
+        "type": "tag",
+        "value": "*"
+      },
+      "name": "default",
+      "policy_ids": [
+        "c7e5db05-bc03-4d22-bd4f-d042120ecbf6"
+      ],
+      "registry": "*",
+      "repository": "*",
+      "whitelist_ids": [
+        "77229aa5-6b48-48ce-b10e-605828089397"
+      ]
+    }
+  ],
+  "name": "AllRuleBundle",
+  "policies": [
+    {
+      "comment": "",
+      "id": "c7e5db05-bc03-4d22-bd4f-d042120ecbf6",
+      "name": "DefaultPolicy",
+      "rules": [
+        {
+          "action": "GO",
+          "gate": "dockerfile",
+          "id": "efa61d70-8778-43b3-8616-765778e9a0d5",
+          "params": [],
+          "trigger": "no_dockerfile_provided"
+        },
+        {
+          "action": "GO",
+          "gate": "dockerfile",
+          "id": "8435eb55-2a46-42eb-b1ef-bb02e3820074",
+          "params": [
+            {
+              "name": "instruction",
+              "value": "CMD"
+            },
+            {
+              "name": "check",
+              "value": "exists"
+            },
+            {
+              "name": "value",
+              "value": "from"
+            }
+          ],
+          "trigger": "instruction"
+        },
+        {
+          "action": "GO",
+          "gate": "dockerfile",
+          "id": "af2e68fe-a805-42be-b050-3c1b1635ea68",
+          "params": [
+            {
+              "name": "ports",
+              "value": "443"
+            },
+            {
+              "name": "type",
+              "value": "whitelist"
+            }
+          ],
+          "trigger": "exposed_ports"
+        },
+        {
+          "action": "GO",
+          "gate": "dockerfile",
+          "id": "1b639f5e-053e-4cce-93a9-936fba3915c5",
+          "params": [
+            {
+              "name": "users",
+              "value": "docker"
+            },
+            {
+              "name": "type",
+              "value": "whitelist"
+            }
+          ],
+          "trigger": "effective_user"
+        },
+        {
+          "action": "GO",
+          "gate": "files",
+          "id": "8ddde65b-20d0-4187-a04a-c91658d89383",
+          "params": [],
+          "trigger": "suid_or_guid_set"
+        },
+        {
+          "action": "GO",
+          "gate": "files",
+          "id": "7d6602c9-9a84-43da-94a7-c2c2b6d4434b",
+          "params": [
+            {
+              "name": "regex",
+              "value": "*\\.pem"
+            }
+          ],
+          "trigger": "name_match"
+        },
+        {
+          "action": "GO",
+          "gate": "files",
+          "id": "a1ac4c87-ae9d-462b-8948-ede08b7a30a0",
+          "params": [
+            {
+              "name": "regex_name",
+              "value": "*"
+            }
+          ],
+          "trigger": "content_regex_match"
+        },
+        {
+          "action": "GO",
+          "gate": "files",
+          "id": "fe6357bb-65f1-469a-aa22-a0a6f1891000",
+          "params": [
+            {
+              "name": "filename",
+              "value": "/etc/httpd.conf"
+            }
+          ],
+          "trigger": "attribute_match"
+        },
+        {
+          "action": "GO",
+          "gate": "licenses",
+          "id": "f9c56890-aa04-434e-9552-289becf8fb83",
+          "params": [
+            {
+              "name": "licenses",
+              "value": "BSD"
+            }
+          ],
+          "trigger": "blacklist_partial_match"
+        },
+        {
+          "action": "GO",
+          "gate": "licenses",
+          "id": "0c091a9d-e227-44c5-9884-8e112a01a4c1",
+          "params": [
+            {
+              "name": "licenses",
+              "value": "BSD-2"
+            }
+          ],
+          "trigger": "blacklist_exact_match"
+        },
+        {
+          "action": "WARN",
+          "gate": "malware",
+          "id": "b5194976-202f-4b61-a1c5-38320c1788d4",
+          "params": [],
+          "trigger": "scans"
+        },
+        {
+          "action": "GO",
+          "gate": "metadata",
+          "id": "117f1b3c-bba9-4092-b5d1-4267a9bf7090",
+          "params": [
+            {
+              "name": "attribute",
+              "value": "os_type"
+            },
+            {
+              "name": "check",
+              "value": ">"
+            },
+            {
+              "name": "value",
+              "value": "31"
+            }
+          ],
+          "trigger": "attribute"
+        },
+        {
+          "action": "WARN",
+          "gate": "npms",
+          "id": "5bacaf1c-38b2-4ed4-9027-557fcfdd9fec",
+          "params": [],
+          "trigger": "version_not_in_feeds"
+        },
+        {
+          "action": "WARN",
+          "gate": "npms",
+          "id": "6ac4cb85-f89b-4918-8c9a-3475fac0eb92",
+          "params": [],
+          "trigger": "unknown_in_feeds"
+        },
+        {
+          "action": "WARN",
+          "gate": "npms",
+          "id": "a8e061e8-14fd-4204-8fe2-2eb4893a136f",
+          "params": [],
+          "trigger": "newer_version_in_feed"
+        },
+        {
+          "action": "GO",
+          "gate": "npms",
+          "id": "a5a4eaa3-ad93-4d1c-9092-0d46798f5588",
+          "params": [],
+          "trigger": "feed_data_unavailable"
+        },
+        {
+          "action": "GO",
+          "gate": "npms",
+          "id": "94ac4111-163d-4615-bc86-31a6aafee433",
+          "params": [
+            {
+              "name": "name",
+              "value": "ffff"
+            },
+            {
+              "name": "version",
+              "value": "111111"
+            }
+          ],
+          "trigger": "blacklisted_name_version"
+        },
+        {
+          "action": "GO",
+          "gate": "packages",
+          "id": "dcd34b3c-f180-4add-834a-6af854fbbf04",
+          "params": [
+            {
+              "name": "only_packages",
+              "value": "dfsafasdfasdfasdf"
+            },
+            {
+              "name": "only_directories",
+              "value": "fdafa"
+            },
+            {
+              "name": "check",
+              "value": "missing"
+            }
+          ],
+          "trigger": "verify"
+        },
+        {
+          "action": "WARN",
+          "gate": "packages",
+          "id": "ffdd79dc-a784-47c6-9ac8-68d636fc15e8",
+          "params": [
+            {
+              "name": "name",
+              "value": "asdfasdf"
+            },
+            {
+              "name": "version",
+              "value": "fddas"
+            },
+            {
+              "name": "version_match_type",
+              "value": "minimum"
+            }
+          ],
+          "trigger": "required_package"
+        },
+        {
+          "action": "GO",
+          "gate": "packages",
+          "id": "512ebe4d-640d-41d3-a7a8-01921d354c05",
+          "params": [
+            {
+              "name": "name",
+              "value": "sadf"
+            },
+            {
+              "name": "version",
+              "value": "1111111"
+            }
+          ],
+          "trigger": "blacklist"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "08a925bd-7a7a-4095-8ccd-88bc8998a41b",
+          "params": [],
+          "trigger": "content_not_available"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "9e9c769f-7bb3-45a6-8cc4-e30976c68753",
+          "params": [
+            {
+              "name": "user_names",
+              "value": "asdfdasf"
+            }
+          ],
+          "trigger": "blacklist_usernames"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "95514031-35d7-4bed-972c-7155a31c22ab",
+          "params": [
+            {
+              "name": "user_ids",
+              "value": "8930145"
+            }
+          ],
+          "trigger": "blacklist_userids"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "965d8d3f-6cf3-40fa-8ff2-a1abce360c6b",
+          "params": [
+            {
+              "name": "shells",
+              "value": "/bin/zsh"
+            }
+          ],
+          "trigger": "blacklist_shells"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "2da1c04a-5f19-4d39-b15a-897592900e8f",
+          "params": [
+            {
+              "name": "group_ids",
+              "value": "3124"
+            }
+          ],
+          "trigger": "blacklist_groupids"
+        },
+        {
+          "action": "GO",
+          "gate": "passwd_file",
+          "id": "9d66b728-30c8-4c8b-959a-de0a0acad9f8",
+          "params": [
+            {
+              "name": "entry",
+              "value": "test"
+            }
+          ],
+          "trigger": "blacklist_full_entry"
+        },
+        {
+          "action": "WARN",
+          "gate": "retrieved_files",
+          "id": "48e2bc40-fde5-41b2-9e92-b38cdbe7902f",
+          "params": [
+            {
+              "name": "path",
+              "value": "/etc/httpd.conf"
+            },
+            {
+              "name": "check",
+              "value": "no_match"
+            },
+            {
+              "name": "regex",
+              "value": ".*SSLEnabled.*"
+            }
+          ],
+          "trigger": "content_regex"
+        },
+        {
+          "action": "WARN",
+          "gate": "retrieved_files",
+          "id": "542d20ca-2695-4298-b418-9c963600eed9",
+          "params": [
+            {
+              "name": "path",
+              "value": "/etc/httpd.conf"
+            }
+          ],
+          "trigger": "content_not_available"
+        },
+        {
+          "action": "WARN",
+          "gate": "ruby_gems",
+          "id": "02ad025f-d409-4b37-93bf-070981fb22b1",
+          "params": [],
+          "trigger": "version_not_found_in_feed"
+        },
+        {
+          "action": "WARN",
+          "gate": "ruby_gems",
+          "id": "2805a521-ed33-47c7-9603-00bad4bd47b2",
+          "params": [],
+          "trigger": "not_found_in_feed"
+        },
+        {
+          "action": "WARN",
+          "gate": "ruby_gems",
+          "id": "cffce0e8-0c83-4f3f-bb0a-16335562299b",
+          "params": [],
+          "trigger": "newer_version_found_in_feed"
+        },
+        {
+          "action": "WARN",
+          "gate": "ruby_gems",
+          "id": "1c11e348-d1ac-4681-a0c8-9d1cd4d11e13",
+          "params": [],
+          "trigger": "feed_data_unavailable"
+        },
+        {
+          "action": "WARN",
+          "gate": "ruby_gems",
+          "id": "655dc9da-7937-4863-83ac-e8122985c86f",
+          "params": [
+            {
+              "name": "name",
+              "value": "ruby-test"
+            },
+            {
+              "name": "version",
+              "value": "0.2.9"
+            }
+          ],
+          "trigger": "blacklist"
+        },
+        {
+          "action": "WARN",
+          "gate": "vulnerabilities",
+          "id": "d47ab4ba-e367-4d21-99a4-25e00c0e630f",
+          "params": [],
+          "trigger": "vulnerability_data_unavailable"
+        },
+        {
+          "action": "WARN",
+          "gate": "vulnerabilities",
+          "id": "3a3445e1-397f-4b74-beae-908c113d9179",
+          "params": [
+            {
+              "name": "max_days_since_sync",
+              "value": "100"
+            }
+          ],
+          "trigger": "stale_feed_data"
+        },
+        {
+          "action": "WARN",
+          "gate": "vulnerabilities",
+          "id": "ea06a0eb-ed09-41c0-90b8-17875a727c15",
+          "params": [
+            {
+              "name": "package_type",
+              "value": "all"
+            }
+          ],
+          "trigger": "package"
+        },
+        {
+          "action": "WARN",
+          "gate": "vulnerabilities",
+          "id": "358aac2e-71a2-48bf-87df-c761f1d6abd6",
+          "params": [
+            {
+              "name": "vulnerability_ids",
+              "value": "CVE-2019-1234"
+            },
+            {
+              "name": "vendor_only",
+              "value": "false"
+            }
+          ],
+          "trigger": "blacklist"
+        },
+        {
+          "action": "GO",
+          "gate": "secret_scans",
+          "id": "4ab93d79-0261-4d62-9808-0a5b90d65657",
+          "params": [
+            {
+              "name": "content_regex_name",
+              "value": "test-regex"
+            },
+            {
+              "name": "filename_regex",
+              "value": ".*"
+            },
+            {
+              "name": "match_type",
+              "value": "found"
+            }
+          ],
+          "trigger": "content_regex_checks"
+        }
+      ],
+      "version": "1_0"
+    }
+  ],
+  "version": "1_0",
+  "whitelisted_images": [
+    {
+      "id": "28989b61-8ed1-4800-a249-83f3af609200",
+      "image": {
+        "type": "tag",
+        "value": "latest"
+      },
+      "name": "alpine:latest",
+      "registry": "docker.io",
+      "repository": "alpine"
+    }
+  ],
+  "whitelists": [
+    {
+      "comment": "",
+      "id": "77229aa5-6b48-48ce-b10e-605828089397",
+      "items": [],
+      "name": "DefaultWhitelist",
+      "version": "1_0"
+    }
+  ]
+}

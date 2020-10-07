@@ -59,6 +59,11 @@
     only:
       - master
 
+.initialize_docker_registry_artifacts: &initialize_docker_registry_artifacts
+  run:
+    name: Create Artifacts for Docker Registry
+    command: make setup-local-docker-registry
+
 # Start circleci configuration
 version: 2.1
 orbs:
@@ -167,13 +172,18 @@ jobs:
     docker:
       - image: circleci/python:3.6
     resource_class: large
-    environment: *global_environment_vars
+    environment:
+      <<: *global_environment_vars
+      ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore
+      ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
+      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000
     steps:
       - setup_remote_docker
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
       - <<: *ssh_forward_port
+      - <<: *initialize_docker_registry_artifacts
       - run:
           name: Run functional tests
           command: make setup-and-test-functional

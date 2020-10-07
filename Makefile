@@ -75,6 +75,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
+.PHONY: setup-local-docker-registry
 .PHONY: setup-test-infra venv printvars help
 
 ci: lint build test ## Run full CI pipeline, locally
@@ -183,6 +184,9 @@ anchore-ci: /tmp/test-infra/anchore-ci
 venv: $(VENV)/bin/activate ## Set up a virtual environment
 $(VENV)/bin/activate:
 	python3 -m venv $(VENV)
+
+setup-local-docker-registry: venv setup-test-infra venv ## Set up Docker Registry artifacts
+	@$(ACTIVATE_VENV) && $(CI_CMD) setup-local-docker-registry
 
 printvars: ## Print make variables
 	@$(foreach V,$(sort $(.VARIABLES)),$(if $(filter-out environment% default automatic,$(origin $V)),$(warning $V=$($V) ($(value $V)))))
