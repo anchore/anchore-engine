@@ -3,7 +3,7 @@ import pytest
 from tests.functional.services.api.images import get_image_id, get_image_digest, get_image_tag, \
     wait_for_image_to_analyze
 from tests.functional.services.api.policies import get_first_policy_id
-from tests.functional.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import http_get, APIResponse
 
 
 class TestImageAPIGetReturns200:
@@ -15,9 +15,11 @@ class TestImageAPIGetReturns200:
                                        pytest.param({'image_status': 'all'}, id='image_status=all'),
                                        pytest.param({'image_status': 'active'}, id='image_status=active'),
                                        pytest.param({'image_status': 'deleting'}, id='image_status=deleting'),
-                                       pytest.param({'analysis_status': 'not_analyzed'}, id='analysis_status=not_analyzed'),
+                                       pytest.param({'analysis_status': 'not_analyzed'},
+                                                    id='analysis_status=not_analyzed'),
                                        pytest.param({'analysis_status': 'analyzing'}, id='analysis_status=analyzing'),
-                                       pytest.param({'analysis_status': 'analysis_failed'}, id='analysis_status=analysis_failed')])
+                                       pytest.param({'analysis_status': 'analysis_failed'},
+                                                    id='analysis_status=analysis_failed')])
     def test_list_image(self, add_alpine_latest_image, query):
         """
         Atomically test list image functionality with add and teardown (by_id) implicit coverage
@@ -173,7 +175,9 @@ class TestImageAPIGetReturns200:
 
         api_conf_name = str(api_conf.__name__)
         if api_conf_name != 'get_api_conf':
-            pytest.skip('Image File Content Search Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(api_conf_name))
+            pytest.skip(
+                'Image File Content Search Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(
+                    api_conf_name))
         image_id = get_image_id(add_resp)
 
         wait_for_image_to_analyze(image_id, api_conf)
@@ -188,7 +192,9 @@ class TestImageAPIGetReturns200:
 
         api_conf_name = str(api_conf.__name__)
         if api_conf_name != 'get_api_conf':
-            pytest.skip('Image Retrieved Files Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(api_conf_name))
+            pytest.skip(
+                'Image Retrieved Files Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(
+                    api_conf_name))
 
         image_id = get_image_id(add_resp)
 
@@ -204,7 +210,9 @@ class TestImageAPIGetReturns200:
 
         api_conf_name = str(api_conf.__name__)
         if api_conf_name != 'get_api_conf':
-            pytest.skip('Image Secret Search Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(api_conf_name))
+            pytest.skip(
+                'Image Secret Search Endpoint only works for root user of admin account: currentUserAPIConf={}'.format(
+                    api_conf_name))
 
         image_id = get_image_id(add_resp)
 

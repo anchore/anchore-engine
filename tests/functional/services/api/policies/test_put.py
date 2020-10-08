@@ -1,4 +1,4 @@
-from tests.functional.utils.http_utils import http_get, http_put, APIResponse
+from tests.functional.services.utils.http_utils import http_get, http_put, APIResponse
 
 
 class TestPolicyAPIPutReturns200:

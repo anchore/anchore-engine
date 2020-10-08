@@ -1,9 +1,10 @@
-import pytest
 import json
 
+import pytest
+
 from tests.functional.services.api.conftest import USER_API_CONFS
-from tests.functional.utils.http_utils import http_post, RequestFailedError, http_del
-from tests.functional.conftest import get_logger
+from tests.functional import get_logger
+from tests.functional.services.utils.http_utils import http_post, RequestFailedError, http_del
 
 _logger = get_logger(__name__)
 

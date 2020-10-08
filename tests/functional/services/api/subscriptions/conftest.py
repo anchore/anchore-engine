@@ -1,8 +1,8 @@
 import pytest
 
 from tests.functional.services.api.conftest import USER_API_CONFS
-from tests.functional.utils.http_utils import http_post, http_get, RequestFailedError, http_del
-from tests.functional.conftest import get_logger
+from tests.functional import get_logger
+from tests.functional.services.utils.http_utils import http_post, http_get, RequestFailedError, http_del
 
 ALPINE_LATEST_SUBSCRIPTION = {
     "subscription_key": "docker.io/alpine:latest",
@@ -13,7 +13,6 @@ _logger = get_logger(__name__)
 
 @pytest.fixture(scope="class", params=USER_API_CONFS)
 def add_alpine_subscription(request):
-
     subscription = add_subscription(request.param)
 
     def remove_subscription():

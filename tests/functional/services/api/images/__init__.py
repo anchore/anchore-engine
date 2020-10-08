@@ -1,7 +1,7 @@
 import time
 
-from tests.functional.utils.http_utils import http_get, RequestFailedError
-from tests.functional.conftest import get_logger
+from tests.functional import get_logger
+from tests.functional.services.utils.http_utils import http_get, RequestFailedError
 
 WAIT_TIMEOUT_SEC = 60 * 5
 

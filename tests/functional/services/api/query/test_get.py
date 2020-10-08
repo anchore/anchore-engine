@@ -1,11 +1,10 @@
+from tests.functional import get_logger
 from tests.functional.services.api.images import get_alpine_latest_image_os_content, get_image_id, \
     get_image_digest, get_alpine_latest_image_os_vuln
-from tests.functional.utils.http_utils import http_get, APIResponse
-from tests.functional.conftest import get_logger
+from tests.functional.services.utils.http_utils import http_get, APIResponse
 
 
 class TestQueryAPIGetReturns200:
-
     _logger = get_logger(__name__)
 
     def test_query_image_by_content(self, add_alpine_latest_image):

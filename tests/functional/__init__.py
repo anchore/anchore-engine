@@ -1,3 +1,5 @@
+import logging
+
 import requests
 
 def get_engine_version(username, password, base_url="http://localhost:8228/v1/"):
@@ -9,3 +11,6 @@ def get_engine_version(username, password, base_url="http://localhost:8228/v1/")
     else:
         raise AssertionError('Error response for version check: {}'.format(r))
 
+
+def get_logger(name):
+    return logging.getLogger('conftest.%s' % name)
