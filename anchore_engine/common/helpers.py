@@ -105,7 +105,7 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
 
         if error_codes:
             ret.anchore_error_json['detail']['error_codes'].extend(error_codes)
-                                   
+
     return ret
 
 
@@ -204,7 +204,7 @@ def extract_files_content(image_data):
         if 'files.allinfo' in image_data['imagedata']['analysis_report']['file_list']:
             adata = image_data['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
             for k in list(adata.keys()):
-                avalue = json.loads(adata[k])
+                avalue = safe_extract_json_value(adata[k])
                 if k in fcsums:
                     avalue['sha256'] = fcsums[k]
                 ret[k] = avalue
@@ -218,8 +218,7 @@ def extract_os_content(image_data):
     if 'pkgs.allinfo' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -228,8 +227,7 @@ def extract_npm_content(image_data):
     if 'pkgs.npms' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -238,8 +236,7 @@ def extract_gem_content(image_data):
     if 'pkgs.gems' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -248,8 +245,7 @@ def extract_python_content(image_data):
     if 'pkgs.python' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -258,8 +254,7 @@ def extract_java_content(image_data):
     if 'pkgs.java' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.java']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -268,8 +263,7 @@ def extract_pkg_content(image_data, content_type):
     ret = {}
     adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
     for k in list(adata.keys()):
-        avalue = json.loads(adata[k])
-        ret[k] = avalue
+        ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -280,7 +274,7 @@ def extract_malware_content(image_data):
     malware_scans = image_data['imagedata']['analysis_report'].get('malware', {}).get('malware', {}).get('base', {})
 
     for scanner_name, output in malware_scans.items():
-        finding = json.loads(output)
+        finding = safe_extract_json_value(output)
         ret.append(finding)
 
         # ret[scanner_name]
@@ -372,3 +366,10 @@ def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, e
     payload["last_updated"] = payload['created_at']
 
     return payload
+
+def safe_extract_json_value(value):
+    # support the legacy serialized json string
+    try:
+        return json.loads(value)
+    except (TypeError, json.decoder.JSONDecodeError):
+        return value
