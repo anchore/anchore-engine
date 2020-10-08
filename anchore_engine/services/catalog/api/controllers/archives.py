@@ -89,7 +89,7 @@ def list_archives():
             rules = session.query(ArchiveTransitionRule).filter_by(
                 account=ApiRequestContextProxy.namespace()).all() or []
             rule_count = len(rules)
-            newest = ''
+            newest = None
             if rule_count > 0:
                 newest = epoch_to_rfc3339(max(map(lambda x: x.last_updated, rules)))
 
