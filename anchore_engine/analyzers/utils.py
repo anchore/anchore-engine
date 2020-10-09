@@ -9,6 +9,7 @@ import random
 import json
 import tarfile
 import copy
+import collections
 
 import anchore_engine.utils
 
@@ -2047,3 +2048,22 @@ def write_kvfile_fromdict(file, indict):
             thestr = ' '.join([cleank, dict[k], '\n'])
             #thestr = thestr.encode('utf8')
             OFH.write(thestr)
+
+def defaultdict_to_dict(d):
+    if isinstance(d, collections.defaultdict):
+        d = {k: defaultdict_to_dict(v) for k, v in d.items()}
+    return d
+
+def merge_nested_dict(a, b, path=None):
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge_nested_dict(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a

@@ -20,7 +20,7 @@ import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
-from anchore_engine.analyzers.utils import read_kvfile_todict
+import anchore_engine.analyzers.utils
 import anchore_engine.analyzers.syft
 from anchore_engine.utils import AnchoreException
 import retrying
@@ -837,28 +837,13 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     analyzer_report = collections.defaultdict(dict)
     for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
         for analyzer_output_el in os.listdir(os.path.join(outputdir, "analyzer_output", analyzer_output)):
-            data = read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
+            data = anchore_engine.analyzers.utils.read_kvfile_todict(os.path.join(outputdir, "analyzer_output", analyzer_output, analyzer_output_el))
             if data:
                 analyzer_report[analyzer_output][analyzer_output_el] = {'base': data }
 
     syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
 
-    def merge(a, b, path=None):
-        "merges b into a"
-        if path is None: path = []
-        for key in b:
-            if key in a:
-                if isinstance(a[key], dict) and isinstance(b[key], dict):
-                    merge(a[key], b[key], path + [str(key)])
-                elif a[key] == b[key]:
-                    pass # same leaf value
-                else:
-                    raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
-            else:
-                a[key] = b[key]
-        return a
-
-    merge(analyzer_report, syft_results)
+    anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, syft_results)
 
     return dict(analyzer_report)
 
