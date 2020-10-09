@@ -1908,6 +1908,8 @@ class ImagePackageVulnerability(Base):
         candidate_count = len(candidates) if candidates else 0
         if candidate_count == 0:
             return None
+        elif candidate_count == 1:
+            return candidates[0]
 
         fixed_in = None
 
