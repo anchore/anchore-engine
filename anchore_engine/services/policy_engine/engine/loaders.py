@@ -8,6 +8,7 @@ from anchore_engine.db import DistroNamespace
 from anchore_engine.db import Image, ImagePackage, FilesystemAnalysis, ImageNpm, ImageGem, AnalysisArtifact, ImagePackageManifestEntry, ImageCpe#, ImageJava, ImagePython
 from anchore_engine.subsys import logger
 from anchore_engine.util.rpm import split_rpm_filename
+from anchore_engine.common.helpers import safe_extract_json_value
 
 
 # this is a static mapping of known package names (keys) to official cpe names for each package
@@ -210,7 +211,7 @@ class ImageLoader(object):
         # Re-organize the data from file-keyed to package keyed for efficient filtering
         packages = {}
         for path, file_meta in list(file_records.items()):
-            for r in json.loads(file_meta):
+            for r in safe_extract_json_value(file_meta):
                 pkg = r.pop('package')
                 if not pkg:
                     continue
@@ -324,7 +325,7 @@ class ImageLoader(object):
             match.analyzer_artifact = 'regexp_matches.all'
             match.artifact_key = filename
             try:
-                match.json_value = json.loads(match_string)
+                match.json_value = safe_extract_json_value(match_string)
             except:
                 logger.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
                 match.str_value = match_string
@@ -357,7 +358,7 @@ class ImageLoader(object):
             match.analyzer_artifact = 'regexp_matches.all'
             match.artifact_key = filename
             try:
-                match.json_value = json.loads(match_string)
+                match.json_value = safe_extract_json_value(match_string)
             except:
                 logger.exception('json decode failed for regex match record on {}. Saving as raw text'.format(filename))
                 match.str_value = match_string
@@ -409,7 +410,7 @@ class ImageLoader(object):
             scan_artifact.analyzer_artifact = malware_analyzer_name
             scan_artifact.artifact_key = scanner_name
             try:
-                scan_artifact.json_value = json.loads(scan_result)
+                scan_artifact.json_value = safe_extract_json_value(scan_result)
             except:
                 logger.exception('json decode failed for malware scan result on {}. Saving as raw text'.format(scan_result))
                 scan_artifact.str_value = scan_result
@@ -439,7 +440,7 @@ class ImageLoader(object):
             pkgs_all = pkgs_all[0]
 
         for pkg_name, metadata_str in list(pkgs_all.items()):
-            metadata = json.loads(metadata_str)
+            metadata = safe_extract_json_value(metadata_str)
 
             p = ImagePackage()
             p.distro_name = image_obj.distro_name
@@ -535,7 +536,7 @@ class ImageLoader(object):
         suids = analysis_report_json.get('file_suids', {}).get('files.suids', {}).get('base', {})
         pkgd = analysis_report_json.get('package_list', {}).get('pkgfiles.all', {}).get('base', {})
 
-        path_map = {path: json.loads(value) for path, value in list(all_infos.items())}
+        path_map = {path: safe_extract_json_value(value) for path, value in list(all_infos.items())}
         entry = FilesystemAnalysis()
         entry.file_count = 0
         entry.directory_count = 0
@@ -600,7 +601,7 @@ class ImageLoader(object):
         npms = []
         image_packages = []
         for path, npm_str in list(npms_json.items()):
-            npm_json = json.loads(npm_str)
+            npm_json = safe_extract_json_value(npm_str)
 
             # TODO: remove this usage of ImageNPM, that is deprecated
             n = ImageNpm()
@@ -654,7 +655,7 @@ class ImageLoader(object):
         gems = []
         image_packages = []
         for path, gem_str in list(gems_json.items()):
-            gem_json = json.loads(gem_str)
+            gem_json = safe_extract_json_value(gem_str)
 
             # TODO: remove this usage of ImageGem, that is deprecated
             n = ImageGem()
@@ -707,7 +708,7 @@ class ImageLoader(object):
 
         pkgs = []
         for path, pkg_str in list(pkgs_json.items()):
-            pkg_json = json.loads(pkg_str)
+            pkg_json = safe_extract_json_value(pkg_str)
             
             n = ImagePackage()
             # primary keys
@@ -749,7 +750,7 @@ class ImageLoader(object):
 
         pkgs = []
         for path, pkg_str in list(pkgs_json.items()):
-            pkg_json = json.loads(pkg_str)
+            pkg_json = safe_extract_json_value(pkg_str)
             
             n = ImagePackage()
 
@@ -826,7 +827,7 @@ class ImageLoader(object):
                         return [], handled_pkgtypes
 
                     for path, pkg_str in list(pkgs_json.items()):
-                        pkg_json = json.loads(pkg_str)
+                        pkg_json = safe_extract_json_value(pkg_str)
                         n = ImagePackage()
                         # primary keys
                         n.name = pkg_json.get('name')
@@ -1043,7 +1044,7 @@ class ImageLoader(object):
         java_json_raw = analysis_json.get('package_list', {}).get('pkgs.java', {}).get('base')
         if java_json_raw:
             for path, java_str in list(java_json_raw.items()):
-                java_json = json.loads(java_str)
+                java_json = safe_extract_json_value(java_str)
 
                 try:
                     guessed_names, guessed_versions = self._fuzzy_java(java_json)
@@ -1087,7 +1088,7 @@ class ImageLoader(object):
         python_json_raw = analysis_json.get('package_list', {}).get('pkgs.python', {}).get('base')
         if python_json_raw:
             for path, python_str in list(python_json_raw.items()):
-                python_json = json.loads(python_str)
+                python_json = safe_extract_json_value(python_str)
                 guessed_names = self._fuzzy_python(python_json['name'])
                 guessed_versions = [python_json['version']]
 
@@ -1127,7 +1128,7 @@ class ImageLoader(object):
         gem_json_raw = analysis_json.get('package_list', {}).get('pkgs.gems', {}).get('base')
         if gem_json_raw:
             for path, gem_str in list(gem_json_raw.items()):
-                gem_json = json.loads(gem_str)
+                gem_json = safe_extract_json_value(gem_str)
                 guessed_names = self._fuzzy_gem(gem_json['name'])
                 guessed_versions = gem_json['versions']
                 for n in guessed_names:
@@ -1166,7 +1167,7 @@ class ImageLoader(object):
         npm_json_raw = analysis_json.get('package_list', {}).get('pkgs.npms', {}).get('base')
         if npm_json_raw:
             for path, npm_str in list(npm_json_raw.items()):
-                npm_json = json.loads(npm_str)
+                npm_json = safe_extract_json_value(npm_str)
                 guessed_names = self._fuzzy_npm(npm_json['name'])
                 guessed_versions = npm_json['versions']
                 for n in guessed_names:
@@ -1205,7 +1206,7 @@ class ImageLoader(object):
         go_json_raw = analysis_json.get('package_list', {}).get('pkgs.go', {}).get('base')
         if go_json_raw:
             for path, go_str in list(go_json_raw.items()):
-                go_json = json.loads(go_str)
+                go_json = safe_extract_json_value(go_str)
                 guessed_names, guessed_versions = self._fuzzy_go(go_json['name'], go_json['version'])
                 #guessed_names = [go_json['name']]
                 #guessed_versions = [go_json['version']]  
@@ -1245,7 +1246,7 @@ class ImageLoader(object):
         bin_json_raw = analysis_json.get('package_list', {}).get('pkgs.binary', {}).get('base')
         if bin_json_raw:
             for path, bin_str in list(bin_json_raw.items()):
-                bin_json = json.loads(bin_str)
+                bin_json = safe_extract_json_value(bin_str)
                 guessed_names = [bin_json['name']]
                 guessed_versions = [bin_json['version']]            
                 for n in guessed_names:
