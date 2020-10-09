@@ -26,7 +26,7 @@ pre_baked_images = {
         'registry': 'docker.io',
         'repo': 'anchore/test_images',
         'tag': 'lean',
-        'digest': 'sha256:8d0e40d8e013bb0cda3d279b5021c473885c079e94010fd2208235d56982486f',
+        'digest': 'sha256:626bd6ba69c3c3bc39a44d4a988225cd497239e1c50695e24600e64f99955de3',
         'image_source': 'registry',
         'schema_version': 'v2',
     }
