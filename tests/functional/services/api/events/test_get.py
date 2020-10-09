@@ -4,7 +4,7 @@ import pytest
 
 from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional.services.api.subscriptions import SUBSCRIPTION_TYPES
-from tests.functional.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import http_get, APIResponse
 
 SERVICES = ['analyzer', 'api', 'catalog', 'simpleq', 'policy-engine', 'rbac-authorizer', 'rbac-manager', 'reports',
             'notifications', 'feeds']

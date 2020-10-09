@@ -1,5 +1,5 @@
-from tests.functional.utils.http_utils import http_post, RequestFailedError, http_del
-from tests.functional.conftest import FT_ACCOUNT
+from tests.functional.services.api.conftest import FT_ACCOUNT
+from tests.functional.services.utils.http_utils import http_post, RequestFailedError, http_del
 
 
 def create_ft_account_user(username, password, api_conf: callable):

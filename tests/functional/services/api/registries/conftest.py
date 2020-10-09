@@ -1,11 +1,11 @@
+from urllib.parse import quote
 
 import pytest
 
-from urllib.parse import quote
 from tests.functional.services.api.conftest import USER_API_CONFS
+from tests.functional import get_logger
 from tests.functional.services.api.registries import get_registry_info
-from tests.functional.utils.http_utils import RequestFailedError, http_post, http_del
-from tests.functional.conftest import get_logger
+from tests.functional.services.utils.http_utils import RequestFailedError, http_post, http_del
 
 _logger = get_logger(__name__)
 

@@ -1,6 +1,4 @@
-import pytest
-
-from tests.functional.utils.http_utils import http_post_url_encoded, APIResponse, get_api_conf
+from tests.functional.services.utils.http_utils import http_post_url_encoded, APIResponse, get_api_conf
 
 
 class TestDefaultAPIPostReturns200:

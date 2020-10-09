@@ -1,6 +1,6 @@
 import pytest
 
-from tests.functional.utils.http_utils import APIResponse, http_get
+from tests.functional.services.utils.http_utils import APIResponse, http_get
 
 
 class TestPolicyAPIGetReturns200:

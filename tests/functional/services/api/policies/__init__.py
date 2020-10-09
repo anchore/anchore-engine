@@ -1,4 +1,4 @@
-from tests.functional.utils.http_utils import http_get
+from tests.functional.services.utils.http_utils import http_get
 
 
 def get_first_policy_id(api_conf: callable):

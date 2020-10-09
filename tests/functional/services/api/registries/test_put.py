@@ -1,10 +1,10 @@
-import pytest
 import copy
-
 from urllib.parse import quote
 
+import pytest
+
 from tests.functional.services.api.registries import get_registry_info
-from tests.functional.utils.http_utils import http_get, APIResponse, http_put
+from tests.functional.services.utils.http_utils import http_get, APIResponse, http_put
 
 
 class TestRegistriesAPIPutReturns200:
