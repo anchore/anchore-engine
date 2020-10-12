@@ -158,7 +158,7 @@ RUN set -ex && \
     chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
-    
+
 
 # Perform any base OS specific setup
 
@@ -167,7 +167,7 @@ RUN set -ex && \
 RUN set -ex && \
     pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/bin v0.2.0 && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.2.0 && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
     yum install -y /build_output/deps/*.rpm && \
@@ -178,7 +178,7 @@ RUN set -ex && \
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
 
-USER 1000
-
+USER anchore:anchore
+ENV PATH="/anchore_engine/bin:${PATH}"
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]

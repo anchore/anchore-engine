@@ -164,15 +164,15 @@ def create_directories(work_dir):
     '--registry', default='docker.io', help='TLD of a registry, like docker.io',
     show_default=True)
 @click.option(
-    '--repo', default='rails',
+    '--repo', default='centos',
     help='Repo name, like "centos" (official ones) or "anchore/enterprise" for accounts',
     show_default=True)
 @click.option(
-    '--digest', default='sha256:aec52fe81ff0e99d64174001fbdf44c3bc9e1869756dec05c447f52a0fe637e7',
+    '--digest', default='sha256:85313b812ad747dd19cf18078795b576cc4ae9cd2ca2ccccd7b5c12722b2effd',
     help='The image digest as shown in the registry',
     show_default=True)
 @click.option(
-    '--tag', default='latest',
+    '--tag', default='centos8',
     help='The tag for the given container',
     show_default=True)
 @click.option(
