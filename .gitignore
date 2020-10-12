@@ -97,7 +97,8 @@ ENV/
 .ropeproject
 
 # vscode settings
-.vscode/
+.vscode/*
+!.vscode/launch.json
 
 # mkdocs documentation
 /site
