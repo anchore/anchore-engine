@@ -26,10 +26,19 @@ pre_baked_images = {
         'registry': 'docker.io',
         'repo': 'anchore/test_images',
         'tag': 'lean',
-        'digest': 'sha256:626bd6ba69c3c3bc39a44d4a988225cd497239e1c50695e24600e64f99955de3',
+        'digest': 'sha256:8d0e40d8e013bb0cda3d279b5021c473885c079e94010fd2208235d56982486f',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
+    'py38': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'py38',
+        'digest': 'sha256:65e79fb7397ed96bd84656a664ac9978057930d90b2d5fde5e92a58adbee657c',
         'image_source': 'registry',
         'schema_version': 'v2',
     }
+
 }
 
 
