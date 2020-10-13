@@ -17,7 +17,7 @@ def handle_gem(findings, artifact):
             'name': artifact['name'],
             'versions': [artifact['version']],
             'latest': artifact['version'],
-            'sourcepkg': artifact['name'],
+            'sourcepkg': artifact['metadata'].get('homepage', ''),
             'files': artifact['metadata'].get('files', []) or [],
             'origins': artifact['metadata'].get('authors', []) or [],
             'lics': artifact['metadata'].get('licenses', []) or [],
