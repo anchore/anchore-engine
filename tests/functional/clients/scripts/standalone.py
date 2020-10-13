@@ -130,7 +130,7 @@ def analyze(registry, manifest, repo, digest, tag, work_dir):
     click.echo('Starting the analyze process...')
     image_report, manifest = analyze_image(
         userId, manifest, image_record, work_dir, localconfig,
-        # use_cache_dir=join(work_dir, 'cache_dir')
+        use_cache_dir=join(work_dir, 'cache_dir')
     )
     click.echo('Completed analyze process. Saving results...')
     result_python = join(work_dir, 'result.py')

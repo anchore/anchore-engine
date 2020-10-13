@@ -4,7 +4,7 @@ import re
 import tempfile
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
+from anchore_engine.utils import run_command, run_command_list, run_command, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 from anchore_engine.common.errors import AnchoreError
 
@@ -153,6 +153,19 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 raise err
 
             if success:
+                if use_cache_dir:
+                    # syft expects blobs to be nested inside of the oci image directory. If the --dest-shared-blob-dir skopeo option is used we need to
+                    # provide access to the blobs via a symlink, as if the blobs were stored within the oci image directory
+                    cmd = "rmdir blobs"
+                    rc, stdout, stderr = run_command(cmd, env=proc_env, cwd=copydir)
+                    if rc != 0:
+                        raise SkopeoError(cmd=cmd, rc=rc, out=stdout, err=stderr)
+
+                    cmd = "ln -s {} ./blobs".format(use_cache_dir)
+                    rc, stdout, stderr = run_command(cmd, env=proc_env, cwd=copydir)
+                    if rc != 0:
+                        raise SkopeoError(cmd=cmd, rc=rc, out=stdout, err=stderr)
+
                 break
         if not success:
             logger.error("could not download image")
