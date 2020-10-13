@@ -2,6 +2,14 @@
 # Generated from result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']
 
 pkgs = [
+     ('/usr/lib/ruby/gems/2.7.0/specifications/bundler-2.1.4.gemspec',
+      '{"name": "bundler", "lics": ["MIT"], "versions": ["2.1.4"], "latest": '
+      '"2.1.4", "origins": ["Andr\\\\u00E9 Arko", "Samuel Giddins", "Colby '
+      'Swandale", "Hiroshi Shibata", "David Rodr\\\\u00EDguez", "Grey Baker", '
+      '"Stephanie Morillo", "Chris Morris", "James Wen", "Tim Moore", '
+      '"Andr\\\\u00E9 Medeiros", "Jessica Lynn Suttles", "Terence Lee", "Carl '
+      'Lerche", "Yehuda Katz"], "sourcepkg": "https://bundler.io", "files": '
+      '["exe/bundle", "exe/bundler"]}'),
      ('/usr/lib/ruby/gems/2.7.0/specifications/default/prime-0.1.1.gemspec',
       '{"name": "prime", "lics": ["BSD-2-Clause"], "versions": ["0.1.1"], '
       '"latest": "0.1.1", "origins": ["Yuki Sonoda"], "sourcepkg": '
