@@ -54,6 +54,16 @@
   tags:
     only: /^v[0-9]+(\.[0-9]+)*$/
 
+.filter_nightly: &filter_nightly
+  branches:
+    only:
+      - master
+
+.initialize_docker_registry_artifacts: &initialize_docker_registry_artifacts
+  run:
+    name: Create Artifacts for Docker Registry
+    command: make setup-local-docker-registry
+
 # Start circleci configuration
 version: 2.1
 orbs:
@@ -162,13 +172,18 @@ jobs:
     docker:
       - image: circleci/python:3.6
     resource_class: large
-    environment: *global_environment_vars
+    environment:
+      <<: *global_environment_vars
+      ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore
+      ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
+      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000
     steps:
       - setup_remote_docker
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
       - <<: *ssh_forward_port
+      - <<: *initialize_docker_registry_artifacts
       - run:
           name: Run functional tests
           command: make setup-and-test-functional
@@ -186,6 +201,7 @@ jobs:
       - <<: *ssh_forward_port
       - run:
           name: Run e2e tests
+          no_output_timeout: 30m
           command: make setup-and-test-e2e
 
   push_image:
@@ -220,11 +236,6 @@ workflows:
       - functional_tests:
           requires:
             - build
-      - e2e_tests:
-          context: e2e-testing
-          filters: *filter_release_branch
-          requires:
-            - build
       - push_image:
           name: push_dev_image
           make_job: push-dev
@@ -233,12 +244,60 @@ workflows:
           requires:
             - functional_tests
             - integration_tests
-            - e2e_tests
       - anchore/image_scan:
           context: dockerhub
           requires:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          private_registry: true
+          timeout: '2000'
+
+  nightly_build:
+    triggers:
+      - schedule:
+          cron: "0 10 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - unit_tests:
+          filters: *filter_nightly
+      - lint:
+          filters: *filter_nightly
+      - integration_tests:
+          filters: *filter_nightly
+          requires:
+            - unit_tests
+      - build:
+          filters: *filter_nightly
+          requires:
+            - lint
+            - unit_tests
+      - functional_tests:
+          filters: *filter_nightly
+          requires:
+            - build
+      - e2e_tests:
+          context: e2e-testing
+          filters: *filter_nightly
+          requires:
+            - build
+      - push_image:
+          name: push_nightly_image
+          make_job: push-nightly
+          context: dockerhub
+          filters: *filter_nightly
+          requires:
+            - functional_tests
+            - integration_tests
+            - e2e_tests
+      - anchore/image_scan:
+          context: dockerhub
+          filters: *filter_nightly
+          requires:
+            - push_nightly_image
+          image_name: anchore/anchore-engine-dev:nightly
           private_registry: true
           timeout: '2000'
 

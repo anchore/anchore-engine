@@ -2576,6 +2576,25 @@ paths:
       description: Request a jwt token for subsequent operations, this request is authenticated with normal HTTP auth
       consumes:
         - application/x-www-form-urlencoded
+      parameters:
+        - name: grant_type
+          in: formData
+          description: 'OAuth Grant type for token'
+          type: string
+          default: password
+        - name: username
+          in: formData
+          type: string
+          description: 'User to assign OAuth token to'
+        - name: password
+          in: formData
+          type: string
+          description: 'Password for corresponding user'
+        - name: client_id
+          in: formData
+          description: 'The type of client used for the OAuth token'
+          type: string
+          default: anonymous
       responses:
         200:
           description: Resulting JWT token
@@ -2585,6 +2604,43 @@ paths:
           description: Internal error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /system/webhooks/{webhook_type}/test:
+    post:
+      summary: Adds the capabilities to test a webhook delivery for the given notification type
+      description: Loads the Webhook configuration for webhook_type, and sends the notification out as a test
+      operationId: test_webhook
+      x-anchore-authz-action: None
+      tags:
+        - System
+      parameters:
+        - name: webhook_type
+          in: path
+          required: true
+          type: string
+          description: The Webhook Type that we should test
+        - name: notification_type
+          in: query
+          required: false
+          description: What kind of Notification to send
+          default: tag_update
+          type: string
+          enum:
+            - tag_update
+            - analysis_update
+            - vuln_update
+            - policy_eval
+      responses:
+        200:
+          description: The Webhook was sent successfully. Schemas may be found under Models (PolicyEvalNotification, TagUpdateNotification, VulnUpdateNotification, AnalysisUpdateNotification)
+        400:
+          description: The Webhook failed to send due to misconfiguration
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+        500:
+          description: The Webhook failed to send due to an Internal Error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.system
 definitions:
   PaginationProperties:
     type: object
@@ -4341,5 +4397,185 @@ definitions:
       resource_type:
         type: string
         description: The type of resource this event is generated from
-
-
+  NotificationBase:
+    type: object
+    description: base object for Notifications (every notification has this basic structure)
+    properties:
+      queueId:
+        type: string
+      userId:
+        type: string
+      dataId:
+        type: string
+      created_at:
+        type: integer
+      last_updated:
+        type: integer
+      record_state_key:
+        type: string
+        default: "active"
+      record_state_val:
+        type: string
+        x-nullable: true
+      tries:
+        type: integer
+      max_tries:
+        type: integer
+  PolicyEvalNotification:
+    allOf:
+      - $ref: "#/definitions/NotificationBase"
+      - type: object
+        description: The Notification Object definition for Policy Eval Notifications
+        properties:
+          data:
+            $ref: "#/definitions/PolicyEvalNotificationData"
+  TagUpdateNotification:
+    allOf:
+      - $ref: "#/definitions/NotificationBase"
+      - type: object
+        description: The Notification Object definition for Tag Update Notifications
+        properties:
+          data:
+            $ref: "#/definitions/TagUpdateNotificationData"
+  VulnUpdateNotification:
+    allOf:
+      - $ref: "#/definitions/NotificationBase"
+      - type: object
+        description: The Notification Object definition for Tag Update Notifications
+        properties:
+          data:
+            $ref: "#/definitions/VulnUpdateNotificationData"
+  AnalysisUpdateNotification:
+    allOf:
+      - $ref: "#/definitions/NotificationBase"
+      - type: object
+        description: The Notification Object definition for Tag Update Notifications
+        properties:
+          data:
+            $ref: "#/definitions/AnalysisUpdateNotificationData"
+  BaseNotificationData:
+    type: object
+    description: Every notification has a payload, which follows this basic structure
+    properties:
+      notification_user:
+        type: string
+      notification_user_email:
+        type: string
+      notification_type:
+        type: string
+  PolicyEvalNotificationData:
+    allOf:
+      - $ref: "#/definitions/BaseNotificationData"
+      - type: object
+        properties:
+          notification_payload:
+            $ref: "#/definitions/PolicyEvalNotificationPayload"
+  TagUpdateNotificationData:
+    allOf:
+      - $ref: "#/definitions/BaseNotificationData"
+      - type: object
+        properties:
+          notification_payload:
+            $ref: "#/definitions/TagUpdateNotificationPayload"
+  VulnUpdateNotificationData:
+    allOf:
+      - $ref: "#/definitions/BaseNotificationData"
+      - type: object
+        properties:
+          notification_payload:
+            $ref: "#/definitions/VulnUpdateNotificationPayload"
+  AnalysisUpdateNotificationData:
+    allOf:
+      - $ref: "#/definitions/BaseNotificationData"
+      - type: object
+        properties:
+          notification_payload:
+            $ref: "#/definitions/AnalysisUpdateNotificationPayload"
+  GenericNotificationPayload:
+    type: object
+    description: Parent class for Notification Payloads
+    properties:
+      userId:
+        type: string
+      subscription_key:
+        type: string
+      subscription_type:
+        type: string
+      notificationId:
+        type: string
+  PolicyEvalNotificationPayload:
+    allOf:
+      - $ref: "#/definitions/GenericNotificationPayload"
+      - type: object
+        properties:
+          curr_eval:
+            type: object
+            description: The Current Policy Evaluation result
+          last_eval:
+            type: object
+            description: The Previous Policy Evaluation result
+          annotations:
+            type: object
+            description: List of Corresponding Image Annotations
+            x-nullable: true
+  TagUpdateNotificationPayload:
+    allOf:
+      - $ref: "#/definitions/GenericNotificationPayload"
+      - type: object
+        properties:
+          curr_eval:
+            type: array
+            description: A list containing the current image digest
+          last_eval:
+            type: array
+            description: A list containing the previous image digests
+          annotations:
+            type: object
+            description: List of Corresponding Image Annotations
+            x-nullable: true
+  VulnUpdateNotificationPayload:
+    allOf:
+      - $ref: "#/definitions/GenericNotificationPayload"
+      - type: object
+        properties:
+          diff_vulnerability_result:
+            $ref: "#/definitions/VulnDiffResult"
+          imageDigest:
+            type: string
+          annotations:
+            type: object
+            description: List of Corresponding Image Annotations
+            x-nullable: true
+  AnalysisUpdateNotificationPayload:
+    allOf:
+      - $ref: "#/definitions/GenericNotificationPayload"
+      - type: object
+        properties:
+          curr_eval:
+            $ref: "#/definitions/AnalysisUpdateEval"
+          last_eval:
+            $ref: "#/definitions/AnalysisUpdateEval"
+          annotations:
+            type: object
+            description: List of Corresponding Image Annotations
+            x-nullable: true
+  VulnDiffResult:
+    type: object
+    description: The results of the comparing two vulnerability records during an update
+    properties:
+      added:
+        type: array
+      updated:
+        type: array
+      removed:
+        type: array
+  AnalysisUpdateEval:
+    type: object
+    description: Evaluation Results for an entity (current or last)
+    properties:
+      analysis_status:
+        type: string
+      annotations:
+        type: object
+      image_digest:
+        type: string

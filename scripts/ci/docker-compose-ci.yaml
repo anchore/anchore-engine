@@ -25,6 +25,8 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-api
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_OAUTH_ENABLED=true
+    - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "apiext"]
 
   # Catalog is the primary persistence and state manager of the system
@@ -42,6 +44,8 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_OAUTH_ENABLED=true
+    - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
     image: ${TEST_IMAGE_NAME}
@@ -58,6 +62,8 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_OAUTH_ENABLED=true
+    - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "simplequeue"]
   engine-policy-engine:
     image: ${TEST_IMAGE_NAME}
@@ -75,6 +81,8 @@ services:
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
     - ANCHORE_FEEDS_ENABLED=false
+    - ANCHORE_OAUTH_ENABLED=true
+    - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: ${TEST_IMAGE_NAME}
@@ -91,6 +99,8 @@ services:
     - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
     - ANCHORE_DB_HOST=anchore-db
     - ANCHORE_DB_PASSWORD=mysecretpassword
+    - ANCHORE_OAUTH_ENABLED=true
+    - ANCHORE_AUTH_SECRET=supersharedsecret
     volumes:
     - anchore-scratch:/analysis_scratch
     command: ["anchore-manager", "service", "start", "analyzer"]
@@ -102,6 +112,21 @@ services:
     - POSTGRES_PASSWORD=mysecretpassword
     expose:
     - 5432
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+  docker-registry:
+    image: anchore-local-docker-registry:latest # Generated via make setup-local-docker-registry
+    container_name: docker-registry
+    ports:
+      - "5000:5000"
+    environment:
+      - REGISTRY_AUTH=htpasswd
+      - REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm
+      - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
+      - REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt
+      - REGISTRY_HTTP_TLS_KEY=/certs/domain.key
     logging:
       driver: "json-file"
       options:

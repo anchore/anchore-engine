@@ -28,20 +28,31 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
         ret['detail']['error_codes'] = []
 
     if isinstance(errmsg, Exception):
-        if 'anchore_error_json' in errmsg.__dict__:
-            if {'message', 'httpcode', 'detail'}.issubset(set(errmsg.__dict__['anchore_error_json'])):
-                ret.update(errmsg.__dict__['anchore_error_json'])
+        if not hasattr(errmsg, 'anchore_error_json'):
+            return ret
 
-            try:
-                if {'error_code'}.issubset(set(errmsg.__dict__['anchore_error_json'])) and errmsg.__dict__['anchore_error_json'].get('error_code', None):
-                    if 'error_codes' not in ret['detail']:
-                        ret['detail']['error_codes'] = []
-                    ret['detail']['error_codes'].append(errmsg.__dict__['anchore_error_json'].get('error_code'))
-            except Exception as err:
-                try:
-                    logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
-                except:
-                    pass
+        # Try to load it as json
+        try:
+            anchore_error_json = getattr(errmsg, 'anchore_error_json', None)
+            if isinstance(anchore_error_json, dict):
+                err_json = anchore_error_json
+            else:
+                err_json = json.loads(anchore_error_json)
+        except (TypeError, ValueError):
+            # Then it may just be a string, we cannot do anything with it
+            logger.debug('Failed to parse anchore_error_json as json')
+            return ret
+
+        if {'message', 'httpcode', 'detail'}.issubset(set(err_json)):
+            ret.update(err_json)
+
+        try:
+            if {'error_code'}.issubset(set(err_json)) and err_json.get('error_code', None):
+                if 'error_codes' not in ret['detail']:
+                    ret['detail']['error_codes'] = []
+                ret['detail']['error_codes'].append(err_json.get('error_code'))
+        except KeyError:
+            logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
     return ret
 
 
@@ -71,11 +82,11 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
     anchore_error_json = {}
     try:
         if isinstance(err, Exception):
-            if 'anchore_error_json' in err.__dict__:
-                anchore_error_json.update(err.__dict__['anchore_error_json'])
+            if hasattr(err, 'anchore_error_json'):
+                anchore_error_json.update(getattr(err, 'anchore_error_json'))
 
-            if 'error_code' in err.__dict__:
-                error_codes.append(err.__dict__.get('error_code'))
+            if hasattr(err, 'error_code'):
+                error_codes.append(getattr(err, 'error_code'))
     except:
         pass
 
@@ -94,7 +105,7 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
 
         if error_codes:
             ret.anchore_error_json['detail']['error_codes'].extend(error_codes)
-                                   
+
     return ret
 
 
@@ -193,7 +204,7 @@ def extract_files_content(image_data):
         if 'files.allinfo' in image_data['imagedata']['analysis_report']['file_list']:
             adata = image_data['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
             for k in list(adata.keys()):
-                avalue = json.loads(adata[k])
+                avalue = safe_extract_json_value(adata[k])
                 if k in fcsums:
                     avalue['sha256'] = fcsums[k]
                 ret[k] = avalue
@@ -207,8 +218,7 @@ def extract_os_content(image_data):
     if 'pkgs.allinfo' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -217,8 +227,7 @@ def extract_npm_content(image_data):
     if 'pkgs.npms' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -227,8 +236,7 @@ def extract_gem_content(image_data):
     if 'pkgs.gems' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -237,8 +245,7 @@ def extract_python_content(image_data):
     if 'pkgs.python' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -247,8 +254,7 @@ def extract_java_content(image_data):
     if 'pkgs.java' in image_data['imagedata']['analysis_report']['package_list']:
         adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.java']['base']
         for k in list(adata.keys()):
-            avalue = json.loads(adata[k])
-            ret[k] = avalue
+            ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -257,8 +263,7 @@ def extract_pkg_content(image_data, content_type):
     ret = {}
     adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
     for k in list(adata.keys()):
-        avalue = json.loads(adata[k])
-        ret[k] = avalue
+        ret[k] = safe_extract_json_value(adata[k])
     return ret
 
 
@@ -269,7 +274,7 @@ def extract_malware_content(image_data):
     malware_scans = image_data['imagedata']['analysis_report'].get('malware', {}).get('malware', {}).get('base', {})
 
     for scanner_name, output in malware_scans.items():
-        finding = json.loads(output)
+        finding = safe_extract_json_value(output)
         ret.append(finding)
 
         # ret[scanner_name]
@@ -361,3 +366,10 @@ def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, e
     payload["last_updated"] = payload['created_at']
 
     return payload
+
+def safe_extract_json_value(value):
+    # support the legacy serialized json string
+    try:
+        return json.loads(value)
+    except (TypeError, json.decoder.JSONDecodeError):
+        return value
