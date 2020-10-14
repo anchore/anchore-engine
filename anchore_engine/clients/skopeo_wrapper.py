@@ -123,7 +123,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 os_override_str = "--override-os {}".format(os_override)
             else:
                 os_override_str = ""
-                
+
             if dest_type == 'oci':
                 if manifest:
                     with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
@@ -132,7 +132,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 if parent_manifest:
                     with open(os.path.join(copydir, "parent_manifest.json"), 'w') as OFH:
                         OFH.write(parent_manifest)
-                        
+
                 cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(os_override_str, global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
             else:
                 cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} docker://{} dir:{}".format(os_override_str, global_timeout_str, tlsverifystr, credstr, fulltag, copydir)]
@@ -143,10 +143,10 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 if rc != 0:
                     skopeo_error = SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                     if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
-                        raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)                    
+                        raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    success = True                    
+                    success = True
 
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
@@ -156,10 +156,10 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 if use_cache_dir:
                     # syft expects blobs to be nested inside of the oci image directory. If the --dest-shared-blob-dir skopeo option is used we need to
                     # provide access to the blobs via a symlink, as if the blobs were stored within the oci image directory
-                    cmd = "rmdir blobs"
-                    rc, stdout, stderr = run_command(cmd, env=proc_env, cwd=copydir)
-                    if rc != 0:
-                        raise SkopeoError(cmd=cmd, rc=rc, out=stdout, err=stderr)
+                    blobs_dir = os.path.join(copydir, "./blobs")
+                    if os.path.exists(blobs_dir) and os.path.isdir(blobs_dir):
+                        # if this directory is not empty, there is an issue and we should expect an exception
+                        os.rmdir(blobs_dir)
 
                     cmd = "ln -s {} ./blobs".format(use_cache_dir)
                     rc, stdout, stderr = run_command(cmd, env=proc_env, cwd=copydir)
@@ -189,7 +189,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
             tlsverifystr = "--tls-verify=true"
         else:
             tlsverifystr = "--tls-verify=false"
-            
+
         localconfig = anchore_engine.configuration.localconfig.get_config()
         global_timeout = localconfig.get('skopeo_global_timeout', 0)
         try:
@@ -250,7 +250,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
             tlsverifystr = "--tls-verify=false"
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)            
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -283,14 +283,14 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
                     raise err
 
                 if success:
-                    sout = str(sout, 'utf-8') if sout else None    
+                    sout = str(sout, 'utf-8') if sout else None
                     ret = sout
                     break
 
             if not success:
                 logger.error("could not retrieve manifest")
                 raise Exception("could not retrieve manifest")
-            
+
         except Exception as err:
             raise err
     except Exception as err:
@@ -369,7 +369,7 @@ class SkopeoError(AnchoreException):
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
         except:
             self.error_code = AnchoreError.UNKNOWN.name
-        
+
 
     def __repr__(self):
         return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)

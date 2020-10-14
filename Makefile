@@ -114,7 +114,7 @@ test-integration: venv setup-test-infra ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
 test-functional: venv setup-test-infra ## Run functional tests, assuming compose is running
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"
 
 setup-and-test-functional: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
 	@$(MAKE) compose-up
@@ -160,7 +160,7 @@ push-rebuild: setup-test-infra ## Rebuild and push prod Anchore Engine docker im
 #########################
 
 compose-up: venv setup-test-infra ## Stand up/start docker-compose with dev image
-	@$(ACTIVATE_VENV) && $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
+	@$(ACTIVATE_VENV) && GID_DOCKER=$(shell ls -n /var/run/docker.sock | awk '{ print $$4 }') GID_CI=$(shell id -g) $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
 
 compose-down: venv setup-test-infra ## Tear down/stop docker compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) compose-down "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"

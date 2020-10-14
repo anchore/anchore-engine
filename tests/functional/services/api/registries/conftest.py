@@ -17,21 +17,23 @@ def add_image_to_local_registry(docker_client):
     Note: if the docker registry run by tests/functional/artifacts/registry/docker-registry-service.yaml is not up,
     this will fail
     """
+    registry_info = get_registry_info()
+
     _logger.info("Pulling alpine:latest image from remote")
     docker_client.images.pull('alpine:latest')
 
     _logger.info("Re-tagging as the local docker registry's image")
-    rc = docker_client.api.tag('alpine:latest', 'localhost:5000/alpine', 'latest')
+    local_image = '{}/alpine'.format(registry_info['host'])
+    rc = docker_client.api.tag('alpine:latest', local_image, 'latest')
     if not rc:
         raise RequestFailedError(rc, 'docker_client:tag', None)
 
     # Login to the Local Registry (running from tests/functional/artifacts/registry/docker-registry-service.yaml
-    registry_info = get_registry_info()
     _logger.info("Ensure we are logged into the local docker registry")
     docker_client.login(username=registry_info['user'], password=registry_info['pass'], registry=registry_info['host'])
 
     _logger.info("Push the re-tagged image to the local docker registry")
-    docker_client.images.push('localhost:5000/alpine', 'latest')
+    docker_client.images.push(local_image, 'latest')
 
 
 @pytest.fixture(scope="class", params=USER_API_CONFS)
@@ -39,7 +41,7 @@ def add_and_teardown_registry(request):
     registry_info = get_registry_info()
     registry_payload = {
         'registry': registry_info['service_name'],
-        'registry_name': 'localhost',
+        'registry_name': registry_info['host'].split(":")[0],
         'registry_pass': registry_info['pass'],
         'registry_type': 'docker_v2',
         'registry_user': registry_info['user'],

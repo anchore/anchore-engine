@@ -169,20 +169,16 @@ jobs:
             - caches/*
 
   functional_tests:
-    docker:
-      - image: circleci/python:3.6
-    resource_class: large
+    machine:
+      image: ubuntu-1604:202007-01
     environment:
       <<: *global_environment_vars
       ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore
       ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
-      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000
     steps:
-      - setup_remote_docker
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
-      - <<: *ssh_forward_port
       - <<: *initialize_docker_registry_artifacts
       - run:
           name: Run functional tests
@@ -250,7 +246,7 @@ workflows:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
 
   nightly_build:
     triggers:
@@ -299,7 +295,7 @@ workflows:
             - push_nightly_image
           image_name: anchore/anchore-engine-dev:nightly
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
 
   rc_image_workflow:
     jobs:
@@ -325,7 +321,7 @@ workflows:
             - push_rc_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
           policy_failure: true
 
   prod_image_workflow:
@@ -395,7 +391,7 @@ workflows:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
           policy_failure: true
       - hold_for_approval:
           type: approval
