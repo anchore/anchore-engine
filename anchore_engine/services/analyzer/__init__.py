@@ -257,6 +257,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
             logger.spew("TIMING MARK1: " + str(int(time.time()) - timer))
 
             try:
+                anchore_engine.subsys.metrics.counter_inc(name='anchore_analysis_success')
                 run_time = float(time.time() - timer)
 
                 anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="success")
@@ -266,6 +267,7 @@ def process_analyzer_job(system_user_auth, qobj, layer_cache_enable):
                 pass
 
         except Exception as err:
+            anchore_engine.subsys.metrics.counter_inc(name='anchore_analysis_error')
             run_time = float(time.time() - timer)
             logger.exception("problem analyzing image - exception: " + str(err))
             anchore_engine.subsys.metrics.histogram_observe('anchore_analysis_time_seconds', run_time, buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0], status="fail")
