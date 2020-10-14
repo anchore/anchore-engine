@@ -229,8 +229,10 @@ def problem_from_exception(eval_exception, severity=None):
     # If there is a details() function, call that
     if hasattr(eval_exception, 'details') and callable(eval_exception.details):
         prob.details = eval_exception.details()
-    else:
+    elif hasattr(eval_exception, 'message'):
         prob.details = eval_exception.message
+    else:
+        prob.details = str(eval_exception)
 
     prob.problem_type = eval_exception.__class__.__name__
     if hasattr(eval_exception, 'severity') and eval_exception.severity:
