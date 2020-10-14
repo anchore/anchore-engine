@@ -14,7 +14,7 @@ _logger = get_logger(__name__)
 def add_image_to_local_registry(docker_client):
     """
     Pull alpine:latest to local environment, and re-tag it for the local docker-registry
-    Note: if the docker registry run by tests/functional/artifacts/registry/docker-registry-service.yaml is not up,
+    Note: if the docker registry run by scripts/ci/docker-compose-ci.yaml is not up,
     this will fail
     """
     registry_info = get_registry_info()
@@ -28,7 +28,7 @@ def add_image_to_local_registry(docker_client):
     if not rc:
         raise RequestFailedError(rc, 'docker_client:tag', None)
 
-    # Login to the Local Registry (running from tests/functional/artifacts/registry/docker-registry-service.yaml
+    # Login to the Local Registry (running from scripts/ci/docker-compose-ci.yaml)
     _logger.info("Ensure we are logged into the local docker registry")
     docker_client.login(username=registry_info['user'], password=registry_info['pass'], registry=registry_info['host'])
 

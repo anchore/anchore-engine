@@ -20,7 +20,7 @@ services:
     environment:
       ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore # should these registry creds come from host environment?
       ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
-      ANCHORE_TEST_DOCKER_REGISTRY_HOST: docker-registry:5000
+      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000 # note: for volumes, this must be relative to where the docker daemon is running, not where the registry service is accessible by (dns)
       ANCHORE_BASE_URL: http://engine-api:8228/v1
       ANCHORE_CLI_URL: http://engine-api:8228/v1
       ANCHORE_CLI_USER: admin
@@ -141,7 +141,7 @@ services:
       options:
         max-size: 100m
   docker-registry:
-    image: anchore-local-docker-registry:latest # Generated via make setup-local-docker-registry
+    image: registry:2.7.0
     container_name: docker-registry
     ports:
       - "5000:5000"
@@ -151,6 +151,9 @@ services:
       - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
       - REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt
       - REGISTRY_HTTP_TLS_KEY=/certs/domain.key
+    volumes:
+      - ../../tests/functional/artifacts/registry/auth:/auth
+      - ../../tests/functional/artifacts/registry/certs:/certs
     logging:
       driver: "json-file"
       options:
