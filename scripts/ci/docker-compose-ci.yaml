@@ -18,8 +18,8 @@ services:
         - GID_CI=${GID_CI}
         - GID_DOCKER=${GID_DOCKER}
     environment:
-      ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore # should these registry creds come from host environment?
-      ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
+      ANCHORE_TEST_DOCKER_REGISTRY_USER: ${ANCHORE_TEST_DOCKER_REGISTRY_USER:-anchore}
+      ANCHORE_TEST_DOCKER_REGISTRY_PASS: ${ANCHORE_TEST_DOCKER_REGISTRY_PASS:-foobar}
       ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000 # note: for volumes, this must be relative to where the docker daemon is running, not where the registry service is accessible by (dns)
       ANCHORE_BASE_URL: http://engine-api:8228/v1
       ANCHORE_CLI_URL: http://engine-api:8228/v1
