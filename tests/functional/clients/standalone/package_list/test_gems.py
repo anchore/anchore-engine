@@ -1,6 +1,6 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
 from .fixtures import gems
-from . import path_params, metadata_params
+from . import path_params, metadata_params, assert_nested_dict_equal
 import pytest
 import json
 
@@ -9,17 +9,6 @@ import json
 # Preloaded fixtures, with pytest.param that allows a nicer repr when the test runs, instead of the
 # default which slaps the whole (giant) dictionary, making output unreadable.
 #
-
-gem_paths = [
-    pytest.param(path, id=path.split('/')[-1]) for path, _ in gems.pkgs.items()
-]
-
-gem_metadata = [
-    pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in gems.pkgs.items()
-]
-
-def assert_nested_dict_equal(a, b):
-    assert json.dumps(a, sort_keys=True, indent=2) == json.dumps(b, sort_keys=True, indent=2)
 
 class TestGemPaths:
 
