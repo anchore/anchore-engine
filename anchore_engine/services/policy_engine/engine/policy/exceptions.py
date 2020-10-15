@@ -126,7 +126,7 @@ class ValidationError(PolicyError):
 
 class ReferencedObjectNotFoundError(ValidationError):
     def __init__(self, reference_type, reference_id):
-        super().__init__('Referenced bundle object not found')
+        super().__init__('Referenced object not found')
         self.reference_type = reference_type
         self.reference_id = reference_id
 
