@@ -167,7 +167,7 @@ RUN set -ex && \
 RUN set -ex && \
     pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.2.0 && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.3.0 && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
     yum install -y /build_output/deps/*.rpm && \
