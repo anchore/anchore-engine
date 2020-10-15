@@ -950,11 +950,6 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
             manifest = get_manifest_from_staging(staging_dirs)
         try:
             manifest_data = json.loads(manifest)
-            manifest_schema_version = manifest_data['schemaVersion']
-            if manifest_schema_version == 1:
-                dest_type = 'dir'
-            else:
-                dest_type = 'oci'
         except Exception as err:
             raise Exception("cannot load manifest as JSON rawmanifest=" + str(manifest) + ") - exception: " + str(err))
 

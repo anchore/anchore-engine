@@ -153,10 +153,10 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 raise err
 
             if success:
-                if use_cache_dir:
+                if use_cache_dir and dest_type == 'oci':
                     # syft expects blobs to be nested inside of the oci image directory. If the --dest-shared-blob-dir skopeo option is used we need to
                     # provide access to the blobs via a symlink, as if the blobs were stored within the oci image directory
-                    blobs_dir = os.path.join(copydir, "./blobs")
+                    blobs_dir = os.path.join(copydir, "blobs")
                     if os.path.exists(blobs_dir) and os.path.isdir(blobs_dir):
                         # if this directory is not empty, there is an issue and we should expect an exception
                         os.rmdir(blobs_dir)
