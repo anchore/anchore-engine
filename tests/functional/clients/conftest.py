@@ -37,8 +37,15 @@ pre_baked_images = {
         'digest': 'sha256:65e79fb7397ed96bd84656a664ac9978057930d90b2d5fde5e92a58adbee657c',
         'image_source': 'registry',
         'schema_version': 'v2',
-    }
-
+    },
+    'npm': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'npm',
+        'digest': 'sha256:905a2bf5f3adf8ba8f1d4391cfb4a3e6bd671e0b2ec2f488071679a5f578c7d7',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
 }
 
 
