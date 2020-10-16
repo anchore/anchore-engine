@@ -178,7 +178,8 @@ RUN set -ex && \
 HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
 
-USER anchore:anchore
+USER 1000
+
 ENV PATH="/anchore_engine/bin:${PATH}"
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]
