@@ -10,7 +10,6 @@ volumes:
 
 services:
   job-runner:
-    image: localhost/anchore-engine:job-runner
     build:
       dockerfile: Dockerfile.functional
       context: .
