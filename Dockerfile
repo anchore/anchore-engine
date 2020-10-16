@@ -44,6 +44,10 @@ RUN set -ex && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
+RUN set -ex && \
+    echo "installing Syft" && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.3.0
+
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
@@ -63,6 +67,9 @@ ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
 COPY --from=anchore-engine-builder /build_output /build_output
+
+# Copy syft from build step
+COPY --from=anchore-engine-builder /anchore_engine/bin/syft /anchore_engine/bin/syft
 
 # Container metadata section
 
@@ -167,7 +174,6 @@ RUN set -ex && \
 RUN set -ex && \
     pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.3.0 && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
     yum install -y /build_output/deps/*.rpm && \
