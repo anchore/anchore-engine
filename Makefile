@@ -32,7 +32,7 @@ CLUSTER_CONFIG = tests/e2e/kind-config.yaml
 CLUSTER_NAME = e2e-testing
 K8S_VERSION = 1.19.0
 TEST_IMAGE_NAME = $(GIT_REPO):dev
-
+OS := $(shell uname)
 
 #### CircleCI environment variables
 # exported variables are made available to any script called by this Makefile
@@ -75,7 +75,6 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: setup-and-test-e2e setup-e2e-tests test-e2e
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
-.PHONY: setup-local-docker-registry
 .PHONY: setup-test-infra venv printvars help
 
 ci: lint build test ## Run full CI pipeline, locally
@@ -114,9 +113,10 @@ test-integration: venv setup-test-infra ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
 test-functional: venv setup-test-infra ## Run functional tests, assuming compose is running
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"
 
 setup-and-test-functional: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
+	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
 	@$(MAKE) compose-up
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
@@ -160,7 +160,11 @@ push-rebuild: setup-test-infra ## Rebuild and push prod Anchore Engine docker im
 #########################
 
 compose-up: venv setup-test-infra ## Stand up/start docker-compose with dev image
-	@$(ACTIVATE_VENV) && $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
+	@if [ "$(OS)" = "Darwin" ]; then \
+		$(ACTIVATE_VENV) && GID_DOCKER=0 GID_CI=$(shell id -g) $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
+	else \
+		$(ACTIVATE_VENV) && GID_DOCKER=$(shell ls -n /var/run/docker.sock | awk '{ print $$4 }') GID_CI=$(shell id -g) $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
+	fi
 
 compose-down: venv setup-test-infra ## Tear down/stop docker compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) compose-down "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}"
@@ -184,9 +188,6 @@ anchore-ci: /tmp/test-infra/anchore-ci
 venv: $(VENV)/bin/activate ## Set up a virtual environment
 $(VENV)/bin/activate:
 	python3 -m venv $(VENV)
-
-setup-local-docker-registry: venv setup-test-infra venv ## Set up Docker Registry artifacts
-	@$(ACTIVATE_VENV) && $(CI_CMD) setup-local-docker-registry
 
 printvars: ## Print make variables
 	@$(foreach V,$(sort $(.VARIABLES)),$(if $(filter-out environment% default automatic,$(origin $V)),$(warning $V=$($V) ($(value $V)))))

@@ -1,6 +1,6 @@
 # The difference between this and docker-compose.yaml is the image. This should always reference the dev image rather than a stable release'
 ---
-version: '2.1'
+version: "2.1"
 volumes:
   anchore-db-volume:
     # Set this to 'true' to use an external volume. In which case, it must be created manually with "docker volume create anchore-db-volume"
@@ -9,115 +9,138 @@ volumes:
   anchore-scratch: {}
 
 services:
+  job-runner:
+    build:
+      dockerfile: Dockerfile.functional
+      context: .
+      args:
+        - GID_CI=${GID_CI}
+        - GID_DOCKER=${GID_DOCKER}
+    environment:
+      ANCHORE_TEST_DOCKER_REGISTRY_USER: ${ANCHORE_TEST_DOCKER_REGISTRY_USER:-anchore}
+      ANCHORE_TEST_DOCKER_REGISTRY_PASS: ${ANCHORE_TEST_DOCKER_REGISTRY_PASS:-foobar}
+      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000 # note: for volumes, this must be relative to where the docker daemon is running, not where the registry service is accessible by (dns)
+      ANCHORE_BASE_URL: http://engine-api:8228/v1
+      ANCHORE_CLI_URL: http://engine-api:8228/v1
+      ANCHORE_CLI_USER: admin
+      ANCHORE_CLI_PASS: foobar
+    working_dir: /job-workspace
+    volumes:
+      - ../../:/job-workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - engine-api
+    command: ["tail", "-f", "/dev/null"]
+
   # The primary API endpoint service
   engine-api:
     image: ${TEST_IMAGE_NAME}
     depends_on:
-    - anchore-db
-    - engine-catalog
+      - anchore-db
+      - engine-catalog
     ports:
-    - "8228:8228"
+      - "8228:8228"
     logging:
       driver: "json-file"
       options:
         max-size: 100m
     environment:
-    - ANCHORE_ENDPOINT_HOSTNAME=engine-api
-    - ANCHORE_DB_HOST=anchore-db
-    - ANCHORE_DB_PASSWORD=mysecretpassword
-    - ANCHORE_OAUTH_ENABLED=true
-    - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_ENDPOINT_HOSTNAME=engine-api
+      - ANCHORE_DB_HOST=anchore-db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+      - ANCHORE_OAUTH_ENABLED=true
+      - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "apiext"]
 
   # Catalog is the primary persistence and state manager of the system
   engine-catalog:
     image: ${TEST_IMAGE_NAME}
     depends_on:
-    - anchore-db
+      - anchore-db
     logging:
       driver: "json-file"
       options:
         max-size: 100m
     expose:
-    - 8228
+      - 8228
     environment:
-    - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
-    - ANCHORE_DB_HOST=anchore-db
-    - ANCHORE_DB_PASSWORD=mysecretpassword
-    - ANCHORE_OAUTH_ENABLED=true
-    - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
+      - ANCHORE_DB_HOST=anchore-db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+      - ANCHORE_OAUTH_ENABLED=true
+      - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
     image: ${TEST_IMAGE_NAME}
     depends_on:
-    - anchore-db
-    - engine-catalog
+      - anchore-db
+      - engine-catalog
     expose:
-    - 8228
+      - 8228
     logging:
       driver: "json-file"
       options:
         max-size: 100m
     environment:
-    - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
-    - ANCHORE_DB_HOST=anchore-db
-    - ANCHORE_DB_PASSWORD=mysecretpassword
-    - ANCHORE_OAUTH_ENABLED=true
-    - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
+      - ANCHORE_DB_HOST=anchore-db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+      - ANCHORE_OAUTH_ENABLED=true
+      - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "simplequeue"]
   engine-policy-engine:
     image: ${TEST_IMAGE_NAME}
     depends_on:
-    - anchore-db
-    - engine-catalog
+      - anchore-db
+      - engine-catalog
     expose:
-    - 8228
+      - 8228
     logging:
       driver: "json-file"
       options:
         max-size: 100m
     environment:
-    - ANCHORE_ENDPOINT_HOSTNAME=engine-policy-engine
-    - ANCHORE_DB_HOST=anchore-db
-    - ANCHORE_DB_PASSWORD=mysecretpassword
-    - ANCHORE_FEEDS_ENABLED=false
-    - ANCHORE_OAUTH_ENABLED=true
-    - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_ENDPOINT_HOSTNAME=engine-policy-engine
+      - ANCHORE_DB_HOST=anchore-db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+      - ANCHORE_FEEDS_ENABLED=false
+      - ANCHORE_OAUTH_ENABLED=true
+      - ANCHORE_AUTH_SECRET=supersharedsecret
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: ${TEST_IMAGE_NAME}
     depends_on:
-    - anchore-db
-    - engine-catalog
+      - anchore-db
+      - engine-catalog
     expose:
-    - 8228
+      - 8228
     logging:
       driver: "json-file"
       options:
         max-size: 100m
     environment:
-    - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
-    - ANCHORE_DB_HOST=anchore-db
-    - ANCHORE_DB_PASSWORD=mysecretpassword
-    - ANCHORE_OAUTH_ENABLED=true
-    - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
+      - ANCHORE_DB_HOST=anchore-db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+      - ANCHORE_OAUTH_ENABLED=true
+      - ANCHORE_AUTH_SECRET=supersharedsecret
     volumes:
-    - anchore-scratch:/analysis_scratch
+      - anchore-scratch:/analysis_scratch
     command: ["anchore-manager", "service", "start", "analyzer"]
   anchore-db:
     image: "postgres:9"
     volumes:
-    - anchore-db-volume:/var/lib/postgresql/data
+      - anchore-db-volume:/var/lib/postgresql/data
     environment:
-    - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_PASSWORD=mysecretpassword
     expose:
-    - 5432
+      - 5432
     logging:
       driver: "json-file"
       options:
         max-size: 100m
   docker-registry:
-    image: anchore-local-docker-registry:latest # Generated via make setup-local-docker-registry
+    image: registry:2.7.0
     container_name: docker-registry
     ports:
       - "5000:5000"
@@ -127,6 +150,9 @@ services:
       - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
       - REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt
       - REGISTRY_HTTP_TLS_KEY=/certs/domain.key
+    volumes:
+      - ../../tests/functional/artifacts/registry/auth:/auth
+      - ../../tests/functional/artifacts/registry/certs:/certs
     logging:
       driver: "json-file"
       options:

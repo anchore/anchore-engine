@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 #
@@ -13,7 +15,7 @@ def path_params(pkgs):
     of these fixtures is too long, causing unreadable output.
     """
     return [
-        pytest.param(path, id=path.split('/')[-1]) for path, _ in pkgs
+        pytest.param(path, id=path.split('/')[-1]) for path, _ in pkgs.items()
     ]
 
 
@@ -21,11 +23,18 @@ def metadata_params(pkgs):
     """
     Similarly to `path_params`, the idea is to produce readable output when
     running pytest by using `pytest.param` and reduced string representation
-    from the values passed in
+    from the values passed in.
     """
     return [
-        pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in pkgs
+        pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in pkgs.items()
     ]
+
+
+def assert_nested_dict_equal(a, b):
+    """
+    Compare arbitrarily nested dictionaries, asserting if they indeed are equivalent.
+    """
+    assert json.dumps(a, sort_keys=True, indent=2) == json.dumps(b, sort_keys=True, indent=2)
 
 
 

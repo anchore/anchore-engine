@@ -8,9 +8,9 @@ import json
 import os
 
 # Functional tests for user management flows for the api
-anchore_user = os.environ.get('ANCHORE_CLI_USER', 'admin')
-anchore_pass = os.environ.get('ANCHORE_CLI_PASS', 'foobar')
-anchore_url = os.environ.get('ANCHORE_CLI_URL', 'http://localhost:8228/v1')
+anchore_user = os.environ['ANCHORE_CLI_USER']
+anchore_pass = os.environ['ANCHORE_CLI_PASS']
+anchore_url = os.environ['ANCHORE_CLI_URL']
 
 # User and endpoint for most requests
 base_url = anchore_url
