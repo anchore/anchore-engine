@@ -177,7 +177,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                         subscription_value = json.loads(subscription_record['subscription_value'])
                         subscription_value['autosubscribe'] = autosubscribe
                         subscription_value['lookuptag'] = lookuptag
-                        rc = db_subscriptions.update(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
+                        rc = db_subscriptions.upsert(userId, regrepo, 'repo_update', {'subscription_value': json.dumps(subscription_value)}, session=dbsession)
 
                     subscription_records = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             except Exception as err:
@@ -652,7 +652,7 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
                 httpcode = 404
                 raise Exception("subscription to update does not exist in DB")
 
-            rc = db_subscriptions.update(userId, subscription_key, subscription_type, subscriptiondata, session=dbsession)
+            rc = db_subscriptions.upsert(userId, subscription_key, subscription_type, subscriptiondata, session=dbsession)
             return_object = db_subscriptions.get_byfilter(userId, session=dbsession, **dbfilter)
             httpcode = 200
 
@@ -1203,16 +1203,12 @@ def perform_vulnerability_scan(userId, imageDigest, dbsession, scantag=None, for
                 npayload = {
                     'diff_vulnerability_result': vdiff,
                     'imageDigest': imageDigest,
+                    'subscription_type': 'vuln_update'
                 }
                 
                 if annotations:
                     npayload['annotations'] = annotations
 
-                # original method
-                #rc = notifications.queue_notification(userId, scantag, 'vuln_update', npayload)
-
-                # new method
-                npayload['subscription_type'] = 'vuln_update'
                 success_event = anchore_engine.subsys.events.TagVulnerabilityUpdated(user_id=userId, full_tag=scantag, data=npayload)
                 try:
                     add_event(success_event, dbsession)
@@ -1332,15 +1328,14 @@ def perform_policy_evaluation(userId, imageDigest, dbsession, evaltag=None, poli
             if doqueue:            
                 try:
                     logger.debug("queueing policy eval notification")
+                    # Note: if this schema is changed, it should be updated in Swagger
                     npayload = {
                         'last_eval': last_evaluation_result,
                         'curr_eval': curr_evaluation_result,
-                        }
+                        'subscription_type': 'policy_eval'
+                    }
                     if annotations:
                         npayload['annotations'] = annotations
-
-                    # original method    
-                    #rc = notifications.queue_notification(userId, fulltag, 'policy_eval', npayload)
 
                     # new method
                     npayload['subscription_type'] = 'policy_eval'
@@ -1560,7 +1555,7 @@ def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False
                                     "cannot delete image that is the latest of its tags, and has active subscription")
                             else:
                                 subscription_record['active'] = False
-                                db_subscriptions.update(userId, subscription_record['subscription_key'],
+                                db_subscriptions.upsert(userId, subscription_record['subscription_key'],
                                                         subscription_record['subscription_type'], subscription_record,
                                                         session=dbsession)
 

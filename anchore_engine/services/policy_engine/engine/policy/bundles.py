@@ -1111,9 +1111,9 @@ class ExecutableBundle(VersionedEntityMixin):
 
                     for policy_id in rule.policy_ids:
                         if len(policies[policy_id]) > 1:
-                            raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
+                            raise DuplicateIdentifierFoundError(identifier=policy_id, identifier_type='policy')
                         if not policies[policy_id]:
-                            raise ReferencedObjectNotFoundError(reference_id=rule.policy_id, reference_type='policy')
+                            raise ReferencedObjectNotFoundError(reference_id=policy_id, reference_type='policy')
 
                         self.policies[policy_id] = ExecutablePolicy(policies[policy_id][0], strict_validation=strict_validation)
 

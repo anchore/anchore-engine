@@ -2,22 +2,21 @@
 API controller for /archives routes
 
 """
-import datetime
 import json
 import uuid
-from sqlalchemy import or_, and_
+
+from sqlalchemy import or_
+
 from anchore_engine import db
-from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
-from anchore_engine.db import session_scope, db_catalog_image, ArchivedImage, ArchivedImageDocker, CatalogImage, db_archived_images, ArchiveTransitionRule, ArchiveTransitionHistoryEntry, ArchiveTransitions
-from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
-from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer, Permission
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.utils import datetime_to_rfc3339, epoch_to_rfc3339
+from anchore_engine.db import session_scope, ArchivedImage, ArchivedImageDocker, db_archived_images, \
+    ArchiveTransitionRule, ArchiveTransitionHistoryEntry, ArchiveTransitions
+from anchore_engine.services.catalog.archiver import ArchiveImageTask, DeleteArchivedImageTask
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.services.catalog.archiver import ArchiveImageTask, DeleteArchivedImageTask, RestoreArchivedImageTask
-
+from anchore_engine.utils import epoch_to_rfc3339
 
 authorizer = get_authorizer()
 
@@ -86,19 +85,23 @@ def list_archives():
     """
     try:
         with session_scope() as session:
-            imgs = db_archived_images.summarize(session)
-            rules = session.query(ArchiveTransitionRule).filter_by(account=ApiRequestContextProxy.namespace()).all()
+            imgs = db_archived_images.summarize(session) or []
+            rules = session.query(ArchiveTransitionRule).filter_by(
+                account=ApiRequestContextProxy.namespace()).all() or []
             rule_count = len(rules)
-            newest = max(map(lambda x: x.last_updated, rules))
+            newest = None
+            if rule_count > 0:
+                newest = epoch_to_rfc3339(max(map(lambda x: x.last_updated, rules)))
 
         return {
             'images': imgs,
             'rules': {
                 'count': rule_count,
-                'last_updated': epoch_to_rfc3339(newest)
+                'last_updated': newest
             }
         }
     except Exception as ex:
+        logger.exception('Failed to list archives')
         return make_response_error(ex, in_httpcode=500), 500
 
 

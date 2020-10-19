@@ -26,13 +26,22 @@ def add(queueId, userId, dataId, data, tries, max_tries, session=None):
 def add_record(queue_record, session=None):
     return add(queue_record['queueId'], queue_record['userId'], queue_record['dataId'], queue_record['data'], queue_record['tries'], queue_record['max_tries'], session=session)
 
-def get_all(queueId, userId, session=None):
+
+def get_all(queue_id, user_id, session=None):
+    """
+    Get all Records from the Queue
+
+    :param queue_id: the name of the queue (subscription type)
+    :param user_id: the user (or account) for the queue context
+    :param session: database session (ORM)
+    :return: all records for queue according to filter (ordered by created_at)
+    """
     if not session:
         session = db.Session
 
     ret = []
 
-    our_results = session.query(QueueItem).filter_by(queueId=queueId, userId=userId).order_by(asc(QueueItem.created_at))
+    our_results = session.query(QueueItem).filter_by(queueId=queue_id, userId=user_id).order_by(asc(QueueItem.created_at))
     for result in our_results:
         obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
         obj['data'] = json.loads(obj['data'])

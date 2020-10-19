@@ -407,6 +407,7 @@ def handle_repo_watcher(*args, **kwargs):
                 continue
 
             event = None
+            subscription_id = subscription_record['subscription_id']
 
             try:
                 regrepo = subscription_record['subscription_key']
@@ -471,6 +472,11 @@ def handle_repo_watcher(*args, **kwargs):
                                 raise
 
                             with db.session_scope() as dbsession:
+                                # One last check for repo subscription status before adding image
+                                if not db_subscriptions.is_active(userId, subscription_id, dbsession):
+                                    logger.debug('Aborting repo scan for %s for account %s, subscription is no longer active' % (regrepo, userId))
+                                    break
+
                                 logger.debug("adding/updating image from repo scan " + str(new_image_info['fulltag']))
 
                                 # add the image
@@ -501,9 +507,9 @@ def handle_repo_watcher(*args, **kwargs):
                     with db.session_scope() as dbsession:
                         subscription_value['repotags'] = added_repotags
                         subscription_value['tagcount'] = len(added_repotags)
-                        db_subscriptions.update(userId, regrepo, 'repo_update',
-                                                {'subscription_value': json.dumps(subscription_value)},
-                                                session=dbsession)
+                        db_subscriptions.update_subscription_value(account=userId, subscription_id=subscription_id,
+                                                                   subscription_value=json.dumps(subscription_value),
+                                                                   session=dbsession)
 
                 else:
                     logger.debug("no new images in watched repo (" + str(regrepo) + "): skipping")
