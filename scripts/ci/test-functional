@@ -1,29 +1,19 @@
 #!/usr/bin/env bash
-
 set -euvo pipefail
+
+CI_COMPOSE_FILE=$1
+WORKSPACE_DIR=/tmp/job-workspace
 
 # Optional - only used for print_colorized
 source anchore-ci/utils
 
-# Dependencies
-hash tox || python -m pip install tox
-hash anchore-cli || python -m pip install -q anchorecli
-
-if [[ "$CI" == "true" ]] && ! hash skopeo; then
-    sudo su -c "echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
-    wget -nv https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/Debian_10/Release.key -O- | sudo apt-key add -
-    sudo apt-get update -qq
-    sudo DEBIAN_FRONTEND=noninteractive apt-get -yq install skopeo
-else
-    hash skopeo || (print_colorized ERROR "skopeo must be installed locally to run these tests" && exit 1)
-fi
-
-
 print_colorized INFO "Running Anchore Engine functional tests."; echo
 
-anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
-anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
-
-tox tests/functional --result-json .tox/test-reports.log
+docker-compose -f ${CI_COMPOSE_FILE} exec job-runner bash -c "\
+set -x && \
+anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system wait --feedsready '' && \
+anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system status && \
+/home/anchore/.local/bin/tox tests/functional --result-json .tox/test-reports.log ;\
+"
 
 print_colorized INFO "Finished running Anchore Engine functional tests."; echo

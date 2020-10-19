@@ -15,6 +15,7 @@ from operator import itemgetter
 import time
 import os
 import re
+import shlex
 from ijson import common as ijcommon
 from ijson.backends import python as ijpython
 
@@ -199,7 +200,7 @@ def run_sanitize(cmd_list):
 
     return [x for x in cmd_list if shellcheck(x)]
 
-def run_command_list(cmd_list, env=None):
+def run_command_list(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs):
     """
     Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
     :param cmd_list: list of command e.g. ['ls', '/tmp']
@@ -207,27 +208,15 @@ def run_command_list(cmd_list, env=None):
     :return: tuple (rc_int, stdout_str, stderr_str)
     """
 
-    rc = -1
-    sout = serr = None
     cmd_list = run_sanitize(cmd_list)
-    try:
-        if env:
-            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        else:
-            pipes = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sout, serr = pipes.communicate()
-        rc = pipes.returncode
-    except Exception as err:
-        raise err
+    pipes = subprocess.Popen(cmd_list, **dict(stdout=stdout, stderr=stderr, **kwargs))
+    stdout_result, stderr_result = pipes.communicate()
 
-    #sout = ensure_str(sout)
-    #serr = ensure_str(serr)
-
-    return rc, sout, serr
+    return pipes.returncode, stdout_result, stderr_result
 
 
-def run_command(cmdstr, env=None):
-    return run_command_list(cmdstr.split(), env=env)
+def run_command(cmdstr, **kwargs):
+    return run_command_list(shlex.split(cmdstr), **kwargs)
 
 
 def manifest_to_digest(rawmanifest):

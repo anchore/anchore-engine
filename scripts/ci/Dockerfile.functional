@@ -1,0 +1,24 @@
+FROM anchore-engine:dev
+
+RUN pip3 install --user tox
+
+USER root
+RUN set -ex && \
+    echo "installing OS dependencies" && \
+    yum update -y && \
+    yum install -y gcc make git python3-wheel python36-devel
+
+ENV DOCKERVERSION=18.03.1-ce
+RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz \
+  && tar xzvf docker-${DOCKERVERSION}.tgz --strip 1 \
+                 -C /usr/local/bin docker/docker \
+  && rm -f docker-${DOCKERVERSION}.tgz
+
+ARG GID_CI
+ARG GID_DOCKER
+
+RUN groupadd -g ${GID_CI} ci -f \
+  && groupadd -g ${GID_DOCKER} docker -f \
+  && usermod -a -G "${GID_CI},${GID_DOCKER}" anchore
+
+USER anchore

@@ -96,6 +96,10 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# vscode settings
+.vscode/*
+!.vscode/launch.json
+
 # mkdocs documentation
 /site
 
@@ -105,7 +109,7 @@ ENV/
 # IDEs
 .idea/
 *.iml
-.vscode/
+.history/
 
 # CI scripts
 anchore-ci*/
