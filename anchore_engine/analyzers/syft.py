@@ -18,9 +18,9 @@ def handle_gem(findings, artifact):
             'versions': [artifact['version']],
             'latest': artifact['version'],
             'sourcepkg': artifact['metadata'].get('homepage', ''),
-            'files': artifact['metadata'].get('files', []) or [],
-            'origins': artifact['metadata'].get('authors', []) or [],
-            'lics': artifact['metadata'].get('licenses', []) or [],
+            'files': artifact['metadata'].get('files', []),
+            'origins': artifact['metadata'].get('authors', []),
+            'lics': artifact['metadata'].get('licenses', []),
         }
 
     # inject the artifact document into the "raw" analyzer document
@@ -28,7 +28,7 @@ def handle_gem(findings, artifact):
 
 def filter_artifacts(artifact):
     # only allow artifacts which have handlers implemented, ignore the rest
-    return artifact['type'] in artifact_handler_dispatch.keys()
+    return artifact['type'] in artifact_handler_dispatch
 
 def catalog_image(image):
     all_results = run_syft(image)

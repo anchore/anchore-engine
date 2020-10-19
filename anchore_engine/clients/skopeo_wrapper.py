@@ -161,11 +161,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                         # if this directory is not empty, there is an issue and we should expect an exception
                         os.rmdir(blobs_dir)
 
-                    cmd = "ln -s {} ./blobs".format(use_cache_dir)
-                    rc, stdout, stderr = run_command(cmd, env=proc_env, cwd=copydir)
-                    if rc != 0:
-                        raise SkopeoError(cmd=cmd, rc=rc, out=stdout, err=stderr)
-
+                    os.symlink(use_cache_dir, blobs_dir)
                 break
         if not success:
             logger.error("could not download image")
