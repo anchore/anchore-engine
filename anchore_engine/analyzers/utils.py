@@ -2055,15 +2055,16 @@ def defaultdict_to_dict(d):
     return d
 
 def merge_nested_dict(a, b, path=None):
-    if path is None: path = []
+    if path is None: 
+        path = []
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge_nested_dict(a[key], b[key], path + [str(key)])
             elif a[key] == b[key]:
-                pass # same leaf value
-            else:
-                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                continue # same leaf value
+
+            raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
         else:
             a[key] = b[key]
     return a
