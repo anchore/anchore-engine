@@ -1,11 +1,22 @@
-import json
-
 import pytest
 
 #
 # Preloaded fixtures, with pytest.param that allows a nicer repr when the test runs, instead of the
 # default which slaps the whole (giant) dictionary, making output unreadable.
 #
+
+
+def package_path(path):
+    """
+    Produce a recognizable path name for a package. For the input of:
+
+    /usr/lib/node_modules/npm/node_modules/has/package.json
+
+    Instead of getting just the last part (which would be `package.json` for almost every
+    JS package) it would be: `has/package.json`
+    """
+    parts = path.split('/')
+    return '/'.join(parts[-2:])
 
 
 def path_params(pkgs):
@@ -15,7 +26,7 @@ def path_params(pkgs):
     of these fixtures is too long, causing unreadable output.
     """
     return [
-        pytest.param(path, id=path.split('/')[-1]) for path, _ in pkgs.items()
+        pytest.param(path, id=package_path(path)) for path, _ in pkgs.items()
     ]
 
 
@@ -26,15 +37,5 @@ def metadata_params(pkgs):
     from the values passed in.
     """
     return [
-        pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in pkgs.items()
+        pytest.param(path, metadata, id=package_path(path)) for path, metadata in pkgs.items()
     ]
-
-
-def assert_nested_dict_equal(a, b):
-    """
-    Compare arbitrarily nested dictionaries, asserting if they indeed are equivalent.
-    """
-    assert json.dumps(a, sort_keys=True, indent=2) == json.dumps(b, sort_keys=True, indent=2)
-
-
-
