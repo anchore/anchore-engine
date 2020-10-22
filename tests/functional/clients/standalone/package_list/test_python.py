@@ -1,8 +1,7 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
 from .fixtures import pypkgs
-from . import path_params, metadata_params, assert_nested_dict_equal
+from . import path_params, metadata_params
 import pytest
-import json
 
 
 class TestPythonPaths:
@@ -10,7 +9,6 @@ class TestPythonPaths:
     @pytest.mark.parametrize('path', path_params(pypkgs.pkgs))
     def test_all_packages_exist(self, analyzed_data, path):
         result = analyzed_data("py38")
-        # import pdb; pdb.set_trace()
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         assert pkgs.get(path)
 
@@ -22,39 +20,39 @@ class TestPythonMetadata:
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['files'], metadata['files'])
+        assert loaded['files'] == metadata['files']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_name(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['name'], metadata['name'])
+        assert loaded['name'] == metadata['name']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_type(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['type'], metadata['type'])
+        assert loaded['type'] == metadata['type']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_location(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['location'], metadata['location'])
+        assert loaded['location'] == metadata['location']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_version(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['version'], metadata['version'])
+        assert loaded['version'] == metadata['version']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_license(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['license'], metadata['license'])
+        assert loaded['license'] == metadata['license']

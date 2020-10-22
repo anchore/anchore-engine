@@ -1,8 +1,7 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
 from .fixtures import gems
-from . import path_params, metadata_params, assert_nested_dict_equal
+from . import path_params, metadata_params
 import pytest
-import json
 
 
 #
@@ -26,46 +25,46 @@ class TestGemMetadata:
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['files'], metadata['files'])
+        assert loaded['files'] == metadata['files']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_name(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['name'], metadata['name'])
+        assert loaded['name'] == metadata['name']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_lics(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['lics'], metadata['lics'])
+        assert loaded['lics'] == metadata['lics']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_versions(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['versions'], metadata['versions'])
+        assert loaded['versions'] == metadata['versions']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_latest(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['latest'], metadata['latest'])
+        assert loaded['latest'] == metadata['latest']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_origins(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['origins'], metadata['origins'])
+        assert loaded['origins'] == metadata['origins']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_sourcepkg(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
         loaded = pkgs.get(path, {})
-        assert_nested_dict_equal(loaded['sourcepkg'], metadata['sourcepkg'])
+        assert loaded['sourcepkg'] == metadata['sourcepkg']
