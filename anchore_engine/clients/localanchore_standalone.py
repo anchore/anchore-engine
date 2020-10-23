@@ -516,7 +516,7 @@ def delete_staging_dirs(staging_dirs):
     return True
 
 
-def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type='oci'):
+def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None):
     copydir = staging_dirs['copydir']
     cachedir = staging_dirs['cachedir']
 
@@ -530,14 +530,14 @@ def pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, par
 
     # download
     logger.info("Downloading image {} for analysis to {}".format(pullstring, copydir))
-    return anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir, dest_type=dest_type)
+    return anchore_engine.clients.skopeo_wrapper.download_image(pullstring, copydir, user=user, pw=pw, verify=registry_verify, manifest=manifest, parent_manifest=parent_manifest, use_cache_dir=cachedir)
 
 
 @retrying.retry(stop_max_attempt_number=IMAGE_PULL_RETRIES,
                 wait_incrementing_start=IMAGE_PULL_RETRY_WAIT_MS,
                 wait_incrementing_increment=IMAGE_PULL_RETRY_WAIT_INCREMENT_MS
                 )
-def retrying_pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None, dest_type=None):
+def retrying_pull_image(staging_dirs, pullstring, registry_creds=None, manifest=None, parent_manifest=None):
     """
     Retry-wrapper on pull image
 
@@ -550,7 +550,7 @@ def retrying_pull_image(staging_dirs, pullstring, registry_creds=None, manifest=
     """
 
     try:
-        result = pull_image(staging_dirs, pullstring, registry_creds, manifest, parent_manifest, dest_type)
+        result = pull_image(staging_dirs, pullstring, registry_creds, manifest, parent_manifest)
         if not result:
             # This is an unexpected case, pull_image() will return True or throw exception, but handle weird case anyway to ensure retry works
             raise Exception('Could not pull image for unknown reason. This is an unexpected error path')
@@ -920,7 +920,6 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
     rdigest = ""
     staging_dirs = None
     manifest_schema_version = 0
-    dest_type = 'oci'
     event = None
     pullstring = None
     fulltag = None
@@ -955,7 +954,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
 
         if image_source != 'docker-archive':
             try:
-                rc = retrying_pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest, dest_type=dest_type)
+                rc = retrying_pull_image(staging_dirs, pullstring, registry_creds=registry_creds, manifest=manifest, parent_manifest=parent_manifest)
             except Exception as err:
                 raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
 
