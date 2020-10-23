@@ -47,7 +47,7 @@ def enable_test_logging(level='WARN', outfile=None):
         level = 'INFO'
 
     log_level = log_level_map.get(level)
-    
+
     prefix = 'test'
     if outfile:
         logging.basicConfig(
@@ -199,9 +199,10 @@ def error(msg_string, *args):
 
 
 @bootstrap_logger_intercept('EXCEPTION')
-def exception(msg_string):
+def exception(msg_string, *args):
     import traceback
     traceback.print_exc()
+    msg_string = safe_formatter(msg_string, args)
     return _msg(msg_string, msg_log_level='ERROR')
 
 
