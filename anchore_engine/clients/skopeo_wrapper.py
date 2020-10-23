@@ -4,10 +4,11 @@ import re
 import tempfile
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.utils import run_command, run_command_list, run_command, manifest_to_digest, AnchoreException
+from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 from anchore_engine.common.errors import AnchoreError
 from urllib.request import urlretrieve
+
 
 def manifest_to_digest_shellout(rawmanifest):
     ret = None
@@ -46,6 +47,7 @@ def manifest_to_digest_shellout(rawmanifest):
 
     return ret
 
+
 def copy_image_from_docker_archive(source_archive, dest_dir):
     cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(source_archive, dest_dir)
     cmd = cmdstr.split()
@@ -59,6 +61,7 @@ def copy_image_from_docker_archive(source_archive, dest_dir):
     except Exception as err:
         logger.error("command failed with exception - " + str(err))
         raise err
+
 
 def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, parent_manifest=None, use_cache_dir=None):
     try:
@@ -100,11 +103,11 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         if manifest:
             manifest_data = json.loads(manifest)
 
-            for l in manifest_data.get('layers', []):
-                if 'foreign.diff' in l.get('mediaType', ""):
-                    layer_digest_raw = l.get('digest', "")
+            for layer in manifest_data.get('layers', []):
+                if 'foreign.diff' in layer.get('mediaType', ""):
+                    layer_digest_raw = layer.get('digest', "")
                     layer_digest = get_digest_value(layer_digest_raw)
-                    layer_urls = l.get('urls', [])
+                    layer_urls = layer.get('urls', [])
 
                     blobs_to_fetch.append({'digest': layer_digest, 'urls': layer_urls})
 
@@ -165,25 +168,10 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
 
                     os.symlink(use_cache_dir, blobs_dir)
 
-                for blob in blobs_to_fetch:
-                    blob_was_fetched = False
+                fetch_oci_blobs(blobs_dir, blobs_to_fetch)
 
-                    for url in blob['urls']:
-                        # try to retrieve, and if successful, break
-                        blob_destination_path = os.path.join(blobs_dir, "sha256", blob['digest'])
-
-                        try:
-                            urlretrieve(url, blob_destination_path)
-                            blob_was_fetched = True
-                            break
-                        except:
-                            continue
-
-                    if not blob_was_fetched:
-                        # TODO: How should we handle the case of no successful retrievals?
-                        pass
-
-                ensure_no_nondistributable_media_types(os.path.join(copydir, "index.json"))
+                index_file_path = os.path.join(copydir, "index.json")
+                ensure_no_nondistributable_media_types(index_file_path)
 
                 break
         if not success:
@@ -194,39 +182,46 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
 
     return True
 
+
+def fetch_oci_blobs(blobs_dir: str, blobs_to_fetch: list):
+    for blob in blobs_to_fetch:
+        for url in blob['urls']:
+            # try to retrieve, and if successful, break
+            blob_destination_path = os.path.join(blobs_dir, "sha256", blob['digest'])
+
+            try:
+                urlretrieve(url, blob_destination_path)
+                break
+            except Exception:
+                logger.exception(
+                    "failed saving blob from URL (%s) to path (%s)",
+                    url,
+                    blob_destination_path
+                )
+                continue
+
+
 def get_digest_value(digest_with_algorithm_prefix: str):
-    digest_raw = digest_with_algorithm_prefix
+    return digest_with_algorithm_prefix.split(':')[-1]
 
-    if ":" in digest_raw:
-        _, digest_value = digest_raw.split(":", 1)
-        return digest_value
-
-    return digest_raw
 
 def ensure_no_nondistributable_media_types(oci_index_file_path: str):
     manifest_file_path = get_manifest_path_from_index(oci_index_file_path)
 
-    with open(manifest_file_path, 'r') as manifest_file:
-        data = manifest_file.read()
+    with open(manifest_file_path, 'r') as _f:
+        manifest = json.load(_f)
 
-    manifest = json.loads(data)
     layers = manifest.get('layers', [])
     updated_layers = list(map(remove_nondistributable, layers))
     manifest['layers'] = updated_layers
 
-    with open(manifest_file_path, 'w') as manifest_file:
-        manifest_file.write(json.dumps(manifest))
+    with open(manifest_file_path, 'w') as _f:
+        json.dump(manifest, _f)
 
-def remove_nondistributable(layer: dict):
-    updated_media_type = layer.get('mediaType', '').replace('nondistributable.', '')
-    layer['mediaType'] = updated_media_type
-    return layer
 
 def get_manifest_path_from_index(oci_index_file_path: str):
-    with open(oci_index_file_path, 'r') as index_file:
-        data = index_file.read()
-
-    index = json.loads(data)
+    with open(oci_index_file_path, 'r') as _f:
+        index = json.load(_f)
 
     for m in index.get('manifests', []):
         manifest_digest_raw = m.get('digest', "")
@@ -234,6 +229,13 @@ def get_manifest_path_from_index(oci_index_file_path: str):
         return os.path.join(os.path.dirname(oci_index_file_path), "blobs", "sha256", manifest_digest)
 
     raise Exception("No manifests found in OCI index ({})".format(oci_index_file_path))
+
+
+def remove_nondistributable(layer: dict):
+    updated_media_type = layer.get('mediaType', '').replace('nondistributable.', '')
+    layer['mediaType'] = updated_media_type
+    return layer
+
 
 def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, lookuptag=None):
     try:
@@ -292,6 +294,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
         raise Exception("no tags found for input repo from skopeo")
 
     return repotags
+
 
 def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     ret = None
@@ -358,6 +361,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
 
     return ret
 
+
 def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True, topmanifest=None):
     manifest = {}
     digest = None
@@ -403,6 +407,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
         raise SkopeoError(msg="No digest/manifest from skopeo")
 
     return manifest, digest, topdigest, topmanifest
+
 
 class SkopeoError(AnchoreException):
 
