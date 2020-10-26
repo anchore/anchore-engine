@@ -38,8 +38,6 @@ services:
     depends_on:
       - anchore-db
       - engine-catalog
-    ports:
-      - "8228:8228"
     logging:
       driver: "json-file"
       options:
@@ -157,20 +155,4 @@ services:
       driver: "json-file"
       options:
         max-size: 100m
-  # Kubernetes handler webhook. Uncomment to use, not typically needed for docker-compose installs
-#  kubehook:
-#    image: ${TEST_IMAGE_NAME}
-#    depends_on:
-#    - anchore-db
-#    - engine-catalog
-#    ports:
-#    - "8338:8228"
-#    logging:
-#      driver: "json-file"
-#      options:
-#        max-size: 100m
-#    environment:
-#    - ANCHORE_DB_HOST=anchore-db
-#    - ANCHORE_DB_PASSWORD=mysecretpassword
-#    - ANCHORE_ENDPOINT_HOSTNAME=kubehook
-#    command: ["anchore-manager", "service", "start", "kubernetes_webhook"]
+

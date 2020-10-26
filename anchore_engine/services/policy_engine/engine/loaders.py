@@ -729,7 +729,6 @@ class ImageLoader(object):
             n.origin = pkg_json.get('origin')
             
             m = {
-                'python_distribution_metadata': pkg_json.get('metadata'),
                 'files': pkg_json.get('files')
             }
             n.metadata_json = m
