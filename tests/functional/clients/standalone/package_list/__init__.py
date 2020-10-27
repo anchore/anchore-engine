@@ -19,12 +19,20 @@ def path_params(pkgs):
     ]
 
 
-def metadata_params(pkgs):
+def metadata_params(pkgs, fields=None):
     """
     Similarly to `path_params`, the idea is to produce readable output when
     running pytest by using `pytest.param` and reduced string representation
     from the values passed in.
     """
+    if fields:
+        params = []
+        for field in fields:
+            params += [
+                pytest.param(path, metadata, field, id="field={} element={}".format(repr(field), repr(path.split('/')[-1]))) for path, metadata in pkgs.items()
+            ]
+        return params
+
     return [
         pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in pkgs.items()
     ]
