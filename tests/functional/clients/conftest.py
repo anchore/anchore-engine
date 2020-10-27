@@ -46,6 +46,14 @@ pre_baked_images = {
         'image_source': 'registry',
         'schema_version': 'v2',
     },
+    'java': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'java',
+        'digest': 'sha256:9f453a37ea62976dd0f6b8ca4da2010cc01c3988f2e8c290044576d936bae710',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
 }
 
 
