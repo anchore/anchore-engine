@@ -54,6 +54,14 @@ pre_baked_images = {
         'image_source': 'registry',
         'schema_version': 'v2',
     },
+    'stretch-slim': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'debian-stretch-slim',
+        'digest': 'sha256:cd74be1a65a7c7f07aa9952f622097a6452012fea741fbdade0e763edaa55ba0',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
 }
 
 
