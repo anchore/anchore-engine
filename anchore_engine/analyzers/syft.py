@@ -7,7 +7,82 @@ import anchore_engine.analyzers.utils
 from anchore_engine.clients.syft_wrapper import run_syft
 
 
+def dig(target, *keys, **kwargs):
+    """
+    Traverse a nested set of dictionaries, tuples, or lists similar to ruby's dig function.
+    """
+    end_of_chain = target
+    for key in keys:
+        if isinstance(end_of_chain, dict) and key in end_of_chain:
+            end_of_chain = end_of_chain[key]
+        elif isinstance(end_of_chain, (list, tuple)) and isinstance(key, int):
+            end_of_chain = end_of_chain[key]
+        else:
+            if 'fail' in kwargs and kwargs['fail'] is True:
+                if isinstance(end_of_chain, dict):
+                    raise KeyError
+                else:
+                    raise IndexError
+            elif 'default' in kwargs:
+                return kwargs['default']
+            else:
+                return None
+
+    return end_of_chain
+
+
+def handle_java(findings, artifact):
+    """Java results handler for syft output.
+
+    Args:
+        findings (dict): nested dictionary representing a json structure.
+        artifact (json): datastructure presented by syft.
+
+    Returns:
+        dict: findings dictionary is populated with values from the provided
+              artifact.
+    """
+    
+    pkg_key = dig(artifact, 'metadata', 'virtualPath', default="N/A")
+    java_ext = pkg_key.split(".")[-1]
+    maven_version = dig(artifact, 'metadata', 'pomProperties', 'version', default="N/A")
+
+    spec_vendor = dig(artifact, 'metadata', 'manifest', 'main', 'Specification-Vendor')
+    implem_vendor = dig(artifact, 'metadata', 'manifest', 'main', 'Implementation-Vendor')
+
+    if spec_vendor:
+        origin = spec_vendor
+    elif implem_vendor:
+        origin = implem_vendor
+    else:
+        origin = dig(artifact, 'metadata', 'pomProperties', 'groupId', default="N/A")
+    
+    pkg_value = {
+        'name': artifact['name'],
+        'specification-version': dig(artifact, 'metadata', 'manifest', 'main', 'Specification-Version', default="N/A"),
+        'implementation-version': dig(artifact, 'metadata', 'manifest', 'main', 'Implementation-Version', default="N/A"),
+        'maven-version': maven_version,
+        'origin': origin,
+        'location': pkg_key, # this should be related to full path
+        'type': "java-" + java_ext,
+    }
+
+    # inject the artifact document into the "raw" analyzer document
+    findings['package_list']['pkgs.java']['base'][pkg_key] = pkg_value
+
+
 def handle_python(findings, artifact):
+    """Python results handler for syft output.
+
+    Args:
+        findings (dict): nested dictionary representing a json structure.
+        artifact (json): datastructure presented by syft.
+
+    Returns:
+        dict: findings dictionary is populated with values from the provided
+              artifact.
+    """
+
     if "python-package-cataloger" not in artifact['foundBy']:
         # engine only includes python findings for egg and wheel installations (with rich metadata)
         return
@@ -48,6 +123,17 @@ def handle_python(findings, artifact):
 
 
 def handle_gem(findings, artifact):
+    """Gem results handler for syft output.
+
+    Args:
+        findings (dict): nested dictionary representing a json structure.
+        artifact (json): datastructure presented by syft.
+
+    Returns:
+        dict: findings dictionary is populated with values from the provided
+              artifact.
+    """
+
     pkg_key = artifact['locations'][0]['path']
 
     # craft the artifact document
@@ -66,6 +152,17 @@ def handle_gem(findings, artifact):
 
 
 def handle_npm(findings, artifact):
+    """Javascript results handler for syft output.
+
+    Args:
+        findings (dict): nested dictionary representing a json structure.
+        artifact (json): datastructure presented by syft.
+
+    Returns:
+        dict: findings dictionary is populated with values from the provided
+              artifact.
+    """
+
     pkg_key = artifact['locations'][0]['path']
     homepage = artifact['metadata'].get('homepage', '')
     author = artifact['metadata'].get('author')
@@ -87,11 +184,34 @@ def handle_npm(findings, artifact):
 
 
 def filter_artifacts(artifact):
-    # only allow artifacts which have handlers implemented, ignore the rest
-    return artifact['type'] in artifact_handler_dispatch
+    """Filter Artifacts 
+    
+    helper function which only allow artifacts which have handlers 
+    implemented, ignore the rest
+
+    Args:
+        artifact (json): datastructure presented by syft.
+
+    Returns:
+        str: keyword value used to determine the dispatch function.
+    """
+    
+    return artifact['type'] in ARTIFACT_HANDLER_DISPATCH
 
 
 def catalog_image(image):
+    """Catalog image transforms syft output into "raw" analyzer
+    json document then takes a sub-set of the findings and invokes the
+    corrisponding handler to build specific json document.
+
+
+    Args:
+        image (str): container image name.
+
+    Returns:
+        dict: dictionary structure which represents the json data.
+    """
+    
     all_results = run_syft(image)
 
     # transform output into analyzer-module/service "raw" analyzer json document
@@ -102,14 +222,14 @@ def catalog_image(image):
     # craft the artifact document and inject into the "raw" analyzer json
     # document
     for artifact in filter(filter_artifacts, all_results['artifacts']):
-        artifact_handler_dispatch[artifact['type']](findings, artifact)
+        ARTIFACT_HANDLER_DISPATCH[artifact['type']](findings, artifact)
 
     return anchore_engine.analyzers.utils.defaultdict_to_dict(findings)
 
-
-artifact_handler_dispatch = {
+ARTIFACT_HANDLER_DISPATCH = {
     'gem': handle_gem,
     'python': handle_python,
     'npm': handle_npm,
-    # TODO: add handlers as we go...
+    'java-archive': handle_java,
+    'jenkins-plugin': handle_java,
 }

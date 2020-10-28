@@ -25,18 +25,18 @@ pkgs = {
         "type": "java-jar",
         "name": "commons-codec-1.2",
     },
-    "/TwilioNotifier.hpi:WEB-INF/lib/commons-httpclient-3.1.jar": {
-        "metadata": {
-            "MANIFEST.MF": "Manifest-Version: 1.0\r\nAnt-Version: Apache Ant 1.6.5\r\nCreated-By: 1.5.0_11-b03 (Sun Microsystems Inc.)\r\nBuilt-By: oleg\r\nMaven-Version: 1.1\r\n\r\nName: org/apache/commons/httpclient\r\nExtension-name: org.apache.commons.httpclient\r\nSpecification-Title: Jakarta Commons HttpClient\r\nSpecification-Vendor: Apache Software Foundation\r\nSpecification-Version: 3.1\r\nImplementation-Title: org.apache.commons.httpclient\r\nImplementation-Vendor: Apache Software Foundation\r\nImplementation-Version: 3.1\r\nImplementation-Vendor-Id: org.apache\r\nX-Compile-Source-JDK: 1.2\r\nX-Compile-Target-JDK: 1.2\r\n\r\n"
-        },
-        "specification-version": "3.1",
-        "implementation-version": "3.1",
-        "maven-version": "N/A",
-        "origin": "Apache Software Foundation",
-        "location": "/TwilioNotifier.hpi:WEB-INF/lib/commons-httpclient-3.1.jar",
-        "type": "java-jar",
-        "name": "commons-httpclient-3.1",
-    },
+    # "/TwilioNotifier.hpi:WEB-INF/lib/commons-httpclient-3.1.jar": {
+    #     "metadata": {
+    #         "MANIFEST.MF": "Manifest-Version: 1.0\r\nAnt-Version: Apache Ant 1.6.5\r\nCreated-By: 1.5.0_11-b03 (Sun Microsystems Inc.)\r\nBuilt-By: oleg\r\nMaven-Version: 1.1\r\n\r\nName: org/apache/commons/httpclient\r\nExtension-name: org.apache.commons.httpclient\r\nSpecification-Title: Jakarta Commons HttpClient\r\nSpecification-Vendor: Apache Software Foundation\r\nSpecification-Version: 3.1\r\nImplementation-Title: org.apache.commons.httpclient\r\nImplementation-Vendor: Apache Software Foundation\r\nImplementation-Version: 3.1\r\nImplementation-Vendor-Id: org.apache\r\nX-Compile-Source-JDK: 1.2\r\nX-Compile-Target-JDK: 1.2\r\n\r\n"
+    #     },
+    #     "specification-version": "3.1",
+    #     "implementation-version": "3.1",
+    #     "maven-version": "N/A",
+    #     "origin": "Apache Software Foundation",
+    #     "location": "/TwilioNotifier.hpi:WEB-INF/lib/commons-httpclient-3.1.jar",
+    #     "type": "java-jar",
+    #     "name": "commons-httpclient-3.1",
+    # },
     "/TwilioNotifier.hpi:WEB-INF/lib/commons-logging-1.0.4.jar": {
         "metadata": {
             "MANIFEST.MF": "Manifest-Version: 1.0\r\nAnt-Version: Apache Ant 1.5.3 \r\nCreated-By: Blackdown-1.3.1_02b-FCS (Blackdown Java-Linux Team)\r\nExtension-Name: org.apache.commons.logging\r\nSpecification-Vendor: Apache Software Foundation\r\nSpecification-Version: 1.0\r\nImplementation-Vendor: Apache Software Foundation\r\nImplementation-Version: 1.0.4\r\n\r\n"
