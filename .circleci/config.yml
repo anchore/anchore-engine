@@ -77,7 +77,7 @@ commands:
     parameters:
       test_type:
         type: string
-      py_version:
+      tox_env:
         type: string
         default: "py36"
     steps:
@@ -85,7 +85,7 @@ commands:
           keys:
             - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
-          echo 'export TOX_ENV="<< parameters.py_version >>"' >> $BASH_ENV
+          echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: run tests
           command: |
@@ -105,13 +105,16 @@ jobs:
     parameters:
       py_version:
         type: string
+      tox_env:
+        type: string
     docker:
       - image: circleci/python:<<parameters.py_version>>
     environment: *global_environment_vars
     steps:
       - checkout
       - run_tests:
-          test_type: test-unit <<parameters.py_version>>
+          test_type: test-unit
+          tox_env: <<parameters.tox_env>>
 
   lint:
     parameters:
@@ -238,10 +241,12 @@ workflows:
     jobs:
       - unit_tests:
           name: unit_tests_36
-          py_version: "py36"
+          py_version: "3.6"
+          tox_env: "py36"
       - unit_tests:
           name: unit_tests_38
-          py_version: "py38"
+          py_version: "3.8"
+          tox_env: "py38"
       - lint:
           name: lint_36
           py_version: "3.6"
@@ -288,12 +293,12 @@ workflows:
     jobs:
       - unit_tests:
           name: unit_tests_36
-          py_version: "py36"
-          filters: *filter_nightly
+          py_version: "3.6"
+          tox_env: "py36"
       - unit_tests:
           name: unit_tests_38
-          py_version: "py38"
-          filters: *filter_nightly
+          py_version: "3.8"
+          tox_env: "py38"
       - lint:
           name: lint_36
           py_version: "3.6"
@@ -398,12 +403,12 @@ workflows:
     jobs:
       - unit_tests:
           name: unit_tests_36
-          py_version: "py36"
-          filters: *filter_rebuild_tags
+          py_version: "3.6"
+          tox_env: "py36"
       - unit_tests:
           name: unit_tests_38
-          py_version: "py38"
-          filters: *filter_rebuild_tags
+          py_version: "3.8"
+          tox_env: "py38"
       - lint:
           name: lint_36
           py_version: "3.6"
