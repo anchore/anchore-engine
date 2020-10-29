@@ -105,8 +105,11 @@ jobs:
           test_type: test-unit
 
   lint:
+    parameters:
+      py_version:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     environment: *global_environment_vars
     steps:
       - checkout
@@ -225,13 +228,19 @@ workflows:
   default_workflow:
     jobs:
       - unit_tests
-      - lint
+      - lint:
+          name: lint_36
+          py_version: "3.6"
+      - lint:
+          name: lint_38
+          py_version: "3.8"
       - integration_tests:
           requires:
             - unit_tests
       - build:
           requires:
-            - lint
+            - lint_36
+            - lint_38
             - unit_tests
       - functional_tests:
           requires:
@@ -264,6 +273,12 @@ workflows:
       - unit_tests:
           filters: *filter_nightly
       - lint:
+          name: lint_36
+          py_version: "3.6"
+          filters: *filter_nightly
+      - lint:
+          name: lint_38
+          py_version: "3.8"
           filters: *filter_nightly
       - integration_tests:
           filters: *filter_nightly
@@ -272,7 +287,8 @@ workflows:
       - build:
           filters: *filter_nightly
           requires:
-            - lint
+            - lint_36
+            - lint_38
             - unit_tests
       - functional_tests:
           filters: *filter_nightly
@@ -359,16 +375,24 @@ workflows:
       - unit_tests:
           filters: *filter_rebuild_tags
       - lint:
+          name: lint_36
+          py_version: "3.6"
+          filters: *filter_rebuild_tags
+      - lint:
+          name: lint_38
+          py_version: "3.8"
           filters: *filter_rebuild_tags
       - integration_tests:
           filters: *filter_rebuild_tags
           requires:
-            - lint
+            - lint_36
+            - lint_38
             - unit_tests
       - build:
           filters: *filter_rebuild_tags
           requires:
-            - lint
+            - lint_36
+            - lint_38
             - unit_tests
       - functional_tests:
           filters: *filter_rebuild_tags
