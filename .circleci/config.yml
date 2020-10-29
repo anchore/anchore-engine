@@ -129,8 +129,13 @@ jobs:
           test_type: lint
 
   integration_tests:
+    parameters:
+      py_version:
+        type: string
+      tox_env:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
       - image: anchore/test-infra-minio:latest
         command:
           - server
@@ -160,6 +165,7 @@ jobs:
       - checkout
       - run_tests:
           test_type: test-integration
+          tox_env: <<parameters.tox_env>>
 
   build:
     docker:
@@ -254,8 +260,16 @@ workflows:
           name: lint_38
           py_version: "3.8"
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           requires:
             - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          requires:
             - unit_tests_38
       - build:
           requires:
@@ -273,7 +287,8 @@ workflows:
           filters: *filter_release_branch
           requires:
             - functional_tests
-            - integration_tests
+            - integration_tests_36
+            - integration_tests_38
       - anchore/image_scan:
           context: dockerhub
           requires:
@@ -308,9 +323,18 @@ workflows:
           py_version: "3.8"
           filters: *filter_nightly
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           filters: *filter_nightly
           requires:
             - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          filters: *filter_nightly
+          requires:
             - unit_tests_38
       - build:
           filters: *filter_nightly
@@ -335,7 +359,8 @@ workflows:
           filters: *filter_nightly
           requires:
             - functional_tests
-            - integration_tests
+            - integration_tests_36
+            - integration_tests_38
             - e2e_tests
       - anchore/image_scan:
           context: dockerhub
@@ -418,11 +443,20 @@ workflows:
           py_version: "3.8"
           filters: *filter_rebuild_tags
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           filters: *filter_rebuild_tags
           requires:
             - lint_36
-            - lint_38
             - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          filters: *filter_rebuild_tags
+          requires:
+            - lint_38
             - unit_tests_38
       - build:
           filters: *filter_rebuild_tags
@@ -448,7 +482,8 @@ workflows:
           requires:
             - e2e_tests
             - functional_tests
-            - integration_tests
+            - integration_tests_36
+            - integration_tests_38
       - anchore/image_scan:
           name: anchore_image_scan
           context: dockerhub

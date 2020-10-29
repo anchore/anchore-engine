@@ -24,6 +24,7 @@ else
 fi
 
 echo "Running the tests"
+echo "Full params: ${full_params}"
 tox ${full_params}
 test_return_code=$?
 

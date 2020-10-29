@@ -5,15 +5,21 @@ set -euvo pipefail
 # Optional - only used for print_colorized
 source anchore-ci/utils
 
+default_tox_envs="py36"
+tox_env="${TOX_ENV:-$default_tox_envs}"
+
 hash tox || python -m pip install tox
 hash docker-compose || python -m pip install docker-compose
 
-print_colorized INFO "Running Anchore Engine integration tests."; echo
 
-if [[ "${CI:-false}" == true ]]; then
-    tox tests/integration --result-json .tox/test-reports.log
-else
-    ./scripts/tests/test_with_deps.sh tests/integration/
-fi
+for e in $(echo "${tox_env}"); do
+    print_colorized INFO "Running Anchore Engine integration tests using tox env $e."
+    if [[ "${CI:-false}" == true ]]; then
+        tox -e "${e}" tests/integration --result-json .tox/test-reports.log
+    else
+        print_colorized INFO "Running locally"
+        ./scripts/tests/test_with_deps.sh tests/integration/ "-e ${e}"
+    fi
+done
 
 print_colorized INFO "Finished running Anchore Engine integration tests."; echo
