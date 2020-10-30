@@ -169,7 +169,7 @@ jobs:
 
   build:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     resource_class: large
     environment: *global_environment_vars
     steps:
@@ -327,10 +327,12 @@ workflows:
           name: unit_tests_36
           py_version: "3.6"
           tox_env: "py36"
+          filters: *filter_nightly
       - unit_tests:
           name: unit_tests_38
           py_version: "3.8"
           tox_env: "py38"
+          filters: *filter_nightly
       - lint:
           name: lint_36
           py_version: "3.6"
@@ -458,10 +460,12 @@ workflows:
           name: unit_tests_36
           py_version: "3.6"
           tox_env: "py36"
+          filters: *filter_rebuild_tags
       - unit_tests:
           name: unit_tests_38
           py_version: "3.8"
           tox_env: "py38"
+          filters: *filter_rebuild_tags
       - lint:
           name: lint_36
           py_version: "3.6"
