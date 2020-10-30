@@ -3,32 +3,8 @@
 import os
 import collections
 
-import anchore_engine.analyzers.utils
+from anchore_engine.analyzers.utils import dig, defaultdict_to_dict
 from anchore_engine.clients.syft_wrapper import run_syft
-
-
-def dig(target, *keys, **kwargs):
-    """
-    Traverse a nested set of dictionaries, tuples, or lists similar to ruby's dig function.
-    """
-    end_of_chain = target
-    for key in keys:
-        if isinstance(end_of_chain, dict) and key in end_of_chain:
-            end_of_chain = end_of_chain[key]
-        elif isinstance(end_of_chain, (list, tuple)) and isinstance(key, int):
-            end_of_chain = end_of_chain[key]
-        else:
-            if 'fail' in kwargs and kwargs['fail'] is True:
-                if isinstance(end_of_chain, dict):
-                    raise KeyError
-                else:
-                    raise IndexError
-            elif 'default' in kwargs:
-                return kwargs['default']
-            else:
-                return None
-
-    return end_of_chain
 
 
 def handle_java(findings, artifact):
@@ -44,25 +20,45 @@ def handle_java(findings, artifact):
     """
     
     pkg_key = dig(artifact, 'metadata', 'virtualPath', default="N/A")
-    java_ext = pkg_key.split(".")[-1]
-    maven_version = dig(artifact, 'metadata', 'pomProperties', 'version', default="N/A")
 
-    spec_vendor = dig(artifact, 'metadata', 'manifest', 'main', 'Specification-Vendor')
-    implem_vendor = dig(artifact, 'metadata', 'manifest', 'main', 'Implementation-Vendor')
-
-    if spec_vendor:
-        origin = spec_vendor
-    elif implem_vendor:
-        origin = implem_vendor
+    virtualElements = pkg_key.split(":")
+    if "." in virtualElements[-1]:
+        # there may be an extension in the virtual path, use it
+        java_ext = virtualElements[-1].split(".")[-1]
     else:
-        origin = dig(artifact, 'metadata', 'pomProperties', 'groupId', default="N/A")
+        # the last field is probably a package name, use the second to last virtual path element and extract the extension
+        java_ext = virtualElements[-2].split(".")[-1]
+
+    # per the manifest specification https://docs.oracle.com/en/java/javase/11/docs/specs/jar/jar.html#jar-manifest
+    # these fields SHOULD be in the main section, however, there are multiple java packages found
+    # where this information is thrown into named subsections.
     
+    # Today anchore-engine reads key-value pairs in all sections into one large map --this behavior is replicated here.
+
+    values = {}
+
+    main_section = dig(artifact, 'metadata', 'manifest', 'main', default={})
+    named_sections = dig(artifact, 'metadata', 'manifest', 'namedSections', default={})
+    for name, section in [('main', main_section)] + [pair for pair in named_sections.items()]:
+        for field, value in section.items():
+            values[field] = value
+
+    # find the origin
+    group_id = dig(artifact, 'metadata', 'pomProperties', 'groupId')
+    origin = values.get('Specification-Vendor')
+    if not origin:
+        origin = values.get('Implementation-Vendor')
+    
+    # use pom properties over manifest info (if available)
+    if group_id:
+        origin = group_id
+
     pkg_value = {
         'name': artifact['name'],
-        'specification-version': dig(artifact, 'metadata', 'manifest', 'main', 'Specification-Version', default="N/A"),
-        'implementation-version': dig(artifact, 'metadata', 'manifest', 'main', 'Implementation-Version', default="N/A"),
-        'maven-version': maven_version,
-        'origin': origin,
+        'specification-version': values.get('Specification-Version', "N/A"),
+        'implementation-version': values.get('Implementation-Version', "N/A"),
+        'maven-version': dig(artifact, 'metadata', 'pomProperties', 'version', default="N/A"),
+        'origin': origin or "N/A",
         'location': pkg_key, # this should be related to full path
         'type': "java-" + java_ext,
     }
@@ -224,7 +220,7 @@ def catalog_image(image):
     for artifact in filter(filter_artifacts, all_results['artifacts']):
         ARTIFACT_HANDLER_DISPATCH[artifact['type']](findings, artifact)
 
-    return anchore_engine.analyzers.utils.defaultdict_to_dict(findings)
+    return defaultdict_to_dict(findings)
 
 ARTIFACT_HANDLER_DISPATCH = {
     'gem': handle_gem,
