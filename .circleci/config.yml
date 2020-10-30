@@ -291,14 +291,12 @@ workflows:
           name: e2e_tests_36
           py_version: "3.6"
           context: e2e-testing
-          filters: *filter_nightly
           requires:
             - build
       - e2e_tests:
           name: e2e_tests_38
           py_version: "3.8"
           context: e2e-testing
-          filters: *filter_nightly
           requires:
             - build
       - functional_tests:
