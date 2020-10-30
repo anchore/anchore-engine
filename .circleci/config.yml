@@ -190,8 +190,13 @@ jobs:
             - caches/*
 
   functional_tests:
+    parameters:
+      py_version:
+        type: string
+      tox_env:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     resource_class: large
     environment:
       <<: *global_environment_vars
@@ -205,6 +210,8 @@ jobs:
       - <<: *load_docker_image
       - <<: *ssh_forward_port
       - <<: *initialize_docker_registry_artifacts
+      - run:
+          echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
           command: make setup-and-test-functional
@@ -278,6 +285,15 @@ workflows:
             - unit_tests_36
             - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           requires:
             - build
       - push_image:
@@ -286,7 +302,8 @@ workflows:
           context: dockerhub
           filters: *filter_release_branch
           requires:
-            - functional_tests
+            - functional_tests_36
+            - functional_tests_38
             - integration_tests_36
             - integration_tests_38
       - anchore/image_scan:
@@ -344,6 +361,16 @@ workflows:
             - unit_tests_36
             - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_nightly
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_nightly
           requires:
             - build
@@ -358,7 +385,8 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            - functional_tests
+            - functional_tests_36
+            - functional_tests_38
             - integration_tests_36
             - integration_tests_38
             - e2e_tests
@@ -466,6 +494,16 @@ workflows:
             - unit_tests_36
             - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
             - build
@@ -481,7 +519,8 @@ workflows:
           filters: *filter_rebuild_tags
           requires:
             - e2e_tests
-            - functional_tests
+            - functional_tests_36
+            - functional_tests_38
             - integration_tests_36
             - integration_tests_38
       - anchore/image_scan:
