@@ -287,18 +287,6 @@ workflows:
             - lint_38
             - unit_tests_36
             - unit_tests_38
-      - e2e_tests:
-          name: e2e_tests_36
-          py_version: "3.6"
-          context: e2e-testing
-          requires:
-            - build
-      - e2e_tests:
-          name: e2e_tests_38
-          py_version: "3.8"
-          context: e2e-testing
-          requires:
-            - build
       - functional_tests:
           name: functional_tests_36
           py_version: "3.6"
