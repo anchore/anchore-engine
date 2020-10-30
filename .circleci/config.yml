@@ -217,8 +217,11 @@ jobs:
           command: make setup-and-test-functional
 
   e2e_tests:
+    parameters:
+      py_version:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     resource_class: large
     environment: *global_environment_vars
     steps:
@@ -284,6 +287,20 @@ workflows:
             - lint_38
             - unit_tests_36
             - unit_tests_38
+      - e2e_tests:
+          name: e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_nightly
+          requires:
+            - build
+      - e2e_tests:
+          name: e2e_tests_38
+          py_version: "3.8"
+          context: e2e-testing
+          filters: *filter_nightly
+          requires:
+            - build
       - functional_tests:
           name: functional_tests_36
           py_version: "3.6"
@@ -377,6 +394,15 @@ workflows:
           requires:
             - build
       - e2e_tests:
+          name: e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_nightly
+          requires:
+            - build
+      - e2e_tests:
+          name: e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_nightly
           requires:
@@ -391,7 +417,8 @@ workflows:
             - functional_tests_38
             - integration_tests_36
             - integration_tests_38
-            - e2e_tests
+            - e2e_tests_36
+            - e2e_tests_38
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_nightly
@@ -406,7 +433,15 @@ workflows:
       - build:
           filters: *filter_rc_tags
       - e2e_tests:
-          name: rc_e2e_tests
+          name: rc_e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_rc_tags
+          requires:
+            - build
+      - e2e_tests:
+          name: rc_e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_rc_tags
           requires:
@@ -417,7 +452,8 @@ workflows:
           context: dockerhub
           filters: *filter_rc_tags
           requires:
-            - rc_e2e_tests
+            - rc_e2e_tests_36
+            - rc_e2e_tests_38
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_rc_tags
@@ -431,14 +467,21 @@ workflows:
   prod_image_workflow:
     jobs:
       - e2e_tests:
-          name: prod_e2e_tests
+          name: prod_e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_semver_tags
+      - e2e_tests:
+          name: prod_e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
       - hold_for_approval:
           type: approval
           filters: *filter_semver_tags
           requires:
-            - prod_e2e_tests
+            - prod_e2e_tests_36
+            - prod_e2e_tests_38
       - push_image:
           name: push_prod_image
           make_job: push-prod
@@ -512,6 +555,15 @@ workflows:
           requires:
             - build
       - e2e_tests:
+          name: e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - e2e_tests:
+          name: e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_rebuild_tags
           requires:
@@ -522,7 +574,8 @@ workflows:
           context: dockerhub
           filters: *filter_rebuild_tags
           requires:
-            - e2e_tests
+            - e2e_tests_36
+            - e2e_tests_38
             - functional_tests_36
             - functional_tests_38
             - integration_tests_36
