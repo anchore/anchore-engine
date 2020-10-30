@@ -120,8 +120,8 @@ pkgs = {
     "/hudson.war": {
         "specification-version": "N/A",
         "implementation-version": "1.390",
-        "maven-version": "N/A",
-        "origin": "N/A",
+        "maven-version": "1.390",
+        "origin": "org.jvnet.hudson.main",
         "location": "/hudson.war",
         "type": "java-war",
         "name": "hudson-war",

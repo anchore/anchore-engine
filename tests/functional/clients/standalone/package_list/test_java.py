@@ -29,8 +29,4 @@ class TestJavaMetadata:
         loaded = pkgs.get(path, {})
         actual_value = loaded[field]
         expected_value = metadata[field]
-        if expected_value == "N/A" and actual_value != "N/A":
-            # syft may find more information than engine, this is OK
-            # TODO: update the test fixtures to match once we are done troubleshooting and remove this case!
-            return
         assert actual_value == expected_value
