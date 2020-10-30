@@ -638,7 +638,6 @@ class ImageLoader(object):
             np.fullversion = np.version
             np.license = ' '.join(n.licenses_json)
             np.origin = ' '.join(n.origins_json)
-            #np.metadata_json = pkg_json.get('metadata')
             fullname = np.name
             np.normalized_src_pkg = fullname
             np.src_pkg = fullname
@@ -692,7 +691,6 @@ class ImageLoader(object):
             np.fullversion = np.version
             np.license = ' '.join(n.licenses_json)
             np.origin = ' '.join(n.origins_json)
-            #np.metadata_json = pkg_json.get('metadata')
             fullname = np.name
             np.normalized_src_pkg = fullname
             np.src_pkg = fullname
@@ -775,10 +773,6 @@ class ImageLoader(object):
             n.distro_name = 'java'
             n.distro_version = 'N/A'
             n.like_distro = 'java'
-
-            m = pkg_json.get('metadata')
-            m['java_versions'] = versions_json
-            n.metadata_json = m
 
             fullname = n.name
             pomprops = n.get_pom_properties()
