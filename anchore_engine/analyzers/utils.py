@@ -2049,6 +2049,8 @@ def write_kvfile_fromdict(file, indict):
             #thestr = thestr.encode('utf8')
             OFH.write(thestr)
 
+### data transform helpers
+
 def defaultdict_to_dict(d):
     if isinstance(d, collections.defaultdict):
         d = {k: defaultdict_to_dict(v) for k, v in d.items()}

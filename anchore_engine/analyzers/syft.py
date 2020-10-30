@@ -8,17 +8,9 @@ from anchore_engine.clients.syft_wrapper import run_syft
 
 
 def handle_java(findings, artifact):
-    """Java results handler for syft output.
-
-    Args:
-        findings (dict): nested dictionary representing a json structure.
-        artifact (json): datastructure presented by syft.
-
-    Returns:
-        dict: findings dictionary is populated with values from the provided
-              artifact.
     """
-    
+    Handler function to map syft results for java-archive and jenkins-plugin types into the engine "raw" document format.
+    """
     pkg_key = dig(artifact, 'metadata', 'virtualPath', default="N/A")
 
     virtualElements = pkg_key.split(":")
@@ -68,17 +60,9 @@ def handle_java(findings, artifact):
 
 
 def handle_python(findings, artifact):
-    """Python results handler for syft output.
-
-    Args:
-        findings (dict): nested dictionary representing a json structure.
-        artifact (json): datastructure presented by syft.
-
-    Returns:
-        dict: findings dictionary is populated with values from the provided
-              artifact.
     """
-
+    Handler function to map syft results for the python package type into the engine "raw" document format.
+    """
     if "python-package-cataloger" not in artifact['foundBy']:
         # engine only includes python findings for egg and wheel installations (with rich metadata)
         return
@@ -119,17 +103,9 @@ def handle_python(findings, artifact):
 
 
 def handle_gem(findings, artifact):
-    """Gem results handler for syft output.
-
-    Args:
-        findings (dict): nested dictionary representing a json structure.
-        artifact (json): datastructure presented by syft.
-
-    Returns:
-        dict: findings dictionary is populated with values from the provided
-              artifact.
     """
-
+    Handler function to map syft results for the gem package type into the engine "raw" document format.
+    """
     pkg_key = artifact['locations'][0]['path']
 
     # craft the artifact document
@@ -148,17 +124,9 @@ def handle_gem(findings, artifact):
 
 
 def handle_npm(findings, artifact):
-    """Javascript results handler for syft output.
-
-    Args:
-        findings (dict): nested dictionary representing a json structure.
-        artifact (json): datastructure presented by syft.
-
-    Returns:
-        dict: findings dictionary is populated with values from the provided
-              artifact.
     """
-
+    Handler function to map syft results for npm package type into the engine "raw" document format.
+    """
     pkg_key = artifact['locations'][0]['path']
     homepage = artifact['metadata'].get('homepage', '')
     author = artifact['metadata'].get('author')
@@ -180,34 +148,13 @@ def handle_npm(findings, artifact):
 
 
 def filter_artifacts(artifact):
-    """Filter Artifacts 
-    
-    helper function which only allow artifacts which have handlers 
-    implemented, ignore the rest
-
-    Args:
-        artifact (json): datastructure presented by syft.
-
-    Returns:
-        str: keyword value used to determine the dispatch function.
-    """
-    
     return artifact['type'] in ARTIFACT_HANDLER_DISPATCH
 
 
 def catalog_image(image):
-    """Catalog image transforms syft output into "raw" analyzer
-    json document then takes a sub-set of the findings and invokes the
-    corrisponding handler to build specific json document.
-
-
-    Args:
-        image (str): container image name.
-
-    Returns:
-        dict: dictionary structure which represents the json data.
     """
-    
+    Catalog the given image with syft, keeping only select artifacts in the returned results.
+    """
     all_results = run_syft(image)
 
     # transform output into analyzer-module/service "raw" analyzer json document
