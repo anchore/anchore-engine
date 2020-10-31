@@ -101,6 +101,19 @@ def get(userId, subscription_id, session=None):
     return ret
 
 
+def is_active(account, subscription_id, session=None):
+    """
+    Returns the subscription id of the record if one exists for the account and subscription id
+    """
+
+    if not session:
+        session = db.Session
+
+    result = session.query(Subscription.subscription_id).filter_by(userId=account, subscription_id=subscription_id, active=True).scalar()
+
+    return result
+
+
 def get_byfilter(userId, session=None, **dbfilter):
     if not session:
         session = db.Session
@@ -133,8 +146,22 @@ def get_bysubscription_key(userId, subscription_key, session=None):
     return ret
 
 
-def update(userId, subscription_key, subscription_type, inobj, session=None):
+def upsert(userId, subscription_key, subscription_type, inobj, session=None):
     return add(userId, subscription_key, subscription_type, inobj, session=session)
+
+
+def update_subscription_value(account, subscription_id, subscription_value, session=None):
+    """
+    Lookup the record and update subscription value only for an existing record
+    """
+    if not session:
+        session = db.Session
+
+    result = session.query(Subscription).filter_by(subscription_id=subscription_id, userId=account).one_or_none()
+    if result:
+        result.subscription_value = subscription_value
+
+    return result
 
 
 def delete(userId, subscriptionId, remove=False, session=None):

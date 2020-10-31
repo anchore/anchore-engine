@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2 (2020-10-9)
++ Added - Ability to set pool_recycle and other SQLAlchemy engine parameters via config. Fixes #641 
++ Malware scan fails to find EICAR string in image over 25Mb. Fixes #615 
++ Fix - Policy engine should return HTTP 400 with instructive mesasge on invalid bundle upload instead of HTTP 500. Fixes #634
++ Fix - vulnerability fix version not correct for vulnerabilities with multiple fixes. Fixes #639
++ Fix - npm packages not matching GHSA sources properly. Fixes #633
++ Fix - Update urllib3 to 1.25.9 to address CVE-2020-26137. Engine not affected. Fixes #662
++ Fix - Deactivating repo subscription does not halt repo scan. Fixes #635
+
 ## 0.8.1 (2020-08-31)
 + Added - Additional trigger 'scan_not_run' in malware gate to fire if no scan run. Implements #552
 + Improved - Do not always require created_timestamp_override field for analysis by digest. Implements #552

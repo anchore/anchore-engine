@@ -1,8 +1,11 @@
 from collections import OrderedDict, namedtuple
 import enum
 import copy
+import datetime
 import re
 import itertools
+
+from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string
@@ -29,7 +32,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import Trigg
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
-
+from anchore_engine.utils import rfc3339str_to_datetime
 
 
 class VersionedEntityMixin(object):
@@ -828,7 +831,18 @@ class ExecutableWhitelistItem(object):
         self.id = item_json.get('id')
         self.gate = item_json.get('gate').lower()
         self.trigger_id = item_json.get('trigger_id')
+        expires_on_str = item_json.get('expires_on', '')
+        if expires_on_str:
+            try:
+                self.expires_on = rfc3339str_to_datetime(expires_on_str)
+            except Exception as err:
+                logger.exception('Failed to parse')
+                raise err
         self.parent_whitelist = parent
+
+    def is_expired(self):
+        now_utc = anchore_now_datetime().replace(tzinfo=datetime.timezone.utc)
+        return hasattr(self, 'expires_on') and self.expires_on and now_utc >= self.expires_on
 
     def execute(self, trigger_match):
         """
@@ -836,6 +850,12 @@ class ExecutableWhitelistItem(object):
         :param trigger_inst: the trigger instance to check
         :return: a WhitelistedTriggerInstance or a TriggerInstance depending on if the items match
         """
+        # If this whitelist rule is expired, we do not search for any matches
+        # When expires_on is parsed it's translated to UTC, so we must do the same for getting the current time
+        # so that we can compare them
+        if self.is_expired():
+            return trigger_match
+
         if hasattr(trigger_match, 'is_whitelisted') and trigger_match.is_whitelisted():
             return trigger_match
 
@@ -1111,9 +1131,9 @@ class ExecutableBundle(VersionedEntityMixin):
 
                     for policy_id in rule.policy_ids:
                         if len(policies[policy_id]) > 1:
-                            raise DuplicateIdentifierFoundError(identifier=rule.policy_id, identifier_type='policy')
+                            raise DuplicateIdentifierFoundError(identifier=policy_id, identifier_type='policy')
                         if not policies[policy_id]:
-                            raise ReferencedObjectNotFoundError(reference_id=rule.policy_id, reference_type='policy')
+                            raise ReferencedObjectNotFoundError(reference_id=policy_id, reference_type='policy')
 
                         self.policies[policy_id] = ExecutablePolicy(policies[policy_id][0], strict_validation=strict_validation)
 

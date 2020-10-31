@@ -36,8 +36,8 @@ if [[ "${CI:-false}" == true ]]; then
 fi
 
 if ! helm list | grep e2e-testing; then
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com
-    helm install e2e-testing -f tests/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" stable/anchore-engine | head -n6
+    helm repo add anchore https://charts.anchore.io
+    helm install e2e-testing -f tests/e2e/base-values.yaml --set anchoreGlobal.image="${engine_image}" anchore/anchore-engine | head -n6
 fi
 
 # Patch anchore-engine-api nodeport to the configured port thats mapped with kind to localhost:8228

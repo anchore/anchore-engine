@@ -21,7 +21,31 @@ pre_baked_images = {
         'digest': 'sha256:e9cec9aec697d8b9d450edd32860ecd363f2f3174c8338beb5f809422d182c63',
         'image_source': 'registry',
         'schema_version': '1',
-    }
+    },
+    'lean': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'lean',
+        'digest': 'sha256:8d0e40d8e013bb0cda3d279b5021c473885c079e94010fd2208235d56982486f',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
+    'py38': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'py38',
+        'digest': 'sha256:65e79fb7397ed96bd84656a664ac9978057930d90b2d5fde5e92a58adbee657c',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
+    'npm': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'npm',
+        'digest': 'sha256:905a2bf5f3adf8ba8f1d4391cfb4a3e6bd671e0b2ec2f488071679a5f578c7d7',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
 }
 
 
