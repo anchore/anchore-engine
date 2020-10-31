@@ -2970,6 +2970,9 @@ definitions:
         type: string
       trigger_id:
         type: string
+      expires_on:
+        type: string
+        format: "date-time"
   PolicyRule:
     type: object
     description: A rule that defines and decision value if the match is found true for a given image.
