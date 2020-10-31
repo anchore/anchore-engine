@@ -13470,6 +13470,20 @@
       ],
       "name": "Global Whitelist",
       "version": "1_0"
+    },
+    {
+      "comment": "Default Global Whitelist with Expiration",
+      "id": "global_expire",
+      "items": [
+        {
+          "gate": "vulnerabilities",
+          "id": "2205dcbb-69f7-4da2-874a-e18d8ede50bb",
+          "trigger_id": "CVE-2014-9939+binutils",
+          "expires_on": "2019-12-30T12:00:00Z"
+        }
+      ],
+      "name": "Global Expiring Whitelist",
+      "version": "1_0"
     }
   ],
   "mappings": [
