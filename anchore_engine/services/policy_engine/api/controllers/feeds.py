@@ -57,7 +57,7 @@ def _marshall_feed_response(feed: DbFeedMetadata):
     for group in feed.groups:
         i.groups.append(_marshall_group_response(group))
 
-    return i.to_dict()
+    return i.to_json()
 
 
 def _marshall_group_response(group: DbFeedGroupMetadata):
@@ -71,7 +71,7 @@ def _marshall_group_response(group: DbFeedGroupMetadata):
     g.updated_at = group.last_update.isoformat() if group.last_update else None
     g.enabled = group.enabled
     g.record_count = group.count
-    return g.to_dict()
+    return g.to_json()
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
