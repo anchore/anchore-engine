@@ -1,7 +1,6 @@
 import datetime
 
 import six
-import typing
 
 
 def _deserialize(data, klass):
@@ -23,11 +22,12 @@ def _deserialize(data, klass):
         return deserialize_date(data)
     elif klass == datetime.datetime:
         return deserialize_datetime(data)
-    elif type(klass) == typing.GenericMeta:
-        if klass.__extra__ == list:
-            return _deserialize_list(data, klass.__args__[0])
-        if klass.__extra__ == dict:
-            return _deserialize_dict(data, klass.__args__[1])
+    elif klass == list or 'List[' in str(klass):
+        # TODO: there is room for improvement here, perhaps checking if data is
+        # already a list?  There doesn't seem to be a need for checking withing
+        # each item's type, because there aren't any nested types that aren't
+        # handled by `deserialize_model()` already
+        return [i for i in data]
     else:
         return deserialize_model(data, klass)
 
@@ -111,31 +111,3 @@ def deserialize_model(data, klass):
             setattr(instance, attr, _deserialize(value, attr_type))
 
     return instance
-
-
-def _deserialize_list(data, boxed_type):
-    """Deserializes a list and its elements.
-
-    :param data: list to deserialize.
-    :type data: list
-    :param boxed_type: class literal.
-
-    :return: deserialized list.
-    :rtype: list
-    """
-    return [_deserialize(sub_data, boxed_type)
-            for sub_data in data]
-
-
-def _deserialize_dict(data, boxed_type):
-    """Deserializes a dict and its elements.
-
-    :param data: dict to deserialize.
-    :type data: dict
-    :param boxed_type: class literal.
-
-    :return: deserialized dict.
-    :rtype: dict
-    """
-    return {k: _deserialize(v, boxed_type)
-            for k, v in six.iteritems(data)}
