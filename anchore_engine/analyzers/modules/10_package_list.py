@@ -23,7 +23,7 @@ distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], me
 
 print("analyzer starting up: imageId="+str(imgid) + " meta="+str(meta) + " distrodict="+str(distrodict))
 
-if distrodict['flavor'] not in ['RHEL', 'DEB', 'BUSYB', 'ALPINE']:
+if distrodict['flavor'] not in ['RHEL', 'DEB', 'BUSYB']:
     sys.exit(0)
 
 pkgsall = {}
@@ -78,35 +78,6 @@ elif distrodict['flavor'] == "DEB":
 
     except Exception as err:
         print("WARN: failed to get file list from DPKGs: " + str(err))
-
-elif distrodict['flavor'] == 'ALPINE':
-    try:
-        apkgs = anchore_engine.analyzers.utils.apkg_get_all_pkgfiles_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
-
-        for pkg in list(apkgs.keys()):
-            # all detail
-            pkgsdetail[pkg] = json.dumps(apkgs[pkg])
-            
-            # base
-            if apkgs[pkg]['release'] != "N/A":
-                pvers = apkgs[pkg]['version']+"-"+apkgs[pkg]['release']
-            else:
-                pvers = apkgs[pkg]['version']
-            pkgsall[pkg] = pvers
-            pkgsplussource[pkg] = pvers
-
-            # source package
-            if 'sourcepkg' in apkgs[pkg] and apkgs[pkg]['sourcepkg']:
-                spkg = apkgs[pkg]['sourcepkg']
-                if spkg != pkg and spkg not in pkgsplussource:
-                    pkgsplussource[spkg] = pvers
-
-            # pkgfiles
-            for pkgfile in apkgs[pkg]['files']:
-                pkgfilesall[pkgfile] = 'APKFILE'
-
-    except Exception as err:
-        print("WARN: failed to generate APK package list: " + str(err))
 
 elif distrodict['flavor'] == "BUSYB":
     pkgsall["BusyBox"] = distrodict['fullversion']

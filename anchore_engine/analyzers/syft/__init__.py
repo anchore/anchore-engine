@@ -39,4 +39,5 @@ ARTIFACT_HANDLER_DISPATCH = {
     'npm': npm.handler,
     'java-archive': java.handler,
     'jenkins-plugin': java.handler,
+    'apk': alpine.handler,
 }
