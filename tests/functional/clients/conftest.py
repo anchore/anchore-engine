@@ -62,6 +62,14 @@ pre_baked_images = {
         'image_source': 'registry',
         'schema_version': 'v2',
     },
+    'rpm': {
+        "registry": "docker.io",
+        "repo": "anchore/test_images",
+        "tag": "centos8",
+        "digest": "sha256:96d136c9cbaf22d73010e3e79e748e7772143fd9a584f8898d2f122cc5da1206",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
 }
 
 
