@@ -5,15 +5,11 @@ import collections
 
 from anchore_engine.analyzers.utils import defaultdict_to_dict
 from anchore_engine.clients.syft_wrapper import run_syft
-from .handlers import alpine
-from .handlers import gem
-from .handlers import java
-from .handlers import npm
-from .handlers import python
+from .handlers import handlers_by_artifact_type
 
 
 def filter_artifacts(artifact):
-    return artifact['type'] in ARTIFACT_HANDLER_DISPATCH
+    return artifact['type'] in handlers_by_artifact_type
 
 def catalog_image(image):
     """
@@ -29,15 +25,8 @@ def catalog_image(image):
     # craft the artifact document and inject into the "raw" analyzer json
     # document
     for artifact in filter(filter_artifacts, all_results['artifacts']):
-        ARTIFACT_HANDLER_DISPATCH[artifact['type']](findings, artifact)
+        handler = handlers_by_artifact_type[artifact['type']]
+        handler(findings, artifact)
 
     return defaultdict_to_dict(findings)
 
-ARTIFACT_HANDLER_DISPATCH = {
-    'gem': gem.handler,
-    'python': python.handler,
-    'npm': npm.handler,
-    'java-archive': java.handler,
-    'jenkins-plugin': java.handler,
-    'apk': alpine.handler,
-}
