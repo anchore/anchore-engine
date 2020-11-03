@@ -3,14 +3,9 @@ from anchore_engine.apis.context import ApiRequestContextProxy
 
 def version_response(versions):
     return {
-        'service': {
-            'version': versions.get('service_version', None)
-        },
-        'api': {
-        },
-        'db': {
-            'schema_version': versions.get('db_version', None)
-        },
+        "service": {"version": versions.get("service_version", None)},
+        "api": {},
+        "db": {"schema_version": versions.get("db_version", None)},
     }
 
 

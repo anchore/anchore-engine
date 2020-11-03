@@ -15,7 +15,16 @@ class TriggerParamSpec(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, description=None, example=None, required=None, state=None, superceded_by=None, validator=None):  # noqa: E501
+    def __init__(
+        self,
+        name=None,
+        description=None,
+        example=None,
+        required=None,
+        state=None,
+        superceded_by=None,
+        validator=None,
+    ):  # noqa: E501
         """TriggerParamSpec - a model defined in Swagger
 
         :param name: The name of this TriggerParamSpec.  # noqa: E501
@@ -34,23 +43,23 @@ class TriggerParamSpec(Model):
         :type validator: object
         """
         self.swagger_types = {
-            'name': str,
-            'description': str,
-            'example': str,
-            'required': bool,
-            'state': str,
-            'superceded_by': str,
-            'validator': object
+            "name": str,
+            "description": str,
+            "example": str,
+            "required": bool,
+            "state": str,
+            "superceded_by": str,
+            "validator": object,
         }
 
         self.attribute_map = {
-            'name': 'name',
-            'description': 'description',
-            'example': 'example',
-            'required': 'required',
-            'state': 'state',
-            'superceded_by': 'superceded_by',
-            'validator': 'validator'
+            "name": "name",
+            "description": "description",
+            "example": "example",
+            "required": "required",
+            "state": "state",
+            "superceded_by": "superceded_by",
+            "validator": "validator",
         }
 
         self._name = name
@@ -185,8 +194,9 @@ class TriggerParamSpec(Model):
         allowed_values = ["active", "deprecated", "eol"]  # noqa: E501
         if state not in allowed_values:
             raise ValueError(
-                "Invalid value for `state` ({0}), must be one of {1}"
-                .format(state, allowed_values)
+                "Invalid value for `state` ({0}), must be one of {1}".format(
+                    state, allowed_values
+                )
             )
 
         self._state = state

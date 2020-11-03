@@ -23,15 +23,9 @@ class PolicyRuleParams(Model):
         :param value: The value of this PolicyRuleParams.  # noqa: E501
         :type value: str
         """
-        self.swagger_types = {
-            'name': str,
-            'value': str
-        }
+        self.swagger_types = {"name": str, "value": str}
 
-        self.attribute_map = {
-            'name': 'name',
-            'value': 'value'
-        }
+        self.attribute_map = {"name": "name", "value": "value"}
 
         self._name = name
         self._value = value
@@ -66,7 +60,9 @@ class PolicyRuleParams(Model):
         :type name: str
         """
         if name is None:
-            raise ValueError("Invalid value for `name`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `name`, must not be `None`"
+            )  # noqa: E501
 
         self._name = name
 
@@ -89,6 +85,8 @@ class PolicyRuleParams(Model):
         :type value: str
         """
         if value is None:
-            raise ValueError("Invalid value for `value`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `value`, must not be `None`"
+            )  # noqa: E501
 
         self._value = value

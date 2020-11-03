@@ -13,7 +13,9 @@ class ExitCode(enum.Enum):
 
     ok = 0
     failed = 2
-    obj_store_failed = 5 # Special value for compat with the object store ops return codes
+    obj_store_failed = (
+        5  # Special value for compat with the object store ops return codes
+    )
 
 
 def doexit(ecode: ExitCode):

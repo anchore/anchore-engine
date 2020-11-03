@@ -5,6 +5,7 @@ Java-related utilities for interacting with Java packages.
 import re
 import anchore_engine.utils
 
+
 def parse_properties(lines):
     """
     Parses the given line iterable using the Java properties file format.
@@ -16,12 +17,13 @@ def parse_properties(lines):
     for line in lines:
         line = anchore_engine.utils.ensure_str(line)
         if not re.match(r"\s*(#.*)?$", line):
-            idx = line.find('=')
+            idx = line.find("=")
             if idx > -1:
                 key = line[0:idx].strip()
-                value = line[idx+1:].strip()
+                value = line[idx + 1 :].strip()
                 props[key] = value
     return props
+
 
 def parse_manifest(lines):
     """
@@ -33,15 +35,15 @@ def parse_manifest(lines):
     full_lines = []
     for line in lines:
         line = anchore_engine.utils.ensure_str(line)
-        if line.startswith(' '):
+        if line.startswith(" "):
             full_lines[-1] += line[1:]
         else:
             full_lines.append(line)
     attrs = {}
     for line in full_lines:
-        idx = line.find(':')
+        idx = line.find(":")
         if idx > -1:
             key = line[0:idx]
-            value = line[idx+1:].lstrip()
+            value = line[idx + 1 :].lstrip()
             attrs[key] = value
     return attrs

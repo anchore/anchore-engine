@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy_rule_params import PolicyRuleParams  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy_rule_params import (
+    PolicyRuleParams,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,9 @@ class PolicyRule(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, gate=None, trigger=None, action=None, params=None):  # noqa: E501
+    def __init__(
+        self, id=None, gate=None, trigger=None, action=None, params=None
+    ):  # noqa: E501
         """PolicyRule - a model defined in Swagger
 
         :param id: The id of this PolicyRule.  # noqa: E501
@@ -31,19 +35,19 @@ class PolicyRule(Model):
         :type params: List[PolicyRuleParams]
         """
         self.swagger_types = {
-            'id': str,
-            'gate': str,
-            'trigger': str,
-            'action': str,
-            'params': List[PolicyRuleParams]
+            "id": str,
+            "gate": str,
+            "trigger": str,
+            "action": str,
+            "params": List[PolicyRuleParams],
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'gate': 'gate',
-            'trigger': 'trigger',
-            'action': 'action',
-            'params': 'params'
+            "id": "id",
+            "gate": "gate",
+            "trigger": "trigger",
+            "action": "action",
+            "params": "params",
         }
 
         self._id = id
@@ -103,7 +107,9 @@ class PolicyRule(Model):
         :type gate: str
         """
         if gate is None:
-            raise ValueError("Invalid value for `gate`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `gate`, must not be `None`"
+            )  # noqa: E501
 
         self._gate = gate
 
@@ -126,7 +132,9 @@ class PolicyRule(Model):
         :type trigger: str
         """
         if trigger is None:
-            raise ValueError("Invalid value for `trigger`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `trigger`, must not be `None`"
+            )  # noqa: E501
 
         self._trigger = trigger
 
@@ -151,8 +159,9 @@ class PolicyRule(Model):
         allowed_values = ["GO", "STOP", "WARN"]  # noqa: E501
         if action not in allowed_values:
             raise ValueError(
-                "Invalid value for `action` ({0}), must be one of {1}"
-                .format(action, allowed_values)
+                "Invalid value for `action` ({0}), must be one of {1}".format(
+                    action, allowed_values
+                )
             )
 
         self._action = action

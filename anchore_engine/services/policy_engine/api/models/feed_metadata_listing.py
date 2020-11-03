@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.feed_metadata import FeedMetadata  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.feed_metadata import (
+    FeedMetadata,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -17,14 +19,10 @@ class FeedMetadataListing(Model):
     """
 
     def __init__(self):  # noqa: E501
-        """FeedMetadataListing - a model defined in Swagger
+        """FeedMetadataListing - a model defined in Swagger"""
+        self.swagger_types = {}
 
-        """
-        self.swagger_types = {
-        }
-
-        self.attribute_map = {
-        }
+        self.attribute_map = {}
 
     @classmethod
     def from_dict(cls, dikt):

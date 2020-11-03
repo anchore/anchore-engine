@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.whitelist_item import WhitelistItem  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.whitelist_item import (
+    WhitelistItem,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,9 @@ class Whitelist(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, name=None, version=None, comment=None, items=None):  # noqa: E501
+    def __init__(
+        self, id=None, name=None, version=None, comment=None, items=None
+    ):  # noqa: E501
         """Whitelist - a model defined in Swagger
 
         :param id: The id of this Whitelist.  # noqa: E501
@@ -31,19 +35,19 @@ class Whitelist(Model):
         :type items: List[WhitelistItem]
         """
         self.swagger_types = {
-            'id': str,
-            'name': str,
-            'version': str,
-            'comment': str,
-            'items': List[WhitelistItem]
+            "id": str,
+            "name": str,
+            "version": str,
+            "comment": str,
+            "items": List[WhitelistItem],
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'name': 'name',
-            'version': 'version',
-            'comment': 'comment',
-            'items': 'items'
+            "id": "id",
+            "name": "name",
+            "version": "version",
+            "comment": "comment",
+            "items": "items",
         }
 
         self._id = id
@@ -126,7 +130,9 @@ class Whitelist(Model):
         :type version: str
         """
         if version is None:
-            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `version`, must not be `None`"
+            )  # noqa: E501
 
         self._version = version
 

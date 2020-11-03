@@ -27,19 +27,26 @@ def make_response_service(user_auth, service_record, params):
     userId, pw = user_auth
 
     try:
-        for k in ['hostid', 'version', 'base_url', 'status', 'status_message', 'servicename']:
+        for k in [
+            "hostid",
+            "version",
+            "base_url",
+            "status",
+            "status_message",
+            "servicename",
+        ]:
             ret[k] = service_record[k]
-        if 'short_description' in service_record:
+        if "short_description" in service_record:
             try:
-                ret['service_detail'] = json.loads(service_record['short_description'])
+                ret["service_detail"] = json.loads(service_record["short_description"])
             except:
-                ret['service_detail'] = str(service_record['short_description'])
+                ret["service_detail"] = str(service_record["short_description"])
 
     except Exception as err:
         raise Exception("failed to format service response: " + str(err))
 
     # global items to filter out
-    for removekey in ['record_state_val', 'record_state_key']:
+    for removekey in ["record_state_val", "record_state_key"]:
         ret.pop(removekey, None)
 
     return ret
@@ -72,8 +79,10 @@ def get_status():
         return_object = anchore_engine.subsys.servicestatus.get_status(service_record)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -87,9 +96,9 @@ def get_service_detail():
     """
 
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    params = request_inputs["params"]
 
     httpcode = 500
     service_detail = {}
@@ -97,21 +106,23 @@ def get_service_detail():
     try:
         try:
             try:
-                service_detail['service_states'] = []
+                service_detail["service_states"] = []
                 try:
                     up_services = {}
-                    client = internal_client_for(CatalogClient, request_inputs['userId'])
+                    client = internal_client_for(
+                        CatalogClient, request_inputs["userId"]
+                    )
                     service_records = client.get_service()
                     for service in service_records:
                         el = make_response_service(user_auth, service, params)
 
-                        service_detail['service_states'].append(el)
+                        service_detail["service_states"].append(el)
 
-                        if el['servicename'] not in up_services:
-                            up_services[el['servicename']] = 0
+                        if el["servicename"] not in up_services:
+                            up_services[el["servicename"]] = 0
 
-                        if el['status']:
-                            up_services[el['servicename']] += 1
+                        if el["status"]:
+                            up_services[el["servicename"]] += 1
 
                 except Exception as err:
                     pass
@@ -119,8 +130,10 @@ def get_service_detail():
                 httpcode = 200
 
             except Exception as err:
-                return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-                httpcode = return_object['httpcode']
+                return_object = anchore_engine.common.helpers.make_response_error(
+                    err, in_httpcode=httpcode
+                )
+                httpcode = return_object["httpcode"]
         except:
             service_detail = {}
 
@@ -140,21 +153,25 @@ def list_services():
     :return:
     """
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
     try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         service_records = client.get_service()
         for service_record in service_records:
-            return_object.append(make_response_service(user_auth, service_record, params))
+            return_object.append(
+                make_response_service(user_auth, service_record, params)
+            )
 
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -170,8 +187,8 @@ def get_services_by_name(servicename):
     :return:
     """
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
@@ -179,12 +196,16 @@ def get_services_by_name(servicename):
         client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
         service_records = client.get_service(servicename=servicename)
         for service_record in service_records:
-            return_object.append(make_response_service(user_auth, service_record, params))
+            return_object.append(
+                make_response_service(user_auth, service_record, params)
+            )
 
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -200,8 +221,8 @@ def get_services_by_name_and_host(servicename, hostid):
     :return:
     """
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
@@ -209,12 +230,16 @@ def get_services_by_name_and_host(servicename, hostid):
         client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
         service_records = client.get_service(servicename=servicename, hostid=hostid)
         for service_record in service_records:
-            return_object.append(make_response_service(user_auth, service_record, params))
+            return_object.append(
+                make_response_service(user_auth, service_record, params)
+            )
 
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -229,18 +254,20 @@ def delete_service(servicename, hostid):
     :return:
     """
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
+    user_auth = request_inputs["auth"]
 
     return_object = []
     httpcode = 500
     try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         return_object = client.delete_service(servicename=servicename, hostid=hostid)
         if return_object:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -251,33 +278,43 @@ def get_system_feeds():
     return_object = []
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         # do the p.e. feed get call
         return_object = p_client.list_feeds(include_counts=True)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
 
 @authorizer.requires([ActionBoundPermission(domain=GLOBAL_RESOURCE_DOMAIN)])
 def post_system_feeds(flush=False):
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'flush': flush})
+    request_inputs = anchore_engine.apis.do_request_prep(
+        request, default_params={"flush": flush}
+    )
 
     return_object = []
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         # do the p.e. feed post call
         return_object = p_client.sync_feeds(force_flush=flush)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -286,13 +323,17 @@ def post_system_feeds(flush=False):
 def toggle_feed_enabled(feed, enabled):
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         return_object = p_client.toggle_feed_enabled(feed, enabled)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -301,13 +342,17 @@ def toggle_feed_enabled(feed, enabled):
 def toggle_group_enabled(feed, group, enabled):
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         return_object = p_client.toggle_feed_group_enabled(feed, group, enabled)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -316,13 +361,17 @@ def toggle_group_enabled(feed, group, enabled):
 def delete_feed(feed):
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         return_object = p_client.delete_feed(feed)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -331,13 +380,17 @@ def delete_feed(feed):
 def delete_feed_group(feed, group):
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         return_object = p_client.delete_feed_group(feed, group)
         if return_object is not None:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -348,13 +401,17 @@ def describe_policy():
     return_object = []
     httpcode = 500
     try:
-        p_client = internal_client_for(PolicyEngineClient, userId=ApiRequestContextProxy.namespace())
+        p_client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
         return_object = p_client.describe_policy()
         if return_object:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -367,20 +424,22 @@ def describe_error_codes():
     try:
         for e in AnchoreError:
             el = {
-                'name': e.name,
-                'description': e.value,
+                "name": e.name,
+                "description": e.value,
             }
             return_object.append(el)
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
 
 @authorizer.requires_account(with_names=[localconfig.ADMIN_ACCOUNT_NAME])
-def test_webhook(webhook_type='general', notification_type='tag_update'):
+def test_webhook(webhook_type="general", notification_type="tag_update"):
     """
     This method adds the capability to test a Webhook delivery of a test notification
 
@@ -395,13 +454,14 @@ def test_webhook(webhook_type='general', notification_type='tag_update'):
 
         # Load Webhook configurations, and select webhook according to webhook_type
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        if 'webhooks' in localconfig:
-            webhooks.update(localconfig['webhooks'])
+        if "webhooks" in localconfig:
+            webhooks.update(localconfig["webhooks"])
 
         if not webhooks:
             httpcode = 400
-            return_object = anchore_engine.common.helpers.make_response_error('Webhooks Configuration not found',
-                                                                              in_httpcode=httpcode)
+            return_object = anchore_engine.common.helpers.make_response_error(
+                "Webhooks Configuration not found", in_httpcode=httpcode
+            )
             return return_object, httpcode
 
         webhook = webhooks[webhook_type]
@@ -409,14 +469,18 @@ def test_webhook(webhook_type='general', notification_type='tag_update'):
             httpcode = 400
             return_object = anchore_engine.common.helpers.make_response_error(
                 "No Webhook Configuration found for type={}".format(webhook_type),
-                in_httpcode=httpcode
+                in_httpcode=httpcode,
             )
             return return_object, httpcode
 
-        return send_test_notification(webhooks, webhook, request_inputs, webhook_type, notification_type)
+        return send_test_notification(
+            webhooks, webhook, request_inputs, webhook_type, notification_type
+        )
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -430,16 +494,20 @@ def get_test_notification(notification_type, request_inputs):
 
     with db.session_scope() as dbsession:
         mgr = manager_factory.for_session(dbsession)
-        notification = notifications.Notification(notification_type,
-                                                  request_inputs['userId'],
-                                                  mgr.get_account(request_inputs['userId'])['email'])
+        notification = notifications.Notification(
+            notification_type,
+            request_inputs["userId"],
+            mgr.get_account(request_inputs["userId"])["email"],
+        )
 
     logger.debug("Test Notification JSON: {}".format(notification.to_json()))
 
     return notification
 
 
-def send_test_notification(webhooks, webhook, request_inputs, webhook_type, notification_type):
+def send_test_notification(
+    webhooks, webhook, request_inputs, webhook_type, notification_type
+):
     """
     This Method actually gathers all the parameters needed for notifications to actually send the webhook
 
@@ -450,28 +518,37 @@ def send_test_notification(webhooks, webhook, request_inputs, webhook_type, noti
     :return: result of webhook and http code (200 if successful, 500 if we fail to build test notification or payload
     """
     httpcode = 500
-    rootuser = webhooks.pop('webhook_user', None)
-    rootpw = webhooks.pop('webhook_pass', None)
-    rootverify = webhooks.pop('ssl_verify', None)
+    rootuser = webhooks.pop("webhook_user", None)
+    rootpw = webhooks.pop("webhook_pass", None)
+    rootverify = webhooks.pop("ssl_verify", None)
 
-    subvars = [('<userId>', request_inputs['userId']), ('<notification_type>', 'test')]
+    subvars = [("<userId>", request_inputs["userId"]), ("<notification_type>", "test")]
 
     try:
         notification = get_test_notification(notification_type, request_inputs)
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
         return return_object, httpcode
 
-    logger.debug('build payload: {}'.format(notification.to_json()))
+    logger.debug("build payload: {}".format(notification.to_json()))
     try:
         payload = notification.to_json()
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
         return return_object, httpcode
 
-    return notifications.do_notify_webhook_type(webhook=webhook,
-                                                user=webhook.pop('webhook_user', rootuser),
-                                                pw=webhook.pop('webhook_pass', rootpw),
-                                                verify=webhook.pop('ssl_verify', rootverify),
-                                                subvars=subvars,
-                                                payload=payload), 200
+    return (
+        notifications.do_notify_webhook_type(
+            webhook=webhook,
+            user=webhook.pop("webhook_user", rootuser),
+            pw=webhook.pop("webhook_pass", rootpw),
+            verify=webhook.pop("ssl_verify", rootverify),
+            subvars=subvars,
+            payload=payload,
+        ),
+        200,
+    )

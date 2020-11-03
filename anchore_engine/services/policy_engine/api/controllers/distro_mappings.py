@@ -9,15 +9,19 @@ import logging
 import datetime
 
 from flask import abort
-from anchore_engine.db import get_thread_scoped_session as get_session, DistroMapping as DbDistroMapping
+from anchore_engine.db import (
+    get_thread_scoped_session as get_session,
+    DistroMapping as DbDistroMapping,
+)
 from anchore_engine.services.policy_engine.api.models import DistroMapping
 from sqlalchemy.exc import IntegrityError
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 log = logging.getLogger()
-ANCHORE_PUBLIC_USER = '0'
+ANCHORE_PUBLIC_USER = "0"
 
 authorizer = get_authorizer()
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def list_distro_mappings():
@@ -29,10 +33,20 @@ def list_distro_mappings():
 
     db = get_session()
     try:
-        mappings = [DistroMapping(from_distro=x.from_distro, to_distro=x.to_distro, created_at=x.created_at, flavor=x.flavor).to_dict() for x in db.query(DbDistroMapping).all()]
+        mappings = [
+            DistroMapping(
+                from_distro=x.from_distro,
+                to_distro=x.to_distro,
+                created_at=x.created_at,
+                flavor=x.flavor,
+            ).to_dict()
+            for x in db.query(DbDistroMapping).all()
+        ]
         return mappings
     except Exception as e:
-        log.exception('Error processing list_distro_mappings. Could not read db entities')
+        log.exception(
+            "Error processing list_distro_mappings. Could not read db entities"
+        )
         abort(500)
 
 
@@ -55,15 +69,16 @@ def add_distro_mapping(distro_mapping):
         db.add(new_mapping)
         db.commit()
     except IntegrityError as e:
-        log.warn('Insertion of existing mapping name')
+        log.warn("Insertion of existing mapping name")
         db.rollback()
         abort(409)
     except Exception as e:
-        log.exception('Error inserting new distro mapping')
+        log.exception("Error inserting new distro mapping")
         db.rollback()
         abort(500)
 
     return list_distro_mappings()
+
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_distro_mapping(from_distro):
@@ -83,7 +98,7 @@ def delete_distro_mapping(from_distro):
             # no-op
         db.commit()
     except Exception as e:
-        log.exception('Error deleting distro mapping for: {}'.format(from_distro))
+        log.exception("Error deleting distro mapping for: {}".format(from_distro))
         db.rollback()
         abort(500)
 

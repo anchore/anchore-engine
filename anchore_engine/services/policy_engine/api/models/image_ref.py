@@ -23,15 +23,9 @@ class ImageRef(Model):
         :param value: The value of this ImageRef.  # noqa: E501
         :type value: str
         """
-        self.swagger_types = {
-            'type': str,
-            'value': str
-        }
+        self.swagger_types = {"type": str, "value": str}
 
-        self.attribute_map = {
-            'type': 'type',
-            'value': 'value'
-        }
+        self.attribute_map = {"type": "type", "value": "value"}
 
         self._type = type
         self._value = value
@@ -68,8 +62,9 @@ class ImageRef(Model):
         allowed_values = ["tag", "digest", "id"]  # noqa: E501
         if type not in allowed_values:
             raise ValueError(
-                "Invalid value for `type` ({0}), must be one of {1}"
-                .format(type, allowed_values)
+                "Invalid value for `type` ({0}), must be one of {1}".format(
+                    type, allowed_values
+                )
             )
 
         self._type = type
@@ -93,6 +88,8 @@ class ImageRef(Model):
         :type value: str
         """
         if value is None:
-            raise ValueError("Invalid value for `value`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `value`, must not be `None`"
+            )  # noqa: E501
 
         self._value = value

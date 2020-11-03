@@ -15,7 +15,9 @@ class ImagePolicyCheckRequest(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image_id=None, tag=None, user_id=None, bundle=None):  # noqa: E501
+    def __init__(
+        self, image_id=None, tag=None, user_id=None, bundle=None
+    ):  # noqa: E501
         """ImagePolicyCheckRequest - a model defined in Swagger
 
         :param image_id: The image_id of this ImagePolicyCheckRequest.  # noqa: E501
@@ -28,17 +30,17 @@ class ImagePolicyCheckRequest(Model):
         :type bundle: object
         """
         self.swagger_types = {
-            'image_id': str,
-            'tag': str,
-            'user_id': str,
-            'bundle': object
+            "image_id": str,
+            "tag": str,
+            "user_id": str,
+            "bundle": object,
         }
 
         self.attribute_map = {
-            'image_id': 'image_id',
-            'tag': 'tag',
-            'user_id': 'user_id',
-            'bundle': 'bundle'
+            "image_id": "image_id",
+            "tag": "tag",
+            "user_id": "user_id",
+            "bundle": "bundle",
         }
 
         self._image_id = image_id

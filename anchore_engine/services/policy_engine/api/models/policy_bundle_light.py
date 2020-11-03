@@ -6,8 +6,12 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy import Policy  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.whitelist import Whitelist  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy import (
+    Policy,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.whitelist import (
+    Whitelist,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -28,15 +32,15 @@ class PolicyBundleLight(Model):
         :type whitelists: List[Whitelist]
         """
         self.swagger_types = {
-            'image_id': str,
-            'policy': Policy,
-            'whitelists': List[Whitelist]
+            "image_id": str,
+            "policy": Policy,
+            "whitelists": List[Whitelist],
         }
 
         self.attribute_map = {
-            'image_id': 'image_id',
-            'policy': 'policy',
-            'whitelists': 'whitelists'
+            "image_id": "image_id",
+            "policy": "policy",
+            "whitelists": "whitelists",
         }
 
         self._image_id = image_id
@@ -73,7 +77,9 @@ class PolicyBundleLight(Model):
         :type image_id: str
         """
         if image_id is None:
-            raise ValueError("Invalid value for `image_id`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `image_id`, must not be `None`"
+            )  # noqa: E501
 
         self._image_id = image_id
 
@@ -96,7 +102,9 @@ class PolicyBundleLight(Model):
         :type policy: Policy
         """
         if policy is None:
-            raise ValueError("Invalid value for `policy`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `policy`, must not be `None`"
+            )  # noqa: E501
 
         self._policy = policy
 

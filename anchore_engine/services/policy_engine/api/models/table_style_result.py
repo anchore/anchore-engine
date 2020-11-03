@@ -16,14 +16,10 @@ class TableStyleResult(Model):
     """
 
     def __init__(self):  # noqa: E501
-        """TableStyleResult - a model defined in Swagger
+        """TableStyleResult - a model defined in Swagger"""
+        self.swagger_types = {}
 
-        """
-        self.swagger_types = {
-        }
-
-        self.attribute_map = {
-        }
+        self.attribute_map = {}
 
     @classmethod
     def from_dict(cls, dikt):

@@ -10,14 +10,19 @@ class ObjectStorageDriverMeta(type):
     Meta class for building a registry of drivers
 
     """
+
     def __init__(cls, name, bases, dct):
-        if not hasattr(cls, 'registry'):
+        if not hasattr(cls, "registry"):
             cls.registry = {}
         else:
-            if '__config_name__' in dct:
-                driver_id = dct['__config_name__']
+            if "__config_name__" in dct:
+                driver_id = dct["__config_name__"]
                 if cls.registry.get(driver_id):
-                    raise ValueError('Conflicting archive driver names found. Found two entries for name: {}. {} and {}'.format(driver_id, name, cls.registry[driver_id].__name__))
+                    raise ValueError(
+                        "Conflicting archive driver names found. Found two entries for name: {}. {} and {}".format(
+                            driver_id, name, cls.registry[driver_id].__name__
+                        )
+                    )
 
                 cls.registry[driver_id] = cls
 
@@ -62,7 +67,7 @@ class ObjectStorageDriver(object, metaclass=ObjectStorageDriverMeta):
 
     __config_name__ = None
     __uri_scheme__ = None
-    __supports_compressed_data__ = True # Used mostly for the legacy db drivers that do implicit compression but take text content
+    __supports_compressed_data__ = True  # Used mostly for the legacy db drivers that do implicit compression but take text content
 
     def __init__(self, config: dict):
         """

@@ -17,4 +17,3 @@ def get_all(task_type=Task, session=None, json_safe=False):
             result.append(t.to_dict())
 
     return result
-

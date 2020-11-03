@@ -6,9 +6,15 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy import Policy  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import PolicyEvaluationProblem  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.whitelist import Whitelist  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy import (
+    Policy,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import (
+    PolicyEvaluationProblem,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.whitelist import (
+    Whitelist,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -18,7 +24,15 @@ class PolicyEvaluationLight(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, timestamp=None, image_id=None, policy=None, whitelists=None, evaluation_result=None, evaluation_problems=None):  # noqa: E501
+    def __init__(
+        self,
+        timestamp=None,
+        image_id=None,
+        policy=None,
+        whitelists=None,
+        evaluation_result=None,
+        evaluation_problems=None,
+    ):  # noqa: E501
         """PolicyEvaluationLight - a model defined in Swagger
 
         :param timestamp: The timestamp of this PolicyEvaluationLight.  # noqa: E501
@@ -35,21 +49,21 @@ class PolicyEvaluationLight(Model):
         :type evaluation_problems: List[PolicyEvaluationProblem]
         """
         self.swagger_types = {
-            'timestamp': str,
-            'image_id': str,
-            'policy': Policy,
-            'whitelists': List[Whitelist],
-            'evaluation_result': object,
-            'evaluation_problems': List[PolicyEvaluationProblem]
+            "timestamp": str,
+            "image_id": str,
+            "policy": Policy,
+            "whitelists": List[Whitelist],
+            "evaluation_result": object,
+            "evaluation_problems": List[PolicyEvaluationProblem],
         }
 
         self.attribute_map = {
-            'timestamp': 'timestamp',
-            'image_id': 'image_id',
-            'policy': 'policy',
-            'whitelists': 'whitelists',
-            'evaluation_result': 'evaluation_result',
-            'evaluation_problems': 'evaluation_problems'
+            "timestamp": "timestamp",
+            "image_id": "image_id",
+            "policy": "policy",
+            "whitelists": "whitelists",
+            "evaluation_result": "evaluation_result",
+            "evaluation_problems": "evaluation_problems",
         }
 
         self._timestamp = timestamp

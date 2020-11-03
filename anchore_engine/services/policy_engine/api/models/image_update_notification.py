@@ -15,7 +15,9 @@ class ImageUpdateNotification(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image_id=None, user_id=None, analysis_url=None, event_timestamp=None):  # noqa: E501
+    def __init__(
+        self, image_id=None, user_id=None, analysis_url=None, event_timestamp=None
+    ):  # noqa: E501
         """ImageUpdateNotification - a model defined in Swagger
 
         :param image_id: The image_id of this ImageUpdateNotification.  # noqa: E501
@@ -28,17 +30,17 @@ class ImageUpdateNotification(Model):
         :type event_timestamp: datetime
         """
         self.swagger_types = {
-            'image_id': str,
-            'user_id': str,
-            'analysis_url': str,
-            'event_timestamp': datetime
+            "image_id": str,
+            "user_id": str,
+            "analysis_url": str,
+            "event_timestamp": datetime,
         }
 
         self.attribute_map = {
-            'image_id': 'image_id',
-            'user_id': 'user_id',
-            'analysis_url': 'analysis_url',
-            'event_timestamp': 'event_timestamp'
+            "image_id": "image_id",
+            "user_id": "user_id",
+            "analysis_url": "analysis_url",
+            "event_timestamp": "event_timestamp",
         }
 
         self._image_id = image_id

@@ -15,7 +15,9 @@ class DistroMapping(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, from_distro=None, to_distro=None, flavor=None, created_at=None):  # noqa: E501
+    def __init__(
+        self, from_distro=None, to_distro=None, flavor=None, created_at=None
+    ):  # noqa: E501
         """DistroMapping - a model defined in Swagger
 
         :param from_distro: The from_distro of this DistroMapping.  # noqa: E501
@@ -28,17 +30,17 @@ class DistroMapping(Model):
         :type created_at: datetime
         """
         self.swagger_types = {
-            'from_distro': str,
-            'to_distro': str,
-            'flavor': str,
-            'created_at': datetime
+            "from_distro": str,
+            "to_distro": str,
+            "flavor": str,
+            "created_at": datetime,
         }
 
         self.attribute_map = {
-            'from_distro': 'from_distro',
-            'to_distro': 'to_distro',
-            'flavor': 'flavor',
-            'created_at': 'created_at'
+            "from_distro": "from_distro",
+            "to_distro": "to_distro",
+            "flavor": "flavor",
+            "created_at": "created_at",
         }
 
         self._from_distro = from_distro
