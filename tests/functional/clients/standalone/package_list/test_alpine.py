@@ -22,7 +22,7 @@ class TestAlpinePaths:
     def test_pkgs_allinfo(self, analyzed_data, pkg, metadata):
         result = analyzed_data("py38")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-        loaded = dict(pkgs.get(pkg, '{}'))
+        loaded = dict(pkgs.get(pkg, {}))
         
         # a separate test exists just for the files attribute, leave this out of the assertion
         loaded.pop('files')
@@ -35,7 +35,7 @@ class TestAlpinePaths:
     def test_pkgs_allinfo_files(self, analyzed_data, pkg, metadata):
         result = analyzed_data("py38")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-        loaded = pkgs.get(pkg, '{}')
+        loaded = pkgs.get(pkg, {})
         assert sorted(loaded['files']) == sorted(metadata['files'])
 
     @pytest.mark.parametrize('pkg,version', [pytest.param(pkg, version, id=pkg) for pkg, version in alpine.pkgs_plus_source_all.items()])
