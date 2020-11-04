@@ -24,6 +24,14 @@ print_colorized INFO "Running Anchore Engine functional tests."; echo
 anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system wait --feedsready ''
 anchore-cli --u admin --p foobar --url http://localhost:8228/v1 system status
 
-tox tests/functional --result-json .tox/test-reports.log
+print_colorized WARN "TOX_ENV: ${TOX_ENV}"; echo
+
+default_tox_envs="py36"
+tox_env="${TOX_ENV:-$default_tox_envs}"
+
+for e in $(echo "${tox_env}"); do
+    print_colorized INFO "Running Anchore Engine functional tests using tox env $e."
+    tox -e "${e}" tests/functional --result-json .tox/test-reports.log
+done
 
 print_colorized INFO "Finished running Anchore Engine functional tests."; echo

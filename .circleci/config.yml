@@ -77,13 +77,19 @@ commands:
     parameters:
       test_type:
         type: string
+      tox_env:
+        type: string
+        default: "py36"
     steps:
       - restore_cache:
           keys:
             - v1-dependencies-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
+          echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
+      - run:
           name: run tests
-          command: make << parameters.test_type >>
+          command: |
+            make << parameters.test_type >>
       - save_cache:
           paths:
             - ~/project/.tox
@@ -96,17 +102,26 @@ commands:
 
 jobs:
   unit_tests:
+    parameters:
+      py_version:
+        type: string
+      tox_env:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     environment: *global_environment_vars
     steps:
       - checkout
       - run_tests:
           test_type: test-unit
+          tox_env: <<parameters.tox_env>>
 
   lint:
+    parameters:
+      py_version:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     environment: *global_environment_vars
     steps:
       - checkout
@@ -114,8 +129,13 @@ jobs:
           test_type: lint
 
   integration_tests:
+    parameters:
+      py_version:
+        type: string
+      tox_env:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
       - image: anchore/test-infra-minio:latest
         command:
           - server
@@ -145,10 +165,11 @@ jobs:
       - checkout
       - run_tests:
           test_type: test-integration
+          tox_env: <<parameters.tox_env>>
 
   build:
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:3.8
     resource_class: large
     environment: *global_environment_vars
     steps:
@@ -169,8 +190,13 @@ jobs:
             - caches/*
 
   functional_tests:
+    parameters:
+      py_version:
+        type: string
+      tox_env:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     resource_class: large
     environment:
       <<: *global_environment_vars
@@ -185,12 +211,17 @@ jobs:
       - <<: *ssh_forward_port
       - <<: *initialize_docker_registry_artifacts
       - run:
+          echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
+      - run:
           name: Run functional tests
           command: make setup-and-test-functional
 
   e2e_tests:
+    parameters:
+      py_version:
+        type: string
     docker:
-      - image: circleci/python:3.6
+      - image: circleci/python:<<parameters.py_version>>
     resource_class: large
     environment: *global_environment_vars
     steps:
@@ -224,16 +255,48 @@ jobs:
 workflows:
   default_workflow:
     jobs:
-      - unit_tests
-      - lint
+      - unit_tests:
+          name: unit_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+      - unit_tests:
+          name: unit_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+      - lint:
+          name: lint_36
+          py_version: "3.6"
+      - lint:
+          name: lint_38
+          py_version: "3.8"
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           requires:
-            - unit_tests
+            - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          requires:
+            - unit_tests_38
       - build:
           requires:
-            - lint
-            - unit_tests
+            - lint_36
+            - lint_38
+            - unit_tests_36
+            - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           requires:
             - build
       - push_image:
@@ -242,8 +305,10 @@ workflows:
           context: dockerhub
           filters: *filter_release_branch
           requires:
-            - functional_tests
-            - integration_tests
+            - functional_tests_36
+            - functional_tests_38
+            - integration_tests_36
+            - integration_tests_38
       - anchore/image_scan:
           context: dockerhub
           requires:
@@ -262,23 +327,68 @@ workflows:
                 - master
     jobs:
       - unit_tests:
+          name: unit_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_nightly
+      - unit_tests:
+          name: unit_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_nightly
       - lint:
+          name: lint_36
+          py_version: "3.6"
+          filters: *filter_nightly
+      - lint:
+          name: lint_38
+          py_version: "3.8"
           filters: *filter_nightly
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           filters: *filter_nightly
           requires:
-            - unit_tests
+            - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          filters: *filter_nightly
+          requires:
+            - unit_tests_38
       - build:
           filters: *filter_nightly
           requires:
-            - lint
-            - unit_tests
+            - lint_36
+            - lint_38
+            - unit_tests_36
+            - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_nightly
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_nightly
           requires:
             - build
       - e2e_tests:
+          name: e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_nightly
+          requires:
+            - build
+      - e2e_tests:
+          name: e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_nightly
           requires:
@@ -289,9 +399,12 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            - functional_tests
-            - integration_tests
-            - e2e_tests
+            - functional_tests_36
+            - functional_tests_38
+            - integration_tests_36
+            - integration_tests_38
+            - e2e_tests_36
+            - e2e_tests_38
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_nightly
@@ -306,7 +419,15 @@ workflows:
       - build:
           filters: *filter_rc_tags
       - e2e_tests:
-          name: rc_e2e_tests
+          name: rc_e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_rc_tags
+          requires:
+            - build
+      - e2e_tests:
+          name: rc_e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_rc_tags
           requires:
@@ -317,7 +438,8 @@ workflows:
           context: dockerhub
           filters: *filter_rc_tags
           requires:
-            - rc_e2e_tests
+            - rc_e2e_tests_36
+            - rc_e2e_tests_38
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_rc_tags
@@ -331,14 +453,21 @@ workflows:
   prod_image_workflow:
     jobs:
       - e2e_tests:
-          name: prod_e2e_tests
+          name: prod_e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_semver_tags
+      - e2e_tests:
+          name: prod_e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
       - hold_for_approval:
           type: approval
           filters: *filter_semver_tags
           requires:
-            - prod_e2e_tests
+            - prod_e2e_tests_36
+            - prod_e2e_tests_38
       - push_image:
           name: push_prod_image
           make_job: push-prod
@@ -357,24 +486,70 @@ workflows:
   rebuild_image_workflow:
     jobs:
       - unit_tests:
+          name: unit_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_rebuild_tags
+      - unit_tests:
+          name: unit_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_rebuild_tags
       - lint:
+          name: lint_36
+          py_version: "3.6"
+          filters: *filter_rebuild_tags
+      - lint:
+          name: lint_38
+          py_version: "3.8"
           filters: *filter_rebuild_tags
       - integration_tests:
+          name: integration_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
           filters: *filter_rebuild_tags
           requires:
-            - lint
-            - unit_tests
+            - lint_36
+            - unit_tests_36
+      - integration_tests:
+          name: integration_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
+          filters: *filter_rebuild_tags
+          requires:
+            - lint_38
+            - unit_tests_38
       - build:
           filters: *filter_rebuild_tags
           requires:
-            - lint
-            - unit_tests
+            - lint_36
+            - lint_38
+            - unit_tests_36
+            - unit_tests_38
       - functional_tests:
+          name: functional_tests_36
+          py_version: "3.6"
+          tox_env: "py36"
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38
+          py_version: "3.8"
+          tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
             - build
       - e2e_tests:
+          name: e2e_tests_36
+          py_version: "3.6"
+          context: e2e-testing
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - e2e_tests:
+          name: e2e_tests_38
+          py_version: "3.8"
           context: e2e-testing
           filters: *filter_rebuild_tags
           requires:
@@ -385,9 +560,12 @@ workflows:
           context: dockerhub
           filters: *filter_rebuild_tags
           requires:
-            - e2e_tests
-            - functional_tests
-            - integration_tests
+            - e2e_tests_36
+            - e2e_tests_38
+            - functional_tests_36
+            - functional_tests_38
+            - integration_tests_36
+            - integration_tests_38
       - anchore/image_scan:
           name: anchore_image_scan
           context: dockerhub
