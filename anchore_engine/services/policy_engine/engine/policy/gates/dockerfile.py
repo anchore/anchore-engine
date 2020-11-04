@@ -107,7 +107,7 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
         if is_allowed and user not in rule_users:
             self._fire(msg='User {} found as effective user, which is not on the allowed list'.format(user))
         elif not is_allowed and user in rule_users:
-            self._fire(msg='User {} found as effective user, which is explicity not allowed list'.format(user))
+            self._fire(msg='User {} found as effective user, which is explicity not allowed'.format(user))
 
 
 class InstructionCheckTrigger(ParameterizedDockerfileModeBaseTrigger):
@@ -234,7 +234,7 @@ class NoDockerfile(BaseTrigger):
 
     def evaluate(self, image_obj, context):
         """
-        Evaluate using the initialized values for this object:        
+        Evaluate using the initialized values for this object:
         """
         if image_obj.dockerfile_mode is None or image_obj.dockerfile_mode.lower() != 'actual':
             self._fire()
@@ -254,10 +254,10 @@ class DockerfileGate(Gate):
         """
         Pre-processes the image's dockerfile.
         Leaves the context with a dictionary of dockerfile lines by directive.
-        e.g. 
+        e.g.
         context.data['dockerfile']['RUN'] = ['RUN apt-get update', 'RUN blah']
         context.data['dockerfile']['VOLUME'] = ['VOLUME /tmp', 'VOLUME /var/log']
-        
+
         :rtype: object
         :return: updated context
         """
