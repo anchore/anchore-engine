@@ -4,6 +4,7 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 """
 import datetime
 import enum
+import uuid
 from sqlalchemy import (
     Column,
     Integer,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Index,
     JSON,
     Enum,
+    ForeignKey,
 )
 from sqlalchemy import inspect
 from sqlalchemy.orm import relationship
@@ -27,6 +29,7 @@ from .common import (
     StringJSON,
     anchore_now_datetime,
 )
+from anchore_engine.utils import datetime_to_rfc3339
 
 
 class Anchore(Base, UtilMixin):
@@ -731,3 +734,67 @@ class Lease(Base, UtilMixin):
             self.expires_at.isoformat() if self.expires_at else self.expires_at,
             self.epoch,
         )
+
+
+# Image import entities
+class ImportState(enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    complete = "complete"
+    failed = "failed"
+    expired = "expired"
+    invalidated = "invalidated"
+
+    def is_active(self):
+        """
+        True if record is in an active state, false if in a terminal state
+        :return:
+        """
+        return self in [ImportState.processing, ImportState.pending]
+
+
+class ImageImportOperation(Base, UtilMixin):
+    __tablename__ = "image_imports"
+
+    uuid = Column(String, primary_key=True, default=uuid.uuid4)
+    account = Column(String, index=True)
+    expires_at = Column(DateTime)
+    status = Column(Enum(ImportState))
+    created_at = Column(DateTime, default=anchore_now_datetime)
+    last_updated = Column(
+        DateTime, default=anchore_now_datetime, onupdate=anchore_now_datetime
+    )
+    contents = relationship("ImageImportContent", back_populates="operation")
+
+    def to_json(self):
+        j = super().to_json()
+        j["status"] = self.status.value
+        j["expires_at"] = datetime_to_rfc3339(self.expires_at)
+        j["created_at"] = datetime_to_rfc3339(self.created_at)
+        j["last_update"] = datetime_to_rfc3339(self.last_updated)
+        return j
+
+
+class ImageImportContent(Base, UtilMixin):
+    """
+    References to objects in the object store used for
+    """
+
+    __tablename__ = "image_import_content"
+
+    operation_id = Column(String, ForeignKey("image_imports.uuid"), primary_key=True)
+    digest = Column(String, primary_key=True)
+    content_type = Column(String, primary_key=True)
+    created_at = Column(DateTime, default=anchore_now_datetime)
+    last_updated = Column(
+        DateTime, default=anchore_now_datetime, onupdate=anchore_now_datetime
+    )
+    content_storage_bucket = Column(String)
+    content_storage_key = Column(String)
+    operation = relationship("ImageImportOperation", back_populates="contents")
+
+    def to_json(self):
+        j = super().to_json()
+        j["created_at"] = datetime_to_rfc3339(self.created_at)
+        j["last_update"] = datetime_to_rfc3339(self.last_updated)
+        return j

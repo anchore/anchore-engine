@@ -22,7 +22,7 @@ from anchore_engine.db import (
     CpeVulnerability,
 )
 
-from anchore_engine.services.policy_engine.engine.feeds.schemas import (
+from anchore_engine.common.schemas import (
     DownloadOperationConfiguration,
     GroupDownloadResult,
     GroupDownloadOperationParams,

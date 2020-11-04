@@ -2,6 +2,8 @@
 Docker-related utilities for interacting with docker entities and mechanisms.
 
 """
+import copy
+import json
 import re
 
 from anchore_engine.subsys import logger
@@ -149,3 +151,238 @@ def parse_dockerimage_string(instr, strict=True):
         ret["pullstring"] = None
 
     return ret
+
+
+class DockerImageReference:
+    """
+    An object representing an image reference in a registry
+    """
+
+    _tag_pullstring_format = "{registry}/{repository}:{tag}"
+    _digest_pullstring_format = "{registry}/{repository}@{digest}"
+
+    def __init__(self):
+        self.host = None
+        self.port = None
+        self.registry = None
+        self.repository = None
+        self.tag = None
+        self.registry = None
+        self.digest = None
+        self.image_id = None
+
+    def has_tag(self):
+        return self.tag is not None
+
+    def has_digest(self):
+        return self.digest is not None
+
+    def has_id(self):
+        return self.image_id is not None
+
+    def tag_pullstring(self):
+        assert self.registry and self.repository and self.tag
+        return self._tag_pullstring_format.format(
+            registry=self.registry, repository=self.repository, tag=self.tag
+        )
+
+    def digest_pullstring(self):
+        assert self.registry and self.repository and self.digest
+        return self._digest_pullstring_format.format(
+            registry=self.registry, repository=self.repository, digest=self.digest
+        )
+
+    @classmethod
+    def from_string(cls, input_string, strict=True):
+        parsed = parse_dockerimage_string(input_string, strict)
+        if not parsed:
+            raise ValueError(
+                "invalid format for docker reference: {}".format(input_string)
+            )
+
+        return cls.from_info_dict(parsed)
+
+    @classmethod
+    def from_info_dict(cls, image_info: dict):
+        """
+
+        :param image_info: dictionary output confirmant to output from the parse_dockerimage_string() function
+        :return:
+        """
+
+        i = DockerImageReference()
+        i.host = image_info.get("host")
+        i.port = image_info.get("port")
+        i.registry = image_info.get("registry")
+        i.repository = image_info.get("repo")
+        i.tag = image_info.get("tag")
+        i.digest = image_info.get("digest")
+        i.image_id = image_info.get("imageId")
+        return i
+
+
+class DockerV1ManifestMetadata:
+    """
+    Processed manifest data that exposes the history, inferred dockerfile, etc based on a Docker Image Manifest v2 schema 1: https://docs.docker.com/registry/spec/manifest-v2-1/
+    """
+
+    def __init__(self, manifest_json):
+        self.raw = manifest_json
+        self.layer_ids = self._layer_ids()
+        self.history = self._history()
+        self.inferred_dockerfile = self._infer_dockerfile()
+        self.architecture = self._architecture()
+
+    def _architecture(self):
+        return self.raw.get("architecture")
+
+    def _layer_ids(self):
+        """
+        Return list of layer ids in build execution order (index 0 is first cmd of build, index N-1 is last instruction)
+
+        :return:
+        """
+        layers = [layer["blobSum"] for layer in self.raw.get("fsLayers", [])]
+
+        # Reverse the order to normalize order w/V2
+        layers.reverse()
+
+        return layers
+
+    def _history(self):
+        history = []
+        count = 0
+
+        layers = self._layer_ids()
+        layers.reverse()  # Reverse again to get back to original order
+
+        for layer in self.raw.get("history", []):
+            hel = json.loads(layer["v1Compatibility"])
+            lsize = hel.get("Size", 0)
+
+            lcreatedby = ""
+            cmds = hel.get("container_config", {}).get("Cmd", [])
+            if cmds:
+                lcreatedby = " ".join(cmds)
+
+            lcreated = hel.get("created", "")
+
+            lid = layers[count]
+            count = count + 1
+            history.append(
+                {
+                    "Created": lcreated,
+                    "CreatedBy": lcreatedby,
+                    "Comment": "",
+                    "Id": lid,
+                    "Size": lsize,
+                    "Tags": [],
+                }
+            )
+
+        return history
+
+    def _infer_dockerfile(self):
+        # get dockerfile_contents (translate history to guessed DF)
+        dockerfile_contents = "FROM scratch\n"
+        for hel in self._history():
+            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel["CreatedBy"])
+            if patt:
+                cmd = patt.group(1)
+            elif hel["CreatedBy"]:
+                cmd = "RUN " + hel["CreatedBy"]
+            else:
+                cmd = None
+            if cmd:
+                dockerfile_contents = dockerfile_contents + cmd + "\n"
+
+        return dockerfile_contents
+
+
+class DockerV2ManifestMetadata:
+    """
+    Processed manifest data that exposes the history, inferred dockerfile, etc based on a Docker Image Manifest v2 schema 2: https://docs.docker.com/registry/spec/manifest-v2-2/
+    """
+
+    def __init__(self, manifest_json, image_config_json):
+        """
+
+        :param manifest_json:
+        :param image_config_json:
+        :param downloaded_blob_list: list of string filenames for blobs downloaded, assumed to be sh256 digests
+        """
+
+        self.raw = manifest_json
+        self.image_config = image_config_json
+        self.layer_ids = self._layer_ids()
+        self.history = self._history()
+        self.inferred_dockerfile = self._infer_dockerfile()
+        self.architecture = self._architecture()
+
+    def _architecture(self):
+        if not self.image_config:
+            # Cannot get it without the config, manifest is insufficient
+            return None
+
+        return self.image_config.get("architecture")
+
+    def _layer_ids(self):
+        # Filter out all empty layers
+        return [
+            x.get("digest")
+            for x in self.raw.get("layers")
+            if not x.get("empty_layer", False)
+        ]
+
+    def _history(self):
+        # add support for cases where image metadata does not contain a history element at all
+        rawhistory = copy.copy(self.image_config.get("history"))
+        rawlayers = copy.copy(
+            list(self.raw.get("layers", []))
+        )  # This is carried over from old impl
+
+        if rawhistory is None:
+            # Construct the right number of empty history elements for each layer
+            rawhistory = [{} for layer in rawlayers]
+
+        done = False
+        history = []
+        idx = 0
+        for entry in rawhistory:
+            if entry.get("empty_layer", False):
+                lid = "<missing>"
+                lsize = 0
+            else:
+                lel = rawlayers.pop(0)
+                lid = lel["digest"]
+                lsize = lel["size"]
+
+            history.append(
+                {
+                    "Created": entry.get("created", ""),
+                    "CreatedBy": entry.get("created_by", ""),
+                    "Comment": "",
+                    "Id": lid,
+                    "Size": lsize,
+                    "Tags": [],
+                }
+            )
+
+            idx += 1
+
+        return history
+
+    def _infer_dockerfile(self):
+        dockerfile_contents = "FROM scratch\n"
+        for hel in self._history():
+            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel["CreatedBy"])
+            if patt:
+                cmd = patt.group(1)
+            elif hel["CreatedBy"]:
+                cmd = "RUN " + hel["CreatedBy"]
+            else:
+                cmd = None
+            if cmd:
+                dockerfile_contents = dockerfile_contents + cmd + "\n"
+
+        return dockerfile_contents

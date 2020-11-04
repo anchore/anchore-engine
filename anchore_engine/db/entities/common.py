@@ -13,6 +13,7 @@ from sqlalchemy import types
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 import datetime
+from anchore_engine.utils import datetime_to_rfc3339
 
 try:
     from anchore_engine.subsys import logger
@@ -51,7 +52,12 @@ class UtilMixin(object):
         :return: string
         """
         return dict(
-            (key, value if type(value) != datetime.datetime else value.isoformat())
+            (
+                key,
+                value
+                if type(value) != datetime.datetime
+                else datetime_to_rfc3339(value),
+            )
             for key, value in vars(self).items()
             if not key.startswith("_")
         )

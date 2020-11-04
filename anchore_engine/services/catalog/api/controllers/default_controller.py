@@ -1,6 +1,7 @@
 import connexion
 
 import anchore_engine.apis
+import anchore_engine.services.catalog.importer
 import anchore_engine.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.services.catalog.catalog_impl
@@ -14,6 +15,13 @@ from anchore_engine.services.catalog import archiver, CatalogService
 from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
+from anchore_engine.common.schemas import ImportManifest
+from anchore_engine.apis.exceptions import (
+    AnchoreApiError,
+    BadRequest,
+    InternalError,
+    ConflictingRequest,
+)
 
 authorizer = get_authorizer()
 
@@ -136,6 +144,12 @@ def add_image(
                 "allow_dockerfile_update": allow_dockerfile_update,
             },
         )
+        if image_metadata.get("import_operation_id") and from_archive:
+            raise BadRequest(
+                'Cannot specify both "from_archive=True" query parameter and include an import manifest in the payload',
+                detail={},
+            )
+
         if from_archive:
             task = archiver.RestoreArchivedImageTask(
                 account=ApiRequestContextProxy.namespace(), image_digest=digest
@@ -152,8 +166,42 @@ def add_image(
                 ) = anchore_engine.services.catalog.catalog_impl.image_imageDigest(
                     session, request_inputs, digest
                 )
-        else:
 
+        elif image_metadata.get("import_manifest"):
+            try:
+                import_manifest = ImportManifest.from_json(
+                    image_metadata["import_manifest"]
+                )
+            except AnchoreApiError:
+                raise
+            except Exception as err:
+                logger.debug_exception("Error unmarshalling manifest")
+                # If we hit this, it means the swagger spec doesn't match the marshmallow scheme
+                raise BadRequest(
+                    message="invalid import manifest", detail={"error": str(err)}
+                )
+
+            annotations = image_metadata.get("annotations", {})
+
+            # Don't accept an in-line dockerfile
+            if image_metadata.get("dockerfile"):
+                raise BadRequest(
+                    "Cannot provide dockerfile content directly in import payload. Use the import operation APIs to load the dockerfile before calling this endpoint",
+                    detail={},
+                )
+
+            with db.session_scope() as session:
+                # allow_dockerfile_update is a poor proxy for the 'force' option
+                return_object = anchore_engine.services.catalog.importer.import_image(
+                    session,
+                    account=ApiRequestContextProxy.namespace(),
+                    operation_id=import_manifest.operation_uuid,
+                    import_manifest=import_manifest,
+                    force=allow_dockerfile_update,
+                    annotations=annotations,
+                )
+                httpcode = 200
+        else:
             with db.session_scope() as session:
                 (
                     return_object,
@@ -161,6 +209,9 @@ def add_image(
                 ) = anchore_engine.services.catalog.catalog_impl.image(
                     session, request_inputs, bodycontent=image_metadata
                 )
+
+    except AnchoreApiError:
+        raise
     except ImageConflict as img_err:
         httpcode = 409
         return_object = str(img_err)

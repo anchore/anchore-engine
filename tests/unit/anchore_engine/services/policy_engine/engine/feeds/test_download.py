@@ -16,9 +16,9 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
     FeedDownloader,
 )
-from anchore_engine.services.policy_engine.engine.feeds.schemas import (
-    LocalFeedDataRepoMetadata,
+from anchore_engine.common.schemas import (
     DownloadOperationResult,
+    LocalFeedDataRepoMetadata,
 )
 from anchore_engine.utils import ensure_bytes, timer
 
@@ -123,7 +123,13 @@ def test_LocalFeedDataRepo():
 
         r.initialize()
         assert os.listdir(tmpdir) == ["metadata.json"]
-        ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        ts = (
+            datetime.datetime.utcnow()
+            .replace(tzinfo=datetime.timezone.utc)
+            .replace(
+                microsecond=0
+            )  # Zero this since RFC3339 rendering to json won't preserve it. If removed the later comparison will fail
+        )
         r.metadata.download_result = DownloadOperationResult(
             started=ts, status=FeedDownloader.State.in_progress.value, results=[]
         )
