@@ -7,11 +7,11 @@ import pytest
 
 class TestRpm:
 
-    @pytest.mark.parametrize('path', path_params(centos.pkgfiles_all))
-    def test_pkgfiles_all(self, analyzed_data, path): #, path):
-        result = analyzed_data("rpm")
-        pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgfiles.all']['base']
-        assert pkgs.get(path) == 'RPMFILE'
+    # @pytest.mark.parametrize('path', path_params(centos.pkgfiles_all))
+    # def test_pkgfiles_all(self, analyzed_data, path): #, path):
+    #     result = analyzed_data("rpm")
+    #     pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgfiles.all']['base']
+    #     assert pkgs.get(path) == 'RPMFILE'
 
     @pytest.mark.parametrize('pkg,version', [pytest.param(pkg, version, id=pkg) for pkg, version in centos.pkgs_all.items()])
     def test_pkgs_all(self, analyzed_data, pkg, version):
@@ -23,5 +23,6 @@ class TestRpm:
     def test_pkgs_allinfo(self, analyzed_data, pkg, metadata):
         result = analyzed_data("rpm")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-        loaded = json.loads(pkgs.get(pkg, '{}'))
+        # import ipdb; ipdb.set_trace()
+        loaded = pkgs.get(pkg, '{}')
         assert loaded == metadata

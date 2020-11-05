@@ -32,7 +32,7 @@ pkgs_allinfo = {
         "size": "53687",
         "license": "LGPLv2+",
         "sourcepkg": "libmnl-1.0.4-6.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libdb": {
@@ -42,7 +42,7 @@ pkgs_allinfo = {
         "size": "2515048",
         "license": "BSD and LGPLv2 and Sleepycat",
         "sourcepkg": "libdb-5.3.28-37.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libseccomp": {
@@ -52,7 +52,7 @@ pkgs_allinfo = {
         "size": "402960",
         "license": "LGPLv2",
         "sourcepkg": "libseccomp-2.4.1-1.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libsepol": {
@@ -62,7 +62,7 @@ pkgs_allinfo = {
         "size": "996264",
         "license": "LGPLv2+",
         "sourcepkg": "libsepol-2.9-1.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libunistring": {
@@ -72,7 +72,7 @@ pkgs_allinfo = {
         "size": "1855932",
         "license": "GPLv2+ or LGPLv3+",
         "sourcepkg": "libunistring-0.9.9-3.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libkcapi": {
@@ -82,7 +82,7 @@ pkgs_allinfo = {
         "size": "82828",
         "license": "BSD or GPLv2",
         "sourcepkg": "libkcapi-1.1.1-16_1.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "tzdata": {
@@ -92,7 +92,7 @@ pkgs_allinfo = {
         "size": "1904256",
         "license": "Public Domain",
         "sourcepkg": "tzdata-2020a-1.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "cracklib": {
@@ -102,7 +102,7 @@ pkgs_allinfo = {
         "size": "239047",
         "license": "LGPLv2+",
         "sourcepkg": "cracklib-2.9.6-15.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "bash": {
@@ -112,7 +112,7 @@ pkgs_allinfo = {
         "size": "6930068",
         "license": "GPLv3+",
         "sourcepkg": "bash-4.4.19-10.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
     "libnsl2": {
@@ -122,7 +122,7 @@ pkgs_allinfo = {
         "size": "147122",
         "license": "BSD and LGPLv2+",
         "sourcepkg": "libnsl2-1.2.0-2.20180605git4a062cf.el8.src.rpm",
-        "origin": "CentOS (vendor)",
+        "origin": "CentOS",
         "type": "rpm",
     },
 }
