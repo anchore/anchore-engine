@@ -1,0 +1,9 @@
+- name: Code Scan
+  uses: ShiftLeftSecurity/scan-action@master
+  with:
+    output: reports
+- name: Upload code scan reports
+  uses: actions/upload-artifact@v1.0.0
+  with:
+    name: codescan-reports
+    path: reports

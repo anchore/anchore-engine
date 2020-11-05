@@ -110,4 +110,8 @@ ENV/
 # CI scripts
 anchore-ci*/
 
+# ctags
 tags
+
+# sast-scan reports
+reports/
