@@ -6,7 +6,7 @@ import pytest
 
 
 class TestRpm:
-
+    # TODO: waiting on syft rpm file list information exposure to activation this test.
     # @pytest.mark.parametrize('path', path_params(centos.pkgfiles_all))
     # def test_pkgfiles_all(self, analyzed_data, path): #, path):
     #     result = analyzed_data("rpm")
@@ -23,6 +23,5 @@ class TestRpm:
     def test_pkgs_allinfo(self, analyzed_data, pkg, metadata):
         result = analyzed_data("rpm")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-        # import ipdb; ipdb.set_trace()
         loaded = pkgs.get(pkg, '{}')
         assert loaded == metadata

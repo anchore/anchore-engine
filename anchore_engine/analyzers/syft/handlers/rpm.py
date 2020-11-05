@@ -7,6 +7,7 @@ def handler(findings, artifact):
     """
     Handler function to map syft results for an alpine package type into the engine "raw" document format.
     """
+    # TODO: syft rpm file list information is need to activate this function call.
     # _all_package_files(findings, artifact)
     _all_packages(findings, artifact)
     _all_package_info(findings, artifact)
