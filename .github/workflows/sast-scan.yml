@@ -1,9 +1,13 @@
-- name: Code Scan
-  uses: ShiftLeftSecurity/scan-action@master
-  with:
-    output: reports
-- name: Upload code scan reports
-  uses: actions/upload-artifact@v1.0.0
-  with:
-    name: codescan-reports
-    path: reports
+name: Code Scan
+on: [push, pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ShiftLeftSecurity/scan-action@master
+          with:
+            output: reports
+      - uses: actions/upload-artifact@v1.0.0
+          with:
+            path: reports
