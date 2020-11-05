@@ -10,5 +10,5 @@ jobs:
           output: reports
       - uses: actions/upload-artifact@v2
         with:
-          name: scan-reorts
+          name: scan-reports
           path: reports/
