@@ -1,5 +1,5 @@
 name: Code Scan
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   scan:
     runs-on: ubuntu-latest
