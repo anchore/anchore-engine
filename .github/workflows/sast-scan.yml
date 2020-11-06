@@ -1,5 +1,5 @@
 name: Code Scan
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   scan:
     runs-on: ubuntu-latest
@@ -8,6 +8,8 @@ jobs:
       - uses: ShiftLeftSecurity/scan-action@master
         with:
           output: reports
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v2
         with:
           name: scan-reports
