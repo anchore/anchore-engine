@@ -8,6 +8,8 @@ jobs:
       - uses: ShiftLeftSecurity/scan-action@master
         with:
           output: reports
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v2
         with:
           name: scan-reports
