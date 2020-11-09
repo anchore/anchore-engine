@@ -1,18 +1,8 @@
-import sys
 from .fixtures import centos
-from . import path_params
-import json
 import pytest
 
 
 class TestRpm:
-    # TODO: waiting on syft rpm file list information exposure to activation this test.
-    # @pytest.mark.parametrize('path', path_params(centos.pkgfiles_all))
-    # def test_pkgfiles_all(self, analyzed_data, path): #, path):
-    #     result = analyzed_data("rpm")
-    #     pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgfiles.all']['base']
-    #     assert pkgs.get(path) == 'RPMFILE'
-
     @pytest.mark.parametrize('pkg,version', [pytest.param(pkg, version, id=pkg) for pkg, version in centos.pkgs_all.items()])
     def test_pkgs_all(self, analyzed_data, pkg, version):
         result = analyzed_data("rpm")
