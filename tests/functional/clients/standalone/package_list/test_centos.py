@@ -23,5 +23,9 @@ class TestRpm:
     def test_pkgs_allinfo(self, analyzed_data, pkg, metadata):
         result = analyzed_data("rpm")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
+<<<<<<< Updated upstream
         loaded = pkgs.get(pkg, '{}')
+=======
+        loaded = json.loads(pkgs.get(pkg, {}))
+>>>>>>> Stashed changes
         assert loaded == metadata
