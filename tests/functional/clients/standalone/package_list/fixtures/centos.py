@@ -9,6 +9,7 @@ pkgfiles_all = {
     "/usr/lib64/python3.6/urllib/response.py": "RPMFILE",
     "/usr/share/locale/en@cyrillic": "RPMFILE",
     "/usr/lib64/gconv/ISO8859-3.so": "RPMFILE",
+    "/bin": "RPMFILE",
 }
 
 pkgs_all = {
