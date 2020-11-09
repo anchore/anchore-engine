@@ -3735,7 +3735,7 @@ definitions:
         description: Error code name
       description:
         type: string
-        description: Description of the error code 
+        description: Description of the error code
   GateSpec:
     type: object
     description: A description of the set of gates available in this engine and the triggers and parameters supported
@@ -4528,9 +4528,11 @@ definitions:
         properties:
           curr_eval:
             type: array
+            items: {}
             description: A list containing the current image digest
           last_eval:
             type: array
+            items: {}
             description: A list containing the previous image digests
           annotations:
             type: object
@@ -4568,10 +4570,13 @@ definitions:
     properties:
       added:
         type: array
+        items: {}
       updated:
         type: array
+        items: {}
       removed:
         type: array
+        items: {}
   AnalysisUpdateEval:
     type: object
     description: Evaluation Results for an entity (current or last)

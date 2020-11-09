@@ -116,6 +116,23 @@ jobs:
           test_type: test-unit
           tox_env: <<parameters.tox_env>>
 
+  validate_swagger:
+    description: |
+      Validates the swagger files against the spec
+    parameters:
+      swagger_file:
+        type: string
+    docker:
+      - image: circleci/python:3.8
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: run tests
+          command: |
+            scp << parameters.swagger_file >> remote-docker:~/
+            docker run --rm -v ${HOME}:/local openapitools/openapi-generator-cli:v4.1.3 validate  -i /local/swagger.yaml --recommend
+
   lint:
     parameters:
       py_version:
@@ -269,6 +286,8 @@ workflows:
       - lint:
           name: lint_38
           py_version: "3.8"
+      - validate_swagger:
+          swagger_file: "anchore_engine/services/apiext/swagger/swagger.yaml"
       - integration_tests:
           name: integration_tests_36
           py_version: "3.6"
