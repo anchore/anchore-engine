@@ -1,14 +1,12 @@
-import sys
 from .fixtures import centos
 from . import path_params
-import json
 import pytest
 
 
 class TestRpm:
-
+    @pytest.mark.skip(reason="Waiting on completed functionality.")
     @pytest.mark.parametrize('path', path_params(centos.pkgfiles_all))
-    def test_pkgfiles_all(self, analyzed_data, path): #, path):
+    def test_pkgfiles_all(self, analyzed_data, path):
         result = analyzed_data("rpm")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgfiles.all']['base']
         assert pkgs.get(path) == 'RPMFILE'
@@ -23,5 +21,5 @@ class TestRpm:
     def test_pkgs_allinfo(self, analyzed_data, pkg, metadata):
         result = analyzed_data("rpm")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
-        loaded = json.loads(pkgs.get(pkg, '{}'))
+        loaded = pkgs.get(pkg, {})
         assert loaded == metadata
