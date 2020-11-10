@@ -7,6 +7,7 @@ def handler(findings, artifact):
     """
     Handler function to map syft results for an alpine package type into the engine "raw" document format.
     """
+    # _all_package_files(findings, artifact)
     _all_packages(findings, artifact)
     _all_package_info(findings, artifact)
 
@@ -42,3 +43,9 @@ def _all_packages(findings, artifact):
     version = artifact["version"]
     if name and version:
         findings['package_list']['pkgs.all']['base'][name] = version
+
+
+def _all_package_files(findings, artifact):
+    for file in dig(artifact, 'metadata', 'files', default=[]):
+        pkgfile = file.get('path')
+        findings['package_list']['pkgfiles.all']['base'][pkgfile] = "RPMFILE"
