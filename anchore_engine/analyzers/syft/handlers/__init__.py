@@ -3,6 +3,7 @@ from . import gem
 from . import java
 from . import npm
 from . import python
+from . import rpm
 
 # this is a mapping of syft artifact types to handler functions to transform syft output into engine-compliant output
 handlers_by_artifact_type = {
@@ -12,4 +13,5 @@ handlers_by_artifact_type = {
     'java-archive': java.handler,
     'jenkins-plugin': java.handler,
     'apk': alpine.handler,
+    'rpm': rpm.handler,
 }

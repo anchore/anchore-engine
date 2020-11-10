@@ -18,12 +18,14 @@ imgid = config['imgid_full']
 outputdir = config['dirs']['outputdir']
 unpackdir = config['dirs']['unpackdir']
 
-meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir)
-distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(
+    os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir)
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(
+    meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
 
 print("analyzer starting up: imageId="+str(imgid) + " meta="+str(meta) + " distrodict="+str(distrodict))
 
-if distrodict['flavor'] not in ['RHEL', 'DEB', 'BUSYB']:
+if distrodict['flavor'] not in ['DEB', 'BUSYB']:
     sys.exit(0)
 
 pkgsall = {}
@@ -31,28 +33,11 @@ pkgfilesall = {}
 pkgsplussource = {}
 pkgsdetail = {}
 
-if distrodict['flavor'] == "RHEL":
+if distrodict['flavor'] == "DEB":
     try:
-        rpms, rpmdbdir = anchore_engine.analyzers.utils.rpm_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
-        for pkg in list(rpms.keys()):
-            pkgsall[pkg] = rpms[pkg]['version'] + "-" + rpms[pkg]['release']
-            pkgsdetail[pkg] = json.dumps(rpms[pkg])
-    except Exception as err:
-        import traceback
-        traceback.print_exc()
-        print("WARN: failed to generate RPM package list: " + str(err))
+        (all_packages, all_packages_simple, actual_packages, other_packages,
+         dpkgdbdir) = anchore_engine.analyzers.utils.dpkg_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
 
-    try:
-        rpmfiles = anchore_engine.analyzers.utils.rpm_get_all_pkgfiles(rpmdbdir)
-        for pkgfile in list(rpmfiles.keys()):
-            pkgfilesall[pkgfile] = "RPMFILE"
-    except Exception as err:
-        print("WARN: failed to get file list from RPMs: " + str(err))
-
-elif distrodict['flavor'] == "DEB":
-    try:
-        (all_packages, all_packages_simple, actual_packages, other_packages, dpkgdbdir) = anchore_engine.analyzers.utils.dpkg_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
-    
         for p in list(actual_packages.keys()):
             pkgsall[p] = actual_packages[p]['version']
 
@@ -67,12 +52,12 @@ elif distrodict['flavor'] == "DEB":
         for p in list(all_packages.keys()):
             pkgsdetail[p] = json.dumps(all_packages[p])
 
-        
     except Exception as err:
         print("WARN: failed to get package list from DPKG: " + str(err))
 
     try:
-        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles_from_squashtar(dpkgdbdir, os.path.join(unpackdir, "squashed.tar"))
+        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles_from_squashtar(
+            dpkgdbdir, os.path.join(unpackdir, "squashed.tar"))
         for pkgfile in list(dpkgfiles.keys()):
             pkgfilesall[pkgfile] = "DPKGFILE"
 
