@@ -70,6 +70,14 @@ pre_baked_images = {
         "image_source": "registry",
         "schema_version": "v2",
     },
+    'busybox': {
+        "registry": "docker.io",
+        "repo": "busybox",
+        "tag": "1.32.0-glibc",
+        "digest": "sha256:6e6d13055ed81b7144afaad15150fc137d4f639482beb311aaa097bc57e3cb80",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
 }
 
 
