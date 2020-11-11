@@ -33,11 +33,6 @@ pkgfilesall = {}
 pkgsplussource = {}
 pkgsdetail = {}
 
-if distrodict['flavor'] == "BUSYB":
-    pkgsall["BusyBox"] = distrodict['fullversion']
-else:
-    pkgsall["Unknown"] = "0"
-
 if pkgsall:
     ofile = os.path.join(outputdir, 'pkgs.all')
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, pkgsall)
