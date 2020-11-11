@@ -38,8 +38,8 @@ class TestDebianPaths:
         result = analyzed_data("stretch-slim")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
         loaded = pkgs.get(pkg, {})
-        actual = sorted(loaded['license'])
-        expected = sorted(metadata['license'])
+        actual = set(loaded['license'].split(' '))
+        expected = set(metadata['license'].split(' '))
         assert actual == expected
 
     @pytest.mark.parametrize('pkg,version', [pytest.param(pkg, version, id=pkg) for pkg, version in debian.pkgs_all.items()])
