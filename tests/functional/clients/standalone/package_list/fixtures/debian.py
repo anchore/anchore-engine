@@ -1,14 +1,11 @@
 pkgfiles_all = {
     "/usr/share/man/man8/apt-config.8.gz": "DPKGFILE",
-    "/var/lib/dpkg/alternatives": "DPKGFILE",
     "/usr/share/doc/tar/NEWS.Debian.gz": "DPKGFILE",
     "/usr/share/base-files/staff-group-for-usr-local": "DPKGFILE",
     "/usr/share/doc/apt/examples/configure-index.gz": "DPKGFILE",
     "/usr/share/man/man1/dirname.1.gz": "DPKGFILE",
-    "/usr/share/doc/libgpg-error0": "DPKGFILE",
     "/usr/share/man/man8/grpconv.8.gz": "DPKGFILE",
     "/lib/x86_64-linux-gnu/security/pam_tty_audit.so": "DPKGFILE",
-    "/usr/share/zoneinfo/right/Atlantic/Jan_Mayen": "DPKGFILE",
 }
 
 pkgs_all = {
@@ -81,7 +78,7 @@ pkgs_allinfo = {
         "size": "231000",
         "origin": "Bdale Garbee <bdale@gag.com> (maintainer)",
         "license": "Unknown",
-        "sourcepkg": "gzip-1.6-5",
+        "sourcepkg": "gzip-1.6-5+b1",
         "type": "dpkg",
     },
     "libpam0g": {
@@ -101,7 +98,7 @@ pkgs_allinfo = {
         "size": "62000",
         "origin": "Anibal Monsalve Salazar <anibal@debian.org> (maintainer)",
         "license": "Unknown",
-        "sourcepkg": "sensible-utils-0.0.9+deb9u1",
+        "sourcepkg": "N/A",
         "type": "dpkg",
     },
     "bash": {
@@ -111,7 +108,7 @@ pkgs_allinfo = {
         "size": "5798000",
         "origin": "Matthias Klose <doko@debian.org> (maintainer)",
         "license": "Unknown",
-        "sourcepkg": "bash-4.4-5",
+        "sourcepkg": "N/A",
         "type": "dpkg",
     },
 }

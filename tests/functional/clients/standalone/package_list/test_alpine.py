@@ -25,6 +25,7 @@ class TestAlpinePaths:
         loaded = dict(pkgs.get(pkg, {}))
         
         # a separate test exists just for the files attribute, leave this out of the assertion
+        loaded = dict(loaded)
         loaded.pop('files')
         metadata = dict(metadata)
         metadata.pop('files')

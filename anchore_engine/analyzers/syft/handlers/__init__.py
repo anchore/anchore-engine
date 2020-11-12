@@ -4,6 +4,7 @@ from . import java
 from . import npm
 from . import python
 from . import rpm
+from . import debian
 
 # this is a mapping of syft artifact types to handler functions to transform syft output into engine-compliant output
 handlers_by_artifact_type = {
@@ -14,4 +15,5 @@ handlers_by_artifact_type = {
     'jenkins-plugin': java.handler,
     'apk': alpine.handler,
     'rpm': rpm.handler,
+    'deb': debian.handler,
 }
