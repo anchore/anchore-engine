@@ -33,38 +33,7 @@ pkgfilesall = {}
 pkgsplussource = {}
 pkgsdetail = {}
 
-if distrodict['flavor'] == "DEB":
-    try:
-        (all_packages, all_packages_simple, actual_packages, other_packages,
-         dpkgdbdir) = anchore_engine.analyzers.utils.dpkg_get_all_packages_detail_from_squashtar(unpackdir, os.path.join(unpackdir, "squashed.tar"))
-
-        for p in list(actual_packages.keys()):
-            pkgsall[p] = actual_packages[p]['version']
-
-        for p in list(all_packages_simple.keys()):
-            pkgsplussource[p] = all_packages_simple[p]['version']
-
-        if len(other_packages) > 0:
-            for p in list(other_packages.keys()):
-                for v in other_packages[p]:
-                    pkgsplussource[p] = v['version']
-
-        for p in list(all_packages.keys()):
-            pkgsdetail[p] = json.dumps(all_packages[p])
-
-    except Exception as err:
-        print("WARN: failed to get package list from DPKG: " + str(err))
-
-    try:
-        dpkgfiles = anchore_engine.analyzers.utils.dpkg_get_all_pkgfiles_from_squashtar(
-            dpkgdbdir, os.path.join(unpackdir, "squashed.tar"))
-        for pkgfile in list(dpkgfiles.keys()):
-            pkgfilesall[pkgfile] = "DPKGFILE"
-
-    except Exception as err:
-        print("WARN: failed to get file list from DPKGs: " + str(err))
-
-elif distrodict['flavor'] == "BUSYB":
+if distrodict['flavor'] == "BUSYB":
     pkgsall["BusyBox"] = distrodict['fullversion']
 else:
     pkgsall["Unknown"] = "0"
