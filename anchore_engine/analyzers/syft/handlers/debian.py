@@ -1,6 +1,6 @@
 import re
 
-from anchore_engine.analyzers.utils import dig
+from anchore_engine.analyzers.utils import dig, content_hints
 
 
 def handler(findings, artifact):
@@ -11,6 +11,7 @@ def handler(findings, artifact):
     _all_packages(findings, artifact)
     _all_packages_plus_source(findings, artifact)
     _all_package_info(findings, artifact)
+
 
 def _all_package_info(findings, artifact):
     name = artifact['name']
@@ -54,7 +55,13 @@ def _all_package_info(findings, artifact):
         'type': "dpkg",
     }
 
+    pkg_updates = content_hints(pkg_type="dpkg")
+    pkg_update = pkg_updates.get(name)
+    if pkg_update:
+        pkg_value.update(pkg_update)
+
     findings['package_list']['pkgs.allinfo']['base'][name] = pkg_value
+
 
 def _all_packages_plus_source(findings, artifact):
     name = artifact['name']

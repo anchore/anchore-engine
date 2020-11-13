@@ -1,13 +1,13 @@
-import os
 import collections
 
-from anchore_engine.analyzers.utils import defaultdict_to_dict
+from anchore_engine.analyzers.utils import defaultdict_to_dict, get_hintsfile
 from anchore_engine.clients.syft_wrapper import run_syft
 from .handlers import handlers_by_artifact_type
 
 
 def filter_artifacts(artifact):
     return artifact['type'] in handlers_by_artifact_type
+
 
 def catalog_image(image):
     """
@@ -37,10 +37,3 @@ def catalog_image(image):
         handler(findings, artifact)
 
     return defaultdict_to_dict(findings)
-
-
-def content_hints(hints_pkg):
-    """Content hints will provide the handlers with a means of inserting new data from
-    the user.
-    """
-    pass
