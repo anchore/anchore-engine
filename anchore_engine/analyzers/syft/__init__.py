@@ -38,3 +38,9 @@ def catalog_image(image):
 
     return defaultdict_to_dict(findings)
 
+
+def content_hints(hints_pkg):
+    """Content hints will provide the handlers with a means of inserting new data from
+    the user.
+    """
+    pass
