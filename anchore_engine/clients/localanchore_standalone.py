@@ -449,8 +449,22 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
         raise Exception("passed in root directory must exist (" + str(rootdir) + ")")
 
     rando = str(uuid.uuid4())
+    unpackdir = os.path.join(rootdir, rando)
+
+    # XXX This highly questionable environment variable usage is the only way
+    # found to programmatically inject hintsfiles without requiring the
+    # hintsfile to exist in the image. Otherwise, it would require every
+    # permutation of a hintsfile to be an actual unique image. It leverages the
+    # fact that Anchore Engine will not try to extract the hinstfile if it has
+    # already been unpacked in the unpack directory.
+    try:
+        if os.environ.get['ANCHORE_TEST_HINTSFILE']:
+            shutil.copyfile(os.environ.get['ANCHORE_TEST_HINTSFILE'], unpackdir)
+    except Exception as err:
+        logger.debug("testing injection of hintsfile failed: %s", str(err))
+
     ret = {
-        'unpackdir': os.path.join(rootdir, rando),
+        'unpackdir': unpackdir,
         'copydir': os.path.join(rootdir, rando, "raw"),
         'rootfs': os.path.join(rootdir, rando, "rootfs"),
         'outputdir': os.path.join(rootdir, rando, "output"),
@@ -467,6 +481,11 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
                 os.makedirs(ret[k])
         except Exception as err:
             raise Exception("unable to prep staging directory - exception: " + str(err))
+
+    # Set this env var so both scripts and modules that don't have access to
+    # these values have a reliable way of retrieving it. This is set here
+    # because this is the function that creates the directories.
+    os.environ['ANCHORE_ANALYZERS_UNPACKDIR'] = unpackdir
 
     return ret
 
