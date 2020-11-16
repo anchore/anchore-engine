@@ -7,85 +7,95 @@ from pkg_resources import parse_version
 from anchore_engine.subsys import logger
 from anchore_engine.util.maven import MavenVersion
 
-zerolikes = ['0', '0.0', '0.0.0', '0.0.0.0']
+zerolikes = ["0", "0.0", "0.0.0", "0.0.0.0"]
 
 
-def language_compare(a, op, b, language='python'):
-    if op not in ['>', '<', '<=', '>=', '!=', '=', '==', '~', '^']:
+def language_compare(a, op, b, language="python"):
+    if op not in [">", "<", "<=", ">=", "!=", "=", "==", "~", "^"]:
         raise Exception("unknown op {}".format(op))
     elif not a or not b:
         raise Exception("must supply valid inputs a={} op={} b={}".format(a, op, b))
 
     aoptions = []
     boptions = []
-    if language in ['java', 'maven']:
+    if language in ["java", "maven"]:
         aoptions = [MavenVersion(a)]
         boptions = [MavenVersion(b)]
-    elif language in ['js', 'npm', 'ruby', 'gem', 'nuget']:
+    elif language in ["js", "npm", "ruby", "gem", "nuget"]:
         try:
             aoptions = [semantic_version.Version.coerce(a)]
             boptions = [semantic_version.Version.coerce(b)]
         except ValueError:
-            logger.debug("{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(language, a, b))
+            logger.debug(
+                "{} versions {}/{} unable to load as semantic_versions - falling back to parse_version".format(
+                    language, a, b
+                )
+            )
             aoptions = [parse_version(a)]
             boptions = [parse_version(b)]
-    elif language in ['python']:
+    elif language in ["python"]:
         try:
             aoptions = [StrictVersion(a), LooseVersion(a)]
             boptions = [StrictVersion(b), LooseVersion(b)]
         except ValueError:
-            logger.debug("python versions {}/{} unable to load as StrictVersion - falling back to LooseVersion/parse_version".format(a, b))
+            logger.debug(
+                "python versions {}/{} unable to load as StrictVersion - falling back to LooseVersion/parse_version".format(
+                    a, b
+                )
+            )
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
     else:
-        raise Exception("language {} not supported for version comparison".format(language))
+        raise Exception(
+            "language {} not supported for version comparison".format(language)
+        )
 
     for i in range(0, len(aoptions)):
         try:
-            if op == '>':
+            if op == ">":
                 if b in zerolikes:
                     return True
                 if aoptions[i] > boptions[i]:
                     return True
                 else:
                     return False
-            elif op == '>=':
+            elif op == ">=":
                 if b in zerolikes:
                     return True
                 if aoptions[i] >= boptions[i]:
                     return True
                 else:
                     return False
-            elif op == '<':
+            elif op == "<":
                 if b in zerolikes:
                     return False
                 if aoptions[i] < boptions[i]:
                     return True
                 else:
                     return False
-            elif op == '<=':
+            elif op == "<=":
                 if aoptions[i] <= boptions[i]:
                     return True
                 else:
                     return False
-            elif op in ['=', '==']:
+            elif op in ["=", "=="]:
                 if aoptions[i] == boptions[i]:
                     return True
                 else:
                     return False
-            elif op == '!=':
+            elif op == "!=":
                 if aoptions[i] != boptions[i]:
                     return True
                 else:
                     return False
-            elif op == '~':
+            elif op == "~":
                 # for these operations, attempt to coerce and compare with semantic_version
                 ha = semantic_version.Version.coerce(str(aoptions[i]))
                 hb = semantic_version.Version.coerce(str(boptions[i]))
                 hs = semantic_version.Spec("~{}".format(hb))
                 rc = hs.match(ha)
                 return rc
-            elif op == '^':
+            elif op == "^":
                 # for these operations, attempt to coerce and compare with semantic_version
                 ha = semantic_version.Version.coerce(str(aoptions[i]))
                 hb = semantic_version.Version.coerce(str(boptions[i]))
@@ -96,7 +106,7 @@ def language_compare(a, op, b, language='python'):
             pass
 
 
-def normalized_version_match(rawsemver, rawpkgver, language='python'):
+def normalized_version_match(rawsemver, rawpkgver, language="python"):
     versionmatch = False
 
     vranges = re.split(r" *\|\| *", rawsemver)
@@ -104,7 +114,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
     inrange = False
     for vrange in vranges:
         vrange = vrange.strip()
-        if vrange in ['*', 'all']:
+        if vrange in ["*", "all"]:
             inrange = True
             break
 
@@ -137,7 +147,7 @@ def normalized_version_match(rawsemver, rawpkgver, language='python'):
     return versionmatch
 
 
-def compare_versions(rawsemver, rawpkgver, language='python'):
+def compare_versions(rawsemver, rawpkgver, language="python"):
     ret = False
     if not rawsemver:
         raise Exception("empty version range passed as input")

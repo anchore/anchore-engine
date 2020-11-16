@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy_rule import PolicyRule  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy_rule import (
+    PolicyRule,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,9 @@ class Policy(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, name=None, comment=None, version=None, rules=None):  # noqa: E501
+    def __init__(
+        self, id=None, name=None, comment=None, version=None, rules=None
+    ):  # noqa: E501
         """Policy - a model defined in Swagger
 
         :param id: The id of this Policy.  # noqa: E501
@@ -31,19 +35,19 @@ class Policy(Model):
         :type rules: List[PolicyRule]
         """
         self.swagger_types = {
-            'id': str,
-            'name': str,
-            'comment': str,
-            'version': str,
-            'rules': List[PolicyRule]
+            "id": str,
+            "name": str,
+            "comment": str,
+            "version": str,
+            "rules": List[PolicyRule],
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'name': 'name',
-            'comment': 'comment',
-            'version': 'version',
-            'rules': 'rules'
+            "id": "id",
+            "name": "name",
+            "comment": "comment",
+            "version": "version",
+            "rules": "rules",
         }
 
         self._id = id
@@ -147,7 +151,9 @@ class Policy(Model):
         :type version: str
         """
         if version is None:
-            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `version`, must not be `None`"
+            )  # noqa: E501
 
         self._version = version
 

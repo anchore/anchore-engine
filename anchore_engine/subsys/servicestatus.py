@@ -22,7 +22,16 @@ def set_my_service_record(service_record):
     return True
 
 
-def set_status(service_record, up=True, available=True, busy=False, message="all good", detail=None, update_db=False, versions=None):
+def set_status(
+    service_record,
+    up=True,
+    available=True,
+    busy=False,
+    message="all good",
+    detail=None,
+    update_db=False,
+    versions=None,
+):
     """
     Update the status in the local service state cache, optionally also updating the db record
 
@@ -37,10 +46,10 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     :return:
     """
     global service_statuses
-    hostid = service_record['hostid']
-    servicename = service_record['servicename']
-    base_url = service_record.get('base_url', 'N/A')
-    service = '__'.join([hostid, servicename, base_url])
+    hostid = service_record["hostid"]
+    servicename = service_record["servicename"]
+    base_url = service_record.get("base_url", "N/A")
+    service = "__".join([hostid, servicename, base_url])
 
     if service not in service_statuses:
         service_statuses[service] = {}
@@ -48,13 +57,13 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
     # code_version = anchore_engine.version.version
     # db_version = anchore_engine.version.db_version
 
-    service_statuses[service]['up'] = up
-    service_statuses[service]['available'] = available
-    service_statuses[service]['busy'] = busy
-    service_statuses[service]['message'] = message
-    service_statuses[service]['detail'] = detail if detail is not None else {}
-    service_statuses[service]['version'] = versions.get('service_version')
-    service_statuses[service]['db_version'] = versions.get('db_version')
+    service_statuses[service]["up"] = up
+    service_statuses[service]["available"] = available
+    service_statuses[service]["busy"] = busy
+    service_statuses[service]["message"] = message
+    service_statuses[service]["detail"] = detail if detail is not None else {}
+    service_statuses[service]["version"] = versions.get("service_version")
+    service_statuses[service]["db_version"] = versions.get("db_version")
 
     if update_db:
         update_status(service_record)
@@ -62,24 +71,31 @@ def set_status(service_record, up=True, available=True, busy=False, message="all
 
 def update_status(service_record):
     global service_statuses, my_service_record
-    hostid = service_record['hostid']
-    servicename = service_record['servicename']
-    base_url = service_record.get('base_url', 'N/A')
-    service = '__'.join([hostid, servicename, base_url])
+    hostid = service_record["hostid"]
+    servicename = service_record["servicename"]
+    base_url = service_record.get("base_url", "N/A")
+    service = "__".join([hostid, servicename, base_url])
 
     with session_scope() as dbsession:
-        db_service_record = db_services.get(hostid, servicename, base_url, session=dbsession)
+        db_service_record = db_services.get(
+            hostid, servicename, base_url, session=dbsession
+        )
         logger.debug("db service record: {}".format(db_service_record))
         if db_service_record:
             my_service_record = db_service_record
-            my_service_record['heartbeat'] = time.time()
+            my_service_record["heartbeat"] = time.time()
 
-            if service_statuses[service]['up'] and service_statuses[service]['available']:
-                my_service_record['status'] = True
+            if (
+                service_statuses[service]["up"]
+                and service_statuses[service]["available"]
+            ):
+                my_service_record["status"] = True
             else:
-                my_service_record['status'] = False
+                my_service_record["status"] = False
 
-            my_service_record['short_description'] = json.dumps(service_statuses[service])
+            my_service_record["short_description"] = json.dumps(
+                service_statuses[service]
+            )
             db_services.update_record(my_service_record, session=dbsession)
         else:
             db_services.add(hostid, servicename, service_record, session=dbsession)
@@ -89,10 +105,10 @@ def update_status(service_record):
 
 def get_status(service_record):
     global service_statuses
-    hostid = service_record['hostid']
-    servicename = service_record['servicename']
-    base_url = service_record.get('base_url', 'N/A')
-    service = '__'.join([hostid, servicename, base_url])
+    hostid = service_record["hostid"]
+    servicename = service_record["servicename"]
+    base_url = service_record.get("base_url", "N/A")
+    service = "__".join([hostid, servicename, base_url])
 
     if service in service_statuses:
         ret = service_statuses[service]
@@ -102,17 +118,23 @@ def get_status(service_record):
 
 
 def handle_service_heartbeat(*args, **kwargs):
-    cycle_timer = kwargs['mythread']['cycle_timer']
+    cycle_timer = kwargs["mythread"]["cycle_timer"]
     localconfig = anchore_engine.configuration.localconfig.get_config()
     try:
         servicename = args[0]
     except Exception as err:
-        raise Exception("BUG: need to provide service name as first argument to function: " + str(args))
+        raise Exception(
+            "BUG: need to provide service name as first argument to function: "
+            + str(args)
+        )
 
     while True:
         logger.debug("storing service status: " + str(servicename))
         try:
-            logger.debug("local service record: %s", anchore_engine.subsys.servicestatus.get_my_service_record())
+            logger.debug(
+                "local service record: %s",
+                anchore_engine.subsys.servicestatus.get_my_service_record(),
+            )
             logger.debug("all service records: %s", service_statuses)
 
             service_record = anchore_engine.subsys.servicestatus.get_my_service_record()

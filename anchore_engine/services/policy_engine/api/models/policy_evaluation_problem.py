@@ -25,16 +25,12 @@ class PolicyEvaluationProblem(Model):
         :param details: The details of this PolicyEvaluationProblem.  # noqa: E501
         :type details: str
         """
-        self.swagger_types = {
-            'severity': str,
-            'problem_type': str,
-            'details': str
-        }
+        self.swagger_types = {"severity": str, "problem_type": str, "details": str}
 
         self.attribute_map = {
-            'severity': 'severity',
-            'problem_type': 'problem_type',
-            'details': 'details'
+            "severity": "severity",
+            "problem_type": "problem_type",
+            "details": "details",
         }
 
         self._severity = severity
@@ -73,7 +69,9 @@ class PolicyEvaluationProblem(Model):
         :type severity: str
         """
         if severity is None:
-            raise ValueError("Invalid value for `severity`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `severity`, must not be `None`"
+            )  # noqa: E501
 
         self._severity = severity
 
@@ -98,7 +96,9 @@ class PolicyEvaluationProblem(Model):
         :type problem_type: str
         """
         if problem_type is None:
-            raise ValueError("Invalid value for `problem_type`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `problem_type`, must not be `None`"
+            )  # noqa: E501
 
         self._problem_type = problem_type
 
@@ -123,6 +123,8 @@ class PolicyEvaluationProblem(Model):
         :type details: str
         """
         if details is None:
-            raise ValueError("Invalid value for `details`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `details`, must not be `None`"
+            )  # noqa: E501
 
         self._details = details

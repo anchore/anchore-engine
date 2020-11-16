@@ -23,14 +23,11 @@ class UpdateEvent(Model):
         :param event_content: The event_content of this UpdateEvent.  # noqa: E501
         :type event_content: object
         """
-        self.swagger_types = {
-            'event_type': str,
-            'event_content': object
-        }
+        self.swagger_types = {"event_type": str, "event_content": object}
 
         self.attribute_map = {
-            'event_type': 'event_type',
-            'event_content': 'event_content'
+            "event_type": "event_type",
+            "event_content": "event_content",
         }
 
         self._event_type = event_type

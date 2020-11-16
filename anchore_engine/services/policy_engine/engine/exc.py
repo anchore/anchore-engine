@@ -6,6 +6,7 @@ Exceptions for the engine
 class EngineException(Exception):
     pass
 
+
 class ImageLoadError(EngineException):
     pass
 
@@ -28,4 +29,3 @@ class FeedNotFoundError(EngineException):
 
 class VulnerabilityDataUnavailableError(EngineException):
     pass
-

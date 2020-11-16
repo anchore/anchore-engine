@@ -37,15 +37,22 @@ class UnauthorizedError(Exception):
         if type(required_permissions) != list:
             required_permissions = [required_permissions]
 
-        perm_str = ','.join('domain={} action={} target={}'.format(perm.domain, perm.action, '*' if perm.target is None else perm.target) for perm in required_permissions)
-        super(UnauthorizedError, self).__init__('Not authorized. Requires permissions: {}'.format(perm_str))
+        perm_str = ",".join(
+            "domain={} action={} target={}".format(
+                perm.domain, perm.action, "*" if perm.target is None else perm.target
+            )
+            for perm in required_permissions
+        )
+        super(UnauthorizedError, self).__init__(
+            "Not authorized. Requires permissions: {}".format(perm_str)
+        )
         self.required_permissions = required_permissions
 
 
 class AccountStateError(UnauthorizedError):
     def __init__(self, account):
         super(AccountStateError, self).__init__([])
-        self.msg = 'Not authorized. Account {} not enabled.'.format(account)
+        self.msg = "Not authorized. Account {} not enabled.".format(account)
 
     def __str__(self):
         return self.msg
@@ -53,18 +60,20 @@ class AccountStateError(UnauthorizedError):
 
 class UnauthorizedAccountError(Exception):
     def __init__(self, account_types):
-        super(UnauthorizedAccountError, self).__init__('Not authorized. Requires callers account of type {}'.format(account_types))
+        super(UnauthorizedAccountError, self).__init__(
+            "Not authorized. Requires callers account of type {}".format(account_types)
+        )
 
 
 class UnauthenticatedError(Exception):
     pass
 
 
-Permission = namedtuple('Permission', ['domain', 'action', 'target'])
+Permission = namedtuple("Permission", ["domain", "action", "target"])
 
 
 class ActionBoundPermission(object):
-    def __init__(self, domain, target='*'):
+    def __init__(self, domain, target="*"):
         self.domain = domain
         self.action = OperationActionLookup(action_provider)
         self.target = target
@@ -84,6 +93,7 @@ class LazyBoundValue(ABC):
     """
     A generic domain handler that supports lazy binding and injection
     """
+
     def __init__(self, value=None):
         self._value = value
 
@@ -128,15 +138,15 @@ class ParameterBoundValue(LazyBoundValue):
 
 class OperationActionLookup(FunctionInjectedValue):
     def bind(self, operation: callable, kwargs=None):
-        fq_operation_id = operation.__module__ + '.' + operation.__name__
+        fq_operation_id = operation.__module__ + "." + operation.__name__
         self._value = self.loader(fq_operation_id)
 
 
 class NotificationTypes(enum.Enum):
-    domain_created = 'domain_created'
-    domain_deleted = 'domain_deleted'
-    principal_created= 'principal_created'
-    principal_deleted = 'principal_deleted'
+    domain_created = "domain_created"
+    domain_deleted = "domain_deleted"
+    principal_created = "principal_created"
+    principal_deleted = "principal_deleted"
 
 
 class AuthorizationHandler(ABC):
@@ -209,9 +219,8 @@ class AuthorizationHandler(ABC):
         """
         pass
 
-
     @abstractmethod
-    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken=None):
+    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken = None):
         """
         Function to invoke an inline authz, similar to requires_* functions but non-decorator.
         :param permission_s:
@@ -226,17 +235,22 @@ class DbAuthorizationHandler(AuthorizationHandler):
     Default authorization handler for service apis.
 
     """
+
     _yosai = None
     _config_lock = RLock()
 
     def load(self, configuration):
         with DbAuthorizationHandler._config_lock:
-            conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/default_yosai_settings.yaml')
+            conf_path = pkg_resources.resource_filename(
+                anchore_engine.__name__, "conf/default_yosai_settings.yaml"
+            )
             DbAuthorizationHandler._yosai = Yosai(file_path=conf_path)
             # Disable sessions, since the APIs are not session-based
-            DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
+            DbAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = (
+                False
+            )
 
-            token_info[JwtToken] = {'tier': 1, 'cred_type': 'jwt'}
+            token_info[JwtToken] = {"tier": 1, "cred_type": "jwt"}
 
     def notify(self, notification_type, notification_value):
         """
@@ -253,27 +267,32 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 mgr = idp_factory.for_session(session)
                 sys_usr = mgr.lookup_user(localconfig.SYSTEM_USERNAME)
                 if sys_usr is not None:
-                    logger.debug('Healthcheck for native authz handler returning ok')
+                    logger.debug("Healthcheck for native authz handler returning ok")
                     return True
         except Exception as e:
-            logger.error('Healthcheck for native authz handler caught exception: {}'.format(e))
+            logger.error(
+                "Healthcheck for native authz handler caught exception: {}".format(e)
+            )
 
         return False
 
     def get_authc_token(self, request):
-        authz_header = request.environ.get('HTTP_AUTHORIZATION')
+        authz_header = request.environ.get("HTTP_AUTHORIZATION")
         authc_token = None
 
         if request.authorization:
             # HTTP Basic/Digest Auth
-            authc_token = UsernamePasswordToken(username=request.authorization.username,
-                                                password=request.authorization.password, remember_me=False)
+            authc_token = UsernamePasswordToken(
+                username=request.authorization.username,
+                password=request.authorization.password,
+                remember_me=False,
+            )
         elif authz_header:
             # check for bearer auth
             parts = authz_header.split()
             if parts and len(parts) > 1:
                 auth_type = parts[0].lower()
-                if auth_type in ['bearer', 'jwt']:
+                if auth_type in ["bearer", "jwt"]:
                     authc_token = JwtToken(parts[1])
 
         return authc_token
@@ -284,29 +303,38 @@ class DbAuthorizationHandler(AuthorizationHandler):
             try:
                 subject.login(authc_token)
             except:
-                logger.debug_exception('Login failed')
+                logger.debug_exception("Login failed")
                 raise
 
             user = subject.primary_identifier
-            logger.debug('Login complete for user: {}'.format(user))
+            logger.debug("Login complete for user: {}".format(user))
             if isinstance(user, IdentityContext):
                 return user
             else:
                 # Simple account lookup to ensure the context identity is complete
                 try:
-                    logger.debug('Loading identity context from username: {}'.format(user))
+                    logger.debug(
+                        "Loading identity context from username: {}".format(user)
+                    )
                     with session_scope() as db_session:
                         idp = self._idp_factory.for_session(db_session)
                         identity, _ = idp.lookup_user(user)
 
-                        logger.debug('Authc complete for user: {}'.format(user))
+                        logger.debug("Authc complete for user: {}".format(user))
                         return identity
                 except:
-                    logger.debug_exception('Error looking up account for authenticated user')
+                    logger.debug_exception(
+                        "Error looking up account for authenticated user"
+                    )
                     return None
         else:
-            logger.debug('Anon auth complete')
-            return IdentityContext(username=None, user_account=None, user_account_type=None, user_account_state=None)
+            logger.debug("Anon auth complete")
+            return IdentityContext(
+                username=None,
+                user_account=None,
+                user_account_type=None,
+                user_account_state=None,
+            )
 
     def authenticate(self, request):
         authc_token = self.get_authc_token(request)
@@ -320,8 +348,11 @@ class DbAuthorizationHandler(AuthorizationHandler):
         :return:
         """
         # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
-        if not identity.user_account_state or identity.user_account_state != AccountStates.enabled:
-            logger.debug('Failing perm check based on account state')
+        if (
+            not identity.user_account_state
+            or identity.user_account_state != AccountStates.enabled
+        ):
+            logger.debug("Failing perm check based on account state")
             raise AccountStateError(identity.user_account)
 
     def _disabled_domains(self, permissions):
@@ -336,7 +367,10 @@ class DbAuthorizationHandler(AuthorizationHandler):
         non_enabled_domains = []
 
         for p in permissions:
-            if p.domain in [localconfig.SYSTEM_ACCOUNT_NAME, localconfig.GLOBAL_RESOURCE_DOMAIN]:
+            if p.domain in [
+                localconfig.SYSTEM_ACCOUNT_NAME,
+                localconfig.GLOBAL_RESOURCE_DOMAIN,
+            ]:
                 # System and global domains are always enabled
                 continue
             else:
@@ -353,14 +387,14 @@ class DbAuthorizationHandler(AuthorizationHandler):
         :param permission_list: list of Permission objects
         :return:
         """
-        logger.debug('Checking permission: {}'.format(permission_list))
+        logger.debug("Checking permission: {}".format(permission_list))
         try:
             stringified_permissions = []
             for perm in permission_list:
-                domain = perm.domain if perm.domain else '*'
-                action = perm.action if perm.action else '*'
-                target = perm.target if perm.target else '*'
-                stringified_permissions.append(':'.join([domain, action, target]))
+                domain = perm.domain if perm.domain else "*"
+                action = perm.action if perm.action else "*"
+                target = perm.target if perm.target else "*"
+                stringified_permissions.append(":".join([domain, action, target]))
             subject.check_permission(stringified_permissions, logical_operator=all)
 
         except (ValueError, auth_exceptions.UnauthorizedException) as ex:
@@ -369,7 +403,9 @@ class DbAuthorizationHandler(AuthorizationHandler):
     def authorize(self, identity: IdentityContext, permission_list):
         subject = Yosai.get_current_subject()
         if subject.primary_identifier != identity:
-            logger.debug('Mismatch between subject and provided identity for the authorization. Failing authz')
+            logger.debug(
+                "Mismatch between subject and provided identity for the authorization. Failing authz"
+            )
             raise UnauthorizedError(permission_list)
 
         # Do account state check here for authz rather than in the authc path since it's a property of an authenticated user
@@ -380,10 +416,13 @@ class DbAuthorizationHandler(AuthorizationHandler):
         # Check only after the perms check. Match any allowed permissions that use the namespace as the domain for the authz request
         non_enabled_domains = self._disabled_domains(permission_list)
 
-        logger.debug('Found disabled domains found: {}'.format(non_enabled_domains))
+        logger.debug("Found disabled domains found: {}".format(non_enabled_domains))
 
         # If found domains not enabled and the caller is not a system service or system admin, disallow
-        if non_enabled_domains and identity.user_account_type not in [AccountTypes.admin, AccountTypes.service]:
+        if non_enabled_domains and identity.user_account_type not in [
+            AccountTypes.admin,
+            AccountTypes.service,
+        ]:
             raise AccountStateError(non_enabled_domains[0])
 
     def _get_account_state(self, account):
@@ -395,7 +434,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
             identities = idp_factory.for_session(session)
             n = identities.lookup_account(account)
             if n:
-                return n['state']
+                return n["state"]
             else:
                 return None
 
@@ -405,20 +444,27 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 account_type = account_type.value
 
             if with_types:
-                with_types = [x.value if type(x) == AccountTypes else x for x in with_types]
+                with_types = [
+                    x.value if type(x) == AccountTypes else x for x in with_types
+                ]
 
-            if (with_names is None or account_name in with_names) and \
-                    (with_types is None or account_type in with_types):
+            if (with_names is None or account_name in with_names) and (
+                with_types is None or account_type in with_types
+            ):
                 return True
             else:
-                raise UnauthorizedAccountError(account_types=','.join(with_types if with_types else []))
+                raise UnauthorizedAccountError(
+                    account_types=",".join(with_types if with_types else [])
+                )
         except UnauthorizedAccountError as ex:
             raise
         except Exception as e:
-            logger.exception('Error doing authz: {}'.format(e))
-            raise UnauthorizedAccountError(account_types=','.join(with_types if with_types else []))
+            logger.exception("Error doing authz: {}".format(e))
+            raise UnauthorizedAccountError(
+                account_types=",".join(with_types if with_types else [])
+            )
 
-    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken=None):
+    def inline_authz(self, permission_s: list, authc_token: AuthenticationToken = None):
         """
         Non-decorator impl of the @requires() decorator for isolated and inline invocation.
         Returns authenticated user identity on success or raises an exception
@@ -438,28 +484,30 @@ class DbAuthorizationHandler(AuthorizationHandler):
                             identity = self.authenticate_token(authc_token)
 
                         if not identity.username:
-                            raise UnauthenticatedError('Authentication Required')
+                            raise UnauthenticatedError("Authentication Required")
 
                     except:
-                        raise UnauthenticatedError('Authentication Required')
+                        raise UnauthenticatedError("Authentication Required")
 
                     ApiRequestContextProxy.set_identity(identity)
                     permissions_final = []
 
                     # Bind all the permissions as needed
                     for perm in permission_s:
-                        domain = perm.domain if perm.domain else '*'
-                        action = perm.action if perm.action else '*'
-                        target = perm.target if perm.target else '*'
+                        domain = perm.domain if perm.domain else "*"
+                        action = perm.action if perm.action else "*"
+                        target = perm.target if perm.target else "*"
                         permissions_final.append(Permission(domain, action, target))
 
                     # Do the authz on the bound permissions
                     try:
-                        self.authorize(ApiRequestContextProxy.identity(), permissions_final)
+                        self.authorize(
+                            ApiRequestContextProxy.identity(), permissions_final
+                        )
                     except UnauthorizedError as ex:
                         raise ex
                     except Exception as e:
-                        logger.exception('Error doing authz: {}'.format(e))
+                        logger.exception("Error doing authz: {}".format(e))
                         raise UnauthorizedError(permissions_final)
 
                     return ApiRequestContextProxy.identity()
@@ -469,13 +517,16 @@ class DbAuthorizationHandler(AuthorizationHandler):
         except UnauthorizedError as ex:
             return make_response_error(str(ex), in_httpcode=403), 403
         except UnauthenticatedError as ex:
-            return Response(response='Unauthorized', status=401,
-                            headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+            return Response(
+                response="Unauthorized",
+                status=401,
+                headers=[("WWW-Authenticate", 'basic realm="Authentication required"')],
+            )
         except AnchoreApiError:
             raise
         except Exception as ex:
-            logger.exception('Unexpected exception: {}'.format(ex))
-            return make_response_error('Internal error', in_httpcode=500), 500
+            logger.exception("Unexpected exception: {}".format(ex))
+            return make_response_error("Internal error", in_httpcode=500), 500
 
     def requires_account(self, with_names=None, with_types=None):
         """
@@ -484,7 +535,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
         :return:
         """
         if with_names is None and with_types is None:
-            raise ValueError('Cannot have None values for both name and type')
+            raise ValueError("Cannot have None values for both name and type")
 
         def outer_wrapper(f):
             @functools.wraps(f)
@@ -496,13 +547,20 @@ class DbAuthorizationHandler(AuthorizationHandler):
                             try:
                                 identity = self.authenticate(request_proxy)
                                 if not identity.username:
-                                    raise UnauthenticatedError('Authentication Required')
+                                    raise UnauthenticatedError(
+                                        "Authentication Required"
+                                    )
                             except:
-                                raise UnauthenticatedError('Authentication Required')
+                                raise UnauthenticatedError("Authentication Required")
 
                             ApiRequestContextProxy.set_identity(identity)
 
-                            if self._check_account(identity.user_account, identity.user_account_type, with_names, with_types):
+                            if self._check_account(
+                                identity.user_account,
+                                identity.user_account_type,
+                                with_names,
+                                with_types,
+                            ):
                                 return f(*args, **kwargs)
                         finally:
                             # Teardown the request context
@@ -511,12 +569,21 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedAccountError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                    return Response(
+                        response="Unauthorized",
+                        status=401,
+                        headers=[
+                            (
+                                "WWW-Authenticate",
+                                'basic realm="Authentication required"',
+                            )
+                        ],
+                    )
                 except AnchoreApiError:
                     raise
                 except Exception as ex:
-                    logger.exception('Unexpected exception: {}'.format(ex))
-                    return make_response_error('Internal error', in_httpcode=500), 500
+                    logger.exception("Unexpected exception: {}".format(ex))
+                    return make_response_error("Internal error", in_httpcode=500), 500
 
             return inner_wrapper
 
@@ -543,41 +610,48 @@ class DbAuthorizationHandler(AuthorizationHandler):
                             try:
                                 identity = self.authenticate(request_proxy)
                                 if not identity.username:
-                                    raise UnauthenticatedError('Authentication Required')
+                                    raise UnauthenticatedError(
+                                        "Authentication Required"
+                                    )
                             except:
-                                raise UnauthenticatedError('Authentication Required')
+                                raise UnauthenticatedError("Authentication Required")
 
                             ApiRequestContextProxy.set_identity(identity)
                             permissions_final = []
 
                             # Bind all the permissions as needed
                             for perm in permission_s:
-                                domain = perm.domain if perm.domain else '*'
-                                action = perm.action if perm.action else '*'
-                                target = perm.target if perm.target else '*'
+                                domain = perm.domain if perm.domain else "*"
+                                action = perm.action if perm.action else "*"
+                                target = perm.target if perm.target else "*"
 
-                                if hasattr(domain, 'bind'):
+                                if hasattr(domain, "bind"):
                                     domain.bind(operation=f, kwargs=kwargs)
                                     domain = domain.value
 
-                                if hasattr(action, 'bind'):
+                                if hasattr(action, "bind"):
                                     action.bind(operation=f, kwargs=kwargs)
                                     action = action.value
 
-                                if hasattr(target, 'bind'):
+                                if hasattr(target, "bind"):
                                     target.bind(operation=f, kwargs=kwargs)
                                     target = target.value
 
-                                #permissions_final.append(':'.join([domain, action, target]))
-                                permissions_final.append(Permission(domain, action, target))
+                                # permissions_final.append(':'.join([domain, action, target]))
+                                permissions_final.append(
+                                    Permission(domain, action, target)
+                                )
 
                             # Do the authz on the bound permissions
                             try:
-                                self.authorize(ApiRequestContextProxy().identity(), permissions_final)
+                                self.authorize(
+                                    ApiRequestContextProxy().identity(),
+                                    permissions_final,
+                                )
                             except UnauthorizedError as ex:
                                 raise ex
                             except Exception as e:
-                                logger.exception('Error doing authz: {}'.format(e))
+                                logger.exception("Error doing authz: {}".format(e))
                                 raise UnauthorizedError(permissions_final)
 
                             return f(*args, **kwargs)
@@ -588,12 +662,21 @@ class DbAuthorizationHandler(AuthorizationHandler):
                 except UnauthorizedError as ex:
                     return make_response_error(str(ex), in_httpcode=403), 403
                 except UnauthenticatedError as ex:
-                    return Response(response='Unauthorized', status=401, headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+                    return Response(
+                        response="Unauthorized",
+                        status=401,
+                        headers=[
+                            (
+                                "WWW-Authenticate",
+                                'basic realm="Authentication required"',
+                            )
+                        ],
+                    )
                 except AnchoreApiError:
                     raise
                 except Exception as ex:
-                    logger.exception('Unexpected exception: {}'.format(ex))
-                    return make_response_error('Internal error', in_httpcode=500), 500
+                    logger.exception("Unexpected exception: {}".format(ex))
+                    return make_response_error("Internal error", in_httpcode=500), 500
 
             return inner_wrapper
 
@@ -615,24 +698,38 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
         try:
             internal_check = super().healthcheck()
         except Exception as e:
-            logger.error('Caught exception from admin/native authz check: {}'.format(str(e)))
+            logger.error(
+                "Caught exception from admin/native authz check: {}".format(str(e))
+            )
             internal_check = False
 
         try:
             if not self.__external_authorizer__:
-                logger.warn('Attempted health check for external authz handler but no client configured yet')
+                logger.warn(
+                    "Attempted health check for external authz handler but no client configured yet"
+                )
                 return False
             else:
                 external_check = self.__external_authorizer__.client.healthcheck()
         except Exception as e:
-            logger.error('Healthcheck for external authz handler caught exception: {}'.format(e))
+            logger.error(
+                "Healthcheck for external authz handler caught exception: {}".format(e)
+            )
             external_check = False
 
-        logger.debug('External authz healthcheck result: internal handler {}, external handler {}'.format(internal_check, external_check))
+        logger.debug(
+            "External authz healthcheck result: internal handler {}, external handler {}".format(
+                internal_check, external_check
+            )
+        )
         if internal_check and external_check:
             return True
         else:
-            raise Exception('Internal authz check returned {}, External authz check returned {}'.format(internal_check, external_check))
+            raise Exception(
+                "Internal authz check returned {}, External authz check returned {}".format(
+                    internal_check, external_check
+                )
+            )
 
     def notify(self, notification_type, notification_value):
         """
@@ -641,12 +738,16 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
         :param notification_value:
         :return:
         """
-        logger.info('Calling notification!')
+        logger.info("Calling notification!")
         retries = 3
 
         try:
             if not self.__external_authorizer__:
-                logger.warn('Got authz notification type: {} value:{}, but no client configured so nothing to do'.format(notification_type, notification_value))
+                logger.warn(
+                    "Got authz notification type: {} value:{}, but no client configured so nothing to do".format(
+                        notification_type, notification_value
+                    )
+                )
                 return True
             else:
                 if NotificationTypes.domain_created == notification_type:
@@ -661,7 +762,11 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
                     fn = None
 
             if fn is None:
-                logger.warn('Got notification type {} with no handler mapped'.format(notification_type))
+                logger.warn(
+                    "Got notification type {} with no handler mapped".format(
+                        notification_type
+                    )
+                )
                 return
 
             err = None
@@ -669,42 +774,66 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
                 try:
                     resp = fn(notification_value)
                     if not resp:
-                        logger.warn('Bad response from authz service, will retry: {}'.format(resp))
+                        logger.warn(
+                            "Bad response from authz service, will retry: {}".format(
+                                resp
+                            )
+                        )
                     else:
-                        logger.debug('Notification succeeded to authz plugin service')
+                        logger.debug("Notification succeeded to authz plugin service")
                         break
                 except Exception as ex:
                     err = ex
-                    logger.exception('Error calling {} against authz plugin client'.format(fn.__name__))
+                    logger.exception(
+                        "Error calling {} against authz plugin client".format(
+                            fn.__name__
+                        )
+                    )
 
             else:
                 logger.error(
-                    'Could not confirm successful response of authz handler for notification {} with value {}'.format(
-                        notification_type, notification_value))
-                raise Exception('Error invoking POST /domains on external authz handler: {}'.format(str(err) if err else 'Retry count exceeded {}'.format(retries)))
+                    "Could not confirm successful response of authz handler for notification {} with value {}".format(
+                        notification_type, notification_value
+                    )
+                )
+                raise Exception(
+                    "Error invoking POST /domains on external authz handler: {}".format(
+                        str(err) if err else "Retry count exceeded {}".format(retries)
+                    )
+                )
 
             return True
 
         except:
-            logger.exception('Notification handler for external authz plugin caught exception and could not complete: {} {}'.format(notification_type, notification_type))
+            logger.exception(
+                "Notification handler for external authz plugin caught exception and could not complete: {} {}".format(
+                    notification_type, notification_type
+                )
+            )
             raise
 
     def load(self, configuration):
         with ExternalAuthorizationHandler._config_lock:
-            logger.info('Initializing external authz realm')
+            logger.info("Initializing external authz realm")
 
-            self.__external_authorizer__ = ExternalAuthorizer(configuration, enabled=True)
+            self.__external_authorizer__ = ExternalAuthorizer(
+                configuration, enabled=True
+            )
             UsernamePasswordRealm.__external_authorizer__ = self.__external_authorizer__
 
-            #conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/external_authz_yosai_settings.yaml')
-            conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/default_yosai_settings.yaml')
+            # conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/external_authz_yosai_settings.yaml')
+            conf_path = pkg_resources.resource_filename(
+                anchore_engine.__name__, "conf/default_yosai_settings.yaml"
+            )
             ExternalAuthorizationHandler._yosai = Yosai(file_path=conf_path)
 
             # Disable sessions, since the APIs are not session-based
-            ExternalAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
+            ExternalAuthorizationHandler._yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = (
+                False
+            )
 
-            token_info[JwtToken] = {'tier': 1, 'cred_type': 'jwt'}
-            logger.info('External authz handler init complete')
+            token_info[JwtToken] = {"tier": 1, "cred_type": "jwt"}
+            logger.info("External authz handler init complete")
 
 
 # TODO: address this, and fix it
@@ -714,11 +843,15 @@ class InternalServiceAuthorizer(DbAuthorizationHandler):
     """
 
     def load(self, configuration):
-        conf_path = pkg_resources.resource_filename(anchore_engine.__name__, 'conf/internal_authz_yosai_settings.yaml')
+        conf_path = pkg_resources.resource_filename(
+            anchore_engine.__name__, "conf/internal_authz_yosai_settings.yaml"
+        )
         self.yosai = Yosai(file_path=conf_path)
 
         # Disable sessions, since the APIs are not session-based
-        self.yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = False
+        self.yosai.security_manager.subject_store.session_storage_evaluator.session_storage_enabled = (
+            False
+        )
 
 
 def auth_function_factory():
@@ -738,28 +871,35 @@ def auth_function_factory():
                 if resp is not None:
                     if type(resp) == tuple:
                         if type(resp[0]) == dict:
-                            return Response(json.dumps(resp[0]), status=resp[1], content_type='application/json')
+                            return Response(
+                                json.dumps(resp[0]),
+                                status=resp[1],
+                                content_type="application/json",
+                            )
                         else:
                             return Response(resp[0], status=resp[1])
                 return resp
         except:
-            return Response('Unauthorized', status=401,
-                            headers=[('WWW-Authenticate', 'basic realm="Authentication required"')])
+            return Response(
+                "Unauthorized",
+                status=401,
+                headers=[("WWW-Authenticate", 'basic realm="Authentication required"')],
+            )
 
     return do_auth
 
 
 def init_authz_handler(configuration=None):
     global _global_authorizer
-    handler_config = configuration.get('authorization_handler')
-    if handler_config == 'native' or handler_config is None:
+    handler_config = configuration.get("authorization_handler")
+    if handler_config == "native" or handler_config is None:
         handler = DbAuthorizationHandler(identity_provider_factory=idp_factory)
-    elif handler_config == 'external':
+    elif handler_config == "external":
         handler = ExternalAuthorizationHandler(identity_provider_factory=idp_factory)
     else:
-        raise Exception('Unknown authorization handler: {}'.format(handler_config))
+        raise Exception("Unknown authorization handler: {}".format(handler_config))
 
-    handler.load(configuration.get('authorization_handler_config', {}))
+    handler.load(configuration.get("authorization_handler_config", {}))
     _global_authorizer = handler
 
 

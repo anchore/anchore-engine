@@ -23,14 +23,11 @@ class PolicyBundleUpdateNotification(Model):
         :param event_timestamp: The event_timestamp of this PolicyBundleUpdateNotification.  # noqa: E501
         :type event_timestamp: datetime
         """
-        self.swagger_types = {
-            'bundle_id': str,
-            'event_timestamp': datetime
-        }
+        self.swagger_types = {"bundle_id": str, "event_timestamp": datetime}
 
         self.attribute_map = {
-            'bundle_id': 'bundle_id',
-            'event_timestamp': 'event_timestamp'
+            "bundle_id": "bundle_id",
+            "event_timestamp": "event_timestamp",
         }
 
         self._bundle_id = bundle_id

@@ -15,7 +15,9 @@ class EventStatus(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, event_id=None, event_timestamp=None, event_state=None):  # noqa: E501
+    def __init__(
+        self, event_id=None, event_timestamp=None, event_state=None
+    ):  # noqa: E501
         """EventStatus - a model defined in Swagger
 
         :param event_id: The event_id of this EventStatus.  # noqa: E501
@@ -26,15 +28,15 @@ class EventStatus(Model):
         :type event_state: str
         """
         self.swagger_types = {
-            'event_id': str,
-            'event_timestamp': datetime,
-            'event_state': str
+            "event_id": str,
+            "event_timestamp": datetime,
+            "event_state": str,
         }
 
         self.attribute_map = {
-            'event_id': 'event_id',
-            'event_timestamp': 'event_timestamp',
-            'event_state': 'event_state'
+            "event_id": "event_id",
+            "event_timestamp": "event_timestamp",
+            "event_state": "event_state",
         }
 
         self._event_id = event_id
@@ -119,8 +121,9 @@ class EventStatus(Model):
         allowed_values = ["pending", "processing", "complete", "failed"]  # noqa: E501
         if event_state not in allowed_values:
             raise ValueError(
-                "Invalid value for `event_state` ({0}), must be one of {1}"
-                .format(event_state, allowed_values)
+                "Invalid value for `event_state` ({0}), must be one of {1}".format(
+                    event_state, allowed_values
+                )
             )
 
         self._event_state = event_state

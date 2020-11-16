@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.image_ref import ImageRef  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.image_ref import (
+    ImageRef,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,9 @@ class ImageSelectionRule(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, name=None, registry=None, repository=None, image=None):  # noqa: E501
+    def __init__(
+        self, id=None, name=None, registry=None, repository=None, image=None
+    ):  # noqa: E501
         """ImageSelectionRule - a model defined in Swagger
 
         :param id: The id of this ImageSelectionRule.  # noqa: E501
@@ -31,19 +35,19 @@ class ImageSelectionRule(Model):
         :type image: ImageRef
         """
         self.swagger_types = {
-            'id': str,
-            'name': str,
-            'registry': str,
-            'repository': str,
-            'image': ImageRef
+            "id": str,
+            "name": str,
+            "registry": str,
+            "repository": str,
+            "image": ImageRef,
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'name': 'name',
-            'registry': 'registry',
-            'repository': 'repository',
-            'image': 'image'
+            "id": "id",
+            "name": "name",
+            "registry": "registry",
+            "repository": "repository",
+            "image": "image",
         }
 
         self._id = id
@@ -103,7 +107,9 @@ class ImageSelectionRule(Model):
         :type name: str
         """
         if name is None:
-            raise ValueError("Invalid value for `name`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `name`, must not be `None`"
+            )  # noqa: E501
 
         self._name = name
 
@@ -126,7 +132,9 @@ class ImageSelectionRule(Model):
         :type registry: str
         """
         if registry is None:
-            raise ValueError("Invalid value for `registry`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `registry`, must not be `None`"
+            )  # noqa: E501
 
         self._registry = registry
 
@@ -149,7 +157,9 @@ class ImageSelectionRule(Model):
         :type repository: str
         """
         if repository is None:
-            raise ValueError("Invalid value for `repository`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `repository`, must not be `None`"
+            )  # noqa: E501
 
         self._repository = repository
 
@@ -172,6 +182,8 @@ class ImageSelectionRule(Model):
         :type image: ImageRef
         """
         if image is None:
-            raise ValueError("Invalid value for `image`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `image`, must not be `None`"
+            )  # noqa: E501
 
         self._image = image

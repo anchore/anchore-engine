@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.trigger_param_spec import TriggerParamSpec  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.trigger_param_spec import (
+    TriggerParamSpec,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,14 @@ class TriggerSpec(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, description=None, state=None, superceded_by=None, parameters=None):  # noqa: E501
+    def __init__(
+        self,
+        name=None,
+        description=None,
+        state=None,
+        superceded_by=None,
+        parameters=None,
+    ):  # noqa: E501
         """TriggerSpec - a model defined in Swagger
 
         :param name: The name of this TriggerSpec.  # noqa: E501
@@ -31,19 +40,19 @@ class TriggerSpec(Model):
         :type parameters: List[TriggerParamSpec]
         """
         self.swagger_types = {
-            'name': str,
-            'description': str,
-            'state': str,
-            'superceded_by': str,
-            'parameters': List[TriggerParamSpec]
+            "name": str,
+            "description": str,
+            "state": str,
+            "superceded_by": str,
+            "parameters": List[TriggerParamSpec],
         }
 
         self.attribute_map = {
-            'name': 'name',
-            'description': 'description',
-            'state': 'state',
-            'superceded_by': 'superceded_by',
-            'parameters': 'parameters'
+            "name": "name",
+            "description": "description",
+            "state": "state",
+            "superceded_by": "superceded_by",
+            "parameters": "parameters",
         }
 
         self._name = name
@@ -132,8 +141,9 @@ class TriggerSpec(Model):
         allowed_values = ["active", "deprecated", "eol"]  # noqa: E501
         if state not in allowed_values:
             raise ValueError(
-                "Invalid value for `state` ({0}), must be one of {1}"
-                .format(state, allowed_values)
+                "Invalid value for `state` ({0}), must be one of {1}".format(
+                    state, allowed_values
+                )
             )
 
         self._state = state

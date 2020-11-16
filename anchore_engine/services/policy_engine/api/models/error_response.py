@@ -25,17 +25,9 @@ class ErrorResponse(Model):
         :param message: The message of this ErrorResponse.  # noqa: E501
         :type message: str
         """
-        self.swagger_types = {
-            'code': int,
-            'type': str,
-            'message': str
-        }
+        self.swagger_types = {"code": int, "type": str, "message": str}
 
-        self.attribute_map = {
-            'code': 'code',
-            'type': 'type',
-            'message': 'message'
-        }
+        self.attribute_map = {"code": "code", "type": "type", "message": "message"}
 
         self._code = code
         self._type = type

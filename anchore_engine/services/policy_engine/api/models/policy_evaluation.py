@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import PolicyEvaluationProblem  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import (
+    PolicyEvaluationProblem,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,22 @@ class PolicyEvaluation(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, user_id=None, image_id=None, tag=None, bundle=None, matched_mapping_rule=None, matched_whitelisted_images_rule=None, matched_blacklisted_images_rule=None, result=None, created_at=None, last_modified=None, final_action=None, final_action_reason=None, evaluation_problems=None):  # noqa: E501
+    def __init__(
+        self,
+        user_id=None,
+        image_id=None,
+        tag=None,
+        bundle=None,
+        matched_mapping_rule=None,
+        matched_whitelisted_images_rule=None,
+        matched_blacklisted_images_rule=None,
+        result=None,
+        created_at=None,
+        last_modified=None,
+        final_action=None,
+        final_action_reason=None,
+        evaluation_problems=None,
+    ):  # noqa: E501
         """PolicyEvaluation - a model defined in Swagger
 
         :param user_id: The user_id of this PolicyEvaluation.  # noqa: E501
@@ -47,35 +64,35 @@ class PolicyEvaluation(Model):
         :type evaluation_problems: List[PolicyEvaluationProblem]
         """
         self.swagger_types = {
-            'user_id': str,
-            'image_id': str,
-            'tag': str,
-            'bundle': object,
-            'matched_mapping_rule': object,
-            'matched_whitelisted_images_rule': object,
-            'matched_blacklisted_images_rule': object,
-            'result': object,
-            'created_at': int,
-            'last_modified': int,
-            'final_action': str,
-            'final_action_reason': str,
-            'evaluation_problems': List[PolicyEvaluationProblem]
+            "user_id": str,
+            "image_id": str,
+            "tag": str,
+            "bundle": object,
+            "matched_mapping_rule": object,
+            "matched_whitelisted_images_rule": object,
+            "matched_blacklisted_images_rule": object,
+            "result": object,
+            "created_at": int,
+            "last_modified": int,
+            "final_action": str,
+            "final_action_reason": str,
+            "evaluation_problems": List[PolicyEvaluationProblem],
         }
 
         self.attribute_map = {
-            'user_id': 'user_id',
-            'image_id': 'image_id',
-            'tag': 'tag',
-            'bundle': 'bundle',
-            'matched_mapping_rule': 'matched_mapping_rule',
-            'matched_whitelisted_images_rule': 'matched_whitelisted_images_rule',
-            'matched_blacklisted_images_rule': 'matched_blacklisted_images_rule',
-            'result': 'result',
-            'created_at': 'created_at',
-            'last_modified': 'last_modified',
-            'final_action': 'final_action',
-            'final_action_reason': 'final_action_reason',
-            'evaluation_problems': 'evaluation_problems'
+            "user_id": "user_id",
+            "image_id": "image_id",
+            "tag": "tag",
+            "bundle": "bundle",
+            "matched_mapping_rule": "matched_mapping_rule",
+            "matched_whitelisted_images_rule": "matched_whitelisted_images_rule",
+            "matched_blacklisted_images_rule": "matched_blacklisted_images_rule",
+            "result": "result",
+            "created_at": "created_at",
+            "last_modified": "last_modified",
+            "final_action": "final_action",
+            "final_action_reason": "final_action_reason",
+            "evaluation_problems": "evaluation_problems",
         }
 
         self._user_id = user_id
@@ -145,7 +162,9 @@ class PolicyEvaluation(Model):
         :type image_id: str
         """
         if image_id is None:
-            raise ValueError("Invalid value for `image_id`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `image_id`, must not be `None`"
+            )  # noqa: E501
 
         self._image_id = image_id
 
@@ -168,7 +187,9 @@ class PolicyEvaluation(Model):
         :type tag: str
         """
         if tag is None:
-            raise ValueError("Invalid value for `tag`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `tag`, must not be `None`"
+            )  # noqa: E501
 
         self._tag = tag
 
@@ -193,7 +214,9 @@ class PolicyEvaluation(Model):
         :type bundle: object
         """
         if bundle is None:
-            raise ValueError("Invalid value for `bundle`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `bundle`, must not be `None`"
+            )  # noqa: E501
 
         self._bundle = bundle
 
@@ -218,7 +241,9 @@ class PolicyEvaluation(Model):
         :type matched_mapping_rule: object
         """
         if matched_mapping_rule is None:
-            raise ValueError("Invalid value for `matched_mapping_rule`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `matched_mapping_rule`, must not be `None`"
+            )  # noqa: E501
 
         self._matched_mapping_rule = matched_mapping_rule
 
@@ -243,7 +268,9 @@ class PolicyEvaluation(Model):
         :type matched_whitelisted_images_rule: object
         """
         if matched_whitelisted_images_rule is None:
-            raise ValueError("Invalid value for `matched_whitelisted_images_rule`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `matched_whitelisted_images_rule`, must not be `None`"
+            )  # noqa: E501
 
         self._matched_whitelisted_images_rule = matched_whitelisted_images_rule
 
@@ -268,7 +295,9 @@ class PolicyEvaluation(Model):
         :type matched_blacklisted_images_rule: object
         """
         if matched_blacklisted_images_rule is None:
-            raise ValueError("Invalid value for `matched_blacklisted_images_rule`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `matched_blacklisted_images_rule`, must not be `None`"
+            )  # noqa: E501
 
         self._matched_blacklisted_images_rule = matched_blacklisted_images_rule
 
@@ -293,7 +322,9 @@ class PolicyEvaluation(Model):
         :type result: object
         """
         if result is None:
-            raise ValueError("Invalid value for `result`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `result`, must not be `None`"
+            )  # noqa: E501
 
         self._result = result
 
@@ -364,7 +395,9 @@ class PolicyEvaluation(Model):
         :type final_action: str
         """
         if final_action is None:
-            raise ValueError("Invalid value for `final_action`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `final_action`, must not be `None`"
+            )  # noqa: E501
 
         self._final_action = final_action
 
@@ -388,11 +421,16 @@ class PolicyEvaluation(Model):
         :param final_action_reason: The final_action_reason of this PolicyEvaluation.
         :type final_action_reason: str
         """
-        allowed_values = ["whitelisted", "blacklisted", "policy_evaluation"]  # noqa: E501
+        allowed_values = [
+            "whitelisted",
+            "blacklisted",
+            "policy_evaluation",
+        ]  # noqa: E501
         if final_action_reason not in allowed_values:
             raise ValueError(
-                "Invalid value for `final_action_reason` ({0}), must be one of {1}"
-                .format(final_action_reason, allowed_values)
+                "Invalid value for `final_action_reason` ({0}), must be one of {1}".format(
+                    final_action_reason, allowed_values
+                )
             )
 
         self._final_action_reason = final_action_reason

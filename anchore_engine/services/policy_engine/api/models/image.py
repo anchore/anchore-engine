@@ -15,7 +15,17 @@ class Image(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, digest=None, user_id=None, state=None, distro_namespace=None, created_at=None, last_modified=None, tags=None):  # noqa: E501
+    def __init__(
+        self,
+        id=None,
+        digest=None,
+        user_id=None,
+        state=None,
+        distro_namespace=None,
+        created_at=None,
+        last_modified=None,
+        tags=None,
+    ):  # noqa: E501
         """Image - a model defined in Swagger
 
         :param id: The id of this Image.  # noqa: E501
@@ -36,25 +46,25 @@ class Image(Model):
         :type tags: List[str]
         """
         self.swagger_types = {
-            'id': str,
-            'digest': str,
-            'user_id': str,
-            'state': str,
-            'distro_namespace': str,
-            'created_at': datetime,
-            'last_modified': datetime,
-            'tags': List[str]
+            "id": str,
+            "digest": str,
+            "user_id": str,
+            "state": str,
+            "distro_namespace": str,
+            "created_at": datetime,
+            "last_modified": datetime,
+            "tags": List[str],
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'digest': 'digest',
-            'user_id': 'user_id',
-            'state': 'state',
-            'distro_namespace': 'distro_namespace',
-            'created_at': 'created_at',
-            'last_modified': 'last_modified',
-            'tags': 'tags'
+            "id": "id",
+            "digest": "digest",
+            "user_id": "user_id",
+            "state": "state",
+            "distro_namespace": "distro_namespace",
+            "created_at": "created_at",
+            "last_modified": "last_modified",
+            "tags": "tags",
         }
 
         self._id = id
@@ -160,11 +170,17 @@ class Image(Model):
         :param state: The state of this Image.
         :type state: str
         """
-        allowed_values = ["failed", "initializing", "analyzing", "analyzed"]  # noqa: E501
+        allowed_values = [
+            "failed",
+            "initializing",
+            "analyzing",
+            "analyzed",
+        ]  # noqa: E501
         if state not in allowed_values:
             raise ValueError(
-                "Invalid value for `state` ({0}), must be one of {1}"
-                .format(state, allowed_values)
+                "Invalid value for `state` ({0}), must be one of {1}".format(
+                    state, allowed_values
+                )
             )
 
         self._state = state

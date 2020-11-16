@@ -25,16 +25,12 @@ class ImageIngressRequest(Model):
         :param fetch_url: The fetch_url of this ImageIngressRequest.  # noqa: E501
         :type fetch_url: str
         """
-        self.swagger_types = {
-            'user_id': str,
-            'image_id': str,
-            'fetch_url': str
-        }
+        self.swagger_types = {"user_id": str, "image_id": str, "fetch_url": str}
 
         self.attribute_map = {
-            'user_id': 'user_id',
-            'image_id': 'image_id',
-            'fetch_url': 'fetch_url'
+            "user_id": "user_id",
+            "image_id": "image_id",
+            "fetch_url": "fetch_url",
         }
 
         self._user_id = user_id
@@ -71,7 +67,9 @@ class ImageIngressRequest(Model):
         :type user_id: str
         """
         if user_id is None:
-            raise ValueError("Invalid value for `user_id`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `user_id`, must not be `None`"
+            )  # noqa: E501
 
         self._user_id = user_id
 
@@ -94,7 +92,9 @@ class ImageIngressRequest(Model):
         :type image_id: str
         """
         if image_id is None:
-            raise ValueError("Invalid value for `image_id`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `image_id`, must not be `None`"
+            )  # noqa: E501
 
         self._image_id = image_id
 
@@ -119,6 +119,8 @@ class ImageIngressRequest(Model):
         :type fetch_url: str
         """
         if fetch_url is None:
-            raise ValueError("Invalid value for `fetch_url`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `fetch_url`, must not be `None`"
+            )  # noqa: E501
 
         self._fetch_url = fetch_url

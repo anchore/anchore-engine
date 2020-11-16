@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.feed_group_metadata import FeedGroupMetadata  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.feed_group_metadata import (
+    FeedGroupMetadata,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -16,7 +18,15 @@ class FeedMetadata(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, created_at=None, updated_at=None, groups=None, last_full_sync=None, enabled=None):  # noqa: E501
+    def __init__(
+        self,
+        name=None,
+        created_at=None,
+        updated_at=None,
+        groups=None,
+        last_full_sync=None,
+        enabled=None,
+    ):  # noqa: E501
         """FeedMetadata - a model defined in Swagger
 
         :param name: The name of this FeedMetadata.  # noqa: E501
@@ -31,21 +41,21 @@ class FeedMetadata(Model):
         :type last_full_sync: datetime
         """
         self.swagger_types = {
-            'name': str,
-            'created_at': datetime,
-            'updated_at': datetime,
-            'groups': List[FeedGroupMetadata],
-            'last_full_sync': datetime,
-            'enabled': bool
+            "name": str,
+            "created_at": datetime,
+            "updated_at": datetime,
+            "groups": List[FeedGroupMetadata],
+            "last_full_sync": datetime,
+            "enabled": bool,
         }
 
         self.attribute_map = {
-            'name': 'name',
-            'created_at': 'created_at',
-            'updated_at': 'updated_at',
-            'groups': 'groups',
-            'last_full_sync': 'last_full_sync',
-            'enabled': 'enabled'
+            "name": "name",
+            "created_at": "created_at",
+            "updated_at": "updated_at",
+            "groups": "groups",
+            "last_full_sync": "last_full_sync",
+            "enabled": "enabled",
         }
 
         self._name = name

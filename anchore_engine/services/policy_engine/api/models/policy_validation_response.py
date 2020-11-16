@@ -6,7 +6,9 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import PolicyEvaluationProblem  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy_evaluation_problem import (
+    PolicyEvaluationProblem,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -25,13 +27,13 @@ class PolicyValidationResponse(Model):
         :type validation_details: List[PolicyEvaluationProblem]
         """
         self.swagger_types = {
-            'valid': bool,
-            'validation_details': List[PolicyEvaluationProblem]
+            "valid": bool,
+            "validation_details": List[PolicyEvaluationProblem],
         }
 
         self.attribute_map = {
-            'valid': 'valid',
-            'validation_details': 'validation_details'
+            "valid": "valid",
+            "validation_details": "validation_details",
         }
 
         self._valid = valid

@@ -25,17 +25,9 @@ class WhitelistItem(Model):
         :param trigger_id: The trigger_id of this WhitelistItem.  # noqa: E501
         :type trigger_id: str
         """
-        self.swagger_types = {
-            'id': str,
-            'gate': str,
-            'trigger_id': str
-        }
+        self.swagger_types = {"id": str, "gate": str, "trigger_id": str}
 
-        self.attribute_map = {
-            'id': 'id',
-            'gate': 'gate',
-            'trigger_id': 'trigger_id'
-        }
+        self.attribute_map = {"id": "id", "gate": "gate", "trigger_id": "trigger_id"}
 
         self._id = id
         self._gate = gate
@@ -92,7 +84,9 @@ class WhitelistItem(Model):
         :type gate: str
         """
         if gate is None:
-            raise ValueError("Invalid value for `gate`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `gate`, must not be `None`"
+            )  # noqa: E501
 
         self._gate = gate
 
@@ -115,6 +109,8 @@ class WhitelistItem(Model):
         :type trigger_id: str
         """
         if trigger_id is None:
-            raise ValueError("Invalid value for `trigger_id`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `trigger_id`, must not be `None`"
+            )  # noqa: E501
 
         self._trigger_id = trigger_id

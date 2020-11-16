@@ -47,6 +47,7 @@ metrics = {}
 #        else:
 #            return(func)
 
+
 class disabled_flask_metrics(object):
     def _call_nop(self):
         def decorator(f):
@@ -99,17 +100,19 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
 
     try:
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        metrics_config = localconfig.get('metrics', {})
+        metrics_config = localconfig.get("metrics", {})
 
         # Handle typo in config. enabled == enable
-        enabled = bool(metrics_config.get('enable', False))
+        enabled = bool(metrics_config.get("enable", False))
         if not enabled:
-            enabled = bool(metrics_config.get('enabled', False))
+            enabled = bool(metrics_config.get("enabled", False))
 
-        auth_enabled = not bool(metrics_config.get('auth_disabled', False))
+        auth_enabled = not bool(metrics_config.get("auth_disabled", False))
 
     except Exception as err:
-        logger.warn("unable to determine if metrics are enabled - exception: " + str(err))
+        logger.warn(
+            "unable to determine if metrics are enabled - exception: " + str(err)
+        )
         enabled = False
 
     if not enabled:
@@ -117,12 +120,19 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
         return True
 
     if not flask_metrics:
-        flask_metrics = PrometheusMetrics(flask_app, export_defaults=export_defaults, group_by_endpoint=True)
+        flask_metrics = PrometheusMetrics(
+            flask_app, export_defaults=export_defaults, group_by_endpoint=True
+        )
 
         if auth_enabled:
             flask_app.before_request(metrics_auth(flask_metrics.path))
 
-        flask_metrics.info('anchore_service_info', "Anchore Service Static Information", version=version, **kwargs)
+        flask_metrics.info(
+            "anchore_service_info",
+            "Anchore Service Static Information",
+            version=version,
+            **kwargs
+        )
 
     return True
 
@@ -187,7 +197,9 @@ def histogram_observe(name, observation, description="", buckets=None, **kwargs)
         if name not in metrics:
             if buckets:
                 buckets.append(float("inf"))
-                metrics[name] = Histogram(name, description, list(kwargs.keys()), buckets=buckets)
+                metrics[name] = Histogram(
+                    name, description, list(kwargs.keys()), buckets=buckets
+                )
             else:
                 metrics[name] = Histogram(name, description, list(kwargs.keys()))
 

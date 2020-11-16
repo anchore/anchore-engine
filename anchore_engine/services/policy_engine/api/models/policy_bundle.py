@@ -6,10 +6,18 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from anchore_engine.services.policy_engine.api.models.base_model_ import Model
-from anchore_engine.services.policy_engine.api.models.image_selection_rule import ImageSelectionRule  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.mapping_rule import MappingRule  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.policy import Policy  # noqa: F401,E501
-from anchore_engine.services.policy_engine.api.models.whitelist import Whitelist  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.image_selection_rule import (
+    ImageSelectionRule,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.mapping_rule import (
+    MappingRule,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.policy import (
+    Policy,
+)  # noqa: F401,E501
+from anchore_engine.services.policy_engine.api.models.whitelist import (
+    Whitelist,
+)  # noqa: F401,E501
 from anchore_engine.services.policy_engine.api import util
 
 
@@ -19,7 +27,18 @@ class PolicyBundle(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id=None, name=None, comment=None, version=None, whitelists=None, policies=None, mappings=None, whitelisted_images=None, blacklisted_images=None):  # noqa: E501
+    def __init__(
+        self,
+        id=None,
+        name=None,
+        comment=None,
+        version=None,
+        whitelists=None,
+        policies=None,
+        mappings=None,
+        whitelisted_images=None,
+        blacklisted_images=None,
+    ):  # noqa: E501
         """PolicyBundle - a model defined in Swagger
 
         :param id: The id of this PolicyBundle.  # noqa: E501
@@ -42,27 +61,27 @@ class PolicyBundle(Model):
         :type blacklisted_images: List[ImageSelectionRule]
         """
         self.swagger_types = {
-            'id': str,
-            'name': str,
-            'comment': str,
-            'version': str,
-            'whitelists': List[Whitelist],
-            'policies': List[Policy],
-            'mappings': List[MappingRule],
-            'whitelisted_images': List[ImageSelectionRule],
-            'blacklisted_images': List[ImageSelectionRule]
+            "id": str,
+            "name": str,
+            "comment": str,
+            "version": str,
+            "whitelists": List[Whitelist],
+            "policies": List[Policy],
+            "mappings": List[MappingRule],
+            "whitelisted_images": List[ImageSelectionRule],
+            "blacklisted_images": List[ImageSelectionRule],
         }
 
         self.attribute_map = {
-            'id': 'id',
-            'name': 'name',
-            'comment': 'comment',
-            'version': 'version',
-            'whitelists': 'whitelists',
-            'policies': 'policies',
-            'mappings': 'mappings',
-            'whitelisted_images': 'whitelisted_images',
-            'blacklisted_images': 'blacklisted_images'
+            "id": "id",
+            "name": "name",
+            "comment": "comment",
+            "version": "version",
+            "whitelists": "whitelists",
+            "policies": "policies",
+            "mappings": "mappings",
+            "whitelisted_images": "whitelisted_images",
+            "blacklisted_images": "blacklisted_images",
         }
 
         self._id = id
@@ -172,7 +191,9 @@ class PolicyBundle(Model):
         :type version: str
         """
         if version is None:
-            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `version`, must not be `None`"
+            )  # noqa: E501
 
         self._version = version
 
@@ -216,7 +237,9 @@ class PolicyBundle(Model):
         :type policies: List[Policy]
         """
         if policies is None:
-            raise ValueError("Invalid value for `policies`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `policies`, must not be `None`"
+            )  # noqa: E501
 
         self._policies = policies
 
@@ -239,7 +262,9 @@ class PolicyBundle(Model):
         :type mappings: List[MappingRule]
         """
         if mappings is None:
-            raise ValueError("Invalid value for `mappings`, must not be `None`")  # noqa: E501
+            raise ValueError(
+                "Invalid value for `mappings`, must not be `None`"
+            )  # noqa: E501
 
         self._mappings = mappings
 

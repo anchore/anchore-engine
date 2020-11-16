@@ -21,13 +21,9 @@ class FeedSyncTask(Model):
         :param force_flush: The force_flush of this FeedSyncTask.  # noqa: E501
         :type force_flush: bool
         """
-        self.swagger_types = {
-            'force_flush': bool
-        }
+        self.swagger_types = {"force_flush": bool}
 
-        self.attribute_map = {
-            'force_flush': 'force_flush'
-        }
+        self.attribute_map = {"force_flush": "force_flush"}
 
         self._force_flush = force_flush
 

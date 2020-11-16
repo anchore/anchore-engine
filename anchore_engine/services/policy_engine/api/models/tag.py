@@ -15,7 +15,9 @@ class Tag(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, user_id=None, registry_name=None, repository=None, name=None):  # noqa: E501
+    def __init__(
+        self, user_id=None, registry_name=None, repository=None, name=None
+    ):  # noqa: E501
         """Tag - a model defined in Swagger
 
         :param user_id: The user_id of this Tag.  # noqa: E501
@@ -28,17 +30,17 @@ class Tag(Model):
         :type name: str
         """
         self.swagger_types = {
-            'user_id': str,
-            'registry_name': str,
-            'repository': str,
-            'name': str
+            "user_id": str,
+            "registry_name": str,
+            "repository": str,
+            "name": str,
         }
 
         self.attribute_map = {
-            'user_id': 'user_id',
-            'registry_name': 'registry_name',
-            'repository': 'repository',
-            'name': 'name'
+            "user_id": "user_id",
+            "registry_name": "registry_name",
+            "repository": "repository",
+            "name": "name",
         }
 
         self._user_id = user_id

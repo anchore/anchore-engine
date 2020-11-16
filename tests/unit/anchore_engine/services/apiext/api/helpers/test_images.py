@@ -251,7 +251,6 @@ class TestBuildJavaResponse:
         assert expected_response == actual_response
 
 
-
 class TestBuildDefaultResponse:
     @pytest.fixture
     def content_data_entry(self):
@@ -290,9 +289,7 @@ class TestBuildDefaultResponse:
             }
         ]
 
-        actual_response = _build_default_response(
-            {"a-place": content_data_entry}
-        )
+        actual_response = _build_default_response({"a-place": content_data_entry})
 
         assert expected_response == actual_response
 
@@ -307,7 +304,7 @@ class TestBuildDefaultResponse:
         assert expected_response == actual_pkg_response
 
     def test_missing_license(self, missing_license_content_data):
-        expected_response = ['Unknown']
+        expected_response = ["Unknown"]
 
         actual_response = _build_default_response(
             {"someplace": missing_license_content_data}
@@ -316,6 +313,7 @@ class TestBuildDefaultResponse:
 
         assert expected_response == actual_pkg_response
 
+
 class TestBuildDockerHistoryResponse:
     @pytest.fixture
     def content_data_entry(self):
@@ -323,12 +321,12 @@ class TestBuildDockerHistoryResponse:
             "history": [
                 {
                     "created": "2020-04-14T19:19:53.444488372Z",
-                    "created_by": "/bin/sh -c #(nop) ADD file:xyz in / "
+                    "created_by": "/bin/sh -c #(nop) ADD file:xyz in / ",
                 },
                 {
                     "created": "2020-04-14T19:19:53.590635493Z",
                     "created_by": "/bin/sh -c #(nop)  CMD ['sh']",
-                }
+                },
             ]
         }
 
@@ -353,7 +351,6 @@ IjogIi9iaW4vc2ggLWMgIyhub3ApICBDTUQgWydzaCddIn1dfQ==
         assert expected_response == actual_response
 
 
-
 class TestBuildDockerfileResponse:
     @pytest.fixture
     def content_data_entry(self):
@@ -364,7 +361,7 @@ class TestBuildDockerfileResponse:
         return object()
 
     def test_go_case(self, content_data_entry):
-        expected_response = 'RlJPTSB1YnVudHU6MTQuMDQKUlVOIGNvd3NheQ==\n'
+        expected_response = "RlJPTSB1YnVudHU6MTQuMDQKUlVOIGNvd3NheQ==\n"
 
         actual_response = _build_dockerfile_response(content_data_entry)
 
@@ -374,7 +371,6 @@ class TestBuildDockerfileResponse:
         expected_response = ""
         actual_response = _build_dockerfile_response(bad_data_entry)
         assert expected_response == actual_response
-
 
 
 class TestBuildManifestResponse:

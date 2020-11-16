@@ -19,44 +19,53 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
 
     msg = str(errmsg)
 
-    ret = {
-        'message': msg,
-        'httpcode': int(httpcode),
-        'detail': details
-    }
-    if 'error_codes' not in ret['detail']:
-        ret['detail']['error_codes'] = []
+    ret = {"message": msg, "httpcode": int(httpcode), "detail": details}
+    if "error_codes" not in ret["detail"]:
+        ret["detail"]["error_codes"] = []
 
     if isinstance(errmsg, Exception):
-        if not hasattr(errmsg, 'anchore_error_json'):
+        if not hasattr(errmsg, "anchore_error_json"):
             return ret
 
         # Try to load it as json
         try:
-            anchore_error_json = getattr(errmsg, 'anchore_error_json', None)
+            anchore_error_json = getattr(errmsg, "anchore_error_json", None)
             if isinstance(anchore_error_json, dict):
                 err_json = anchore_error_json
             else:
                 err_json = json.loads(anchore_error_json)
         except (TypeError, ValueError):
             # Then it may just be a string, we cannot do anything with it
-            logger.debug('Failed to parse anchore_error_json as json')
+            logger.debug("Failed to parse anchore_error_json as json")
             return ret
 
-        if {'message', 'httpcode', 'detail'}.issubset(set(err_json)):
+        if {"message", "httpcode", "detail"}.issubset(set(err_json)):
             ret.update(err_json)
 
         try:
-            if {'error_code'}.issubset(set(err_json)) and err_json.get('error_code', None):
-                if 'error_codes' not in ret['detail']:
-                    ret['detail']['error_codes'] = []
-                ret['detail']['error_codes'].append(err_json.get('error_code'))
+            if {"error_code"}.issubset(set(err_json)) and err_json.get(
+                "error_code", None
+            ):
+                if "error_codes" not in ret["detail"]:
+                    ret["detail"]["error_codes"] = []
+                ret["detail"]["error_codes"].append(err_json.get("error_code"))
         except KeyError:
-            logger.warn("unable to marshal error details: source error {}".format(errmsg.__dict__))
+            logger.warn(
+                "unable to marshal error details: source error {}".format(
+                    errmsg.__dict__
+                )
+            )
     return ret
 
 
-def make_anchore_exception(err, input_message=None, input_httpcode=None, input_detail=None, override_existing=False, input_error_codes=None):
+def make_anchore_exception(
+    err,
+    input_message=None,
+    input_httpcode=None,
+    input_detail=None,
+    override_existing=False,
+    input_error_codes=None,
+):
     ret = Exception(err)
 
     if not input_message:
@@ -67,7 +76,7 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
     if input_detail != None:
         detail = input_detail
     else:
-        detail = {'raw_exception_message': str(err)}
+        detail = {"raw_exception_message": str(err)}
 
     if input_error_codes != None:
         error_codes = input_error_codes
@@ -82,29 +91,29 @@ def make_anchore_exception(err, input_message=None, input_httpcode=None, input_d
     anchore_error_json = {}
     try:
         if isinstance(err, Exception):
-            if hasattr(err, 'anchore_error_json'):
-                anchore_error_json.update(getattr(err, 'anchore_error_json'))
+            if hasattr(err, "anchore_error_json"):
+                anchore_error_json.update(getattr(err, "anchore_error_json"))
 
-            if hasattr(err, 'error_code'):
-                error_codes.append(getattr(err, 'error_code'))
+            if hasattr(err, "error_code"):
+                error_codes.append(getattr(err, "error_code"))
     except:
         pass
 
     if override_existing or not anchore_error_json:
         ret.anchore_error_json = {
-            'message': message,
-            'detail': detail,
-            'httpcode': httpcode
+            "message": message,
+            "detail": detail,
+            "httpcode": httpcode,
         }
     else:
         ret.anchore_error_json = anchore_error_json
 
-    if 'detail' in ret.anchore_error_json:
-        if 'error_codes' not in ret.anchore_error_json['detail']:
-            ret.anchore_error_json['detail']['error_codes'] = []
+    if "detail" in ret.anchore_error_json:
+        if "error_codes" not in ret.anchore_error_json["detail"]:
+            ret.anchore_error_json["detail"]["error_codes"] = []
 
         if error_codes:
-            ret.anchore_error_json['detail']['error_codes'].extend(error_codes)
+            ret.anchore_error_json["detail"]["error_codes"].extend(error_codes)
 
     return ret
 
@@ -116,11 +125,11 @@ def make_response_routes(apiversion, inroutes):
     routes = []
     try:
         for route in inroutes:
-            routes.append('/'.join([apiversion, route]))
+            routes.append("/".join([apiversion, route]))
     except Exception as err:
         httpcode = 500
         return_object = make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        httpcode = return_object["httpcode"]
 
     else:
         httpcode = 200
@@ -131,7 +140,7 @@ def make_response_routes(apiversion, inroutes):
 
 def update_image_record_with_analysis_data(image_record, image_data):
 
-    image_summary_data = extract_analyzer_content(image_data, 'metadata')
+    image_summary_data = extract_analyzer_content(image_data, "metadata")
 
     try:
         image_summary_metadata = copy.deepcopy(image_summary_data)
@@ -140,20 +149,20 @@ def update_image_record_with_analysis_data(image_record, image_data):
 
             summary_record = {}
 
-            adm = image_summary_metadata['anchore_distro_meta']
+            adm = image_summary_metadata["anchore_distro_meta"]
 
-            summary_record['distro'] = adm.pop('DISTRO', 'N/A')
-            summary_record['distro_version'] = adm.pop('DISTROVERS', 'N/A')
+            summary_record["distro"] = adm.pop("DISTRO", "N/A")
+            summary_record["distro_version"] = adm.pop("DISTROVERS", "N/A")
 
-            air = image_summary_metadata['anchore_image_report']
-            airm = air.pop('meta', {})
-            al = air.pop('layers', [])
-            ddata = air.pop('docker_data', {})
+            air = image_summary_metadata["anchore_image_report"]
+            airm = air.pop("meta", {})
+            al = air.pop("layers", [])
+            ddata = air.pop("docker_data", {})
 
-            summary_record['layer_count'] = str(len(al))
-            summary_record['dockerfile_mode'] = air.pop('dockerfile_mode', 'N/A')
-            summary_record['arch'] = ddata.pop('Architecture', 'N/A')
-            summary_record['image_size'] = str(int(airm.pop('sizebytes', 0)))
+            summary_record["layer_count"] = str(len(al))
+            summary_record["dockerfile_mode"] = air.pop("dockerfile_mode", "N/A")
+            summary_record["arch"] = ddata.pop("Architecture", "N/A")
+            summary_record["image_size"] = str(int(airm.pop("sizebytes", 0)))
 
             formatted_image_summary_data = summary_record
     except Exception as err:
@@ -164,10 +173,12 @@ def update_image_record_with_analysis_data(image_record, image_data):
 
     dockerfile_content, dockerfile_mode = extract_dockerfile_content(image_data)
     if dockerfile_content and dockerfile_mode:
-        image_record['dockerfile_mode'] = dockerfile_mode
-        for image_detail in image_record['image_detail']:
+        image_record["dockerfile_mode"] = dockerfile_mode
+        for image_detail in image_record["image_detail"]:
             logger.debug("setting image_detail: ")
-            image_detail['dockerfile'] = str(base64.b64encode(dockerfile_content.encode('utf-8')), 'utf-8')
+            image_detail["dockerfile"] = str(
+                base64.b64encode(dockerfile_content.encode("utf-8")), "utf-8"
+            )
 
     return True
 
@@ -177,8 +188,12 @@ def extract_dockerfile_content(image_data):
     dockerfile_mode = "Guessed"
 
     try:
-        dockerfile_content = image_data[0]['image']['imagedata']['image_report']['dockerfile_contents']
-        dockerfile_mode = image_data[0]['image']['imagedata']['image_report']['dockerfile_mode']
+        dockerfile_content = image_data[0]["image"]["imagedata"]["image_report"][
+            "dockerfile_contents"
+        ]
+        dockerfile_mode = image_data[0]["image"]["imagedata"]["image_report"][
+            "dockerfile_mode"
+        ]
     except Exception as err:
         dockerfile_content = ""
         dockerfile_mode = "Guessed"
@@ -196,17 +211,24 @@ def extract_files_content(image_data):
     try:
         ret = {}
         fcsums = {}
-        if 'files.sha256sums' in image_data['imagedata']['analysis_report']['file_checksums']:
-            adata = image_data['imagedata']['analysis_report']['file_checksums']['files.sha256sums']['base']
+        if (
+            "files.sha256sums"
+            in image_data["imagedata"]["analysis_report"]["file_checksums"]
+        ):
+            adata = image_data["imagedata"]["analysis_report"]["file_checksums"][
+                "files.sha256sums"
+            ]["base"]
             for k in list(adata.keys()):
                 fcsums[k] = adata[k]
 
-        if 'files.allinfo' in image_data['imagedata']['analysis_report']['file_list']:
-            adata = image_data['imagedata']['analysis_report']['file_list']['files.allinfo']['base']
+        if "files.allinfo" in image_data["imagedata"]["analysis_report"]["file_list"]:
+            adata = image_data["imagedata"]["analysis_report"]["file_list"][
+                "files.allinfo"
+            ]["base"]
             for k in list(adata.keys()):
                 avalue = safe_extract_json_value(adata[k])
                 if k in fcsums:
-                    avalue['sha256'] = fcsums[k]
+                    avalue["sha256"] = fcsums[k]
                 ret[k] = avalue
         return ret
     except Exception as err:
@@ -215,8 +237,10 @@ def extract_files_content(image_data):
 
 def extract_os_content(image_data):
     ret = {}
-    if 'pkgs.allinfo' in image_data['imagedata']['analysis_report']['package_list']:
-        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.allinfo']['base']
+    if "pkgs.allinfo" in image_data["imagedata"]["analysis_report"]["package_list"]:
+        adata = image_data["imagedata"]["analysis_report"]["package_list"][
+            "pkgs.allinfo"
+        ]["base"]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -224,8 +248,10 @@ def extract_os_content(image_data):
 
 def extract_npm_content(image_data):
     ret = {}
-    if 'pkgs.npms' in image_data['imagedata']['analysis_report']['package_list']:
-        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.npms']['base']
+    if "pkgs.npms" in image_data["imagedata"]["analysis_report"]["package_list"]:
+        adata = image_data["imagedata"]["analysis_report"]["package_list"]["pkgs.npms"][
+            "base"
+        ]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -233,8 +259,10 @@ def extract_npm_content(image_data):
 
 def extract_gem_content(image_data):
     ret = {}
-    if 'pkgs.gems' in image_data['imagedata']['analysis_report']['package_list']:
-        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
+    if "pkgs.gems" in image_data["imagedata"]["analysis_report"]["package_list"]:
+        adata = image_data["imagedata"]["analysis_report"]["package_list"]["pkgs.gems"][
+            "base"
+        ]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -242,8 +270,10 @@ def extract_gem_content(image_data):
 
 def extract_python_content(image_data):
     ret = {}
-    if 'pkgs.python' in image_data['imagedata']['analysis_report']['package_list']:
-        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
+    if "pkgs.python" in image_data["imagedata"]["analysis_report"]["package_list"]:
+        adata = image_data["imagedata"]["analysis_report"]["package_list"][
+            "pkgs.python"
+        ]["base"]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -251,8 +281,10 @@ def extract_python_content(image_data):
 
 def extract_java_content(image_data):
     ret = {}
-    if 'pkgs.java' in image_data['imagedata']['analysis_report']['package_list']:
-        adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.java']['base']
+    if "pkgs.java" in image_data["imagedata"]["analysis_report"]["package_list"]:
+        adata = image_data["imagedata"]["analysis_report"]["package_list"]["pkgs.java"][
+            "base"
+        ]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -261,7 +293,9 @@ def extract_java_content(image_data):
 def extract_pkg_content(image_data, content_type):
     # catchall for additional pkg types
     ret = {}
-    adata = image_data['imagedata']['analysis_report']['package_list']['pkgs.{}'.format(content_type)]['base']
+    adata = image_data["imagedata"]["analysis_report"]["package_list"][
+        "pkgs.{}".format(content_type)
+    ]["base"]
     for k in list(adata.keys()):
         ret[k] = safe_extract_json_value(adata[k])
     return ret
@@ -270,8 +304,13 @@ def extract_pkg_content(image_data, content_type):
 def extract_malware_content(image_data):
     # Extract malware scan
     ret = []
-    clamav_content_name = 'clamav'
-    malware_scans = image_data['imagedata']['analysis_report'].get('malware', {}).get('malware', {}).get('base', {})
+    clamav_content_name = "clamav"
+    malware_scans = (
+        image_data["imagedata"]["analysis_report"]
+        .get("malware", {})
+        .get("malware", {})
+        .get("base", {})
+    )
 
     for scanner_name, output in malware_scans.items():
         finding = safe_extract_json_value(output)
@@ -288,46 +327,73 @@ def extract_malware_content(image_data):
 def extract_analyzer_content(image_data, content_type, manifest=None):
     ret = {}
     try:
-        idata = image_data[0]['image']
-        imageId = idata['imageId']
+        idata = image_data[0]["image"]
+        imageId = idata["imageId"]
 
-        if content_type == 'files':
+        if content_type == "files":
             return extract_files_content(idata)
-        elif content_type == 'os':
+        elif content_type == "os":
             return extract_os_content(idata)
-        elif content_type == 'npm':
+        elif content_type == "npm":
             return extract_npm_content(idata)
-        elif content_type == 'gem':
+        elif content_type == "gem":
             return extract_gem_content(idata)
-        elif content_type == 'python':
+        elif content_type == "python":
             return extract_python_content(idata)
-        elif content_type == 'java':
+        elif content_type == "java":
             return extract_java_content(idata)
-        elif content_type == 'malware':
+        elif content_type == "malware":
             return extract_malware_content(idata)
-        elif 'pkgs.{}'.format(content_type) in idata['imagedata']['analysis_report']['package_list']:
+        elif (
+            "pkgs.{}".format(content_type)
+            in idata["imagedata"]["analysis_report"]["package_list"]
+        ):
             return extract_pkg_content(idata, content_type)
-        elif content_type == 'metadata':
-            if 'image_report' in idata['imagedata'] and 'analyzer_meta' in idata['imagedata']['analysis_report']:
-                ret = {'anchore_image_report': image_data[0]['image']['imagedata']['image_report'], 'anchore_distro_meta': image_data[0]['image']['imagedata']['analysis_report']['analyzer_meta']['analyzer_meta']['base']}
-        elif content_type == 'manifest':
+        elif content_type == "metadata":
+            if (
+                "image_report" in idata["imagedata"]
+                and "analyzer_meta" in idata["imagedata"]["analysis_report"]
+            ):
+                ret = {
+                    "anchore_image_report": image_data[0]["image"]["imagedata"][
+                        "image_report"
+                    ],
+                    "anchore_distro_meta": image_data[0]["image"]["imagedata"][
+                        "analysis_report"
+                    ]["analyzer_meta"]["analyzer_meta"]["base"],
+                }
+        elif content_type == "manifest":
             ret = {}
             try:
                 if manifest:
                     ret = json.loads(manifest)
             except:
                 ret = {}
-        elif content_type == 'docker_history':
+        elif content_type == "docker_history":
             ret = []
             try:
-                ret = idata.get('imagedata', {}).get('image_report', {}).get('docker_history', [])
+                ret = (
+                    idata.get("imagedata", {})
+                    .get("image_report", {})
+                    .get("docker_history", [])
+                )
             except:
                 ret = []
-        elif content_type == 'dockerfile':
+        elif content_type == "dockerfile":
             ret = ""
             try:
-                if idata.get('imagedata', {}).get('image_report', {}).get('dockerfile_mode', "").lower() == 'actual':
-                    ret = idata.get('imagedata', {}).get('image_report', {}).get('dockerfile_contents', "")
+                if (
+                    idata.get("imagedata", {})
+                    .get("image_report", {})
+                    .get("dockerfile_mode", "")
+                    .lower()
+                    == "actual"
+                ):
+                    ret = (
+                        idata.get("imagedata", {})
+                        .get("image_report", {})
+                        .get("dockerfile_contents", "")
+                    )
             except:
                 ret = ""
 
@@ -341,18 +407,20 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
 def make_policy_record(userId, bundle, policy_source="local", active=False):
     payload = {}
 
-    policyId = bundle['id']
+    policyId = bundle["id"]
 
     payload["policyId"] = policyId
     payload["active"] = active
     payload["userId"] = userId
-    payload['policybundle'] = bundle
-    payload['policy_source'] = policy_source
+    payload["policybundle"] = bundle
+    payload["policy_source"] = policy_source
 
     return payload
 
 
-def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, eval_url):
+def make_eval_record(
+    userId, evalId, policyId, imageDigest, tag, final_action, eval_url
+):
     payload = {}
 
     payload["policyId"] = policyId
@@ -363,9 +431,10 @@ def make_eval_record(userId, evalId, policyId, imageDigest, tag, final_action, e
     payload["final_action"] = final_action
     payload["policyeval"] = eval_url
     payload["created_at"] = int(time.time())
-    payload["last_updated"] = payload['created_at']
+    payload["last_updated"] = payload["created_at"]
 
     return payload
+
 
 def safe_extract_json_value(value):
     # support the legacy serialized json string

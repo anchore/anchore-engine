@@ -26,15 +26,15 @@ class FeedSyncResult(Model):
         :type status: str
         """
         self.swagger_types = {
-            'start_time': datetime,
-            'end_time': datetime,
-            'status': str
+            "start_time": datetime,
+            "end_time": datetime,
+            "status": str,
         }
 
         self.attribute_map = {
-            'start_time': 'start_time',
-            'end_time': 'end_time',
-            'status': 'status'
+            "start_time": "start_time",
+            "end_time": "end_time",
+            "status": "status",
         }
 
         self._start_time = start_time
@@ -115,8 +115,9 @@ class FeedSyncResult(Model):
         allowed_values = ["complete", "error"]  # noqa: E501
         if status not in allowed_values:
             raise ValueError(
-                "Invalid value for `status` ({0}), must be one of {1}"
-                .format(status, allowed_values)
+                "Invalid value for `status` ({0}), must be one of {1}".format(
+                    status, allowed_values
+                )
             )
 
         self._status = status

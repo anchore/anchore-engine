@@ -15,7 +15,15 @@ class FeedGroupMetadata(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, created_at=None, last_sync=None, record_count=None, enabled=None, updated_at=None):  # noqa: E501
+    def __init__(
+        self,
+        name=None,
+        created_at=None,
+        last_sync=None,
+        record_count=None,
+        enabled=None,
+        updated_at=None,
+    ):  # noqa: E501
         """FeedGroupMetadata - a model defined in Swagger
 
         :param name: The name of this FeedGroupMetadata.  # noqa: E501
@@ -28,21 +36,21 @@ class FeedGroupMetadata(Model):
         :type record_count: int
         """
         self.swagger_types = {
-            'name': str,
-            'created_at': datetime,
-            'last_sync': datetime,
-            'record_count': int,
-            'enabled': bool,
-            'updated_at': datetime
+            "name": str,
+            "created_at": datetime,
+            "last_sync": datetime,
+            "record_count": int,
+            "enabled": bool,
+            "updated_at": datetime,
         }
 
         self.attribute_map = {
-            'name': 'name',
-            'created_at': 'created_at',
-            'last_sync': 'last_sync',
-            'record_count': 'record_count',
-            'enabled': 'enabled',
-            'updated_at': 'updated_at'
+            "name": "name",
+            "created_at": "created_at",
+            "last_sync": "last_sync",
+            "record_count": "record_count",
+            "enabled": "enabled",
+            "updated_at": "updated_at",
         }
 
         self._name = name
