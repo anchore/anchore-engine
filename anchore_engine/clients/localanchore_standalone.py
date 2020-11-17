@@ -451,18 +451,6 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
     rando = str(uuid.uuid4())
     unpackdir = os.path.join(rootdir, rando)
 
-    # XXX This highly questionable environment variable usage is the only way
-    # found to programmatically inject hintsfiles without requiring the
-    # hintsfile to exist in the image. Otherwise, it would require every
-    # permutation of a hintsfile to be an actual unique image. It leverages the
-    # fact that Anchore Engine will not try to extract the hinstfile if it has
-    # already been unpacked in the unpack directory.
-    try:
-        if os.environ.get['ANCHORE_TEST_HINTSFILE']:
-            shutil.copyfile(os.environ.get['ANCHORE_TEST_HINTSFILE'], unpackdir)
-    except Exception as err:
-        logger.debug("testing injection of hintsfile failed: %s", str(err))
-
     ret = {
         'unpackdir': unpackdir,
         'copydir': os.path.join(rootdir, rando, "raw"),
@@ -481,6 +469,20 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
                 os.makedirs(ret[k])
         except Exception as err:
             raise Exception("unable to prep staging directory - exception: " + str(err))
+
+    # XXX This highly questionable environment variable usage is the only way
+    # found to programmatically inject hintsfiles without requiring the
+    # hintsfile to exist in the image. Otherwise, it would require every
+    # permutation of a hintsfile to be an actual unique image. It leverages the
+    # fact that Anchore Engine will not try to extract the hinstfile if it has
+    # already been unpacked in the unpack directory.
+    try:
+        if os.environ.get('ANCHORE_TEST_HINTSFILE'):
+            test_hints = os.environ['ANCHORE_TEST_HINTSFILE']
+            destination = os.path.join(unpackdir, 'anchore_hints.json')
+            shutil.copyfile(test_hints, destination)
+    except Exception as err:
+        logger.debug("testing injection of hintsfile failed: %s", str(err))
 
     # Set this env var so both scripts and modules that don't have access to
     # these values have a reliable way of retrieving it. This is set here

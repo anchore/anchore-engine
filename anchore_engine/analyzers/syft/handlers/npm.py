@@ -21,7 +21,6 @@ def handler(findings, artifact):
             'origins': origins,
             'lics': dig(artifact, 'metadata', 'licenses', default=[]),
         }
-
     pkg_updates = content_hints(pkg_type="npm")
     pkg_update = pkg_updates.get(name)
     if pkg_update:

@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 import os
 import importlib.util
 from os.path import join
@@ -104,6 +105,34 @@ def create_cache_directories(
     os.makedirs(cache_path, exist_ok=True)
 
     return cache_path
+
+
+@pytest.fixture
+def hints_image(monkeypatch, tmpdir):
+    """
+    This fixture is *very* expensive. Sorry. There is no way around it. The
+    hintsfile functionality requires the image to be analyzed every single
+    time. Compensate with the smallest images possible
+    """
+    def func(contents, image):
+        work_dir = tmpdir.strpath
+        path = os.path.join(work_dir, 'anchore_hints.json')
+        with open(path, 'w') as _f:
+            json.dump(contents, _f)
+        monkeypatch.setenv("ANCHORE_TEST_HINTSFILE", path)
+        image_kwargs = pre_baked_images[image]
+        standalone.main(work_dir=work_dir, localconfig={'services': {'analyzer': {'enable_hints': True}}}, **image_kwargs)
+        results_path = join(work_dir, 'result.py')
+        spec = importlib.util.spec_from_file_location("functional_results", results_path)
+        functional_results = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(functional_results)
+        # After importing the result as a Python module, the standalone script
+        # will assign the return value to `result` which is a single item in
+        # a list. Return the first item in that list. If this ever fails, is
+        # because the `result.py` file doesn't comply with that format
+        return functional_results.result[0]
+
+    return func
 
 
 @pytest.fixture(scope='session')
