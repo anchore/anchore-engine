@@ -11,15 +11,22 @@ def test_anchore_permissions():
     :return:
     """
 
-    logger.info('Testing permission wildcard matches and mixed-case comparisions')
+    logger.info("Testing permission wildcard matches and mixed-case comparisions")
     # Default, case-sensitive, exact match
-    assert (CaseSensitivePermission(wildcard_string="Account1:listImages:*").implies(
-        CaseSensitivePermission(wildcard_string="Account1:listImages:*")))
+    assert CaseSensitivePermission(wildcard_string="Account1:listImages:*").implies(
+        CaseSensitivePermission(wildcard_string="Account1:listImages:*")
+    )
 
     # Ignore case
-    assert (CaseSensitivePermission(wildcard_string="account1:listImages:*", case_sensitive=False).implies(
-        CaseSensitivePermission(wildcard_string="Account1:listImages:*", case_sensitive=False)))
+    assert CaseSensitivePermission(
+        wildcard_string="account1:listImages:*", case_sensitive=False
+    ).implies(
+        CaseSensitivePermission(
+            wildcard_string="Account1:listImages:*", case_sensitive=False
+        )
+    )
 
     # Mixed case, mismatch
-    assert (not CaseSensitivePermission(wildcard_string="account1:listImages:*").implies(
-        CaseSensitivePermission(wildcard_string="Account1:listImages:*")))
+    assert not CaseSensitivePermission(wildcard_string="account1:listImages:*").implies(
+        CaseSensitivePermission(wildcard_string="Account1:listImages:*")
+    )

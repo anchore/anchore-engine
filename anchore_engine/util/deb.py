@@ -5,12 +5,12 @@ Utils for working with debian packages (dpkg and apt).
 
 # Map ops to the conversion from a standard cmp output
 compare_operators = {
-    'le': lambda x: x <= 0,
-    'lt': lambda x: x < 0,
-    'eq': lambda x: x == 0,
-    'ne': lambda x: x != 0,
-    'ge': lambda x: x >= 0,
-    'gt': lambda x: x > 0,
+    "le": lambda x: x <= 0,
+    "lt": lambda x: x < 0,
+    "eq": lambda x: x == 0,
+    "ne": lambda x: x != 0,
+    "ge": lambda x: x >= 0,
+    "gt": lambda x: x > 0,
 }
 
 
@@ -54,28 +54,30 @@ class DpkgVersion(object):
         """
         version_str = version_str.strip()
 
-        pieces = version_str.rsplit(':', 1)
+        pieces = version_str.rsplit(":", 1)
         if len(pieces) > 1:
             epoch = pieces.pop(0)
             try:
                 i = int(epoch)
                 if i < 0:
-                    raise ValueError('Epoch is less than zero as an unsigned int')
+                    raise ValueError("Epoch is less than zero as an unsigned int")
                 epoch = int(epoch)
             except:
-                raise ValueError('Epoch must be an integer')
+                raise ValueError("Epoch must be an integer")
             if not pieces[0]:
-                raise ValueError('Found only an epoch, must have version')
+                raise ValueError("Found only an epoch, must have version")
         else:
             epoch = None
 
-        if epoch is None and ':' in pieces[0]:
-            raise ValueError('Invalid string. Cannot contain a colon if no epoch specified')
+        if epoch is None and ":" in pieces[0]:
+            raise ValueError(
+                "Invalid string. Cannot contain a colon if no epoch specified"
+            )
 
-        version_comps = pieces[0].rsplit('-', 1)
+        version_comps = pieces[0].rsplit("-", 1)
         if len(version_comps) < 2:
             version = version_comps[0]
-            revision = '0'
+            revision = "0"
         else:
             version = version_comps[0]
             revision = version_comps[1]
@@ -93,9 +95,15 @@ class DpkgVersion(object):
 
     def __cmp__(self, other):
         if not isinstance(other, DpkgVersion):
-            raise TypeError('Can only compare other DpkVersion objects. Found: {}'.format(type(other)))
+            raise TypeError(
+                "Can only compare other DpkVersion objects. Found: {}".format(
+                    type(other)
+                )
+            )
 
-        if self.epoch is not None and other.epoch is not None:  # compare only when both epochs are available. ignore otherwise
+        if (
+            self.epoch is not None and other.epoch is not None
+        ):  # compare only when both epochs are available. ignore otherwise
             if self.epoch > other.epoch:
                 return 1
             if self.epoch < other.epoch:
@@ -121,18 +129,19 @@ class DpkgVersion(object):
         """
 
         if ver_a is None:
-            ver_a = ''
+            ver_a = ""
         if ver_b is None:
-            ver_b = ''
+            ver_b = ""
 
         # Convert each to list of characters
         list_a = list(ver_a)
         list_b = list(ver_b)
 
-
         for i in range(max(len(list_a), len(list_b))):
             first_diff = 0
-            while (list_a and not list_a[0].isdigit() or list_b and not list_b[0].isdigit()):
+            while (
+                list_a and not list_a[0].isdigit() or list_b and not list_b[0].isdigit()
+            ):
                 ac = DpkgVersion._order(list_a[0] if list_a else None)
                 bc = DpkgVersion._order(list_b[0] if list_b else None)
 
@@ -143,10 +152,10 @@ class DpkgVersion(object):
                 list_a.pop(0)
                 list_b.pop(0)
 
-            while list_a and list_a[0] == '0':
+            while list_a and list_a[0] == "0":
                 list_a.pop(0)
 
-            while list_b and list_b[0] == '0':
+            while list_b and list_b[0] == "0":
                 list_b.pop(0)
 
             while (list_a and list_a[0].isdigit()) and (list_b and list_b[0].isdigit()):
@@ -180,8 +189,8 @@ class DpkgVersion(object):
         if c.isdigit():
             return 0
         elif c.isalpha():
-            return ord(c) #c[0])
-        elif c == '~':
+            return ord(c)  # c[0])
+        elif c == "~":
             return -1
         elif c:
             return ord(c) + 256
@@ -215,7 +224,11 @@ def strict_compare_versions(v1, op, v2):
     """
 
     if op not in compare_operators:
-        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, list(compare_operators.keys())))
+        raise ValueError(
+            "Invalid op, {}, requested. Valid values are: {}".format(
+                op, list(compare_operators.keys())
+            )
+        )
     else:
         eval_fn = compare_operators[op]
 
@@ -257,7 +270,11 @@ def compare_versions(v1, op, v2):
     """
 
     if op not in compare_operators:
-        raise ValueError('Invalid op, {}, requested. Valid values are: {}'.format(op, list(compare_operators.keys())))
+        raise ValueError(
+            "Invalid op, {}, requested. Valid values are: {}".format(
+                op, list(compare_operators.keys())
+            )
+        )
     else:
         eval_fn = compare_operators[op]
 
@@ -268,4 +285,3 @@ def compare_versions(v1, op, v2):
         return eval_fn(pkg1.__cmp__(pkg2))
     except Exception as e:
         raise
-

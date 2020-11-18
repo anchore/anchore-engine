@@ -13,20 +13,26 @@ import anchore_engine.analyzers.utils
 analyzer_name = "file_package_verify"
 
 try:
-    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(
+        sys.argv, analyzer_name
+    )
 except Exception as err:
     print(str(err))
     sys.exit(1)
 
-imgname = config['imgid']
-imgid = config['imgid_full']
-outputdir = config['dirs']['outputdir']
-unpackdir = config['dirs']['unpackdir']
+imgname = config["imgid"]
+imgid = config["imgid_full"]
+outputdir = config["dirs"]["outputdir"]
+unpackdir = config["dirs"]["unpackdir"]
 squashtar = os.path.join(unpackdir, "squashed.tar")
 
-meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(squashtar, unpackdir=unpackdir)
-distrodict = anchore_engine.analyzers.utils.get_distro_flavor(meta['DISTRO'], meta['DISTROVERS'], likedistro=meta['LIKEDISTRO'])
-flavor = distrodict['flavor']
+meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(
+    squashtar, unpackdir=unpackdir
+)
+distrodict = anchore_engine.analyzers.utils.get_distro_flavor(
+    meta["DISTRO"], meta["DISTROVERS"], likedistro=meta["LIKEDISTRO"]
+)
+flavor = distrodict["flavor"]
 
 # gather file metadata from installed packages
 
@@ -36,22 +42,28 @@ resultlist = {}
 try:
     if flavor == "RHEL":
         try:
-            #result = rpm_get_file_package_metadata(unpackdir, record)
-            result = anchore_engine.analyzers.utils.rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar)
+            # result = rpm_get_file_package_metadata(unpackdir, record)
+            result = anchore_engine.analyzers.utils.rpm_get_file_package_metadata_from_squashtar(
+                unpackdir, squashtar
+            )
         except Exception as err:
             raise Exception("ERROR: " + str(err))
 
-    elif flavor == 'DEB':
+    elif flavor == "DEB":
         try:
-            #result = deb_get_file_package_metadata(unpackdir, record)
-            result = anchore_engine.analyzers.utils.dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar)
+            # result = deb_get_file_package_metadata(unpackdir, record)
+            result = anchore_engine.analyzers.utils.dpkg_get_file_package_metadata_from_squashtar(
+                unpackdir, squashtar
+            )
         except Exception as err:
             raise Exception("ERROR: " + str(err))
 
-    elif flavor == 'ALPINE':
+    elif flavor == "ALPINE":
         try:
-            #result = apk_get_file_package_metadata(unpackdir, record)
-            result = anchore_engine.analyzers.utils.apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar)
+            # result = apk_get_file_package_metadata(unpackdir, record)
+            result = anchore_engine.analyzers.utils.apk_get_file_package_metadata_from_squashtar(
+                unpackdir, squashtar
+            )
         except Exception as err:
             raise Exception("ERROR: " + str(err))
 
@@ -72,7 +84,7 @@ if result:
             resultlist[f] = ""
 
 if resultlist:
-    ofile = os.path.join(outputdir, 'distro.pkgfilemeta')
+    ofile = os.path.join(outputdir, "distro.pkgfilemeta")
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
 
 sys.exit(0)

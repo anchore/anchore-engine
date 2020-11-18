@@ -6,7 +6,11 @@ from connexion import request
 
 # anchore modules
 import anchore_engine.apis
-from anchore_engine.apis.authorization import get_authorizer, RequestingAccountValue, ActionBoundPermission
+from anchore_engine.apis.authorization import (
+    get_authorizer,
+    RequestingAccountValue,
+    ActionBoundPermission,
+)
 import anchore_engine.common.helpers
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
@@ -15,26 +19,40 @@ from anchore_engine.subsys import logger
 
 authorizer = get_authorizer()
 
+
 def make_response_registry(user_auth, registry_record, params):
     ret = {}
     userId, pw = user_auth
 
     try:
-        for k in ['registry', 'userId', 'registry_user', 'registry_verify', 'registry_type', 'registry_name']:
+        for k in [
+            "registry",
+            "userId",
+            "registry_user",
+            "registry_verify",
+            "registry_type",
+            "registry_name",
+        ]:
             ret[k] = registry_record[k]
 
-        for datekey in ['last_updated', 'created_at']:
+        for datekey in ["last_updated", "created_at"]:
             try:
-                ret[datekey] = datetime.datetime.utcfromtimestamp(registry_record[datekey]).isoformat() + 'Z'
+                ret[datekey] = (
+                    datetime.datetime.utcfromtimestamp(
+                        registry_record[datekey]
+                    ).isoformat()
+                    + "Z"
+                )
             except:
                 pass
     except Exception as err:
         raise Exception("failed to format registry response: " + str(err))
 
-    for removekey in ['record_state_val', 'record_state_key']:
+    for removekey in ["record_state_val", "record_state_key"]:
         ret.pop(removekey, None)
 
     return ret
+
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def list_registries():
@@ -44,23 +62,27 @@ def list_registries():
     """
 
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    bodycontent = request_inputs["bodycontent"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
 
     try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         registry_records = client.get_registry()
         for registry_record in registry_records:
-            return_object.append(make_response_registry(user_auth, registry_record, params))
+            return_object.append(
+                make_response_registry(user_auth, registry_record, params)
+            )
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -73,25 +95,30 @@ def get_registry(registry):
     """
 
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    bodycontent = request_inputs["bodycontent"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
 
     try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         registry_records = client.get_registry(registry=registry)
         for registry_record in registry_records:
-            return_object.append(make_response_registry(user_auth, registry_record, params))
+            return_object.append(
+                make_response_registry(user_auth, registry_record, params)
+            )
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
+
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def create_registry(registrydata, validate=True):
@@ -101,11 +128,13 @@ def create_registry(registrydata, validate=True):
     :param registry:
     :return:
     """
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'validate':validate})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    request_inputs = anchore_engine.apis.do_request_prep(
+        request, default_params={"validate": validate}
+    )
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    bodycontent = request_inputs["bodycontent"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
@@ -113,13 +142,15 @@ def create_registry(registrydata, validate=True):
     try:
         registrydata = json.loads(bodycontent)
         try:
-            input_registry = registrydata.get('registry', None)
-            
+            input_registry = registrydata.get("registry", None)
+
             if input_registry:
                 # do some input string checking
                 errmsg = None
                 if re.match(".*/+$", input_registry):
-                    errmsg = "input registry name cannot end with trailing '/' characters"
+                    errmsg = (
+                        "input registry name cannot end with trailing '/' characters"
+                    )
                 elif re.match("^http[s]*://", input_registry):
                     errmsg = "input registry name must start with a hostname/ip, without URI schema (http://, https://)"
 
@@ -130,16 +161,21 @@ def create_registry(registrydata, validate=True):
             httpcode = 409
             raise err
 
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         registry_records = client.add_registry(registrydata, validate=validate)
         for registry_record in registry_records:
-            return_object.append(make_response_registry(user_auth, registry_record, params))
+            return_object.append(
+                make_response_registry(user_auth, registry_record, params)
+            )
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
+
 
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def update_registry(registry, registrydata, validate=True):
@@ -149,11 +185,13 @@ def update_registry(registry, registrydata, validate=True):
     :param registry:
     :return:
     """
-    request_inputs = anchore_engine.apis.do_request_prep(request, default_params={'validate':validate})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    request_inputs = anchore_engine.apis.do_request_prep(
+        request, default_params={"validate": validate}
+    )
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    bodycontent = request_inputs["bodycontent"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
@@ -162,26 +200,34 @@ def update_registry(registry, registrydata, validate=True):
         registrydata = json.loads(bodycontent)
 
         try:
-            input_registry = registrydata.get('registry', None)
+            input_registry = registrydata.get("registry", None)
             if input_registry:
                 if input_registry != registry:
-                    raise Exception("registry name in path does not equal registry name in body")
+                    raise Exception(
+                        "registry name in path does not equal registry name in body"
+                    )
 
                 # do some input string checking
-                #if re.match(".*\/.*", input_registry):
+                # if re.match(".*\/.*", input_registry):
                 #    raise Exception("input registry name cannot contain '/' characters - valid registry names are of the form <host>:<port> where :<port> is optional")
         except Exception as err:
             httpcode = 409
             raise err
 
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
-        registry_records = client.update_registry(registry, registrydata, validate=validate)
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
+        registry_records = client.update_registry(
+            registry, registrydata, validate=validate
+        )
         for registry_record in registry_records:
-            return_object.append(make_response_registry(user_auth, registry_record, params))
+            return_object.append(
+                make_response_registry(user_auth, registry_record, params)
+            )
         httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode
 
@@ -195,21 +241,23 @@ def delete_registry(registry):
     :return:
     """
     request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-    user_auth = request_inputs['auth']
-    method = request_inputs['method']
-    bodycontent = request_inputs['bodycontent']
-    params = request_inputs['params']
+    user_auth = request_inputs["auth"]
+    method = request_inputs["method"]
+    bodycontent = request_inputs["bodycontent"]
+    params = request_inputs["params"]
 
     return_object = []
     httpcode = 500
 
     try:
-        client = internal_client_for(CatalogClient, request_inputs['userId'])
+        client = internal_client_for(CatalogClient, request_inputs["userId"])
         return_object = client.delete_registry(registry=registry)
         if return_object:
             httpcode = 200
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-        httpcode = return_object['httpcode']
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+        httpcode = return_object["httpcode"]
 
     return return_object, httpcode

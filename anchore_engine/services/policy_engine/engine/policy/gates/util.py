@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-CheckOperation = namedtuple('CheckOperation', ['requires_rvalue', 'eval_function'])
+CheckOperation = namedtuple("CheckOperation", ["requires_rvalue", "eval_function"])
 
 
 def deprecated_operation(superceded_by=None):
@@ -11,9 +11,10 @@ def deprecated_operation(superceded_by=None):
     """
 
     def decorator(cls):
-        setattr(cls, '__is_deprecated__', True)
-        setattr(cls, '__superceded_by__', superceded_by)
+        setattr(cls, "__is_deprecated__", True)
+        setattr(cls, "__superceded_by__", superceded_by)
         return cls
+
     return decorator
 
 
@@ -33,9 +34,9 @@ def end_of_lifed_operation(superceded_by=None):
         return None, None
 
     def decorator(cls):
-        setattr(cls, '__is_deprecated__', True)
-        setattr(cls, '__superceded_by__', superceded_by)
-        setattr(cls, 'evaluate', no_op_evaluate)
+        setattr(cls, "__is_deprecated__", True)
+        setattr(cls, "__superceded_by__", superceded_by)
+        setattr(cls, "evaluate", no_op_evaluate)
         return cls
 
     return decorator

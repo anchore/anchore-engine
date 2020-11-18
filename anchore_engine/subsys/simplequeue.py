@@ -1,4 +1,3 @@
-
 from anchore_engine import db
 from anchore_engine.db import db_queue, db_locks
 
@@ -9,10 +8,16 @@ queues_persist_files = {}
 def create_queue(name, max_outstanding_msgs=0, visibility_timeout=0):
     try:
         with db.session_scope() as dbsession:
-            db_queue.create(name, 'system', max_outstanding_msgs=max_outstanding_msgs, visibility_timeout=visibility_timeout, session=dbsession)
+            db_queue.create(
+                name,
+                "system",
+                max_outstanding_msgs=max_outstanding_msgs,
+                visibility_timeout=visibility_timeout,
+                session=dbsession,
+            )
     except Exception as err:
         raise err
-            
+
     return True
 
 
@@ -21,7 +26,7 @@ def get_queuenames():
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.get_queuenames('system', session=dbsession)
+            ret = db_queue.get_queuenames("system", session=dbsession)
     except Exception as err:
         raise err
 
@@ -31,7 +36,7 @@ def get_queuenames():
 def get_queue(name):
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.get_queue(name, 'system', session=dbsession)
+            ret = db_queue.get_queue(name, "system", session=dbsession)
             return ret
     except Exception as err:
         raise err
@@ -39,13 +44,13 @@ def get_queue(name):
 
 def qlen(name):
     queuenames = get_queuenames()
-    
+
     if name not in queuenames:
         return 0
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.get_qlen(name, 'system', session=dbsession)
+            ret = db_queue.get_qlen(name, "system", session=dbsession)
     except Exception as err:
         raise err
 
@@ -60,7 +65,14 @@ def enqueue(name, inobj, qcount=0, forcefirst=False):
     if name in queuenames:
         try:
             with db.session_scope() as dbsession:
-                ret = db_queue.enqueue(name, 'system', inobj, qcount=qcount, priority=forcefirst, session=dbsession)
+                ret = db_queue.enqueue(
+                    name,
+                    "system",
+                    inobj,
+                    qcount=qcount,
+                    priority=forcefirst,
+                    session=dbsession,
+                )
         except Exception as err:
             raise err
 
@@ -77,10 +89,12 @@ def dequeue(name, visibility_timeout=None):
     queue = get_queue(name)
     if queue is None:
         return None
-        
+
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.dequeue(name, 'system', visibility_timeout=visibility_timeout, session=dbsession)
+            ret = db_queue.dequeue(
+                name, "system", visibility_timeout=visibility_timeout, session=dbsession
+            )
         return ret
     except Exception as err:
         raise err
@@ -103,7 +117,9 @@ def update_visibility_timeout(name, receipt_handle, visibility_timeout):
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.update_visibility_by_handle(name, 'system', receipt_handle, visibility_timeout, session=dbsession)
+            ret = db_queue.update_visibility_by_handle(
+                name, "system", receipt_handle, visibility_timeout, session=dbsession
+            )
         return ret
     except Exception as err:
         raise err
@@ -118,7 +134,9 @@ def delete_msg(name, receipt_handle):
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.delete_msg_by_handle(name, 'system', receipt_handle, session=dbsession)
+            ret = db_queue.delete_msg_by_handle(
+                name, "system", receipt_handle, session=dbsession
+            )
     except Exception as err:
         raise err
 
@@ -134,10 +152,10 @@ def is_inqueue(name, inobj):
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.is_inqueue(name, 'system', inobj, session=dbsession)
+            ret = db_queue.is_inqueue(name, "system", inobj, session=dbsession)
     except Exception as err:
         raise err
-        
+
     return ret
 
 
@@ -151,8 +169,14 @@ def update_queueid(name, src_queueId, dst_queueId):
 
     try:
         with db.session_scope() as dbsession:
-            ret = db_queue.update_queueid(name, 'system', src_queueId=src_queueId, dst_queueId=dst_queueId, session=dbsession)
+            ret = db_queue.update_queueid(
+                name,
+                "system",
+                src_queueId=src_queueId,
+                dst_queueId=dst_queueId,
+                session=dbsession,
+            )
     except Exception as err:
         raise err
-    
+
     return ret

@@ -7,11 +7,11 @@ RPM utilities with no binary dependencies on rpm or rpmUtil.
 def parse_version(rpm_version):
     """
     Return a tuple from the given version string.
-    
-    :param rpm_version: 
-    :return: 
+
+    :param rpm_version:
+    :return:
     """
-    return rpm_version.split('-')
+    return rpm_version.split("-")
 
 
 def split_rpm_filename(rpm_filename):
@@ -25,19 +25,19 @@ def split_rpm_filename(rpm_filename):
     :returns: a tuple of the constituent parts compliant with RPM spec.
     """
 
-    components = rpm_filename.rsplit('.rpm', 1)[0].rsplit('.', 1)
+    components = rpm_filename.rsplit(".rpm", 1)[0].rsplit(".", 1)
     arch = components.pop()
 
-    rel_comp = components[0].rsplit('-', 2)
+    rel_comp = components[0].rsplit("-", 2)
     release = rel_comp.pop()
 
     # Version
     version = rel_comp.pop()
 
     # Epoch
-    epoch_comp = rel_comp[0].split(':', 1) if rel_comp else []
+    epoch_comp = rel_comp[0].split(":", 1) if rel_comp else []
     if len(epoch_comp) == 1:
-        epoch = ''
+        epoch = ""
         name = epoch_comp[0]
     elif len(epoch_comp) > 1:
         epoch = epoch_comp[0]
@@ -62,14 +62,14 @@ def split_fullversion(version):
     :param version: Version string with or without an epoch prefix
     :return: tuple (epoch, version, release). epoch is null if the inbound version does not contain epoch
     """
-    ver_comp = version.rsplit('-', 1)
+    ver_comp = version.rsplit("-", 1)
 
     if len(ver_comp) > 1:
         release = ver_comp.pop()
     else:
         release = None
 
-    epoch_comp = ver_comp[0].split(':', 1) if ver_comp else []
+    epoch_comp = ver_comp[0].split(":", 1) if ver_comp else []
 
     if len(epoch_comp) == 1:
         epoch = None
@@ -81,16 +81,20 @@ def split_fullversion(version):
         epoch = None
         version = None
 
-    return epoch, version, release,
+    return (
+        epoch,
+        version,
+        release,
+    )
 
 
 def compare_versions(ver_a, ver_b):
     """
     Compare pkg and versions using anchore engine rules. Follows standard __cmp__ semantics of -1 iff a < b, 0 iff a == b, 1 iff a > b
-    
+
     :param ver_a:
     :param ver_b:
-    :return: 
+    :return:
     """
     if ver_a == ver_b:
         return 0
@@ -106,13 +110,15 @@ def compare_labels(evr_1, evr_2):
     Compare the EVR label tuples (epoch, version, release).
 
     :param evr_1:
-    :param evr_2: 
+    :param evr_2:
     :return: -1, 0, 1 is standard __cmp__ semantics
     """
     epoch_1, ver_1, rel_1 = evr_1
     epoch_2, ver_2, rel_2 = evr_2
 
-    if epoch_1 is not None and epoch_2 is not None:  # compare only when both epochs are available. ignore otherwise
+    if (
+        epoch_1 is not None and epoch_2 is not None
+    ):  # compare only when both epochs are available. ignore otherwise
         if epoch_1 > epoch_2:
             return 1
         if epoch_1 < epoch_2:
@@ -129,17 +135,17 @@ def compare_labels(evr_1, evr_2):
 def rpm_ver_cmp(a, b):
     """
     A translation of the RPM lib's C code for version compare rpmvercmp in lib/rpmvercmp.c into pure python with
-    no external 
-    
+    no external
+
     compare alpha and numeric segments of two versions
     return 1: a is newer than b
         0: a and b are the same version
        -1: b is newer than a
     """
     if a is None:
-        a = ''
+        a = ""
     if b is None:
-        b = ''
+        b = ""
 
     # Convert to a list of single chars
     l_a = list(a.strip())
@@ -168,7 +174,7 @@ def rpm_ver_cmp(a, b):
         # the first string has a non-null segment
         # if (one == str1) return -1;     # arbitrary
         if l_a == a_seg:
-            raise Exception('Encountered null segment in str. Unexpected')
+            raise Exception("Encountered null segment in str. Unexpected")
             # return -1 # Arbitrary per C impl
 
         # take care of the case where the two version segments are
@@ -179,13 +185,13 @@ def rpm_ver_cmp(a, b):
         if l_b == b_seg:
             return 1 if is_num else -1
 
-        a_seg = ''.join(a_seg)
-        b_seg = ''.join(b_seg)
+        a_seg = "".join(a_seg)
+        b_seg = "".join(b_seg)
 
         if is_num:
             # Strip leading zeros since this is a numeric comparison
-            a_seg = a_seg.lstrip('0')
-            b_seg = b_seg.lstrip('0')
+            a_seg = a_seg.lstrip("0")
+            b_seg = b_seg.lstrip("0")
 
             # whichever number has more digits wins
             if len(a_seg) > len(b_seg):
@@ -219,9 +225,9 @@ def greedy_find_block(list_str, expected_digit=None):
     Scan the string and return the substring, index, and type of the next block.
     A block is defined as a contiguous set of numeric or alpha characters. The point at which the string
     converts from one to another is the edge of the block.
-    
+
     Will pop elements of the list to consume them during processing
-    
+
     :param list_str: a string in list form: ['a', 'c', 'd', '1', '0', '.']
     :return: (bool, list) tuple, where bool is isdigit() for first char of string
     """
@@ -238,10 +244,8 @@ def greedy_find_block(list_str, expected_digit=None):
 
     return chr_type, result
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import sys
+
     print((compare_versions(sys.argv[1], sys.argv[2])))
-
-
-
-

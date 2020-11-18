@@ -8,29 +8,45 @@ from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 
 class AccountNotFoundError(Exception):
     def __init__(self, account_name):
-        super(AccountNotFoundError, self).__init__('User account not found. Name={}'.format(account_name))
+        super(AccountNotFoundError, self).__init__(
+            "User account not found. Name={}".format(account_name)
+        )
         self.account_name = account_name
 
 
 class AccountAlreadyExistsError(Exception):
-    def __init__(self,  account_name):
-        super(AccountAlreadyExistsError, self).__init__('User account already exists. name={}'.format(account_name))
+    def __init__(self, account_name):
+        super(AccountAlreadyExistsError, self).__init__(
+            "User account already exists. name={}".format(account_name)
+        )
         self.account_name = account_name
 
 
 class InvalidStateError(Exception):
     def __init__(self, current_state, desired_state):
-        super(InvalidStateError, self).__init__('Invalid account state change requested. Cannot go from state {} to state {}'.format(current_state.value, desired_state.value))
+        super(InvalidStateError, self).__init__(
+            "Invalid account state change requested. Cannot go from state {} to state {}".format(
+                current_state.value, desired_state.value
+            )
+        )
         self.current_state = current_state
         self.desired_state = desired_state
 
 
 class DisableAdminAccountError(Exception):
     def __init__(self):
-        super(DisableAdminAccountError, self).__init__('Cannot disable the admin account')
+        super(DisableAdminAccountError, self).__init__(
+            "Cannot disable the admin account"
+        )
 
 
-def add(account_name, state=AccountStates.enabled, account_type=AccountTypes.user, email=None, session=None):
+def add(
+    account_name,
+    state=AccountStates.enabled,
+    account_type=AccountTypes.user,
+    email=None,
+    session=None,
+):
     found_account = session.query(Account).filter_by(name=account_name).one_or_none()
 
     if found_account:
@@ -68,11 +84,15 @@ def update_state(name, new_state, session=None):
         raise AccountNotFoundError(name)
 
     # Deleting state is terminal. Must deactivate account prior to deleting it.
-    if accnt.state == AccountStates.deleting or (accnt.state == AccountStates.enabled and new_state == AccountStates.deleting):
+    if accnt.state == AccountStates.deleting or (
+        accnt.state == AccountStates.enabled and new_state == AccountStates.deleting
+    ):
         raise InvalidStateError(accnt.state, new_state)
 
     # Both Account Name and Type should be equal to "admin" for the Admin Account, but just to be safe...
-    if (accnt.name == ADMIN_ACCOUNT_NAME or accnt.type == AccountTypes.admin) and new_state != AccountStates.enabled:
+    if (
+        accnt.name == ADMIN_ACCOUNT_NAME or accnt.type == AccountTypes.admin
+    ) and new_state != AccountStates.enabled:
         raise DisableAdminAccountError()
 
     accnt.state = new_state
@@ -81,7 +101,10 @@ def update_state(name, new_state, session=None):
 
 def get_all(with_state=None, session=None):
     if with_state is not None:
-        return [x.to_dict() for x in session.query(Account).filter(Account.state == with_state)]
+        return [
+            x.to_dict()
+            for x in session.query(Account).filter(Account.state == with_state)
+        ]
     else:
         return [x.to_dict() for x in session.query(Account)]
 

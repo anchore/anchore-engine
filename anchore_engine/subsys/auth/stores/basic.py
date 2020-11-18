@@ -5,8 +5,9 @@ from anchore_engine.apis.authentication import idp_factory, IdentityContext
 import json
 
 
-class DbAccountStore(account_abcs.CredentialsAccountStore,
-                        account_abcs.AuthorizationAccountStore):
+class DbAccountStore(
+    account_abcs.CredentialsAccountStore, account_abcs.AuthorizationAccountStore
+):
     """
     Basic Anchore account management, uses the internal subsystem for accessing db objects.
 
@@ -14,19 +15,21 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
 
     """
 
-    SUPPORTED_CREDENTIAL_TYPE = 'password'
+    SUPPORTED_CREDENTIAL_TYPE = "password"
 
     SYSTEM_ADMIN_PERMISSIONS = {
         # All permissions on all domains on all resources
-        '*': json.dumps([{'domain': '*', 'action': '*', 'target': '*'}])
+        "*": json.dumps([{"domain": "*", "action": "*", "target": "*"}])
     }
 
     def _generate_user_permissions(self, account_name):
         # Read/write permissions within the account domain on everything except users/accounts
         return {
-            account_name: json.dumps([
-                {'domain': account_name, 'action': '*', 'target': '*'},
-            ])
+            account_name: json.dumps(
+                [
+                    {"domain": account_name, "action": "*", "target": "*"},
+                ]
+            )
         }
 
     def __init__(self, settings=None):
@@ -55,10 +58,10 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
         """
 
         result_account = {
-            'account_locked': None,
-            'authc_info': {},
-            'account_id': None,
-            'anchore_identity': None # Used to transmit more than just username
+            "account_locked": None,
+            "authc_info": {},
+            "account_id": None,
+            "anchore_identity": None,  # Used to transmit more than just username
         }
 
         with session_scope() as db:
@@ -67,18 +70,19 @@ class DbAccountStore(account_abcs.CredentialsAccountStore,
             try:
                 identity, creds = idp.lookup_user(identifier)
             except:
-                logger.exception('Error looking up user')
+                logger.exception("Error looking up user")
                 identity = None
                 creds = None
 
-            result_account['account_locked'] = False
+            result_account["account_locked"] = False
 
             if identity:
-                result_account['anchore_identity'] = identity
+                result_account["anchore_identity"] = identity
 
             if creds:
-                result_account['authc_info'] = {
-                    cred.type.value: {'credential': cred.value, 'failed_attempts': []} for cred in creds
+                result_account["authc_info"] = {
+                    cred.type.value: {"credential": cred.value, "failed_attempts": []}
+                    for cred in creds
                 }
 
             return result_account
@@ -154,10 +158,10 @@ class TokenAccountStore(DbAccountStore):
         """
 
         result_account = {
-            'account_locked': None,
-            'authc_info': {},
-            'account_id': None,
-            'anchore_identity': None
+            "account_locked": None,
+            "authc_info": {},
+            "account_id": None,
+            "anchore_identity": None,
         }
 
         with session_scope() as db:
@@ -166,13 +170,16 @@ class TokenAccountStore(DbAccountStore):
             try:
                 identity, creds = idp.lookup_user_by_uuid(identifier)
             except:
-                logger.exception('Error looking up user')
+                logger.exception("Error looking up user")
                 identity = None
                 creds = None
 
-            result_account['account_locked'] = False
+            result_account["account_locked"] = False
             if identity:
-                result_account['anchore_identity'] = identity
-                result_account['authc_info']['jwt'] = {'credential': identity.user_uuid, 'failed_attempts': []}
+                result_account["anchore_identity"] = identity
+                result_account["authc_info"]["jwt"] = {
+                    "credential": identity.user_uuid,
+                    "failed_attempts": [],
+                }
 
             return result_account

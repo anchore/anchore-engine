@@ -10,7 +10,6 @@ values = [
 
 
 class TestSafeExtractJsonValue:
-
     @pytest.mark.parametrize("value, expected", values)
     def test_inputs(self, value, expected):
         result = helpers.safe_extract_json_value(value)

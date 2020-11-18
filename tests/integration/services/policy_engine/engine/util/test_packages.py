@@ -111,36 +111,35 @@ Unknown,6.2
 """
 
 
-
 # Reasonably well known linux disto names and/or versions
 valid_distros = [
-    ('centos', '6'),
-    ('centos', '7'),
-    ('ubuntu', '12:04'),
-    ('ol', '7'),
-    ('rhel', '6'),
-    ('redhat', '7'),
-    ('busybox', '1'),
-    ('alpine', '3.5'),
-    ('debian', '9'),
-    ('mint', '14'),
-    ('fedora', '25'),
-    ('archlinux', '4'),
-    ('gentoo', '14.5'),
-    ('suse', '8')
+    ("centos", "6"),
+    ("centos", "7"),
+    ("ubuntu", "12:04"),
+    ("ol", "7"),
+    ("rhel", "6"),
+    ("redhat", "7"),
+    ("busybox", "1"),
+    ("alpine", "3.5"),
+    ("debian", "9"),
+    ("mint", "14"),
+    ("fedora", "25"),
+    ("archlinux", "4"),
+    ("gentoo", "14.5"),
+    ("suse", "8"),
 ]
 
 # Irregular and unexpected distro names
 unmapped_distros = [
-    ('securitylinux', '12.04'),
-    ('magea', '5'),
-    ('tinyos', '5.6'),
-    ('somerandomename', '1.2.3'),
-    ('mageia', '5')
+    ("securitylinux", "12.04"),
+    ("magea", "5"),
+    ("tinyos", "5.6"),
+    ("somerandomename", "1.2.3"),
+    ("mageia", "5"),
 ]
 
 
-distros = [x.strip().split(',') for x in DISTRO_VERSIONS.splitlines()]
+distros = [x.strip().split(",") for x in DISTRO_VERSIONS.splitlines()]
 
 
 def test_relation_mapping(anchore_db):
@@ -158,11 +157,8 @@ def test_relation_mapping(anchore_db):
 def test_cve_mapping(anchore_db):
     for d in distros:
         ns = DistroNamespace(name=d[0], version=d[1])
-        r = {
-            'flavor': ns.flavor,
-            'namespace_names': ns.like_namespace_names
-        }
-        print(ns.namespace_name + ' ->' + json.dumps(r, indent=2))
+        r = {"flavor": ns.flavor, "namespace_names": ns.like_namespace_names}
+        print(ns.namespace_name + " ->" + json.dumps(r, indent=2))
         assert ns is not None
         assert ns.name == d[0]
         assert ns.version == d[1]

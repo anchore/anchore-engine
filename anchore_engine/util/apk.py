@@ -13,19 +13,19 @@ class ComparisonResult(enum.IntEnum):
 
 
 class TokenType(enum.IntEnum):
-    INVALID = -1,
-    DIGIT_OR_ZERO = 0,
-    DIGIT = 1,
-    LETTER = 2,
-    SUFFIX = 3,
-    SUFFIX_NO = 4,
-    REVISION_NO = 5,
+    INVALID = (-1,)
+    DIGIT_OR_ZERO = (0,)
+    DIGIT = (1,)
+    LETTER = (2,)
+    SUFFIX = (3,)
+    SUFFIX_NO = (4,)
+    REVISION_NO = (5,)
     END = 6
 
 
 # Ordering of these lists is important for evaluation correctness. Positions in the list are used for relative comparison
-pre_release_suffixes = ['alpha', 'beta', 'pre', 'rc']
-post_release_suffixes = ['cvs', 'svn', 'git', 'hg', 'p']
+pre_release_suffixes = ["alpha", "beta", "pre", "rc"]
+post_release_suffixes = ["cvs", "svn", "git", "hg", "p"]
 
 
 def next_token(expected_type, data):
@@ -44,19 +44,21 @@ def next_token(expected_type, data):
 
     if len(next_data) == 0 or next_data[0] == None:
         next_type = TokenType.END
-    elif (expected_type == TokenType.DIGIT or expected_type == TokenType.DIGIT_OR_ZERO) and next_data[0].isalpha():
+    elif (
+        expected_type == TokenType.DIGIT or expected_type == TokenType.DIGIT_OR_ZERO
+    ) and next_data[0].isalpha():
         next_type = TokenType.LETTER
     elif expected_type == TokenType.LETTER and next_data[0].isdigit():
         next_type = TokenType.DIGIT
     elif expected_type == TokenType.SUFFIX and next_data[0].isdigit():
         next_type = TokenType.SUFFIX_NO
     else:
-        if next_data[0] == '.':
+        if next_data[0] == ".":
             next_type = TokenType.DIGIT_OR_ZERO
-        elif next_data[0] == '_':
+        elif next_data[0] == "_":
             next_type = TokenType.SUFFIX
-        elif next_data[0] == '-':
-            if len(next_data) > 1 and next_data[1] == 'r':
+        elif next_data[0] == "-":
+            if len(next_data) > 1 and next_data[1] == "r":
                 next_type = TokenType.REVISION_NO
                 # Pop leading char off
                 next_data = next_data[1:]
@@ -66,9 +68,11 @@ def next_token(expected_type, data):
         next_data = next_data[1:]
 
     if next_type < expected_type:
-        if not ((next_type == TokenType.DIGIT_OR_ZERO and expected_type == TokenType.DIGIT) or
-                (next_type == TokenType.SUFFIX and expected_type == TokenType.SUFFIX_NO) or
-                (next_type == TokenType.DIGIT and expected_type == TokenType.LETTER)):
+        if not (
+            (next_type == TokenType.DIGIT_OR_ZERO and expected_type == TokenType.DIGIT)
+            or (next_type == TokenType.SUFFIX and expected_type == TokenType.SUFFIX_NO)
+            or (next_type == TokenType.DIGIT and expected_type == TokenType.LETTER)
+        ):
             next_type = TokenType.INVALID
 
     return next_type, next_data
@@ -89,15 +93,20 @@ def get_token(expected_type, data):
     if len(data) <= 0:
         return 0, TokenType.END, data
 
-    if expected_type == TokenType.DIGIT_OR_ZERO and data[i] == '0':
+    if expected_type == TokenType.DIGIT_OR_ZERO and data[i] == "0":
         # Handled leading zeros
-        while i < d_len and data[i] == '0':
+        while i < d_len and data[i] == "0":
             i += 1
         next_token_type = TokenType.DIGIT
         token_value = -i
-    elif expected_type in [TokenType.DIGIT_OR_ZERO, TokenType.DIGIT, TokenType.SUFFIX_NO, TokenType.REVISION_NO]:
+    elif expected_type in [
+        TokenType.DIGIT_OR_ZERO,
+        TokenType.DIGIT,
+        TokenType.SUFFIX_NO,
+        TokenType.REVISION_NO,
+    ]:
         # Handle numbers
-        dig_val = ''
+        dig_val = ""
         while i < d_len and data[i].isdigit():
             dig_val += data[i]
             i += 1
@@ -169,7 +178,12 @@ def get_version_relationship(ver_str1, ver_str2):
         return ComparisonResult.greater_than
 
     # Find either the end of one string or the first invalid token of first non-equal token pair.
-    while v1_type == v2_type and v1_type != TokenType.END and v1_type != TokenType.INVALID and v1_tok == v2_tok:
+    while (
+        v1_type == v2_type
+        and v1_type != TokenType.END
+        and v1_type != TokenType.INVALID
+        and v1_tok == v2_tok
+    ):
         v1_tok, v1_type, ver_str1 = get_token(v1_type, ver_str1)
         v2_tok, v2_type, ver_str2 = get_token(v2_type, ver_str2)
 
@@ -201,12 +215,11 @@ def get_version_relationship(ver_str1, ver_str2):
 def compare_versions(v1, op, v2):
     result = get_version_relationship(v1, v2)
 
-    if op == 'eq':
+    if op == "eq":
         return result == ComparisonResult.equal_to
-    if op == 'lt':
+    if op == "lt":
         return result == ComparisonResult.less_than
-    if op == 'gt':
+    if op == "gt":
         return result == ComparisonResult.greater_than
     else:
-        raise ValueError('Unsupported op type', op)
-
+        raise ValueError("Unsupported op type", op)

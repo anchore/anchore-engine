@@ -16,8 +16,10 @@ class PolicyEngineServiceMaker(WsgiApiServiceMaker):
 
     """
 
-    tapname = 'anchore-policy-engine'
-    description = 'Anchore Engine Policy Engine Service. Provides policy evaluation service.'
+    tapname = "anchore-policy-engine"
+    description = (
+        "Anchore Engine Policy Engine Service. Provides policy evaluation service."
+    )
     service_cls = PolicyEngineService
     options = CommonOptions
 

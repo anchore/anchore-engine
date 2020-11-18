@@ -9,13 +9,22 @@ from anchore_engine.db import LegacyArchiveDocument
 
 # specific DB interface helpers for the 'services' table
 
+
 def add(userId, bucket, archiveId, documentName, inobj, session=None):
     if not session:
         session = db.Session
 
-    our_result = session.query(LegacyArchiveDocument).filter_by(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName).first()
+    our_result = (
+        session.query(LegacyArchiveDocument)
+        .filter_by(
+            userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName
+        )
+        .first()
+    )
     if not our_result:
-        new_service = LegacyArchiveDocument(userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName)
+        new_service = LegacyArchiveDocument(
+            userId=userId, bucket=bucket, archiveId=archiveId, documentName=documentName
+        )
         new_service.update(inobj)
 
         session.add(new_service)
@@ -27,14 +36,32 @@ def add(userId, bucket, archiveId, documentName, inobj, session=None):
 
     return True
 
+
 def get_all_iter(session=None):
     if not session:
         session = db.Session
 
-    for top_result in session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId):
-        result = session.query(LegacyArchiveDocument).filter_by(userId=top_result.userId, bucket=top_result.bucket, archiveId=top_result.archiveId).first()
-        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+    for top_result in session.query(
+        LegacyArchiveDocument.userId,
+        LegacyArchiveDocument.bucket,
+        LegacyArchiveDocument.archiveId,
+    ):
+        result = (
+            session.query(LegacyArchiveDocument)
+            .filter_by(
+                userId=top_result.userId,
+                bucket=top_result.bucket,
+                archiveId=top_result.archiveId,
+            )
+            .first()
+        )
+        obj = dict(
+            (key, value)
+            for key, value in vars(result).items()
+            if not key.startswith("_")
+        )
         yield obj
+
 
 def get_all(session=None):
     if not session:
@@ -44,31 +71,58 @@ def get_all(session=None):
 
     our_results = session.query(LegacyArchiveDocument)
     for result in our_results:
-        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        obj = dict(
+            (key, value)
+            for key, value in vars(result).items()
+            if not key.startswith("_")
+        )
         ret.append(obj)
 
     return ret
 
+
 def get(userId, bucket, archiveId, session=None):
     ret = {}
 
-    result = session.query(LegacyArchiveDocument).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = (
+        session.query(LegacyArchiveDocument)
+        .filter_by(userId=userId, bucket=bucket, archiveId=archiveId)
+        .first()
+    )
     if result:
-        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        obj = dict(
+            (key, value)
+            for key, value in vars(result).items()
+            if not key.startswith("_")
+        )
         ret.update(obj)
 
     return ret
 
+
 def get_onlymeta(userId, bucket, archiveId, session=None):
     ret = {}
 
-    result = session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = (
+        session.query(
+            LegacyArchiveDocument.userId,
+            LegacyArchiveDocument.bucket,
+            LegacyArchiveDocument.archiveId,
+            LegacyArchiveDocument.record_state_key,
+            LegacyArchiveDocument.record_state_val,
+            LegacyArchiveDocument.created_at,
+            LegacyArchiveDocument.last_updated,
+        )
+        .filter_by(userId=userId, bucket=bucket, archiveId=archiveId)
+        .first()
+    )
     if result:
         for i in range(0, len(list(result.keys()))):
             k = list(result.keys())[i]
             ret[k] = result[i]
 
     return ret
+
 
 def get_byname(userId, documentName, session=None):
     if not session:
@@ -76,13 +130,22 @@ def get_byname(userId, documentName, session=None):
 
     ret = {}
 
-    result = session.query(LegacyArchiveDocument).filter_by(userId=userId, documentName=documentName).first()
+    result = (
+        session.query(LegacyArchiveDocument)
+        .filter_by(userId=userId, documentName=documentName)
+        .first()
+    )
 
     if result:
-        obj = dict((key,value) for key, value in vars(result).items() if not key.startswith('_'))
+        obj = dict(
+            (key, value)
+            for key, value in vars(result).items()
+            if not key.startswith("_")
+        )
         ret = obj
 
     return ret
+
 
 def exists(userId, bucket, archiveId, session=None):
     if not session:
@@ -90,7 +153,15 @@ def exists(userId, bucket, archiveId, session=None):
 
     ret = {}
 
-    result = session.query(LegacyArchiveDocument.userId, LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = (
+        session.query(
+            LegacyArchiveDocument.userId,
+            LegacyArchiveDocument.bucket,
+            LegacyArchiveDocument.archiveId,
+        )
+        .filter_by(userId=userId, bucket=bucket, archiveId=archiveId)
+        .first()
+    )
 
     if result:
         for i in range(0, len(list(result.keys()))):
@@ -99,36 +170,51 @@ def exists(userId, bucket, archiveId, session=None):
 
     return ret
 
+
 def list_all_notempty(session=None):
     ret = []
 
-    results = session.query(LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.userId).filter(LegacyArchiveDocument.jsondata != '{}')
+    results = session.query(
+        LegacyArchiveDocument.bucket,
+        LegacyArchiveDocument.archiveId,
+        LegacyArchiveDocument.userId,
+    ).filter(LegacyArchiveDocument.jsondata != "{}")
     for result in results:
         obj = {}
-        for i in range(0,len(list(result.keys()))):
+        for i in range(0, len(list(result.keys()))):
             k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
-    
+
     return ret
+
 
 def list_all(session=None, **dbfilter):
     if not session:
         session = db.Session
     ret = []
 
-    results = session.query(LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.userId, LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated).filter_by(**dbfilter)
+    results = session.query(
+        LegacyArchiveDocument.bucket,
+        LegacyArchiveDocument.archiveId,
+        LegacyArchiveDocument.userId,
+        LegacyArchiveDocument.record_state_key,
+        LegacyArchiveDocument.record_state_val,
+        LegacyArchiveDocument.created_at,
+        LegacyArchiveDocument.last_updated,
+    ).filter_by(**dbfilter)
 
     for result in results:
         obj = {}
-        for i in range(0,len(list(result.keys()))):
+        for i in range(0, len(list(result.keys()))):
             k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
             ret.append(obj)
 
     return ret
+
 
 def list_all_byuserId(userId, session=None, **dbfilter):
     if not session:
@@ -136,13 +222,21 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     ret = []
 
-    dbfilter['userId'] = userId
+    dbfilter["userId"] = userId
 
-    results = session.query(LegacyArchiveDocument.bucket, LegacyArchiveDocument.archiveId, LegacyArchiveDocument.userId, LegacyArchiveDocument.record_state_key, LegacyArchiveDocument.record_state_val, LegacyArchiveDocument.created_at, LegacyArchiveDocument.last_updated).filter_by(**dbfilter)
+    results = session.query(
+        LegacyArchiveDocument.bucket,
+        LegacyArchiveDocument.archiveId,
+        LegacyArchiveDocument.userId,
+        LegacyArchiveDocument.record_state_key,
+        LegacyArchiveDocument.record_state_val,
+        LegacyArchiveDocument.created_at,
+        LegacyArchiveDocument.last_updated,
+    ).filter_by(**dbfilter)
 
     for result in results:
         obj = {}
-        for i in range(0,len(list(result.keys()))):
+        for i in range(0, len(list(result.keys()))):
             k = list(result.keys())[i]
             obj[k] = result[i]
         if obj:
@@ -150,36 +244,49 @@ def list_all_byuserId(userId, session=None, **dbfilter):
 
     return ret
 
+
 def update(userId, bucket, archiveId, documentName, inobj, session=None):
     return add(userId, bucket, archiveId, documentName, inobj, session=session)
+
 
 def delete_byfilter(userId, remove=True, session=None, **dbfilter):
     if not session:
         session = db.Session
 
     ret = False
-    
+
     results = session.query(LegacyArchiveDocument).filter_by(**dbfilter)
     if results:
         for result in results:
             if remove:
                 session.delete(result)
             else:
-                result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
+                result.update(
+                    {
+                        "record_state_key": "to_delete",
+                        "record_state_val": str(time.time()),
+                    }
+                )
             ret = True
-    
+
     return ret
+
 
 def delete(userId, bucket, archiveId, remove=True, session=None):
     if not session:
         session = db.Session
 
-    result = session.query(LegacyArchiveDocument).filter_by(userId=userId, bucket=bucket, archiveId=archiveId).first()
+    result = (
+        session.query(LegacyArchiveDocument)
+        .filter_by(userId=userId, bucket=bucket, archiveId=archiveId)
+        .first()
+    )
     if result:
         if remove:
             session.delete(result)
         else:
-            result.update({"record_state_key": "to_delete", "record_state_val": str(time.time())})
-    
-    return True
+            result.update(
+                {"record_state_key": "to_delete", "record_state_val": str(time.time())}
+            )
 
+    return True
