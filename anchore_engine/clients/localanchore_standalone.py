@@ -484,11 +484,6 @@ def make_staging_dirs(rootdir, use_cache_dir=None):
     except Exception as err:
         logger.debug("testing injection of hintsfile failed: %s", str(err))
 
-    # Set this env var so both scripts and modules that don't have access to
-    # these values have a reliable way of retrieving it. This is set here
-    # because this is the function that creates the directories.
-    os.environ['ANCHORE_ANALYZERS_UNPACKDIR'] = unpackdir
-
     return ret
 
 
@@ -862,7 +857,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
             if data:
                 analyzer_report[analyzer_output][analyzer_output_el] = {'base': data }
 
-    syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir)
+    syft_results = anchore_engine.analyzers.syft.catalog_image(image=copydir, unpackdir=unpackdir)
 
     anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, syft_results)
 
@@ -960,6 +955,7 @@ def analyze_image(userId, manifest, image_record, tmprootdir, localconfig, regis
             dockerfile_contents = None
 
         staging_dirs = make_staging_dirs(tmprootdir, use_cache_dir=use_cache_dir)
+        unpackdir = staging_dirs['unpackdir']
 
         if image_source == 'docker-archive':
             try:

@@ -668,8 +668,7 @@ def get_hintsfile(unpackdir=None, squashtar=None):
     any arguments at all for every package but relying on a unique path still,
     which is why it is useful to have the hints file contents cached.
     """
-    if unpackdir is None:
-        unpackdir = os.environ["ANCHORE_ANALYZERS_UNPACKDIR"]
+    if squashtar is None:
         squashtar = os.path.join(unpackdir, "squashed.tar")
     ret = {}
 
@@ -846,21 +845,19 @@ def dig(target, *keys, **kwargs):
     return end_of_chain
 
 
-def content_hints(pkg_type):
+def content_hints(unpackdir):
     """Content hints will provide the handlers with a means of inserting new data from
     the user.
 
     This function produces a dictionary with names as keys so that consumers
     avoid having to loop, and can do simpler (faster) `.get()` operations.
     """
-    hints = get_hintsfile()
-    packages = {}
-    for package in hints.get("packages", []):
-        if package.get("type", "") == pkg_type:
-            # Do not allow nameless packages to be inserted. The hints loader
-            # will warn if this is a problem, but will not stop execution
-            if not package.get("name"):
-                continue
-            packages[package["name"]] = package
+    hints = get_hintsfile(unpackdir=unpackdir)
 
-    return packages
+    for package in hints.get("packages", []):
+        # Do not allow nameless/versionless/typless packages to be inserted. The hints loader
+        # will warn if this is a problem, but will not stop execution
+        if not all((package.get("name"), package.get("version"), package.get("type"))):
+            continue
+
+        yield package
