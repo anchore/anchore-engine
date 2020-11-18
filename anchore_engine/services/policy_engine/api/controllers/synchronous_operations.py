@@ -21,11 +21,9 @@ import anchore_engine.subsys.servicestatus
 from anchore_engine import utils, apis
 from anchore_engine.common.helpers import make_response_error
 
-from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyValidationResponse
+# API models
+from anchore_engine.services.policy_engine.api.models import Image as ImageMsg, PolicyEvaluationProblem,  PolicyEvaluation, ImageIngressRequest, ImageIngressResponse, PolicyValidationResponse, TriggerParamSpec, TriggerSpec, GateSpec
 
-from anchore_engine.services.policy_engine.api.models import ImageVulnerabilityListing, ImageIngressRequest, ImageIngressResponse, LegacyVulnerabilityReport, \
-    GateSpec, TriggerParamSpec, TriggerSpec
-from anchore_engine.services.policy_engine.api.models import PolicyEvaluation, PolicyEvaluationProblem
 from anchore_engine.db import Image, get_thread_scoped_session as get_session, ImagePackageVulnerability, ImageCpe, Vulnerability, ImagePackage, db_catalog_image, CachedPolicyEvaluation, select_nvd_classes, VulnDBMetadata, VulnDBCpe
 from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle, build_empty_error_execution
 from anchore_engine.services.policy_engine.engine.policy.exceptions import InitializationError, ValidationError
@@ -166,7 +164,7 @@ def list_user_images(user_id):
     """
     db = get_session()
     try:
-        imgs = [msg_mapper.db_to_msg(i).to_dict() for i in db.query(Image).filter(Image.user_id == user_id).all()]
+        imgs = [msg_mapper.db_to_msg(i).to_json() for i in db.query(Image).filter(Image.user_id == user_id).all()]
     finally:
         db.close()
 
@@ -537,12 +535,12 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         resp.evaluation_problems += [problem_from_exception(i) for i in eval_result.warnings]
         if resp.evaluation_problems:
             for i in resp.evaluation_problems:
-                log.warn('Returning evaluation response for image {}/{} w/tag {} and bundle {} that contains error: {}'.format(user_id, image_id, tag, bundle['id'], json.dumps(i.to_dict())))
+                log.warn('Returning evaluation response for image {}/{} w/tag {} and bundle {} that contains error: {}'.format(user_id, image_id, tag, bundle['id'], json.dumps(i.to_json())))
             metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="fail")
         else:
             metrics.histogram_observe('anchore_policy_evaluation_time_seconds', time.time() - timer, status="success")
 
-        result = resp.to_dict()
+        result = resp.to_json()
 
         # Never let the cache block returning results
         try:
@@ -668,7 +666,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                     pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
                 else:
                     pkg_final = vuln.pkg_name
-                    
+
                 rows.append([
                     vuln.vulnerability_id,
                     vuln.vulnerability.severity,
@@ -742,10 +740,14 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 
-        report = LegacyVulnerabilityReport.from_dict(vuln_listing)
-        resp = ImageVulnerabilityListing(user_id=user_id, image_id=image_id, legacy_report=report, cpe_report=cpe_vuln_listing)
+        return {
+            'user_id': user_id,
+            'image_id': image_id,
+            'legacy_report': vuln_listing,
+            'cpe_report': cpe_vuln_listing
 
-        return resp.to_dict()
+        }
+
     except HTTPException:
         db.rollback()
         raise
@@ -764,7 +766,12 @@ def ingress_image(ingress_request):
     :return: status result for image load
     """
 
-    req = ImageIngressRequest.from_dict(ingress_request)
+    req = ImageIngressRequest.from_json(ingress_request)
+    if not req.user_id:
+        raise ValueError('user_id')
+    if  not req.image_id:
+        raise ValueError('image_id')
+
     try:
         # Try this synchronously for now to see how slow it really is
         conn_timeout = ApiRequestContextProxy.get_service().configuration.get('catalog_client_conn_timeout', DEFAULT_CACHE_CONN_TIMEOUT)
@@ -777,7 +784,7 @@ def ingress_image(ingress_request):
         else:
             # We're doing a sync call above, so just send loaded. It should be 'accepted' once async works.
             resp.status = 'loaded'
-        return resp.to_dict(), 200
+        return resp.to_json(), 200
     except Exception as e:
         log.exception('Error loading image into policy engine')
         return make_response_error(e,in_httpcode=500), 500
@@ -807,7 +814,7 @@ def validate_bundle(policy_bundle):
 
         resp.valid = (len(problems) == 0)
         resp.validation_details = [problem_from_exception(i, severity='error') for i in problems]
-        return resp.to_dict()
+        return resp.to_json()
 
     except HTTPException as e:
         log.exception('Caught exception in execution: {}'.format(e))
@@ -883,7 +890,7 @@ def describe_policy():
 
                 g.triggers.append(tr)
 
-            doc.append(g.to_dict())
+            doc.append(g.to_json())
 
             doc = sorted(doc, key=lambda x: x['state'])
 
