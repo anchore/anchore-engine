@@ -1,9 +1,14 @@
 import re
 
-from anchore_engine.analyzers.utils import dig, content_hints
+from anchore_engine.analyzers.utils import dig
 
+def save_entry(findings, engine_entry, pkg_key=None):
+    if not pkg_key:
+        pkg_key = engine_entry.get('name', "")
 
-def handler(findings, artifact):
+    findings['package_list']['pkgs.allinfo']['base'][pkg_key] = engine_entry
+
+def translate_and_save_entry(findings, artifact):
     """
     Handler function to map syft results for an alpine package type into the engine "raw" document format.
     """
@@ -36,12 +41,8 @@ def _all_package_info(findings, artifact):
         'files': [f.get('path') for f in dig(artifact, 'metadata', 'files', default=[])]
     }
 
-    pkg_updates = content_hints(pkg_type="apkg")
-    pkg_update = pkg_updates.get(name)
-    if pkg_update:
-        pkg_value.update(pkg_update)
-
-    findings['package_list']['pkgs.allinfo']['base'][name] = pkg_value
+    # inject the artifact document into the "raw" analyzer document
+    save_entry(findings, pkg_value, name)
 
 
 def _all_packages_plus_source(findings, artifact):

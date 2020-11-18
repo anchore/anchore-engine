@@ -1,9 +1,15 @@
 import re
 
-from anchore_engine.analyzers.utils import dig, content_hints
+from anchore_engine.analyzers.utils import dig
 
 
-def handler(findings, artifact):
+def save_entry(findings, engine_entry, pkg_key=None):
+    if not pkg_key:
+        pkg_key = engine_entry.get('name', "")
+
+    findings['package_list']['pkgs.allinfo']['base'][pkg_key] = engine_entry
+
+def translate_and_save_entry(findings, artifact):
     """
     Handler function to map syft results for an debian package type into the engine "raw" document format.
     """
@@ -11,7 +17,6 @@ def handler(findings, artifact):
     _all_packages(findings, artifact)
     _all_packages_plus_source(findings, artifact)
     _all_package_info(findings, artifact)
-
 
 def _all_package_info(findings, artifact):
     name = artifact['name']
@@ -54,14 +59,8 @@ def _all_package_info(findings, artifact):
         'license': license,
         'type': "dpkg",
     }
-    pkg_updates = content_hints(pkg_type="dpkg")
-    pkg_update = pkg_updates.get(name)
 
-    if pkg_update:
-        pkg_value.update(pkg_update)
-
-    findings['package_list']['pkgs.allinfo']['base'][name] = pkg_value
-
+    save_entry(findings, pkg_value, name)
 
 def _all_packages_plus_source(findings, artifact):
     name = artifact['name']
