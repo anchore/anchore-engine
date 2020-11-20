@@ -812,7 +812,17 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
                 if subscription_key_filter:
                     dbfilter["subscription_key"] = subscription_key_filter
                 if subscription_type_filter:
-                    dbfilter["subscription_type"] = subscription_type_filter
+                    if (
+                        subscription_type_filter
+                        not in anchore_engine.common.subscription_types
+                    ):
+                        httpcode = 400
+                        raise Exception(
+                            "%s is not a supported subscription type"
+                            % subscription_type_filter
+                        )
+                    else:
+                        dbfilter["subscription_type"] = subscription_type_filter
 
             records = db_subscriptions.get_byfilter(
                 userId, session=dbsession, **dbfilter
@@ -850,6 +860,11 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
                 subscription_key = subscriptiondata["subscription_key"]
             if "subscription_type" in subscriptiondata:
                 subscription_type = subscriptiondata["subscription_type"]
+                if subscription_type not in anchore_engine.common.subscription_types:
+                    httpcode = 400
+                    raise Exception(
+                        "%s is not a supported subscription type" % subscription_type
+                    )
 
             if not subscription_key or not subscription_type:
                 httpcode = 500
@@ -899,6 +914,15 @@ def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=No
                     subscription_key = subscriptiondata["subscription_key"]
                 if "subscription_type" in subscriptiondata:
                     subscription_type = subscriptiondata["subscription_type"]
+                    if (
+                        subscription_type
+                        not in anchore_engine.common.subscription_types
+                    ):
+                        httpcode = 400
+                        raise Exception(
+                            "%s is not a supported subscription type"
+                            % subscription_type_filter
+                        )
 
                 if not subscription_key or not subscription_type:
                     raise Exception(

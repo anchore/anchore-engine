@@ -3506,12 +3506,6 @@ definitions:
         x-nullable: True
       subscription_type:
         type: string
-        enum:
-        - policy_eval
-        - tag_update
-        - vuln_update
-        - repo_update
-        - analysis_update
   Subscription:
     description: Subscription entry
     type: object
@@ -3522,12 +3516,6 @@ definitions:
       subscription_type:
         type: string
         description: The type of the subscription
-        enum:
-        - policy_eval
-        - tag_update
-        - vuln_update
-        - repo_update
-        - analysis_update
       subscription_value:
         type: string
         x-nullable: True
