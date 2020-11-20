@@ -4849,10 +4849,69 @@ definitions:
     items:
       $ref: "#/definitions/ImageImportOperation"
   ImagePackageManifest:
-    type: object
-    # TODO: Insert Syft schema v1 here in PackageManifest
+    # ALEX: from syft artifacts section
+    items:
+      $ref: "#/definitions/SyftPackage"
+    type: array
   PackageDigestList:
     type: array
     items:
       type: string
       description: String digest of an uploaded content
+
+
+  # ALEX: below is syft
+  SyftLocation:
+    required:
+      - path
+    properties:
+      path:
+        type: string
+      layerID:
+        type: string
+    additionalProperties: false
+    type: object
+  SyftPackage:
+    required:
+      - name
+      - version
+      - type
+      - foundBy
+      - locations
+      - licenses
+      - language
+      - cpes
+      - purl
+      - metadataType
+    properties:
+      name:
+        type: string
+      version:
+        type: string
+      type:
+        type: string
+      foundBy:
+        type: string
+      locations:
+        items:
+          "$ref": "#/definitions/SyftLocation"
+        type: array
+      licenses:
+        items:
+          type: string
+        type: array
+      language:
+        type: string
+      cpes:
+        items:
+          type: string
+        type: array
+      purl:
+        type: string
+      metadataType:
+        type: string
+      metadata:
+        additionalProperties: true
+    additionalProperties: false
+    type: object
+
