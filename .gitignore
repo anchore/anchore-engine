@@ -111,3 +111,5 @@ ENV/
 anchore-ci*/
 
 tags
+
+docs/public
