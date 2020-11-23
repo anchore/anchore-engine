@@ -1,0 +1,19 @@
+{{ $icon := .Get "icon" | default "fa-lightbulb" }}
+{{ $iconFormat := .Get "iconFormat" }}
+{{ $svg := .Get "svg" }}
+<div class="col-lg-4 mb-5 mb-lg-0 text-center ">
+  <div class="mb-4 h1">
+    {{ if $svg }}
+      <span class="feature-svg">{{ with resources.Get $svg }}{{ ( . | minify).Content | safeHTML }}{{ end }}</span>
+    {{ else if $iconFormat }}
+      <span class="fa-stack">
+        <i class="fas fa-{{ $iconFormat }} fa-stack-2x" style="color: #307fe2"></i>
+        <i class="{{ $icon }} fa-stack-1x fa-inverse"></i>
+      </span>
+    {{ else }}
+      <i class="{{ if not (or (hasPrefix $icon "fas ") (hasPrefix $icon "fab ")) }}fas {{ end }}{{ $icon }} feature-icon"></i>
+    {{ end }}
+  </div>
+  <h4 class="h3">{{ .Get "title" | markdownify }}</h4>
+  <p class="mb-0">{{ .Inner }}</p>
+</div>

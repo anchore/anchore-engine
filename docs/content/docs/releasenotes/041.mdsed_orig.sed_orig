@@ -1,0 +1,37 @@
+---
+title: "Anchore Engine Release Notes - Version 0.4.1"
+linkTitle: "0.4.1"
+weight: 98
+---
+
+## Anchore Engine 0.4.1
+
+Anchore Engine 0.4.1 includes many new features, bug fixes and improvements.  The latest summary can always be found in the Anchore Engine [CHANGELOG](https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md) on github.
+
+### New Features
+
++ Store a set of digests in a subscription record, allowing engine to run vuln_update/policy_eval checks over specified digests as well as latest. Contribution by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
++ New debug_exception logger function to dump stack only at debug or higher log level, otherwise just print error.
++ Adds global internal client timeouts configurable in the config.yaml file. Fixes [#210](https://github.com/anchore/anchore-engine/issues/210) add annotations key to AnchoreImage response definition type in.
+
+### Improvements
+
++ Update Dockerfile using multi-stage model
+
+### Bug Fixes
+
++ GET /images?history=true not returning full history list. Fixes [#215](https://github.com/anchore/anchore-engine/issues/215)
++ Allow distro discovery routine to handle case where system os metadata files are broken softlinks inside the container image. Fixes [#213](https://github.com/anchore/anchore-engine/issues/213)
++ Update to analyzer code, to keep a consistent map of files regardless of any file name slash and dot prefixes that may be present in the layer tars.  Fixes [#209](https://github.com/anchore/anchore-engine/issues/209)
++ Add input validation for registry add to prevent trailing slash and prefix schema in the registry input string. Fixes [#208](https://github.com/anchore/anchore-engine/issues/208)
++ Implement dockerfile update check to invoke on only the specific digest, not tag. Fixes [#201](https://github.com/anchore/anchore-engine/issues/201)
++ Incorrect 500 response on successful feed sync call. Fixes [#198](https://github.com/anchore/anchore-engine/issues/198)
++ On image add, ensure that subscriptions are (re)activated based on API input. Fixes [#195](https://github.com/anchore/anchore-engine/issues/195)
++ Use of body in GET /images to filter by tag and/or digest rather than only using query param
++ Don't require type and key on PUT /subscriptions, reconciling code behavior with swagger spec. Contribution by by Mattia Pagnozzi <mattia.pagnozzi@gmail.com>
++ Add missing 'annotations' key to AnchoreImage response definition type in swagger spec.
++ Add correct DB filter on userId to prevent images deleted from one user account from resulting in deletions of images in other accounts, when Image Digests align across accounts.  Fixes [#224](https://github.com/anchore/anchore-engine/issues/224)
+
+### Upgrading
+
+* [Upgrading Anchore Engine]({{< ref "/docs/engine/engine_installation/upgrade" >}})

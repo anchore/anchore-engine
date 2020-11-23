@@ -1,0 +1,30 @@
+---
+title: "Anchore Engine Release Notes - Version 0.8.1"
+linkTitle: "0.8.1"
+weight: 55
+---
+
+## Anchore Engine 0.8.1
+
+Anchore Engine 0.8.1, features, bug fixes, and improvements.  The latest summary can always be found in the Anchore Engine [CHANGELOG](https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md) on github.
+
+
+### Added
+
++ Additional trigger 'scan_not_run' in 'malware' trigger that fires if no scan was performed for the image. Implements [576](https://github.com/anchore/anchore-engine/issues/576)
+
+### Improved
+
++ Do not always require a created_timestamp_override field for analysis by digest. Fixes [552](https://github.com/anchore/anchore-engine/552) 
+ 
+### Fixes 
+
++ Image analysis scratch space cleanup may fail if image files have non-readable modes. Fixes [579](https://github.com/anchore/anchore-engine/issues/579)
++ Prevent 'admin' account from being disabled. Fixes [522](https://github.com/anchore/anchore-engine/issues/522)
++ Make permissions consistent for /account and /accounts/<account> routes. Fixes [565](https://github.com/anchore/anchore-engine/issues/565)
+
+Additional minor bug fixes and enhancements
+
+### Upgrading
+
+* [Upgrading Anchore Engine]({{< ref "/docs/engine/engine_installation/upgrade" >}})

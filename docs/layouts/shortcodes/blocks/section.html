@@ -1,0 +1,23 @@
+{{ $col_id := .Get "color" | default .Ordinal }}
+{{ $height := .Get "height" | default "auto"  }}
+{{ $title := .Get "title" }}
+<a id="td-block-{{ .Ordinal }}" class="td-offset-anchor"></a>
+<section class="row td-box td-box--{{ $col_id }} td-box--gradient td-box--height-{{ $height }}">
+  <div class="col">
+    {{ if $title }}
+    <div class="row">
+      <div class="col-12">
+        <div class="text-center mb-4 pb-4" style="margin-top: -2rem">
+          <h2>
+            {{ $title }}
+          </h2>
+          {{ with .Get "subtitle" }}<p class="mb-0">{{ . | html }}</p>{{ end }}
+        </div>
+      </div>
+    </div>
+    {{ end }}
+    <div class="row">
+      {{ .Inner }}
+    </div>
+  </div>
+</section>

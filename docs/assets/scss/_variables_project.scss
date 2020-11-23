@@ -1,0 +1,139 @@
+/*
+
+# Project specific style overrides.
+
+*/
+
+$primary: #F9F9F9;
+$secondary: #999999;
+
+$primary-light: lighten($primary, 75%) !default;
+$success: #3772FF !default;
+$info: #C0E0DE !default;
+$warning: #ED6A5A !default;
+$danger: #ED6A5A !default;
+$white: #FFFFFF !default;
+$light: #D3F3EE !default;
+
+$dark: #1b1c1d !default;
+$blue: #72A1E5 !default;
+$orange: #BA5A31 !default;
+$gray-100: #f8f9fa !default;
+$gray-200: #eee !default;
+$gray-300: #dee2e6 !default;
+$gray-400: #ccc !default;
+$gray-500: #adb5bd !default;
+$gray-600: #888 !default;
+$gray-700: #495057 !default;
+$gray-800: #333 !default;
+$gray-900: #222 !default;
+$black: #000 !default;
+
+// Navbar
+
+$navbar-dark-color: rgba($white, 0.85) !default;
+$navbar-dark-hover-color: $white !default;
+$navbar-dark-active-color: $white !default;
+$navbar-dark-disabled-color: rgba($white, 0.65) !default;
+
+.td-cover-block {
+  .display-1 {
+    font-weight: 500;
+  }
+
+  .display-2 {
+    text-transform: none !important;
+    font-size: 1.375rem;
+    margin-top: 2.5rem;
+    font-weight: 500;
+  }
+}
+
+#td-section-nav.td-sidebar-nav {
+  padding-top: 1.5rem !important;
+}
+
+button {
+  padding: 0.25rem 1rem;
+  background: #307fe2;
+  border: 1px solid #307fe2;
+  border-radius: 0.25rem !important;
+  color: white;
+  cursor: pointer;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+button:hover, button:focus {
+  background: #333;
+  background-color: #333;
+  border: 1px solid #333;
+}
+
+.btn.btn-lg {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  border-radius: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #307fe2;
+  font-size: 1.125rem;
+  box-shadow: none;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+
+  &.btn-primary {
+    background: white;
+    color: #307fe2;
+  }
+
+  &.btn-primary:hover, &.btn-primary:focus, &.btn-primary:active {
+    background: #307fe2;
+    background-color: #307fe2 !important;
+    border: 1px solid #307fe2 !important;
+    color: white !important;
+    box-shadow: none !important;
+  }
+
+  &.btn-secondary {
+    background: #307fe2;
+    color: white;
+  }
+
+  &.btn-secondary:hover, &.btn-secondary:focus, &.btn-secondary:active {
+    background: #333;
+    background-color: #333 !important;
+    border: 1px solid #333 !important;
+    box-shadow: none !important;
+  }
+}
+
+.feature-svg > svg {
+  height: 5rem;
+  width: 5rem;
+}
+
+.feature-icon {
+  font-size: 5rem;
+}
+
+footer {
+  min-height: unset !important;
+
+  .link-white {
+    color: rgba(255, 255, 255, 0.85);
+
+    &:hover {
+      color: white;
+    }
+  }
+
+  a {
+    color: #72A1E5;
+  }
+
+  a:hover {
+    color: #B3CCF1;
+  }
+}

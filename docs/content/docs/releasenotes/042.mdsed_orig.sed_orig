@@ -1,0 +1,22 @@
+---
+title: "Anchore Engine Release Notes - Version 0.4.2"
+linkTitle: "0.4.2"
+weight: 97
+---
+
+## Anchore Engine 0.4.2
+
+Anchore Engine 0.4.2 includes many new features, bug fixes and improvements.  The latest summary can always be found in the Anchore Engine [CHANGELOG](https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md) on github.
+
+### Improvements
+
++ Update to image analysis speed for some images exhibiting long unpack times due to layer complications. Improves squashing speed by going through layer tarfiles sequentially.
+
+### Bug Fixes
+
++ Update to CPE match DB query, to account for package names that are not reported as lowercase.  Fixes [#227](https://github.com/anchore/anchore-engine/issues/227)
++ Update to fix incorrect arg passing for error message construction of "detail" property, on policy bundle add validation failures.
+
+### Upgrading
+
+* [Upgrading Anchore Engine]({{< ref "/docs/engine/engine_installation/upgrade" >}})

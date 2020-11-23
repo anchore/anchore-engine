@@ -1,0 +1,75 @@
+---
+title: "Anchore Engine Release Notes - Version 0.8.0"
+linkTitle: "0.8.0"
+weight: 60
+---
+
+## Anchore Engine 0.8.0
+
+Anchore Engine 0.8.0, features, bug fixes, and improvements.  The latest summary can always be found in the Anchore Engine [CHANGELOG](https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md) on github.
+
+Of specific note, 0.8.0 adds: malware scanning capabilities, makes deletion of images asynchronous, adds new analyzers for binaries not delivered in packages, and includes a "content hints" capability in the 
+analyzers so developers or image builders can pass metadata to augmentation analysis results.
+
+
+### Malware Scanning
+Engine 0.8.0 now integrates ClamAV for optional (disabled by default) malware scanning of image content during the analysis phase and with policy rules to trigger on findings. This is particularly useful for using Engine to validate
+external images in an image catalog or "golden repo" where you must guard against both vulnerable and malicious code from external sources. 
+
+For more information see: [Malware Scanning]({{<ref "/docs/engine/general/concepts/images/analysis/malware_scanning" >}})
+
+### New Binary Content Type
+
+A new binary analyzer will check for and inspect binaries that are often installed outside of package managers. This supports a common use-case of language or runtime-specific base images
+such as Python and Go images where the runtime is installed via an archive and thus no package db entry exists. The analyzer supports specific binaries that it searches and can get metadata for: Go, Python, and BusyBox.
+
+Once detected, these are checked for vulnerabilities, just like regular packages using the NVD and other non-OS vulnerability sources.
+
+### Content Hints
+
+A new "hints" feature allows users to pass specific metadata into the analyzers to help identify and augment content that existing analyzers would not have been discovered. This feature is useful
+if you have libraries statically compiled into another binary or installed outside of a package manager that you want to tell Anchore about so you can get vulnerability matches for and include them in the
+image's content manifests. This is accomplished with a specific JSON file present in the image: ```/anchore_hints.JSON```. The entries are merged into the analyzer results to augment their findings for
+different content types.
+
+For more information, see: [Content Hints]({{< ref "/docs/engine/general/concepts/images/analysis/content_hints" >}})
+
+### Changed Image Deletion Behavior
+
+Image deletion is now an asynchronous operation and the `image_status` property in the image record now has possible states 'active' and 'deleting'. Deletion of an image by API call will
+transition the image record to a `deleting` status as indicated by the `image_status` property. Images in that state will be deleted by an asynchronous process on a duty cycle. This approach helps manage database 
+load under a high volume of delete operations and also makes the client-perceived response time much lower. 
+
+*NOTE: Responses for `GET /images` and `GET /summaries/imagetags` do *not* include images in the deleting state by default, though new query parameters
+allow those images to be returned in those calls if desired (`image_status=deleting` or `image_status=all`)*
+
+
+### New API Revision
+
+The API is updated to version [0.1.15](https://github.com/anchore/anchore-engine/blob/v0.8.0/anchore_engine/services/apiext/swagger/swagger.yaml)
+
+### Added
+
++ Changed image deletion to asynchronous behavior to make API more responsive and throttle db load during image deletes.
++ New dry-run mode for repository scan request to return list of tags that would be scanned without scanning or persisting the record. Implements [510](https://github.com/anchore/anchore-engine/issues/510)
++ Support for a "hints" JSON file in the image. JSON file to pass additional metadata to augment analyzer findings. Implements [550](https://github.com/anchore/anchore-engine/issues/550)
++ Adds API support for deleting multiple images in a single call. Implements [502](https://github.com/anchore/anchore-engine/issues/502)
++ Support for malware scanning using ClamAV and new 'malware' content type in API and policy gate to trigger on findings. Disabled by default. Implements [498](https://github.com/anchore/anchore-engine/issues/498)     
++ Support for content type 'binary' with analyzers to detect specific binaries: python, golang, busybox not installed by package manager. Implements [531](https://github.com/anchore/anchore-engine/issues/531), [533](https://github.com/anchore/anchore-engine/issues/533), [534](https://github.com/anchore/anchore-engine/issues/534), [340](https://github.com/anchore/anchore-engine/issues/340)
++ Query parameter filters for GET /images calls to filter by image_status and analysis_status. Implements [561](https://github.com/anchore/anchore-engine/issues/561)
+
+### Improved
+
++ Change image analysis queue processing behavior from first come first served to fair share across accounts. Implements [491](https://github.com/anchore/anchore-engine/issues/491)
++ Removes image_to_get property in GET body of /images route, since body in GET operations is not standard behavior. Fixes [562](https://github.com/anchore/anchore-engine/issues/562)
+
+### Fixes 
++ Handle scratch images correctly in files gate behavior. Fixes [503](https://github.com/anchore/anchore-engine/issues/530)
++ Add missing fields in swagger JSON spec for GET /query/vulnerabilities. Fixes [558](https://github.com/anchore/anchore-engine/issues/558)
++ Better handling of java packages missing certain metadata in MANIFEST.MF files. Fixes [524](https://github.com/anchore/anchore-engine/issues/524)
+
+Additional minor bug fixes and enhancements
+
+### Upgrading
+
+* [Upgrading Anchore Engine]({{< ref "/docs/engine/install/upgrade" >}})
