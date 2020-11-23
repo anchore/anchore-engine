@@ -22,12 +22,12 @@ jobs:
       - name: Build
         run: |
           git submodule update --init --recursive
-          cd docs
-          hugo --minify
+          hugo -s docs --minify 
+          mv docs/public .
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-          destination_dir: ./docs
+          keep_files: true
