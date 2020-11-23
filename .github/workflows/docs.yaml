@@ -23,7 +23,7 @@ jobs:
         run: |
           git submodule update --init --recursive
           cd docs
-          hugo --minify
+          hugo --minify -d publish
           mv publish ..
 
       - name: Deploy
