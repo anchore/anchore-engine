@@ -23,6 +23,7 @@ jobs:
 
       - name: Build
         run: |
+          git submodule update --init --recursive
           cd docs
           hugo --minify
 
