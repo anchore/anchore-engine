@@ -3,7 +3,7 @@ name: Publish Docs
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'docs-v*.*.*'
 
 jobs:
   deploy:
