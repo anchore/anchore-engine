@@ -23,7 +23,7 @@ jobs:
         run: |
           git submodule update --init --recursive
           cd docs
-          hugo --minify
+          hugo --minify -d .
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
