@@ -4,7 +4,7 @@ linkTitle: "Analysis Archive"
 weight: 1
 ---
 
-For information on what the analysis archive is and how it works, see [Concepts: Analysis Archive]({{< ref "/docs/overview/concepts/images/analysis_archive" >}})
+For information on what the analysis archive is and how it works, see [Concepts: Analysis Archive]({{< ref "/docs/general/concepts/images/analysis_archive" >}})
 
 The Analysis Archive is an [object store](../object_store) with specific semantics and thus is configured as an object store using the same
 configuration options, just with a different config key: `analysis_archive`

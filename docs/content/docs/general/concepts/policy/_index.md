@@ -17,7 +17,7 @@ Once an image has been analyzed and its content has been discovered, categorized
 
 These checks are defined as Gates that contain Triggers that perform specific checks and emit matching results and these define the things that the engine can automatically evaluate and return a decision about.
 
-For a full listing of gates, triggers, and their parameters see: [Anchore Policy Checks]({{< ref "/docs/overview/concepts/policy/policy_checks" >}})
+For a full listing of gates, triggers, and their parameters see: [Anchore Policy Checks]({{< ref "/docs/general/concepts/policy/policy_checks" >}})
 
 These policies can be applied globally or customized for specific images or categories of applications.
 

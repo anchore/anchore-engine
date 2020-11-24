@@ -28,4 +28,4 @@ Information about the latest available policy gates, triggers and parameters can
 | secret_scans    | Checks for secrets and content found in the image using configured regexes found in the "secret_search" section of analyzer_config.yaml
 | vulnerabilities | CVE/Vulnerability checks
 
-For a more in-depth list of available gates/triggers, refer to [Anchore Policy Checks]({{< ref "/docs/overview/concepts/policy/policy_checks" >}})
+For a more in-depth list of available gates/triggers, refer to [Anchore Policy Checks]({{< ref "/docs/general/concepts/policy/policy_checks" >}})

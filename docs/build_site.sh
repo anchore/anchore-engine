@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# The url for the base, e.g. http://docs.anchore.com/
+# The url for the base, e.g. http://engine.anchore.io/
 site_prefix=${1}
 
 # The version to deploy, if available. If not, use the versions file
