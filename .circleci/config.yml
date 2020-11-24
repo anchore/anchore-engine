@@ -202,6 +202,10 @@ jobs:
             - caches/*
 
   functional_tests:
+    parameters:
+      tox_env:
+        type: string
+
     machine:
       image: ubuntu-1604:202007-01
     environment:
@@ -212,7 +216,7 @@ jobs:
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
-      - run:
+      - run: |
           echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
@@ -293,13 +297,11 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           requires:
             - build
@@ -371,14 +373,12 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           filters: *filter_nightly
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           filters: *filter_nightly
           requires:
@@ -532,14 +532,12 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           filters: *filter_rebuild_tags
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:

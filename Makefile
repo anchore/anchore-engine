@@ -113,7 +113,18 @@ test-integration: venv setup-test-infra ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
 test-functional: venv setup-test-infra ## Run functional tests, assuming compose is running
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"
+	@export TEST_IMAGE_NAME="$(TEST_IMAGE_NAME)";\
+	if [ "$(OS)" = "Darwin" ]; then \
+		export GID_DOCKER=0;\
+		export GID_CI=$(shell id -g);\
+		docker-compose -f "${CI_COMPOSE_FILE}" build && \
+		$(ACTIVATE_VENV) && $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"  ; \
+	else \
+		export GID_DOCKER=$(shell ls -n /var/run/docker.sock | awk '{ print $$4 }') ;\
+		export GID_CI=$(shell id -g) ;\
+		docker-compose -f "${CI_COMPOSE_FILE}" build && \
+		$(ACTIVATE_VENV) && $(CI_CMD) $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"  ; \
+	fi
 
 setup-and-test-functional: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
@@ -160,10 +171,17 @@ push-rebuild: setup-test-infra ## Rebuild and push prod Anchore Engine docker im
 #########################
 
 compose-up: venv setup-test-infra ## Stand up/start docker-compose with dev image
-	@if [ "$(OS)" = "Darwin" ]; then \
-		$(ACTIVATE_VENV) && GID_DOCKER=0 GID_CI=$(shell id -g) $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
+	@export TEST_IMAGE_NAME="$(TEST_IMAGE_NAME)";\
+	if [ "$(OS)" = "Darwin" ]; then \
+		export GID_DOCKER=0;\
+		export GID_CI=$(shell id -g);\
+		docker-compose -f "${CI_COMPOSE_FILE}" build && \
+		$(ACTIVATE_VENV) && $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
 	else \
-		$(ACTIVATE_VENV) && GID_DOCKER=$(shell ls -n /var/run/docker.sock | awk '{ print $$4 }') GID_CI=$(shell id -g) $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
+		export GID_DOCKER=$(shell ls -n /var/run/docker.sock | awk '{ print $$4 }') ;\
+		export GID_CI=$(shell id -g) ;\
+		docker-compose -f "${CI_COMPOSE_FILE}" build && \
+		$(ACTIVATE_VENV) && $(CI_CMD) compose-up "$(TEST_IMAGE_NAME)" "${CI_COMPOSE_FILE}" ; \
 	fi
 
 compose-down: venv setup-test-infra ## Tear down/stop docker compose

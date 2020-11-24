@@ -9,7 +9,9 @@ There are a couple ways to run functional tests:
 
 ### ...Against docker compose
 
-1. Run `make setup-and-test-functional` to standup engine and run the functional tests.
+1. Modify the `tests/functional/local.env` file to meet your needs
+1. `source tests/functional/local.env`
+1. `make setup-and-test-functional` to standup engine and run the functional tests.
 
 ### ...Run locally
 

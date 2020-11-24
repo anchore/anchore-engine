@@ -26,8 +26,8 @@ def catalog_image(image, unpackdir):
     distro = all_results.get('distro')
     if distro and distro.get('name', '').lower() == 'busybox':
         findings['package_list']['pkgs.all']["base"]["BusyBox"] = distro['version']
-    elif not distro.get('name'):
-        findings['package_list']['pkgs.all']["base"]["Unknown"] = distro["0"]
+    elif not distro or not distro.get('name'):
+        findings['package_list']['pkgs.all']["base"]["Unknown"] = "0"
 
     # take a sub-set of the syft findings and invoke the handler function to
     # craft the artifact document and inject into the "raw" analyzer json

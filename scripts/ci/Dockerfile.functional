@@ -1,12 +1,12 @@
-FROM anchore-engine:dev
-
-RUN pip3 install --user tox
+ARG TEST_IMAGE_NAME
+FROM ${TEST_IMAGE_NAME}
 
 USER root
+
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
-    yum install -y gcc make git python3-wheel python36-devel
+    yum install -y gcc make git python3-wheel python36-devel python38-devel
 
 ENV DOCKERVERSION=18.03.1-ce
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz \
@@ -17,8 +17,10 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
 ARG GID_CI
 ARG GID_DOCKER
 
-RUN groupadd -g ${GID_CI} ci -f \
-  && groupadd -g ${GID_DOCKER} docker -f \
-  && usermod -a -G "${GID_CI},${GID_DOCKER}" anchore
+RUN groupadd -g ${GID_CI} ci -f && \
+    groupadd -g ${GID_DOCKER} docker -f &&\
+    usermod -a -G "${GID_CI},${GID_DOCKER}" anchore
 
 USER anchore
+
+RUN pip3 install --user tox
