@@ -11,8 +11,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: docs
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
