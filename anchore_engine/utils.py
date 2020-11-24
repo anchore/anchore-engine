@@ -235,6 +235,50 @@ def run_command_list(
     return pipes.returncode, stdout_result, stderr_result
 
 
+def run_check(cmd, **kwargs):
+    """
+    Run a command (input required to be a list), log the output, and raise an
+    exception if a non-zero exit status code is returned.
+    """
+    cmd = run_sanitize(cmd)
+    logger.debug("running cmd: %s", " ".join(cmd))
+    try:
+        code, stdout, stderr = run_command_list(cmd, **kwargs)
+    except FileNotFoundError:
+        msg = "unable to run command. Executable does not exist or not availabe in path"
+        raise CommandException(cmd, 1, "", "", msg=msg)
+
+    try:
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
+    except AttributeError:
+        # it is a str already, no need to decode
+        pass
+
+    stdout_stream = stdout.splitlines()
+    stderr_stream = stderr.splitlines()
+
+    # Always log stdout and stderr as debug
+    for line in stdout_stream:
+        logger.debug("stdout: %s", line)
+
+    for line in stderr_stream:
+        logger.debug("stderr: %s", line)
+
+    if code != 0:
+        # When non-zero exit status returns, log stderr as error, but only when
+        # the log level is higher (lower in Engine's interpretation) than debug.
+        # XXX: engine mangles the logger, so this way of checking the level is
+        # non-standard. This line should be:
+        #     if logger.level > logging.debug:
+        if logger.log_level < logger.log_level_map["DEBUG"]:
+            for line in stderr_stream:
+                logger.error(line)
+        raise CommandException(cmd, code, stdout, stderr)
+
+    return stdout, stderr
+
+
 def run_command(cmdstr, **kwargs):
     return run_command_list(shlex.split(cmdstr), **kwargs)
 
@@ -278,6 +322,26 @@ class AnchoreException(Exception):
                 if not key.startswith("_")
             )
         }
+
+
+class CommandException(Exception):
+    """
+    An exception raised when subprocess.Popen calls have non-zero exit status.
+    Capture useful information as part of the exception raised
+    """
+
+    def __init__(self, cmd, code, stdout, stderr, msg=None):
+        self.msg = msg or "Non-zero exit status code when running subprocess"
+        self.cmd = " ".join(cmd) if isinstance(cmd, list) else cmd
+        self.code = code
+        self.stderr = stderr
+        self.stdout = stdout
+
+    def __repr__(self):
+        return "{}: cmd={}, rc={}".format(self.msg, self.cmd, self.code)
+
+    def __str__(self):
+        return "{}: cmd={}, rc={}".format(self.msg, self.cmd, self.code)
 
 
 def ensure_bytes(obj):
