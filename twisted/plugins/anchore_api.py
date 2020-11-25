@@ -13,6 +13,7 @@ from zope.interface import implementer
 from anchore_engine.services.apiext import ExternalApiService
 from anchore_engine.twisted import WsgiApiServiceMaker, CommonOptions
 
+
 @implementer(IServiceMaker, IPlugin)
 class ExternalApiServiceMaker(WsgiApiServiceMaker):
     """
@@ -22,8 +23,8 @@ class ExternalApiServiceMaker(WsgiApiServiceMaker):
 
     """
 
-    tapname = 'anchore-api'
-    description = 'Anchore Engine External API Service. Provides the user-facing API.'
+    tapname = "anchore-api"
+    description = "Anchore Engine External API Service. Provides the user-facing API."
     service_cls = ExternalApiService
     options = CommonOptions
 

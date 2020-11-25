@@ -19,7 +19,9 @@ from anchore_engine.subsys.object_store.manager import ObjectStorageManager
 from collections import namedtuple
 
 
-MigrationContext = namedtuple('MigrationContext', field_names=['from_archive', 'to_archive'])
+MigrationContext = namedtuple(
+    "MigrationContext", field_names=["from_archive", "to_archive"]
+)
 
 
 @contextmanager
@@ -32,21 +34,33 @@ def migration_context(from_archive_config, to_archive_config, do_lock=True):
     :return:
     """
 
-    logger.info('Initializing source archive: {}'.format(from_archive_config))
+    logger.info("Initializing source archive: {}".format(from_archive_config))
     from_archive = ObjectStorageManager(from_archive_config)
 
-    logger.info('Initializing dest archive: {}'.format(to_archive_config))
+    logger.info("Initializing dest archive: {}".format(to_archive_config))
     to_archive = ObjectStorageManager(to_archive_config)
 
     if do_lock:
         engine = anchore_engine.db.entities.common.get_engine()
-        with db_application_lock(engine, (application_lock_ids['archive_migration']['namespace'], application_lock_ids['archive_migration']['ids']['default'])):
+        with db_application_lock(
+            engine,
+            (
+                application_lock_ids["archive_migration"]["namespace"],
+                application_lock_ids["archive_migration"]["ids"]["default"],
+            ),
+        ):
             yield MigrationContext(from_archive=from_archive, to_archive=to_archive)
     else:
         yield MigrationContext(from_archive=from_archive, to_archive=to_archive)
 
 
-def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=True, buckets_to_migrate=None):
+def initiate_migration(
+    from_config,
+    to_config,
+    remove_on_source=False,
+    do_lock=True,
+    buckets_to_migrate=None,
+):
     """
     Start a migration operation from one config to another, with optionally removing the data on the source and optionally using a global lock.
 
@@ -60,25 +74,41 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
     :return:
     """
 
-    logger.info('Initializing migration from {} to {}'.format(from_config, to_config))
-
+    logger.info("Initializing migration from {} to {}".format(from_config, to_config))
 
     with migration_context(from_config, to_config, do_lock=do_lock) as context:
         with session_scope() as db:
             # Load all metadata
             if not buckets_to_migrate:
-                to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in
-                              db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'))]
+                to_migrate = [
+                    (record.userId, record.bucket, record.archiveId, record.content_url)
+                    for record in db.query(ObjectStorageMetadata).filter(
+                        ObjectStorageMetadata.content_url.like(
+                            context.from_archive.primary_client.__uri_scheme__ + "://%"
+                        )
+                    )
+                ]
             else:
-                to_migrate = [(record.userId, record.bucket, record.archiveId, record.content_url) for record in
-                              db.query(ObjectStorageMetadata).filter(ObjectStorageMetadata.content_url.like(context.from_archive.primary_client.__uri_scheme__ + '://%'), ObjectStorageMetadata.bucket.in_(buckets_to_migrate))]
+                to_migrate = [
+                    (record.userId, record.bucket, record.archiveId, record.content_url)
+                    for record in db.query(ObjectStorageMetadata).filter(
+                        ObjectStorageMetadata.content_url.like(
+                            context.from_archive.primary_client.__uri_scheme__ + "://%"
+                        ),
+                        ObjectStorageMetadata.bucket.in_(buckets_to_migrate),
+                    )
+                ]
 
             task_record = ArchiveMigrationTask()
             task_record.archive_documents_to_migrate = len(to_migrate)
             task_record.archive_documents_migrated = 0
-            task_record.migrate_from_driver = context.from_archive.primary_client.__config_name__
-            task_record.migrate_to_driver = context.to_archive.primary_client.__config_name__
-            task_record.state = 'running'
+            task_record.migrate_from_driver = (
+                context.from_archive.primary_client.__config_name__
+            )
+            task_record.migrate_to_driver = (
+                context.to_archive.primary_client.__config_name__
+            )
+            task_record.state = "running"
             task_record.started_at = datetime.datetime.utcnow()
 
             task_record.executor_id = get_threadbased_id()
@@ -86,12 +116,19 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
             db.add(task_record)
             db.flush()
             task_id = task_record.id
-            logger.info('Migration Task Id: {}'.format(task_id))
+            logger.info("Migration Task Id: {}".format(task_id))
 
-        logger.info('Entering main migration loop')
-        logger.info('Migrating {} documents in {}'.format(len(to_migrate), ' buckets: {}'.format(buckets_to_migrate) if buckets_to_migrate else 'all'))
+        logger.info("Entering main migration loop")
+        logger.info(
+            "Migrating {} documents in {}".format(
+                len(to_migrate),
+                " buckets: {}".format(buckets_to_migrate)
+                if buckets_to_migrate
+                else "all",
+            )
+        )
         counter = 0
-        result_state = 'failed'
+        result_state = "failed"
 
         try:
             for (userId, bucket, archiveId, content_url) in to_migrate:
@@ -102,46 +139,68 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
                     data = context.from_archive.get(userId, bucket, archiveId)
                     context.to_archive.put(userId, bucket, archiveId, data)
 
-
-                #     with session_scope() as db:
-                #         record = db.query(ArchiveMetadata).filter(ArchiveMetadata.userId == rec_tuple[0], ArchiveMetadata.bucket == rec_tuple[1], ArchiveMetadata.archiveId == rec_tuple[2]).first()
-                #         if not record:
-                #             logger.warn('No record found in db for: {}'.format(rec_tuple))
-                #             continue
-                #
-                #         if not record.content_url.startswith(context.from_client.__uri_scheme__ + '://'):
-                #             logger.warn('Initial query returned content url: {} but migration query found url {}. Skipping.'.format(rec_tuple[4], record.content_url))
-                #             continue
-                #
-                #         logger.info('Migrating document {}/{}/{} -- current uri: {}'.format(record.userId, record.bucket, record.archiveId, record.content_url))
-                #         content_url = record.content_url
-                #         loaded = context.from_client.get_by_uri(record.content_url)
-                #         record.content_url = context.to_client.put(record.userId, record.bucket, record.archiveId, loaded)
-                #         logger.info('Migrated document {}/{}/{} -- from {} to {}'.format(record.userId, record.bucket, record.archiveId, content_url, record.content_url))
-                #
-                #         # Should be the most recent/highest id task
-                #         task_record = db.merge(task_record)
-                #         task_record.archive_documents_migrated += 1
-                #         counter = task_record.archive_documents_migrated
-                #
+                    #     with session_scope() as db:
+                    #         record = db.query(ArchiveMetadata).filter(ArchiveMetadata.userId == rec_tuple[0], ArchiveMetadata.bucket == rec_tuple[1], ArchiveMetadata.archiveId == rec_tuple[2]).first()
+                    #         if not record:
+                    #             logger.warn('No record found in db for: {}'.format(rec_tuple))
+                    #             continue
+                    #
+                    #         if not record.content_url.startswith(context.from_client.__uri_scheme__ + '://'):
+                    #             logger.warn('Initial query returned content url: {} but migration query found url {}. Skipping.'.format(rec_tuple[4], record.content_url))
+                    #             continue
+                    #
+                    #         logger.info('Migrating document {}/{}/{} -- current uri: {}'.format(record.userId, record.bucket, record.archiveId, record.content_url))
+                    #         content_url = record.content_url
+                    #         loaded = context.from_client.get_by_uri(record.content_url)
+                    #         record.content_url = context.to_client.put(record.userId, record.bucket, record.archiveId, loaded)
+                    #         logger.info('Migrated document {}/{}/{} -- from {} to {}'.format(record.userId, record.bucket, record.archiveId, content_url, record.content_url))
+                    #
+                    #         # Should be the most recent/highest id task
+                    #         task_record = db.merge(task_record)
+                    #         task_record.archive_documents_migrated += 1
+                    #         counter = task_record.archive_documents_migrated
+                    #
                     if remove_on_source:
-                        if context.from_archive.primary_client.__config_name__ != context.to_archive.primary_client.__config_name__:
-                            logger.info('Deleting document on source after successful migration to destination. Src = {}'.format(content_url))
+                        if (
+                            context.from_archive.primary_client.__config_name__
+                            != context.to_archive.primary_client.__config_name__
+                        ):
+                            logger.info(
+                                "Deleting document on source after successful migration to destination. Src = {}".format(
+                                    content_url
+                                )
+                            )
                             # Only delete after commit is complete
                             try:
-                                context.from_archive.primary_client.delete_by_uri(content_url)
+                                context.from_archive.primary_client.delete_by_uri(
+                                    content_url
+                                )
                             except Exception as e:
-                                logger.exception('Error cleaning up old record with uri: {}. Aborting migration'.format(content_url))
+                                logger.exception(
+                                    "Error cleaning up old record with uri: {}. Aborting migration".format(
+                                        content_url
+                                    )
+                                )
                                 raise
                         else:
-                            logger.info('Skipping removal of documents on source because source and dest drivers are the same')
+                            logger.info(
+                                "Skipping removal of documents on source because source and dest drivers are the same"
+                            )
                     else:
-                        logger.info('Skipping removal of document on source driver because configured to leave source data.')
+                        logger.info(
+                            "Skipping removal of document on source driver because configured to leave source data."
+                        )
                     counter = counter + 1
                 except Exception as e:
-                    logger.exception('Error migrating content url: {} to {}'.format(content_url, context.from_archive.primary_client.__config_name__, context.to_archive.primary_client.__config_name__,))
+                    logger.exception(
+                        "Error migrating content url: {} to {}".format(
+                            content_url,
+                            context.from_archive.primary_client.__config_name__,
+                            context.to_archive.primary_client.__config_name__,
+                        )
+                    )
             else:
-                result_state = 'complete'
+                result_state = "complete"
 
         finally:
             with session_scope() as db:
@@ -151,6 +210,8 @@ def initiate_migration(from_config, to_config, remove_on_source=False, do_lock=T
                 task_record.state = result_state
                 task_record.ended_at = datetime.datetime.utcnow()
                 task_record.archive_documents_migrated = counter
-                logger.info('Migration result summary: {}'.format(json.dumps(task_record.to_json())))
-
-
+                logger.info(
+                    "Migration result summary: {}".format(
+                        json.dumps(task_record.to_json())
+                    )
+                )

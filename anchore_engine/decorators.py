@@ -29,19 +29,31 @@ def delegate_to_callable(fn, err_msg=None):
     :param fn:
     :return:
     """
+
     def outer_wrapper(f):
         def inner_wrapper(*args, **kwargs):
             obj = fn()
             if obj is None:
-                raise Exception('Delegate object not available. Err: {}'.format(err_msg))
+                raise Exception(
+                    "Delegate object not available. Err: {}".format(err_msg)
+                )
 
             if not hasattr(obj, f.__name__):
-                raise Exception('Cannot delegate {} to {}, no attribute to delegate to'.format(f.__name__, str(obj)))
+                raise Exception(
+                    "Cannot delegate {} to {}, no attribute to delegate to".format(
+                        f.__name__, str(obj)
+                    )
+                )
             delegated_attr = getattr(obj, f.__name__)
             if not callable(delegated_attr):
-                raise Exception('Cannot delegate {} to {} due to not a callable attribute'.format(f.__name__,
-                                                                                                  delegated_attr.__name__))
+                raise Exception(
+                    "Cannot delegate {} to {} due to not a callable attribute".format(
+                        f.__name__, delegated_attr.__name__
+                    )
+                )
 
             return delegated_attr(*args, **kwargs)
+
         return inner_wrapper
+
     return outer_wrapper

@@ -1,7 +1,17 @@
 import copy
 import re
 
-from anchore_engine.db import GenericFeedDataRecord, GemMetadata, NpmMetadata, NvdV2Metadata, CpeV2Vulnerability, VulnDBMetadata, VulnDBCpe, Vulnerability, FixedArtifact
+from anchore_engine.db import (
+    GenericFeedDataRecord,
+    GemMetadata,
+    NpmMetadata,
+    NvdV2Metadata,
+    CpeV2Vulnerability,
+    VulnDBMetadata,
+    VulnDBCpe,
+    Vulnerability,
+    FixedArtifact,
+)
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CPE
 
@@ -92,11 +102,11 @@ class GemPackageDataMapper(KeyIDFeedDataMapper):
     def map_inner(self, key, data):
         db_rec = GemMetadata()
         db_rec.name = key[:255]
-        db_rec.id = int(data.get('id')) if data.get('id') else -1
-        db_rec.authors_json = data.get('authors')
-        db_rec.versions_json = data.get('versions')
-        db_rec.licenses_json = data.get('licenses')
-        db_rec.latest = data.get('latest')[:255] if data.get('latest') else None
+        db_rec.id = int(data.get("id")) if data.get("id") else -1
+        db_rec.authors_json = data.get("authors")
+        db_rec.versions_json = data.get("versions")
+        db_rec.licenses_json = data.get("licenses")
+        db_rec.latest = data.get("latest")[:255] if data.get("latest") else None
         return db_rec
 
 
@@ -108,11 +118,13 @@ class NpmPackageDataMapper(KeyIDFeedDataMapper):
     def map_inner(self, key, data):
         db_rec = NpmMetadata()
         db_rec.name = key[:255]
-        db_rec.versions_json = data.get('versions')
-        db_rec.latest = data.get('latest')[:255] if data.get('latest') else None
-        db_rec.sourcepkg = data.get('sourcepkg')[:255] if data.get('sourcepkg') else None
-        db_rec.origins_json = data.get('origins')
-        db_rec.lics_json = data.get('lics')
+        db_rec.versions_json = data.get("versions")
+        db_rec.latest = data.get("latest")[:255] if data.get("latest") else None
+        db_rec.sourcepkg = (
+            data.get("sourcepkg")[:255] if data.get("sourcepkg") else None
+        )
+        db_rec.origins_json = data.get("origins")
+        db_rec.lics_json = data.get("lics")
         return db_rec
 
 
@@ -128,17 +140,28 @@ class NvdV2FeedDataMapper(FeedDataMapper):
         record_json = copy.deepcopy(record_json)
 
         db_rec = NvdV2Metadata()
-        db_rec.name = record_json.get('cve', {}).get('CVE_data_meta', {}).get('ID', None)
+        db_rec.name = (
+            record_json.get("cve", {}).get("CVE_data_meta", {}).get("ID", None)
+        )
         db_rec.namespace_name = self.group
-        db_rec.description = record_json.get('cve', {}).get('description', {}).get('description_data', [{}])[0].get('value', "")
-        db_rec.cvss_v2 = record_json.get('cvss_v2', None)
-        db_rec.cvss_v3 = record_json.get('cvss_v3', None)
-        db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
+        db_rec.description = (
+            record_json.get("cve", {})
+            .get("description", {})
+            .get("description_data", [{}])[0]
+            .get("value", "")
+        )
+        db_rec.cvss_v2 = record_json.get("cvss_v2", None)
+        db_rec.cvss_v3 = record_json.get("cvss_v3", None)
+        db_rec.severity = (
+            record_json.get("severity")
+            if record_json.get("severity", None)
+            else "Unknown"
+        )
         db_rec.link = "https://nvd.nist.gov/vuln/detail/{}".format(db_rec.name)
-        db_rec.references = record_json.get('external_references', [])
+        db_rec.references = record_json.get("external_references", [])
 
         db_rec.vulnerable_cpes = []
-        for input_cpe in record_json.get('vulnerable_cpes', []):
+        for input_cpe in record_json.get("vulnerable_cpes", []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 # TODO - handle cpe inputs with escaped characters
@@ -159,7 +182,10 @@ class NvdV2FeedDataMapper(FeedDataMapper):
                 newcpe.other = cpe_obj.other
                 db_rec.vulnerable_cpes.append(newcpe)
             except Exception as err:
-                logger.warn("failed to convert vulnerable-software-list into database CPEV2 record - exception: " + str(err))
+                logger.warn(
+                    "failed to convert vulnerable-software-list into database CPEV2 record - exception: "
+                    + str(err)
+                )
 
         return db_rec
 
@@ -172,23 +198,27 @@ class VulnDBFeedDataMapper(FeedDataMapper):
     def map(self, record_json):
         # log.debug("V2 DBREC: {}".format(json.dumps(record_json)))
         db_rec = VulnDBMetadata()
-        db_rec.name = record_json.get('id')
+        db_rec.name = record_json.get("id")
         db_rec.namespace_name = self.group
-        db_rec.title = record_json.get('title', None)
-        db_rec.description = record_json.get('description', None)
-        db_rec.solution = record_json.get('solution', None)
-        db_rec.vendor_product_info = record_json.get('vendor_product_info', [])
-        db_rec.references = record_json.get('external_references', [])
-        db_rec.vulnerable_packages = record_json.get('vulnerable_packages', [])
-        db_rec.vulnerable_libraries = record_json.get('vulnerable_libraries', [])
-        db_rec.vendor_cvss_v2 = record_json.get('vendor_cvss_v2', [])
-        db_rec.vendor_cvss_v3 = record_json.get('vendor_cvss_v3', [])
-        db_rec.nvd = record_json.get('nvd', [])
-        db_rec.vuln_metadata = record_json.get('metadata', {})
-        db_rec.severity = record_json.get('severity') if record_json.get('severity', None) else 'Unknown'
+        db_rec.title = record_json.get("title", None)
+        db_rec.description = record_json.get("description", None)
+        db_rec.solution = record_json.get("solution", None)
+        db_rec.vendor_product_info = record_json.get("vendor_product_info", [])
+        db_rec.references = record_json.get("external_references", [])
+        db_rec.vulnerable_packages = record_json.get("vulnerable_packages", [])
+        db_rec.vulnerable_libraries = record_json.get("vulnerable_libraries", [])
+        db_rec.vendor_cvss_v2 = record_json.get("vendor_cvss_v2", [])
+        db_rec.vendor_cvss_v3 = record_json.get("vendor_cvss_v3", [])
+        db_rec.nvd = record_json.get("nvd", [])
+        db_rec.vuln_metadata = record_json.get("metadata", {})
+        db_rec.severity = (
+            record_json.get("severity")
+            if record_json.get("severity", None)
+            else "Unknown"
+        )
 
         db_rec.cpes = []
-        for input_cpe in record_json.get('vulnerable_cpes', []):
+        for input_cpe in record_json.get("vulnerable_cpes", []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 cpe_obj = CPE.from_cpe23_fs(input_cpe)
@@ -196,23 +226,26 @@ class VulnDBFeedDataMapper(FeedDataMapper):
                 newcpe.feed_name = self.feed
                 # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
                 newcpe.part = cpe_obj.part
-                newcpe.vendor = cpe_obj.vendor.replace('\\', '')
-                newcpe.product = cpe_obj.product.replace('\\', '')
-                newcpe.version = cpe_obj.version.replace('\\', '')
-                newcpe.update = cpe_obj.update.replace('\\', '')
-                newcpe.edition = cpe_obj.edition.replace('\\', '')
-                newcpe.language = cpe_obj.language.replace('\\', '')
-                newcpe.sw_edition = cpe_obj.sw_edition.replace('\\', '')
-                newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
-                newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
-                newcpe.other = cpe_obj.other.replace('\\', '')
+                newcpe.vendor = cpe_obj.vendor.replace("\\", "")
+                newcpe.product = cpe_obj.product.replace("\\", "")
+                newcpe.version = cpe_obj.version.replace("\\", "")
+                newcpe.update = cpe_obj.update.replace("\\", "")
+                newcpe.edition = cpe_obj.edition.replace("\\", "")
+                newcpe.language = cpe_obj.language.replace("\\", "")
+                newcpe.sw_edition = cpe_obj.sw_edition.replace("\\", "")
+                newcpe.target_sw = cpe_obj.target_sw.replace("\\", "")
+                newcpe.target_hw = cpe_obj.target_hw.replace("\\", "")
+                newcpe.other = cpe_obj.other.replace("\\", "")
                 newcpe.is_affected = True
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                logger.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
+                logger.warn(
+                    "failed to convert vendor_product_info into database VulnDBCpe record - exception: "
+                    + str(err)
+                )
 
-        for input_cpe in record_json.get('unaffected_cpes', []):
+        for input_cpe in record_json.get("unaffected_cpes", []):
             try:
                 # "cpe:2.3:a:openssl:openssl:-:*:*:*:*:*:*:*",
                 cpe_obj = CPE.from_cpe23_fs(input_cpe)
@@ -220,21 +253,24 @@ class VulnDBFeedDataMapper(FeedDataMapper):
                 newcpe.feed_name = self.feed
                 # newcpe.severity = db_rec.severity  # todo ugh! get this from the parent!
                 newcpe.part = cpe_obj.part
-                newcpe.vendor = cpe_obj.vendor.replace('\\', '')
-                newcpe.product = cpe_obj.product.replace('\\', '')
-                newcpe.version = cpe_obj.version.replace('\\', '')
-                newcpe.update = cpe_obj.update.replace('\\', '')
-                newcpe.edition = cpe_obj.edition.replace('\\', '')
-                newcpe.language = cpe_obj.language.replace('\\', '')
-                newcpe.sw_edition = cpe_obj.sw_edition.replace('\\', '')
-                newcpe.target_sw = cpe_obj.target_sw.replace('\\', '')
-                newcpe.target_hw = cpe_obj.target_hw.replace('\\', '')
-                newcpe.other = cpe_obj.other.replace('\\', '')
+                newcpe.vendor = cpe_obj.vendor.replace("\\", "")
+                newcpe.product = cpe_obj.product.replace("\\", "")
+                newcpe.version = cpe_obj.version.replace("\\", "")
+                newcpe.update = cpe_obj.update.replace("\\", "")
+                newcpe.edition = cpe_obj.edition.replace("\\", "")
+                newcpe.language = cpe_obj.language.replace("\\", "")
+                newcpe.sw_edition = cpe_obj.sw_edition.replace("\\", "")
+                newcpe.target_sw = cpe_obj.target_sw.replace("\\", "")
+                newcpe.target_hw = cpe_obj.target_hw.replace("\\", "")
+                newcpe.other = cpe_obj.other.replace("\\", "")
                 newcpe.is_affected = False
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                logger.warn('failed to convert vendor_product_info into database VulnDBCpe record - exception: ' + str(err))
+                logger.warn(
+                    "failed to convert vendor_product_info into database VulnDBCpe record - exception: "
+                    + str(err)
+                )
 
         return db_rec
 
@@ -278,11 +314,8 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
             'Severity': 'Medium'}
     }
     """
-    defaults = {
-        'Severity': 'Unknown',
-        'Link': None,
-        'Description': None
-    }
+
+    defaults = {"Severity": "Unknown", "Link": None, "Description": None}
 
     MAX_STR_LEN = 1024 * 64 - 4
 
@@ -291,43 +324,53 @@ class VulnerabilityFeedDataMapper(FeedDataMapper):
             return None
 
         # Handle a 'Vulnerability' wrapper around the specific record. If not present, assume a direct record
-        if len(list(record_json.keys())) == 1 and record_json.get('Vulnerability'):
-            vuln = record_json['Vulnerability']
+        if len(list(record_json.keys())) == 1 and record_json.get("Vulnerability"):
+            vuln = record_json["Vulnerability"]
         else:
             vuln = record_json
 
         db_rec = Vulnerability()
-        db_rec.id = vuln['Name']
+        db_rec.id = vuln["Name"]
         db_rec.namespace_name = self.group
-        db_rec.severity = vuln.get('Severity', 'Unknown')
-        db_rec.link = vuln.get('Link')
+        db_rec.severity = vuln.get("Severity", "Unknown")
+        db_rec.link = vuln.get("Link")
         description = vuln.get("Description", "")
         if description:
-            db_rec.description = vuln.get('Description', '') if len(vuln.get('Description', '')) < self.MAX_STR_LEN else (vuln.get('Description')[:self.MAX_STR_LEN - 8] + '...')
+            db_rec.description = (
+                vuln.get("Description", "")
+                if len(vuln.get("Description", "")) < self.MAX_STR_LEN
+                else (vuln.get("Description")[: self.MAX_STR_LEN - 8] + "...")
+            )
         else:
             db_rec.description = ""
         db_rec.fixed_in = []
         # db_rec.vulnerable_in = []
 
         # db_rec.metadata_json = json.dumps(vuln.get('Metadata')) if 'Metadata' in vuln else None
-        db_rec.additional_metadata = vuln.get('Metadata', {})
-        cvss_data = vuln.get('Metadata', {}).get('NVD', {}).get('CVSSv2')
+        db_rec.additional_metadata = vuln.get("Metadata", {})
+        cvss_data = vuln.get("Metadata", {}).get("NVD", {}).get("CVSSv2")
         if cvss_data:
-            db_rec.cvss2_vectors = cvss_data.get('Vectors')
-            db_rec.cvss2_score = cvss_data.get('Score')
+            db_rec.cvss2_vectors = cvss_data.get("Vectors")
+            db_rec.cvss2_score = cvss_data.get("Score")
 
         # Process Fixes
-        if 'FixedIn' in vuln:
-            for f in vuln['FixedIn']:
+        if "FixedIn" in vuln:
+            for f in vuln["FixedIn"]:
                 fix = FixedArtifact()
-                fix.name = f['Name']
-                fix.version = f['Version']
-                fix.version_format = f['VersionFormat']
-                fix.epochless_version = re.sub(r'^[0-9]*:', '', f['Version'])
+                fix.name = f["Name"]
+                fix.version = f["Version"]
+                fix.version_format = f["VersionFormat"]
+                fix.epochless_version = re.sub(r"^[0-9]*:", "", f["Version"])
                 fix.vulnerability_id = db_rec.id
                 fix.namespace_name = self.group
-                fix.vendor_no_advisory = f.get('VendorAdvisory', {}).get('NoAdvisory', False)
-                fix.fix_metadata = {'VendorAdvisorySummary': f['VendorAdvisory']['AdvisorySummary']} if f.get('VendorAdvisory', {}).get('AdvisorySummary', []) else None
+                fix.vendor_no_advisory = f.get("VendorAdvisory", {}).get(
+                    "NoAdvisory", False
+                )
+                fix.fix_metadata = (
+                    {"VendorAdvisorySummary": f["VendorAdvisory"]["AdvisorySummary"]}
+                    if f.get("VendorAdvisory", {}).get("AdvisorySummary", [])
+                    else None
+                )
 
                 db_rec.fixed_in.append(fix)
 
@@ -376,39 +419,41 @@ class GithubFeedDataMapper(FeedDataMapper):
     """
 
     def map(self, record_json):
-        advisory = record_json['Advisory']
+        advisory = record_json["Advisory"]
 
         db_rec = Vulnerability()
-        db_rec.id = advisory['ghsaId']
-        db_rec.name = advisory['ghsaId']
-        db_rec.namespace_name = advisory['namespace']
-        db_rec.description = advisory['Summary']
-        db_rec.severity = advisory.get('Severity', 'Unknown') or 'Unknown'
-        db_rec.link = advisory['url']
-        db_rec.metadata_json = advisory['Metadata']
-        references = ["https://nvd.nist.gov/vuln/detail/{}".format(i) for i in advisory['CVE']]
+        db_rec.id = advisory["ghsaId"]
+        db_rec.name = advisory["ghsaId"]
+        db_rec.namespace_name = advisory["namespace"]
+        db_rec.description = advisory["Summary"]
+        db_rec.severity = advisory.get("Severity", "Unknown") or "Unknown"
+        db_rec.link = advisory["url"]
+        db_rec.metadata_json = advisory["Metadata"]
+        references = [
+            "https://nvd.nist.gov/vuln/detail/{}".format(i) for i in advisory["CVE"]
+        ]
         db_rec.references = references
 
         # Set the `FixedArtifact` to an empty list so that a cascade deletion
         # gets rid of the associated fixes. If the advisory has been withdrawn,
         # this field will a string with a date.
-        if advisory['withdrawn'] is not None:
+        if advisory["withdrawn"] is not None:
             db_rec.fixed_in = []
             return db_rec
 
-        for f in advisory['FixedIn']:
+        for f in advisory["FixedIn"]:
             fix = FixedArtifact()
-            fix.name = f['name']
+            fix.name = f["name"]
             # this is an unfortunate lie, 'version' has to be a range in order
             # to be processed correctly. If there is a real fix version, it
             # will be set in the `fix_metadata`.
-            fix.version = f.get('range', 'None')
-            fix.version_format = 'semver'
+            fix.version = f.get("range", "None")
+            fix.version_format = "semver"
             fix.vulnerability_id = db_rec.id
-            fix.namespace_name = f['namespace']
+            fix.namespace_name = f["namespace"]
             fix.vendor_no_advisory = False
             # the advisory summary is the same as db_rec.description, do we need to do this again?
-            fix.fix_metadata = {'first_patched_version': f['identifier']}
+            fix.fix_metadata = {"first_patched_version": f["identifier"]}
 
             db_rec.fixed_in.append(fix)
 

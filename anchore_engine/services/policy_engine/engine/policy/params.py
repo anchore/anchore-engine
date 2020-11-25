@@ -3,7 +3,11 @@ import jsonschema
 import json
 import copy
 
-from anchore_engine.services.policy_engine.engine.policy.exceptions import RequiredParameterNotSetError, ValidationError, ParameterValidationError
+from anchore_engine.services.policy_engine.engine.policy.exceptions import (
+    RequiredParameterNotSetError,
+    ValidationError,
+    ParameterValidationError,
+)
 from anchore_engine.subsys import logger
 
 
@@ -31,7 +35,7 @@ class InputValidator(object):
         return {
             "description": self.__validator_description__,
             "criteria": self.validation_criteria(),
-            "type": self.__validator_type__
+            "type": self.__validator_type__,
         }
 
     def validate(self, value):
@@ -80,7 +84,10 @@ class LinkedValidator(InputValidator):
                 validator = self.default_validator
 
             logger.debug(
-                'Mapped discriminator param {} with value {} to validator {}'.format(self.discriminator_name, self.discriminator_value, validator))
+                "Mapped discriminator param {} with value {} to validator {}".format(
+                    self.discriminator_name, self.discriminator_value, validator
+                )
+            )
 
             return validator.validate(value)
         except ValidationError:
@@ -93,17 +100,18 @@ class LinkedValidator(InputValidator):
         Returns a json schema validation description
         :return:
         """
-        options = set([json.dumps(x.validation_criteria()) for x in self.mapper.values()] + [json.dumps(self.default_validator.validation_criteria())])
+        options = set(
+            [json.dumps(x.validation_criteria()) for x in self.mapper.values()]
+            + [json.dumps(self.default_validator.validation_criteria())]
+        )
 
-        return {
-            'anyOf': [json.loads(x) for x in options]
-        }
+        return {"anyOf": [json.loads(x) for x in options]}
 
 
 class JsonSchemaValidator(InputValidator):
     __validator_type__ = "JSONSchemaValidator"
     __validator_description__ = "Validates input against the specified json schema"
-    __validation_schema__ = {} # Will pass everything
+    __validation_schema__ = {}  # Will pass everything
 
     def __init__(self):
         self.validation_schema = copy.deepcopy(self.__validation_schema__)
@@ -113,7 +121,11 @@ class JsonSchemaValidator(InputValidator):
             jsonschema.validate(instance=value, schema=self.validation_schema)
             return True
         except jsonschema.ValidationError as e:
-            raise ValidationError('JSON Schema validation failed. Schema={}, Detail={}'.format(e.schema, e.message))
+            raise ValidationError(
+                "JSON Schema validation failed. Schema={}, Detail={}".format(
+                    e.schema, e.message
+                )
+            )
 
     def validation_criteria(self):
         return self.validation_schema
@@ -124,9 +136,18 @@ class TypeValidator(JsonSchemaValidator):
     Validates the input against a specific python type: str, int, etc.
 
     """
-    __validator_description__ = 'A single value of a basic json type: {}'
-    __validator_type__ = 'type'
-    __json_types__ = ["null", "boolean", "object", "array", "number", "string", "integer"]
+
+    __validator_description__ = "A single value of a basic json type: {}"
+    __validator_type__ = "type"
+    __json_types__ = [
+        "null",
+        "boolean",
+        "object",
+        "array",
+        "number",
+        "string",
+        "integer",
+    ]
 
     def __init__(self, expected_type):
         """
@@ -137,34 +158,34 @@ class TypeValidator(JsonSchemaValidator):
         super(TypeValidator, self).__init__()
 
         if expected_type not in self.__json_types__:
-            raise ValueError('Not supported json type: {}. Must be one of: {}'.format(expected_type, self.__json_types__))
+            raise ValueError(
+                "Not supported json type: {}. Must be one of: {}".format(
+                    expected_type, self.__json_types__
+                )
+            )
 
         self.expected_type = expected_type
-        self.validation_schema['type'] = self.expected_type
-        self.__validator_description__ = TypeValidator.__validator_description__.format(self.expected_type)
+        self.validation_schema["type"] = self.expected_type
+        self.__validator_description__ = TypeValidator.__validator_description__.format(
+            self.expected_type
+        )
 
 
 class BooleanStringValidator(JsonSchemaValidator):
     __validator_description__ = 'Value must be string representation of a boolean. One of: ["true","false"], case insensitive'
-    __validator_type__ = 'BooleanString'
-    __validation_schema__ = {
-        'type': 'string',
-        'enum': [ 'true', 'false']
-    }
+    __validator_type__ = "BooleanString"
+    __validation_schema__ = {"type": "string", "enum": ["true", "false"]}
 
     def validate(self, value):
-        value = str(value).lower() # handle any weird unicode chars
+        value = str(value).lower()  # handle any weird unicode chars
         return super(BooleanStringValidator, self).validate(value)
 
 
 class RegexParamValidator(JsonSchemaValidator):
-    __regex__ = '.*'
-    __validator_type__ = 'RegexValidator'
-    __validator_description__ = 'Value must pass regex match'
-    __validation_schema__ = {
-        'type': 'string',
-        'pattern': '.*'
-    }
+    __regex__ = ".*"
+    __validator_type__ = "RegexValidator"
+    __validator_description__ = "Value must pass regex match"
+    __validation_schema__ = {"type": "string", "pattern": ".*"}
 
     def __init__(self, regex=None):
         super(RegexParamValidator, self).__init__()
@@ -174,9 +195,8 @@ class RegexParamValidator(JsonSchemaValidator):
         else:
             self.regex = self.__regex__
 
-
         # update with instance-value of subclassed, etc
-        self.validation_schema['pattern'] = self.regex
+        self.validation_schema["pattern"] = self.regex
 
     def legacy_call(self, value):
         """
@@ -191,11 +211,13 @@ class RegexParamValidator(JsonSchemaValidator):
 
 
 class DelimitedStringValidator(RegexParamValidator):
-    __regex__ = r'^\s*(\s*({item})\s*{delim})*\s*({item}){mult}\s*$'
-    __validator_description__ = 'A string of character delimited values validated by a regex'
-    __validator_type__ = 'DelimitedString'
-    __item_regex__ = '.*'
-    __delim__ = ','
+    __regex__ = r"^\s*(\s*({item})\s*{delim})*\s*({item}){mult}\s*$"
+    __validator_description__ = (
+        "A string of character delimited values validated by a regex"
+    )
+    __validator_type__ = "DelimitedString"
+    __item_regex__ = ".*"
+    __delim__ = ","
 
     def __init__(self, item_regex=None, delim=None):
         super(DelimitedStringValidator, self).__init__()
@@ -211,90 +233,96 @@ class DelimitedStringValidator(RegexParamValidator):
             self.delim = self.__delim__
 
         self.regex = self.__regex__
-        self.regex = self.regex.format(item=self.item_regex, delim=self.delim, mult='{1}')
-        self.validation_schema['pattern'] = self.regex
+        self.regex = self.regex.format(
+            item=self.item_regex, delim=self.delim, mult="{1}"
+        )
+        self.validation_schema["pattern"] = self.regex
 
 
 class CommaDelimitedNumberListValidator(DelimitedStringValidator):
-    __item_regex__ = r'\d+'
-    __validator_type__ = 'CommaDelimitedStringOfNumbers'
-    __validator_description__ = 'Comma delimited list of numbers'
+    __item_regex__ = r"\d+"
+    __validator_type__ = "CommaDelimitedStringOfNumbers"
+    __validator_description__ = "Comma delimited list of numbers"
 
 
 class NameVersionListValidator(DelimitedStringValidator):
-    __validator_description__ = 'Comma delimited list of name/version strings of format: name|version.'
-    __validator_type__ = 'CommaDelimitedStringOfNameVersionPairs'
-    __item_regex__ = r'[^|,]+\|[^|,]+'
-    __delim__ = ','
+    __validator_description__ = (
+        "Comma delimited list of name/version strings of format: name|version."
+    )
+    __validator_type__ = "CommaDelimitedStringOfNameVersionPairs"
+    __item_regex__ = r"[^|,]+\|[^|,]+"
+    __delim__ = ","
 
 
 class CommaDelimitedStringListValidator(DelimitedStringValidator):
-    __item_regex__ = r'[^,]+'
-    __delim__ = ','
-    __validator_type__ = 'CommaDelimitedStringList'
-    __validator_description__ = 'Comma delimited list of strings'
+    __item_regex__ = r"[^,]+"
+    __delim__ = ","
+    __validator_type__ = "CommaDelimitedStringList"
+    __validator_description__ = "Comma delimited list of strings"
 
 
 class PipeDelimitedStringListValidator(DelimitedStringValidator):
-    __item_regex__ = r'[^|]+'
-    __delim__ = r'\|'
-    __validator_type__ = 'PipeDelimitedStringList'
-    __validator_description__ = 'Pipe delimited list of strings'
+    __item_regex__ = r"[^|]+"
+    __delim__ = r"\|"
+    __validator_type__ = "PipeDelimitedStringList"
+    __validator_description__ = "Pipe delimited list of strings"
 
 
 class IntegerValidator(RegexParamValidator):
-    __regex__ = r'^\s*[\d]+\s*$'
-    __validator_type__ = 'IntegerString'
-    __validator_description__ = 'Single integer number as a string'
+    __regex__ = r"^\s*[\d]+\s*$"
+    __validator_type__ = "IntegerString"
+    __validator_description__ = "Single integer number as a string"
+
 
 class FloatValidator(RegexParamValidator):
-    __regex__ = r'^\s*-*(\d)*(\.\d*)?\s*$'
-    __validator_type__ = 'FloatString'
-    __validator_description__ = 'Single float number as a string'
+    __regex__ = r"^\s*-*(\d)*(\.\d*)?\s*$"
+    __validator_type__ = "FloatString"
+    __validator_description__ = "Single float number as a string"
 
 
 class EnumValidator(JsonSchemaValidator):
     __enums__ = []
-    __validation_schema__ = {
-        'type': 'string',
-        'enum': []
-    }
+    __validation_schema__ = {"type": "string", "enum": []}
 
-    __validator_type__ = 'EnumString'
+    __validator_type__ = "EnumString"
 
     def __init__(self, enums):
         super(EnumValidator, self).__init__()
         if enums:
             self.__enums__ = enums
-        self.validation_schema['enum'] = self.__enums__
-        self.__validator_description__= 'One of [{}]'.format(self.__enums__)
+        self.validation_schema["enum"] = self.__enums__
+        self.__validator_description__ = "One of [{}]".format(self.__enums__)
 
 
 class DelimitedEnumStringValidator(RegexParamValidator):
     __enums__ = []
-    __regex__ = r'^\s*(({enums})\s*{delim}\s*)*({enums})\s*$'
-    __validator_type__ = 'DelimitedEnumString'
+    __regex__ = r"^\s*(({enums})\s*{delim}\s*)*({enums})\s*$"
+    __validator_type__ = "DelimitedEnumString"
 
-    def __init__(self, enum_choices, delimiter=','):
+    def __init__(self, enum_choices, delimiter=","):
         if enum_choices:
             self.__enums__ = enum_choices
 
-        choice_regex = '|'.join(self.__enums__)
+        choice_regex = "|".join(self.__enums__)
         self.delimiter = delimiter
 
         regex = self.__regex__.format(enums=choice_regex, delim=delimiter)
         super(DelimitedEnumStringValidator, self).__init__(regex=regex)
-        self.__validator_description__ = 'Delimited (char={}) string where each item must be one of: [{}]'.format(self.delimiter, self.__enums__)
+        self.__validator_description__ = (
+            "Delimited (char={}) string where each item must be one of: [{}]".format(
+                self.delimiter, self.__enums__
+            )
+        )
 
 
-def delim_parser(param_value, item_delimiter=','):
+def delim_parser(param_value, item_delimiter=","):
     if param_value:
         return [i.strip() for i in param_value.strip().split(item_delimiter)]
     else:
         return []
 
 
-def nested_item_delim_parser(param_value, item_delimiter=',', item_splitter='|'):
+def nested_item_delim_parser(param_value, item_delimiter=",", item_splitter="|"):
     """
     A parser for lists of items with a delimter where each item has a splitter (e.g. for name, version tuples)
     e.g. a|b,c|d,e|f -> {'a':'b', 'c':'d', 'e':'f'}
@@ -311,7 +339,7 @@ def nested_item_delim_parser(param_value, item_delimiter=',', item_splitter='|')
     try:
         for param in param_value.strip().split(item_delimiter):
             param = param.strip()
-            if param != ['']:
+            if param != [""]:
                 k, v = param.split(item_splitter)
                 matches[k.strip()] = v.strip()
     except:
@@ -337,7 +365,16 @@ class TriggerParameter(object):
     # Optional class-level validator if it does not require instance-specific configuration
     __validator__ = None
 
-    def __init__(self, name, description=None, is_required=False, related_to=None, validator=None, example_str=None, **kwargs):
+    def __init__(
+        self,
+        name,
+        description=None,
+        is_required=False,
+        related_to=None,
+        validator=None,
+        example_str=None,
+        **kwargs
+    ):
         """
 
         :param name: The name to use for the parameter, will be matched and displayed in docs (converted to lower-case for comparisons)
@@ -346,13 +383,13 @@ class TriggerParameter(object):
         :param related_to: List of strings for other parameter names related to this parameter (primarily for user comprehension)
         """
 
-        self.name = name.lower() # Use lower case for comparisons
+        self.name = name.lower()  # Use lower case for comparisons
         self.description = description
         self.required = is_required
         self.related_params = related_to
         self._param_value = None
-        self.sort_order = kwargs.get('sort_order', 100)
-        self.aliases = kwargs.get('aliases', [])
+        self.sort_order = kwargs.get("sort_order", 100)
+        self.aliases = kwargs.get("aliases", [])
         self.example = example_str
 
         if validator:
@@ -378,11 +415,20 @@ class TriggerParameter(object):
         else:
             try:
                 if not self.validator.validate(input_value):
-                    raise ParameterValidationError(parameter=self.name, value=input_value, expected=self.validator.validation_criteria())
+                    raise ParameterValidationError(
+                        parameter=self.name,
+                        value=input_value,
+                        expected=self.validator.validation_criteria(),
+                    )
             except ParameterValidationError:
                 raise
             except Exception as e:
-                raise ParameterValidationError(parameter=self.name, value=input_value, expected=self.validator.validation_criteria(), message=e.message)
+                raise ParameterValidationError(
+                    parameter=self.name,
+                    value=input_value,
+                    expected=self.validator.validation_criteria(),
+                    message=e.message,
+                )
 
         self._param_value = input_value
 
@@ -398,7 +444,7 @@ class TriggerParameter(object):
             "description": self.description,
             "is_required": self.required,
             "related_parameters": self.related_params,
-            "validator": self.validator.json()
+            "validator": self.validator.json(),
         }
 
 
@@ -410,7 +456,7 @@ class CommaDelimitedStringListParameter(TriggerParameter):
     __validator__ = CommaDelimitedStringListValidator()
 
     def _output_value(self):
-        return delim_parser(self._param_value, ',')
+        return delim_parser(self._param_value, ",")
 
 
 class SimpleStringParameter(TriggerParameter):
@@ -429,7 +475,7 @@ class PipeDelimitedStringListParameter(TriggerParameter):
     __validator__ = PipeDelimitedStringListValidator()
 
     def _output_value(self):
-        return delim_parser(self._param_value, '|')
+        return delim_parser(self._param_value, "|")
 
 
 class CommaDelimitedNumberListParameter(TriggerParameter):
@@ -440,7 +486,7 @@ class CommaDelimitedNumberListParameter(TriggerParameter):
     __validator__ = CommaDelimitedNumberListValidator()
 
     def _output_value(self):
-        return [int(x.strip()) for x in delim_parser(self._param_value, ',')]
+        return [int(x.strip()) for x in delim_parser(self._param_value, ",")]
 
 
 class NameVersionStringListParameter(TriggerParameter):
@@ -451,7 +497,9 @@ class NameVersionStringListParameter(TriggerParameter):
     __validator__ = NameVersionListValidator()
 
     def _output_value(self):
-        return nested_item_delim_parser(self._param_value, item_delimiter=',', item_splitter='|')
+        return nested_item_delim_parser(
+            self._param_value, item_delimiter=",", item_splitter="|"
+        )
 
 
 class EnumStringParameter(TriggerParameter):
@@ -459,10 +507,19 @@ class EnumStringParameter(TriggerParameter):
     Parameter that allows one of a list of values.
 
     """
+
     __choices__ = None
     __validator__ = None
 
-    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None, **kwargs):
+    def __init__(
+        self,
+        name,
+        description,
+        is_required=False,
+        related_to=None,
+        enum_values=None,
+        **kwargs
+    ):
         """
         :param name:
         :param description:
@@ -473,7 +530,14 @@ class EnumStringParameter(TriggerParameter):
         if not enum_values:
             enum_values = self.__choices__
 
-        super(EnumStringParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=EnumValidator(enum_values), **kwargs)
+        super(EnumStringParameter, self).__init__(
+            name,
+            description,
+            is_required=is_required,
+            related_to=related_to,
+            validator=EnumValidator(enum_values),
+            **kwargs
+        )
 
 
 class EnumCommaDelimStringListParameter(TriggerParameter):
@@ -485,7 +549,15 @@ class EnumCommaDelimStringListParameter(TriggerParameter):
     __choices__ = None
     __validator__ = None
 
-    def __init__(self, name, description, is_required=False, related_to=None, enum_values=None, **kwargs):
+    def __init__(
+        self,
+        name,
+        description,
+        is_required=False,
+        related_to=None,
+        enum_values=None,
+        **kwargs
+    ):
         """
         :param name:
         :param description:
@@ -496,10 +568,17 @@ class EnumCommaDelimStringListParameter(TriggerParameter):
         if not enum_values:
             enum_values = self.__choices__
 
-        super(EnumCommaDelimStringListParameter, self).__init__(name, description, is_required=is_required, related_to=related_to, validator=DelimitedEnumStringValidator(enum_values, delimiter=','), **kwargs)
+        super(EnumCommaDelimStringListParameter, self).__init__(
+            name,
+            description,
+            is_required=is_required,
+            related_to=related_to,
+            validator=DelimitedEnumStringValidator(enum_values, delimiter=","),
+            **kwargs
+        )
 
     def _output_value(self):
-        return delim_parser(self._param_value, item_delimiter=',')
+        return delim_parser(self._param_value, item_delimiter=",")
 
 
 class BooleanStringParameter(TriggerParameter):
@@ -511,7 +590,8 @@ class BooleanStringParameter(TriggerParameter):
         :return: boolean or None if not set
         """
 
-        return self._param_value.lower() == 'true' if self._param_value else None
+        return self._param_value.lower() == "true" if self._param_value else None
+
 
 class IntegerStringParameter(TriggerParameter):
     __validator__ = IntegerValidator()

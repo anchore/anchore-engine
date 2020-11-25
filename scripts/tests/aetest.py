@@ -18,7 +18,7 @@ try:
 except:
     aecontainer = "qadc_anchore-engine_1"
 
-#precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+# precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
 precmd = "anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
 
 reg = user = pw = None
@@ -28,6 +28,7 @@ try:
     pw = str(sys.argv[5])
 except:
     pass
+
 
 def aecmd(cmd):
     global precmd
@@ -43,7 +44,8 @@ def aecmd(cmd):
             pass
         raise err
 
-    return(result)
+    return result
+
 
 result = aecmd("image list")
 
@@ -56,20 +58,20 @@ if reg and user and pw:
         print("failed to add registry")
         sys.exit(1)
 
-print("adding "+image+"")
-result = aecmd("image add "+image+"")
+print("adding " + image + "")
+result = aecmd("image add " + image + "")
 
 timer = time.time()
-done=False
+done = False
 for i in range(0, analysis_maxtime):
-    results = aecmd("image get "+image+"")
+    results = aecmd("image get " + image + "")
     for result in results:
-        print("current analysis_status: " + result['analysis_status'])
-        if result['analysis_status'] == 'analyzed':
+        print("current analysis_status: " + result["analysis_status"])
+        if result["analysis_status"] == "analyzed":
             print("\timage analyzed")
             done = True
             break
-        elif result['analysis_status'] == 'analysis_failed':
+        elif result["analysis_status"] == "analysis_failed":
             print("\timage failed to analyse (analysis_failed)")
             sys.exit(1)
 
@@ -92,9 +94,9 @@ if reg:
         sys.exit(1)
 
 try:
-    result = aecmd("subscription activate tag_update "+image+"")
-    result = aecmd("subscription activate policy_eval "+image+"")
-    result = aecmd("subscription activate vuln_update "+image+"")
+    result = aecmd("subscription activate tag_update " + image + "")
+    result = aecmd("subscription activate policy_eval " + image + "")
+    result = aecmd("subscription activate vuln_update " + image + "")
     print("activated subscriptions")
 
 except Exception as err:
@@ -102,14 +104,14 @@ except Exception as err:
     sys.exit(1)
 
 
-done=False
+done = False
 for i in range(0, common_maxtime):
     try:
-        result = aecmd("evaluate check "+image+" --tag "+image+"")
+        result = aecmd("evaluate check " + image + " --tag " + image + "")
         if not result:
             raise Exception("no result")
         print("EVAL RESULT: " + json.dumps(result, indent=4))
-        done=True
+        done = True
         break
     except Exception as err:
         try:
@@ -119,7 +121,7 @@ for i in range(0, common_maxtime):
                 imageDigest = list(evala.keys())[0]
                 fulltag = list(evala[imageDigest].keys())[0]
                 evalb = evala[imageDigest][fulltag][0]
-                status = evalb['status']
+                status = evalb["status"]
                 print("STATUS: " + status)
                 done = True
                 break
@@ -132,21 +134,21 @@ if not done:
     print("unable to get valid policy eval")
     sys.exit(1)
 
-done=False
+done = False
 for i in range(0, common_maxtime):
     try:
-        result = aecmd("image del "+image+"")
+        result = aecmd("image del " + image + "")
         print("was able to delete latest/subscribed image (incorrect)")
         sys.exit(1)
     except:
         print("could not delete latest/subscribed image (correct)")
 
     try:
-        result = aecmd("subscription deactivate tag_update "+image+"")
-        result = aecmd("subscription deactivate policy_eval "+image+"")
-        result = aecmd("subscription deactivate vuln_update "+image+"")
-        result = aecmd("subscription deactivate analysis_update "+image+"")
-        result = aecmd("image del "+image+"")
+        result = aecmd("subscription deactivate tag_update " + image + "")
+        result = aecmd("subscription deactivate policy_eval " + image + "")
+        result = aecmd("subscription deactivate vuln_update " + image + "")
+        result = aecmd("subscription deactivate analysis_update " + image + "")
+        result = aecmd("image del " + image + "")
 
         print("was able to delete latest/unsubscribed image (correct)")
         done = True

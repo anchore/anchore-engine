@@ -20,7 +20,6 @@ class ApiRequestContextProxy(object):
         except:
             return None
 
-
     @staticmethod
     def set_identity(ident: IdentityContext):
         request_globals.identity = ident
@@ -32,7 +31,7 @@ class ApiRequestContextProxy(object):
         :return:
         """
         try:
-            override = request.headers.get('x-anchore-account')
+            override = request.headers.get("x-anchore-account")
             if override:
                 return override
             else:

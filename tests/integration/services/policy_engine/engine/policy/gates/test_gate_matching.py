@@ -6,33 +6,27 @@ logger.enable_test_logging()
 
 
 class TriggerForTest(BaseTrigger):
-    __description__ = 'Testing trigger'
-    __trigger_name__ = 'testtrigger'
-    __msg__ = 'Some msg'
+    __description__ = "Testing trigger"
+    __trigger_name__ = "testtrigger"
+    __msg__ = "Some msg"
 
 
 class GateForTesting(Gate):
-    __description__ = 'Testing gate'
-    __gate_name__ = 'testgate'
-    __triggers__ = [
-        TriggerForTest
-    ]
+    __description__ = "Testing gate"
+    __gate_name__ = "testgate"
+    __triggers__ = [TriggerForTest]
 
 
 class TestGateTriggerNameMatches(unittest.TestCase):
-
     def test_gate_name_match(self):
         names = [
-            'testgate',
-            'TESTGATE',
-            'testGate',
-            'TestGate',
+            "testgate",
+            "TESTGATE",
+            "testGate",
+            "TestGate",
         ]
 
-        failz = [
-            'test gate',
-            'TEST GATE'
-        ]
+        failz = ["test gate", "TEST GATE"]
 
         for name in names:
             self.assertIsNotNone(Gate.get_gate_by_name(name))
@@ -42,19 +36,11 @@ class TestGateTriggerNameMatches(unittest.TestCase):
                 Gate.get_gate_by_name(name)
 
     def test_trigger_name_match(self):
-        g = Gate.registry['testgate']
+        g = Gate.registry["testgate"]
 
-        names = [
-            'testtrigger',
-            'testTrigger',
-            'TESTTRIGGER'
-        ]
+        names = ["testtrigger", "testTrigger", "TESTTRIGGER"]
 
-        failz = [
-            'test trigger',
-            'TEST TRIGGER'
-        ]
-
+        failz = ["test trigger", "TEST TRIGGER"]
 
         for name in names:
             self.assertTrue(g.has_trigger(name))

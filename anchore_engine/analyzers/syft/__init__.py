@@ -6,7 +6,7 @@ from .handlers import handlers_by_artifact_type, handlers_by_engine_type
 
 
 def filter_artifacts(artifact):
-    return artifact['type'] in handlers_by_artifact_type
+    return artifact["type"] in handlers_by_artifact_type
 
 
 def catalog_image(image, unpackdir):
@@ -23,17 +23,17 @@ def catalog_image(image, unpackdir):
     # capturing the information needed for BusyBox. No artifacts should be
     # expected, and having outside of the artifacts loop ensure this will only
     # get called once.
-    distro = all_results.get('distro')
-    if distro and distro.get('name', '').lower() == 'busybox':
-        findings['package_list']['pkgs.all']["base"]["BusyBox"] = distro['version']
-    elif not distro or not distro.get('name'):
-        findings['package_list']['pkgs.all']["base"]["Unknown"] = "0"
+    distro = all_results.get("distro")
+    if distro and distro.get("name", "").lower() == "busybox":
+        findings["package_list"]["pkgs.all"]["base"]["BusyBox"] = distro["version"]
+    elif not distro or not distro.get("name"):
+        findings["package_list"]["pkgs.all"]["base"]["Unknown"] = "0"
 
     # take a sub-set of the syft findings and invoke the handler function to
     # craft the artifact document and inject into the "raw" analyzer json
     # document
-    for artifact in filter(filter_artifacts, all_results['artifacts']):
-        handler = handlers_by_artifact_type[artifact['type']]
+    for artifact in filter(filter_artifacts, all_results["artifacts"]):
+        handler = handlers_by_artifact_type[artifact["type"]]
         handler.translate_and_save_entry(findings, artifact)
 
     # apply content hints, overriding values that are there

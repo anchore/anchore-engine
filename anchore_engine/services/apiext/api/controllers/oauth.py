@@ -12,7 +12,9 @@ from anchore_engine.apis.exceptions import AccessDeniedError
 authorizer = get_authorizer()
 
 
-def get_oauth_token(grant_type='password', username=None, password=None, client_id='anonymous'):
+def get_oauth_token(
+    grant_type="password", username=None, password=None, client_id="anonymous"
+):
     """
     POST /oauth/token
 
@@ -34,28 +36,32 @@ def get_oauth_token(grant_type='password', username=None, password=None, client_
         tok_mgr = token_manager()
         authz = ApiRequestContextProxy.get_service()._oauth_app
     except Exception as e:
-        raise AccessDeniedError('Oauth not enabled in configuration', detail={})
+        raise AccessDeniedError("Oauth not enabled in configuration", detail={})
 
     # Add some default properties if not set in the request
     try:
         if request.content_length == 0 or not request.form:
-            logger.debug('Handling converting empty body into form-based grant request')
+            logger.debug("Handling converting empty body into form-based grant request")
 
             if not request.data and not request.form:
-                setattr(request,
-                        'form',
-                        ImmutableMultiDict([
-                            ('username', request.authorization.username),
-                            ('password', request.authorization.password),
-                            ('grant_type', 'password'),
-                            ('client_id', 'anonymous')])
-                        )
+                setattr(
+                    request,
+                    "form",
+                    ImmutableMultiDict(
+                        [
+                            ("username", request.authorization.username),
+                            ("password", request.authorization.password),
+                            ("grant_type", "password"),
+                            ("client_id", "anonymous"),
+                        ]
+                    ),
+                )
 
         resp = authz.create_token_response()
-        logger.debug('Token resp: {}'.format(resp))
+        logger.debug("Token resp: {}".format(resp))
         return resp
     except:
-        logger.debug_exception('Error authenticating')
+        logger.debug_exception("Error authenticating")
         raise
 
 

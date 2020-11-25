@@ -1,5 +1,6 @@
 import anchore_engine.util.java as java_util
 
+
 def test_parse_properties():
     properties = """
     prop1=val1
@@ -10,10 +11,11 @@ def test_parse_properties():
 
     props = java_util.parse_properties(properties.splitlines())
 
-    assert props['prop1'] == 'val1'
-    assert props['prop2'] == 'val2'
-    assert 'prop3' not in props
-    assert props['prop4'] == 'val4'
+    assert props["prop1"] == "val1"
+    assert props["prop2"] == "val2"
+    assert "prop3" not in props
+    assert props["prop4"] == "val4"
+
 
 def test_parse_manifest():
     # a manifest file is similar to HTTP headers, but are limited to
@@ -32,8 +34,8 @@ Another-Attribute: 12345678901234567890123456789012345678901234567890
 
     attrs = java_util.parse_manifest(manifest.splitlines())
 
-    assert 'Manifest-Version' in attrs
-    assert attrs['Manifest-Version'] == '1.0'
-    assert attrs['Built-By'] == 'anchore'
-    assert attrs['Long-Attribute'] == ('1234567890' * 19)
-    assert attrs['Another-Attribute'] == ('1234567890' * 5) + ' with space'
+    assert "Manifest-Version" in attrs
+    assert attrs["Manifest-Version"] == "1.0"
+    assert attrs["Built-By"] == "anchore"
+    assert attrs["Long-Attribute"] == ("1234567890" * 19)
+    assert attrs["Another-Attribute"] == ("1234567890" * 5) + " with space"

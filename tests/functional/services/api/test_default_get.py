@@ -12,9 +12,9 @@ class TestDefaultAPIGetReturns200:
         assert resp == APIResponse(200)
 
     def test_health(self):
-        resp = http_get(['health'])
+        resp = http_get(["health"])
         assert resp == APIResponse(200)
 
     def test_version(self):
-        resp = http_get(['version'])
+        resp = http_get(["version"])
         assert resp == APIResponse(200)

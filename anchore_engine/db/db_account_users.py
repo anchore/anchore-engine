@@ -12,13 +12,17 @@ from anchore_engine.subsys import logger
 
 class UserNotFoundError(Exception):
     def __init__(self, username):
-        super(UserNotFoundError, self).__init__('User not found. Username={}'.format(username))
+        super(UserNotFoundError, self).__init__(
+            "User not found. Username={}".format(username)
+        )
         self.username = username
 
 
 class UserAlreadyExistsError(Exception):
     def __init__(self, account_name, username):
-        super(UserAlreadyExistsError, self).__init__('User already exists. account={} username={}'.format(account_name, username))
+        super(UserAlreadyExistsError, self).__init__(
+            "User already exists. account={} username={}".format(account_name, username)
+        )
         self.account_name = account_name
         self.username = username
 
@@ -26,7 +30,10 @@ class UserAlreadyExistsError(Exception):
 class CredentialAlreadyExistsError(Exception):
     def __init__(self, account_name, username, cred_type):
         super(CredentialAlreadyExistsError, self).__init__(
-            'User already exists. account={} username={} cred_typ={}'.format(account_name, username, cred_type))
+            "User already exists. account={} username={} cred_typ={}".format(
+                account_name, username, cred_type
+            )
+        )
         self.account_name = account_name
         self.username = username
         self.credential_type = cred_type
@@ -46,7 +53,9 @@ _hasher = None
 
 class PasswordHasher(object):
     def __init__(self, config):
-        self.do_hash = config.get('user_authentication', {}).get('hashed_passwords', False)
+        self.do_hash = config.get("user_authentication", {}).get(
+            "hashed_passwords", False
+        )
 
     def hash(self, password):
         """
@@ -55,15 +64,15 @@ class PasswordHasher(object):
         :param password:
         :return:
         """
-        logger.info('Checking hash on password')
+        logger.info("Checking hash on password")
 
         if self.do_hash:
-            logger.info('Hashing password prior to storage')
-            context = dict(schemes=['argon2'])
+            logger.info("Hashing password prior to storage")
+            context = dict(schemes=["argon2"])
             cc = CryptContext(**context)
             password = cc.hash(password)
         else:
-            logger.info('No hash requirement set in config')
+            logger.info("No hash requirement set in config")
 
         return password
 
@@ -88,7 +97,9 @@ def add(account_name, username, user_type, user_source, session):
     :return:
     """
 
-    user_to_create = session.query(AccountUser).filter_by(username=username).one_or_none()
+    user_to_create = (
+        session.query(AccountUser).filter_by(username=username).one_or_none()
+    )
 
     if user_to_create is None:
         user_to_create = AccountUser()
@@ -106,19 +117,29 @@ def add(account_name, username, user_type, user_source, session):
     return user_to_create.to_dict()
 
 
-def add_user_credential(username, credential_type=UserAccessCredentialTypes.password, value=None, overrwrite=True, session=None):
+def add_user_credential(
+    username,
+    credential_type=UserAccessCredentialTypes.password,
+    value=None,
+    overrwrite=True,
+    session=None,
+):
     usr = session.query(AccountUser).filter_by(username=username).one_or_none()
 
     if not usr:
         raise UserNotFoundError(username)
 
-    matching = [obj for obj in filter(lambda x: x.type == credential_type, usr.credentials)]
+    matching = [
+        obj for obj in filter(lambda x: x.type == credential_type, usr.credentials)
+    ]
     if overrwrite:
         for existing in matching:
             session.delete(existing)
     else:
         if matching:
-            raise CredentialAlreadyExistsError(usr['account_name'], username, credential_type)
+            raise CredentialAlreadyExistsError(
+                usr["account_name"], username, credential_type
+            )
 
     credential = AccessCredential()
     credential.user = usr
@@ -129,14 +150,20 @@ def add_user_credential(username, credential_type=UserAccessCredentialTypes.pass
     if value is None:
         value = _generate_password()
 
-    credential.value = get_hasher().hash(value) # This is a no-op if hashing is not configured
+    credential.value = get_hasher().hash(
+        value
+    )  # This is a no-op if hashing is not configured
 
     session.add(credential)
     return credential.to_dict()
 
 
 def delete_user_credential(username, credential_type, session):
-    cred = session.query(AccessCredential).filter_by(username=username, type=credential_type).one_or_none()
+    cred = (
+        session.query(AccessCredential)
+        .filter_by(username=username, type=credential_type)
+        .one_or_none()
+    )
     if cred:
         session.delete(cred)
 

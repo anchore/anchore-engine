@@ -4,7 +4,11 @@ import pytest
 
 from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional import get_logger
-from tests.functional.services.utils.http_utils import http_post, RequestFailedError, http_del
+from tests.functional.services.utils.http_utils import (
+    http_post,
+    RequestFailedError,
+    http_del,
+)
 
 _logger = get_logger(__name__)
 
@@ -16,17 +20,20 @@ def create_policy_from_artifact_and_teardown(request, pytestconfig):
     """
 
     _logger.info("Loading Policy Bundle JSON from Artifact")
-    with open(pytestconfig.rootdir + '/tests/functional/artifacts/bundle-with-all-rules-2020-08-20.json') as file:
+    with open(
+        pytestconfig.rootdir
+        + "/tests/functional/artifacts/bundle-with-all-rules-2020-08-20.json"
+    ) as file:
         policy_bundle_all_rules = json.load(file)
 
-    resp = http_post(['policies'], policy_bundle_all_rules, config=request.param)
+    resp = http_post(["policies"], policy_bundle_all_rules, config=request.param)
     if resp.code != 200:
         raise RequestFailedError(resp.url, resp.code, resp.body)
 
-    policy_id = resp.body.get('policyId')
+    policy_id = resp.body.get("policyId")
 
     def delete_policies():
-        del_resp = http_del(['policies', policy_id], config=request.param)
+        del_resp = http_del(["policies", policy_id], config=request.param)
         if del_resp.code != 200:
             raise RequestFailedError(del_resp.url, del_resp.code, del_resp.body)
 

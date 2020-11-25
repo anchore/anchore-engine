@@ -5,9 +5,9 @@ from anchore_engine.analyzers.utils import dig
 
 def save_entry(findings, engine_entry, pkg_key=None):
     if not pkg_key:
-        pkg_key = engine_entry.get('name', "")
+        pkg_key = engine_entry.get("name", "")
 
-    findings['package_list']['pkgs.allinfo']['base'][pkg_key] = engine_entry
+    findings["package_list"]["pkgs.allinfo"]["base"][pkg_key] = engine_entry
 
 
 def translate_and_save_entry(findings, artifact):
@@ -20,8 +20,8 @@ def translate_and_save_entry(findings, artifact):
 
 
 def _all_package_info(findings, artifact):
-    name = artifact['name']
-    version = artifact['version']
+    name = artifact["name"]
+    version = artifact["version"]
 
     version_pattern = re.match(r"(\S*)-(\S*)", version)
     if version_pattern:
@@ -29,28 +29,29 @@ def _all_package_info(findings, artifact):
         release = version_pattern.group(2) or "N/A"
 
     pkg_value = {
-        'type': "rpm",
-        'version': version,
-        'arch': dig(artifact, 'metadata', 'architecture', default="x86_64"),
-        'sourcepkg': dig(artifact, 'metadata', 'sourceRpm', default="N/A"),
-        'origin': dig(artifact, 'metadata', 'vendor', default="Centos"),
-        'release': release,
-        'size': str(dig(artifact, 'metadata', 'size', default="N/A")),
-        'license': dig(artifact, 'metadata', 'license', default="N/A"),
+        "type": "rpm",
+        "version": version,
+        "arch": dig(artifact, "metadata", "architecture", default="x86_64"),
+        "sourcepkg": dig(artifact, "metadata", "sourceRpm", default="N/A"),
+        "origin": dig(artifact, "metadata", "vendor", default="Centos"),
+        "release": release,
+        "size": str(dig(artifact, "metadata", "size", default="N/A")),
+        "license": dig(artifact, "metadata", "license", default="N/A"),
     }
-    if pkg_value['arch'] == 'amd64':
-        pkg_value['arch'] = 'x86_64'
+    if pkg_value["arch"] == "amd64":
+        pkg_value["arch"] = "x86_64"
 
     save_entry(findings, pkg_value, name)
 
+
 def _all_packages(findings, artifact):
-    name = artifact['name']
+    name = artifact["name"]
     version = artifact["version"]
     if name and version:
-        findings['package_list']['pkgs.all']['base'][name] = version
+        findings["package_list"]["pkgs.all"]["base"][name] = version
 
 
 def _all_package_files(findings, artifact):
-    for file in dig(artifact, 'metadata', 'files', default=[]):
-        pkgfile = file.get('path')
-        findings['package_list']['pkgfiles.all']['base'][pkgfile] = "RPMFILE"
+    for file in dig(artifact, "metadata", "files", default=[]):
+        pkgfile = file.get("path")
+        findings["package_list"]["pkgfiles.all"]["base"][pkgfile] = "RPMFILE"
