@@ -25,7 +25,10 @@ from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
 from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.configuration.localconfig import OauthNotConfiguredError, InvalidOauthConfigurationError
+from anchore_engine.configuration.localconfig import (
+    OauthNotConfiguredError,
+    InvalidOauthConfigurationError,
+)
 from anchore_engine.apis.exceptions import AnchoreApiError
 from anchore_engine.common.helpers import make_response_error
 
@@ -49,17 +52,17 @@ class LifeCycleStages(enum.IntEnum):
 
 # Default handlers set at system level, will be modified by instantiation of BaseService at instance-level
 _default_lifecycle_handlers = {
-            LifeCycleStages.pre_config: [],
-            LifeCycleStages.post_config: [],
-            LifeCycleStages.pre_db: [],
-            LifeCycleStages.post_db: [],
-            LifeCycleStages.pre_credentials: [],
-            LifeCycleStages.post_credentials: [],
-            LifeCycleStages.pre_bootstrap: [],
-            LifeCycleStages.post_bootstrap: [],
-            LifeCycleStages.pre_register: [],
-            LifeCycleStages.post_register: []
-    }
+    LifeCycleStages.pre_config: [],
+    LifeCycleStages.post_config: [],
+    LifeCycleStages.pre_db: [],
+    LifeCycleStages.post_db: [],
+    LifeCycleStages.pre_credentials: [],
+    LifeCycleStages.post_credentials: [],
+    LifeCycleStages.pre_bootstrap: [],
+    LifeCycleStages.post_bootstrap: [],
+    LifeCycleStages.pre_register: [],
+    LifeCycleStages.post_register: [],
+}
 
 
 def handle_api_exception(ex: AnchoreApiError):
@@ -68,7 +71,16 @@ def handle_api_exception(ex: AnchoreApiError):
     :param ex:
     :return:
     """
-    return jsonify(make_response_error(ex.message, in_httpcode=ex.__response_code__, details=ex.detail if ex.detail else {})), ex.__response_code__
+    return (
+        jsonify(
+            make_response_error(
+                ex.message,
+                in_httpcode=ex.__response_code__,
+                details=ex.detail if ex.detail else {},
+            )
+        ),
+        ex.__response_code__,
+    )
 
 
 class ServiceMeta(type):
@@ -78,11 +90,11 @@ class ServiceMeta(type):
     """
 
     def __init__(cls, name, bases, dct):
-        if not hasattr(cls, 'registry'):
+        if not hasattr(cls, "registry"):
             cls.registry = {}
         else:
-            if '__service_name__' in dct:
-                svc_id = dct['__service_name__'].lower()
+            if "__service_name__" in dct:
+                svc_id = dct["__service_name__"].lower()
                 cls.registry[svc_id] = cls
 
         super(ServiceMeta, cls).__init__(name, bases, dct)
@@ -132,7 +144,7 @@ class BaseService(object, metaclass=ServiceMeta):
     __db_enabled__ = True
     __monitors__ = {}
     __monitor_fn__ = monitors.monitor
-    __service_api_version__ = 'v1'
+    __service_api_version__ = "v1"
     __lifecycle_handlers__ = {}
     __require_system_user__ = True
     __task_handlers_enabled__ = True
@@ -159,7 +171,7 @@ class BaseService(object, metaclass=ServiceMeta):
     @property
     def is_enabled(self):
         if self.configuration:
-            return self.configuration.get('enabled', False)
+            return self.configuration.get("enabled", False)
         else:
             return False
 
@@ -172,19 +184,33 @@ class BaseService(object, metaclass=ServiceMeta):
         return
 
     def _process_stage_handlers(self, stage):
-        logger.info('Processing init handlers for bootsrap stage: {}'.format(stage.name))
+        logger.info(
+            "Processing init handlers for bootsrap stage: {}".format(stage.name)
+        )
         handlers = self.lifecycle_handlers.get(stage, [])
-        logger.debug('Executing {} stage {} handlers'.format(len(handlers), stage.name))
+        logger.debug("Executing {} stage {} handlers".format(len(handlers), stage.name))
         for handler_fn, handler_args in handlers:
             try:
-                logger.debug('Invoking handler: {} with args {}'.format(handler_fn.__name__, handler_args))
+                logger.debug(
+                    "Invoking handler: {} with args {}".format(
+                        handler_fn.__name__, handler_args
+                    )
+                )
                 if handler_args is not None:
                     handler_fn(*handler_args)
                 else:
                     handler_fn()
-                logger.debug('Handler: {} completed successfully'.format(handler_fn.__name__, handler_args))
+                logger.debug(
+                    "Handler: {} completed successfully".format(
+                        handler_fn.__name__, handler_args
+                    )
+                )
             except Exception as ex:
-                logger.exception('Pre-Stage Handler {} for service pre_config raised exception'.format(handler_fn.__name__))
+                logger.exception(
+                    "Pre-Stage Handler {} for service pre_config raised exception".format(
+                        handler_fn.__name__
+                    )
+                )
                 raise ex
 
     def register_handler(self, stage, handler_fn, handler_args=None):
@@ -213,8 +239,8 @@ class BaseService(object, metaclass=ServiceMeta):
         :param global_config:
         :return: service configuration for this service
         """
-        assert self.__service_name__ in global_config['services']
-        return global_config['services'][self.__service_name__]
+        assert self.__service_name__ in global_config["services"]
+        return global_config["services"][self.__service_name__]
 
     def configure(self):
         self._process_stage_handlers(LifeCycleStages.pre_config)
@@ -229,7 +255,7 @@ class BaseService(object, metaclass=ServiceMeta):
         try:
             self.versions = localconfig.get_versions()
         except Exception as err:
-            logger.error('cannot detect versions of service: exception - ' + str(err))
+            logger.error("cannot detect versions of service: exception - " + str(err))
             raise err
 
     def _configure(self):
@@ -238,40 +264,47 @@ class BaseService(object, metaclass=ServiceMeta):
 
         :return:
         """
-        logger.info('Loading and initializing global configuration')
+        logger.info("Loading and initializing global configuration")
         self._init_versions()
 
         self.configuration = self._get_service_configuration(self.global_configuration)
         self.instance_id = localconfig.get_host_id()
         self.fq_name = (self.name, self.instance_id)
 
-        self.task_handlers_enabled = self.configuration.get('task_handlers_enabled', True)
-        env_setting = not os.environ.get('ANCHORE_ENGINE_DISABLE_MONITORS', 'false').lower() == 'true'
+        self.task_handlers_enabled = self.configuration.get(
+            "task_handlers_enabled", True
+        )
+        env_setting = (
+            not os.environ.get("ANCHORE_ENGINE_DISABLE_MONITORS", "false").lower()
+            == "true"
+        )
         self.task_handlers_enabled = self.task_handlers_enabled and env_setting
 
         if not self.task_handlers_enabled:
             if env_setting:
-                logger.warn('Task handlers disabled by setting ANCHORE_ENGINE_DISABLE_MONITORS in environment')
+                logger.warn(
+                    "Task handlers disabled by setting ANCHORE_ENGINE_DISABLE_MONITORS in environment"
+                )
             else:
-                logger.warn('Task handlers disabled by configuration file value')
+                logger.warn("Task handlers disabled by configuration file value")
 
         try:
-            kick_timer = int(self.configuration['cycle_timer_seconds'])
+            kick_timer = int(self.configuration["cycle_timer_seconds"])
         except:
             kick_timer = 1
 
         try:
             cycle_timers = {}
-            cycle_timers.update(self.configuration['cycle_timers'])
+            cycle_timers.update(self.configuration["cycle_timers"])
         except:
             cycle_timers = {}
 
-        self.monitor_kwargs['kick_timer'] = kick_timer
-        self.monitor_kwargs['cycle_timers'] = cycle_timers
-        self.monitor_kwargs['monitors'] = copy.deepcopy(self.__monitors__)
-        self.monitor_kwargs['monitor_threads'] = self.monitor_threads
-        self.monitor_kwargs['servicename'] = self.name
-        logger.info('Configuration complete')
+        self.monitor_kwargs["kick_timer"] = kick_timer
+        self.monitor_kwargs["cycle_timers"] = cycle_timers
+        self.monitor_kwargs["monitors"] = copy.deepcopy(self.__monitors__)
+        self.monitor_kwargs["monitor_threads"] = self.monitor_threads
+        self.monitor_kwargs["servicename"] = self.name
+        logger.info("Configuration complete")
 
     def db_connect(self):
         self._process_stage_handlers(LifeCycleStages.pre_db)
@@ -283,20 +316,24 @@ class BaseService(object, metaclass=ServiceMeta):
         Initialize the db connection and prepare the db
         :return:
         """
-        logger.info('Configuring db connection')
+        logger.info("Configuring db connection")
         if not self.db_connect:
-            logger.info('DB Connection disabled in configuration for service {}. Skipping db init'.format(self.__service_name__))
+            logger.info(
+                "DB Connection disabled in configuration for service {}. Skipping db init".format(
+                    self.__service_name__
+                )
+            )
             return True
 
-        logger.info('Initializing database')
+        logger.info("Initializing database")
         # connect to DB
         try:
             initialize_db(localconfig=self.global_configuration, versions=self.versions)
         except Exception as err:
-            logger.error('cannot connect to configured DB: exception - ' + str(err))
+            logger.error("cannot connect to configured DB: exception - " + str(err))
             raise err
 
-        logger.info('DB connection initialization complete')
+        logger.info("DB connection initialization complete")
 
     def credential_init(self):
         self._process_stage_handlers(LifeCycleStages.pre_credentials)
@@ -304,40 +341,48 @@ class BaseService(object, metaclass=ServiceMeta):
         self._process_stage_handlers(LifeCycleStages.post_credentials)
 
     def _credential_init(self):
-        logger.info('Bootstrapping credentials')
+        logger.info("Bootstrapping credentials")
 
         # credential bootstrap
-        self.global_configuration['system_user_auth'] = (None, None)
+        self.global_configuration["system_user_auth"] = (None, None)
 
         if self.require_system_user:
             gotauth = False
             max_retries = 60
-            self.global_configuration['system_user_auth'] = (None, None)
+            self.global_configuration["system_user_auth"] = (None, None)
             for count in range(1, max_retries):
                 try:
                     with session_scope() as dbsession:
                         mgr = manager_factory.for_session(dbsession)
-                        logger.info('Checking system creds')
+                        logger.info("Checking system creds")
                         c = mgr.get_system_credentials()
                     if c is not None:
-                        logger.info('Found valid system creds')
+                        logger.info("Found valid system creds")
                         gotauth = True
                         break
                     else:
-                        logger.info('Did not find valid system creds')
-                        logger.error('cannot get system user auth credentials yet, retrying (' + str(count) + ' / ' + str(max_retries) + ')')
+                        logger.info("Did not find valid system creds")
+                        logger.error(
+                            "cannot get system user auth credentials yet, retrying ("
+                            + str(count)
+                            + " / "
+                            + str(max_retries)
+                            + ")"
+                        )
                         time.sleep(5)
                 except InvalidOauthConfigurationError:
                     raise
                 except Exception as err:
-                    logger.exception('cannot get system-user auth credentials - service may not have system level access')
-                    self.global_configuration['system_user_auth'] = (None, None)
+                    logger.exception(
+                        "cannot get system-user auth credentials - service may not have system level access"
+                    )
+                    self.global_configuration["system_user_auth"] = (None, None)
                     gotauth = False
 
             if not gotauth:
-                raise Exception('service requires system user auth to start')
+                raise Exception("service requires system user auth to start")
 
-        logger.info('Credential initialization complete')
+        logger.info("Credential initialization complete")
 
     def bootstrap(self):
         self._process_stage_handlers(LifeCycleStages.pre_bootstrap)
@@ -350,8 +395,8 @@ class BaseService(object, metaclass=ServiceMeta):
         :return:
         """
         # Do monitor-thread bootstraps here
-        logger.info('Bootstrapping service')
-        logger.info('Service bootstrap complete')
+        logger.info("Bootstrapping service")
+        logger.info("Service bootstrap complete")
         return True
 
     def register(self):
@@ -361,37 +406,39 @@ class BaseService(object, metaclass=ServiceMeta):
 
     def _register(self):
         if not self.is_enabled:
-            logger.error('Service not enabled in config, not registering service: ' + self.name)
-            raise Exception('No service enabled, cannot continue bootstrap')
+            logger.error(
+                "Service not enabled in config, not registering service: " + self.name
+            )
+            raise Exception("No service enabled, cannot continue bootstrap")
 
-        logger.info('Registering service: {}'.format(self.name))
+        logger.info("Registering service: {}".format(self.name))
 
         service_template = {
-            'type': 'anchore',
-            'base_url': 'N/A',
-            'status_base_url': 'N/A',
-            'version': 'v1',
-            'short_description': ''
+            "type": "anchore",
+            "base_url": "N/A",
+            "status_base_url": "N/A",
+            "version": "v1",
+            "short_description": "",
         }
 
-        hstring = 'http'
-        if 'external_tls' in self.configuration:
-            if self.configuration.get('external_tls', False):
-                hstring = 'https'
-        elif 'ssl_enable' in self.configuration:
-            if self.configuration.get('ssl_enable', False):
-                hstring = 'https'
+        hstring = "http"
+        if "external_tls" in self.configuration:
+            if self.configuration.get("external_tls", False):
+                hstring = "https"
+        elif "ssl_enable" in self.configuration:
+            if self.configuration.get("ssl_enable", False):
+                hstring = "https"
 
         endpoint_hostname = endpoint_port = endpoint_hostport = None
-        if self.configuration.get('external_hostname', False):
-            endpoint_hostname = self.configuration.get('external_hostname')
-        elif self.configuration.get('endpoint_hostname', False):
-            endpoint_hostname = self.configuration.get('endpoint_hostname')
+        if self.configuration.get("external_hostname", False):
+            endpoint_hostname = self.configuration.get("external_hostname")
+        elif self.configuration.get("endpoint_hostname", False):
+            endpoint_hostname = self.configuration.get("endpoint_hostname")
 
-        if self.configuration.get('external_port', False):
-            endpoint_port = int(self.configuration.get('external_port'))
-        elif self.configuration.get('port', False):
-            endpoint_port = int(self.configuration.get('port'))
+        if self.configuration.get("external_port", False):
+            endpoint_port = int(self.configuration.get("external_port"))
+        elif self.configuration.get("port", False):
+            endpoint_port = int(self.configuration.get("port"))
 
         if endpoint_hostname:
             endpoint_hostport = endpoint_hostname
@@ -399,51 +446,83 @@ class BaseService(object, metaclass=ServiceMeta):
                 endpoint_hostport = endpoint_hostport + ":" + str(endpoint_port)
 
         if endpoint_hostport:
-            service_template['base_url'] = "{}://{}".format(hstring, endpoint_hostport)
+            service_template["base_url"] = "{}://{}".format(hstring, endpoint_hostport)
         else:
-            raise Exception("could not construct service base_url - please check service configuration for hostname/port settings")
+            raise Exception(
+                "could not construct service base_url - please check service configuration for hostname/port settings"
+            )
 
         try:
-            service_template['status'] = False
-            service_template['status_message'] = taskstate.base_state('service_status')
+            service_template["status"] = False
+            service_template["status_message"] = taskstate.base_state("service_status")
 
             with session_scope() as dbsession:
-                service_records = db_services.get_byname(self.__service_name__, session=dbsession)
+                service_records = db_services.get_byname(
+                    self.__service_name__, session=dbsession
+                )
 
                 # fail if trying to add a service that must be unique in the system, but one already is registered in DB
                 if self.__is_unique_service__:
                     if len(service_records) > 1:
-                        raise Exception('more than one entry for service type (' + str(
-                            self.__service_name__) + ') exists in DB, but service must be unique - manual DB intervention required')
+                        raise Exception(
+                            "more than one entry for service type ("
+                            + str(self.__service_name__)
+                            + ") exists in DB, but service must be unique - manual DB intervention required"
+                        )
 
                     for service_record in service_records:
-                        if service_record and (service_record['hostid'] != self.instance_id):
-                            raise Exception('service type (' + str(self.__service_name__) + ') already exists in system with different host_id - detail: my_host_id=' + str(
-                                self.instance_id) + ' db_host_id=' + str(service_record['hostid']))
+                        if service_record and (
+                            service_record["hostid"] != self.instance_id
+                        ):
+                            raise Exception(
+                                "service type ("
+                                + str(self.__service_name__)
+                                + ") already exists in system with different host_id - detail: my_host_id="
+                                + str(self.instance_id)
+                                + " db_host_id="
+                                + str(service_record["hostid"])
+                            )
 
                 # if all checks out, then add/update the registration
-                ret = db_services.add(self.instance_id, self.__service_name__, service_template, session=dbsession)
+                ret = db_services.add(
+                    self.instance_id,
+                    self.__service_name__,
+                    service_template,
+                    session=dbsession,
+                )
 
                 try:
                     my_service_record = {
-                        'hostid': self.instance_id,
-                        'servicename': self.__service_name__,
+                        "hostid": self.instance_id,
+                        "servicename": self.__service_name__,
                     }
                     my_service_record.update(service_template)
                     servicestatus.set_my_service_record(my_service_record)
                     self.service_record = my_service_record
                 except Exception as err:
-                    logger.warn('could not set local service information - exception: {}'.format(str(err)))
+                    logger.warn(
+                        "could not set local service information - exception: {}".format(
+                            str(err)
+                        )
+                    )
 
         except Exception as err:
             raise err
 
         service_record = servicestatus.get_my_service_record()
-        servicestatus.set_status(service_record, up=True, available=True, update_db=True, versions=self.versions)
-        logger.info('Service registration complete')
+        servicestatus.set_status(
+            service_record,
+            up=True,
+            available=True,
+            update_db=True,
+            versions=self.versions,
+        )
+        logger.info("Service registration complete")
         return True
 
-    def initialize(self, global_configuration, db_connect=True, require_system_user_auth=None):
+    def initialize(
+        self, global_configuration, db_connect=True, require_system_user_auth=None
+    ):
         """
         Service initialization that requires the service config loaded and available but before registration of the service
         or db connection and access to service discovery.
@@ -461,7 +540,7 @@ class BaseService(object, metaclass=ServiceMeta):
         if require_system_user_auth is not None:
             self.require_system_user = require_system_user_auth
 
-        logger.debug('Invoking instance-specific handler registration')
+        logger.debug("Invoking instance-specific handler registration")
         self._register_instance_handlers()
 
         self.configure()
@@ -495,9 +574,10 @@ class ApiService(BaseService):
     """
     A service that provides an api
     """
-    __spec_dir__ = 'swagger'
-    __spec_file__ = 'swagger.yaml'
-    __service_api_version__ = 'v1'
+
+    __spec_dir__ = "swagger"
+    __spec_file__ = "swagger.yaml"
+    __service_api_version__ = "v1"
 
     def __init__(self, options=None):
         super().__init__(options=options)
@@ -506,7 +586,7 @@ class ApiService(BaseService):
 
     def _register_instance_handlers(self):
         super()._register_instance_handlers()
-        logger.info('Registering api handlers')
+        logger.info("Registering api handlers")
         self.register_handler(LifeCycleStages.pre_bootstrap, self.initialize_api, None)
 
     def _init_wsgi_app(self, service_name, api_spec_dir=None, api_spec_file=None):
@@ -518,21 +598,24 @@ class ApiService(BaseService):
         try:
 
             enable_swagger_ui = False
-            if self.configuration.get('enable_swagger_ui', None) is not None:
-                enable_swagger_ui = self.configuration.get('enable_swagger_ui')
-            elif self.global_configuration.get('enable_swagger_ui', None) is not None:
-                enable_swagger_ui = self.global_configuration.get('enable_swagger_ui')
+            if self.configuration.get("enable_swagger_ui", None) is not None:
+                enable_swagger_ui = self.configuration.get("enable_swagger_ui")
+            elif self.global_configuration.get("enable_swagger_ui", None) is not None:
+                enable_swagger_ui = self.global_configuration.get("enable_swagger_ui")
 
-            flask_app_options = {'swagger_ui': enable_swagger_ui}
-            self._application = connexion.FlaskApp(__name__, specification_dir=api_spec_dir, options=flask_app_options)
+            flask_app_options = {"swagger_ui": enable_swagger_ui}
+            self._application = connexion.FlaskApp(
+                __name__, specification_dir=api_spec_dir, options=flask_app_options
+            )
             flask_app = self._application.app
             flask_app.url_map.strict_slashes = False
 
             # Ensure jsonify() calls add whitespace for nice error responses
-            flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+            flask_app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
             # Suppress some verbose logs in dependencies
             import logging as py_logging
+
             py_logging.basicConfig(level=py_logging.ERROR)
 
             # Initialize the authentication system
@@ -542,11 +625,14 @@ class ApiService(BaseService):
             flask_app.register_error_handler(AnchoreApiError, handle_api_exception)
 
             metrics.init_flask_metrics(flask_app, servicename=service_name)
-            self._application.add_api(Path(api_spec_file), validate_responses=self.options.get('validate-responses'))
+            self._application.add_api(
+                Path(api_spec_file),
+                validate_responses=self.options.get("validate-responses"),
+            )
 
             return self._application
         except Exception as err:
-            logger.exception('Error initializing WSGI application')
+            logger.exception("Error initializing WSGI application")
             raise
 
     def init_auth(self):
@@ -570,17 +656,26 @@ class ApiService(BaseService):
         :return:
         """
 
-        logger.info('Initializing API from: {}/{}'.format(self.__spec_dir__, self.__spec_file__))
-        if self.configuration['listen'] and self.configuration['port'] and self.configuration['endpoint_hostname']:
+        logger.info(
+            "Initializing API from: {}/{}".format(self.__spec_dir__, self.__spec_file__)
+        )
+        if (
+            self.configuration["listen"]
+            and self.configuration["port"]
+            and self.configuration["endpoint_hostname"]
+        ):
             if not self._api_application:
-                self._api_application = self._init_wsgi_app(self.__service_name__, self.__spec_dir__, self.__spec_file__)
+                self._api_application = self._init_wsgi_app(
+                    self.__service_name__, self.__spec_dir__, self.__spec_file__
+                )
 
     def get_api_application(self):
         if self._api_application is None:
-            raise Exception('API not initialized yet. Must initialize the service or call initialize_api() before the application is available')
+            raise Exception(
+                "API not initialized yet. Must initialize the service or call initialize_api() before the application is available"
+            )
 
         return self._api_application.app
-
 
     @staticmethod
     def build_authz_heartbeat(service_name):
@@ -588,9 +683,10 @@ class ApiService(BaseService):
         Returns the handler function itself (uses closure to pass some values in
         :return:
         """
+
         def authz_heartbeat(*args, **kwargs):
-            cycle_timer = kwargs['mythread']['cycle_timer']
-            logger.info('Checking authz availability')
+            cycle_timer = kwargs["mythread"]["cycle_timer"]
+            logger.info("Checking authz availability")
             try:
                 host_id = localconfig.get_host_id()
                 authz_handlr = get_authorizer()
@@ -603,26 +699,39 @@ class ApiService(BaseService):
                     result = False
 
                 if not result:
-                    fail_event = ServiceAuthzPluginHealthCheckFailed(user_id=localconfig.ADMIN_ACCOUNT_NAME,
-                                                                     name=service_name,
-                                                                     host=host_id,
-                                                                     plugin=handler,
-                                                                     details=str(ex)
-                                                                     )
-                    logger.info('Sending healthcheck failure event: {}'.format(fail_event.__event_type__))
+                    fail_event = ServiceAuthzPluginHealthCheckFailed(
+                        user_id=localconfig.ADMIN_ACCOUNT_NAME,
+                        name=service_name,
+                        host=host_id,
+                        plugin=handler,
+                        details=str(ex),
+                    )
+                    logger.info(
+                        "Sending healthcheck failure event: {}".format(
+                            fail_event.__event_type__
+                        )
+                    )
 
                     try:
-                        client = internal_client_for(CatalogClient, localconfig.ADMIN_ACCOUNT_NAME)
+                        client = internal_client_for(
+                            CatalogClient, localconfig.ADMIN_ACCOUNT_NAME
+                        )
                         client.add_event(fail_event)
                     except Exception as ex:
                         logger.exception(
-                            'Failure to send authz healthcheck failure event: {}'.format(fail_event.to_json()))
+                            "Failure to send authz healthcheck failure event: {}".format(
+                                fail_event.to_json()
+                            )
+                        )
 
             except Exception as e:
-                logger.exception('Caught unexpected exception from the authz heartbeat handler')
+                logger.exception(
+                    "Caught unexpected exception from the authz heartbeat handler"
+                )
 
             time.sleep(cycle_timer)
             return True
+
         return authz_heartbeat
 
 
@@ -634,12 +743,14 @@ class UserFacingApiService(ApiService):
 
     def _register_instance_handlers(self):
         super()._register_instance_handlers()
-        self.register_handler(LifeCycleStages.pre_bootstrap, self._process_api_spec, None)
+        self.register_handler(
+            LifeCycleStages.pre_bootstrap, self._process_api_spec, None
+        )
 
     @staticmethod
     def parse_swagger(path):
         with open(path) as f:
-            if path.endswith('yaml') or path.endswith('yml'):
+            if path.endswith("yaml") or path.endswith("yml"):
                 return yaml.safe_load(f)
             else:
                 return json.load(f)
@@ -658,26 +769,34 @@ class UserFacingApiService(ApiService):
         """
 
         action_map = {}
-        for path in swagger_content.get('paths').values():
+        for path in swagger_content.get("paths").values():
             for verb in path.values():
-                action = verb.get('x-anchore-authz-action')
-                controller = verb.get('x-swagger-router-controller')
-                operationId = verb.get('operationId')
-                action_map[controller + '.' + operationId] = action
+                action = verb.get("x-anchore-authz-action")
+                controller = verb.get("x-swagger-router-controller")
+                operationId = verb.get("operationId")
+                action_map[controller + "." + operationId] = action
 
         return action_map
 
     def _process_api_spec(self):
         try:
-            self.api_spec = UserFacingApiService.parse_swagger(os.path.join(self.__spec_dir__, self.__spec_file__))
+            self.api_spec = UserFacingApiService.parse_swagger(
+                os.path.join(self.__spec_dir__, self.__spec_file__)
+            )
             actions = UserFacingApiService.build_action_map(self.api_spec)
             missing = [x for x in filter(lambda x: x[1] is None, actions.items())]
             if missing:
-                raise Exception('API Spec validation error: All operations must have a x-anchore-authz-action label. Missing for: {}'.format(missing))
+                raise Exception(
+                    "API Spec validation error: All operations must have a x-anchore-authz-action label. Missing for: {}".format(
+                        missing
+                    )
+                )
             else:
                 self._authz_actions = actions
         except Exception as ex:
-            logger.exception('Error loading swagger spec for authz action parsing. Cannot proceed')
+            logger.exception(
+                "Error loading swagger spec for authz action parsing. Cannot proceed"
+            )
             raise ex
 
     def action_for_operation(self, fq_operation_id):

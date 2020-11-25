@@ -16,11 +16,10 @@ class SimpleQueueServiceMaker(WsgiApiServiceMaker):
 
     """
 
-    tapname = 'anchore-simplequeue'
-    description = 'Anchore Engine SimpleQueue Service. Provides task queues.'
+    tapname = "anchore-simplequeue"
+    description = "Anchore Engine SimpleQueue Service. Provides task queues."
     service_cls = SimpleQueueService
     options = CommonOptions
 
 
 servicemaker = SimpleQueueServiceMaker()
-

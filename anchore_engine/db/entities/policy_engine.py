@@ -6,8 +6,28 @@ import time
 import zlib
 from collections import namedtuple
 
-from sqlalchemy import Column, BigInteger, Integer, LargeBinary, Float, Boolean, String, ForeignKey, Enum, \
-    ForeignKeyConstraint, DateTime, types, Text, Index, JSON, or_, and_, Sequence, func, event
+from sqlalchemy import (
+    Column,
+    BigInteger,
+    Integer,
+    LargeBinary,
+    Float,
+    Boolean,
+    String,
+    ForeignKey,
+    Enum,
+    ForeignKeyConstraint,
+    DateTime,
+    types,
+    Text,
+    Index,
+    JSON,
+    or_,
+    and_,
+    Sequence,
+    func,
+    event,
+)
 from sqlalchemy.orm import relationship, synonym, joinedload
 
 from anchore_engine.utils import ensure_str, ensure_bytes
@@ -21,6 +41,7 @@ try:
     from anchore_engine.subsys import logger as log
 except:
     import logging
+
     logger = logging.getLogger(__name__)
     log = logger
 
@@ -52,26 +73,30 @@ bundle_id_length = 128
 file_path_length = 512
 hash_length = 80
 
-DistroTuple = namedtuple('DistroTuple', ['distro', 'version', 'flavor'])
+DistroTuple = namedtuple("DistroTuple", ["distro", "version", "flavor"])
 
-base_score_key = 'base_score'
-exploitability_score_key = 'exploitability_score'
-impact_score_key = 'impact_score'
-base_metrics_key = 'base_metrics'
-cvss_v3_key = 'cvss_v3'
-cvss_v2_key = 'cvss_v2'
+base_score_key = "base_score"
+exploitability_score_key = "exploitability_score"
+impact_score_key = "impact_score"
+base_metrics_key = "base_metrics"
+cvss_v3_key = "cvss_v3"
+cvss_v2_key = "cvss_v2"
 
 
 # Feeds
 class FeedMetadata(Base, UtilMixin):
-    __tablename__ = 'feeds'
+    __tablename__ = "feeds"
 
     name = Column(String(feed_name_length), primary_key=True)
     description = Column(String(512))
     access_tier = Column(Integer)
-    groups = relationship('FeedGroupMetadata', back_populates='feed', cascade='all, delete-orphan')
+    groups = relationship(
+        "FeedGroupMetadata", back_populates="feed", cascade="all, delete-orphan"
+    )
     last_full_sync = Column(DateTime)
-    last_update = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    last_update = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     enabled = Column(Boolean, default=True)
 
@@ -80,43 +105,63 @@ class FeedMetadata(Base, UtilMixin):
         return FeedMetadata.query.filter(name=name).scalar()
 
     def __repr__(self):
-        return '<{}(name={}, access_tier={}, enabled={}, created_at={}>'.format(self.__class__, self.name, self.access_tier, self.enabled, self.created_at.isoformat())
+        return "<{}(name={}, access_tier={}, enabled={}, created_at={}>".format(
+            self.__class__,
+            self.name,
+            self.access_tier,
+            self.enabled,
+            self.created_at.isoformat(),
+        )
 
     def to_json(self, include_groups=True):
         j = super().to_json()
 
         if include_groups:
-            j['groups'] = [g.to_json() for g in self.groups]
+            j["groups"] = [g.to_json() for g in self.groups]
         else:
-            j['groups'] = None
+            j["groups"] = None
 
         return j
 
 
 class FeedGroupMetadata(Base, UtilMixin):
-    __tablename__ = 'feed_groups'
+    __tablename__ = "feed_groups"
 
     name = Column(String(feed_group_length), primary_key=True)
-    feed_name = Column(String(feed_name_length), ForeignKey(FeedMetadata.name), primary_key=True)
+    feed_name = Column(
+        String(feed_name_length), ForeignKey(FeedMetadata.name), primary_key=True
+    )
     description = Column(String(512))
     access_tier = Column(Integer)
     last_sync = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    last_update = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    last_update = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
     enabled = Column(Boolean, default=True)
-    count = Column(BigInteger) # To cache the row count of the group between feed syncs to avoid extra row count ops
-    feed = relationship('FeedMetadata', back_populates='groups')
+    count = Column(
+        BigInteger
+    )  # To cache the row count of the group between feed syncs to avoid extra row count ops
+    feed = relationship("FeedMetadata", back_populates="groups")
 
     def __repr__(self):
-        return '<{} name={}, feed={}, access_tier={}, enabled={}, created_at={}>'.format(self.__class__, self.name, self.feed_name, self.access_tier, self.enabled,
-                                                                              self.created_at)
+        return (
+            "<{} name={}, feed={}, access_tier={}, enabled={}, created_at={}>".format(
+                self.__class__,
+                self.name,
+                self.feed_name,
+                self.access_tier,
+                self.enabled,
+                self.created_at,
+            )
+        )
 
     def to_json(self, include_feed=False):
         j = super().to_json()
         if include_feed:
-            j['feed'] = self.feed.to_json(include_groups=False) # Avoid the loop
+            j["feed"] = self.feed.to_json(include_groups=False)  # Avoid the loop
         else:
-            j['feed'] = None # Ensure no non-serializable stuff
+            j["feed"] = None  # Ensure no non-serializable stuff
 
         return j
 
@@ -125,18 +170,31 @@ class GenericFeedDataRecord(Base):
     """
     A catch-all record for feed data without a specific schema mapping
     """
-    __tablename__ = 'feed_group_data'
+
+    __tablename__ = "feed_group_data"
 
     feed = Column(String(feed_name_length), primary_key=True)
     group = Column(String(feed_group_length), primary_key=True)
     id = Column(String(feed_record_id_length), primary_key=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    data = Column(StringJSON, nullable=False) # TODO: make this a JSON type for dbs that support it
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    data = Column(
+        StringJSON, nullable=False
+    )  # TODO: make this a JSON type for dbs that support it
 
 
 class GemMetadata(Base):
-    __tablename__ = 'feed_data_gem_packages'
+    __tablename__ = "feed_data_gem_packages"
 
     name = Column(String(pkg_name_length), primary_key=True)
     id = Column(BigInteger)
@@ -144,19 +202,24 @@ class GemMetadata(Base):
     licenses_json = Column(StringJSON)
     authors_json = Column(StringJSON)
     versions_json = Column(StringJSON)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     def __repr__(self):
-        return '<{} name={}, id={}, created_at={}>'.format(self.__class__, self.name, self.id,
-                                                                              self.created_at)
+        return "<{} name={}, id={}, created_at={}>".format(
+            self.__class__, self.name, self.id, self.created_at
+        )
 
     def key_tuple(self):
         return self.name
 
 
 class NpmMetadata(Base):
-    __tablename__ = 'feed_data_npm_packages'
+    __tablename__ = "feed_data_npm_packages"
 
     name = Column(String(pkg_name_length), primary_key=True)
     sourcepkg = Column(String(pkg_name_length))
@@ -164,11 +227,17 @@ class NpmMetadata(Base):
     origins_json = Column(StringJSON)
     latest = Column(String(pkg_name_length))
     versions_json = Column(StringJSON)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     def __repr__(self):
-        return '<{} name={}, sourcepkg={}, created_at={}>'.format(self.__class__, self.name, self.sourcepkg, self.created_at)
+        return "<{} name={}, sourcepkg={}, created_at={}>".format(
+            self.__class__, self.name, self.sourcepkg, self.created_at
+        )
 
     def key_tuple(self):
         return self.name
@@ -180,21 +249,41 @@ class Vulnerability(Base):
     metadata field that is json encoded string
     """
 
-    __tablename__ = 'feed_data_vulnerabilities'
+    __tablename__ = "feed_data_vulnerabilities"
 
     id = Column(String(vuln_id_length), primary_key=True)  # CVE Id, RHSA id, etc
-    namespace_name = Column(String(namespace_length), primary_key=True)  # e.g. centos, rhel, "debian"
-    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False)
+    namespace_name = Column(
+        String(namespace_length), primary_key=True
+    )  # e.g. centos, rhel, "debian"
+    severity = Column(
+        Enum(
+            "Unknown",
+            "Negligible",
+            "Low",
+            "Medium",
+            "High",
+            "Critical",
+            name="vulnerability_severities",
+        ),
+        nullable=False,
+    )
     description = Column(Text, nullable=True)
     link = Column(String(link_length), nullable=True)
     metadata_json = Column(StringJSON, nullable=True)
     cvss2_vectors = Column(String(256), nullable=True)
     cvss2_score = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-    vulnerable_in = relationship('VulnerableArtifact', back_populates='parent', cascade='all, delete-orphan')
-    fixed_in = relationship('FixedArtifact', back_populates='parent', cascade='all, delete-orphan')
-
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
+    vulnerable_in = relationship(
+        "VulnerableArtifact", back_populates="parent", cascade="all, delete-orphan"
+    )
+    fixed_in = relationship(
+        "FixedArtifact", back_populates="parent", cascade="all, delete-orphan"
+    )
 
     @property
     def additional_metadata(self):
@@ -213,26 +302,36 @@ class Vulnerability(Base):
             elif isinstance(value, dict):
                 m.update(value)
             else:
-                m = {'metadata': value}
+                m = {"metadata": value}
         self.metadata_json = m
-        #self.metadata_json = json.dumps(value)
+        # self.metadata_json = json.dumps(value)
 
     def __repr__(self):
-        return '<{} id={}, namespace_name={}, severity={}, created_at={}>'.format(self.__class__, self.id, self.namespace_name, self.severity,
-                                                                          self.created_at)
+        return "<{} id={}, namespace_name={}, severity={}, created_at={}>".format(
+            self.__class__, self.id, self.namespace_name, self.severity, self.created_at
+        )
+
     def current_package_vulnerabilities(self, db_session):
         """
         Return a list of all packages that are marked as vulnerable to this item
         :return: list of ImagePackageVulnerability objects
         """
-        return db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_id == self.id, ImagePackageVulnerability.vulnerability_namespace_name == self.namespace_name).all()
+        return (
+            db_session.query(ImagePackageVulnerability)
+            .filter(
+                ImagePackageVulnerability.vulnerability_id == self.id,
+                ImagePackageVulnerability.vulnerability_namespace_name
+                == self.namespace_name,
+            )
+            .all()
+        )
 
     def is_empty(self):
         """
         Can a package be vulnerable to this, or is it an empty definition.
         :return: boolean
         """
-        #return not self.vulnerable_in and not self.fixed_in
+        # return not self.vulnerable_in and not self.fixed_in
         return not self.fixed_in
 
     def get_cvss_severity(self):
@@ -262,7 +361,11 @@ class Vulnerability(Base):
             cves = self.get_nvd_identifiers(_nvd_cls, _cpe_cls)
             nvd_records = db.query(_nvd_cls).filter(_nvd_cls.name.in_(cves)).all()
         except Exception as err:
-            log.warn("failed to gather NVD information for vulnerability due to exception: {}".format(str(err)))
+            log.warn(
+                "failed to gather NVD information for vulnerability due to exception: {}".format(
+                    str(err)
+                )
+            )
             nvd_records = None
 
         if nvd_records:
@@ -270,17 +373,17 @@ class Vulnerability(Base):
 
         return ret
 
-    def get_nvd_identifiers(self,_nvd_cls, _cpe_cls):
+    def get_nvd_identifiers(self, _nvd_cls, _cpe_cls):
         cves = []
         try:
-            if self.id.startswith('CVE-'):
+            if self.id.startswith("CVE-"):
                 cves = [self.id]
 
             if self.metadata_json and self.metadata_json.get("CVE", []):
                 for cve_el in self.metadata_json.get("CVE", []):
                     if type(cve_el) == dict:
                         # RHSA and ELSA internal elements are dicts
-                        cve_id = cve_el.get('Name', None)
+                        cve_id = cve_el.get("Name", None)
                     elif type(cve_el) == str:
                         # ALAS internal elements are just CVE ids
                         cve_id = cve_el
@@ -290,7 +393,11 @@ class Vulnerability(Base):
                     if cve_id and cve_id not in cves:
                         cves.append(cve_id)
         except Exception as err:
-            log.warn("failed to gather NVD information for vulnerability due to exception: {}".format(str(err)))
+            log.warn(
+                "failed to gather NVD information for vulnerability due to exception: {}".format(
+                    str(err)
+                )
+            )
 
         return cves
 
@@ -301,7 +408,8 @@ class VulnerableArtifact(Base):
     Typically populated by CVEs with specific vulnerable packages enumerated.
 
     """
-    __tablename__ = 'feed_data_vulnerabilities_vulnerable_artifacts'
+
+    __tablename__ = "feed_data_vulnerabilities_vulnerable_artifacts"
 
     vulnerability_id = Column(String(vuln_id_length), primary_key=True)
     namespace_name = Column(String(namespace_length), primary_key=True)
@@ -310,17 +418,30 @@ class VulnerableArtifact(Base):
     version_format = Column(String(pkg_type_length))
     epochless_version = Column(String(pkg_version_length))
     include_previous_versions = Column(Boolean, default=True)
-    parent = relationship('Vulnerability', back_populates='vulnerable_in')
+    parent = relationship("Vulnerability", back_populates="vulnerable_in")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
-    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
-                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, namespace_name),
+            refcolumns=(Vulnerability.id, Vulnerability.namespace_name),
+        ),
+        {},
+    )
 
     def __repr__(self):
-        return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name,
-                                                                          self.updated_at)
+        return "<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>".format(
+            self.__class__,
+            self.name,
+            self.version,
+            self.vulnerability_id,
+            self.namespace_name,
+            self.updated_at,
+        )
 
     def match_and_vulnerable(self, package_obj):
         """
@@ -333,22 +454,34 @@ class VulnerableArtifact(Base):
         """
         vuln_obj = self
         if not isinstance(vuln_obj, VulnerableArtifact):
-            raise TypeError('Expected a VulnerableArtifact type, got: {}'.format(type(vuln_obj)))
+            raise TypeError(
+                "Expected a VulnerableArtifact type, got: {}".format(type(vuln_obj))
+            )
 
         dist = DistroNamespace.for_obj(package_obj)
         flavor = dist.flavor
 
         # Double-check names
-        if vuln_obj.name != package_obj.name and vuln_obj.name != package_obj.normalized_src_pkg:
+        if (
+            vuln_obj.name != package_obj.name
+            and vuln_obj.name != package_obj.normalized_src_pkg
+        ):
             log.warn(
-                'Name mismatch in vulnerable check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}'.format(
-                    vuln_obj.name, package_obj.name, package_obj.normalized_src_pkg, package_obj.src_pkg))
+                "Name mismatch in vulnerable check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}".format(
+                    vuln_obj.name,
+                    package_obj.name,
+                    package_obj.normalized_src_pkg,
+                    package_obj.src_pkg,
+                )
+            )
             return False
 
         # Is it a catch-all record? Explicit 'None' or 'all' versions indicate all versions of the named package are vulnerable.
         # Or is it an exact version match?
-        if vuln_obj.epochless_version in ['all', 'None'] or \
-                (package_obj.fullversion == vuln_obj.epochless_version or package_obj.version == vuln_obj.epochless_version):
+        if vuln_obj.epochless_version in ["all", "None"] or (
+            package_obj.fullversion == vuln_obj.epochless_version
+            or package_obj.version == vuln_obj.epochless_version
+        ):
             return True
         else:
             return False
@@ -358,7 +491,8 @@ class FixedArtifact(Base):
     """
     A record indicating an artifact version that marks a fix for a vulnerability
     """
-    __tablename__ = 'feed_data_vulnerabilities_fixed_artifacts'
+
+    __tablename__ = "feed_data_vulnerabilities_fixed_artifacts"
 
     vulnerability_id = Column(String(vuln_id_length), primary_key=True)
     namespace_name = Column(String(namespace_length), primary_key=True)
@@ -367,28 +501,42 @@ class FixedArtifact(Base):
     version_format = Column(String(pkg_type_length))
     epochless_version = Column(String(pkg_version_length))
     include_later_versions = Column(Boolean, default=True)
-    parent = relationship('Vulnerability', back_populates='fixed_in')
+    parent = relationship("Vulnerability", back_populates="fixed_in")
     vendor_no_advisory = Column(Boolean, default=False)
     fix_metadata = Column(StringJSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
     fix_observed_at = Column(DateTime)
 
-    __table_args__ = (ForeignKeyConstraint(columns=(vulnerability_id, namespace_name),
-                                           refcolumns=(Vulnerability.id, Vulnerability.namespace_name)), {})
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, namespace_name),
+            refcolumns=(Vulnerability.id, Vulnerability.namespace_name),
+        ),
+        {},
+    )
 
     @staticmethod
     def _fix_observed_at_update(mapper, connection, target):
-        if not target.fix_observed_at and target.version and target.version != 'None':
+        if not target.fix_observed_at and target.version and target.version != "None":
             target.fix_observed_at = datetime.datetime.utcnow()
 
     @classmethod
     def __declare_last__(cls):
-        event.listen(cls, 'before_update', cls._fix_observed_at_update)
-        event.listen(cls, 'before_insert', cls._fix_observed_at_update)
+        event.listen(cls, "before_update", cls._fix_observed_at_update)
+        event.listen(cls, "before_insert", cls._fix_observed_at_update)
 
     def __repr__(self):
-        return '<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>'.format(self.__class__, self.name, self.version, self.vulnerability_id, self.namespace_name, self.created_at)
+        return "<{} name={}, version={}, vulnerability_id={}, namespace_name={}, created_at={}>".format(
+            self.__class__,
+            self.name,
+            self.version,
+            self.vulnerability_id,
+            self.namespace_name,
+            self.created_at,
+        )
 
     def match_but_not_fixed(self, package_obj):
         """
@@ -399,50 +547,90 @@ class FixedArtifact(Base):
         :param package_obj: an ImagePackage record
         :return: True if the names match and the fix record indicates the package is vulnerable and not fixed. False if no match or fix is applied and no vulnerability match
         """
-        fix_obj  = self
+        fix_obj = self
         if not isinstance(fix_obj, FixedArtifact):
-            raise TypeError('Expected a FixedArtifact type, got: {}'.format(type(fix_obj)))
+            raise TypeError(
+                "Expected a FixedArtifact type, got: {}".format(type(fix_obj))
+            )
 
         dist = DistroNamespace.for_obj(package_obj)
         flavor = dist.flavor
-        log.spew('Package: {}, Fix: {}, Flavor: {}'.format(package_obj.name, fix_obj.name, flavor))
+        log.spew(
+            "Package: {}, Fix: {}, Flavor: {}".format(
+                package_obj.name, fix_obj.name, flavor
+            )
+        )
 
         # Double-check names
-        if fix_obj.name != package_obj.name and fix_obj.name != package_obj.normalized_src_pkg:
-            log.warn('Name mismatch in fix check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}'.format(fix_obj.name, package_obj.name, package_obj.normalized_src_pkg, package_obj.src_pkg))
+        if (
+            fix_obj.name != package_obj.name
+            and fix_obj.name != package_obj.normalized_src_pkg
+        ):
+            log.warn(
+                "Name mismatch in fix check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}".format(
+                    fix_obj.name,
+                    package_obj.name,
+                    package_obj.normalized_src_pkg,
+                    package_obj.src_pkg,
+                )
+            )
             return False
 
         # Handle the case where there is no version, indicating no fix available, all versions are vulnerable.
         # Is it a catch-all record? Explicit 'None' versions indicate all versions of the named package are vulnerable.
-        if fix_obj.version == 'None':
+        if fix_obj.version == "None":
             return True
 
         # Is the package older than the fix?
-        if flavor == 'RHEL':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
+        if (
+            flavor == "RHEL"
+        ):  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
             if rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0:
-                log.spew('rpm Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
+                log.spew(
+                    "rpm Compared: {} < {}: True".format(
+                        package_obj.fullversion, fix_obj.version
+                    )
+                )
                 return True
-        elif flavor == 'DEB':  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
-            if dpkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.version):
-                log.spew('dpkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.version))
+        elif (
+            flavor == "DEB"
+        ):  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
+            if dpkg_compare_versions(package_obj.fullversion, "lt", fix_obj.version):
+                log.spew(
+                    "dpkg Compared: {} < {}: True".format(
+                        package_obj.fullversion, fix_obj.version
+                    )
+                )
                 return True
-        elif flavor == 'ALPINE':  # compare full package version with epochless fixed-in version
-            if apkg_compare_versions(package_obj.fullversion, 'lt', fix_obj.epochless_version):
-                log.spew('apkg Compared: {} < {}: True'.format(package_obj.fullversion, fix_obj.epochless_version))
+        elif (
+            flavor == "ALPINE"
+        ):  # compare full package version with epochless fixed-in version
+            if apkg_compare_versions(
+                package_obj.fullversion, "lt", fix_obj.epochless_version
+            ):
+                log.spew(
+                    "apkg Compared: {} < {}: True".format(
+                        package_obj.fullversion, fix_obj.epochless_version
+                    )
+                )
                 return True
 
-        if package_obj.pkg_type in ['java', 'maven', 'npm', 'gem', 'python', 'js']:
-            if package_obj.pkg_type in ['java', 'maven']:
+        if package_obj.pkg_type in ["java", "maven", "npm", "gem", "python", "js"]:
+            if package_obj.pkg_type in ["java", "maven"]:
                 pomprops = package_obj.get_pom_properties()
                 if pomprops:
-                    pkgkey = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
-                    pkgversion = pomprops.get('version', None)
+                    pkgkey = "{}:{}".format(
+                        pomprops.get("groupId"), pomprops.get("artifactId")
+                    )
+                    pkgversion = pomprops.get("version", None)
                 else:
                     pkgversion = package_obj.version
             else:
                 pkgversion = package_obj.fullversion
 
-            if langpack_compare_versions(fix_obj.version, pkgversion, language=package_obj.pkg_type):
+            if langpack_compare_versions(
+                fix_obj.version, pkgversion, language=package_obj.pkg_type
+            ):
                 return True
 
         # Newer or the same
@@ -450,27 +638,49 @@ class FixedArtifact(Base):
 
 
 class NvdMetadata(Base):
-    __tablename__ = 'feed_data_nvd_vulnerabilities'
+    __tablename__ = "feed_data_nvd_vulnerabilities"
 
     name = Column(String(vuln_id_length), primary_key=True)
-    namespace_name = Column(String(namespace_length), primary_key=True)  # e.g. nvddb:2018"
-    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    namespace_name = Column(
+        String(namespace_length), primary_key=True
+    )  # e.g. nvddb:2018"
+    severity = Column(
+        Enum(
+            "Unknown",
+            "Negligible",
+            "Low",
+            "Medium",
+            "High",
+            "Critical",
+            name="vulnerability_severities",
+        ),
+        nullable=False,
+        primary_key=True,
+    )
     vulnerable_configuration = Column(StringJSON)
     vulnerable_software = Column(StringJSON)
     summary = Column(String)
     cvss = Column(StringJSON)
     cvssv3 = None
     cvssv2 = None
-    vulnerable_cpes = relationship('CpeVulnerability', back_populates='parent', cascade='all, delete-orphan')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    vulnerable_cpes = relationship(
+        "CpeVulnerability", back_populates="parent", cascade="all, delete-orphan"
+    )
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     def __repr__(self):
-        return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
+        return "<{} name={}, created_at={}>".format(
+            self.__class__, self.name, self.created_at
+        )
 
     @property
     def description(self):
-        return self.summary if self.summary else ''
+        return self.summary if self.summary else ""
 
     @property
     def references(self):
@@ -480,9 +690,11 @@ class NvdMetadata(Base):
         if cvss_version == 3:
             score = None
         elif cvss_version == 2:
-            score = self.cvss.get(base_metrics_key, {}).get('score', None)
+            score = self.cvss.get(base_metrics_key, {}).get("score", None)
         else:
-            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            log.warn(
+                "invalid cvss version specified as input ({})".format(cvss_version)
+            )
             score = None
 
         if score is None:
@@ -516,7 +728,9 @@ class NvdMetadata(Base):
             }
 
         else:
-            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            log.warn(
+                "invalid cvss version specified as input ({})".format(cvss_version)
+            )
             ret = {
                 base_score_key: -1.0,
                 exploitability_score_key: -1.0,
@@ -526,20 +740,24 @@ class NvdMetadata(Base):
         return ret
 
     def get_cvss_scores_nvd(self):
-        ret = [{
-            'id': self.name,
-            cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
-            cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3)
-        }]
+        ret = [
+            {
+                "id": self.name,
+                cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
+                cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3),
+            }
+        ]
 
         return ret
 
     def get_cvss_data_nvd(self):
-        ret = [{
-            'id': self.name,
-            cvss_v2_key: self.cvssv2 if self.cvssv2 else None,
-            cvss_v3_key: self.cvssv3 if self.cvssv3 else None
-        }]
+        ret = [
+            {
+                "id": self.name,
+                cvss_v2_key: self.cvssv2 if self.cvssv2 else None,
+                cvss_v3_key: self.cvssv3 if self.cvssv3 else None,
+            }
+        ]
 
         return ret
 
@@ -570,29 +788,49 @@ class NvdMetadata(Base):
 
     @property
     def link(self):
-        return 'https://nvd.nist.gov/vuln/detail/{}'.format(self.name)
+        return "https://nvd.nist.gov/vuln/detail/{}".format(self.name)
 
     def key_tuple(self):
         return self.name
 
 
 class NvdV2Metadata(Base):
-    __tablename__ = 'feed_data_nvdv2_vulnerabilities'
+    __tablename__ = "feed_data_nvdv2_vulnerabilities"
 
     name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)  # e.g. nvddb:2018"
-    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, index=True)
+    severity = Column(
+        Enum(
+            "Unknown",
+            "Negligible",
+            "Low",
+            "Medium",
+            "High",
+            "Critical",
+            name="vulnerability_severities",
+        ),
+        nullable=False,
+        index=True,
+    )
     description = Column(String, nullable=True)
     cvss_v2 = Column(JSON, nullable=True)
     cvss_v3 = Column(JSON, nullable=True)
     link = Column(String, nullable=True)
     references = Column(JSON, nullable=True)
-    vulnerable_cpes = relationship('CpeV2Vulnerability', back_populates='parent', cascade='all, delete-orphan')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    vulnerable_cpes = relationship(
+        "CpeV2Vulnerability", back_populates="parent", cascade="all, delete-orphan"
+    )
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     def __repr__(self):
-        return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
+        return "<{} name={}, created_at={}>".format(
+            self.__class__, self.name, self.created_at
+        )
 
     def _get_score(self, metric, score_key):
         if metric:
@@ -613,7 +851,9 @@ class NvdV2Metadata(Base):
         elif cvss_version == 2:
             metric = self.cvss_v2
         else:
-            log.warn("invalid cvss version specified as input ({})".format(cvss_version))
+            log.warn(
+                "invalid cvss version specified as input ({})".format(cvss_version)
+            )
 
         return metric
 
@@ -640,20 +880,24 @@ class NvdV2Metadata(Base):
         return ret
 
     def get_cvss_scores_nvd(self):
-        ret = [{
-            'id': self.name,
-            cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
-            cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3)
-        }]
+        ret = [
+            {
+                "id": self.name,
+                cvss_v2_key: self.get_max_cvss_score_nvd(cvss_version=2),
+                cvss_v3_key: self.get_max_cvss_score_nvd(cvss_version=3),
+            }
+        ]
 
         return ret
 
     def get_cvss_data_nvd(self):
-        ret = [{
-            'id': self.name,
-            cvss_v2_key: self._get_metric(cvss_version=2),
-            cvss_v3_key: self._get_metric(cvss_version=3)
-        }]
+        ret = [
+            {
+                "id": self.name,
+                cvss_v2_key: self._get_metric(cvss_version=2),
+                cvss_v3_key: self._get_metric(cvss_version=3),
+            }
+        ]
 
         return ret
 
@@ -687,13 +931,23 @@ class NvdV2Metadata(Base):
 
 
 class VulnDBMetadata(Base):
-    __tablename__ = 'feed_data_vulndb_vulnerabilities'
+    __tablename__ = "feed_data_vulndb_vulnerabilities"
 
     name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)  # e.g. vulndb:vulnerabilities
     severity = Column(
-        Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'),
-        nullable=False, index=True)
+        Enum(
+            "Unknown",
+            "Negligible",
+            "Low",
+            "Medium",
+            "High",
+            "Critical",
+            name="vulnerability_severities",
+        ),
+        nullable=False,
+        index=True,
+    )
     title = Column(String, nullable=True)
     description = Column(String, nullable=True)
     solution = Column(String, nullable=True)
@@ -705,13 +959,19 @@ class VulnDBMetadata(Base):
     vendor_cvss_v3 = Column(JSON, nullable=True)
     nvd = Column(JSON, nullable=True)
     vuln_metadata = Column(JSON, nullable=True)
-    cpes = relationship('VulnDBCpe', back_populates='parent', cascade='all, delete-orphan')
+    cpes = relationship(
+        "VulnDBCpe", back_populates="parent", cascade="all, delete-orphan"
+    )
     # unaffected_cpes = relationship('VulnDBUnaffectedCpe', back_populates='parent', cascade='all, delete-orphan')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     def __repr__(self):
-        return '<{} name={}, created_at={}>'.format(self.__class__, self.name, self.created_at)
+        return "<{} name={}, created_at={}>".format(
+            self.__class__, self.name, self.created_at
+        )
 
     def _get_max_cvss_v3_metric_nvd(self):
         cvss_v3 = None
@@ -722,8 +982,18 @@ class VulnDBMetadata(Base):
                 max_score = None
                 for nvd_item in self.nvd:
                     if nvd_item.get(cvss_v3_key, None):
-                        if not max_score or nvd_item.get(cvss_v3_key).get(base_metrics_key).get(base_score_key) > max_score:
-                            max_score = nvd_item.get(cvss_v3_key).get(base_metrics_key).get(base_score_key)
+                        if (
+                            not max_score
+                            or nvd_item.get(cvss_v3_key)
+                            .get(base_metrics_key)
+                            .get(base_score_key)
+                            > max_score
+                        ):
+                            max_score = (
+                                nvd_item.get(cvss_v3_key)
+                                .get(base_metrics_key)
+                                .get(base_score_key)
+                            )
                             cvss_v3 = nvd_item.get(cvss_v3_key)
                         else:
                             continue
@@ -738,8 +1008,18 @@ class VulnDBMetadata(Base):
                 max_score = None
                 for nvd_item in self.nvd:
                     if nvd_item.get(cvss_v2_key, None):
-                        if not max_score or nvd_item.get(cvss_v2_key).get(base_metrics_key).get(base_score_key) > max_score:
-                            max_score = nvd_item.get(cvss_v2_key).get(base_metrics_key).get(base_score_key)
+                        if (
+                            not max_score
+                            or nvd_item.get(cvss_v2_key)
+                            .get(base_metrics_key)
+                            .get(base_score_key)
+                            > max_score
+                        ):
+                            max_score = (
+                                nvd_item.get(cvss_v2_key)
+                                .get(base_metrics_key)
+                                .get(base_score_key)
+                            )
                             cvss_v2 = nvd_item.get(cvss_v2_key)
                         else:
                             continue
@@ -810,7 +1090,9 @@ class VulnDBMetadata(Base):
         elif cvss_version == 2:
             metric = self._get_max_cvss_v2_metric_nvd()
         else:
-            log.warning('invalid cvss version specified as input ({})'.format(cvss_version))
+            log.warning(
+                "invalid cvss version specified as input ({})".format(cvss_version)
+            )
 
         return metric
 
@@ -822,7 +1104,11 @@ class VulnDBMetadata(Base):
             else:
                 max_score = None
                 for cvss_item in self.vendor_cvss_v3:
-                    if not max_score or cvss_item.get(base_metrics_key).get(base_score_key) > max_score:
+                    if (
+                        not max_score
+                        or cvss_item.get(base_metrics_key).get(base_score_key)
+                        > max_score
+                    ):
                         max_score = cvss_item.get(base_metrics_key).get(base_score_key)
                         cvss_v3 = cvss_item
                     else:
@@ -837,7 +1123,11 @@ class VulnDBMetadata(Base):
             else:
                 max_score = None
                 for cvss_item in self.vendor_cvss_v2:
-                    if not max_score or cvss_item.get(base_metrics_key).get(base_score_key) > max_score:
+                    if (
+                        not max_score
+                        or cvss_item.get(base_metrics_key).get(base_score_key)
+                        > max_score
+                    ):
                         max_score = cvss_item.get(base_metrics_key).get(base_score_key)
                         cvss_v2 = cvss_item
                     else:
@@ -881,7 +1171,9 @@ class VulnDBMetadata(Base):
         elif cvss_version == 2:
             metric = self._get_highest_cvss_v2_rbs()
         else:
-            log.warning('invalid cvss version specified as input ({})'.format(cvss_version))
+            log.warning(
+                "invalid cvss version specified as input ({})".format(cvss_version)
+            )
 
         return metric
 
@@ -916,7 +1208,7 @@ class VulnDBMetadata(Base):
         ret = {
             base_score_key: self._get_score(metric, base_score_key),
             exploitability_score_key: self._get_score(metric, exploitability_score_key),
-            impact_score_key: self._get_score(metric, impact_score_key)
+            impact_score_key: self._get_score(metric, impact_score_key),
         }
 
         return ret
@@ -955,17 +1247,21 @@ class VulnDBMetadata(Base):
             cvss_v2_metric = nvd_cvss_item.get(cvss_v2_key, None)
             cvss_v3_metric = nvd_cvss_item.get(cvss_v3_key, None)
             score_item = {
-                'id': nvd_cvss_item.get('id'),
+                "id": nvd_cvss_item.get("id"),
                 cvss_v2_key: {
                     base_score_key: self._get_score(cvss_v2_metric, base_score_key),
-                    exploitability_score_key: self._get_score(cvss_v2_metric, exploitability_score_key),
-                    impact_score_key: self._get_score(cvss_v2_metric, impact_score_key)
+                    exploitability_score_key: self._get_score(
+                        cvss_v2_metric, exploitability_score_key
+                    ),
+                    impact_score_key: self._get_score(cvss_v2_metric, impact_score_key),
                 },
                 cvss_v3_key: {
                     base_score_key: self._get_score(cvss_v3_metric, base_score_key),
-                    exploitability_score_key: self._get_score(cvss_v3_metric, exploitability_score_key),
-                    impact_score_key: self._get_score(cvss_v3_metric, impact_score_key)
-                }
+                    exploitability_score_key: self._get_score(
+                        cvss_v3_metric, exploitability_score_key
+                    ),
+                    impact_score_key: self._get_score(cvss_v3_metric, impact_score_key),
+                },
             }
             result.append(score_item)
 
@@ -991,7 +1287,7 @@ class VulnDBMetadata(Base):
         ret = {
             base_score_key: self._get_score(metric, base_score_key),
             exploitability_score_key: self._get_score(metric, exploitability_score_key),
-            impact_score_key: self._get_score(metric, impact_score_key)
+            impact_score_key: self._get_score(metric, impact_score_key),
         }
 
         return ret
@@ -1001,35 +1297,51 @@ class VulnDBMetadata(Base):
 
         if self.vendor_cvss_v2:
             for cvss_v2_item in self.vendor_cvss_v2:
-                results.append({
-                    'id': self.name,
-                    cvss_v2_key: {
-                        base_score_key: self._get_score(cvss_v2_item, base_score_key),
-                        exploitability_score_key: self._get_score(cvss_v2_item, exploitability_score_key),
-                        impact_score_key: self._get_score(cvss_v2_item, impact_score_key)
-                    },
-                    cvss_v3_key: {
-                        base_score_key: -1.0,
-                        exploitability_score_key: -1.0,
-                        impact_score_key: -1.0
+                results.append(
+                    {
+                        "id": self.name,
+                        cvss_v2_key: {
+                            base_score_key: self._get_score(
+                                cvss_v2_item, base_score_key
+                            ),
+                            exploitability_score_key: self._get_score(
+                                cvss_v2_item, exploitability_score_key
+                            ),
+                            impact_score_key: self._get_score(
+                                cvss_v2_item, impact_score_key
+                            ),
+                        },
+                        cvss_v3_key: {
+                            base_score_key: -1.0,
+                            exploitability_score_key: -1.0,
+                            impact_score_key: -1.0,
+                        },
                     }
-                })
+                )
 
         if self.vendor_cvss_v3:
             for cvss_v3_item in self.vendor_cvss_v3:
-                results.append({
-                    'id': self.name,
-                    cvss_v2_key: {
-                        base_score_key: -1.0,
-                        exploitability_score_key: -1.0,
-                        impact_score_key: -1.0
-                    },
-                    cvss_v3_key: {
-                        base_score_key: self._get_score(cvss_v3_item, base_score_key),
-                        exploitability_score_key: self._get_score(cvss_v3_item, exploitability_score_key),
-                        impact_score_key: self._get_score(cvss_v3_item, impact_score_key)
+                results.append(
+                    {
+                        "id": self.name,
+                        cvss_v2_key: {
+                            base_score_key: -1.0,
+                            exploitability_score_key: -1.0,
+                            impact_score_key: -1.0,
+                        },
+                        cvss_v3_key: {
+                            base_score_key: self._get_score(
+                                cvss_v3_item, base_score_key
+                            ),
+                            exploitability_score_key: self._get_score(
+                                cvss_v3_item, exploitability_score_key
+                            ),
+                            impact_score_key: self._get_score(
+                                cvss_v3_item, impact_score_key
+                            ),
+                        },
                     }
-                })
+                )
 
         return results
 
@@ -1038,19 +1350,15 @@ class VulnDBMetadata(Base):
 
         if self.vendor_cvss_v2:
             for cvss_v2_item in self.vendor_cvss_v2:
-                results.append({
-                    'id': self.name,
-                    cvss_v2_key: cvss_v2_item,
-                    cvss_v3_key: None
-                })
+                results.append(
+                    {"id": self.name, cvss_v2_key: cvss_v2_item, cvss_v3_key: None}
+                )
 
         if self.vendor_cvss_v3:
             for cvss_v3_item in self.vendor_cvss_v3:
-                results.append({
-                    'id': self.name,
-                    cvss_v2_key: None,
-                    cvss_v3_key: cvss_v3_item
-                })
+                results.append(
+                    {"id": self.name, cvss_v2_key: None, cvss_v3_key: cvss_v3_item}
+                )
 
         return results
 
@@ -1067,12 +1375,24 @@ class VulnDBMetadata(Base):
 
 
 class CpeVulnerability(Base):
-    __tablename__ = 'feed_data_cpe_vulnerabilities'
+    __tablename__ = "feed_data_cpe_vulnerabilities"
 
     feed_name = Column(String(feed_name_length), primary_key=True)
     namespace_name = Column(String(namespace_length), primary_key=True)
     vulnerability_id = Column(String(vuln_id_length), primary_key=True)
-    severity = Column(Enum('Unknown', 'Negligible', 'Low', 'Medium', 'High', 'Critical', name='vulnerability_severities'), nullable=False, primary_key=True)
+    severity = Column(
+        Enum(
+            "Unknown",
+            "Negligible",
+            "Low",
+            "Medium",
+            "High",
+            "Critical",
+            name="vulnerability_severities",
+        ),
+        nullable=False,
+        primary_key=True,
+    )
     cpetype = Column(String(pkg_name_length), primary_key=True)
     vendor = Column(String(pkg_name_length), primary_key=True)
     name = Column(String(pkg_name_length), primary_key=True)
@@ -1080,32 +1400,55 @@ class CpeVulnerability(Base):
     update = Column(String(pkg_version_length), primary_key=True)
     meta = Column(String(pkg_name_length), primary_key=True)
     link = Column(String(link_length), nullable=True)
-    parent = relationship('NvdMetadata', back_populates='vulnerable_cpes')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    parent = relationship("NvdMetadata", back_populates="vulnerable_cpes")
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name, severity), refcolumns=(NvdMetadata.name, NvdMetadata.namespace_name, NvdMetadata.severity)),
-        Index('ix_feed_data_cpe_vulnerabilities_name_version', name, version),
-        Index('ix_feed_data_cpe_vulnerabilities_fk', vulnerability_id, namespace_name, severity),
-        {}
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, namespace_name, severity),
+            refcolumns=(
+                NvdMetadata.name,
+                NvdMetadata.namespace_name,
+                NvdMetadata.severity,
+            ),
+        ),
+        Index("ix_feed_data_cpe_vulnerabilities_name_version", name, version),
+        Index(
+            "ix_feed_data_cpe_vulnerabilities_fk",
+            vulnerability_id,
+            namespace_name,
+            severity,
+        ),
+        {},
     )
 
     def __repr__(self):
-        return '<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.name, self.version, self.created_at.isoformat())
+        return "<{} feed_name={}, vulnerability_id={}, name={}, version={}, created_at={}>".format(
+            self.__class__,
+            self.feed_name,
+            self.vulnerability_id,
+            self.name,
+            self.version,
+            self.created_at.isoformat(),
+        )
 
     def get_cpestring(self):
         ret = None
         try:
-            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe = ["cpe", "-", "-", "-", "-", "-", "-"]
             final_cpe[1] = self.cpetype
             final_cpe[2] = self.vendor
             final_cpe[3] = self.name
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.meta
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
 
@@ -1116,7 +1459,7 @@ class CpeVulnerability(Base):
 
 
 class CpeV2Vulnerability(Base):
-    __tablename__ = 'feed_data_cpev2_vulnerabilities'
+    __tablename__ = "feed_data_cpev2_vulnerabilities"
 
     feed_name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)
@@ -1133,32 +1476,48 @@ class CpeV2Vulnerability(Base):
     target_sw = Column(String, primary_key=True)
     target_hw = Column(String, primary_key=True)
     other = Column(String, primary_key=True)
-    parent = relationship('NvdV2Metadata', back_populates='vulnerable_cpes')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    parent = relationship("NvdV2Metadata", back_populates="vulnerable_cpes")
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(NvdV2Metadata.name, NvdV2Metadata.namespace_name)),
-        Index('ix_feed_data_cpev2_vulnerabilities_name_version', product, version),
-        Index('ix_feed_data_cpev2_vulnerabilities_fk', vulnerability_id, namespace_name),
-        {}
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, namespace_name),
+            refcolumns=(NvdV2Metadata.name, NvdV2Metadata.namespace_name),
+        ),
+        Index("ix_feed_data_cpev2_vulnerabilities_name_version", product, version),
+        Index(
+            "ix_feed_data_cpev2_vulnerabilities_fk", vulnerability_id, namespace_name
+        ),
+        {},
     )
 
     def __repr__(self):
-        return '<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.product, self.version, self.created_at.isoformat())
+        return "<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>".format(
+            self.__class__,
+            self.feed_name,
+            self.vulnerability_id,
+            self.product,
+            self.version,
+            self.created_at.isoformat(),
+        )
 
     def get_cpestring(self):
         ret = None
         try:
-            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe = ["cpe", "-", "-", "-", "-", "-", "-"]
             final_cpe[1] = "/" + self.part
             final_cpe[2] = self.vendor
             final_cpe[3] = self.product
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.other
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
 
@@ -1167,7 +1526,21 @@ class CpeV2Vulnerability(Base):
     def get_cpe23string(self):
         ret = None
         try:
-            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
+            final_cpe = [
+                "cpe",
+                "2.3",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+            ]
             final_cpe[2] = self.part
             final_cpe[3] = self.vendor
             final_cpe[4] = self.product
@@ -1179,7 +1552,7 @@ class CpeV2Vulnerability(Base):
             final_cpe[10] = self.target_sw
             final_cpe[11] = self.target_hw
             final_cpe[12] = self.other
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
 
@@ -1190,7 +1563,7 @@ class CpeV2Vulnerability(Base):
 
 
 class VulnDBCpe(Base):
-    __tablename__ = 'feed_data_vulndb_cpes'
+    __tablename__ = "feed_data_vulndb_cpes"
 
     feed_name = Column(String, primary_key=True)
     namespace_name = Column(String, primary_key=True)
@@ -1208,32 +1581,52 @@ class VulnDBCpe(Base):
     target_hw = Column(String, primary_key=True)
     other = Column(String, primary_key=True)
     is_affected = Column(Boolean, primary_key=True)
-    parent = relationship('VulnDBMetadata', back_populates='cpes')
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)  # TODO: make these server-side
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    parent = relationship("VulnDBMetadata", back_populates="cpes")
+    created_at = Column(
+        DateTime, default=datetime.datetime.utcnow
+    )  # TODO: make these server-side
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     # This is necessary for ensuring correct FK behavior against a composite foreign key
     __table_args__ = (
-        ForeignKeyConstraint(columns=(vulnerability_id, namespace_name), refcolumns=(VulnDBMetadata.name, VulnDBMetadata.namespace_name)),
-        Index('ix_feed_data_vulndb_affected_cpes_product_version', product, version),
-        Index('ix_feed_data_vulndb_affected_cpes_fk', vulnerability_id, namespace_name),
-        {}
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, namespace_name),
+            refcolumns=(VulnDBMetadata.name, VulnDBMetadata.namespace_name),
+        ),
+        Index("ix_feed_data_vulndb_affected_cpes_product_version", product, version),
+        Index("ix_feed_data_vulndb_affected_cpes_fk", vulnerability_id, namespace_name),
+        {},
     )
 
     def __repr__(self):
-        return '<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>'.format(self.__class__, self.feed_name, self.vulnerability_id, self.product, self.version, self.created_at.isoformat())
+        return "<{} feed_name={}, vulnerability_id={}, product={}, version={}, created_at={}>".format(
+            self.__class__,
+            self.feed_name,
+            self.vulnerability_id,
+            self.product,
+            self.version,
+            self.created_at.isoformat(),
+        )
 
     def get_cpestring(self):
         ret = None
         try:
             if self.sw_edition or self.target_sw or self.target_hw or self.other:
-                edition = '~{}~{}~{}~{}~{}'.format(self.edition, self.sw_edition, self.target_sw, self.target_hw, self.other)
+                edition = "~{}~{}~{}~{}~{}".format(
+                    self.edition,
+                    self.sw_edition,
+                    self.target_sw,
+                    self.target_hw,
+                    self.other,
+                )
             else:
                 edition = self.edition
 
             uri_parts = [
-                'cpe',
-                '/' + self.part,
+                "cpe",
+                "/" + self.part,
                 self.vendor,
                 self.product,
                 self.version,
@@ -1242,8 +1635,8 @@ class VulnDBCpe(Base):
                 self.language,
             ]
 
-            uri = ':'.join(uri_parts)
-            ret = uri.strip(':')  # remove any trailing :
+            uri = ":".join(uri_parts)
+            ret = uri.strip(":")  # remove any trailing :
         except:
             ret = None
 
@@ -1252,38 +1645,48 @@ class VulnDBCpe(Base):
     def get_cpe23string(self):
         ret = None
         try:
-            final_cpe = ['cpe',
-                         '2.3',
-                         self.part,
-                         self.vendor,
-                         self.product,
-                         self.version,
-                         self.update,
-                         self.edition,
-                         self.language,
-                         self.sw_edition,
-                         self.target_sw,
-                         self.target_hw,
-                         self.other]
+            final_cpe = [
+                "cpe",
+                "2.3",
+                self.part,
+                self.vendor,
+                self.product,
+                self.version,
+                self.update,
+                self.edition,
+                self.language,
+                self.sw_edition,
+                self.target_sw,
+                self.target_hw,
+                self.other,
+            ]
 
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
 
         return ret
 
     def get_fixed_in(self):
-        return [cpe.version for cpe in self.parent.cpes
-                if not cpe.is_affected and cpe.product == self.product and cpe.vendor == self.vendor and cpe.part == self.part]
+        return [
+            cpe.version
+            for cpe in self.parent.cpes
+            if not cpe.is_affected
+            and cpe.product == self.product
+            and cpe.vendor == self.vendor
+            and cpe.part == self.part
+        ]
 
 
 # Analysis Data for Images
+
 
 class ImagePackage(Base):
     """
     A package detected in an image by analysis
     """
-    __tablename__ = 'image_packages'
+
+    __tablename__ = "image_packages"
 
     image_id = Column(String(image_id_length), primary_key=True)
     image_user_id = Column(String(user_id_length), primary_key=True)
@@ -1291,8 +1694,8 @@ class ImagePackage(Base):
     name = Column(String(pkg_name_length), primary_key=True)
     version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    arch = Column(String(16), default='N/A', primary_key=True)
-    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
+    arch = Column(String(16), default="N/A", primary_key=True)
+    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
 
     pkg_path_hash = Column(String(hash_length))  # The sha256 hash of the path in hex
 
@@ -1302,29 +1705,49 @@ class ImagePackage(Base):
     like_distro = Column(String(distro_length))
 
     fullversion = Column(String(pkg_version_length))
-    release = Column(String(pkg_version_length), default='')
-    origin = Column(String, default='N/A')
-    src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
-    normalized_src_pkg = Column(String(pkg_name_length + pkg_version_length), default='N/A')
+    release = Column(String(pkg_version_length), default="")
+    origin = Column(String, default="N/A")
+    src_pkg = Column(String(pkg_name_length + pkg_version_length), default="N/A")
+    normalized_src_pkg = Column(
+        String(pkg_name_length + pkg_version_length), default="N/A"
+    )
 
     metadata_json = Column(StringJSON)
 
-    license = Column(String(1024), default='N/A')
+    license = Column(String(1024), default="N/A")
     size = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
-    vulnerabilities = relationship('ImagePackageVulnerability', back_populates='package', lazy='dynamic')
-    image = relationship('Image', back_populates='packages')
-    pkg_db_entries = relationship('ImagePackageManifestEntry', backref='package', lazy='dynamic', cascade=['all', 'delete', 'delete-orphan'])
+    vulnerabilities = relationship(
+        "ImagePackageVulnerability", back_populates="package", lazy="dynamic"
+    )
+    image = relationship("Image", back_populates="packages")
+    pkg_db_entries = relationship(
+        "ImagePackageManifestEntry",
+        backref="package",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id', 'images.user_id')),
-                             Index('ix_image_package_distronamespace', name, version, distro_name, distro_version, normalized_src_pkg),
-                             # TODO: add this index for feed sync performance, needs to be re-tested with new package usage
-                             #  Index('ix_image_package_distro_pkgs', distro_name, distro_version, name, normalized_src_pkg, version),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        Index(
+            "ix_image_package_distronamespace",
+            name,
+            version,
+            distro_name,
+            distro_version,
+            normalized_src_pkg,
+        ),
+        # TODO: add this index for feed sync performance, needs to be re-tested with new package usage
+        #  Index('ix_image_package_distro_pkgs', distro_name, distro_version, name, normalized_src_pkg, version),
+        {},
     )
 
     _distro_namespace = None
@@ -1338,7 +1761,7 @@ class ImagePackage(Base):
     @property
     def distro_namespace(self):
         if self.distro_name and self.distro_version:
-            return self.distro_name + ':' + self.distro_version
+            return self.distro_name + ":" + self.distro_version
         else:
             return None
 
@@ -1346,14 +1769,14 @@ class ImagePackage(Base):
         if not self.metadata_json:
             return None
 
-        filebuf = self.metadata_json.get('pom.properties', "")
+        filebuf = self.metadata_json.get("pom.properties", "")
         props = {}
         for line in filebuf.splitlines():
-            #line = anchore_engine.utils.ensure_str(line)
+            # line = anchore_engine.utils.ensure_str(line)
             if not re.match(r"\s*(#.*)?$", line):
-                kv = line.split('=')
+                kv = line.split("=")
                 key = kv[0].strip()
-                value = '='.join(kv[1:]).strip()
+                value = "=".join(kv[1:]).strip()
                 props[key] = value
         return props
 
@@ -1364,10 +1787,14 @@ class ImagePackage(Base):
         :param package_obj:
         :return: list of Vulnerability objects
         """
-        #ts = time.time()
+        # ts = time.time()
 
-        #package_obj = self
-        log.debug('Finding vulnerabilities for package: {} - {}'.format(self.name, self.version))
+        # package_obj = self
+        log.debug(
+            "Finding vulnerabilities for package: {} - {}".format(
+                self.name, self.version
+            )
+        )
 
         matches = []
         db = get_thread_scoped_session()
@@ -1377,81 +1804,127 @@ class ImagePackage(Base):
 
         pkgkey = pkgversion = None
         likematch = None
-        if self.pkg_type in ['java', 'maven']:
+        if self.pkg_type in ["java", "maven"]:
             # search for maven hits
             if self.metadata_json:
-                pombuf = self.metadata_json.get('pom.properties', "")
+                pombuf = self.metadata_json.get("pom.properties", "")
                 if pombuf:
                     pomprops = self.get_pom_properties()
-                    pkgkey = "{}:{}".format(pomprops.get('groupId'), pomprops.get('artifactId'))
-                    pkgversion = pomprops.get('version', None)
-                    likematch = '%java%'
+                    pkgkey = "{}:{}".format(
+                        pomprops.get("groupId"), pomprops.get("artifactId")
+                    )
+                    pkgversion = pomprops.get("version", None)
+                    likematch = "%java%"
                     do_langscan = True
 
-        elif self.pkg_type in ['ruby', 'gem', 'npm', 'js', 'python', 'nuget', 'dotnet', 'binary', 'go']:
+        elif self.pkg_type in [
+            "ruby",
+            "gem",
+            "npm",
+            "js",
+            "python",
+            "nuget",
+            "dotnet",
+            "binary",
+            "go",
+        ]:
             pkgkey = self.name
             pkgversion = self.version
-            if self.pkg_type in ['ruby', 'gem']:
-                likematch = '%gem%'
+            if self.pkg_type in ["ruby", "gem"]:
+                likematch = "%gem%"
                 do_langscan = True
-            elif self.pkg_type in ['npm', 'js']:
-                likematch = '%npm%'
+            elif self.pkg_type in ["npm", "js"]:
+                likematch = "%npm%"
                 do_langscan = True
-            elif self.pkg_type in ['python']:
-                likematch = '%python%'
+            elif self.pkg_type in ["python"]:
+                likematch = "%python%"
                 do_langscan = True
-            elif self.pkg_type in ['nuget', 'dotnet']:
-                likematch = '%nuget%'
+            elif self.pkg_type in ["nuget", "dotnet"]:
+                likematch = "%nuget%"
                 do_langscan = True
-            elif self.pkg_type in ['go']:
-                likematch = '%go%'
-                do_langscan = True                
-            elif self.pkg_type in ['binary']:
-                likematch = '%binary%'
+            elif self.pkg_type in ["go"]:
+                likematch = "%go%"
+                do_langscan = True
+            elif self.pkg_type in ["binary"]:
+                likematch = "%binary%"
                 do_langscan = True
         else:
             do_osscan = True
 
         if do_langscan:
-            semvercount = db.query(FixedArtifact).filter(FixedArtifact.version_format == 'semver').count()
+            semvercount = (
+                db.query(FixedArtifact)
+                .filter(FixedArtifact.version_format == "semver")
+                .count()
+            )
             if semvercount:
                 nslang = self.pkg_type
-                log.debug("performing LANGPACK vuln scan {} - {}".format(pkgkey, pkgversion))
+                log.debug(
+                    "performing LANGPACK vuln scan {} - {}".format(pkgkey, pkgversion)
+                )
                 if pkgkey and pkgversion and likematch:
-                    candidates = db.query(FixedArtifact).filter(FixedArtifact.name == pkgkey).filter(FixedArtifact.version_format == 'semver').filter(FixedArtifact.namespace_name.like(likematch))
+                    candidates = (
+                        db.query(FixedArtifact)
+                        .filter(FixedArtifact.name == pkgkey)
+                        .filter(FixedArtifact.version_format == "semver")
+                        .filter(FixedArtifact.namespace_name.like(likematch))
+                    )
                     for candidate in candidates:
-                        if (candidate.vulnerability_id not in [x.vulnerability_id for x in matches]) and (langpack_compare_versions(candidate.version, pkgversion, language=nslang)):
+                        if (
+                            candidate.vulnerability_id
+                            not in [x.vulnerability_id for x in matches]
+                        ) and (
+                            langpack_compare_versions(
+                                candidate.version, pkgversion, language=nslang
+                            )
+                        ):
                             matches.append(candidate)
 
         if do_osscan:
             log.debug("performing OS vuln scan {} - {}".format(self.name, self.version))
 
-            dist = DistroNamespace(self.distro_name, self.distro_version, self.like_distro)
+            dist = DistroNamespace(
+                self.distro_name, self.distro_version, self.like_distro
+            )
             namespace_name_to_use = dist.namespace_name
 
             # All options are the same, no need to loop
             if len(set(dist.like_namespace_names)) > 1:
                 # Look for exact match first
-                if not db.query(FeedGroupMetadata).filter(FeedGroupMetadata.name == dist.namespace_name).first():
+                if (
+                    not db.query(FeedGroupMetadata)
+                    .filter(FeedGroupMetadata.name == dist.namespace_name)
+                    .first()
+                ):
                     # Check all options for distro/flavor mappings, stop at first with records present
                     for namespace_name in dist.like_namespace_names:
-                        record_count = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
+                        record_count = (
+                            db.query(Vulnerability)
+                            .filter(Vulnerability.namespace_name == namespace_name)
+                            .count()
+                        )
                         if record_count > 0:
                             namespace_name_to_use = namespace_name
                             break
 
-            fix_candidates, vulnerable_candidates = self.candidates_for_package(namespace_name_to_use)
+            fix_candidates, vulnerable_candidates = self.candidates_for_package(
+                namespace_name_to_use
+            )
 
             for candidate in fix_candidates:
                 # De-dup evaluations based on the underlying vulnerability_id. For packages where src has many binary builds, once we have a match we have a match.
-                if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_but_not_fixed(self):
+                if candidate.vulnerability_id not in [
+                    x.vulnerability_id for x in matches
+                ] and candidate.match_but_not_fixed(self):
                     matches.append(candidate)
 
             for candidate in vulnerable_candidates:
-               if candidate.vulnerability_id not in [x.vulnerability_id for x in matches] and candidate.match_and_vulnerable(self):
-                   matches.append(candidate)
+                if candidate.vulnerability_id not in [
+                    x.vulnerability_id for x in matches
+                ] and candidate.match_and_vulnerable(self):
+                    matches.append(candidate)
 
-        #log.debug("TIMER DB: {}".format(time.time() - ts))
+        # log.debug("TIMER DB: {}".format(time.time() - ts))
         return matches
 
     def candidates_for_package(self, distro_namespace=None):
@@ -1471,14 +1944,31 @@ class ImagePackage(Base):
         else:
             namespace_name = distro_namespace
 
+        # Match the namespace and package name or src pkg name
+        fix_candidates = (
+            db.query(FixedArtifact)
+            .filter(
+                FixedArtifact.namespace_name == namespace_name,
+                or_(
+                    FixedArtifact.name == package_obj.name,
+                    FixedArtifact.name == package_obj.normalized_src_pkg,
+                ),
+            )
+            .all()
+        )
 
         # Match the namespace and package name or src pkg name
-        fix_candidates = db.query(FixedArtifact).filter(FixedArtifact.namespace_name == namespace_name,
-                                                            or_(FixedArtifact.name == package_obj.name, FixedArtifact.name == package_obj.normalized_src_pkg)).all()
-
-        # Match the namespace and package name or src pkg name
-        vulnerable_candidates = db.query(VulnerableArtifact).filter(VulnerableArtifact.namespace_name == namespace_name,
-                                                                    or_(VulnerableArtifact.name == package_obj.name, VulnerableArtifact.name == package_obj.normalized_src_pkg)).all()
+        vulnerable_candidates = (
+            db.query(VulnerableArtifact)
+            .filter(
+                VulnerableArtifact.namespace_name == namespace_name,
+                or_(
+                    VulnerableArtifact.name == package_obj.name,
+                    VulnerableArtifact.name == package_obj.normalized_src_pkg,
+                ),
+            )
+            .all()
+        )
 
         return fix_candidates, vulnerable_candidates
 
@@ -1488,7 +1978,8 @@ class ImagePackageManifestEntry(Base):
     An entry from the package manifest (e.g. rpm, deb, apk) for verifying package contents in a generic way.
 
     """
-    __tablename__ = 'image_package_db_entries'
+
+    __tablename__ = "image_package_db_entries"
 
     # Package key
     image_id = Column(String(image_id_length), primary_key=True)
@@ -1496,37 +1987,62 @@ class ImagePackageManifestEntry(Base):
     pkg_name = Column(String(pkg_name_length), primary_key=True)
     pkg_version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    pkg_arch = Column(String(16), default='N/A', primary_key=True)
-    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
+    pkg_arch = Column(String(16), default="N/A", primary_key=True)
+    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
 
     # File path
     file_path = Column(String(file_path_length), primary_key=True)
 
     is_config_file = Column(Boolean, nullable=True)
-    digest = Column(String(digest_length)) # Will include a prefix: sha256, sha1, md5 etc.
+    digest = Column(
+        String(digest_length)
+    )  # Will include a prefix: sha256, sha1, md5 etc.
     digest_algorithm = Column(String(8), nullable=True)
     file_group_name = Column(String, nullable=True)
     file_user_name = Column(String, nullable=True)
-    mode = Column(Integer, nullable=True) # Mode as an integer in decimal, not octal
+    mode = Column(Integer, nullable=True)  # Mode as an integer in decimal, not octal
     size = Column(Integer, nullable=True)
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path),
-                             refcolumns=('image_packages.image_id', 'image_packages.image_user_id', 'image_packages.name', 'image_packages.version', 'image_packages.pkg_type', 'image_packages.arch', 'image_packages.pkg_path')),
-        {}
+        ForeignKeyConstraint(
+            columns=(
+                image_id,
+                image_user_id,
+                pkg_name,
+                pkg_version,
+                pkg_type,
+                pkg_arch,
+                pkg_path,
+            ),
+            refcolumns=(
+                "image_packages.image_id",
+                "image_packages.image_user_id",
+                "image_packages.name",
+                "image_packages.version",
+                "image_packages.pkg_type",
+                "image_packages.arch",
+                "image_packages.pkg_path",
+            ),
+        ),
+        {},
     )
 
 
-NPM_SEQ = Sequence('image_npms_seq_id_seq', metadata=Base.metadata)
+NPM_SEQ = Sequence("image_npms_seq_id_seq", metadata=Base.metadata)
+
+
 class ImageNpm(Base):
     """
     NOTE: This is a deprecated class used for legacy support and upgrade. Image NPMs are now stored in the ImagePackage type
     """
-    __tablename__ = 'image_npms'
+
+    __tablename__ = "image_npms"
 
     image_user_id = Column(String(user_id_length), primary_key=True)
     image_id = Column(String(image_id_length), primary_key=True)
-    path_hash = Column(String(hash_length), primary_key=True)  # The sha256 hash of the path in hex
+    path_hash = Column(
+        String(hash_length), primary_key=True
+    )  # The sha256 hash of the path in hex
     path = Column(String(file_path_length))
     name = Column(String(pkg_name_length))
     origins_json = Column(StringJSON)
@@ -1534,32 +2050,42 @@ class ImageNpm(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer, NPM_SEQ, server_default=NPM_SEQ.next_value()) # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(
+        Integer, NPM_SEQ, server_default=NPM_SEQ.next_value()
+    )  # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
-    image = relationship('Image', back_populates='npms')
+    image = relationship("Image", back_populates="npms")
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id','images.user_id')),
-        Index('idx_npm_seq', seq_id),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        Index("idx_npm_seq", seq_id),
+        {},
     )
 
     def __repr__(self):
-        return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
+        return "<{} user_id={}, img_id={}, name={}>".format(
+            self.__class__, self.image_user_id, self.image_id, self.name
+        )
 
 
-GEM_SEQ = Sequence('image_gems_seq_id_seq', metadata=Base.metadata)
+GEM_SEQ = Sequence("image_gems_seq_id_seq", metadata=Base.metadata)
+
+
 class ImageGem(Base):
     """
     NOTE: This is a deprecated class used for legacy support. Gems are now loaded as types of packages for the ImagePackage class
     """
 
-    __tablename__ = 'image_gems'
+    __tablename__ = "image_gems"
 
     image_user_id = Column(String(user_id_length), primary_key=True)
     image_id = Column(String(image_id_length), primary_key=True)
-    path_hash = Column(String(hash_length), primary_key=True)  # The sha256 hash of the path in hex
+    path_hash = Column(
+        String(hash_length), primary_key=True
+    )  # The sha256 hash of the path in hex
     path = Column(String(file_path_length))
     name = Column(String(pkg_name_length))
     files_json = Column(StringJSON)
@@ -1568,27 +2094,35 @@ class ImageGem(Base):
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
     latest = Column(String(pkg_version_length))
-    seq_id = Column(Integer, GEM_SEQ, server_default=GEM_SEQ.next_value()) # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
+    seq_id = Column(
+        Integer, GEM_SEQ, server_default=GEM_SEQ.next_value()
+    )  # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
 
-    image = relationship('Image', back_populates='gems')
+    image = relationship("Image", back_populates="gems")
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id', 'images.user_id')),
-        Index('idx_gem_seq', seq_id),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        Index("idx_gem_seq", seq_id),
+        {},
     )
 
     def __repr__(self):
-        return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
+        return "<{} user_id={}, img_id={}, name={}>".format(
+            self.__class__, self.image_user_id, self.image_id, self.name
+        )
 
 
 class ImageCpe(Base):
-    __tablename__ = 'image_cpes'
+    __tablename__ = "image_cpes"
 
     image_user_id = Column(String(user_id_length), primary_key=True)
     image_id = Column(String(image_id_length), primary_key=True)
-    pkg_type = Column(String(pkg_type_length), primary_key=True)  # java, python, gem, npm, etc
+    pkg_type = Column(
+        String(pkg_type_length), primary_key=True
+    )  # java, python, gem, npm, etc
 
     pkg_path = Column(String(file_path_length), primary_key=True)
     cpetype = Column(String(pkg_name_length), primary_key=True)
@@ -1598,17 +2132,21 @@ class ImageCpe(Base):
     update = Column(String(pkg_version_length), primary_key=True)
     meta = Column(String(pkg_name_length), primary_key=True)
 
-    image = relationship('Image', back_populates='cpes')
+    image = relationship("Image", back_populates="cpes")
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id','images.user_id')),
-        Index('ix_image_cpe_user_img', image_id, image_user_id),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        Index("ix_image_cpe_user_img", image_id, image_user_id),
+        {},
     )
 
     def __repr__(self):
-        return '<{} user_id={}, img_id={}, name={}>'.format(self.__class__, self.image_user_id, self.image_id, self.name)
+        return "<{} user_id={}, img_id={}, name={}>".format(
+            self.__class__, self.image_user_id, self.image_id, self.name
+        )
 
     def fixed_in(self):
         return None
@@ -1616,14 +2154,14 @@ class ImageCpe(Base):
     def get_cpestring(self):
         ret = None
         try:
-            final_cpe = ['cpe', '-', '-', '-', '-', '-', '-']
+            final_cpe = ["cpe", "-", "-", "-", "-", "-", "-"]
             final_cpe[1] = self.cpetype
             final_cpe[2] = self.vendor
             final_cpe[3] = self.name
             final_cpe[4] = self.version
             final_cpe[5] = self.update
             final_cpe[6] = self.meta
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
 
@@ -1632,32 +2170,48 @@ class ImageCpe(Base):
     def get_cpe23string(self):
         ret = None
         try:
-            final_cpe = ['cpe', '2.3', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-']
+            final_cpe = [
+                "cpe",
+                "2.3",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+            ]
             final_cpe[2] = self.cpetype[1]
             final_cpe[3] = self.vendor
             final_cpe[4] = self.name
             final_cpe[5] = self.version
             final_cpe[6] = self.update
-            #final_cpe[7] = self.edition
-            #final_cpe[8] = self.language
-            #final_cpe[9] = self.sw_edition
-            #final_cpe[10] = self.target_sw
-            #final_cpe[11] = self.target_hw
+            # final_cpe[7] = self.edition
+            # final_cpe[8] = self.language
+            # final_cpe[9] = self.sw_edition
+            # final_cpe[10] = self.target_sw
+            # final_cpe[11] = self.target_hw
             final_cpe[12] = self.meta
-            ret = ':'.join(final_cpe)
+            ret = ":".join(final_cpe)
         except:
             ret = None
         return ret
+
 
 class FilesystemAnalysis(Base):
     """
     A unified and compressed record of the filesystem-level entries in an image. An alternative to the FilesystemItem approach,
     this allows much faster index operations due to a smaller index, but no queries into the content of the filesystems themselves.
     """
-    __tablename__ = 'image_fs_analysis_dump'
+
+    __tablename__ = "image_fs_analysis_dump"
 
     compression_level = 6
-    supported_algorithms = ['gzip']
+    supported_algorithms = ["gzip"]
 
     image_id = Column(String(image_id_length), primary_key=True)
     image_user_id = Column(String(user_id_length), primary_key=True)
@@ -1669,19 +2223,23 @@ class FilesystemAnalysis(Base):
     directory_count = Column(Integer, default=0)
     non_packaged_count = Column(Integer, default=0)
     suid_count = Column(Integer, default=0)
-    image = relationship('Image', back_populates='fs')
-    compression_algorithm = Column(String(32), default='gzip')
+    image = relationship("Image", back_populates="fs")
+    compression_algorithm = Column(String(32), default="gzip")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
-    image = relationship('Image', back_populates='fs')
+    image = relationship("Image", back_populates="fs")
 
     _files = None
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id', 'images.user_id')),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        {},
     )
 
     # NOTE: operations on the content of the dict itself will not trigger dirty updates and a flush to db,
@@ -1699,10 +2257,16 @@ class FilesystemAnalysis(Base):
         self._files_from_json(self._files)
 
     def _files_json(self):
-        if self.compression_algorithm == 'gzip':
-            return json.loads(ensure_str(zlib.decompress(ensure_bytes(self.compressed_file_json))))
+        if self.compression_algorithm == "gzip":
+            return json.loads(
+                ensure_str(zlib.decompress(ensure_bytes(self.compressed_file_json)))
+            )
         else:
-            raise ValueError('Got unexpected compresssion algorithm value: {}. Expected {}'.format(self.compression_algorithm, self.supported_algorithms))
+            raise ValueError(
+                "Got unexpected compresssion algorithm value: {}. Expected {}".format(
+                    self.compression_algorithm, self.supported_algorithms
+                )
+            )
 
     def _files_from_json(self, file_json):
         """
@@ -1710,9 +2274,11 @@ class FilesystemAnalysis(Base):
         :param file_json:
         :return:
         """
-        self.compressed_file_json = zlib.compress(json.dumps(file_json).encode('utf-8'))
-        self.compression_algorithm = 'gzip'
-        self.compressed_content_hash = hashlib.sha256(self.compressed_file_json).hexdigest()
+        self.compressed_file_json = zlib.compress(json.dumps(file_json).encode("utf-8"))
+        self.compression_algorithm = "gzip"
+        self.compressed_content_hash = hashlib.sha256(
+            self.compressed_file_json
+        ).hexdigest()
 
 
 class AnalysisArtifact(Base):
@@ -1722,26 +2288,44 @@ class AnalysisArtifact(Base):
 
     """
 
-    __tablename__ = 'image_analysis_artifacts'
+    __tablename__ = "image_analysis_artifacts"
 
     image_id = Column(String(image_id_length), primary_key=True)
     image_user_id = Column(String(user_id_length), primary_key=True)
-    analyzer_id = Column(String(128), primary_key=True) # The name of the analyzer (e.g. layer_info)
-    analyzer_artifact = Column(String(128), primary_key=True) # The analyzer artifact name (e.g. layers_to_dockerfile)
-    analyzer_type = Column(String(128), primary_key=True) # The analyzer type (e.g. base, user, or extra)
+    analyzer_id = Column(
+        String(128), primary_key=True
+    )  # The name of the analyzer (e.g. layer_info)
+    analyzer_artifact = Column(
+        String(128), primary_key=True
+    )  # The analyzer artifact name (e.g. layers_to_dockerfile)
+    analyzer_type = Column(
+        String(128), primary_key=True
+    )  # The analyzer type (e.g. base, user, or extra)
     artifact_key = Column(String(256), primary_key=True)
     str_value = Column(Text)
     json_value = Column(StringJSON)
     binary_value = Column(LargeBinary)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
 
-    image = relationship('Image', back_populates='analysis_artifacts')
+    image = relationship("Image", back_populates="analysis_artifacts")
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(image_id, image_user_id),
-                             refcolumns=('images.id', 'images.user_id')),
-        {}
+        ForeignKeyConstraint(
+            columns=(image_id, image_user_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        {},
     )
 
 
@@ -1750,19 +2334,43 @@ class Image(Base):
     The core image analysis record. Contains metadata about the image itself.
 
     """
-    __tablename__ = 'images'
+
+    __tablename__ = "images"
 
     id = Column(String(image_id_length), primary_key=True)
-    user_id = Column(String(user_id_length), primary_key=True)  # Images are namespaced in the system to prevent overlap
+    user_id = Column(
+        String(user_id_length), primary_key=True
+    )  # Images are namespaced in the system to prevent overlap
 
-    state = Column(Enum('failed', 'initializing', 'analyzing', 'analyzed', name='image_states'),
-                   default='initializing')  # For now we only load analyzed images, no progress tracking
-    anchore_type = Column(Enum('undefined', 'base', 'application', 'user', 'intermediate', name='anchore_image_types'),
-                          default='undefined')  # TODO: verify if base or undefined should be default
+    state = Column(
+        Enum("failed", "initializing", "analyzing", "analyzed", name="image_states"),
+        default="initializing",
+    )  # For now we only load analyzed images, no progress tracking
+    anchore_type = Column(
+        Enum(
+            "undefined",
+            "base",
+            "application",
+            "user",
+            "intermediate",
+            name="anchore_image_types",
+        ),
+        default="undefined",
+    )  # TODO: verify if base or undefined should be default
 
     size = Column(BigInteger)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
 
     digest = Column(String(digest_length))
     distro_name = Column(String(distro_length))
@@ -1776,28 +2384,66 @@ class Image(Base):
     familytree_json = Column(StringJSON)
     layer_info_json = Column(StringJSON)
     dockerfile_contents = Column(Text)
-    dockerfile_mode = Column(String(16), default='Guessed')
+    dockerfile_mode = Column(String(16), default="Guessed")
 
-    packages = relationship('ImagePackage', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
-    fs = relationship('FilesystemAnalysis', uselist=False, lazy='select', cascade=['all','delete','delete-orphan'])
+    packages = relationship(
+        "ImagePackage",
+        back_populates="image",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
+    fs = relationship(
+        "FilesystemAnalysis",
+        uselist=False,
+        lazy="select",
+        cascade=["all", "delete", "delete-orphan"],
+    )
 
     # TODO - move these to ImagePackage records instead of individual tables
-    gems = relationship('ImageGem', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
-    npms = relationship('ImageNpm', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+    gems = relationship(
+        "ImageGem",
+        back_populates="image",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
+    npms = relationship(
+        "ImageNpm",
+        back_populates="image",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
 
-    cpes = relationship('ImageCpe', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
-    analysis_artifacts = relationship('AnalysisArtifact', back_populates='image', lazy='dynamic', cascade=['all','delete', 'delete-orphan'])
+    cpes = relationship(
+        "ImageCpe",
+        back_populates="image",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
+    analysis_artifacts = relationship(
+        "AnalysisArtifact",
+        back_populates="image",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
 
     @property
     def distro_namespace(self):
         if self.distro_name and self.distro_version:
-            return self.distro_name + ':' + self.distro_version
+            return self.distro_name + ":" + self.distro_version
         else:
             return None
 
     def get_packages_by_type(self, pkg_type):
         db = get_thread_scoped_session()
-        typed_packages = db.query(ImagePackage).filter(ImagePackage.image_id==self.id, ImagePackage.image_user_id==self.user_id, ImagePackage.pkg_type==pkg_type).all()
+        typed_packages = (
+            db.query(ImagePackage)
+            .filter(
+                ImagePackage.image_id == self.id,
+                ImagePackage.image_user_id == self.user_id,
+                ImagePackage.pkg_type == pkg_type,
+            )
+            .all()
+        )
         return typed_packages
 
     def vulnerabilities(self):
@@ -1806,9 +2452,14 @@ class Image(Base):
         :return: list of ImagePackageVulnerabilities
         """
         db = get_thread_scoped_session()
-        known_vulnerabilities = db.query(ImagePackageVulnerability).filter(
-            ImagePackageVulnerability.pkg_user_id == self.user_id,
-            ImagePackageVulnerability.pkg_image_id == self.id).all()
+        known_vulnerabilities = (
+            db.query(ImagePackageVulnerability)
+            .filter(
+                ImagePackageVulnerability.pkg_user_id == self.user_id,
+                ImagePackageVulnerability.pkg_image_id == self.id,
+            )
+            .all()
+        )
         return known_vulnerabilities
 
     def cpe_vulnerabilities(self, _nvd_cls, _cpe_cls):
@@ -1820,21 +2471,31 @@ class Image(Base):
         db = get_thread_scoped_session()
         if not _nvd_cls or not _cpe_cls:
             _nvd_cls, _cpe_cls = select_nvd_classes(db)
-        cpe_vulnerabilities = db.query(ImageCpe, _cpe_cls).filter(
-            ImageCpe.image_id == self.id,
-            ImageCpe.image_user_id == self.user_id,
-            func.lower(ImageCpe.name) == _cpe_cls.name,
-            ImageCpe.version == _cpe_cls.version
-        ).options(joinedload(_cpe_cls.parent, innerjoin=True)).all()
+        cpe_vulnerabilities = (
+            db.query(ImageCpe, _cpe_cls)
+            .filter(
+                ImageCpe.image_id == self.id,
+                ImageCpe.image_user_id == self.user_id,
+                func.lower(ImageCpe.name) == _cpe_cls.name,
+                ImageCpe.version == _cpe_cls.version,
+            )
+            .options(joinedload(_cpe_cls.parent, innerjoin=True))
+            .all()
+        )
 
         # vulndb is similar to nvd cpes, add them here
         cpe_vulnerabilities.extend(
-            db.query(ImageCpe, VulnDBCpe).filter(
-                ImageCpe.image_id == self.id, ImageCpe.image_user_id == self.user_id,
+            db.query(ImageCpe, VulnDBCpe)
+            .filter(
+                ImageCpe.image_id == self.id,
+                ImageCpe.image_user_id == self.user_id,
                 func.lower(ImageCpe.name) == VulnDBCpe.name,
                 ImageCpe.version == VulnDBCpe.version,
-                VulnDBCpe.is_affected.is_(True)
-            ).options(joinedload(VulnDBCpe.parent, innerjoin=True)).all())
+                VulnDBCpe.is_affected.is_(True),
+            )
+            .options(joinedload(VulnDBCpe.parent, innerjoin=True))
+            .all()
+        )
 
         return cpe_vulnerabilities
 
@@ -1851,7 +2512,14 @@ class Image(Base):
             return db.query(Image).get((base_id, self.user_id))
 
     def __repr__(self):
-        return '<Image user_id={}, id={}, distro={}, distro_version={}, created_at={}, last_modified={}>'.format(self.user_id, self.id, self.distro_name, self.distro_version, self.created_at, self.last_modified)
+        return "<Image user_id={}, id={}, distro={}, distro_version={}, created_at={}, last_modified={}>".format(
+            self.user_id,
+            self.id,
+            self.distro_name,
+            self.distro_version,
+            self.created_at,
+            self.last_modified,
+        )
 
 
 class ImagePackageVulnerability(Base):
@@ -1859,28 +2527,50 @@ class ImagePackageVulnerability(Base):
     Provides a mapping between ImagePackage and Vulnerabilities
     """
 
-    __tablename__ = 'image_package_vulnerabilities'
+    __tablename__ = "image_package_vulnerabilities"
 
     pkg_user_id = Column(String(user_id_length), primary_key=True)
     pkg_image_id = Column(String(image_id_length), primary_key=True)
     pkg_name = Column(String(pkg_name_length), primary_key=True)
     pkg_version = Column(String(pkg_version_length), primary_key=True)
     pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    pkg_arch = Column(String(16), default='N/A', primary_key=True)
+    pkg_arch = Column(String(16), default="N/A", primary_key=True)
 
-    pkg_path = Column(String(file_path_length), default='pkgdb', primary_key=True)
+    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
 
     vulnerability_id = Column(String(vuln_id_length), primary_key=True)
     vulnerability_namespace_name = Column(String(namespace_length))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    package = relationship('ImagePackage', back_populates='vulnerabilities')
-    vulnerability = relationship('Vulnerability')
+    package = relationship("ImagePackage", back_populates="vulnerabilities")
+    vulnerability = relationship("Vulnerability")
 
     __table_args__ = (
-        ForeignKeyConstraint(columns=(pkg_image_id, pkg_user_id, pkg_name, pkg_version, pkg_type, pkg_arch, pkg_path), refcolumns=(ImagePackage.image_id, ImagePackage.image_user_id, ImagePackage.name, ImagePackage.version, ImagePackage.pkg_type, ImagePackage.arch, ImagePackage.pkg_path)),
-        ForeignKeyConstraint(columns=(vulnerability_id, vulnerability_namespace_name), refcolumns=(Vulnerability.id, Vulnerability.namespace_name)),
-        {}
+        ForeignKeyConstraint(
+            columns=(
+                pkg_image_id,
+                pkg_user_id,
+                pkg_name,
+                pkg_version,
+                pkg_type,
+                pkg_arch,
+                pkg_path,
+            ),
+            refcolumns=(
+                ImagePackage.image_id,
+                ImagePackage.image_user_id,
+                ImagePackage.name,
+                ImagePackage.version,
+                ImagePackage.pkg_type,
+                ImagePackage.arch,
+                ImagePackage.pkg_path,
+            ),
+        ),
+        ForeignKeyConstraint(
+            columns=(vulnerability_id, vulnerability_namespace_name),
+            refcolumns=(Vulnerability.id, Vulnerability.namespace_name),
+        ),
+        {},
     )
 
     def fix_candidates(self) -> list:
@@ -1934,19 +2624,25 @@ class ImagePackageVulnerability(Base):
         :return: the fixed in version string if any or None if not found
         """
         fixed_in = self.fixed_artifact()
-        fix_available_in = fixed_in.version if fixed_in and fixed_in.version != 'None' else None
+        fix_available_in = (
+            fixed_in.version if fixed_in and fixed_in.version != "None" else None
+        )
 
         # NOTE: semver version format indicates a range where package
         # is vulnerable (as opposed to a value where anythng < value
         # is vulnerable, and the fix itself is known to exist), so we prepend a 'not' to indicate 'fix is available, if not in semver range'
-        if fixed_in and fixed_in.version_format in ['semver']:
+        if fixed_in and fixed_in.version_format in ["semver"]:
             # Github Advisories can add the real version where there is a fix if any.
             metadata = fixed_in.fix_metadata or {}
-            first_patched_version = metadata.get('first_patched_version')
+            first_patched_version = metadata.get("first_patched_version")
             if first_patched_version:
                 return first_patched_version
 
-            if fix_available_in and fixed_in.fix_metadata and fixed_in.fix_metadata.get('fix_exists', False):
+            if (
+                fix_available_in
+                and fixed_in.fix_metadata
+                and fixed_in.fix_metadata.get("fix_exists", False)
+            ):
                 fix_available_in = "! {}".format(fix_available_in)
             else:
                 fix_available_in = None
@@ -1972,19 +2668,60 @@ class ImagePackageVulnerability(Base):
         rec.pkg_user_id = package_obj.image_user_id
         rec.pkg_version = package_obj.version
         rec.pkg_path = package_obj.pkg_path
-        rec.vulnerability_id = vuln_obj.vulnerability_id if hasattr(vuln_obj, 'vulnerability_id') else vuln_obj.id
+        rec.vulnerability_id = (
+            vuln_obj.vulnerability_id
+            if hasattr(vuln_obj, "vulnerability_id")
+            else vuln_obj.id
+        )
         rec.vulnerability_namespace_name = vuln_obj.namespace_name
         return rec
 
     def __repr__(self):
-        return '<ImagePackageVulnerability img_user_id={}, img_id={}, pkg_name={}, pkg_version={}, vuln_id={}, vuln_namespace={}, pkg_path={}>'.format(self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.vulnerability_id, self.vulnerability_namespace_name, self.pkg_path)
+        return "<ImagePackageVulnerability img_user_id={}, img_id={}, pkg_name={}, pkg_version={}, vuln_id={}, vuln_namespace={}, pkg_path={}>".format(
+            self.pkg_user_id,
+            self.pkg_image_id,
+            self.pkg_name,
+            self.pkg_version,
+            self.vulnerability_id,
+            self.vulnerability_namespace_name,
+            self.pkg_path,
+        )
 
     # To support hash functions like set operations, ensure these align with primary key comparisons to ensure two identical records would match as such.
     def __eq__(self, other):
-        return isinstance(other, type(self)) and (self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path) == (other.pkg_user_id, other.pkg_image_id, other.pkg_name, other.pkg_version, other.pkg_type, other.pkg_arch, other.vulnerability_id, other.pkg_path)
+        return isinstance(other, type(self)) and (
+            self.pkg_user_id,
+            self.pkg_image_id,
+            self.pkg_name,
+            self.pkg_version,
+            self.pkg_type,
+            self.pkg_arch,
+            self.vulnerability_id,
+            self.pkg_path,
+        ) == (
+            other.pkg_user_id,
+            other.pkg_image_id,
+            other.pkg_name,
+            other.pkg_version,
+            other.pkg_type,
+            other.pkg_arch,
+            other.vulnerability_id,
+            other.pkg_path,
+        )
 
     def __hash__(self):
-        return hash((self.pkg_user_id, self.pkg_image_id, self.pkg_name, self.pkg_version, self.pkg_type, self.pkg_arch, self.vulnerability_id, self.pkg_path))
+        return hash(
+            (
+                self.pkg_user_id,
+                self.pkg_image_id,
+                self.pkg_name,
+                self.pkg_version,
+                self.pkg_type,
+                self.pkg_arch,
+                self.vulnerability_id,
+                self.pkg_path,
+            )
+        )
 
 
 class IDistroMapper(object):
@@ -2013,7 +2750,9 @@ class IDistroMapper(object):
     def _map_name(self, distro_name, distro_version, like_distro, found_mapping=None):
         pass
 
-    def _map_version(self, distro_name, distro_version, like_distro, found_mapping=None):
+    def _map_version(
+        self, distro_name, distro_version, like_distro, found_mapping=None
+    ):
         pass
 
     def _map_flavor(self, distro_name, distro_version, like_distro, found_mapping=None):
@@ -2036,15 +2775,33 @@ class VersionPreservingDistroMapper(IDistroMapper):
         flavor = None
 
         try:
-            distro = self._map_name(self.from_distro, self.from_version, self.from_like_distro, self.found_mapping)
-            flavor = self._map_flavor(self.from_distro, self.from_version, self.from_like_distro, self.found_mapping)
-            versions = self._map_version(self.from_distro, self.from_version, self.from_like_distro, self.found_mapping)
-            return [DistroTuple(distro=distro, version=v, flavor=flavor) for v in versions]
+            distro = self._map_name(
+                self.from_distro,
+                self.from_version,
+                self.from_like_distro,
+                self.found_mapping,
+            )
+            flavor = self._map_flavor(
+                self.from_distro,
+                self.from_version,
+                self.from_like_distro,
+                self.found_mapping,
+            )
+            versions = self._map_version(
+                self.from_distro,
+                self.from_version,
+                self.from_like_distro,
+                self.found_mapping,
+            )
+            return [
+                DistroTuple(distro=distro, version=v, flavor=flavor) for v in versions
+            ]
         except:
             log.exception(
-                'Failed to fully construct the mapped distro from: {}, {}, {}'.format(self.from_distro,
-                                                                                      self.from_version,
-                                                                                      self.from_like_distro))
+                "Failed to fully construct the mapped distro from: {}, {}, {}".format(
+                    self.from_distro, self.from_version, self.from_like_distro
+                )
+            )
             raise
 
     def _map_name(self, distro_name, distro_version, like_distro, found_mapping=None):
@@ -2058,14 +2815,16 @@ class VersionPreservingDistroMapper(IDistroMapper):
             return found_mapping.flavor
         else:
             db = get_thread_scoped_session()
-            candidates = like_distro.split(',') if like_distro else []
+            candidates = like_distro.split(",") if like_distro else []
             for c in candidates:
                 mapping = db.query(DistroMapping).get(c)
                 if mapping:
                     return mapping.flavor
             return None
 
-    def _map_version(self, distro_name, distro_version, like_distro, found_mapping=None):
+    def _map_version(
+        self, distro_name, distro_version, like_distro, found_mapping=None
+    ):
         """
         Maps version into a list of versions ordered by closeness of match: [full original version, major.minor]
         Only provides the second, major/minor, mapping if the version matches a dot delimited digit sequence
@@ -2078,16 +2837,16 @@ class VersionPreservingDistroMapper(IDistroMapper):
         """
 
         # Parse down to major, minor only if has a subminor
-        patt = re.match(r'(\d+)\.(\d+)\.(\d+)', distro_version)
+        patt = re.match(r"(\d+)\.(\d+)\.(\d+)", distro_version)
         if patt:
             major, minor, subminor = patt.groups()
-            return [distro_version, '{}.{}'.format(major, minor), '{}'.format(major)]
+            return [distro_version, "{}.{}".format(major, minor), "{}".format(major)]
 
         # Parse dow to only major
-        patt = re.match(r'(\d+)\.(\d+)', distro_version)
+        patt = re.match(r"(\d+)\.(\d+)", distro_version)
         if patt:
             major, minor = patt.groups()
-            return [distro_version, '{}.{}'.format(major, minor), '{}'.format(major)]
+            return [distro_version, "{}.{}".format(major, minor), "{}".format(major)]
 
         return [distro_version]
 
@@ -2097,16 +2856,23 @@ class DistroMapping(Base):
     A mapping entry between a distro with known cve feed and other similar distros.
     Used to explicitly map similar distros to a base feed for cve matches.
     """
-    __tablename__ = 'distro_mappings'
+
+    __tablename__ = "distro_mappings"
     __distro_mapper_cls__ = VersionPreservingDistroMapper
 
-    from_distro = Column(String(distro_length), primary_key=True) # The distro to be checked
-    to_distro = Column(String(distro_length)) # The distro to use instead of the pk distro to do cve checks
-    flavor = Column(String(distro_length)) # The distro flavor to use (e.g. RHEL, or DEB)
+    from_distro = Column(
+        String(distro_length), primary_key=True
+    )  # The distro to be checked
+    to_distro = Column(
+        String(distro_length)
+    )  # The distro to use instead of the pk distro to do cve checks
+    flavor = Column(
+        String(distro_length)
+    )  # The distro flavor to use (e.g. RHEL, or DEB)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     @classmethod
-    def distros_for(cls, distro, version, like_distro=''):
+    def distros_for(cls, distro, version, like_distro=""):
         """
         Returns a pair of mappings for the given object assuming the object has distro_name and distro_version and like_distro
         fields. First element of the pair is the exact distro namespace, the second is either None or a like-relation mapping
@@ -2130,11 +2896,21 @@ class DistroMapping(Base):
         :return:
         """
         db = get_thread_scoped_session()
-        name_matches = db.query(DistroMapping).filter(DistroMapping.to_distro == distro).all()
-        return [DistroTuple(distro=mapping.from_distro, version=version, flavor=mapping.flavor) for mapping in name_matches]
+        name_matches = (
+            db.query(DistroMapping).filter(DistroMapping.to_distro == distro).all()
+        )
+        return [
+            DistroTuple(
+                distro=mapping.from_distro, version=version, flavor=mapping.flavor
+            )
+            for mapping in name_matches
+        ]
 
     def __str__(self):
-        return '<DistroMapping>from={} to={}, flavor={}'.format(self.from_distro, self.to_distro, self.flavor)
+        return "<DistroMapping>from={} to={}, flavor={}".format(
+            self.from_distro, self.to_distro, self.flavor
+        )
+
 
 class DistroNamespace(object):
     """
@@ -2148,20 +2924,31 @@ class DistroNamespace(object):
 
     @classmethod
     def for_obj(cls, obj):
-        if hasattr(obj, 'distro_name') and hasattr(obj, 'distro_version'):
-            return DistroNamespace(getattr(obj, 'distro_name'), getattr(obj, 'distro_version'), like_distro=getattr(obj, 'like_distro', None))
+        if hasattr(obj, "distro_name") and hasattr(obj, "distro_version"):
+            return DistroNamespace(
+                getattr(obj, "distro_name"),
+                getattr(obj, "distro_version"),
+                like_distro=getattr(obj, "like_distro", None),
+            )
         else:
-            raise TypeError('Given object must have attributes: distro_name, distro_version')
+            raise TypeError(
+                "Given object must have attributes: distro_name, distro_version"
+            )
 
-    def __init__(self, name='UNKNOWN', version='UNKNOWN', like_distro=None):
+    def __init__(self, name="UNKNOWN", version="UNKNOWN", like_distro=None):
         self.name = name
         self.version = version
         self.like_distro = like_distro
-        self.mapping = DistroMapping.distros_for(self.name, self.version, self.like_distro)
-        self.flavor = self.mapping[0].flavor if self.mapping else 'Unknown'
-        self.namespace_name = DistroNamespace.as_namespace_name(self.mapping[0].distro, self.mapping[0].version)
-        self.like_namespace_names = [DistroNamespace.as_namespace_name(x.distro, x.version) for x in self.mapping]
-
+        self.mapping = DistroMapping.distros_for(
+            self.name, self.version, self.like_distro
+        )
+        self.flavor = self.mapping[0].flavor if self.mapping else "Unknown"
+        self.namespace_name = DistroNamespace.as_namespace_name(
+            self.mapping[0].distro, self.mapping[0].version
+        )
+        self.like_namespace_names = [
+            DistroNamespace.as_namespace_name(x.distro, x.version) for x in self.mapping
+        ]
 
     @staticmethod
     def as_namespace_name(name, version):
@@ -2170,7 +2957,7 @@ class DistroNamespace(object):
 
         :return:
         """
-        return name + ':' + version
+        return name + ":" + version
 
     def mapped_names(self):
         """
@@ -2187,31 +2974,50 @@ class DistroNamespace(object):
 
         :return: list of name, version pairs
         """
-        return [x.distro for x in DistroMapping.distros_mapped_to(self.name, self.version)]
+        return [
+            x.distro for x in DistroMapping.distros_mapped_to(self.name, self.version)
+        ]
 
 
 class CachedPolicyEvaluation(Base):
-    __tablename__ = 'policy_engine_evaluation_cache'
+    __tablename__ = "policy_engine_evaluation_cache"
 
     user_id = Column(String, primary_key=True)
     image_id = Column(String, primary_key=True)
     eval_tag = Column(String, primary_key=True)
-    bundle_id = Column(String, primary_key=True) # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
+    bundle_id = Column(
+        String, primary_key=True
+    )  # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
     bundle_digest = Column(String, primary_key=True)
 
-    result = Column(StringJSON, nullable=False) # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
+    result = Column(
+        StringJSON, nullable=False
+    )  # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
 
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
 
     def key_tuple(self):
-        return self.user_id, self.image_id, self.eval_tag, self.bundle_id, self.bundle_digest
+        return (
+            self.user_id,
+            self.image_id,
+            self.eval_tag,
+            self.bundle_id,
+            self.bundle_digest,
+        )
 
     def _constuct_raw_result(self, result_json):
-        return {
-            'type': 'direct',
-            'result': result_json
-        }
+        return {"type": "direct", "result": result_json}
 
     def _construct_remote_result(self, bucket, key, digest):
         """
@@ -2223,9 +3029,9 @@ class CachedPolicyEvaluation(Base):
         :return:
         """
         return {
-            'type': 'archive',
-            'digest': digest,
-            'uri': 'catalog://{bucket}/{key}'.format(bucket=bucket, key=key)
+            "type": "archive",
+            "digest": digest,
+            "uri": "catalog://{bucket}/{key}".format(bucket=bucket, key=key),
         }
 
     def add_raw_result(self, result_json):
@@ -2235,10 +3041,10 @@ class CachedPolicyEvaluation(Base):
         self.result = self._construct_remote_result(bucket, key, result_digest)
 
     def is_raw(self):
-        return self.result['type'] == 'direct'
+        return self.result["type"] == "direct"
 
     def is_archive_ref(self):
-        return self.result['type'] == 'archive'
+        return self.result["type"] == "archive"
 
     def archive_tuple(self):
         """
@@ -2247,12 +3053,12 @@ class CachedPolicyEvaluation(Base):
         """
 
         if self.is_archive_ref():
-            uri = self.result.get('uri', '')
-            _, path = uri.split('catalog://', 1)
-            bucket, key = path.split('/', 1)
+            uri = self.result.get("uri", "")
+            _, path = uri.split("catalog://", 1)
+            bucket, key = path.split("/", 1)
             return bucket, key
         else:
-            raise ValueError('Result type is not an archive')
+            raise ValueError("Result type is not an archive")
 
 
 def select_nvd_classes(db=None):
@@ -2262,7 +3068,7 @@ def select_nvd_classes(db=None):
     _nvd_cls = NvdMetadata
     _cpe_cls = CpeVulnerability
     try:
-        fmd = db.query(FeedMetadata).filter(FeedMetadata.name == 'nvdv2').first()
+        fmd = db.query(FeedMetadata).filter(FeedMetadata.name == "nvdv2").first()
         if fmd and fmd.last_full_sync:
             _nvd_cls = NvdV2Metadata
             _cpe_cls = CpeV2Vulnerability

@@ -10,15 +10,27 @@ import sqlalchemy
 from sqlalchemy import func
 
 
-def get_byfilter(userId, session=None, event_type=None, since=None, before=None, page=1, limit=100, **dbfilter):
+def get_byfilter(
+    userId,
+    session=None,
+    event_type=None,
+    since=None,
+    before=None,
+    page=1,
+    limit=100,
+    **dbfilter
+):
     if not session:
         session = db.Session
 
-    ret = {'results': [], 'next_page': False, 'item_count': 0, 'page': page}
+    ret = {"results": [], "next_page": False, "item_count": 0, "page": page}
 
     if page > 1:
         # inner query: execute row_number() on the timestamp column over the results of query
-        resq = session.query(Event, func.row_number().over(order_by=Event.timestamp.desc()).label('rownum')).filter(Event.resource_user_id == userId)
+        resq = session.query(
+            Event,
+            func.row_number().over(order_by=Event.timestamp.desc()).label("rownum"),
+        ).filter(Event.resource_user_id == userId)
 
         if dbfilter:
             resq = resq.filter_by(**dbfilter)
@@ -28,18 +40,22 @@ def get_byfilter(userId, session=None, event_type=None, since=None, before=None,
             resq = resq.filter(Event.timestamp > since)
 
         if event_type:
-            event_type_like = event_type.replace('*', '%')
+            event_type_like = event_type.replace("*", "%")
             if event_type == event_type_like:
                 resq = resq.filter(Event.type == event_type)
             else:
                 resq = resq.filter(Event.type.like(event_type_like))
 
-        start = (page-1) * limit
-        end = start + limit + 1  # get one more result than requested, required to indicate next token
+        start = (page - 1) * limit
+        end = (
+            start + limit + 1
+        )  # get one more result than requested, required to indicate next token
 
         # outer query: filter range of results that match the attached row numbers from the inner query
         resq = resq.from_self(Event)
-        resq = resq.filter(sqlalchemy.text('rownum > {} and rownum <= {}'.format(start, end))).order_by(sqlalchemy.text('rownum'))
+        resq = resq.filter(
+            sqlalchemy.text("rownum > {} and rownum <= {}".format(start, end))
+        ).order_by(sqlalchemy.text("rownum"))
 
     else:
         # Query the first limit+1 results and call it a day
@@ -53,7 +69,7 @@ def get_byfilter(userId, session=None, event_type=None, since=None, before=None,
             resq = resq.filter(Event.timestamp > since)
 
         if event_type:
-            event_type_like = event_type.replace('*', '%')
+            event_type_like = event_type.replace("*", "%")
             if event_type == event_type_like:
                 resq = resq.filter(Event.type == event_type)
             else:
@@ -76,13 +92,13 @@ def get_byfilter(userId, session=None, event_type=None, since=None, before=None,
 
     # Execute limit bound query
     for db_event in resq.all():
-        if len(ret['results']) < limit:
-            ret['results'].append(_db_to_dict(db_event))
+        if len(ret["results"]) < limit:
+            ret["results"].append(_db_to_dict(db_event))
         else:
-            ret['next_page'] = True
+            ret["next_page"] = True
             break
 
-    ret['item_count'] = len(ret['results'])
+    ret["item_count"] = len(ret["results"])
 
     return ret
 
@@ -91,7 +107,11 @@ def get_byevent_id(userId, eventId, session=None):
     if not session:
         session = db.Session
 
-    db_event = session.query(Event).filter(Event.resource_user_id == userId, Event.generated_uuid == eventId).one_or_none()
+    db_event = (
+        session.query(Event)
+        .filter(Event.resource_user_id == userId, Event.generated_uuid == eventId)
+        .one_or_none()
+    )
 
     return _db_to_dict(db_event) if db_event else None
 
@@ -139,7 +159,11 @@ def delete_byevent_id(userId, eventId, session=None):
 
     ret = False
 
-    db_event = session.query(Event).filter(Event.resource_user_id == userId, Event.generated_uuid == eventId).one_or_none()
+    db_event = (
+        session.query(Event)
+        .filter(Event.resource_user_id == userId, Event.generated_uuid == eventId)
+        .one_or_none()
+    )
     if db_event:
         ret = True
         session.delete(db_event)
@@ -148,22 +172,32 @@ def delete_byevent_id(userId, eventId, session=None):
 
 
 def _db_to_dict(db_event):
-    msg = {'event': {}, 'generated_uuid': None, 'created_at': None}
+    msg = {"event": {}, "generated_uuid": None, "created_at": None}
 
     for key, value in vars(db_event).items():
-        if key.startswith('_'):
+        if key.startswith("_"):
             continue
 
-        if key in ['generated_uuid', 'created_at']:
-            msg[key] = value if type(value) != datetime.datetime else _format_timestamp(value)
+        if key in ["generated_uuid", "created_at"]:
+            msg[key] = (
+                value if type(value) != datetime.datetime else _format_timestamp(value)
+            )
         else:
-            if key.startswith('resource') or key.startswith('source'):
-                key1, key2 = key.split('_', 1)
-                if key1 not in msg['event']:
-                    msg['event'][key1] = {}
-                msg['event'][key1][key2] = value if type(value) != datetime.datetime else _format_timestamp(value)
+            if key.startswith("resource") or key.startswith("source"):
+                key1, key2 = key.split("_", 1)
+                if key1 not in msg["event"]:
+                    msg["event"][key1] = {}
+                msg["event"][key1][key2] = (
+                    value
+                    if type(value) != datetime.datetime
+                    else _format_timestamp(value)
+                )
             else:
-                msg['event'][key] = value if type(value) != datetime.datetime else _format_timestamp(value)
+                msg["event"][key] = (
+                    value
+                    if type(value) != datetime.datetime
+                    else _format_timestamp(value)
+                )
 
     return msg
 
@@ -174,25 +208,25 @@ def _dict_to_db(msg):
     event_msg = {}
     event_msg.update(msg)
 
-    if event_msg.get('source', None):
-        db_event.source_servicename = event_msg['source'].get('servicename', None)
-        db_event.source_hostid = event_msg['source'].get('hostid', None)
-        db_event.source_base_url = event_msg['source'].get('base_url', None)
-        db_event.source_request_id = event_msg['source'].get('request_id', None)
+    if event_msg.get("source", None):
+        db_event.source_servicename = event_msg["source"].get("servicename", None)
+        db_event.source_hostid = event_msg["source"].get("hostid", None)
+        db_event.source_base_url = event_msg["source"].get("base_url", None)
+        db_event.source_request_id = event_msg["source"].get("request_id", None)
 
-    if event_msg.get('resource', None):
-        db_event.resource_user_id = event_msg['resource'].get('user_id', None)
-        db_event.resource_id = event_msg['resource'].get('id', None)
-        db_event.resource_type = event_msg['resource'].get('type', None)
+    if event_msg.get("resource", None):
+        db_event.resource_user_id = event_msg["resource"].get("user_id", None)
+        db_event.resource_id = event_msg["resource"].get("id", None)
+        db_event.resource_type = event_msg["resource"].get("type", None)
 
-    db_event.type = event_msg['type']
-    db_event.level = event_msg['level']
-    db_event.message = event_msg['message']
-    db_event.details = event_msg.get('details', {})
-    db_event.timestamp = dateparser.parse(event_msg['timestamp'])
+    db_event.type = event_msg["type"]
+    db_event.level = event_msg["level"]
+    db_event.message = event_msg["message"]
+    db_event.details = event_msg.get("details", {})
+    db_event.timestamp = dateparser.parse(event_msg["timestamp"])
 
     return db_event
 
 
 def _format_timestamp(ts):
-    return ts.isoformat() + 'Z'
+    return ts.isoformat() + "Z"

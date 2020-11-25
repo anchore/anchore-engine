@@ -12,7 +12,10 @@ These leases are re-entrant and not incrementing, so a single release() will rel
 import time
 from contextlib import contextmanager
 from anchore_engine.db import Lease, session_scope
-from anchore_engine.db.entities.exceptions import is_unique_violation, is_lock_acquisition_error
+from anchore_engine.db.entities.exceptions import (
+    is_unique_violation,
+    is_lock_acquisition_error,
+)
 from anchore_engine.subsys import logger
 
 DEFAULT_ACQUIRE_TIMEOUT_SECONDS = 3
@@ -23,16 +26,8 @@ REFRESH_RETRIES = 3
 # First layer of keys defined namespaces (the 'namespace' element is the id used in the db
 # The 2nd layer of keys are named lock ids within each namespace.
 application_lock_ids = {
-    'upgrade': {
-        'namespace': 1,
-        'ids': {}
-    },
-    'archive_migration': {
-        'namespace': 2,
-        'ids': {
-            'default': 1
-        }
-    }
+    "upgrade": {"namespace": 1, "ids": {}},
+    "archive_migration": {"namespace": 2, "ids": {"default": 1}},
 }
 
 
@@ -43,7 +38,7 @@ def init_lease(lease_id):
     :param lease_id: string id (name) for the lease
     :return: True if initialized
     """
-    logger.debug('Initializing lease {}'.format(lease_id))
+    logger.debug("Initializing lease {}".format(lease_id))
     try:
         with session_scope() as db:
             f = Lease()
@@ -55,7 +50,9 @@ def init_lease(lease_id):
             return True
     except Exception as e:
         if not is_unique_violation(e):
-            logger.exception('Unexpected exception initializing lease in db: {}'.format(lease_id))
+            logger.exception(
+                "Unexpected exception initializing lease in db: {}".format(lease_id)
+            )
             raise e
         else:
             # Idempotent, and lease already exists
@@ -101,7 +98,12 @@ def flush_lease(lease_id):
         return True
 
 
-def acquire_lease(lease_id, client_id, ttl=DEFAULT_LOCK_DURATION_SECONDS, timeout=DEFAULT_ACQUIRE_TIMEOUT_SECONDS):
+def acquire_lease(
+    lease_id,
+    client_id,
+    ttl=DEFAULT_LOCK_DURATION_SECONDS,
+    timeout=DEFAULT_ACQUIRE_TIMEOUT_SECONDS,
+):
     """
     Try to acquire the lease. If fails, return None, else return lease object. The timeout is crudely implemented with backoffs and retries so the timeout is not precise
 
@@ -111,13 +113,17 @@ def acquire_lease(lease_id, client_id, ttl=DEFAULT_LOCK_DURATION_SECONDS, timeou
     :return: expiration time of the acquired lease or None if not acquired
     """
 
-    logger.debug('Attempting to acquire lease {} for {}'.format(lease_id, client_id))
+    logger.debug("Attempting to acquire lease {} for {}".format(lease_id, client_id))
 
     t = 0
     while t < timeout:
         try:
             with session_scope() as db:
-                ent = db.query(Lease).with_for_update(nowait=False, of=Lease).get((lease_id))
+                ent = (
+                    db.query(Lease)
+                    .with_for_update(nowait=False, of=Lease)
+                    .get((lease_id))
+                )
                 if not ent:
                     raise KeyError(lease_id)
 
@@ -125,21 +131,27 @@ def acquire_lease(lease_id, client_id, ttl=DEFAULT_LOCK_DURATION_SECONDS, timeou
                     return ent.to_json()
         except Exception as e:
             if not is_lock_acquisition_error(e):
-                logger.exception('Unexpected exception during lease acquire. Will retry')
+                logger.exception(
+                    "Unexpected exception during lease acquire. Will retry"
+                )
 
-        logger.debug('Retrying acquire of lease {} for {}'.format(lease_id, client_id))
+        logger.debug("Retrying acquire of lease {} for {}".format(lease_id, client_id))
         t += 1
         time.sleep(1)
     else:
         # Exceeded retry count, so failed to get lease
-        logger.info('Failed to get lease {} for {} after {} retries'.format(lease_id, client_id, t))
+        logger.info(
+            "Failed to get lease {} for {} after {} retries".format(
+                lease_id, client_id, t
+            )
+        )
         return None
 
 
 def release_lease(lease_id, client_id, epoch):
     """
     Release the lease if i'm the owner, else raise exception that this caller (my_id) is not the owner.
-        
+
     :param lease_id
     :param client_id
     :param epoch
@@ -153,14 +165,14 @@ def release_lease(lease_id, client_id, epoch):
     if not epoch:
         raise ValueError(lease_id)
 
-    logger.debug('Releasing lease {}'.format(lease_id))
+    logger.debug("Releasing lease {}".format(lease_id))
 
     with session_scope() as db:
         lease = db.query(Lease).with_for_update(of=Lease, nowait=False).get((lease_id))
         if not lease:
             raise KeyError(lease_id)
         elif lease.held_by != client_id or lease.epoch > epoch:
-            logger.warn('Lost the lease {}. Cannot update'.format(lease_id))
+            logger.warn("Lost the lease {}. Cannot update".format(lease_id))
         else:
             lease.release_holder()
 
@@ -188,16 +200,20 @@ def refresh_lease(lease_id, client_id, epoch, ttl):
 
     retries = REFRESH_RETRIES
 
-    logger.debug('Refreshing lease {}'.format(lease_id))
+    logger.debug("Refreshing lease {}".format(lease_id))
 
     while retries > 0:
         try:
             with session_scope() as db:
-                lease = db.query(Lease).with_for_update(of=Lease, nowait=False).get((lease_id))
+                lease = (
+                    db.query(Lease)
+                    .with_for_update(of=Lease, nowait=False)
+                    .get((lease_id))
+                )
                 if not lease:
                     raise KeyError(lease_id)
                 if lease.held_by != client_id:
-                    raise Exception('Lock no longer held by this id')
+                    raise Exception("Lock no longer held by this id")
                 else:
                     lease.set_holder(lease.held_by, duration_sec=ttl)
                     return lease.to_json()
@@ -205,11 +221,17 @@ def refresh_lease(lease_id, client_id, epoch, ttl):
             raise
         except Exception as e:
             if not is_lock_acquisition_error(e):
-                logger.exception('Failed updating lease duration for {} due to exception'.format(lease_id))
+                logger.exception(
+                    "Failed updating lease duration for {} due to exception".format(
+                        lease_id
+                    )
+                )
 
         retries -= 1
     else:
-        logger.error('Failed updating lease duration {} after all retries'.format(lease_id))
+        logger.error(
+            "Failed updating lease duration {} after all retries".format(lease_id)
+        )
         return None
 
 
@@ -230,7 +252,7 @@ def least_with_ttl(lease_id, client_id, ttl):
         try:
             yield l
         finally:
-            release_lease(l['id'], l['held_by'], l['epoch'])
+            release_lease(l["id"], l["held_by"], l["epoch"])
     else:
         return
 
@@ -246,26 +268,30 @@ def db_application_lock(engine, lock_id):
     """
     got_lock_id = None
     try:
-        logger.debug('Acquiring pg advisory lock {}'.format(lock_id))
+        logger.debug("Acquiring pg advisory lock {}".format(lock_id))
         if type(lock_id) == tuple:
-            result = engine.execute('select pg_advisory_lock({}, {});'.format(lock_id[0], lock_id[1])).first()
+            result = engine.execute(
+                "select pg_advisory_lock({}, {});".format(lock_id[0], lock_id[1])
+            ).first()
         else:
-            result = engine.execute('select pg_advisory_lock({});'.format(lock_id)).first()
+            result = engine.execute(
+                "select pg_advisory_lock({});".format(lock_id)
+            ).first()
 
         if result is not None:
             got_lock_id = lock_id
             yield got_lock_id
         else:
             got_lock_id = None
-            raise Exception('No lock available')
+            raise Exception("No lock available")
     finally:
         if got_lock_id:
-            logger.debug('Releasing pg advisory lock {}'.format(got_lock_id))
+            logger.debug("Releasing pg advisory lock {}".format(got_lock_id))
             if type(lock_id) == tuple:
-                result = engine.execute('select pg_advisory_unlock({}, {});'.format(lock_id[0], lock_id[1]))
+                result = engine.execute(
+                    "select pg_advisory_unlock({}, {});".format(lock_id[0], lock_id[1])
+                )
             else:
-                result = engine.execute('select pg_advisory_unlock({});'.format(lock_id))
-
-
-
-
+                result = engine.execute(
+                    "select pg_advisory_unlock({});".format(lock_id)
+                )

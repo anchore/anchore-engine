@@ -16,10 +16,12 @@ import datetime
 
 try:
     from anchore_engine.subsys import logger
+
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
 except:
     import logging
+
     logger = logging.getLogger(__name__)
     log = logger
 
@@ -48,7 +50,11 @@ class UtilMixin(object):
 
         :return: string
         """
-        return dict((key, value if type(value) != datetime.datetime else value.isoformat()) for key, value in vars(self).items() if not key.startswith('_'))
+        return dict(
+            (key, value if type(value) != datetime.datetime else value.isoformat())
+            for key, value in vars(self).items()
+            if not key.startswith("_")
+        )
 
     def to_dict(self):
         """
@@ -58,7 +64,9 @@ class UtilMixin(object):
         :return:
         """
 
-        return dict((key, value) for key, value in vars(self).items() if not key.startswith('_'))
+        return dict(
+            (key, value) for key, value in vars(self).items() if not key.startswith("_")
+        )
 
     def to_detached(self):
         """
@@ -69,7 +77,7 @@ class UtilMixin(object):
 
         obj = self.__class__()
         for name, attr in vars(self).items():
-            if not name.startswith('_'):
+            if not name.startswith("_"):
                 setattr(obj, name, attr)
 
         return obj
@@ -96,16 +104,25 @@ def get_entity_tables(entity):
     global Base
 
     import inspect
-            
-    entity_names = [x[1].__tablename__ for x in [x for x in inspect.getmembers(entity) if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base]]
+
+    entity_names = [
+        x[1].__tablename__
+        for x in [
+            x
+            for x in inspect.getmembers(entity)
+            if inspect.isclass(x[1]) and issubclass(x[1], Base) and x[1] != Base
+        ]
+    ]
     ftables = [x for x in Base.metadata.sorted_tables if x.name in entity_names]
 
     return ftables
+
 
 # some DB management funcs
 def get_engine():
     global engine
     return engine
+
 
 def test_connection():
     global engine
@@ -121,37 +138,45 @@ def test_connection():
             test_connection.close()
     return True
 
+
 def do_connect(db_params):
     global engine, Session, SerializableSession
 
-    db_connect = db_params.get('db_connect', None)
-    db_connect_args = db_params.get('db_connect_args', None)
-    db_engine_args = db_params.get('db_engine_args')
+    db_connect = db_params.get("db_connect", None)
+    db_connect_args = db_params.get("db_connect_args", None)
+    db_engine_args = db_params.get("db_engine_args")
     if db_engine_args is None:
         db_engine_args = {}
 
     # for bkwds compat
-    if db_params.get('db_pool_size', None):
-        db_engine_args['pool_size'] = db_params.get('db_pool_size', 30)
-    if db_params.get('db_pool_max_overflow', None):
-        db_engine_args['max_overflow'] = db_params.get('db_pool_max_overflow', 100)
-    if 'db_echo' in db_params:
-        db_engine_args['echo'] = db_params.get('db_echo', False)
+    if db_params.get("db_pool_size", None):
+        db_engine_args["pool_size"] = db_params.get("db_pool_size", 30)
+    if db_params.get("db_pool_max_overflow", None):
+        db_engine_args["max_overflow"] = db_params.get("db_pool_max_overflow", 100)
+    if "db_echo" in db_params:
+        db_engine_args["echo"] = db_params.get("db_echo", False)
 
     if db_connect:
         try:
-            if db_connect.startswith('sqlite://'):
+            if db_connect.startswith("sqlite://"):
                 # Special case for testing with sqlite. Not for production use, unit tests only
                 engine = sqlalchemy.create_engine(db_connect, echo=True)
             else:
-                logger.debug("db_connect_args {} db_engine_args={}".format(db_connect_args, db_engine_args))
-                engine = sqlalchemy.create_engine(db_connect, connect_args=db_connect_args, **db_engine_args)
+                logger.debug(
+                    "db_connect_args {} db_engine_args={}".format(
+                        db_connect_args, db_engine_args
+                    )
+                )
+                engine = sqlalchemy.create_engine(
+                    db_connect, connect_args=db_connect_args, **db_engine_args
+                )
 
         except Exception as err:
             raise Exception("could not connect to DB - exception: " + str(err))
     else:
         raise Exception(
-            "could not locate db_connect string from configuration: add db_connect parameter to configuration file")
+            "could not locate db_connect string from configuration: add db_connect parameter to configuration file"
+        )
 
     # set up the global session
     try:
@@ -164,6 +189,7 @@ def do_connect(db_params):
 
     return True
 
+
 def do_disconnect():
     global engine
     if engine:
@@ -172,18 +198,19 @@ def do_disconnect():
 
 def get_params(localconfig):
     try:
-        db_auth = localconfig['credentials']['database']
+        db_auth = localconfig["credentials"]["database"]
     except:
         raise Exception(
-            "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file")
+            "could not locate credentials->database entry from configuration: add 'database' section to 'credentials' section in configuration file"
+        )
 
     db_params = {
-        'db_connect': db_auth.get('db_connect'),
-        'db_connect_args': db_auth.get('db_connect_args', {}),
-        'db_pool_size': int(db_auth.get('db_pool_size', 30)),
-        'db_pool_max_overflow': int(db_auth.get('db_pool_max_overflow', 75)),
-        'db_echo': db_auth.get('db_echo', False) in [True, 'True', 'true'],
-        'db_engine_args': db_auth.get('db_engine_args', None)
+        "db_connect": db_auth.get("db_connect"),
+        "db_connect_args": db_auth.get("db_connect_args", {}),
+        "db_pool_size": int(db_auth.get("db_pool_size", 30)),
+        "db_pool_max_overflow": int(db_auth.get("db_pool_max_overflow", 75)),
+        "db_echo": db_auth.get("db_echo", False) in [True, "True", "true"],
+        "db_engine_args": db_auth.get("db_engine_args", None),
     }
     ret = normalize_db_params(db_params)
     return ret
@@ -191,30 +218,33 @@ def get_params(localconfig):
 
 def normalize_db_params(db_params):
     try:
-        db_connect = db_params['db_connect']
+        db_connect = db_params["db_connect"]
     except:
         raise Exception("input db_connect must be set")
 
-    db_connect_args = db_params.get('db_connect_args', {})
+    db_connect_args = db_params.get("db_connect_args", {})
 
-    if '+pg8000' not in db_connect:
-        if 'timeout' in db_connect_args:
-            timeout = db_connect_args.pop('timeout')
-            db_connect_args['connect_timeout'] = int(timeout)
-        if 'ssl' in db_connect_args:
-            ssl = db_connect_args.pop('ssl')
+    if "+pg8000" not in db_connect:
+        if "timeout" in db_connect_args:
+            timeout = db_connect_args.pop("timeout")
+            db_connect_args["connect_timeout"] = int(timeout)
+        if "ssl" in db_connect_args:
+            ssl = db_connect_args.pop("ssl")
             if ssl:
-                db_connect_args['sslmode'] = 'require'
-            
+                db_connect_args["sslmode"] = "require"
 
     return db_params
-        
+
 
 def do_create(specific_tables=None, base=Base):
     engine = get_engine()
     try:
         if specific_tables:
-            logger.info('Initializing only a subset of tables as requested: {}'.format(specific_tables))
+            logger.info(
+                "Initializing only a subset of tables as requested: {}".format(
+                    specific_tables
+                )
+            )
             base.metadata.create_all(engine, tables=specific_tables)
         else:
             base.metadata.create_all(engine)
@@ -253,9 +283,15 @@ def initialize(localconfig=None, versions=None):
             break
         except Exception as err:
             if count > db_connect_retry_max:
-                raise Exception("ERROR: could not establish connection to DB after retries - last exception: " + str(err))
+                raise Exception(
+                    "ERROR: could not establish connection to DB after retries - last exception: "
+                    + str(err)
+                )
             else:
-                log.err("WARN: could not connect to/initialize db, retrying in 5 seconds - exception: " + str(err))
+                log.err(
+                    "WARN: could not connect to/initialize db, retrying in 5 seconds - exception: "
+                    + str(err)
+                )
                 time.sleep(5)
 
     return ret
@@ -264,6 +300,7 @@ def initialize(localconfig=None, versions=None):
 def get_session():
     global Session
     return Session()
+
 
 @contextmanager
 def session_scope():
@@ -274,7 +311,7 @@ def session_scope():
     # session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
     logger.spew("DB: opening session: " + str(session))
-    logger.spew("DB: call stack: \n" + '\n'.join(traceback.format_stack()))
+    logger.spew("DB: call stack: \n" + "\n".join(traceback.format_stack()))
     try:
         yield session
         session.commit()
@@ -287,6 +324,7 @@ def session_scope():
         logger.spew("DB: closing session: " + str(session))
         session.close()
 
+
 def get_thread_scoped_session():
     """
     Return a thread scoped session for use. Caller must remove it when complete to ensure no leaks
@@ -296,7 +334,8 @@ def get_thread_scoped_session():
     global ThreadLocalSession
     if not ThreadLocalSession:
         raise Exception(
-            'Invoked get_session without first calling init_db to initialize the engine and session factory')
+            "Invoked get_session without first calling init_db to initialize the engine and session factory"
+        )
 
     # Will re-use a session if already in this thread-local context, otherwise will create a new one
     sess = ThreadLocalSession()
@@ -331,6 +370,7 @@ class StringJSON(types.TypeDecorator):
     value to the column rather than in-place updates.
 
     """
+
     impl = types.TEXT
 
     def process_bind_param(self, value, dialect):
@@ -347,7 +387,7 @@ class StringJSON(types.TypeDecorator):
         """
 
         if value is not None:
-            if type(value) == str and value.startswith('like_raw:'):
+            if type(value) == str and value.startswith("like_raw:"):
                 return value[9:]
             else:
                 value = json.dumps(value)

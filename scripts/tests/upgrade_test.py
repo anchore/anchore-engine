@@ -6,7 +6,7 @@ from anchore_engine.subsys import logger
 
 logger.enable_bootstrap_logging()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     conf = sys.argv[1]
     localconfig.load_config(conf)
     db.initialize(localconfig.get_config())

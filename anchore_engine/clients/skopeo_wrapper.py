@@ -4,7 +4,12 @@ import re
 import tempfile
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
+from anchore_engine.utils import (
+    run_command,
+    run_command_list,
+    manifest_to_digest,
+    AnchoreException,
+)
 from anchore_engine.subsys import logger
 from anchore_engine.common.errors import AnchoreError
 from urllib.request import urlretrieve
@@ -14,12 +19,12 @@ def manifest_to_digest_shellout(rawmanifest):
     ret = None
     tmpmanifest = None
     try:
-        fd,tmpmanifest = tempfile.mkstemp()
-        os.write(fd, rawmanifest.encode('utf-8'))
+        fd, tmpmanifest = tempfile.mkstemp()
+        os.write(fd, rawmanifest.encode("utf-8"))
         os.close(fd)
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        global_timeout = localconfig.get("skopeo_global_timeout", 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -34,11 +39,21 @@ def manifest_to_digest_shellout(rawmanifest):
 
         cmd = "skopeo {} manifest-digest {}".format(global_timeout_str, tmpmanifest)
         rc, sout, serr = run_command(cmd)
-        if rc == 0 and re.match("^sha256:.*", str(sout, 'utf-8')):
+        if rc == 0 and re.match("^sha256:.*", str(sout, "utf-8")):
             ret = sout.strip()
         else:
-            logger.warn("failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(cmd, rc, sout, serr))
-            raise SkopeoError(cmd=cmd, rc=rc, err=serr, out=sout, msg='Failed to calculate digest from schema v1 manifest', )
+            logger.warn(
+                "failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(
+                    cmd, rc, sout, serr
+                )
+            )
+            raise SkopeoError(
+                cmd=cmd,
+                rc=rc,
+                err=serr,
+                out=sout,
+                msg="Failed to calculate digest from schema v1 manifest",
+            )
     except Exception as err:
         raise err
     finally:
@@ -49,27 +64,45 @@ def manifest_to_digest_shellout(rawmanifest):
 
 
 def copy_image_from_docker_archive(source_archive, dest_dir):
-    cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(source_archive, dest_dir)
+    cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(
+        source_archive, dest_dir
+    )
     cmd = cmdstr.split()
     try:
         rc, sout, serr = run_command_list(cmd)
         if rc != 0:
             raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
         else:
-            logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+            logger.debug(
+                "command succeeded: cmd="
+                + str(cmdstr)
+                + " stdout="
+                + str(sout).strip()
+                + " stderr="
+                + str(serr).strip()
+            )
 
     except Exception as err:
         logger.error("command failed with exception - " + str(err))
         raise err
 
 
-def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, parent_manifest=None, use_cache_dir=None):
+def download_image(
+    fulltag,
+    copydir,
+    user=None,
+    pw=None,
+    verify=True,
+    manifest=None,
+    parent_manifest=None,
+    use_cache_dir=None,
+):
     try:
         proc_env = os.environ.copy()
         if user and pw:
-            proc_env['SKOPUSER'] = user
-            proc_env['SKOPPASS'] = pw
-            credstr = '--src-creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
+            proc_env["SKOPUSER"] = user
+            proc_env["SKOPPASS"] = pw
+            credstr = '--src-creds "${SKOPUSER}":"${SKOPPASS}"'
         else:
             credstr = ""
 
@@ -84,7 +117,7 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
             cachestr = ""
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        global_timeout = localconfig.get("skopeo_global_timeout", 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -103,13 +136,13 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         if manifest:
             manifest_data = json.loads(manifest)
 
-            for layer in manifest_data.get('layers', []):
-                if 'foreign.diff' in layer.get('mediaType', ""):
-                    layer_digest_raw = layer.get('digest', "")
+            for layer in manifest_data.get("layers", []):
+                if "foreign.diff" in layer.get("mediaType", ""):
+                    layer_digest_raw = layer.get("digest", "")
                     layer_digest = get_digest_value(layer_digest_raw)
-                    layer_urls = layer.get('urls', [])
+                    layer_urls = layer.get("urls", [])
 
-                    blobs_to_fetch.append({'digest': layer_digest, 'urls': layer_urls})
+                    blobs_to_fetch.append({"digest": layer_digest, "urls": layer_urls})
 
             if parent_manifest:
                 parent_manifest_data = json.loads(parent_manifest)
@@ -117,31 +150,43 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 parent_manifest_data = {}
 
             if parent_manifest_data:
-                for mlist in parent_manifest_data.get('manifests', []):
-                    imageos = mlist.get('platform', {}).get('os', "")
-                    if imageos not in ["", 'linux']:
+                for mlist in parent_manifest_data.get("manifests", []):
+                    imageos = mlist.get("platform", {}).get("os", "")
+                    if imageos not in ["", "linux"]:
                         # add a windows os override to the list of override attempts, to complete the options that are supported by skopeo
                         os_overrides.insert(0, "windows")
                         break
 
         for os_override in os_overrides:
             success = False
-            if os_override not in ["", 'linux']:
+            if os_override not in ["", "linux"]:
                 os_override_str = "--override-os {}".format(os_override)
             else:
                 os_override_str = ""
 
             if manifest:
-                with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
+                with open(os.path.join(copydir, "manifest.json"), "w") as OFH:
                     OFH.write(manifest)
 
             if parent_manifest:
-                with open(os.path.join(copydir, "parent_manifest.json"), 'w') as OFH:
+                with open(os.path.join(copydir, "parent_manifest.json"), "w") as OFH:
                     OFH.write(parent_manifest)
 
-            cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(os_override_str, global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
+            cmd = [
+                "/bin/sh",
+                "-c",
+                "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(
+                    os_override_str,
+                    global_timeout_str,
+                    tlsverifystr,
+                    credstr,
+                    cachestr,
+                    fulltag,
+                    copydir,
+                ),
+            ]
 
-            cmdstr = ' '.join(cmd)
+            cmdstr = " ".join(cmd)
             try:
                 rc, sout, serr = run_command_list(cmd, env=proc_env)
                 if rc != 0:
@@ -149,7 +194,14 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                     if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
                         raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                 else:
-                    logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                    logger.debug(
+                        "command succeeded: cmd="
+                        + str(cmdstr)
+                        + " stdout="
+                        + str(sout).strip()
+                        + " stderr="
+                        + str(serr).strip()
+                    )
                     success = True
 
             except Exception as err:
@@ -185,9 +237,9 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
 
 def fetch_oci_blobs(blobs_dir: str, blobs_to_fetch: list):
     for blob in blobs_to_fetch:
-        for url in blob['urls']:
+        for url in blob["urls"]:
             # try to retrieve, and if successful, break
-            blob_destination_path = os.path.join(blobs_dir, "sha256", blob['digest'])
+            blob_destination_path = os.path.join(blobs_dir, "sha256", blob["digest"])
 
             try:
                 urlretrieve(url, blob_destination_path)
@@ -196,54 +248,58 @@ def fetch_oci_blobs(blobs_dir: str, blobs_to_fetch: list):
                 logger.exception(
                     "failed saving blob from URL (%s) to path (%s)",
                     url,
-                    blob_destination_path
+                    blob_destination_path,
                 )
                 continue
 
 
 def get_digest_value(digest_with_algorithm_prefix: str):
-    return digest_with_algorithm_prefix.split(':')[-1]
+    return digest_with_algorithm_prefix.split(":")[-1]
 
 
 def ensure_no_nondistributable_media_types(oci_index_file_path: str):
     manifest_file_path = get_manifest_path_from_index(oci_index_file_path)
 
-    with open(manifest_file_path, 'r') as _f:
+    with open(manifest_file_path, "r") as _f:
         manifest = json.load(_f)
 
-    layers = manifest.get('layers', [])
+    layers = manifest.get("layers", [])
     updated_layers = list(map(remove_nondistributable, layers))
-    manifest['layers'] = updated_layers
+    manifest["layers"] = updated_layers
 
-    with open(manifest_file_path, 'w') as _f:
+    with open(manifest_file_path, "w") as _f:
         json.dump(manifest, _f)
 
 
 def get_manifest_path_from_index(oci_index_file_path: str):
-    with open(oci_index_file_path, 'r') as _f:
+    with open(oci_index_file_path, "r") as _f:
         index = json.load(_f)
 
-    for m in index.get('manifests', []):
-        manifest_digest_raw = m.get('digest', "")
+    for m in index.get("manifests", []):
+        manifest_digest_raw = m.get("digest", "")
         manifest_digest = get_digest_value(manifest_digest_raw)
-        return os.path.join(os.path.dirname(oci_index_file_path), "blobs", "sha256", manifest_digest)
+        return os.path.join(
+            os.path.dirname(oci_index_file_path), "blobs", "sha256", manifest_digest
+        )
 
     raise Exception("No manifests found in OCI index ({})".format(oci_index_file_path))
 
 
 def remove_nondistributable(layer: dict):
-    updated_media_type = layer.get('mediaType', '').replace('nondistributable.', '')
-    layer['mediaType'] = updated_media_type
+    updated_media_type = layer.get("mediaType", "").replace("nondistributable.", "")
+    layer["mediaType"] = updated_media_type
     return layer
 
 
-def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, lookuptag=None):
+def get_repo_tags_skopeo(
+    url, registry, repo, user=None, pw=None, verify=None, lookuptag=None
+):
     try:
         proc_env = os.environ.copy()
         if user and pw:
-            proc_env['SKOPUSER'] = user
-            proc_env['SKOPPASS'] = pw
-            credstr = '--creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
+            proc_env["SKOPUSER"] = user
+            proc_env["SKOPPASS"] = pw
+            credstr = '--creds "${SKOPUSER}":"${SKOPPASS}"'
         else:
             credstr = ""
 
@@ -253,7 +309,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
             tlsverifystr = "--tls-verify=false"
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        global_timeout = localconfig.get("skopeo_global_timeout", 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -272,21 +328,34 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
 
         repotags = []
 
-        cmd = ["/bin/sh", "-c", "skopeo {} inspect {} {} docker://{}".format(global_timeout_str, tlsverifystr, credstr, pullstring)]
-        cmdstr = ' '.join(cmd)
+        cmd = [
+            "/bin/sh",
+            "-c",
+            "skopeo {} inspect {} {} docker://{}".format(
+                global_timeout_str, tlsverifystr, credstr, pullstring
+            ),
+        ]
+        cmdstr = " ".join(cmd)
         try:
             rc, sout, serr = run_command_list(cmd, env=proc_env)
-            sout = str(sout, 'utf-8') if sout else None
+            sout = str(sout, "utf-8") if sout else None
             if rc != 0:
                 raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
             else:
-                logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                logger.debug(
+                    "command succeeded: cmd="
+                    + str(cmdstr)
+                    + " stdout="
+                    + str(sout).strip()
+                    + " stderr="
+                    + str(serr).strip()
+                )
         except Exception as err:
             logger.error("command failed with exception - " + str(err))
             raise err
 
         data = json.loads(sout)
-        repotags = data.get('RepoTags', [])
+        repotags = data.get("RepoTags", [])
     except Exception as err:
         raise err
 
@@ -301,9 +370,9 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     try:
         proc_env = os.environ.copy()
         if user and pw:
-            proc_env['SKOPUSER'] = user
-            proc_env['SKOPPASS'] = pw
-            credstr = '--creds \"${SKOPUSER}\":\"${SKOPPASS}\"'
+            proc_env["SKOPUSER"] = user
+            proc_env["SKOPPASS"] = pw
+            credstr = '--creds "${SKOPUSER}":"${SKOPPASS}"'
         else:
             credstr = ""
 
@@ -313,7 +382,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
             tlsverifystr = "--tls-verify=false"
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)
+        global_timeout = localconfig.get("skopeo_global_timeout", 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -330,8 +399,18 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
         try:
             success = False
             for os_override_str in os_override_strs:
-                cmd = ["/bin/sh", "-c", "skopeo {} {} inspect --raw {} {} docker://{}".format(global_timeout_str, os_override_str, tlsverifystr, credstr, pullstring)]
-                cmdstr = ' '.join(cmd)
+                cmd = [
+                    "/bin/sh",
+                    "-c",
+                    "skopeo {} {} inspect --raw {} {} docker://{}".format(
+                        global_timeout_str,
+                        os_override_str,
+                        tlsverifystr,
+                        credstr,
+                        pullstring,
+                    ),
+                ]
+                cmdstr = " ".join(cmd)
                 try:
                     rc, sout, serr = run_command_list(cmd, env=proc_env)
                     if rc != 0:
@@ -339,14 +418,21 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
                         if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
                             raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                     else:
-                        logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
+                        logger.debug(
+                            "command succeeded: cmd="
+                            + str(cmdstr)
+                            + " stdout="
+                            + str(sout).strip()
+                            + " stderr="
+                            + str(serr).strip()
+                        )
                         success = True
                 except Exception as err:
                     logger.error("command failed with exception - " + str(err))
                     raise err
 
                 if success:
-                    sout = str(sout, 'utf-8') if sout else None
+                    sout = str(sout, "utf-8") if sout else None
                     ret = sout
                     break
 
@@ -362,7 +448,18 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     return ret
 
 
-def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True, topmanifest=None):
+def get_image_manifest_skopeo(
+    url,
+    registry,
+    repo,
+    intag=None,
+    indigest=None,
+    topdigest=None,
+    user=None,
+    pw=None,
+    verify=True,
+    topmanifest=None,
+):
     manifest = {}
     digest = None
     testDigest = None
@@ -376,7 +473,9 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
 
     try:
         try:
-            rawmanifest = get_image_manifest_skopeo_raw(pullstring, user=user, pw=pw, verify=verify)
+            rawmanifest = get_image_manifest_skopeo_raw(
+                pullstring, user=user, pw=pw, verify=verify
+            )
             digest = manifest_to_digest(rawmanifest)
             manifest = json.loads(rawmanifest)
             if topmanifest is None:
@@ -384,22 +483,42 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
             if not topdigest:
                 topdigest = digest
 
-            if manifest.get('schemaVersion') == 2 and manifest.get('mediaType') == 'application/vnd.docker.distribution.manifest.list.v2+json':
+            if (
+                manifest.get("schemaVersion") == 2
+                and manifest.get("mediaType")
+                == "application/vnd.docker.distribution.manifest.list.v2+json"
+            ):
                 # Get the arch-specific version for amd64 and linux
                 new_digest = None
-                for entry in manifest.get('manifests'):
-                    platform = entry.get('platform')
-                    if platform and platform.get('architecture') in ['amd64'] and platform.get('os') in ['linux', 'windows']:
-                        new_digest = entry.get('digest')
+                for entry in manifest.get("manifests"):
+                    platform = entry.get("platform")
+                    if (
+                        platform
+                        and platform.get("architecture") in ["amd64"]
+                        and platform.get("os") in ["linux", "windows"]
+                    ):
+                        new_digest = entry.get("digest")
                         break
 
-                return get_image_manifest_skopeo(url=url, registry=registry, repo=repo, intag=None, indigest=new_digest, user=user, pw=pw, verify=verify, topdigest=topdigest, topmanifest=topmanifest)
+                return get_image_manifest_skopeo(
+                    url=url,
+                    registry=registry,
+                    repo=repo,
+                    intag=None,
+                    indigest=new_digest,
+                    user=user,
+                    pw=pw,
+                    verify=verify,
+                    topdigest=topdigest,
+                    topmanifest=topmanifest,
+                )
         except Exception as err:
             logger.warn("CMD failed - exception: " + str(err))
             raise err
 
     except Exception as err:
         import traceback
+
         traceback.print_exc()
         raise err
 
@@ -410,34 +529,52 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
 
 
 class SkopeoError(AnchoreException):
-
-    def __init__(self, cmd=None, rc=None, err=None, out=None, msg='Error encountered in skopeo operation'):
+    def __init__(
+        self,
+        cmd=None,
+        rc=None,
+        err=None,
+        out=None,
+        msg="Error encountered in skopeo operation",
+    ):
         from anchore_engine.common.errors import AnchoreError
 
-        self.cmd = ' '.join(cmd) if isinstance(cmd, list) else cmd
+        self.cmd = " ".join(cmd) if isinstance(cmd, list) else cmd
         self.exitcode = rc
-        self.stderr = str(err).replace('\r', ' ').replace('\n', ' ').strip() if err else None
-        self.stdout = str(out).replace('\r', ' ').replace('\n', ' ').strip() if out else None
+        self.stderr = (
+            str(err).replace("\r", " ").replace("\n", " ").strip() if err else None
+        )
+        self.stdout = (
+            str(out).replace("\r", " ").replace("\n", " ").strip() if out else None
+        )
         self.msg = msg
         try:
             if "unauthorized" in self.stderr:
                 self.error_code = AnchoreError.REGISTRY_PERMISSION_DENIED.name
             elif "manifest unknown" in self.stderr:
                 self.error_code = AnchoreError.REGISTRY_IMAGE_NOT_FOUND.name
-            elif "connection refused" in self.stderr or "no route to host" in self.stderr:
+            elif (
+                "connection refused" in self.stderr or "no route to host" in self.stderr
+            ):
                 self.error_code = AnchoreError.REGISTRY_NOT_ACCESSIBLE.name
             elif "error pinging registry" in self.stderr:
                 self.error_code = AnchoreError.REGISTRY_NOT_SUPPORTED.name
-            elif "no image found in manifest list for architecture amd64, OS linux" in self.stderr:
+            elif (
+                "no image found in manifest list for architecture amd64, OS linux"
+                in self.stderr
+            ):
                 self.error_code = AnchoreError.OSARCH_MISMATCH.name
             else:
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
         except:
             self.error_code = AnchoreError.UNKNOWN.name
 
-
     def __repr__(self):
-        return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)
+        return "{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}".format(
+            self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code
+        )
 
     def __str__(self):
-        return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)
+        return "{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}".format(
+            self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code
+        )

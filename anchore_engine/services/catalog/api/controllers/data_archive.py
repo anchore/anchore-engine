@@ -19,6 +19,7 @@ from anchore_engine.subsys import archive, logger
 
 authorizer = get_authorizer()
 
+
 @flask_metrics.do_not_track()
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def get_archive(bucket, archiveid):
@@ -29,14 +30,20 @@ def get_archive(bucket, archiveid):
         accountName = ApiRequestContextProxy.namespace()
 
         try:
-            return_object = json.loads(anchore_utils.ensure_str(archive_sys.get(accountName, bucket, archiveid)))
+            return_object = json.loads(
+                anchore_utils.ensure_str(
+                    archive_sys.get(accountName, bucket, archiveid)
+                )
+            )
             httpcode = 200
         except Exception as err:
             httpcode = 404
             raise err
 
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode
 
@@ -53,7 +60,15 @@ def create_archive(bucket, archiveid, bodycontent):
             jsonbytes = anchore_utils.ensure_bytes(json.dumps(bodycontent))
             my_svc = ApiRequestContextProxy.get_service()
             if my_svc is not None:
-                resource_url = my_svc.service_record['base_url'] + "/" + my_svc.service_record['version'] + "/archive/" + bucket + "/" + archiveid
+                resource_url = (
+                    my_svc.service_record["base_url"]
+                    + "/"
+                    + my_svc.service_record["version"]
+                    + "/archive/"
+                    + bucket
+                    + "/"
+                    + archiveid
+                )
             else:
                 resource_url = "N/A"
 
@@ -65,7 +80,9 @@ def create_archive(bucket, archiveid, bodycontent):
             raise err
 
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode
 
@@ -82,6 +99,8 @@ def delete_archive(bucket, archiveid):
             httpcode = 200
             return_object = None
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode

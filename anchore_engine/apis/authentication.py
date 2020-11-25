@@ -8,8 +8,18 @@ from collections import namedtuple
 
 from anchore_engine.subsys.identities import manager_factory
 
-IdentityContext = namedtuple('IdentityContext', ['username', 'user_account', 'user_account_type', 'user_account_state', 'user_type', 'user_uuid'])
-Credential = namedtuple('Credential', ['type', 'value'])
+IdentityContext = namedtuple(
+    "IdentityContext",
+    [
+        "username",
+        "user_account",
+        "user_account_type",
+        "user_account_state",
+        "user_type",
+        "user_uuid",
+    ],
+)
+Credential = namedtuple("Credential", ["type", "value"])
 
 
 class IdentityProvider(object):
@@ -30,17 +40,22 @@ class IdentityProvider(object):
         usr = self.mgr.get_user(username)
 
         if usr:
-            ident = IdentityContext(username=username,
-                                    user_account=usr['account_name'],
-                                    user_account_type=usr['account']['type'],
-                                    user_account_state=usr['account']['state'],
-                                    user_type=usr['type'],
-                                    user_uuid=usr['uuid'])
+            ident = IdentityContext(
+                username=username,
+                user_account=usr["account_name"],
+                user_account_type=usr["account"]["type"],
+                user_account_state=usr["account"]["state"],
+                user_type=usr["type"],
+                user_uuid=usr["uuid"],
+            )
         else:
             # Handle the case where username doesn't match cleanly, rather than KeyError
             return None, None
 
-        creds = [Credential(type=x[0], value=x[1]['value']) for x in usr.get('credentials', {}).items()]
+        creds = [
+            Credential(type=x[0], value=x[1]["value"])
+            for x in usr.get("credentials", {}).items()
+        ]
 
         return ident, creds
 
@@ -63,17 +78,22 @@ class IdentityProvider(object):
         usr = self.mgr.get_user_by_uuid(user_uuid)
 
         if usr:
-            ident = IdentityContext(username=usr['username'],
-                                    user_account=usr['account_name'],
-                                    user_account_type=usr['account']['type'],
-                                    user_account_state=usr['account']['state'],
-                                    user_type=usr['type'],
-                                    user_uuid=usr['uuid'])
+            ident = IdentityContext(
+                username=usr["username"],
+                user_account=usr["account_name"],
+                user_account_type=usr["account"]["type"],
+                user_account_state=usr["account"]["state"],
+                user_type=usr["type"],
+                user_uuid=usr["uuid"],
+            )
         else:
             # Handle the case where username doesn't match cleanly, rather than KeyError
             return None, None
 
-        creds = [Credential(type=x[0], value=x[1]['value']) for x in usr.get('credentials', {}).items()]
+        creds = [
+            Credential(type=x[0], value=x[1]["value"])
+            for x in usr.get("credentials", {}).items()
+        ]
 
         return ident, creds
 

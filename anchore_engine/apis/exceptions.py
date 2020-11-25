@@ -10,14 +10,20 @@ class AnchoreApiError(Exception):
         self.detail = detail
 
     def __str__(self):
-        return json.dumps({'message': self.message, 'detail': json.dumps(self.detail), 'httpcode': self.__response_code__})
+        return json.dumps(
+            {
+                "message": self.message,
+                "detail": json.dumps(self.detail),
+                "httpcode": self.__response_code__,
+            }
+        )
 
 
 class ResourceNotFound(AnchoreApiError):
     __response_code__ = 404
 
     def __init__(self, resource: str, detail: dict):
-        super().__init__('Resource {} not found'.format(resource), detail)
+        super().__init__("Resource {} not found".format(resource), detail)
 
 
 class BadRequest(AnchoreApiError):
@@ -34,7 +40,7 @@ class AccessDeniedError(AnchoreApiError):
 
 class PermissionDenied(AccessDeniedError):
     def __init__(self, permission):
-        super().__init__('Access Denied', {'permission_required': permission})
+        super().__init__("Access Denied", {"permission_required": permission})
 
 
 class UnauthorizedError(AnchoreApiError):
@@ -43,7 +49,7 @@ class UnauthorizedError(AnchoreApiError):
 
 class BadCredentials(UnauthorizedError):
     def __init__(self):
-        super().__init__('Invalid Credentials', None)
+        super().__init__("Invalid Credentials", None)
 
 
 class InternalError(AnchoreApiError):
@@ -61,9 +67,18 @@ class BadGatewayError(AnchoreApiError):
 class MissingRequiredField(BadRequest):
     def __init__(self, required_property, because_of_properties=None):
         if because_of_properties:
-            super().__init__(message='Request missing required property', detail={'Required property': required_property, 'Required because of properties': because_of_properties})
+            super().__init__(
+                message="Request missing required property",
+                detail={
+                    "Required property": required_property,
+                    "Required because of properties": because_of_properties,
+                },
+            )
         else:
-            super().__init__(message='Request missing required property', detail={'Required property': required_property})
+            super().__init__(
+                message="Request missing required property",
+                detail={"Required property": required_property},
+            )
 
         self.required = required_property
         self.because_of = because_of_properties
@@ -71,4 +86,7 @@ class MissingRequiredField(BadRequest):
 
 class InvalidDateFormat(BadRequest):
     def __init__(self, property_name, property_value):
-        super().__init__(message='Invalid formatted date', detail={'Property': property_name, 'Value': property_value})
+        super().__init__(
+            message="Invalid formatted date",
+            detail={"Property": property_name, "Value": property_value},
+        )

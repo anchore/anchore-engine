@@ -20,8 +20,8 @@ def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
     # if ret > 0, vers A is greater than version B
     # if ret < 0, vers A is less than version B
 
-    fulla = '-'.join([str(pkg_a), str(ver_a)])
-    fullb = '-'.join([str(pkg_b), str(ver_b)])
+    fulla = "-".join([str(pkg_a), str(ver_a)])
+    fullb = "-".join([str(pkg_b), str(ver_b)])
     if fulla == fullb:
         return 0
 
@@ -32,12 +32,12 @@ def compare_package_versions(distro_flavor, pkg_a, ver_a, pkg_b, ver_b):
             return 1
 
     elif distro_flavor == "DEB":
-        if deb_compare_versions(ver_a, 'lt', ver_b):
+        if deb_compare_versions(ver_a, "lt", ver_b):
             return -1
         else:
             return 1
     elif distro_flavor == "ALPINE":
-        if apk_compare_versions(ver_a, 'lt', ver_b):
+        if apk_compare_versions(ver_a, "lt", ver_b):
             return -1
         else:
             return 1

@@ -17,43 +17,43 @@ def anchore_db(connection_str=None, do_echo=False):
     :return:
     """
 
-    from anchore_engine.db.entities.common import get_engine, initialize, do_disconnect, init_thread_session, end_session
+    from anchore_engine.db.entities.common import (
+        get_engine,
+        initialize,
+        do_disconnect,
+        init_thread_session,
+        end_session,
+    )
     from anchore_engine.db.entities.upgrade import do_create_tables
 
-    conn_str = connection_str if connection_str else os.getenv('ANCHORE_TEST_DB_URL')
+    conn_str = connection_str if connection_str else os.getenv("ANCHORE_TEST_DB_URL")
 
-    config = {
-        'credentials': {
-            'database': {
-                'db_connect': conn_str,
-                'db_echo': do_echo
-            }
-        }
-    }
+    config = {"credentials": {"database": {"db_connect": conn_str, "db_echo": do_echo}}}
 
     try:
-        logger.info('Initializing connection: {}'.format(config))
+        logger.info("Initializing connection: {}".format(config))
         ret = initialize(localconfig=config)
         init_thread_session(force_new=True)
 
         engine = get_engine()
-        logger.info('Dropping db if found')
-        engine.execute('DROP SCHEMA public CASCADE')
-        engine.execute('CREATE SCHEMA public')
-        engine.execute('GRANT ALL ON SCHEMA public TO postgres')
-        engine.execute('GRANT ALL ON SCHEMA public TO public')
+        logger.info("Dropping db if found")
+        engine.execute("DROP SCHEMA public CASCADE")
+        engine.execute("CREATE SCHEMA public")
+        engine.execute("GRANT ALL ON SCHEMA public TO postgres")
+        engine.execute("GRANT ALL ON SCHEMA public TO public")
 
         # Now ready for anchore init (tables etc)
-        logger.info('Creating tables')
+        logger.info("Creating tables")
         do_create_tables()
 
         yield ret
     finally:
-        logger.info('Cleaning up/disconnect')
+        logger.info("Cleaning up/disconnect")
         end_session()
         do_disconnect()
 
-@pytest.fixture(scope='class')
+
+@pytest.fixture(scope="class")
 def cls_anchore_db(connection_str=None, do_echo=False):
     """
     Sets up a db connection to an existing db, and fails if not found/present.
@@ -62,39 +62,38 @@ def cls_anchore_db(connection_str=None, do_echo=False):
     :return:
     """
 
-    from anchore_engine.db.entities.common import get_engine, initialize, do_disconnect, init_thread_session, end_session
+    from anchore_engine.db.entities.common import (
+        get_engine,
+        initialize,
+        do_disconnect,
+        init_thread_session,
+        end_session,
+    )
     from anchore_engine.db.entities.upgrade import do_create_tables
 
-    conn_str = connection_str if connection_str else os.getenv('ANCHORE_TEST_DB_URL')
+    conn_str = connection_str if connection_str else os.getenv("ANCHORE_TEST_DB_URL")
 
-    config = {
-        'credentials': {
-            'database': {
-                'db_connect': conn_str,
-                'db_echo': do_echo
-            }
-        }
-    }
+    config = {"credentials": {"database": {"db_connect": conn_str, "db_echo": do_echo}}}
 
     try:
-        logger.info('Initializing connection: {}'.format(config))
+        logger.info("Initializing connection: {}".format(config))
         ret = initialize(localconfig=config)
         init_thread_session(force_new=True)
 
         engine = get_engine()
-        logger.info('Dropping db if found')
-        engine.execute('DROP SCHEMA public CASCADE')
-        engine.execute('CREATE SCHEMA public')
-        engine.execute('GRANT ALL ON SCHEMA public TO postgres')
-        engine.execute('GRANT ALL ON SCHEMA public TO public')
+        logger.info("Dropping db if found")
+        engine.execute("DROP SCHEMA public CASCADE")
+        engine.execute("CREATE SCHEMA public")
+        engine.execute("GRANT ALL ON SCHEMA public TO postgres")
+        engine.execute("GRANT ALL ON SCHEMA public TO public")
 
         # Now ready for anchore init (tables etc)
-        logger.info('Creating tables')
+        logger.info("Creating tables")
         do_create_tables()
 
         yield ret
     finally:
-        logger.info('Cleaning up/disconnect')
+        logger.info("Cleaning up/disconnect")
         end_session()
         do_disconnect()
 
@@ -103,4 +102,5 @@ def cls_anchore_db(connection_str=None, do_echo=False):
 def echo_anchore_db():
     def invoke():
         return anchore_db(connection_str=None, do_echo=True)
+
     return invoke

@@ -15,13 +15,15 @@ class CaseSensitivePermission(DefaultPermission):
         # Replace constructor with code from the WildcardPermission constructor directly, but with parts init from DefaultPermission
         # This is necessary to get the case-sensitivity to init properly since the Default->Wildcard path messes it up
         self.case_sensitive = case_sensitive
-        self.parts = {'domain': {'*'}, 'action': {'*'}, 'target': {'*'}}
+        self.parts = {"domain": {"*"}, "action": {"*"}, "target": {"*"}}
         if wildcard_string:
             self.setparts(wildcard_string, case_sensitive)
         else:
-            self.parts = {'domain': set([parts.get('domain', '*')]),
-                          'action': set(parts.get('action', '*')),
-                          'target': set(parts.get('target', '*'))}
+            self.parts = {
+                "domain": set([parts.get("domain", "*")]),
+                "action": set(parts.get("action", "*")),
+                "target": set(parts.get("target", "*")),
+            }
 
 
 class UsernamePasswordRealm(AccountStoreRealm):
@@ -56,9 +58,10 @@ class UsernamePasswordRealm(AccountStoreRealm):
         ch = self.cache_handler
 
         def query_authc_info(self):
-            msg = ("Could not obtain cached credentials for [{0}].  "
-                   "Will try to acquire credentials from account store."
-                   .format(identifier))
+            msg = (
+                "Could not obtain cached credentials for [{0}].  "
+                "Will try to acquire credentials from account store.".format(identifier)
+            )
             logger.debug(msg)
 
             # account_info is a dict
@@ -71,35 +74,42 @@ class UsernamePasswordRealm(AccountStoreRealm):
             return account_info
 
         try:
-            msg2 = ("Attempting to get cached credentials for [{0}]"
-                    .format(identifier))
+            msg2 = "Attempting to get cached credentials for [{0}]".format(identifier)
             logger.debug(msg2)
 
             # account_info is a dict
-            account_info = ch.get_or_create(domain='authentication:' + self.name,
-                                            identifier=identifier,
-                                            creator_func=query_authc_info,
-                                            creator=self)
+            account_info = ch.get_or_create(
+                domain="authentication:" + self.name,
+                identifier=identifier,
+                creator_func=query_authc_info,
+                creator=self,
+            )
 
         except AttributeError:
             # this means the cache_handler isn't configured
             account_info = query_authc_info(self)
         except ValueError:
-            msg3 = ("No account credentials found for identifiers [{0}].  "
-                    "Returning None.".format(identifier))
+            msg3 = (
+                "No account credentials found for identifiers [{0}].  "
+                "Returning None.".format(identifier)
+            )
             logger.warn(msg3)
 
         if account_info:
             # Expect anchore to add the account_id already
-            accnt_id = account_info.get('anchore_identity', identifier)
-            account_info['account_id'] = SimpleIdentifierCollection(source_name=self.name,
-                                                                    identifier=accnt_id)
+            accnt_id = account_info.get("anchore_identity", identifier)
+            account_info["account_id"] = SimpleIdentifierCollection(
+                source_name=self.name, identifier=accnt_id
+            )
         return account_info
 
     @staticmethod
     def _should_use_external(identity: IdentityContext):
         # # If a service account or admin account user, use the default handler, not external calls
-        return identity.user_account_type not in [AccountTypes.service, AccountTypes.admin]
+        return identity.user_account_type not in [
+            AccountTypes.service,
+            AccountTypes.admin,
+        ]
 
     def is_permitted(self, identifiers, permission_s):
         """
@@ -116,7 +126,7 @@ class UsernamePasswordRealm(AccountStoreRealm):
         :yields: tuple(Permission, Boolean)
         """
 
-        logger.debug('Identifiers for is_permitted: {}'.format(identifiers.__dict__))
+        logger.debug("Identifiers for is_permitted: {}".format(identifiers.__dict__))
 
         identifier = identifiers.primary_identifier
 
@@ -159,9 +169,11 @@ class ExternalAuthorizer(object):
     """
 
     def __init__(self, config, enabled=False):
-        logger.debug('Configuring realm with config: {}'.format(config))
+        logger.debug("Configuring realm with config: {}".format(config))
         self.enabled = enabled
-        self.client = AuthzPluginHttpClient(url=config.get('endpoint'), verify_ssl=config.get('verify_ssl'))
+        self.client = AuthzPluginHttpClient(
+            url=config.get("endpoint"), verify_ssl=config.get("verify_ssl")
+        )
 
     def is_permitted(self, identifiers, permission_s):
         """
@@ -171,7 +183,7 @@ class ExternalAuthorizer(object):
         if not self.enabled or not self.client:
             return [(p, False) for p in permission_s]
 
-        result_list = [] # List of tuples (required_perm, is_permitted)
+        result_list = []  # List of tuples (required_perm, is_permitted)
         identifier = identifiers.primary_identifier
         if isinstance(identifier, IdentityContext):
             username = identifier.username
@@ -181,19 +193,35 @@ class ExternalAuthorizer(object):
         actions = {}
         for required_perm in permission_s:
             required_permission = CaseSensitivePermission(wildcard_string=required_perm)
-            actions[Action(domain=','.join(required_permission.domain), action=','.join(required_permission.action), target=','.join(required_permission.target))] = required_perm
+            actions[
+                Action(
+                    domain=",".join(required_permission.domain),
+                    action=",".join(required_permission.action),
+                    target=",".join(required_permission.target),
+                )
+            ] = required_perm
 
         if actions:
             try:
-                resp = self.client.authorize(principal=username, action_s=list(actions.keys()))
+                resp = self.client.authorize(
+                    principal=username, action_s=list(actions.keys())
+                )
                 for i in resp.allowed:
                     result_list.append((actions[i], True))
 
                 for i in resp.denied:
                     result_list.append((actions[i], False))
             except Exception as e:
-                logger.exception('Unexpected error invoking authorization plugin via client: {}'.format(e))
-                logger.error('Authorization plugin invocation error. Could not perform a proper authz check. Please check configuration and/or authz service status: {}'.format(self.client.url))
+                logger.exception(
+                    "Unexpected error invoking authorization plugin via client: {}".format(
+                        e
+                    )
+                )
+                logger.error(
+                    "Authorization plugin invocation error. Could not perform a proper authz check. Please check configuration and/or authz service status: {}".format(
+                        self.client.url
+                    )
+                )
                 raise e
 
         return result_list
@@ -213,12 +241,12 @@ class JwtRealm(UsernamePasswordRealm):
             authc_info = self.get_authentication_info(authc_token.identifier)
 
             # Overwrite any creds found in db. Cleanup of token vs password is outside the scope of this handler.
-            if not authc_info or not authc_info['authc_info']:
+            if not authc_info or not authc_info["authc_info"]:
                 # No user exists for the identifier
                 raise IncorrectCredentialsException
             else:
                 return authc_info
 
         except:
-            logger.debug_exception('Could not authenticate token')
+            logger.debug_exception("Could not authenticate token")
             raise IncorrectCredentialsException()
