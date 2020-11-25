@@ -1,20 +1,25 @@
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.policy.params import TypeValidator, TriggerParameter
+from anchore_engine.services.policy_engine.engine.policy.params import (
+    TypeValidator,
+    TriggerParameter,
+)
 from anchore_engine.db import NpmMetadata
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_instance_by_name
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    feed_instance_by_name,
+)
 
 
 # TODO; generalize these for any feed, with base classes and children per feed type
 
-FEED_KEY = 'npm'
-NPM_LISTING_KEY = 'npms'
-NPM_MATCH_KEY = 'matched_feed_npms'
+FEED_KEY = "npm"
+NPM_LISTING_KEY = "npms"
+NPM_MATCH_KEY = "matched_feed_npms"
 
 
 class NotLatestTrigger(BaseTrigger):
-    __trigger_name__ = 'newer_version_in_feed'
-    __description__ = 'Triggers if an installed NPM is not the latest version according to NPM data feed.'
+    __trigger_name__ = "newer_version_in_feed"
+    __description__ = "Triggers if an installed NPM is not the latest version according to NPM data feed."
 
     def evaluate(self, image_obj, context):
         """
@@ -32,16 +37,20 @@ class NotLatestTrigger(BaseTrigger):
 
         for npm, versions in list(img_npms.items()):
             if npm not in feed_names:
-                continue # Not an official
+                continue  # Not an official
 
             for v in versions:
                 if v and v != feed_names.get(npm):
-                    self._fire(msg="NPMNOTLATEST Package ({}) version ({}) installed but is not the latest version ({})".format(npm, v, feed_names[npm]['latest']))
+                    self._fire(
+                        msg="NPMNOTLATEST Package ({}) version ({}) installed but is not the latest version ({})".format(
+                            npm, v, feed_names[npm]["latest"]
+                        )
+                    )
 
 
 class NotOfficialTrigger(BaseTrigger):
-    __trigger_name__ = 'unknown_in_feeds'
-    __description__ = 'Triggers if an installed NPM is not in the official NPM database, according to NPM data feed.'
+    __trigger_name__ = "unknown_in_feeds"
+    __description__ = "Triggers if an installed NPM is not in the official NPM database, according to NPM data feed."
 
     def evaluate(self, image_obj, context):
         """
@@ -64,12 +73,16 @@ class NotOfficialTrigger(BaseTrigger):
 
         for npm in list(img_npms.keys()):
             if npm not in feed_names:
-                self._fire(msg="NPMNOTOFFICIAL Package ("+str(npm)+") in container but not in official NPM feed.")
+                self._fire(
+                    msg="NPMNOTOFFICIAL Package ("
+                    + str(npm)
+                    + ") in container but not in official NPM feed."
+                )
 
 
 class BadVersionTrigger(BaseTrigger):
-    __trigger_name__ = 'version_not_in_feeds'
-    __description__ = 'Triggers if an installed NPM version is not listed in the official NPM feed as a valid version.'
+    __trigger_name__ = "version_not_in_feeds"
+    __description__ = "Triggers if an installed NPM version is not listed in the official NPM feed as a valid version."
 
     def evaluate(self, image_obj, context):
         """
@@ -93,17 +106,41 @@ class BadVersionTrigger(BaseTrigger):
             if npm not in feed_names:
                 continue
 
-            non_official_versions = set(versions).difference(set(feed_names.get(npm, [])))
+            non_official_versions = set(versions).difference(
+                set(feed_names.get(npm, []))
+            )
             for v in non_official_versions:
-                self._fire(msg="NPMBADVERSION Package ("+npm+") version ("+v+") installed but version is not in the official feed for this package ("+str(feed_names.get(npm, '')) + ")")
+                self._fire(
+                    msg="NPMBADVERSION Package ("
+                    + npm
+                    + ") version ("
+                    + v
+                    + ") installed but version is not in the official feed for this package ("
+                    + str(feed_names.get(npm, ""))
+                    + ")"
+                )
 
 
 class PkgMatchTrigger(BaseTrigger):
-    __trigger_name__ = 'blacklisted_name_version'
-    __description__ = 'Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters.'
+    __trigger_name__ = "blacklisted_name_version"
+    __description__ = "Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters."
 
-    name = TriggerParameter(validator=TypeValidator('string'), name='name', is_required=True, description='Npm package name to blacklist.', example_str='time_diff', sort_order=1)
-    version = TriggerParameter(validator=TypeValidator('string'), name='version', is_required=False, description='Npm package version to blacklist specifically.', example_str='0.2.9', sort_order=2)
+    name = TriggerParameter(
+        validator=TypeValidator("string"),
+        name="name",
+        is_required=True,
+        description="Npm package name to blacklist.",
+        example_str="time_diff",
+        sort_order=1,
+    )
+    version = TriggerParameter(
+        validator=TypeValidator("string"),
+        name="version",
+        is_required=False,
+        description="Npm package version to blacklist specifically.",
+        example_str="0.2.9",
+        sort_order=2,
+    )
 
     def evaluate(self, image_obj, context):
         """
@@ -112,7 +149,7 @@ class PkgMatchTrigger(BaseTrigger):
         :param context:
         :return:
         """
-        npms = image_obj.get_packages_by_type('npm')
+        npms = image_obj.get_packages_by_type("npm")
         if not npms:
             return
 
@@ -128,64 +165,72 @@ class PkgMatchTrigger(BaseTrigger):
             if not pkg_versions:
                 pkg_versions = []
             if version and version in pkg_versions:
-                self._fire(msg='NPM Package is blacklisted: ' + name + "-" + version)
+                self._fire(msg="NPM Package is blacklisted: " + name + "-" + version)
             elif version is None:
-                self._fire(msg='NPM Package is blacklisted: ' + name)
+                self._fire(msg="NPM Package is blacklisted: " + name)
 
 
 class NoFeedTrigger(BaseTrigger):
-    __trigger_name__ = 'feed_data_unavailable'
-    __description__ = 'Triggers if the engine does not have access to the NPM data feed.'
+    __trigger_name__ = "feed_data_unavailable"
+    __description__ = (
+        "Triggers if the engine does not have access to the NPM data feed."
+    )
     __msg__ = "NPM packages are present but the anchore npm feed is not available - will be unable to perform checks that require feed data"
 
     def evaluate(self, image_obj, context):
         try:
-            feed_meta = feed_instance_by_name('packages').group_by_name(FEED_KEY)
+            feed_meta = feed_instance_by_name("packages").group_by_name(FEED_KEY)
             if feed_meta and feed_meta.last_sync:
                 return
         except Exception as e:
-            logger.exception('Error determining feed presence for npms. Defaulting to firing trigger')
+            logger.exception(
+                "Error determining feed presence for npms. Defaulting to firing trigger"
+            )
 
         self._fire()
         return
 
 
 class NpmCheckGate(Gate):
-        __gate_name__ = 'npms'
-        __description__ = 'NPM Checks'
-        __triggers__ = [
-            NotLatestTrigger,
-            NotOfficialTrigger,
-            BadVersionTrigger,
-            PkgMatchTrigger,
-            NoFeedTrigger
-        ]
+    __gate_name__ = "npms"
+    __description__ = "NPM Checks"
+    __triggers__ = [
+        NotLatestTrigger,
+        NotOfficialTrigger,
+        BadVersionTrigger,
+        PkgMatchTrigger,
+        NoFeedTrigger,
+    ]
 
-        def prepare_context(self, image_obj, context):
-            """
-            Prep the npm names and versions
-            :rtype: 
-            :param image_obj:
-            :param context:
-            :return:
-            """
+    def prepare_context(self, image_obj, context):
+        """
+        Prep the npm names and versions
+        :rtype:
+        :param image_obj:
+        :param context:
+        :return:
+        """
 
-            db_npms = image_obj.get_packages_by_type('npm')
-            if not db_npms:
-                return context
-
-            #context.data[NPM_LISTING_KEY] = {p.name: p.versions_json for p in image_obj.npms}
-            npm_listing_key_data = {}
-            for p in db_npms:
-                if p.name not in npm_listing_key_data:
-                    npm_listing_key_data[p.name] = []
-                npm_listing_key_data[p.name].append(p.version)
-            context.data[NPM_LISTING_KEY] = npm_listing_key_data
-
-            npms = list(context.data[NPM_LISTING_KEY].keys())
-            context.data[NPM_MATCH_KEY] = []
-            chunks = [npms[i: i+100] for i in range(0, len(npms), 100)]
-            for key_range in chunks:
-                context.data[NPM_MATCH_KEY] += context.db.query(NpmMetadata).filter(NpmMetadata.name.in_(key_range)).all()
-
+        db_npms = image_obj.get_packages_by_type("npm")
+        if not db_npms:
             return context
+
+        # context.data[NPM_LISTING_KEY] = {p.name: p.versions_json for p in image_obj.npms}
+        npm_listing_key_data = {}
+        for p in db_npms:
+            if p.name not in npm_listing_key_data:
+                npm_listing_key_data[p.name] = []
+            npm_listing_key_data[p.name].append(p.version)
+        context.data[NPM_LISTING_KEY] = npm_listing_key_data
+
+        npms = list(context.data[NPM_LISTING_KEY].keys())
+        context.data[NPM_MATCH_KEY] = []
+        chunks = [npms[i : i + 100] for i in range(0, len(npms), 100)]
+        for key_range in chunks:
+            context.data[NPM_MATCH_KEY] += (
+                context.db.query(NpmMetadata)
+                .filter(NpmMetadata.name.in_(key_range))
+                .all()
+            )
+
+        return context

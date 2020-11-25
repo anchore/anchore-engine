@@ -24,7 +24,7 @@ class FakeUrlRetrieve:
     def __call__(self, url, destination_path):
         if self.raises is not None:
             raise self.raises
-        with open(destination_path, 'w') as _f:
+        with open(destination_path, "w") as _f:
             _f.write(self.content)
 
 
@@ -32,10 +32,7 @@ class FakeUrlRetrieve:
 def blobs():
     def return_value(*digests):
         def digest_to_blob(digest: str):
-            return {
-                "digest": digest,
-                "urls": ["https://example.fooo.bar"]
-            }
+            return {"digest": digest, "urls": ["https://example.fooo.bar"]}
 
         return list(map(digest_to_blob, digests))
 
@@ -50,9 +47,9 @@ def oci_index():
             {
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "digest": "sha256:{}".format(oci_manifest_digest),
-                "size": 504
+                "size": 504,
             }
-        ]
+        ],
     }
 
     return json.dumps(index)
@@ -66,7 +63,7 @@ def oci_manifest():
             "config": {
                 "mediaType": "application/vnd.oci.image.config.v1+json",
                 "digest": "sha256:b4382afec288f18a7255c91b9c5dfe37d66dc1aca7be8cefdbbd5b14ae794d3f",
-                "size": 354
+                "size": 354,
             },
             "layers": [
                 {
@@ -75,9 +72,9 @@ def oci_manifest():
                     "size": 103066803,
                     "urls": [
                         "https://mcr.microsoft.com/v2/windows/nanoserver/blobs/sha256:0e31ee8f400716f940be9db76d6eedb1a903860385b4ca8f70513012d53fe1f1"
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         return json.dumps(manifest)
@@ -99,14 +96,16 @@ def test_fetch_oci_blobs_single_blob(monkeypatch, tmpdir, blobs):
     tmpdir.mkdir("sha256")
     blob_digest = "ffff"
     expected_blob_content = "I'm a TAR!"
-    monkeypatch.setattr(skopeo_wrapper, 'urlretrieve', FakeUrlRetrieve(content=expected_blob_content))
+    monkeypatch.setattr(
+        skopeo_wrapper, "urlretrieve", FakeUrlRetrieve(content=expected_blob_content)
+    )
 
     skopeo_wrapper.fetch_oci_blobs(blobs_dir, blobs(blob_digest))
 
-    results_path = os.path.join(blobs_dir, 'sha256', blob_digest)
+    results_path = os.path.join(blobs_dir, "sha256", blob_digest)
     assert os.path.exists(results_path)
 
-    with open(results_path, 'r') as _f:
+    with open(results_path, "r") as _f:
         assert _f.read() == expected_blob_content
 
 
@@ -115,21 +114,25 @@ def test_fetch_oci_blobs_multiple_blobs(monkeypatch, tmpdir, blobs):
     tmpdir.mkdir("sha256")
     blob_digests = ["aaaa", "bbbb", "cccc"]
     expected_blob_content = "I'm a TAR!"
-    monkeypatch.setattr(skopeo_wrapper, 'urlretrieve', FakeUrlRetrieve(content=expected_blob_content))
+    monkeypatch.setattr(
+        skopeo_wrapper, "urlretrieve", FakeUrlRetrieve(content=expected_blob_content)
+    )
 
     skopeo_wrapper.fetch_oci_blobs(blobs_dir, blobs(*blob_digests))
 
     for digest in blob_digests:
-        results_path = os.path.join(blobs_dir, 'sha256', digest)
+        results_path = os.path.join(blobs_dir, "sha256", digest)
         assert os.path.exists(results_path)
 
-        with open(results_path, 'r') as _f:
+        with open(results_path, "r") as _f:
             assert _f.read() == expected_blob_content
 
 
 def test_fetch_oci_blobs_it_bombs(monkeypatch, blobs):
-    monkeypatch.setattr(skopeo_wrapper, 'urlretrieve', FakeUrlRetrieve(raises=TypeError))
-    skopeo_wrapper.fetch_oci_blobs('/some/path', blobs())
+    monkeypatch.setattr(
+        skopeo_wrapper, "urlretrieve", FakeUrlRetrieve(raises=TypeError)
+    )
+    skopeo_wrapper.fetch_oci_blobs("/some/path", blobs())
 
 
 def test_get_digest_value_with_alg():
@@ -154,7 +157,9 @@ def test_ensure_no_nondistributable_media_types(tmpdir, oci_index, oci_manifest)
     sha256_dir = os.path.join(blobs_dir, "sha256")
     pathlib.Path(sha256_dir).mkdir(parents=True, exist_ok=True)
     oci_manifest_file_path = os.path.join(sha256_dir, oci_manifest_digest)
-    initial_layer_media_type = "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip"
+    initial_layer_media_type = (
+        "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip"
+    )
 
     with open(oci_index_file_path, "w") as _f:
         _f.write(oci_index)

@@ -27,13 +27,17 @@ def get_object(bucket, archiveid):
         obj_mgr = anchore_engine.subsys.object_store.manager.get_manager()
         account_name = ApiRequestContextProxy.namespace()
         try:
-            return_object = json.loads(anchore_utils.ensure_str(obj_mgr.get(account_name, bucket, archiveid)))
+            return_object = json.loads(
+                anchore_utils.ensure_str(obj_mgr.get(account_name, bucket, archiveid))
+            )
             httpcode = 200
         except Exception as err:
             httpcode = 404
             raise err
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode
 
@@ -51,8 +55,15 @@ def create_object(bucket, archiveid, bodycontent):
 
         my_svc = ApiRequestContextProxy.get_service()
         if my_svc is not None:
-            resource_url = my_svc.service_record['base_url'] + "/" + my_svc.service_record[
-                'version'] + "/archive/" + bucket + "/" + archiveid
+            resource_url = (
+                my_svc.service_record["base_url"]
+                + "/"
+                + my_svc.service_record["version"]
+                + "/archive/"
+                + bucket
+                + "/"
+                + archiveid
+            )
         else:
             resource_url = "N/A"
 
@@ -60,7 +71,9 @@ def create_object(bucket, archiveid, bodycontent):
         httpcode = 200
 
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode
 
@@ -76,6 +89,8 @@ def delete_object(bucket, archiveid):
         httpcode = 200
         return_object = None
     except Exception as err:
-        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
 
     return return_object, httpcode

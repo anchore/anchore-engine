@@ -6,6 +6,7 @@ from zope.interface import implementer
 from anchore_engine.services.analyzer import AnalyzerService
 from anchore_engine.twisted import WsgiApiServiceMaker, CommonOptions
 
+
 @implementer(IServiceMaker, IPlugin)
 class ExternalApiServiceMaker(WsgiApiServiceMaker):
     """
@@ -15,11 +16,10 @@ class ExternalApiServiceMaker(WsgiApiServiceMaker):
 
     """
 
-    tapname = 'anchore-worker'
-    description = 'Anchore Engine Worker Service. Provides image analysis services.'
+    tapname = "anchore-worker"
+    description = "Anchore Engine Worker Service. Provides image analysis services."
     service_cls = AnalyzerService
     options = CommonOptions
 
 
 servicemaker = ExternalApiServiceMaker()
-

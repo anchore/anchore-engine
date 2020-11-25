@@ -37,10 +37,10 @@ class IntegerVersionItem(object):
 
 
 class StringVersionItem(object):
-    _qualifiers_ = ['alpha', 'beta', 'milestone', 'rc', 'snapshot', '', 'sp']
-    _aliases_ = {'ga': '', 'final': '', 'cr': 'rc'}
-    _acronyms_ = {'a': 'alpha', 'b': 'beta', 'm': 'milestone'}
-    _release_version_index_ = str(_qualifiers_.index(''))
+    _qualifiers_ = ["alpha", "beta", "milestone", "rc", "snapshot", "", "sp"]
+    _aliases_ = {"ga": "", "final": "", "cr": "rc"}
+    _acronyms_ = {"a": "alpha", "b": "beta", "m": "milestone"}
+    _release_version_index_ = str(_qualifiers_.index(""))
 
     def __init__(self, value, followed_by_digit):
         if followed_by_digit and value in self._acronyms_:
@@ -59,13 +59,19 @@ class StringVersionItem(object):
         return self.cq == self._release_version_index_
 
     def comparable_qualifier(self, qualifier):
-        return str(self._qualifiers_.index(qualifier)) if qualifier in self._qualifiers_ else '{}-{}'.format(
-            len(self._qualifiers_), qualifier)
+        return (
+            str(self._qualifiers_.index(qualifier))
+            if qualifier in self._qualifiers_
+            else "{}-{}".format(len(self._qualifiers_), qualifier)
+        )
 
     def compare_to(self, other):
         if not other:
-            return 0 if self.cq == self._release_version_index_ else (
-                1 if self.cq > self._release_version_index_ else -1)
+            return (
+                0
+                if self.cq == self._release_version_index_
+                else (1 if self.cq > self._release_version_index_ else -1)
+            )
         else:
             if type(other) == StringVersionItem:
                 if self.cq == other.cq:
@@ -81,15 +87,18 @@ class StringVersionItem(object):
 
 
 class ListVersionItem(list):
-
     def __init__(self):
         super(ListVersionItem, self).__init__()
 
     def __repr__(self):
-        ret = ''
+        ret = ""
         for version_item in self:
             if ret:
-                ret = ret + ('-' if type(version_item) == ListVersionItem else '.') + version_item.__repr__()
+                ret = (
+                    ret
+                    + ("-" if type(version_item) == ListVersionItem else ".")
+                    + version_item.__repr__()
+                )
             else:
                 ret = version_item.__repr__()
         return ret
@@ -118,9 +127,17 @@ class ListVersionItem(list):
                 right = next(r_iter, None)
 
                 while left or right:
-                    if left and type(left) in [IntegerVersionItem, StringVersionItem, ListVersionItem]:
+                    if left and type(left) in [
+                        IntegerVersionItem,
+                        StringVersionItem,
+                        ListVersionItem,
+                    ]:
                         result = left.compare_to(right)
-                    elif right and type(right) in [IntegerVersionItem, StringVersionItem, ListVersionItem]:
+                    elif right and type(right) in [
+                        IntegerVersionItem,
+                        StringVersionItem,
+                        ListVersionItem,
+                    ]:
                         result = -1 * right.compare_to(left)
                     else:
                         raise NotImplemented
@@ -188,7 +205,11 @@ class MavenVersion(object):
 
     @staticmethod
     def _get_version_item_(is_digit, version_ss):
-        return IntegerVersionItem(version_ss) if is_digit else StringVersionItem(version_ss, False);
+        return (
+            IntegerVersionItem(version_ss)
+            if is_digit
+            else StringVersionItem(version_ss, False)
+        )
 
     @staticmethod
     def _parse_version_(version):
@@ -203,19 +224,23 @@ class MavenVersion(object):
         start_index = 0
 
         for c, i in zip(ver, range(len(ver))):
-            if c == '.':
+            if c == ".":
                 if i == start_index:
                     wlist.append(IntegerVersionItem())
                 else:
-                    wlist.append(MavenVersion._get_version_item_(is_digit, ver[start_index:i]))
+                    wlist.append(
+                        MavenVersion._get_version_item_(is_digit, ver[start_index:i])
+                    )
 
                 start_index = i + 1
 
-            elif c == '-':
+            elif c == "-":
                 if i == start_index:
                     wlist.append(IntegerVersionItem())
                 else:
-                    wlist.append(MavenVersion._get_version_item_(is_digit, ver[start_index:i]))
+                    wlist.append(
+                        MavenVersion._get_version_item_(is_digit, ver[start_index:i])
+                    )
 
                 start_index = i + 1
                 wlist = ListVersionItem()
@@ -234,7 +259,9 @@ class MavenVersion(object):
                 is_digit = True
             else:
                 if is_digit and i > start_index:
-                    wlist.append(MavenVersion._get_version_item_(True, ver[start_index:i]))
+                    wlist.append(
+                        MavenVersion._get_version_item_(True, ver[start_index:i])
+                    )
                     start_index = i
 
                     wlist = ListVersionItem()

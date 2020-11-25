@@ -22,7 +22,7 @@ def _deserialize(data, klass):
         return deserialize_date(data)
     elif klass == datetime.datetime:
         return deserialize_datetime(data)
-    elif klass == list or 'List[' in str(klass):
+    elif klass == list or "List[" in str(klass):
         # TODO: there is room for improvement here, perhaps checking if data is
         # already a list?  There doesn't seem to be a need for checking withing
         # each item's type, because there aren't any nested types that aren't
@@ -68,6 +68,7 @@ def deserialize_date(string):
     """
     try:
         from dateutil.parser import parse
+
         return parse(string).date()
     except ImportError:
         return string
@@ -85,6 +86,7 @@ def deserialize_datetime(string):
     """
     try:
         from dateutil.parser import parse
+
         return parse(string)
     except ImportError:
         return string
@@ -104,9 +106,11 @@ def deserialize_model(data, klass):
         return data
 
     for attr, attr_type in six.iteritems(instance.swagger_types):
-        if data is not None \
-                and instance.attribute_map[attr] in data \
-                and isinstance(data, (list, dict)):
+        if (
+            data is not None
+            and instance.attribute_map[attr] in data
+            and isinstance(data, (list, dict))
+        ):
             value = data[instance.attribute_map[attr]]
             setattr(instance, attr, _deserialize(value, attr_type))
 

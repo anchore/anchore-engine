@@ -1,4 +1,4 @@
-SYSTEM_USER_ID = 'admin'  # The system user is always user '0'.
+SYSTEM_USER_ID = "admin"  # The system user is always user '0'.
 
 
 def is_system_user(user_id):
@@ -16,7 +16,7 @@ def user_ids_to_search(obj):
     :return:
     """
     user_ids = []
-    if hasattr(obj, 'user_id'):
+    if hasattr(obj, "user_id"):
         user_ids.append(obj.user_id)
         if is_system_user(obj.user_id):
             return user_ids

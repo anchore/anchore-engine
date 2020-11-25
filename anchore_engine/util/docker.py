@@ -49,10 +49,14 @@ def parse_dockerimage_string(instr, strict=True):
     if strict is True:
         bad_chars = re.findall(r"[^a-zA-Z0-9@:/_\.\-]", instr)
         if bad_chars:
-            raise ValueError("bad character(s) {} in dockerimage string input ({})".format(bad_chars, instr))
+            raise ValueError(
+                "bad character(s) {} in dockerimage string input ({})".format(
+                    bad_chars, instr
+                )
+            )
 
     if re.match(r"^sha256:.*", instr):
-        registry = 'docker.io'
+        registry = "docker.io"
         digest = instr
 
     elif len(instr) == 64 and not re.findall(r"[^0-9a-fA-F]+", instr):
@@ -68,10 +72,10 @@ def parse_dockerimage_string(instr, strict=True):
             if patt:
                 host = patt.group(1)
                 port = patt.group(2)
-            elif a == 'docker.io':
-                host = 'docker.io'
+            elif a == "docker.io":
+                host = "docker.io"
                 port = None
-            elif a in ('localhost', 'localhost.localdomain', 'localbuild'):
+            elif a in ("localhost", "localhost.localdomain", "localbuild"):
                 host = a
                 port = None
             else:
@@ -79,12 +83,12 @@ def parse_dockerimage_string(instr, strict=True):
                 if patt:
                     host = a
                 else:
-                    host = 'docker.io'
+                    host = "docker.io"
                     remain = instr
                 port = None
 
         else:
-            host = 'docker.io'
+            host = "docker.io"
             port = None
             remain = instr
 
@@ -106,42 +110,42 @@ def parse_dockerimage_string(instr, strict=True):
             tag = "latest"
 
         if port:
-            registry = ':'.join([host, port])
+            registry = ":".join([host, port])
         else:
             registry = host
 
         if digest:
-            repotag = '@'.join([repo, digest])
+            repotag = "@".join([repo, digest])
         else:
-            repotag = ':'.join([repo, tag])
+            repotag = ":".join([repo, tag])
 
-        fulltag = '/'.join([registry, repotag])
+        fulltag = "/".join([registry, repotag])
 
         if not digest:
             digest = None
         else:
-            fulldigest = registry + '/' + repo + '@' + digest
+            fulldigest = registry + "/" + repo + "@" + digest
             tag = None
             fulltag = None
             repotag = None
 
     ret = {}
-    ret['host'] = host
-    ret['port'] = port
-    ret['repo'] = repo
-    ret['tag'] = tag
-    ret['registry'] = registry
-    ret['repotag'] = repotag
-    ret['fulltag'] = fulltag
-    ret['digest'] = digest
-    ret['fulldigest'] = fulldigest
-    ret['imageId'] = imageId
+    ret["host"] = host
+    ret["port"] = port
+    ret["repo"] = repo
+    ret["tag"] = tag
+    ret["registry"] = registry
+    ret["repotag"] = repotag
+    ret["fulltag"] = fulltag
+    ret["digest"] = digest
+    ret["fulldigest"] = fulldigest
+    ret["imageId"] = imageId
 
-    if ret['fulldigest']:
-        ret['pullstring'] = ret['fulldigest']
-    elif ret['fulltag']:
-        ret['pullstring'] = ret['fulltag']
+    if ret["fulldigest"]:
+        ret["pullstring"] = ret["fulldigest"]
+    elif ret["fulltag"]:
+        ret["pullstring"] = ret["fulltag"]
     else:
-        ret['pullstring'] = None
+        ret["pullstring"] = None
 
     return ret

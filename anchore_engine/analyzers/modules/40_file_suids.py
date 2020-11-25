@@ -10,17 +10,19 @@ import anchore_engine.analyzers.utils
 analyzer_name = "file_suids"
 
 try:
-    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(sys.argv, analyzer_name)
+    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(
+        sys.argv, analyzer_name
+    )
 except Exception as err:
     print(str(err))
     sys.exit(1)
 
-imgname = config['imgid']
-imgid = config['imgid_full']
-outputdir = config['dirs']['outputdir']
-unpackdir = config['dirs']['unpackdir']
+imgname = config["imgid"]
+imgid = config["imgid_full"]
+outputdir = config["dirs"]["outputdir"]
+unpackdir = config["dirs"]["unpackdir"]
 
-#if not os.path.exists(outputdir):
+# if not os.path.exists(outputdir):
 #    os.makedirs(outputdir)
 
 outfiles = {}
@@ -28,24 +30,26 @@ outfiles = {}
 try:
     allfiles = {}
     if os.path.exists(unpackdir + "/anchore_allfiles.json"):
-        with open(unpackdir + "/anchore_allfiles.json", 'r') as FH:
+        with open(unpackdir + "/anchore_allfiles.json", "r") as FH:
             allfiles = json.loads(FH.read())
     else:
-        #fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
-        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(os.path.join(unpackdir, "squashed.tar"))
-        with open(unpackdir + "/anchore_allfiles.json", 'w') as OFH:
+        # fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_path(unpackdir + "/rootfs")
+        fmap, allfiles = anchore_engine.analyzers.utils.get_files_from_squashtar(
+            os.path.join(unpackdir, "squashed.tar")
+        )
+        with open(unpackdir + "/anchore_allfiles.json", "w") as OFH:
             OFH.write(json.dumps(allfiles))
 
     # fileinfo
     for name in list(allfiles.keys()):
-        if allfiles[name]['mode'] & stat.S_ISUID:
-            outfiles[name] = oct(stat.S_IMODE(allfiles[name]['mode']))
+        if allfiles[name]["mode"] & stat.S_ISUID:
+            outfiles[name] = oct(stat.S_IMODE(allfiles[name]["mode"]))
 
 except Exception as err:
     print("ERROR: " + str(err))
 
 if outfiles:
-    ofile = os.path.join(outputdir, 'files.suids')
+    ofile = os.path.join(outputdir, "files.suids")
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, outfiles)
 
 sys.exit(0)

@@ -3,20 +3,20 @@ from anchore_engine.subsys import logger
 
 COMPRESSION_LEVEL = 3
 
-DEFAULT_DRIVER = 'db'
-DEFAULT_OBJECT_STORE_MANAGER_ID='object_store'
-ALT_OBJECT_STORE_CONFIG_KEY = 'archive'
+DEFAULT_DRIVER = "db"
+DEFAULT_OBJECT_STORE_MANAGER_ID = "object_store"
+ALT_OBJECT_STORE_CONFIG_KEY = "archive"
 
 DEFAULT_MIN_COMPRESSION_LIMIT_KB = 100
-ANALYSIS_ARCHIVE_MANAGER_ID = 'analysis_archive'
+ANALYSIS_ARCHIVE_MANAGER_ID = "analysis_archive"
 
-COMPRESSION_SECTION_KEY = 'compression'
-COMPRESSION_ENABLED_KEY = 'enabled'
-COMPRESSION_MIN_SIZE_KEY = 'min_size_kbytes'
-DRIVER_SECTION_KEY = 'storage_driver'
-DRIVER_NAME_KEY = 'name'
-DRIVER_CONFIG_KEY = 'config'
-MIGRATION_DRIVER_SECTION_KEY = 'migrate_from_storage_driver'
+COMPRESSION_SECTION_KEY = "compression"
+COMPRESSION_ENABLED_KEY = "enabled"
+COMPRESSION_MIN_SIZE_KEY = "min_size_kbytes"
+DRIVER_SECTION_KEY = "storage_driver"
+DRIVER_NAME_KEY = "name"
+DRIVER_CONFIG_KEY = "config"
+MIGRATION_DRIVER_SECTION_KEY = "migrate_from_storage_driver"
 DEFAULT_COMPRESSION_ENABLED = False
 
 default_config = {
@@ -24,10 +24,7 @@ default_config = {
         COMPRESSION_ENABLED_KEY: DEFAULT_COMPRESSION_ENABLED,
         COMPRESSION_MIN_SIZE_KEY: DEFAULT_MIN_COMPRESSION_LIMIT_KB,
     },
-    DRIVER_SECTION_KEY: {
-        DRIVER_NAME_KEY: DEFAULT_DRIVER,
-        DRIVER_CONFIG_KEY: {}
-    }
+    DRIVER_SECTION_KEY: {DRIVER_NAME_KEY: DEFAULT_DRIVER, DRIVER_CONFIG_KEY: {}},
 }
 
 
@@ -61,10 +58,12 @@ def normalize_config(obj_store_config, legacy_fallback=False, service_config=Non
 
     global default_config
 
-    #obj_store_config = extract_config(service_config, config_keys)
+    # obj_store_config = extract_config(service_config, config_keys)
 
     if legacy_fallback and not obj_store_config:
-        logger.warn("no current object storage configuration found in service config, using legacy configuration options")
+        logger.warn(
+            "no current object storage configuration found in service config, using legacy configuration options"
+        )
         obj_store_config = {}
         bkwd = _parse_legacy_config(service_config)
         obj_store_config.update(bkwd)
@@ -73,7 +72,9 @@ def normalize_config(obj_store_config, legacy_fallback=False, service_config=Non
     if DRIVER_SECTION_KEY in obj_store_config:
         new_conf[DRIVER_SECTION_KEY].update(obj_store_config[DRIVER_SECTION_KEY])
     if COMPRESSION_SECTION_KEY in obj_store_config:
-        new_conf[COMPRESSION_SECTION_KEY].update(obj_store_config[COMPRESSION_SECTION_KEY])
+        new_conf[COMPRESSION_SECTION_KEY].update(
+            obj_store_config[COMPRESSION_SECTION_KEY]
+        )
 
     return new_conf
 
@@ -91,7 +92,7 @@ def validate_config(config):
             drv_cfg = config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]
         return True
     except Exception as e:
-        raise Exception('Invalid archive driver configuration: {}'.format(e))
+        raise Exception("Invalid archive driver configuration: {}".format(e))
 
 
 def _parse_legacy_config(config):
@@ -103,23 +104,23 @@ def _parse_legacy_config(config):
     :param config: config dict
     :return: parsed archive config values as a dict
     """
-    mapped_config = {
-        DRIVER_SECTION_KEY: {
-            DRIVER_NAME_KEY: None,
-            DRIVER_CONFIG_KEY: {}
-        }
-    }
+    mapped_config = {DRIVER_SECTION_KEY: {DRIVER_NAME_KEY: None, DRIVER_CONFIG_KEY: {}}}
 
-    if 'archive_driver' in config and type(config['archive_driver']) in [str, str]:
-        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = config['archive_driver']
+    if "archive_driver" in config and type(config["archive_driver"]) in [str, str]:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = config["archive_driver"]
     else:
         return config
 
-    if 'use_db' in config and config['use_db']:
-        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = 'db'
+    if "use_db" in config and config["use_db"]:
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] = "db"
 
-    if mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] == 'localfs' and 'archive_data_dir' in config:
-        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY]['archive_data_dir'] = config['archive_data_dir']
+    if (
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] == "localfs"
+        and "archive_data_dir" in config
+    ):
+        mapped_config[DRIVER_SECTION_KEY][DRIVER_CONFIG_KEY][
+            "archive_data_dir"
+        ] = config["archive_data_dir"]
 
     if mapped_config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY] is not None:
         return mapped_config

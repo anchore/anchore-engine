@@ -7,19 +7,28 @@ from anchore_engine import utils
 from anchore_engine.subsys import logger
 from anchore_engine.common import os_package_types
 
+
 def make_image_content_response(content_type, content_data):
     localconfig = anchore_engine.configuration.localconfig.get_config()
-    all_content_types = localconfig.get("image_content_types", []) + localconfig.get("image_metadata_types", [])
+    all_content_types = localconfig.get("image_content_types", []) + localconfig.get(
+        "image_metadata_types", []
+    )
 
     if content_type not in all_content_types:
-        logger.warn("input content_type (%s) not supported (%s)", content_type, all_content_types)
+        logger.warn(
+            "input content_type (%s) not supported (%s)",
+            content_type,
+            all_content_types,
+        )
         return []
 
     if not content_data:
         logger.warn("empty content data given to format - returning empty result")
         return []
 
-    builder = CONTENT_RESPONSE_BUILDER_DISPATCH.get(content_type, _build_default_response)
+    builder = CONTENT_RESPONSE_BUILDER_DISPATCH.get(
+        content_type, _build_default_response
+    )
     return builder(content_data)
 
 
@@ -116,7 +125,9 @@ def _build_java_response(content_data):
             el["type"] = content_data[package]["type"].upper()
             el["location"] = content_data[package]["location"]
             el["specification-version"] = content_data[package]["specification-version"]
-            el["implementation-version"] = content_data[package]["implementation-version"]
+            el["implementation-version"] = content_data[package][
+                "implementation-version"
+            ]
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
         except:
@@ -158,9 +169,7 @@ def _build_files_response(content_data):
 
 def _safe_base64_encode(data_provider):
     try:
-        return utils.ensure_str(
-            base64.encodebytes(utils.ensure_bytes(data_provider()))
-        )
+        return utils.ensure_str(base64.encodebytes(utils.ensure_bytes(data_provider())))
     except Exception as err:
         logger.warn("could not base64 encode content - exception: %s", err)
     return ""
@@ -175,7 +184,7 @@ def _build_dockerfile_response(content_data):
 
 
 def _build_manifest_response(content_data):
-   return _safe_base64_encode(lambda: content_data)
+    return _safe_base64_encode(lambda: content_data)
 
 
 def _build_default_response(content_data):
@@ -186,18 +195,25 @@ def _build_default_response(content_data):
             try:
                 el["package"] = content_data[package]["name"]
                 el["type"] = content_data[package]["type"].upper()
-                el["location"] = content_data[package].get("location", None) or "Unknown"
+                el["location"] = (
+                    content_data[package].get("location", None) or "Unknown"
+                )
                 el["version"] = content_data[package].get("version", None) or "Unknown"
                 el["origin"] = content_data[package].get("origin", None) or "Unknown"
                 el["license"] = content_data[package].get("license", None) or "Unknown"
-                el["licenses"] = content_data[package].get("license", "Unknown").split(" ")
+                el["licenses"] = (
+                    content_data[package].get("license", "Unknown").split(" ")
+                )
             except Exception as err:
                 continue
             response.append(el)
         if not response:
             raise Exception("empty return list after generic element parse")
     except Exception as err:
-        logger.debug("couldn't parse any generic package elements, returning raw content_data - exception: %s", err)
+        logger.debug(
+            "couldn't parse any generic package elements, returning raw content_data - exception: %s",
+            err,
+        )
         response = content_data
 
     return response
@@ -232,5 +248,5 @@ CONTENT_RESPONSE_BUILDER_DISPATCH = {
     "docker_history": _build_docker_history_response,
     "dockerfile": _build_dockerfile_response,
     "manifest": _build_manifest_response,
-    "malware": _build_malware_response
+    "malware": _build_malware_response,
 }

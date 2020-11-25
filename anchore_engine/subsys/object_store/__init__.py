@@ -9,7 +9,12 @@ any state necessary (e.g. for garbage collection or time-out)
 from anchore_engine.subsys import logger
 
 from .drivers import ObjectStorageDriverMeta, ObjectStorageDriver, interface
-from .drivers import S3ObjectStorageDriver, SwiftObjectStorageDriver, FilesystemObjectStorageDriver, DbDriver
+from .drivers import (
+    S3ObjectStorageDriver,
+    SwiftObjectStorageDriver,
+    FilesystemObjectStorageDriver,
+    DbDriver,
+)
 from anchore_engine.subsys.object_store.manager import get_manager, initialize
 
 
@@ -21,15 +26,19 @@ def _from_config(configuration):
     :param configuration:
     :return:
     """
-    driver_name = configuration.get('name')
-    driver_config = configuration.get('config')
+    driver_name = configuration.get("name")
+    driver_config = configuration.get("config")
 
     if not driver_name:
-        raise ValueError('Cannot initialize archive driver, no driver name found in configuration')
+        raise ValueError(
+            "Cannot initialize archive driver, no driver name found in configuration"
+        )
 
     drv = ObjectStorageDriver.registry.get(driver_name)
     if not drv:
-        raise ValueError('Unknown driver name specified. No driver for name {}'.format(driver_name))
+        raise ValueError(
+            "Unknown driver name specified. No driver for name {}".format(driver_name)
+        )
 
     return drv(driver_config)
 
@@ -43,10 +52,10 @@ def init_driver(configuration):
     """
 
     if not configuration:
-        raise ValueError('Cannot initialize an empty configuration')
+        raise ValueError("Cannot initialize an empty configuration")
 
     try:
         return _from_config(configuration=configuration)
     except Exception as err:
-        logger.exception('Error configuring archive driver')
+        logger.exception("Error configuring archive driver")
         raise err

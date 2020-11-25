@@ -4,17 +4,32 @@ import time
 
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.db import db_accounts, db_account_users, AccountTypes, UserAccessCredentialTypes, AccountStates, UserTypes
+from anchore_engine.db import (
+    db_accounts,
+    db_account_users,
+    AccountTypes,
+    UserAccessCredentialTypes,
+    AccountStates,
+    UserTypes,
+)
 from anchore_engine.db.db_accounts import AccountNotFoundError
-from anchore_engine.auth.oauth import token_manager, InvalidOauthConfigurationError, OauthNotConfiguredError
+from anchore_engine.auth.oauth import (
+    token_manager,
+    InvalidOauthConfigurationError,
+    OauthNotConfiguredError,
+)
 from threading import RLock
 from anchore_engine.subsys.caching import TTLCache
 
 
 # Not currently used because upgrade...
-name_validator_regex = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9@.!#$+-=^_`~;]{1,126}[a-zA-Z0-9]$')
-email_validator_regex = re.compile(r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
-password_validator_regex = re.compile('.{6,128}$')
+name_validator_regex = re.compile(
+    r"^[a-zA-Z0-9][a-zA-Z0-9@.!#$+-=^_`~;]{1,126}[a-zA-Z0-9]$"
+)
+email_validator_regex = re.compile(
+    r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+)
+password_validator_regex = re.compile(".{6,128}$")
 
 
 def is_valid_username(candidate):
@@ -53,36 +68,59 @@ class IdentityBootstrapper(object):
         # system user
         try:
             if not self.mgr.get_account(localconfig.SYSTEM_ACCOUNT_NAME):
-                self.mgr.create_account(localconfig.SYSTEM_ACCOUNT_NAME, AccountTypes.service, 'system@system')
+                self.mgr.create_account(
+                    localconfig.SYSTEM_ACCOUNT_NAME,
+                    AccountTypes.service,
+                    "system@system",
+                )
 
             if not self.mgr.get_user(localconfig.SYSTEM_USERNAME):
-                self.mgr.create_user(localconfig.SYSTEM_ACCOUNT_NAME, localconfig.SYSTEM_USERNAME)
-                self.mgr.add_user_credential(username=localconfig.SYSTEM_USERNAME, credential_type=UserAccessCredentialTypes.password)
+                self.mgr.create_user(
+                    localconfig.SYSTEM_ACCOUNT_NAME, localconfig.SYSTEM_USERNAME
+                )
+                self.mgr.add_user_credential(
+                    username=localconfig.SYSTEM_USERNAME,
+                    credential_type=UserAccessCredentialTypes.password,
+                )
 
         except Exception as err:
-            logger.exception('Error initializing system identities')
+            logger.exception("Error initializing system identities")
             raise Exception(
-                "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(err))
+                "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: "
+                + str(err)
+            )
 
         # admin user
         try:
             if not self.mgr.get_account(localconfig.ADMIN_ACCOUNT_NAME):
-                init_email = localconfig.get_config().get(localconfig.DEFAULT_ADMIN_EMAIL_KEY, 'admin@myanchore')
-                self.mgr.create_account(localconfig.ADMIN_ACCOUNT_NAME, AccountTypes.admin, init_email)
+                init_email = localconfig.get_config().get(
+                    localconfig.DEFAULT_ADMIN_EMAIL_KEY, "admin@myanchore"
+                )
+                self.mgr.create_account(
+                    localconfig.ADMIN_ACCOUNT_NAME, AccountTypes.admin, init_email
+                )
 
             if not self.mgr.get_user(localconfig.ADMIN_USERNAME):
-                self.mgr.create_user(localconfig.ADMIN_ACCOUNT_NAME, localconfig.ADMIN_USERNAME)
+                self.mgr.create_user(
+                    localconfig.ADMIN_ACCOUNT_NAME, localconfig.ADMIN_USERNAME
+                )
 
-                init_password = localconfig.get_config().get(localconfig.DEFAULT_ADMIN_PASSWORD_KEY, localconfig.ADMIN_USER_DEFAULT_PASSWORD)
-                self.mgr.add_user_credential(username=localconfig.ADMIN_USERNAME,
-                                             credential_type=UserAccessCredentialTypes.password,
-                                             value=init_password)
+                init_password = localconfig.get_config().get(
+                    localconfig.DEFAULT_ADMIN_PASSWORD_KEY,
+                    localconfig.ADMIN_USER_DEFAULT_PASSWORD,
+                )
+                self.mgr.add_user_credential(
+                    username=localconfig.ADMIN_USERNAME,
+                    credential_type=UserAccessCredentialTypes.password,
+                    value=init_password,
+                )
             return True
         except Exception as err:
-            logger.exception('Error initializing system identities')
+            logger.exception("Error initializing system identities")
             raise Exception(
-                "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: " + str(
-                    err))
+                "Initialization failed: could not fetch/add anchore-system user from/to DB - exception: "
+                + str(err)
+            )
 
     def initialize_user_identities_from_config(self, config_credentials):
         """
@@ -94,17 +132,20 @@ class IdentityBootstrapper(object):
         :return:
         """
 
-        logger.info('Initializing user identities from config')
+        logger.info("Initializing user identities from config")
 
         try:
-            if 'users' not in config_credentials:
+            if "users" not in config_credentials:
                 # Nothing to do
                 return
 
-            for userId, user_config in config_credentials['users'].items():
+            for userId, user_config in config_credentials["users"].items():
                 if not user_config:
                     logger.warn(
-                        'Found empty entry for userId {} in config file. Skipping initialization.'.format(userId))
+                        "Found empty entry for userId {} in config file. Skipping initialization.".format(
+                            userId
+                        )
+                    )
                     continue
 
                 if userId == localconfig.ADMIN_USERNAME:
@@ -112,30 +153,41 @@ class IdentityBootstrapper(object):
                 else:
                     user_type = AccountTypes.user
 
-                password = user_config.pop('password', None)
-                email = user_config.pop('email', None)
+                password = user_config.pop("password", None)
+                email = user_config.pop("email", None)
                 if password and email:
                     try:
-                        account = self.mgr.create_account(userId, account_type=user_type, email=email)
+                        account = self.mgr.create_account(
+                            userId, account_type=user_type, email=email
+                        )
                     except db_accounts.AccountAlreadyExistsError:
                         pass
                     except:
-                        logger.exception('Error initializing account: {}'.format(userId))
+                        logger.exception(
+                            "Error initializing account: {}".format(userId)
+                        )
                         raise
 
                     try:
-                        self.mgr.create_user(account_name=userId, username=userId, password=password)
+                        self.mgr.create_user(
+                            account_name=userId, username=userId, password=password
+                        )
                     except db_account_users.UserAlreadyExistsError:
                         pass
                     except:
-                        logger.exception('Error initializing user: {}'.format(userId))
+                        logger.exception("Error initializing user: {}".format(userId))
                         raise
 
                 else:
-                    raise Exception("user defined but has empty password/email: " + str(userId))
+                    raise Exception(
+                        "user defined but has empty password/email: " + str(userId)
+                    )
         except Exception as err:
-            logger.exception('Error initializing users')
-            raise Exception("Initialization failed: could not add users from config into DB - exception: " + str(err))
+            logger.exception("Error initializing users")
+            raise Exception(
+                "Initialization failed: could not add users from config into DB - exception: "
+                + str(err)
+            )
 
 
 class IdentityManagerFactory(object):
@@ -171,7 +223,7 @@ class HttpBasicCredential(AccessCredential):
 
 
 class HttpBearerCredential(AccessCredential):
-    def __init__(self, token: str, expiration: datetime.datetime=None):
+    def __init__(self, token: str, expiration: datetime.datetime = None):
         self.token = token
         self.expires_at = expiration
 
@@ -187,6 +239,7 @@ class IdentityManager(object):
     """
     A db session-aware identity manager.
     """
+
     _cache_lock = RLock()
     _credential_cache = TTLCache(default_ttl_sec=-1)
     _cache_lock_wait = localconfig.CRED_CACHE_LOCK_WAIT_SEC
@@ -204,25 +257,29 @@ class IdentityManager(object):
         :return:
         """
         cred = None
-        exp = None # Credential expiration, if needed
+        exp = None  # Credential expiration, if needed
 
-        logger.debug('Loading system user creds')
+        logger.debug("Loading system user creds")
 
         with IdentityManager._cache_lock:
-            cached_cred = IdentityManager._credential_cache.lookup(localconfig.SYSTEM_USERNAME)
+            cached_cred = IdentityManager._credential_cache.lookup(
+                localconfig.SYSTEM_USERNAME
+            )
 
             if cached_cred is not None:
                 if cached_cred.is_expired():
                     # Flush it
-                    logger.debug('Cached system credential is expired, flushing')
-                    IdentityManager._credential_cache.delete(localconfig.SYSTEM_USERNAME)
+                    logger.debug("Cached system credential is expired, flushing")
+                    IdentityManager._credential_cache.delete(
+                        localconfig.SYSTEM_USERNAME
+                    )
                 else:
-                    logger.debug('Cached system credential still ok')
+                    logger.debug("Cached system credential still ok")
                     # Use it
                     cred = cached_cred
 
             if cred is None:
-                logger.debug('Doing refresh/initial system cred load')
+                logger.debug("Doing refresh/initial system cred load")
 
                 try:
                     tok_mgr = token_manager()
@@ -232,25 +289,42 @@ class IdentityManager(object):
                 # Generate one
                 if tok_mgr:
                     # Generate a token
-                    usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
-                    system_user_uuid = usr['uuid']
-                    tok, exp = tok_mgr.generate_token(system_user_uuid, return_expiration=True)
-                    logger.debug('Generated token with expiration {}'.format(exp))
+                    usr = db_account_users.get(
+                        localconfig.SYSTEM_USERNAME, session=self.session
+                    )
+                    system_user_uuid = usr["uuid"]
+                    tok, exp = tok_mgr.generate_token(
+                        system_user_uuid, return_expiration=True
+                    )
+                    logger.debug("Generated token with expiration {}".format(exp))
                     cred = HttpBearerCredential(tok, exp)
                 else:
-                    rec = db_accounts.get(localconfig.SYSTEM_USERNAME, session=self.session)
-                    usr = db_account_users.get(localconfig.SYSTEM_USERNAME, session=self.session)
+                    rec = db_accounts.get(
+                        localconfig.SYSTEM_USERNAME, session=self.session
+                    )
+                    usr = db_account_users.get(
+                        localconfig.SYSTEM_USERNAME, session=self.session
+                    )
 
                     if not rec or not usr:
-                        logger.error('Could not find a system account or user. This is not an expected state')
-                        raise Exception('No system account or user found')
+                        logger.error(
+                            "Could not find a system account or user. This is not an expected state"
+                        )
+                        raise Exception("No system account or user found")
 
                     # This will not work if the system admin has configured hashed passwords but not oauth. But, that should be caught at config validation.
-                    cred = HttpBasicCredential(usr['username'], usr.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value'))
+                    cred = HttpBasicCredential(
+                        usr["username"],
+                        usr.get("credentials", {})
+                        .get(UserAccessCredentialTypes.password, {})
+                        .get("value"),
+                    )
 
                 if cred is not None:
-                    logger.debug('Caching system creds')
-                    IdentityManager._credential_cache.cache_it(localconfig.SYSTEM_USERNAME, cred)
+                    logger.debug("Caching system creds")
+                    IdentityManager._credential_cache.cache_it(
+                        localconfig.SYSTEM_USERNAME, cred
+                    )
 
         return cred
 
@@ -260,9 +334,9 @@ class IdentityManager(object):
         :return: (username, password) tuple
         """
         lc = localconfig.get_config()
-        if 'system_user_auth' in lc and lc['system_user_auth'] != (None, None):
-            creds = lc['system_user_auth']
-            logger.debug('Using creds found in config: {}'.format(creds))
+        if "system_user_auth" in lc and lc["system_user_auth"] != (None, None):
+            creds = lc["system_user_auth"]
+            logger.debug("Using creds found in config: {}".format(creds))
 
             if type(creds) in [tuple, list]:
                 return HttpBasicCredential(creds[0], creds[1])
@@ -285,14 +359,24 @@ class IdentityManager(object):
 
         usrs = db_account_users.list_for_account(userId, session=self.session)
         if usrs:
-            return usrs[0]['username'], usrs[0].get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get(
-                'value')
+            return (
+                usrs[0]["username"],
+                usrs[0]
+                .get("credentials", {})
+                .get(UserAccessCredentialTypes.password, {})
+                .get("value"),
+            )
         else:
             return None, None
 
     def get_credentials_for_username(self, username):
         user = db_account_users.get(username=username, session=self.session)
-        return user['username'], user.get('credentials', {}).get(UserAccessCredentialTypes.password, {}).get('value')
+        return (
+            user["username"],
+            user.get("credentials", {})
+            .get(UserAccessCredentialTypes.password, {})
+            .get("value"),
+        )
 
     def create_account(self, account_name, account_type, email):
         """
@@ -304,14 +388,26 @@ class IdentityManager(object):
         :return: (account, user) tuple with the account and admin user for the account
         """
         if not is_valid_accountname(account_name):
-            raise ValueError('Account name must match regex {}'.format(name_validator_regex))
+            raise ValueError(
+                "Account name must match regex {}".format(name_validator_regex)
+            )
 
-        account = db_accounts.add(account_name, account_type=account_type, email=email, state=AccountStates.enabled, session=self.session)
+        account = db_accounts.add(
+            account_name,
+            account_type=account_type,
+            email=email,
+            state=AccountStates.enabled,
+            session=self.session,
+        )
         return account
 
     def list_accounts(self, with_state=None, include_service=False):
-        accounts = list(filter(lambda x: (include_service or (x['type'] != AccountTypes.service)),
-                          db_accounts.get_all(with_state=with_state, session=self.session)))
+        accounts = list(
+            filter(
+                lambda x: (include_service or (x["type"] != AccountTypes.service)),
+                db_accounts.get_all(with_state=with_state, session=self.session),
+            )
+        )
         return accounts
 
     def get_account(self, accountname):
@@ -324,36 +420,53 @@ class IdentityManager(object):
     def delete_account(self, account_name):
         return db_accounts.delete(account_name, session=self.session)
 
-    def create_user(self, account_name, username, password=None, user_type=UserTypes.native, user_source=None):
+    def create_user(
+        self,
+        account_name,
+        username,
+        password=None,
+        user_type=UserTypes.native,
+        user_source=None,
+    ):
         """
-        Create a new user as a unit-of-work (e.g. a single db transaction
+                Create a new user as a unit-of-work (e.g. a single db transaction
 
-        :param account_name: the str account name
-        :param username: the str username
-        :param password: the password to set
-        :param user_type: The type of user to create
-a        :return:
+                :param account_name: the str account name
+                :param username: the str username
+                :param password: the password to set
+                :param user_type: The type of user to create
+        a        :return:
         """
         if not is_valid_username(username):
-            raise ValueError('username must match regex {}'.format(name_validator_regex))
+            raise ValueError(
+                "username must match regex {}".format(name_validator_regex)
+            )
 
         if user_type in [UserTypes.external] and password is not None:
-            raise AssertionError('Cannot set password for external user type')
+            raise AssertionError("Cannot set password for external user type")
 
         if user_type == UserTypes.external and user_source is None:
-            raise ValueError('user_source cannot be None with user_type = external')
+            raise ValueError("user_source cannot be None with user_type = external")
 
         account = db_accounts.get(account_name, session=self.session)
         if not account:
-            raise AccountNotFoundError('Account does not exist')
+            raise AccountNotFoundError("Account does not exist")
 
-        usr_record = db_account_users.add(account_name=account_name, username=username, user_type=user_type, user_source=user_source,
-                                          session=self.session)
+        usr_record = db_account_users.add(
+            account_name=account_name,
+            username=username,
+            user_type=user_type,
+            user_source=user_source,
+            session=self.session,
+        )
 
         if password is not None:
-            db_account_users.add_user_credential(username=username,
-                                                 credential_type=UserAccessCredentialTypes.password, value=password,
-                                                 session=self.session)
+            db_account_users.add_user_credential(
+                username=username,
+                credential_type=UserAccessCredentialTypes.password,
+                value=password,
+                session=self.session,
+            )
             usr_record = db_account_users.get(username, session=self.session)
 
         return usr_record
@@ -374,7 +487,9 @@ a        :return:
         else:
             return db_account_users.get_all(session=self.session)
 
-    def add_user_credential(self, username, credential_type, value=None, overrwite=True):
+    def add_user_credential(
+        self, username, credential_type, value=None, overrwite=True
+    ):
         """
         Add a new password to a user
 
@@ -383,10 +498,15 @@ a        :return:
         :param value: str value to set, may be None and if password, one will be generated
         :return:
         """
-        credential = db_account_users.add_user_credential(username=username,
-                                                          credential_type=credential_type, value=value,
-                                                          session=self.session)
+        credential = db_account_users.add_user_credential(
+            username=username,
+            credential_type=credential_type,
+            value=value,
+            session=self.session,
+        )
         return credential
 
     def delete_user_credential(self, username, cred_type):
-        return db_account_users.delete_user_credential(username, credential_type=cred_type, session=self.session)
+        return db_account_users.delete_user_credential(
+            username, credential_type=cred_type, session=self.session
+        )

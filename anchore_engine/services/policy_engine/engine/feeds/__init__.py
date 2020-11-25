@@ -1,9 +1,9 @@
 from collections import namedtuple
 import datetime
 
-FeedGroupList = namedtuple('FeedGroupList', ['groups'])
-FeedList = namedtuple('FeedList', ['feeds'])
-GroupData = namedtuple('GroupData', ['data', 'next_token', 'since', 'record_count'])
+FeedGroupList = namedtuple("FeedGroupList", ["groups"])
+FeedList = namedtuple("FeedList", ["feeds"])
+GroupData = namedtuple("GroupData", ["data", "next_token", "since", "record_count"])
 
 
 class IFeedSource(object):
@@ -17,7 +17,13 @@ class IFeedSource(object):
     def list_feed_groups(self, feed: str) -> FeedGroupList:
         raise NotImplementedError()
 
-    def get_feed_group_data(self, feed: str, group: str, since: datetime.datetime = None, next_token: str = None) -> GroupData:
+    def get_feed_group_data(
+        self,
+        feed: str,
+        group: str,
+        since: datetime.datetime = None,
+        next_token: str = None,
+    ) -> GroupData:
         """
         Get a max_sized page of data using the continuation token.
 
