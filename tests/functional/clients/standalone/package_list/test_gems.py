@@ -2,8 +2,12 @@
 from .fixtures import gems
 from . import path_params, metadata_params
 import pytest
-import json
 
+
+#
+# Preloaded fixtures, with pytest.param that allows a nicer repr when the test runs, instead of the
+# default which slaps the whole (giant) dictionary, making output unreadable.
+#
 
 class TestGemPaths:
 
@@ -20,54 +24,47 @@ class TestGemMetadata:
     def test_has_files(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path, "{}"))
-        expected = json.loads(metadata)
-        assert loaded['files'] == expected['files']
+        loaded = pkgs.get(path, {})
+        assert loaded['files'] == metadata['files']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_name(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['name'] == expected['name']
+        loaded = pkgs.get(path, {})
+        assert loaded['name'] == metadata['name']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_lics(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['lics'] == expected['lics']
+        loaded = pkgs.get(path, {})
+        assert loaded['lics'] == metadata['lics']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_versions(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['versions'] == expected['versions']
+        loaded = pkgs.get(path, {})
+        assert loaded['versions'] == metadata['versions']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_latest(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['latest'] == expected['latest']
+        loaded = pkgs.get(path, {})
+        assert loaded['latest'] == metadata['latest']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_origins(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['origins'] == expected['origins']
+        loaded = pkgs.get(path, {})
+        assert loaded['origins'] == metadata['origins']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(gems.pkgs))
     def test_sourcepkg(self, analyzed_data, path, metadata):
         result = analyzed_data("lean")
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.gems']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['sourcepkg'] == expected['sourcepkg']
+        loaded = pkgs.get(path, {})
+        assert loaded['sourcepkg'] == metadata['sourcepkg']

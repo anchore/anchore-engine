@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 import os
 import importlib.util
 from os.path import join
@@ -46,6 +47,38 @@ pre_baked_images = {
         'image_source': 'registry',
         'schema_version': 'v2',
     },
+    'java': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'java',
+        'digest': 'sha256:9f453a37ea62976dd0f6b8ca4da2010cc01c3988f2e8c290044576d936bae710',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
+    'stretch-slim': {
+        'registry': 'docker.io',
+        'repo': 'anchore/test_images',
+        'tag': 'debian-stretch-slim',
+        'digest': 'sha256:cd74be1a65a7c7f07aa9952f622097a6452012fea741fbdade0e763edaa55ba0',
+        'image_source': 'registry',
+        'schema_version': 'v2',
+    },
+    'rpm': {
+        "registry": "docker.io",
+        "repo": "anchore/test_images",
+        "tag": "centos8",
+        "digest": "sha256:96d136c9cbaf22d73010e3e79e748e7772143fd9a584f8898d2f122cc5da1206",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
+    'busybox': {
+        "registry": "docker.io",
+        "repo": "busybox",
+        "tag": "1.32.0-glibc",
+        "digest": "sha256:6e6d13055ed81b7144afaad15150fc137d4f639482beb311aaa097bc57e3cb80",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
 }
 
 
@@ -72,6 +105,34 @@ def create_cache_directories(
     os.makedirs(cache_path, exist_ok=True)
 
     return cache_path
+
+
+@pytest.fixture
+def hints_image(monkeypatch, tmpdir):
+    """
+    This fixture is *very* expensive. Sorry. There is no way around it. The
+    hintsfile functionality requires the image to be analyzed every single
+    time. Compensate with the smallest images possible
+    """
+    def func(contents, image):
+        work_dir = tmpdir.strpath
+        path = os.path.join(work_dir, 'anchore_hints.json')
+        with open(path, 'w') as _f:
+            json.dump(contents, _f)
+        monkeypatch.setenv("ANCHORE_TEST_HINTSFILE", path)
+        image_kwargs = pre_baked_images[image]
+        standalone.main(work_dir=work_dir, localconfig={'services': {'analyzer': {'enable_hints': True}}}, **image_kwargs)
+        results_path = join(work_dir, 'result.py')
+        spec = importlib.util.spec_from_file_location("functional_results", results_path)
+        functional_results = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(functional_results)
+        # After importing the result as a Python module, the standalone script
+        # will assign the return value to `result` which is a single item in
+        # a list. Return the first item in that list. If this ever fails, is
+        # because the `result.py` file doesn't comply with that format
+        return functional_results.result[0]
+
+    return func
 
 
 @pytest.fixture(scope='session')

@@ -59,11 +59,6 @@
     only:
       - master
 
-.initialize_docker_registry_artifacts: &initialize_docker_registry_artifacts
-  run:
-    name: Create Artifacts for Docker Registry
-    command: make setup-local-docker-registry
-
 # Start circleci configuration
 version: 2.1
 orbs:
@@ -208,26 +203,20 @@ jobs:
 
   functional_tests:
     parameters:
-      py_version:
-        type: string
       tox_env:
         type: string
-    docker:
-      - image: circleci/python:<<parameters.py_version>>
-    resource_class: large
+
+    machine:
+      image: ubuntu-1604:202007-01
     environment:
       <<: *global_environment_vars
       ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore
       ANCHORE_TEST_DOCKER_REGISTRY_PASS: foobar
-      ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000
     steps:
-      - setup_remote_docker
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
-      - <<: *ssh_forward_port
-      - <<: *initialize_docker_registry_artifacts
-      - run:
+      - run: |
           echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
@@ -308,13 +297,11 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           requires:
             - build
@@ -334,7 +321,7 @@ workflows:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
 
   nightly_build:
     triggers:
@@ -386,14 +373,12 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           filters: *filter_nightly
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           filters: *filter_nightly
           requires:
@@ -431,7 +416,7 @@ workflows:
             - push_nightly_image
           image_name: anchore/anchore-engine-dev:nightly
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
 
   rc_image_workflow:
     jobs:
@@ -466,7 +451,7 @@ workflows:
             - push_rc_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
           policy_failure: true
 
   prod_image_workflow:
@@ -547,14 +532,12 @@ workflows:
             - unit_tests_38
       - functional_tests:
           name: functional_tests_36
-          py_version: "3.6"
           tox_env: "py36"
           filters: *filter_rebuild_tags
           requires:
             - build
       - functional_tests:
           name: functional_tests_38
-          py_version: "3.8"
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
@@ -592,7 +575,7 @@ workflows:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
-          timeout: '2000'
+          timeout: "2000"
           policy_failure: true
       - hold_for_approval:
           type: approval

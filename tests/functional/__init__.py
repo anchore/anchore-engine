@@ -2,7 +2,7 @@ import logging
 
 import requests
 
-def get_engine_version(username, password, base_url="http://localhost:8228/v1/"):
+def get_engine_version(username, password, base_url):
     url = "{}/status".format(base_url)
     r = requests.get(url, auth=(username, password))
     if r.status_code == 200:

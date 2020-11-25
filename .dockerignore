@@ -8,3 +8,5 @@
 venv
 scripts/ci
 Makefile
+.cache
+tests/

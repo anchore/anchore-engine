@@ -7,6 +7,8 @@ import anchore_engine.configuration.localconfig
 from anchore_engine.utils import run_command, run_command_list, manifest_to_digest, AnchoreException
 from anchore_engine.subsys import logger
 from anchore_engine.common.errors import AnchoreError
+from urllib.request import urlretrieve
+
 
 def manifest_to_digest_shellout(rawmanifest):
     ret = None
@@ -45,6 +47,7 @@ def manifest_to_digest_shellout(rawmanifest):
 
     return ret
 
+
 def copy_image_from_docker_archive(source_archive, dest_dir):
     cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(source_archive, dest_dir)
     cmd = cmdstr.split()
@@ -59,7 +62,8 @@ def copy_image_from_docker_archive(source_archive, dest_dir):
         logger.error("command failed with exception - " + str(err))
         raise err
 
-def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, parent_manifest=None, use_cache_dir=None, dest_type='oci'):
+
+def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=None, parent_manifest=None, use_cache_dir=None):
     try:
         proc_env = os.environ.copy()
         if user and pw:
@@ -94,13 +98,18 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
             global_timeout_str = ""
 
         os_overrides = [""]
+        blobs_to_fetch = []
+
         if manifest:
             manifest_data = json.loads(manifest)
 
-            # skopeo doesn't support references in manifests for copy/download operations, with oci dest type - if found, override with dir dest_type
-            for l in manifest_data.get('layers', []):
-                if 'foreign.diff' in l.get('mediaType', ""):
-                    dest_type = 'dir'
+            for layer in manifest_data.get('layers', []):
+                if 'foreign.diff' in layer.get('mediaType', ""):
+                    layer_digest_raw = layer.get('digest', "")
+                    layer_digest = get_digest_value(layer_digest_raw)
+                    layer_urls = layer.get('urls', [])
+
+                    blobs_to_fetch.append({'digest': layer_digest, 'urls': layer_urls})
 
             if parent_manifest:
                 parent_manifest_data = json.loads(parent_manifest)
@@ -112,30 +121,25 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                     imageos = mlist.get('platform', {}).get('os', "")
                     if imageos not in ["", 'linux']:
                         # add a windows os override to the list of override attempts, to complete the options that are supported by skopeo
-                        dest_type = 'dir'
                         os_overrides.insert(0, "windows")
                         break
 
         for os_override in os_overrides:
             success = False
             if os_override not in ["", 'linux']:
-                dest_type = 'dir'
                 os_override_str = "--override-os {}".format(os_override)
             else:
                 os_override_str = ""
-                
-            if dest_type == 'oci':
-                if manifest:
-                    with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
-                        OFH.write(manifest)
 
-                if parent_manifest:
-                    with open(os.path.join(copydir, "parent_manifest.json"), 'w') as OFH:
-                        OFH.write(parent_manifest)
-                        
-                cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(os_override_str, global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
-            else:
-                cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} docker://{} dir:{}".format(os_override_str, global_timeout_str, tlsverifystr, credstr, fulltag, copydir)]
+            if manifest:
+                with open(os.path.join(copydir, "manifest.json"), 'w') as OFH:
+                    OFH.write(manifest)
+
+            if parent_manifest:
+                with open(os.path.join(copydir, "parent_manifest.json"), 'w') as OFH:
+                    OFH.write(parent_manifest)
+
+            cmd = ["/bin/sh", "-c", "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(os_override_str, global_timeout_str, tlsverifystr, credstr, cachestr, fulltag, copydir)]
 
             cmdstr = ' '.join(cmd)
             try:
@@ -143,16 +147,32 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
                 if rc != 0:
                     skopeo_error = SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                     if skopeo_error.error_code != AnchoreError.OSARCH_MISMATCH.name:
-                        raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)                    
+                        raise SkopeoError(cmd=cmd, rc=rc, out=sout, err=serr)
                 else:
                     logger.debug("command succeeded: cmd="+str(cmdstr)+" stdout="+str(sout).strip()+" stderr="+str(serr).strip())
-                    success = True                    
+                    success = True
 
             except Exception as err:
                 logger.error("command failed with exception - " + str(err))
                 raise err
 
             if success:
+                blobs_dir = os.path.join(copydir, "blobs")
+
+                if use_cache_dir:
+                    # syft expects blobs to be nested inside of the oci image directory. If the --dest-shared-blob-dir skopeo option is used we need to
+                    # provide access to the blobs via a symlink, as if the blobs were stored within the oci image directory
+                    if os.path.exists(blobs_dir) and os.path.isdir(blobs_dir):
+                        # if this directory is not empty, there is an issue and we should expect an exception
+                        os.rmdir(blobs_dir)
+
+                    os.symlink(use_cache_dir, blobs_dir)
+
+                fetch_oci_blobs(blobs_dir, blobs_to_fetch)
+
+                index_file_path = os.path.join(copydir, "index.json")
+                ensure_no_nondistributable_media_types(index_file_path)
+
                 break
         if not success:
             logger.error("could not download image")
@@ -161,6 +181,61 @@ def download_image(fulltag, copydir, user=None, pw=None, verify=True, manifest=N
         raise err
 
     return True
+
+
+def fetch_oci_blobs(blobs_dir: str, blobs_to_fetch: list):
+    for blob in blobs_to_fetch:
+        for url in blob['urls']:
+            # try to retrieve, and if successful, break
+            blob_destination_path = os.path.join(blobs_dir, "sha256", blob['digest'])
+
+            try:
+                urlretrieve(url, blob_destination_path)
+                break
+            except Exception:
+                logger.exception(
+                    "failed saving blob from URL (%s) to path (%s)",
+                    url,
+                    blob_destination_path
+                )
+                continue
+
+
+def get_digest_value(digest_with_algorithm_prefix: str):
+    return digest_with_algorithm_prefix.split(':')[-1]
+
+
+def ensure_no_nondistributable_media_types(oci_index_file_path: str):
+    manifest_file_path = get_manifest_path_from_index(oci_index_file_path)
+
+    with open(manifest_file_path, 'r') as _f:
+        manifest = json.load(_f)
+
+    layers = manifest.get('layers', [])
+    updated_layers = list(map(remove_nondistributable, layers))
+    manifest['layers'] = updated_layers
+
+    with open(manifest_file_path, 'w') as _f:
+        json.dump(manifest, _f)
+
+
+def get_manifest_path_from_index(oci_index_file_path: str):
+    with open(oci_index_file_path, 'r') as _f:
+        index = json.load(_f)
+
+    for m in index.get('manifests', []):
+        manifest_digest_raw = m.get('digest', "")
+        manifest_digest = get_digest_value(manifest_digest_raw)
+        return os.path.join(os.path.dirname(oci_index_file_path), "blobs", "sha256", manifest_digest)
+
+    raise Exception("No manifests found in OCI index ({})".format(oci_index_file_path))
+
+
+def remove_nondistributable(layer: dict):
+    updated_media_type = layer.get('mediaType', '').replace('nondistributable.', '')
+    layer['mediaType'] = updated_media_type
+    return layer
+
 
 def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, lookuptag=None):
     try:
@@ -176,7 +251,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
             tlsverifystr = "--tls-verify=true"
         else:
             tlsverifystr = "--tls-verify=false"
-            
+
         localconfig = anchore_engine.configuration.localconfig.get_config()
         global_timeout = localconfig.get('skopeo_global_timeout', 0)
         try:
@@ -220,6 +295,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None, l
 
     return repotags
 
+
 def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
     ret = None
     try:
@@ -237,7 +313,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
             tlsverifystr = "--tls-verify=false"
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        global_timeout = localconfig.get('skopeo_global_timeout', 0)            
+        global_timeout = localconfig.get('skopeo_global_timeout', 0)
         try:
             global_timeout = int(global_timeout)
             if global_timeout < 0:
@@ -270,20 +346,21 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
                     raise err
 
                 if success:
-                    sout = str(sout, 'utf-8') if sout else None    
+                    sout = str(sout, 'utf-8') if sout else None
                     ret = sout
                     break
 
             if not success:
                 logger.error("could not retrieve manifest")
                 raise Exception("could not retrieve manifest")
-            
+
         except Exception as err:
             raise err
     except Exception as err:
         raise err
 
     return ret
+
 
 def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, topdigest=None, user=None, pw=None, verify=True, topmanifest=None):
     manifest = {}
@@ -331,6 +408,7 @@ def get_image_manifest_skopeo(url, registry, repo, intag=None, indigest=None, to
 
     return manifest, digest, topdigest, topmanifest
 
+
 class SkopeoError(AnchoreException):
 
     def __init__(self, cmd=None, rc=None, err=None, out=None, msg='Error encountered in skopeo operation'):
@@ -356,7 +434,7 @@ class SkopeoError(AnchoreException):
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
         except:
             self.error_code = AnchoreError.UNKNOWN.name
-        
+
 
     def __repr__(self):
         return '{}. cmd={}, rc={}, stdout={}, stderr={}, error_code={}'.format(self.msg, self.cmd, self.exitcode, self.stdout, self.stderr, self.error_code)

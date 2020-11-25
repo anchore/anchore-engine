@@ -44,6 +44,10 @@ RUN set -ex && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
+RUN set -ex && \
+    echo "installing Syft" && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.7.0
+
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
@@ -63,6 +67,9 @@ ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
 COPY --from=anchore-engine-builder /build_output /build_output
+
+# Copy syft from build step
+COPY --from=anchore-engine-builder /anchore_engine/bin/syft /anchore_engine/bin/syft
 
 # Container metadata section
 
@@ -85,11 +92,11 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_SERVICE_DIR=/anchore_service \
     ANCHORE_LOG_LEVEL=INFO \
-    ANCHORE_ENABLE_METRICS=false \    
+    ANCHORE_ENABLE_METRICS=false \
     ANCHORE_DISABLE_METRICS_AUTH=false \
     ANCHORE_INTERNAL_SSL_VERIFY=false \
     ANCHORE_WEBHOOK_DESTINATION_URL=null \
-    ANCHORE_HINTS_ENABLED=false \    
+    ANCHORE_HINTS_ENABLED=false \
     ANCHORE_FEEDS_ENABLED=true \
     ANCHORE_FEEDS_SELECTIVE_ENABLED=true \
     ANCHORE_FEEDS_SSL_VERIFY=true \
@@ -123,7 +130,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_ENABLED=false \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
-    AUTHLIB_INSECURE_TRANSPORT=true 
+    AUTHLIB_INSECURE_TRANSPORT=true
 # Insecure transport required in case for things like tls sidecars
 
 # Container run environment settings
@@ -158,7 +165,7 @@ RUN set -ex && \
     chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh
-    
+
 
 # Perform any base OS specific setup
 
@@ -179,5 +186,6 @@ HEALTHCHECK --start-period=20s \
 
 USER 1000
 
+ENV PATH="/anchore_engine/bin:${PATH}"
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]

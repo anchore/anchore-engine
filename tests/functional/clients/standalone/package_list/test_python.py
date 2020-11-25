@@ -2,7 +2,6 @@
 from .fixtures import pypkgs
 from . import path_params, metadata_params
 import pytest
-import json
 
 
 class TestPythonPaths:
@@ -20,54 +19,40 @@ class TestPythonMetadata:
     def test_has_files(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['files'] == expected['files']
+        loaded = pkgs.get(path, {})
+        assert loaded['files'] == metadata['files']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_name(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['name'] == expected['name']
+        loaded = pkgs.get(path, {})
+        assert loaded['name'] == metadata['name']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_type(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['type'] == expected['type']
+        loaded = pkgs.get(path, {})
+        assert loaded['type'] == metadata['type']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_location(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['location'] == expected['location']
+        loaded = pkgs.get(path, {})
+        assert loaded['location'] == metadata['location']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_version(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['version'] == expected['version']
+        loaded = pkgs.get(path, {})
+        assert loaded['version'] == metadata['version']
 
     @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
     def test_license(self, analyzed_data, path, metadata):
         result = analyzed_data('py38')
         pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['license'] == expected['license']
-
-    @pytest.mark.parametrize('path,metadata', metadata_params(pypkgs.pkgs))
-    def test_metadata(self, analyzed_data, path, metadata):
-        result = analyzed_data('py38')
-        pkgs = result['image']['imagedata']['analysis_report']['package_list']['pkgs.python']['base']
-        loaded = json.loads(pkgs.get(path))
-        expected = json.loads(metadata)
-        assert loaded['metadata'] == expected['metadata']
+        loaded = pkgs.get(path, {})
+        assert loaded['license'] == metadata['license']
