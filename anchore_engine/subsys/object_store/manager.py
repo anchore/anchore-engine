@@ -6,8 +6,18 @@ import zlib
 from anchore_engine import utils
 from anchore_engine.db import session_scope, db_archivemetadata
 from anchore_engine.subsys import object_store, logger
-from anchore_engine.subsys.object_store.config import DRIVER_SECTION_KEY, DRIVER_NAME_KEY, COMPRESSION_SECTION_KEY, \
-    COMPRESSION_ENABLED_KEY, COMPRESSION_LEVEL, COMPRESSION_MIN_SIZE_KEY, DEFAULT_OBJECT_STORE_MANAGER_ID, normalize_config, ALT_OBJECT_STORE_CONFIG_KEY, validate_config
+from anchore_engine.subsys.object_store.config import (
+    DRIVER_SECTION_KEY,
+    DRIVER_NAME_KEY,
+    COMPRESSION_SECTION_KEY,
+    COMPRESSION_ENABLED_KEY,
+    COMPRESSION_LEVEL,
+    COMPRESSION_MIN_SIZE_KEY,
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
+    normalize_config,
+    ALT_OBJECT_STORE_CONFIG_KEY,
+    validate_config,
+)
 
 
 manager_singleton = {}
@@ -23,10 +33,10 @@ class ObjectStorageManager(object):
 
     def __init__(self, config):
         """
-        :param config: The entire catalog service configuration (services->catalog). 
+        :param config: The entire catalog service configuration (services->catalog).
         """
 
-        logger.debug('Initializing archive manager with config: {}'.format(config))
+        logger.debug("Initializing archive manager with config: {}".format(config))
         self.config = config
         self.archive_clients = {}
 
@@ -35,9 +45,14 @@ class ObjectStorageManager(object):
             self.archive_clients[driver.__uri_scheme__] = driver
             self.primary_client = driver
 
-            logger.info('Object store clients: {}'.format(self.archive_clients.keys()))
+            logger.info("Object store clients: {}".format(self.archive_clients.keys()))
             if not self.archive_clients:
-                raise Exception("Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(str(self.config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]), str(list(object_store.ObjectStorageDriver.registry.keys()))))
+                raise Exception(
+                    "Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(
+                        str(self.config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]),
+                        str(list(object_store.ObjectStorageDriver.registry.keys())),
+                    )
+                )
 
         except Exception as err:
             raise err
@@ -50,10 +65,16 @@ class ObjectStorageManager(object):
         :param data:
         :return:
         """
-        if self.config[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True and self.primary_client.__supports_compressed_data__ and len(data) > \
-                self.config[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024:
+        if (
+            self.config[COMPRESSION_SECTION_KEY][COMPRESSION_ENABLED_KEY] is True
+            and self.primary_client.__supports_compressed_data__
+            and len(data)
+            > self.config[COMPRESSION_SECTION_KEY][COMPRESSION_MIN_SIZE_KEY] * 1024
+        ):
             is_compressed = True
-            final_payload = utils.ensure_bytes(zlib.compress(utils.ensure_bytes(data), COMPRESSION_LEVEL))
+            final_payload = utils.ensure_bytes(
+                zlib.compress(utils.ensure_bytes(data), COMPRESSION_LEVEL)
+            )
         else:
             is_compressed = False
             final_payload = utils.ensure_bytes(data)
@@ -95,7 +116,7 @@ class ObjectStorageManager(object):
 
         archive_document = self.get(userId, bucket, archiveId)
         if archive_document is not None:
-            return json.loads(utils.ensure_str(archive_document)).get('document')
+            return json.loads(utils.ensure_str(archive_document)).get("document")
         else:
             return None
 
@@ -109,7 +130,7 @@ class ObjectStorageManager(object):
         :param data: a json serializable object (string, dict, list, etc)
         :return: str url for retrieval
         """
-        payload = json.dumps({'document': data})
+        payload = json.dumps({"document": data})
 
         return self.put(userId, bucket, archiveId, utils.ensure_bytes(payload))
 
@@ -131,7 +152,6 @@ class ObjectStorageManager(object):
                 return None
             else:
                 return ret
-
 
     def exists(self, userId, bucket, archiveId):
         """
@@ -167,7 +187,17 @@ class ObjectStorageManager(object):
 
             url = self.primary_client.put(userId, bucket, archiveid, final_payload)
             with session_scope() as dbsession:
-                db_archivemetadata.add(userId, bucket, archiveid, archiveid + ".json", url, is_compressed=is_compressed, content_digest=digest, size=size, session=dbsession)
+                db_archivemetadata.add(
+                    userId,
+                    bucket,
+                    archiveid,
+                    archiveid + ".json",
+                    url,
+                    is_compressed=is_compressed,
+                    content_digest=digest,
+                    size=size,
+                    session=dbsession,
+                )
         except Exception as err:
             logger.debug("cannot put data: exception - " + str(err))
             raise err
@@ -180,17 +210,23 @@ class ObjectStorageManager(object):
 
         try:
             with session_scope() as dbsession:
-                result = db_archivemetadata.get(userId, bucket, archiveid, session=dbsession)
+                result = db_archivemetadata.get(
+                    userId, bucket, archiveid, session=dbsession
+                )
                 if not result:
                     return None
 
-            url = result.get('content_url')
+            url = result.get("content_url")
             if url is None:
-                raise Exception('Null reference url for valid metadata record for {}/{}/{}'.format(userId, bucket, archiveid))
+                raise Exception(
+                    "Null reference url for valid metadata record for {}/{}/{}".format(
+                        userId, bucket, archiveid
+                    )
+                )
             else:
 
-                is_compressed = result.get('is_compressed', False)
-                expected = result.get('digest')
+                is_compressed = result.get("is_compressed", False)
+                expected = result.get("digest")
 
                 # get the raw data from driver, note content is bytes (not str)
                 content = self._client_for(url).get_by_uri(url)
@@ -202,9 +238,16 @@ class ObjectStorageManager(object):
                     found = None
 
                 if expected and found != expected:
-                    logger.error('Digest mismatch:\nDB Record: {}\nContent digest: {}\n, Content size: {}'.format(result, found, found_size, content))
+                    logger.error(
+                        "Digest mismatch:\nDB Record: {}\nContent digest: {}\n, Content size: {}".format(
+                            result, found, found_size, content
+                        )
+                    )
                     raise Exception(
-                        'Detected digest mismatch on content fetch from backend. Expected: {}, Got: {}'.format(expected, found))
+                        "Detected digest mismatch on content fetch from backend. Expected: {}, Got: {}".format(
+                            expected, found
+                        )
+                    )
 
                 content = self._do_decompress(is_compressed, content)
 
@@ -212,6 +255,7 @@ class ObjectStorageManager(object):
 
         except Exception as err:
             import traceback
+
             traceback.print_exc()
             logger.debug("cannot get data: exception - " + str(err))
             raise err
@@ -234,20 +278,28 @@ class ObjectStorageManager(object):
         try:
             url = None
             with session_scope() as dbsession:
-                meta = db_archivemetadata.get(userId, bucket, archiveid, session=dbsession)
+                meta = db_archivemetadata.get(
+                    userId, bucket, archiveid, session=dbsession
+                )
                 if meta:
-                    url = meta.get('content_url')
-                    db_archivemetadata.delete(userId, bucket, archiveid, session=dbsession)
+                    url = meta.get("content_url")
+                    db_archivemetadata.delete(
+                        userId, bucket, archiveid, session=dbsession
+                    )
 
             # Remove the data itself. Can result in orphaned data if system fails here but better than deleting the content but not the meta, leaving a confused state.
             if url:
                 scheme = urllib.parse.urlparse(url).scheme
                 if scheme in self.archive_clients:
-                    return self.archive_clients[scheme].delete(userId, bucket, archiveid)
+                    return self.archive_clients[scheme].delete(
+                        userId, bucket, archiveid
+                    )
                 else:
                     logger.warn(
-                        'Deleting archive document {}/{}/{}, but found no content url for backend delete so skipping backend operation'.format(
-                            userId, bucket, archiveid))
+                        "Deleting archive document {}/{}/{}, but found no content url for backend delete so skipping backend operation".format(
+                            userId, bucket, archiveid
+                        )
+                    )
             return url is not None
 
         except Exception as err:
@@ -267,11 +319,22 @@ class ObjectStorageManager(object):
 def get_manager(manager_id=DEFAULT_OBJECT_STORE_MANAGER_ID) -> ObjectStorageManager:
     mgr = manager_singleton.get(manager_id)
     if mgr is None:
-        raise Exception('Archive {} not initialized. Must call initialize() first'.format(manager_id))
+        raise Exception(
+            "Archive {} not initialized. Must call initialize() first".format(
+                manager_id
+            )
+        )
     return mgr
 
 
-def initialize(service_config, force=False, check_db=False, manager_id=None, config_keys=None, allow_legacy_fallback=False):
+def initialize(
+    service_config,
+    force=False,
+    check_db=False,
+    manager_id=None,
+    config_keys=None,
+    allow_legacy_fallback=False,
+):
     """
     Initialize a global object storeage manager for service usage using the given id for lookup (manager_id)
 
@@ -295,8 +358,14 @@ def initialize(service_config, force=False, check_db=False, manager_id=None, con
         # Already initialized, no-op
         return False
 
-    obj_store_config = object_store.config.extract_config(service_config, config_keys=config_keys)
-    archive_config = normalize_config(obj_store_config, legacy_fallback=allow_legacy_fallback, service_config=service_config)
+    obj_store_config = object_store.config.extract_config(
+        service_config, config_keys=config_keys
+    )
+    archive_config = normalize_config(
+        obj_store_config,
+        legacy_fallback=allow_legacy_fallback,
+        service_config=service_config,
+    )
 
     return initialize_direct(archive_config, manager_id=manager_id, check_db=check_db)
 
@@ -319,9 +388,13 @@ def initialize_direct(obj_store_config, manager_id, check_db=False):
     if check_db:
         supported, unsupported = manager_singleton.check_drivers()
         if unsupported:
-            raise Exception('Archive subsys initialization found records in the metadata db that require drivers not configured: {}'.format(unsupported))
+            raise Exception(
+                "Archive subsys initialization found records in the metadata db that require drivers not configured: {}".format(
+                    unsupported
+                )
+            )
 
-    logger.info('Archive {} initialization complete'.format(manager_id))
+    logger.info("Archive {} initialization complete".format(manager_id))
     return True
 
 

@@ -15,7 +15,9 @@ class DistroMapping(JsonMappedMixin):
 
     __schema__ = DistroMappingV1Schema()
 
-    def __init__(self, from_distro=None, to_distro=None, flavor=None, created_at=None):  # noqa: E501
+    def __init__(
+        self, from_distro=None, to_distro=None, flavor=None, created_at=None
+    ):  # noqa: E501
         self.from_distro = from_distro
         self.to_distro = to_distro
         self.flavor = flavor
@@ -50,7 +52,9 @@ class EventStatus(JsonMappedMixin):
         def make(self, data):
             return EventStatus(**data)
 
-    def __init__(self, event_id=None, event_timestamp=None, event_state=None):  # noqa: E501
+    def __init__(
+        self, event_id=None, event_timestamp=None, event_state=None
+    ):  # noqa: E501
         self.event_id = event_id
         self.event_timestamp = event_timestamp
         self.event_state = event_state
@@ -71,7 +75,15 @@ class FeedGroupMetadata(JsonMappedMixin):
 
     __schema__ = FeedGroupMetadataV1Schema()
 
-    def __init__(self, name=None, created_at=None, last_sync=None, record_count=None, enabled=None, updated_at=None):  # noqa: E501
+    def __init__(
+        self,
+        name=None,
+        created_at=None,
+        last_sync=None,
+        record_count=None,
+        enabled=None,
+        updated_at=None,
+    ):  # noqa: E501
         self.name = name
         self.created_at = created_at
         self.last_sync = last_sync
@@ -95,7 +107,15 @@ class FeedMetadata(JsonMappedMixin):
 
     __schema__ = FeedMetadataV1Schema()
 
-    def __init__(self, name=None, created_at=None, updated_at=None, groups=None, last_full_sync=None, enabled=None):
+    def __init__(
+        self,
+        name=None,
+        created_at=None,
+        updated_at=None,
+        groups=None,
+        last_full_sync=None,
+        enabled=None,
+    ):
         self.name = name
         self.created_aat = created_at
         self.updated_at = updated_at
@@ -121,7 +141,17 @@ class Image(JsonMappedMixin):
 
     __schema__ = ImageV1Schema()
 
-    def __init__(self, id=None, digest=None, user_id=None, state=None, distro_namespace=None, created_at=None, last_modified=None, tags=None):  # noqa: E501
+    def __init__(
+        self,
+        id=None,
+        digest=None,
+        user_id=None,
+        state=None,
+        distro_namespace=None,
+        created_at=None,
+        last_modified=None,
+        tags=None,
+    ):  # noqa: E501
         self.id = id
         self.digest = digest
         self.user_id = user_id
@@ -191,7 +221,23 @@ class CpeVulnerability(JsonMappedMixin):
 
     __schema__ = CpeVulnerabilityV1Schema()
 
-    def __init__(self, vulnerability_id=None, severity=None, link=None, pkg_type=None, pkg_path=None, name=None, version=None, cpe=None, cpe23=None, feed_name=None, feed_namespace=None, nvd_data=None, vendor_data=None, fixed_in=None):
+    def __init__(
+        self,
+        vulnerability_id=None,
+        severity=None,
+        link=None,
+        pkg_type=None,
+        pkg_path=None,
+        name=None,
+        version=None,
+        cpe=None,
+        cpe23=None,
+        feed_name=None,
+        feed_namespace=None,
+        nvd_data=None,
+        vendor_data=None,
+        fixed_in=None,
+    ):
         self.vulnerability_id = vulnerability_id
         self.severity = severity
         self.link = link
@@ -264,8 +310,12 @@ class ImageVulnerabilityListing(JsonMappedMixin):
     class ImageVulnerabilityListingV1Schema(JitSchema):
         user_id = fields.Str()
         image_id = fields.Str()
-        legacy_report = fields.Nested(LegacyVulnerabilityReport.LegacyVulnerabilityReportV1Schema)
-        cpe_report = fields.List(fields.Nested(CpeVulnerability.CpeVulnerabilityV1Schema))
+        legacy_report = fields.Nested(
+            LegacyVulnerabilityReport.LegacyVulnerabilityReportV1Schema
+        )
+        cpe_report = fields.List(
+            fields.Nested(CpeVulnerability.CpeVulnerabilityV1Schema)
+        )
 
         @post_load
         def make(self, data):
@@ -273,7 +323,9 @@ class ImageVulnerabilityListing(JsonMappedMixin):
 
     __schema__ = ImageVulnerabilityListingV1Schema()
 
-    def __init__(self, user_id=None, image_id=None, legacy_report=None, cpe_report=None):  # noqa: E501
+    def __init__(
+        self, user_id=None, image_id=None, legacy_report=None, cpe_report=None
+    ):  # noqa: E501
         """ImageVulnerabilityListing - a model defined in Swagger
 
         :param user_id: The user_id of this ImageVulnerabilityListing.  # noqa: E501
@@ -293,7 +345,9 @@ class ImageIngressRequest(JsonMappedMixin):
     class ImageIngressRequestV1Schema(JitSchema):
         user_id = fields.Str()
         image_id = fields.Str()
-        fetch_url = fields.Str() # Could use a Url() here but one of the scheme options we use 'catalog://' isn't valid in their regex, bug in the Url() field code for custom schema support
+        fetch_url = (
+            fields.Str()
+        )  # Could use a Url() here but one of the scheme options we use 'catalog://' isn't valid in their regex, bug in the Url() field code for custom schema support
 
         @post_load
         def make(self, data):
@@ -337,7 +391,16 @@ class TriggerParamSpec(JsonMappedMixin):
 
     __schema__ = TriggerParamSpecV1Schema()
 
-    def __init__(self, name=None, description=None, example=None, required=None, state=None, superceded_by=None, validator=None):
+    def __init__(
+        self,
+        name=None,
+        description=None,
+        example=None,
+        required=None,
+        state=None,
+        superceded_by=None,
+        validator=None,
+    ):
         self.name = name
         self.description = description
         self.example = example
@@ -353,7 +416,9 @@ class TriggerSpec(JsonMappedMixin):
         description = fields.Str()
         state = fields.Str()
         superceded_by = fields.Str()
-        parameters = fields.List(fields.Nested(TriggerParamSpec.TriggerParamSpecV1Schema))
+        parameters = fields.List(
+            fields.Nested(TriggerParamSpec.TriggerParamSpecV1Schema)
+        )
 
         @post_load
         def make(self, data):
@@ -361,7 +426,14 @@ class TriggerSpec(JsonMappedMixin):
 
     __schema__ = TriggerSpecV1Schema()
 
-    def __init__(self, name=None, description=None, state=None, superceded_by=None, parameters=None):
+    def __init__(
+        self,
+        name=None,
+        description=None,
+        state=None,
+        superceded_by=None,
+        parameters=None,
+    ):
         self.name = name
         self.description = description
         self.state = state
@@ -383,7 +455,9 @@ class GateSpec(JsonMappedMixin):
 
     __schema__ = GateSpecV1Schema()
 
-    def __init__(self, name=None, description=None, state=None, superceded_by=None, triggers=None):
+    def __init__(
+        self, name=None, description=None, state=None, superceded_by=None, triggers=None
+    ):
         self.name = name
         self.description = description
         self.state = state
@@ -423,7 +497,9 @@ class PolicyEvaluation(JsonMappedMixin):
         last_modified = fields.Int()
         final_action = fields.Str()
         final_action_reason = fields.Str()
-        evaluation_problems = fields.List(fields.Nested(PolicyEvaluationProblem.PolicyEvaluationProblemV1Schema))
+        evaluation_problems = fields.List(
+            fields.Nested(PolicyEvaluationProblem.PolicyEvaluationProblemV1Schema)
+        )
 
         @post_load
         def make(self, data):
@@ -431,9 +507,22 @@ class PolicyEvaluation(JsonMappedMixin):
 
     __schema__ = PolicyEvaluationV1Schema()
 
-    def __init__(self, user_id=None, image_id=None, tag=None, bundle=None, matched_mapping_rule=None, matched_whitelisted_images_rule=None,
-                 matched_blacklisted_images_rule=None, result=None, created_at=None, last_modified=None, final_action=None,
-                 final_action_reason=None, evaluation_problems=None):
+    def __init__(
+        self,
+        user_id=None,
+        image_id=None,
+        tag=None,
+        bundle=None,
+        matched_mapping_rule=None,
+        matched_whitelisted_images_rule=None,
+        matched_blacklisted_images_rule=None,
+        result=None,
+        created_at=None,
+        last_modified=None,
+        final_action=None,
+        final_action_reason=None,
+        evaluation_problems=None,
+    ):
         self.user_id = user_id
         self.image_id = image_id
         self.tag = tag
@@ -452,7 +541,9 @@ class PolicyEvaluation(JsonMappedMixin):
 class PolicyValidationResponse(JsonMappedMixin):
     class PolicyValidationResponseV1Schema(JitSchema):
         valid = fields.Bool()
-        validation_details = fields.List(fields.Nested(PolicyEvaluationProblem.PolicyEvaluationProblemV1Schema))
+        validation_details = fields.List(
+            fields.Nested(PolicyEvaluationProblem.PolicyEvaluationProblemV1Schema)
+        )
 
         @post_load
         def make(self, data):

@@ -30,12 +30,16 @@ class ThreadLocalFeedGroupNameCache:
     """
     Simple cache used during feed syncs to caching name lookups. Here for simpler import paths, used by both feeds.VulnerabilityFeed and vulerabilities.process_updated_vulnerability functions
     """
+
     feed_list_cache = threading.local()
 
     @classmethod
     def lookup(cls, name):
-        if cls.feed_list_cache and hasattr(cls.feed_list_cache, 'vuln_group_list'):
-            return cls.feed_list_cache.vuln_group_list and cls.feed_list_cache.vuln_group_list.get(name, False)
+        if cls.feed_list_cache and hasattr(cls.feed_list_cache, "vuln_group_list"):
+            return (
+                cls.feed_list_cache.vuln_group_list
+                and cls.feed_list_cache.vuln_group_list.get(name, False)
+            )
         else:
             return False
 
@@ -68,7 +72,9 @@ def namespace_has_no_feed(name, version):
     :return: boolean if name,version tuple does not have a feed of its own
     """
     ns = DistroNamespace.as_namespace_name(name, version)
-    found = ThreadLocalFeedGroupNameCache.lookup(ns) # Returns a tuple (name, enabled:bool)
+    found = ThreadLocalFeedGroupNameCache.lookup(
+        ns
+    )  # Returns a tuple (name, enabled:bool)
     return not found or not found[1]
 
 
@@ -90,7 +96,9 @@ def get_namespace_related_names(distro, version, distro_mapped_names: list):
     if distro_mapped_names != [distro]:
         # Ensure we don't include any names that actually have a feed (can happen when new feeds arrive before the mapped_names() source
         # is updated to break the 'like' relation between the distros.
-        related_names = [x for x in distro_mapped_names if namespace_has_no_feed(x, version)]
+        related_names = [
+            x for x in distro_mapped_names if namespace_has_no_feed(x, version)
+        ]
 
         # This is a weird case because it basically means that this distro doesn't map to itself as far as mapped_names() is
         # concerned, but since that could be code lagging data (e.g. new feed group added for a new distro), add the name itself
@@ -112,22 +120,32 @@ def find_vulnerable_image_packages(vulnerability_obj):
     :return: list of ImagePackage objects
     """
     db = get_thread_scoped_session()
-    distro, version = vulnerability_obj.namespace_name.split(':', 1)
+    distro, version = vulnerability_obj.namespace_name.split(":", 1)
     dist = DistroNamespace(distro, version)
-    related_names = dist.mapped_names() # Returns list of names that map to this one, not including itself necessarily
-    #related_names = get_namespace_related_names(distro, version, mapped_names)
-
+    related_names = (
+        dist.mapped_names()
+    )  # Returns list of names that map to this one, not including itself necessarily
+    # related_names = get_namespace_related_names(distro, version, mapped_names)
 
     # TODO would like a better way to do the pkg_type <-> namespace_name mapping, with other side in ImagePackage.vulnerabilities_for_package
     likematch = None
-    if ':maven' in vulnerability_obj.namespace_name or 'java' in vulnerability_obj.namespace_name:
-        likematch = 'java'
-    elif ':ruby' in vulnerability_obj.namespace_name or 'gem' in vulnerability_obj.namespace_name:
-        likematch = 'gem'
-    elif ':js' in vulnerability_obj.namespace_name or 'npm' in vulnerability_obj.namespace_name:
-        likematch = 'npm'
-    elif 'python' in vulnerability_obj.namespace_name:
-        likematch = 'python'
+    if (
+        ":maven" in vulnerability_obj.namespace_name
+        or "java" in vulnerability_obj.namespace_name
+    ):
+        likematch = "java"
+    elif (
+        ":ruby" in vulnerability_obj.namespace_name
+        or "gem" in vulnerability_obj.namespace_name
+    ):
+        likematch = "gem"
+    elif (
+        ":js" in vulnerability_obj.namespace_name
+        or "npm" in vulnerability_obj.namespace_name
+    ):
+        likematch = "npm"
+    elif "python" in vulnerability_obj.namespace_name:
+        likematch = "python"
 
     try:
         affected = []
@@ -137,12 +155,34 @@ def find_vulnerable_image_packages(vulnerability_obj):
                 package_candidates = []
 
                 # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
-                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names), ImagePackage.distro_version.like(dist.version + '%'), or_(ImagePackage.name == fix_rec.name, ImagePackage.normalized_src_pkg == fix_rec.name)).all()
+                pkgs = (
+                    db.query(ImagePackage)
+                    .filter(
+                        ImagePackage.distro_name.in_(related_names),
+                        ImagePackage.distro_version.like(dist.version + "%"),
+                        or_(
+                            ImagePackage.name == fix_rec.name,
+                            ImagePackage.normalized_src_pkg == fix_rec.name,
+                        ),
+                    )
+                    .all()
+                )
                 package_candidates += pkgs
 
                 # add non distro candidates
                 if likematch:
-                    pkgs = db.query(ImagePackage).filter(ImagePackage.pkg_type.in_(nonos_package_types), ImagePackage.pkg_type.like(likematch), or_(ImagePackage.name == fix_rec.name, ImagePackage.normalized_src_pkg == fix_rec.name)).all()
+                    pkgs = (
+                        db.query(ImagePackage)
+                        .filter(
+                            ImagePackage.pkg_type.in_(nonos_package_types),
+                            ImagePackage.pkg_type.like(likematch),
+                            or_(
+                                ImagePackage.name == fix_rec.name,
+                                ImagePackage.normalized_src_pkg == fix_rec.name,
+                            ),
+                        )
+                        .all()
+                    )
                     package_candidates += pkgs
 
                 for candidate in package_candidates:
@@ -154,10 +194,18 @@ def find_vulnerable_image_packages(vulnerability_obj):
             for vuln_rec in vulnerability_obj.vulnerable_in:
                 package_candidates = []
                 # Find packages of related distro names with compatible versions, this does not have to be precise, just an initial filter.
-                pkgs = db.query(ImagePackage).filter(ImagePackage.distro_name.in_(related_names),
-                                                     ImagePackage.distro_version.like(dist.version + '%'),
-                                                     or_(ImagePackage.name == vuln_rec.name,
-                                                         ImagePackage.normalized_src_pkg == vuln_rec.name)).all()
+                pkgs = (
+                    db.query(ImagePackage)
+                    .filter(
+                        ImagePackage.distro_name.in_(related_names),
+                        ImagePackage.distro_version.like(dist.version + "%"),
+                        or_(
+                            ImagePackage.name == vuln_rec.name,
+                            ImagePackage.normalized_src_pkg == vuln_rec.name,
+                        ),
+                    )
+                    .all()
+                )
                 package_candidates += pkgs
                 for candidate in package_candidates:
                     if vuln_rec.match_and_vulnerable(candidate):
@@ -165,7 +213,11 @@ def find_vulnerable_image_packages(vulnerability_obj):
 
         return affected
     except Exception as e:
-        logger.exception('Failed to query and find packages affected by vulnerability: {}'.format(vulnerability_obj))
+        logger.exception(
+            "Failed to query and find packages affected by vulnerability: {}".format(
+                vulnerability_obj
+            )
+        )
         raise
 
 
@@ -197,11 +249,15 @@ def vulnerabilities_for_image(image_obj):
                 img_v.vulnerability_id = v.vulnerability_id
                 img_v.vulnerability_namespace_name = v.namespace_name
                 computed_vulnerabilties.append(img_v)
-        #log.debug("TIMER VULNERABILITIES: {}".format(time.time() - ts))
+        # log.debug("TIMER VULNERABILITIES: {}".format(time.time() - ts))
 
         return computed_vulnerabilties
     except Exception as e:
-        logger.exception('Error computing full vulnerability set for image {}/{}'.format(image_obj.user_id, image_obj.id))
+        logger.exception(
+            "Error computing full vulnerability set for image {}/{}".format(
+                image_obj.user_id, image_obj.id
+            )
+        )
         raise
 
 
@@ -215,13 +271,21 @@ def rescan_image(image_obj, db_session):
     """
 
     current_vulns = image_obj.vulnerabilities()
-    logger.debug('Removing {} current vulnerabilities for {}/{} to rescan'.format(len(current_vulns), image_obj.user_id, image_obj.id))
+    logger.debug(
+        "Removing {} current vulnerabilities for {}/{} to rescan".format(
+            len(current_vulns), image_obj.user_id, image_obj.id
+        )
+    )
     for v in current_vulns:
         db_session.delete(v)
 
     db_session.flush()
     vulns = vulnerabilities_for_image(image_obj)
-    logger.info('Adding {} vulnerabilities from rescan to {}/{}'.format(len(vulns), image_obj.user_id, image_obj.id))
+    logger.info(
+        "Adding {} vulnerabilities from rescan to {}/{}".format(
+            len(vulns), image_obj.user_id, image_obj.id
+        )
+    )
     for v in vulns:
         db_session.add(v)
     db_session.flush()
@@ -237,11 +301,19 @@ def delete_matches(namespace_name, db_session):
     :return: count of records deleted
     """
 
-    #for rec in db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name):
-    return db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name).delete()
+    # for rec in db_session.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == namespace_name):
+    return (
+        db_session.query(ImagePackageVulnerability)
+        .filter(
+            ImagePackageVulnerability.vulnerability_namespace_name == namespace_name
+        )
+        .delete()
+    )
 
 
-def merge_nvd_metadata_image_packages(dbsession, img_pkg_vulns, nvd_cls, cpe_cls, already_loaded_nvds=None):
+def merge_nvd_metadata_image_packages(
+    dbsession, img_pkg_vulns, nvd_cls, cpe_cls, already_loaded_nvds=None
+):
     """
     Same as merge_nvd_metadata but takes a list of ImagePackageVulnerabilities instead. Returns a list of (img pkg vuln, nvds list) tuples
 
@@ -252,11 +324,19 @@ def merge_nvd_metadata_image_packages(dbsession, img_pkg_vulns, nvd_cls, cpe_cls
     :param already_loaded_nvds:
     :return:
     """
-    merged = merge_nvd_metadata(dbsession, [x.vulnerability for x in img_pkg_vulns], nvd_cls, cpe_cls, already_loaded_nvds)
+    merged = merge_nvd_metadata(
+        dbsession,
+        [x.vulnerability for x in img_pkg_vulns],
+        nvd_cls,
+        cpe_cls,
+        already_loaded_nvds,
+    )
     return zip(img_pkg_vulns, [x[1] for x in merged])
 
 
-def merge_nvd_metadata(dbsession, vulnerability_objs, nvd_cls, cpe_cls, already_loaded_nvds=None):
+def merge_nvd_metadata(
+    dbsession, vulnerability_objs, nvd_cls, cpe_cls, already_loaded_nvds=None
+):
     """
     Return a list of tuples of (vuln obj, list(nvd records)
 
@@ -270,7 +350,15 @@ def merge_nvd_metadata(dbsession, vulnerability_objs, nvd_cls, cpe_cls, already_
     if already_loaded_nvds is None:
         already_loaded_nvds = []
 
-    result_list = [[x, x.get_nvd_identifiers(nvd_cls, cpe_cls) if isinstance(x, Vulnerability) else []] for x in vulnerability_objs]
+    result_list = [
+        [
+            x,
+            x.get_nvd_identifiers(nvd_cls, cpe_cls)
+            if isinstance(x, Vulnerability)
+            else [],
+        ]
+        for x in vulnerability_objs
+    ]
     nvd_ids = []
 
     # Zip the ids into the master query list
@@ -301,8 +389,16 @@ def flush_vulnerability_matches(db, feed_name=None, group_name=None):
     :param group_name:
     :return:
     """
-    count = db.query(ImagePackageVulnerability).filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name).delete()
-    logger.info('Deleted {} vulnerability matches in flush for group {}'.format(count, group_name))
+    count = (
+        db.query(ImagePackageVulnerability)
+        .filter(ImagePackageVulnerability.vulnerability_namespace_name == group_name)
+        .delete()
+    )
+    logger.info(
+        "Deleted {} vulnerability matches in flush for group {}".format(
+            count, group_name
+        )
+    )
 
 
 def process_updated_vulnerability(db, vulnerability):
@@ -314,7 +410,7 @@ def process_updated_vulnerability(db, vulnerability):
     :param: db: The db session to use, should be valid and open
     :return: list of (user_id, image_id) that were affected
     """
-    logger.spew('Processing CVE update for: {}'.format(vulnerability.id))
+    logger.spew("Processing CVE update for: {}".format(vulnerability.id))
     changed_images = []
 
     # Find any packages already matched with the CVE ID.
@@ -322,25 +418,44 @@ def process_updated_vulnerability(db, vulnerability):
 
     # May need to remove vuln from some packages.
     if vulnerability.is_empty():
-        logger.spew('Detected an empty CVE. Removing all existing matches on this CVE')
+        logger.spew("Detected an empty CVE. Removing all existing matches on this CVE")
 
         # This is a flush, nothing can be vulnerable to this, so remove it from packages.
         if current_affected:
-            logger.debug('Detected {} existing matches on CVE {} to remove'.format(len(current_affected), vulnerability.id))
+            logger.debug(
+                "Detected {} existing matches on CVE {} to remove".format(
+                    len(current_affected), vulnerability.id
+                )
+            )
 
             for pkgVuln in current_affected:
-                logger.debug('Removing match on image: {}/{}'.format(pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
+                logger.debug(
+                    "Removing match on image: {}/{}".format(
+                        pkgVuln.pkg_user_id, pkgVuln.pkg_image_id
+                    )
+                )
                 db.delete(pkgVuln)
                 changed_images.append((pkgVuln.pkg_user_id, pkgVuln.pkg_image_id))
     else:
         # Find impacted images for the current vulnerability
-        new_vulnerable_packages = [ImagePackageVulnerability.from_pair(x, vulnerability) for x in find_vulnerable_image_packages(vulnerability)]
+        new_vulnerable_packages = [
+            ImagePackageVulnerability.from_pair(x, vulnerability)
+            for x in find_vulnerable_image_packages(vulnerability)
+        ]
         unique_vuln_pkgs = set(new_vulnerable_packages)
         current_match = set(current_affected)
 
         if len(new_vulnerable_packages) > 0:
-            logger.debug('Found {} packages vulnerable to cve {}'.format(len(new_vulnerable_packages), vulnerability.id))
-            logger.debug('Dedup matches from {} to {}'.format(len(new_vulnerable_packages), len(unique_vuln_pkgs)))
+            logger.debug(
+                "Found {} packages vulnerable to cve {}".format(
+                    len(new_vulnerable_packages), vulnerability.id
+                )
+            )
+            logger.debug(
+                "Dedup matches from {} to {}".format(
+                    len(new_vulnerable_packages), len(unique_vuln_pkgs)
+                )
+            )
 
         # Find the diffs of any packages that were vulnerable but are no longer.
         no_longer_affected = current_match.difference(unique_vuln_pkgs)
@@ -348,20 +463,30 @@ def process_updated_vulnerability(db, vulnerability):
         new_matches = unique_vuln_pkgs.difference(current_match)
 
         if len(no_longer_affected) > 0:
-            logger.debug('Found {} packages no longer vulnerable to cve {}'.format(len(no_longer_affected), vulnerability.id))
+            logger.debug(
+                "Found {} packages no longer vulnerable to cve {}".format(
+                    len(no_longer_affected), vulnerability.id
+                )
+            )
             for img_pkg_vuln in no_longer_affected:
-                logger.debug('Removing old invalid match for pkg {} on cve {}'.format(img_pkg_vuln, vulnerability.id))
+                logger.debug(
+                    "Removing old invalid match for pkg {} on cve {}".format(
+                        img_pkg_vuln, vulnerability.id
+                    )
+                )
                 db.delete(img_pkg_vuln)
             db.flush()
 
         for v in new_matches:
-            logger.debug('Adding new vulnerability match: {}'.format(v))
+            logger.debug("Adding new vulnerability match: {}".format(v))
             db.add(v)
             changed_images.append((v.pkg_user_id, v.pkg_image_id))
 
         db.flush()
 
-    logger.spew('Images changed for cve {}: {}'.format(vulnerability.id, changed_images))
+    logger.spew(
+        "Images changed for cve {}: {}".format(vulnerability.id, changed_images)
+    )
 
     return changed_images
 
@@ -375,12 +500,32 @@ def rescan_namespace(db, namespace_name: str):
     :return:
     """
     i = 0
-    logger.info('Evaluating matches for all vulnerabilities in namespace {}'.format(namespace_name))
-    total_vulns = db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name).count()
-    logger.info('Found {} total vulnerability records in that namespace to re-evaluate against images in the db')
-    for vuln in db.query(Vulnerability).filter(Vulnerability.namespace_name == namespace_name):
-        logger.info('Computing matches for {} vulnerability {}'.format(namespace_name, vuln.id))
+    logger.info(
+        "Evaluating matches for all vulnerabilities in namespace {}".format(
+            namespace_name
+        )
+    )
+    total_vulns = (
+        db.query(Vulnerability)
+        .filter(Vulnerability.namespace_name == namespace_name)
+        .count()
+    )
+    logger.info(
+        "Found {} total vulnerability records in that namespace to re-evaluate against images in the db"
+    )
+    for vuln in db.query(Vulnerability).filter(
+        Vulnerability.namespace_name == namespace_name
+    ):
+        logger.info(
+            "Computing matches for {} vulnerability {}".format(namespace_name, vuln.id)
+        )
         updated_images = process_updated_vulnerability(db, vuln)
-        logger.info('Updated {} images with a match for {}'.format(len(updated_images) if updated_images else 0, vuln.id))
+        logger.info(
+            "Updated {} images with a match for {}".format(
+                len(updated_images) if updated_images else 0, vuln.id
+            )
+        )
         i += 1
-        logger.info('Completed {} of {} updates for {}'.format(i, total_vulns, namespace_name))
+        logger.info(
+            "Completed {} of {} updates for {}".format(i, total_vulns, namespace_name)
+        )

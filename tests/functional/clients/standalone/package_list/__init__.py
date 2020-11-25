@@ -12,9 +12,7 @@ def path_params(pkgs):
     By default, Pytest will use the full value of the string, which in the case
     of these fixtures is too long, causing unreadable output.
     """
-    return [
-        pytest.param(path, id=path.split('/')[-1]) for path, _ in pkgs
-    ]
+    return [pytest.param(path, id=path.split("/")[-1]) for path, _ in pkgs]
 
 
 def metadata_params(pkgs):
@@ -24,8 +22,5 @@ def metadata_params(pkgs):
     from the values passed in
     """
     return [
-        pytest.param(path, metadata, id=path.split('/')[-1]) for path, metadata in pkgs
+        pytest.param(path, metadata, id=path.split("/")[-1]) for path, metadata in pkgs
     ]
-
-
-

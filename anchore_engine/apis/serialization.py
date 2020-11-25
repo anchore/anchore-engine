@@ -62,16 +62,22 @@ class JsonMappedMixin(object):
         if not result.errors and result.data:
             return result.data
         else:
-            raise JsonDeserializationException('deserialization from json failed with errors: {}'.format(result.errors))
+            raise JsonDeserializationException(
+                "deserialization from json failed with errors: {}".format(result.errors)
+            )
 
     def to_json(self):
         result = self.__schema__.dump(self)
         if result.errors:
-            raise JsonSerializationException('serialization to json failed with errors: {}'.format(result.errors))
+            raise JsonSerializationException(
+                "serialization to json failed with errors: {}".format(result.errors)
+            )
         return result.data
 
     def to_json_str(self):
         result = self.__schema__.dumps(self)
         if result.errors:
-            raise JsonSerializationException('serialization to json failed with errors: {}'.format(result.errors))
+            raise JsonSerializationException(
+                "serialization to json failed with errors: {}".format(result.errors)
+            )
         return result.data

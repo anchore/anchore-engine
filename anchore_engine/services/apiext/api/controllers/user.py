@@ -8,7 +8,10 @@ These are handlers for routes available to standard users for managing their own
 from anchore_engine.db import session_scope, UserAccessCredentialTypes
 from anchore_engine.subsys import logger, identities
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.services.apiext.api.controllers.accounts import user_db_to_msg, credential_db_to_msg
+from anchore_engine.services.apiext.api.controllers.accounts import (
+    user_db_to_msg,
+    credential_db_to_msg,
+)
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.apis.authorization import get_authorizer
 
@@ -28,7 +31,7 @@ def get_user():
             usr = mgr.get_user(ApiRequestContextProxy.identity().username)
             return user_db_to_msg(usr), 200
     except Exception as ex:
-        logger.exception('API Error')
+        logger.exception("API Error")
         return make_response_error(errmsg=str(ex), in_httpcode=500), 500
 
 
@@ -45,13 +48,17 @@ def get_credentials():
             mgr = identities.manager_factory.for_session(session)
             usr = mgr.get_user(ApiRequestContextProxy.identity().username)
 
-            creds = [credential_db_to_msg(usr.get('credentials')[UserAccessCredentialTypes.password])]
+            creds = [
+                credential_db_to_msg(
+                    usr.get("credentials")[UserAccessCredentialTypes.password]
+                )
+            ]
             if creds is None:
                 return [], 200
             else:
                 return creds, 200
     except Exception as ex:
-        logger.exception('API Error')
+        logger.exception("API Error")
         return make_response_error(errmsg=str(ex), in_httpcode=500), 500
 
 
@@ -68,16 +75,18 @@ def add_credential(credential):
     """
 
     try:
-        if credential['type'] != UserAccessCredentialTypes.password.value:
-            return make_response_error('Invalid credential type', in_httpcode=400), 400
+        if credential["type"] != UserAccessCredentialTypes.password.value:
+            return make_response_error("Invalid credential type", in_httpcode=400), 400
         else:
-            cred_type = UserAccessCredentialTypes(credential['type'])
+            cred_type = UserAccessCredentialTypes(credential["type"])
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
             user = ApiRequestContextProxy.identity().username
-            result = mgr.add_user_credential(username=user, credential_type=cred_type, value=credential['value'])
+            result = mgr.add_user_credential(
+                username=user, credential_type=cred_type, value=credential["value"]
+            )
             return credential_db_to_msg(result), 200
     except Exception as ex:
-        logger.exception('API Error')
+        logger.exception("API Error")
         return make_response_error(errmsg=str(ex), in_httpcode=500), 500

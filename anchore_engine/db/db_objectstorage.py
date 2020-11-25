@@ -7,7 +7,11 @@ def put(userId, bucket, key, data, metadata=None, session=None):
     if not session:
         session = db.Session
 
-    our_result = session.query(ObjectStorageRecord).filter_by(userId=userId, bucket=bucket, key=key).one_or_none()
+    our_result = (
+        session.query(ObjectStorageRecord)
+        .filter_by(userId=userId, bucket=bucket, key=key)
+        .one_or_none()
+    )
     if not our_result:
         if metadata:
             meta = json.dumps(metadata)
@@ -30,18 +34,33 @@ def put(userId, bucket, key, data, metadata=None, session=None):
 
 
 def get(userId, bucket, key, session=None):
-    result = session.query(ObjectStorageRecord).filter_by(userId=userId, bucket=bucket, key=key).first()
+    result = (
+        session.query(ObjectStorageRecord)
+        .filter_by(userId=userId, bucket=bucket, key=key)
+        .first()
+    )
     return result.to_dict() if result else None
 
 
 def get_metadata(userId, bucket, key, session=None):
     ret = {}
 
-    result = session.query(ObjectStorageRecord.userId, ObjectStorageRecord.bucket, ObjectStorageRecord.key, ObjectStorageRecord.object_metadata, ObjectStorageRecord.created_at, ObjectStorageRecord.last_updated).filter_by(userId=userId, bucket=bucket, key=key).first()
+    result = (
+        session.query(
+            ObjectStorageRecord.userId,
+            ObjectStorageRecord.bucket,
+            ObjectStorageRecord.key,
+            ObjectStorageRecord.object_metadata,
+            ObjectStorageRecord.created_at,
+            ObjectStorageRecord.last_updated,
+        )
+        .filter_by(userId=userId, bucket=bucket, key=key)
+        .first()
+    )
     if result:
         for i in range(0, len(list(result.keys()))):
             k = list(result.keys())[i]
-            if i == 'object_metadata':
+            if i == "object_metadata":
                 ret[k] = json.loads(result[i])
             else:
                 ret[k] = result[i]
@@ -52,7 +71,15 @@ def exists(userId, bucket, key, session=None):
     if not session:
         session = db.Session
 
-    result = session.query(ObjectStorageRecord.userId, ObjectStorageRecord.bucket, ObjectStorageRecord.key).filter_by(userId=userId, bucket=bucket, key=key).first()
+    result = (
+        session.query(
+            ObjectStorageRecord.userId,
+            ObjectStorageRecord.bucket,
+            ObjectStorageRecord.key,
+        )
+        .filter_by(userId=userId, bucket=bucket, key=key)
+        .first()
+    )
     return result is not None
 
 
@@ -61,8 +88,15 @@ def list_all(session=None, **dbfilter):
         session = db.Session
     ret = []
 
-    results = session.query(ObjectStorageRecord.bucket, ObjectStorageRecord.key, ObjectStorageRecord.userId, ObjectStorageRecord.record_state_key, ObjectStorageRecord.record_state_val,
-                            ObjectStorageRecord.created_at, ObjectStorageRecord.last_updated).filter_by(**dbfilter)
+    results = session.query(
+        ObjectStorageRecord.bucket,
+        ObjectStorageRecord.key,
+        ObjectStorageRecord.userId,
+        ObjectStorageRecord.record_state_key,
+        ObjectStorageRecord.record_state_val,
+        ObjectStorageRecord.created_at,
+        ObjectStorageRecord.last_updated,
+    ).filter_by(**dbfilter)
 
     for result in results:
         obj = {}
@@ -79,7 +113,11 @@ def delete(userId, bucket, key, session=None):
     if not session:
         session = db.Session
 
-    result = session.query(ObjectStorageRecord).filter_by(userId=userId, bucket=bucket, key=key).first()
+    result = (
+        session.query(ObjectStorageRecord)
+        .filter_by(userId=userId, bucket=bucket, key=key)
+        .first()
+    )
     if result:
         session.delete(result)
 

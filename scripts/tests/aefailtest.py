@@ -18,8 +18,9 @@ try:
 except:
     aecontainer = "qadc_anchore-engine_1"
 
-#precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+# precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
 precmd = "anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
+
 
 def aecmd(cmd):
     global precmd
@@ -35,33 +36,34 @@ def aecmd(cmd):
             pass
         raise err
 
-    return(result)
+    return result
+
 
 result = aecmd("image list")
 
 badimage = "foobarbarfoo"
 regimage = "container-registry.oracle.com/os/oraclelinux:latest"
 
-print("adding "+badimage+"")
+print("adding " + badimage + "")
 try:
-    result = aecmd("image add "+badimage+"")
+    result = aecmd("image add " + badimage + "")
     print("success adding bad image (incorrect)")
     sys.exit(1)
 except:
     print("failed to add bad image (correct)")
 
-print("checking "+badimage+"")
+print("checking " + badimage + "")
 try:
-    result = aecmd("evaluate check "+badimage)
+    result = aecmd("evaluate check " + badimage)
     print("success evaling bad image (incorrect)")
     sys.exit(1)
 except:
     print("failed to eval bad image (correct)")
 
-print("subscribing "+badimage+"")
+print("subscribing " + badimage + "")
 
 try:
-    result = aecmd("subscription activate tag_update "+badimage)
+    result = aecmd("subscription activate tag_update " + badimage)
     print("success subscribing bad image (incorrect)")
     sys.exit(1)
 except:
@@ -74,6 +76,6 @@ try:
     sys.exit(1)
 except:
     print("failed adding oracle registry image as anon (correct)")
-    
+
 print("all failure cases passed")
 sys.exit(0)
