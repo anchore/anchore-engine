@@ -1189,85 +1189,63 @@ def analyze_image(
         unpackdir = staging_dirs["unpackdir"]
 
         if image_source == "docker-archive":
-            try:
-                rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(
-                    image_source_meta, staging_dirs["copydir"]
-                )
-            except Exception as err:
-                raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
-
-            manifest = get_manifest_from_staging(staging_dirs)
-        try:
-            manifest_data = json.loads(manifest)
-        except Exception as err:
-            raise Exception(
-                "cannot load manifest as JSON rawmanifest="
-                + str(manifest)
-                + ") - exception: "
-                + str(err)
+            rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(
+                image_source_meta, staging_dirs["copydir"]
             )
 
-        if image_source != "docker-archive":
-            try:
-                rc = retrying_pull_image(
-                    staging_dirs,
-                    pullstring,
-                    registry_creds=registry_creds,
-                    manifest=manifest,
-                    parent_manifest=parent_manifest,
-                )
-            except Exception as err:
-                raise ImagePullError(cause=err, pull_string=pullstring, tag=fulltag)
+            manifest = get_manifest_from_staging(staging_dirs)
+        manifest_data = json.loads(manifest)
 
-        try:
-            if manifest_data["schemaVersion"] == 1:
-                (
-                    docker_history,
-                    layers,
-                    dockerfile_contents,
-                    dockerfile_mode,
-                    imageArch,
-                ) = get_image_metadata_v1(
-                    staging_dirs,
-                    imageDigest,
-                    imageId,
-                    manifest_data,
-                    dockerfile_contents=dockerfile_contents,
-                    dockerfile_mode=dockerfile_mode,
-                )
-            elif manifest_data["schemaVersion"] == 2:
-                (
-                    docker_history,
-                    layers,
-                    dockerfile_contents,
-                    dockerfile_mode,
-                    imageArch,
-                ) = get_image_metadata_v2(
-                    staging_dirs,
-                    imageDigest,
-                    imageId,
-                    manifest_data,
-                    dockerfile_contents=dockerfile_contents,
-                    dockerfile_mode=dockerfile_mode,
-                )
-            else:
-                raise ManifestSchemaVersionError(
-                    schema_version=manifest_data["schemaVersion"],
-                    pull_string=pullstring,
-                    tag=fulltag,
-                )
-        except ManifestSchemaVersionError:
-            raise
-        except Exception as err:
-            raise ManifestParseError(cause=err, pull_string=pullstring, tag=fulltag)
+        if image_source != "docker-archive":
+            rc = retrying_pull_image(
+                staging_dirs,
+                pullstring,
+                registry_creds=registry_creds,
+                manifest=manifest,
+                parent_manifest=parent_manifest,
+            )
+
+        if manifest_data["schemaVersion"] == 1:
+            (
+                docker_history,
+                layers,
+                dockerfile_contents,
+                dockerfile_mode,
+                imageArch,
+            ) = get_image_metadata_v1(
+                staging_dirs,
+                imageDigest,
+                imageId,
+                manifest_data,
+                dockerfile_contents=dockerfile_contents,
+                dockerfile_mode=dockerfile_mode,
+            )
+        elif manifest_data["schemaVersion"] == 2:
+            (
+                docker_history,
+                layers,
+                dockerfile_contents,
+                dockerfile_mode,
+                imageArch,
+            ) = get_image_metadata_v2(
+                staging_dirs,
+                imageDigest,
+                imageId,
+                manifest_data,
+                dockerfile_contents=dockerfile_contents,
+                dockerfile_mode=dockerfile_mode,
+            )
+        else:
+            raise ManifestSchemaVersionError(
+                schema_version=manifest_data["schemaVersion"],
+                pull_string=pullstring,
+                tag=fulltag,
+            )
 
         familytree = layers
 
         timer = time.time()
-        try:
-            imageSize = unpack(staging_dirs, layers)
-        except Exception as err:
-            raise ImageUnpackError(cause=err, pull_string=pullstring, tag=fulltag)
+        imageSize = unpack(staging_dirs, layers)
         logger.debug(
             "timing: total unpack time: {} - {}".format(pullstring, time.time() - timer)
         )
@@ -1275,42 +1253,32 @@ def analyze_image(
         familytree = layers
 
         timer = time.time()
-        try:
-            analyzer_report = run_anchore_analyzers(
-                staging_dirs, imageDigest, imageId, localconfig
-            )
-        except Exception as err:
-            raise AnalyzerError(cause=err, pull_string=pullstring, tag=fulltag)
+        analyzer_report = run_anchore_analyzers(
+            staging_dirs, imageDigest, imageId, localconfig
+        )
         logger.debug(
             "timing: total analyzer time: {} - {}".format(
                 pullstring, time.time() - timer
             )
         )
 
-        try:
-            image_report = generate_image_export(
-                staging_dirs,
-                imageDigest,
-                imageId,
-                analyzer_report,
-                imageSize,
-                fulltag,
-                docker_history,
-                dockerfile_mode,
-                dockerfile_contents,
-                layers,
-                familytree,
-                imageArch,
-                pullstring,
-                analyzer_manifest,
-            )
-        except Exception as err:
-            raise AnalysisReportGenerationError(
-                cause=err, pull_string=pullstring, tag=fulltag
-            )
+        image_report = generate_image_export(
+            staging_dirs,
+            imageDigest,
+            imageId,
+            analyzer_report,
+            imageSize,
+            fulltag,
+            docker_history,
+            dockerfile_mode,
+            dockerfile_contents,
+            layers,
+            familytree,
+            imageArch,
+            pullstring,
+            analyzer_manifest,
+        )
 
-    except AnchoreException:
-        raise
     except Exception as err:
         raise AnalysisError(
             cause=err,
@@ -1357,11 +1325,6 @@ class AnalysisError(AnchoreException):
         }
 
 
-class ImagePullError(AnalysisError):
-    def __init__(self, cause, pull_string, tag, msg="Failed to pull image"):
-        super(ImagePullError, self).__init__(cause, pull_string, tag, msg)
-
-
 class ManifestSchemaVersionError(AnalysisError):
     def __init__(
         self,
@@ -1375,30 +1338,6 @@ class ManifestSchemaVersionError(AnalysisError):
             pull_string,
             tag,
             msg,
-        )
-
-
-class ManifestParseError(AnalysisError):
-    def __init__(self, cause, pull_string, tag, msg="Failed to parse image manifest"):
-        super(ManifestParseError, self).__init__(cause, pull_string, tag, msg)
-
-
-class ImageUnpackError(AnalysisError):
-    def __init__(self, cause, pull_string, tag, msg="Failed to unpack image"):
-        super(ImageUnpackError, self).__init__(cause, pull_string, tag, msg)
-
-
-class AnalyzerError(AnalysisError):
-    def __init__(
-        self, cause, pull_string, tag, msg="Failed to run image through analyzers"
-    ):
-        super(AnalyzerError, self).__init__(cause, pull_string, tag, msg)
-
-
-class AnalysisReportGenerationError(AnalysisError):
-    def __init__(self, cause, pull_string, tag, msg="Failed to generate image report"):
-        super(AnalysisReportGenerationError, self).__init__(
-            cause, pull_string, tag, msg
         )
 
 
