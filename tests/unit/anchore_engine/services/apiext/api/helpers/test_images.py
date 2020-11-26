@@ -25,6 +25,10 @@ class TestBuildOsResponse:
             "sourcepkg": "apt-1.8.2",
             "type": "dpkg",
             "version": "1.8.2",
+            "cpes": [
+                "cpe:2.3:*:*:apt:1.8.2:*:*:*:*:*:*:*",
+                "cpe:2.3:*:apt:apt:1.8.2:*:*:*:*:*:*:*",
+            ],
         }
 
     @pytest.fixture
@@ -43,6 +47,10 @@ class TestBuildOsResponse:
                 "size": "4064000",
                 "type": "dpkg",
                 "version": "1.8.2",
+                "cpes": [
+                    "cpe:2.3:*:*:apt:1.8.2:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:apt:apt:1.8.2:*:*:*:*:*:*:*",
+                ],
             }
         ]
 
@@ -69,6 +77,10 @@ class TestBuildNpmResponse:
             "origins": ["Tanya Brassie <tanyabrassie@tanyascmachine2.home>"],
             "sourcepkg": "https://github.com/npm/cli",
             "versions": ["0.1.0"],
+            "cpes": [
+                "cpe:2.3:*:*:npm-cli-docs:0.1.0:*:*:*:*:*:*:*",
+                "cpe:2.3:*:npm-cli-docs:npm-cli-docs:0.1.0:*:*:*:*:*:*:*",
+            ],
         }
 
     @pytest.fixture
@@ -87,6 +99,10 @@ class TestBuildNpmResponse:
                 "package": "npm-cli-docs",
                 "type": "NPM",
                 "version": "0.1.0",
+                "cpes": [
+                    "cpe:2.3:*:*:npm-cli-docs:0.1.0:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:npm-cli-docs:npm-cli-docs:0.1.0:*:*:*:*:*:*:*",
+                ],
             }
         ]
 
@@ -124,6 +140,10 @@ class TestBuildPythonResponse:
             "origin": "The pip developers <pypa-dev@groups.google.com>",
             "type": "python",
             "version": "20.0.2",
+            "cpes": [
+                "cpe:2.3:*:*:pip:20.0.2:*:*:*:*:*:*:*",
+                "cpe:2.3:*:pip:pip:20.0.2:*:*:*:*:*:*:*",
+            ],
         }
 
     @pytest.fixture
@@ -142,6 +162,10 @@ class TestBuildPythonResponse:
                 "package": "pip",
                 "type": "PYTHON",
                 "version": "20.0.2",
+                "cpes": [
+                    "cpe:2.3:*:*:pip:20.0.2:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:pip:pip:20.0.2:*:*:*:*:*:*:*",
+                ],
             }
         ]
 
@@ -173,6 +197,10 @@ class TestBuildGemResponse:
             "origins": ["Hiroshi SHIBATA", "Eric Hodel", "Jim Weirich"],
             "sourcepkg": "https://github.com/ruby/rake",
             "versions": ["13.0.1"],
+            "cpes": [
+                "cpe:2.3:*:*:rake:13.0.1:*:*:*:*:*:*:*",
+                "cpe:2.3:*:rake:rake:13.0.1:*:*:*:*:*:*:*",
+            ],
         }
 
     @pytest.fixture
@@ -191,6 +219,10 @@ class TestBuildGemResponse:
                 "package": "rake",
                 "type": "GEM",
                 "version": "13.0.1",
+                "cpes": [
+                    "cpe:2.3:*:*:rake:13.0.1:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:rake:rake:13.0.1:*:*:*:*:*:*:*",
+                ],
             }
         ]
 
@@ -227,6 +259,10 @@ class TestBuildJavaResponse:
             "origin": "N/A",
             "specification-version": "N/A",
             "type": "java-jar",
+            "cpes": [
+                "cpe:2.3:*:*:charsets:N/A:*:*:*:*:*:*:*",
+                "cpe:2.3:*:charsets:charsets:N/A:*:*:*:*:*:*:*",
+            ],
         }
 
     def test_go_case(self, content_data_entry):
@@ -239,6 +275,10 @@ class TestBuildJavaResponse:
                 "package": "charsets",
                 "specification-version": "N/A",
                 "type": "JAVA-JAR",
+                "cpes": [
+                    "cpe:2.3:*:*:charsets:N/A:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:charsets:charsets:N/A:*:*:*:*:*:*:*",
+                ],
             }
         ]
 
@@ -262,6 +302,10 @@ class TestBuildDefaultResponse:
             "origin": "someone",
             "type": "atype",
             "version": "20.0.2",
+            "cpes": [
+                "cpe:2.3:*:*:something:20.0.2:*:*:*:*:*:*:*",
+                "cpe:2.3:*:something:something:20.0.2:*:*:*:*:*:*:*",
+            ],
         }
 
     @pytest.fixture
@@ -286,6 +330,10 @@ class TestBuildDefaultResponse:
                 "package": "something",
                 "type": "ATYPE",
                 "version": "20.0.2",
+                "cpes": [
+                    "cpe:2.3:*:*:something:20.0.2:*:*:*:*:*:*:*",
+                    "cpe:2.3:*:something:something:20.0.2:*:*:*:*:*:*:*",
+                ],
             }
         ]
 

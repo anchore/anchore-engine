@@ -1,19 +1,18 @@
 import connexion
 
 import anchore_engine.apis
-from anchore_engine import db
-import anchore_engine.services.catalog.catalog_impl
 import anchore_engine.common
+import anchore_engine.configuration.localconfig
+import anchore_engine.services.catalog.catalog_impl
+import anchore_engine.subsys.servicestatus
+from anchore_engine import db
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.common import helpers
+from anchore_engine.common.helpers import make_response_error
+from anchore_engine.services.catalog import archiver, CatalogService
 from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
-import anchore_engine.configuration.localconfig
-import anchore_engine.subsys.servicestatus
-from anchore_engine.clients.services import internal_client_for
-from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
-from anchore_engine.db import AccountTypes
-from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.services.catalog import archiver
 from anchore_engine.subsys.metrics import flask_metrics
 
 authorizer = get_authorizer()
@@ -193,6 +192,23 @@ def get_image(imageDigest):
         httpcode = 500
         return_object = str(err)
 
+    return return_object, httpcode
+
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def get_image_content(image_digest, content_type):
+    httpcode = 500
+
+    try:
+        return_object = ApiRequestContextProxy.get_service().get_image_content(
+            ApiRequestContextProxy.namespace(), content_type, image_digest
+        )
+        httpcode = 200
+    except Exception as err:
+        logger.exception("Failed to lookup image content")
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object["httpcode"]
     return return_object, httpcode
 
 

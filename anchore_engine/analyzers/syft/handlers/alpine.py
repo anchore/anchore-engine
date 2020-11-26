@@ -43,6 +43,7 @@ def _all_package_info(findings, artifact):
         "files": [
             f.get("path") for f in dig(artifact, "metadata", "files", force_default=[])
         ],
+        "cpes": artifact.get("cpes", []),
     }
 
     # inject the artifact document into the "raw" analyzer document

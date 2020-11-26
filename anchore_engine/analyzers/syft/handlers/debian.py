@@ -60,6 +60,7 @@ def _all_package_info(findings, artifact):
         "size": str(size),
         "license": license,
         "type": "dpkg",
+        "cpes": artifact.get("cpes", []),
     }
 
     save_entry(findings, pkg_value, name)
