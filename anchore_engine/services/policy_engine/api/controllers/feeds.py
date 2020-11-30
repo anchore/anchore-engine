@@ -25,6 +25,7 @@ from anchore_engine.db import (
     FeedMetadata as DbFeedMetadata,
     FeedGroupMetadata as DbFeedGroupMetadata,
 )
+import typing
 
 authorizer = get_authorizer()
 
@@ -42,12 +43,12 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         sync.DataFeeds.update_counts()
 
-    response = _marshall_feeds_response()
+    response = [x.to_json() for x in _marshall_feeds_response()]
 
     return jsonify(response)
 
 
-def _marshall_feeds_response():
+def _marshall_feeds_response() -> typing.List[FeedMetadata]:
     response = []
     meta = db.get_all_feeds_detached()
 
@@ -57,36 +58,36 @@ def _marshall_feeds_response():
     return response
 
 
-def _marshall_feed_response(feed: DbFeedMetadata):
+def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
     if not feed:
         return ValueError(feed)
 
     i = FeedMetadata()
     i.name = feed.name
-    i.last_full_sync = feed.last_full_sync.isoformat() if feed.last_full_sync else None
-    i.created_at = feed.created_at.isoformat() if feed.created_at else None
-    i.updated_at = feed.last_update.isoformat() if feed.last_update else None
+    i.last_full_sync = feed.last_full_sync
+    i.created_at = feed.created_at
+    i.updated_at = feed.last_update
     i.enabled = feed.enabled
     i.groups = []
 
     for group in feed.groups:
         i.groups.append(_marshall_group_response(group))
 
-    return i.to_json()
+    return i
 
 
-def _marshall_group_response(group: DbFeedGroupMetadata):
+def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
     if not group:
         raise ValueError(group)
 
     g = FeedGroupMetadata()
     g.name = group.name
-    g.last_sync = group.last_sync.isoformat() if group.last_sync else None
-    g.created_at = group.created_at.isoformat() if group.created_at else None
-    g.updated_at = group.last_update.isoformat() if group.last_update else None
+    g.last_sync = group.last_sync
+    g.created_at = group.created_at
+    g.updated_at = group.last_update
     g.enabled = group.enabled
     g.record_count = group.count
-    return g.to_json()
+    return g
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -139,7 +140,7 @@ def toggle_feed_enabled(feed, enabled):
             raise ResourceNotFound(feed, detail={})
         session.flush()
 
-        updated = _marshall_feed_response(f)
+        updated = _marshall_feed_response(f).to_json()
         session.commit()
 
         return jsonify(updated), 200
@@ -165,7 +166,7 @@ def toggle_group_enabled(feed, group, enabled):
 
         session.flush()
 
-        grp = _marshall_group_response(g)
+        grp = _marshall_group_response(g).to_json()
         session.commit()
 
         return jsonify(grp), 200
@@ -200,7 +201,7 @@ def delete_feed(feed):
     try:
         f = sync.DataFeeds.delete_feed(feed)
         if f:
-            return jsonify(_marshall_feed_response(f)), 200
+            return jsonify(_marshall_feed_response(f).to_json()), 200
         else:
             raise ResourceNotFound(feed, detail={})
     except KeyError as e:
@@ -234,7 +235,7 @@ def delete_group(feed, group):
         g = sync.DataFeeds.delete_feed_group(feed_name=feed, group_name=group)
         log.info("Flushed group records {}".format(g))
         if g:
-            return jsonify(_marshall_group_response(g)), 200
+            return jsonify(_marshall_group_response(g).to_json()), 200
         else:
             raise ResourceNotFound(group, detail={})
     except KeyError as e:
