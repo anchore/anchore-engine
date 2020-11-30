@@ -36,13 +36,13 @@ def translate_and_save_entry(findings, artifact):
         pkg_key_name = name
 
     pkg_key = os.path.join(site_pkg_root, pkg_key_name)
-    origin = dig(artifact, "metadata", "author", default="")
+    origin = dig(artifact, "metadata", "author", force_default="")
     email = dig(artifact, "metadata", "authorEmail", default=None)
     if email:
         origin += " <%s>" % email
 
     files = []
-    for file in dig(artifact, "metadata", "files", default=[]):
+    for file in dig(artifact, "metadata", "files", force_default=[]):
         files.append(os.path.join(site_pkg_root, file["path"]))
 
     # craft the artifact document
@@ -52,7 +52,7 @@ def translate_and_save_entry(findings, artifact):
         "latest": artifact["version"],
         "files": files,
         "origin": origin,
-        "license": dig(artifact, "metadata", "license", default=""),
+        "license": dig(artifact, "metadata", "license", force_default=""),
         "location": site_pkg_root,
         "type": "python",
     }

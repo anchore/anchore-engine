@@ -31,12 +31,12 @@ def _all_package_info(findings, artifact):
     pkg_value = {
         "type": "rpm",
         "version": version,
-        "arch": dig(artifact, "metadata", "architecture", default="x86_64"),
-        "sourcepkg": dig(artifact, "metadata", "sourceRpm", default="N/A"),
-        "origin": dig(artifact, "metadata", "vendor", default="Centos"),
+        "arch": dig(artifact, "metadata", "architecture", force_default="x86_64"),
+        "sourcepkg": dig(artifact, "metadata", "sourceRpm", force_default="N/A"),
+        "origin": dig(artifact, "metadata", "vendor", force_default="Centos"),
         "release": release,
-        "size": str(dig(artifact, "metadata", "size", default="N/A")),
-        "license": dig(artifact, "metadata", "license", default="N/A"),
+        "size": str(dig(artifact, "metadata", "size", force_default="N/A")),
+        "license": dig(artifact, "metadata", "license", force_default="N/A"),
     }
     if pkg_value["arch"] == "amd64":
         pkg_value["arch"] = "x86_64"
@@ -52,6 +52,6 @@ def _all_packages(findings, artifact):
 
 
 def _all_package_files(findings, artifact):
-    for file in dig(artifact, "metadata", "files", default=[]):
+    for file in dig(artifact, "metadata", "files", force_default=[]):
         pkgfile = file.get("path")
         findings["package_list"]["pkgfiles.all"]["base"][pkgfile] = "RPMFILE"

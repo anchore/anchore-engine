@@ -24,9 +24,9 @@ def translate_and_save_entry(findings, artifact):
     """
     pkg_key = artifact["locations"][0]["path"]
     name = artifact["name"]
-    homepage = dig(artifact, "metadata", "homepage", default="")
-    author = dig(artifact, "metadata", "author", default="")
-    authors = dig(artifact, "metadata", "authors", default=[])
+    homepage = dig(artifact, "metadata", "homepage", force_default="")
+    author = dig(artifact, "metadata", "author", force_default="")
+    authors = dig(artifact, "metadata", "authors", force_default=[])
     origins = [] if not author else [author]
     origins.extend(authors)
 
@@ -34,9 +34,9 @@ def translate_and_save_entry(findings, artifact):
         "name": name,
         "versions": [artifact["version"]],
         "latest": artifact["version"],
-        "sourcepkg": dig(artifact, "metadata", "url", default=homepage),
+        "sourcepkg": dig(artifact, "metadata", "url", force_default=homepage),
         "origins": origins,
-        "lics": dig(artifact, "metadata", "licenses", default=[]),
+        "lics": dig(artifact, "metadata", "licenses", force_default=[]),
     }
 
     # inject the artifact document into the "raw" analyzer document
