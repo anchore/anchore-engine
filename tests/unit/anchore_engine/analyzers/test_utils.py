@@ -40,3 +40,18 @@ class TestDig:
     def test_missing_index_with_fail(self, mixed_data):
         with pytest.raises(IndexError):
             assert dig(mixed_data, "a", "d", 111, fail=True)
+
+    def test_none_value(self):
+        assert dig({"a": None}, "a") == None
+
+    def test_empty_value_with_force_default(self):
+        assert dig({"a": ""}, "a", force_default=12) == 12
+
+    def test_false_value_with_force_default(self):
+        assert dig({"a": False}, "a", force_default=12) == 12
+
+    def test_explicit_empty_value_with_force_default(self):
+        assert dig({"a": None}, "a", force_default=12) == 12
+
+    def test_none_empty_value_with_force_default(self):
+        assert dig({"a": "b!"}, "a", force_default=12) == "b!"

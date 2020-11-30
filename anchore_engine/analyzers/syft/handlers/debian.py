@@ -54,7 +54,7 @@ def _all_package_info(findings, artifact):
     pkg_value = {
         "version": version,
         "sourcepkg": source,
-        "arch": dig(artifact, "metadata", "architecture", default="N/A") or "N/A",
+        "arch": dig(artifact, "metadata", "architecture", force_default="N/A"),
         "origin": maintainer or "N/A",
         "release": "N/A",
         "size": str(size),
@@ -86,7 +86,7 @@ def _all_packages(findings, artifact):
 
 
 def _all_package_files(findings, artifact):
-    for file in dig(artifact, "metadata", "files", default=[]):
+    for file in dig(artifact, "metadata", "files", force_default=[]):
         original_path = file.get("path")
         if not original_path.startswith("/"):
             # the 'alpine-baselayout' package is installed relative to root,

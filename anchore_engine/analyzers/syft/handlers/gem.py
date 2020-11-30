@@ -31,11 +31,11 @@ def translate_and_save_entry(findings, artifact):
     pkg_value = {
         "name": name,
         "versions": versions,
-        "latest": dig(artifact, "version", default=""),
-        "sourcepkg": dig(artifact, "metadata", "homepage", default=""),
-        "files": dig(artifact, "metadata", "files", default=[]),
-        "origins": dig(artifact, "metadata", "authors", default=[]),
-        "lics": dig(artifact, "metadata", "licenses", default=[]),
+        "latest": dig(artifact, "version", force_default=""),
+        "sourcepkg": dig(artifact, "metadata", "homepage", force_default=""),
+        "files": dig(artifact, "metadata", "files", force_default=[]),
+        "origins": dig(artifact, "metadata", "authors", force_default=[]),
+        "lics": dig(artifact, "metadata", "licenses", force_default=[]),
     }
 
     save_entry(findings, pkg_value, pkg_key)

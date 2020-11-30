@@ -33,15 +33,15 @@ def _all_package_info(findings, artifact):
     pkg_value = {
         "name": name,
         "version": version,
-        "sourcepkg": dig(artifact, "metadata", "originPackage", default="N/A") or "N/A",
-        "arch": dig(artifact, "metadata", "architecture", default="N/A") or "N/A",
-        "origin": dig(artifact, "metadata", "maintainer", default="N/A") or "N/A",
+        "sourcepkg": dig(artifact, "metadata", "originPackage", force_default="N/A"),
+        "arch": dig(artifact, "metadata", "architecture", force_default="N/A"),
+        "origin": dig(artifact, "metadata", "maintainer", force_default="N/A"),
         "release": release,
-        "size": str(dig(artifact, "metadata", "installedSize", default="N/A")) or "N/A",
-        "license": dig(artifact, "metadata", "license", default="N/A") or "N/A",
+        "size": str(dig(artifact, "metadata", "installedSize", force_default="N/A")),
+        "license": dig(artifact, "metadata", "license", force_default="N/A"),
         "type": "APKG",
         "files": [
-            f.get("path") for f in dig(artifact, "metadata", "files", default=[])
+            f.get("path") for f in dig(artifact, "metadata", "files", force_default=[])
         ],
     }
 
@@ -70,7 +70,7 @@ def _all_packages(findings, artifact):
 
 
 def _all_package_files(findings, artifact):
-    for file in dig(artifact, "metadata", "files", default=[]):
+    for file in dig(artifact, "metadata", "files", force_default=[]):
         original_path = file.get("path")
         if not original_path.startswith("/"):
             # the 'alpine-baselayout' package is installed relative to root,

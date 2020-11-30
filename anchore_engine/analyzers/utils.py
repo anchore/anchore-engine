@@ -924,7 +924,13 @@ def dig(target, *keys, **kwargs):
             elif "default" in kwargs:
                 return kwargs["default"]
             else:
-                return None
+                end_of_chain = None
+                break
+
+    # we may have found a falsy value in the collection at the given key
+    # and the caller has specified to return a default value in this case in it's place.
+    if not end_of_chain and "force_default" in kwargs:
+        end_of_chain = kwargs["force_default"]
 
     return end_of_chain
 
