@@ -2867,6 +2867,34 @@ paths:
             $ref: "#/definitions/ImageImportContentResponse"
         500:
           description: "Internal Error"
+  /imports/images/{operation_id}/finalize:
+    post:
+      tags:
+      - Imports
+      x-swagger-router-controller: anchore_engine.services.catalog.api.controllers.imports
+      operationId: finalize_import
+      x-anchore-authz-action: importImage
+      summary: "Finalize the import, indicating all data is present and the system can load the image"
+      description: "Ends the import process upload phase and begins the import async process to load the image"
+      produces:
+        - "application/json"
+      parameters:
+        - name: operation_id
+          in: path
+          type: string
+          required: true
+        - name: manifest
+          in: body
+          schema:
+            $ref: "#/definitions/ImageImportManifest"
+          required: true
+      responses:
+        200:
+          description: "success"
+          schema:
+            $ref: "#/definitions/FinalizeImageImportResponse"
+        500:
+          description: "Internal Error"
 definitions:
   PaginationProperties:
     type: object
