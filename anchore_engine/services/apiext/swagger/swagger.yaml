@@ -2766,6 +2766,12 @@ paths:
           in: path
           type: string
           required: true
+        - in: body
+          name: contents
+          required: true
+          schema:
+            type: string
+
       responses:
         200:
           description: "success"
@@ -2814,6 +2820,11 @@ paths:
           in: path
           type: string
           required: true
+        - in: body
+          name: contents
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: "success"
@@ -2836,6 +2847,12 @@ paths:
           in: path
           type: string
           required: true
+        - in: body
+          name: contents
+          required: true
+          schema:
+            type: string
+
       responses:
         200:
           description: "success"
