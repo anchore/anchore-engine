@@ -516,6 +516,10 @@ class ArchiveTransitionRule(Base, UtilMixin):
     system_global = Column(Boolean, default=False)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, onupdate=anchore_now, default=anchore_now)
+    exclude_selector_registry = Column(String)
+    exclude_selector_repository = Column(String)
+    exclude_selector_tag = Column(String)
+    exclude_expiration_days = Column(Integer)
 
     def __repr__(self):
         return "<ArchiveTransitionRule account={},rule_id={}>".format(
