@@ -8,7 +8,7 @@ from anchore_engine.services.catalog.catalog_impl import load_policy_bundles
 INPUT_BUNDLES_DIR = "bundles"
 
 
-def get_mock_config_with_policy_bundles(dir, bundle_filenames):
+def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exception):
     policy_bundles = []
 
     input_dir = dir.mkdir(INPUT_BUNDLES_DIR)
@@ -16,10 +16,14 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames):
     mock_id = 0
     for bundle_filename in bundle_filenames:
         bundle_path = os.path.join(input_dir, bundle_filename)
-        mock_body = json.dumps({
-            "id": "0",
-            "name": bundle_filename
-        })
+        if simulate_exception:
+            mock_body = "not json"
+        else:
+            mock_body = json.dumps({
+                "id": str(mock_id),
+                "name": bundle_filename
+            })
+        mock_id += 1
         with open(bundle_path, "w") as fp:
             fp.write(mock_body)
             fp.flush()
@@ -34,11 +38,17 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames):
     }
 
 
-@pytest.mark.parametrize("bundle_filenames", [
-    (["first_bundle.json"])
+@pytest.mark.parametrize("bundle_filenames, simulate_exception, expected_bundles, expected_exceptions", [
+    (["first_bundle.json"], False, 1, 0),
+    (["first_bundle.json", "first_bundle.json"], False, 2, 0),
+    (["first_bundle.json"], True, 0, 1),
 ])
-def test_load_policy_bundles(tmpdir, bundle_filenames):
-    config = get_mock_config_with_policy_bundles(tmpdir, bundle_filenames)
+def test_load_policy_bundles(tmpdir,
+                             bundle_filenames,
+                             simulate_exception,
+                             expected_bundles,
+                             expected_exceptions):
+    config = get_mock_config_with_policy_bundles(tmpdir, bundle_filenames, simulate_exception)
     policy_bundles = []
     bundles = []
     exceptions = []
@@ -52,6 +62,6 @@ def test_load_policy_bundles(tmpdir, bundle_filenames):
 
     load_policy_bundles(config, process_bundle, process_exception)
 
-    assert len(policy_bundles) == len(bundle_filenames)
-    assert len(bundles) == len(bundle_filenames)
-    assert len(exceptions) == 0
+    assert len(policy_bundles) == expected_bundles
+    assert len(bundles) == expected_bundles
+    assert len(exceptions) == expected_exceptions
