@@ -2345,49 +2345,42 @@ class CatalogService(ApiService):
                         )
 
                         config = self.global_configuration
-                        policy_bundles = config.get("policy_bundles", None)
-                        if policy_bundles is not None and policy_bundles != []:
-                            for policy_bundle in policy_bundles:
-                                if policy_bundle["bundle_path"] and os.path.exists(policy_bundle["bundle_path"]):
-                                    logger.info(
-                                        "loading def bundle: "
-                                        + str(config['default_bundle_file'])
-                                    )
-                                    try:
-                                        bundle = {}
-                                        with open(policy_bundle["bundle_path"], 'r') as FH:
-                                            bundle = json.loads(FH.read())
-                                        if bundle:
-                                            bundle_url = obj_mgr.put_document(
-                                                userId,
-                                                'policy_bundles',
-                                                bundle['id'],
-                                                bundle
-                                            )
-                                            policy_record = make_policy_record(
-                                                userId,
-                                                bundle,
-                                                policy_bundle["active"]
-                                            )
-                                            rc = db_policybundle.add(
-                                                policy_record['policyId'],
-                                                userId,
-                                                policy_bundle["active"],
-                                                policy_record,
-                                                session=dbsession
-                                            )
-                                            if not rc:
-                                                raise Exception("policy bundle DB add failed")
-                                    except Exception as err:
-                                        if isinstance(err, IntegrityError):
-                                            logger.warn(
-                                                "another process has already initialized, continuing"
-                                            )
-                                        else:
-                                            logger.error(
-                                                "could not load up default bundle for user - exception: "
-                                                + str(err)
-                                            )
+
+                        def process_bundle(policy_bundle, bundle):
+                            bundle_url = obj_mgr.put_document(
+                                userId,
+                                'policy_bundles',
+                                bundle['id'],
+                                bundle
+                            )
+                            policy_record = make_policy_record(
+                                userId,
+                                bundle,
+                                policy_bundle["active"]
+                            )
+                            rc = db_policybundle.add(
+                                policy_record['policyId'],
+                                userId,
+                                policy_bundle["active"],
+                                policy_record,
+                                session=dbsession
+                            )
+                            if not rc:
+                                raise Exception("policy bundle DB add failed")
+
+                        def process_exception(exception):
+                            if isinstance(exception, IntegrityError):
+                                logger.warn(
+                                    "another process has already initialized, continuing"
+                                )
+                            else:
+                                logger.error(
+                                    "could not load up default bundle for user - exception: "
+                                    + str(exception)
+                                )
+
+                        catalog_impl.load_policy_bundles(config, process_bundle, process_exception)
+
                 except Exception as err:
                     if isinstance(err, IntegrityError):
                         logger.warn(

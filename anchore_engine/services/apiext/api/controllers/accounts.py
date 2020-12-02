@@ -23,6 +23,7 @@ from anchore_engine.db.db_accounts import (
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.services.catalog.catalog_impl import load_policy_bundles
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import (
@@ -747,29 +748,21 @@ def _init_policy(accountname, config):
             "Account {} has no policy bundle - installing default".format(accountname)
         )
 
-        policy_bundles = config.get("policy_bundles", None)
-        if policy_bundles is not None and policy_bundles != []:
-            for policy_bundle in policy_bundles:
-                if policy_bundle["bundle_path"] and os.path.exists(policy_bundle["bundle_path"]):
-                    logger.info("loading policy bundle: " + str(policy_bundle))
-                    try:
-                        bundle = {}
-                        with open(policy_bundle["bundle_path"], 'r') as FH:
-                            bundle = json.loads(FH.read())
+        def process_bundle(policy_bundle, bundle):
+            resp = client.add_policy(bundle, active=policy_bundle["active"])
+            if not resp:
+                raise Exception("policy bundle {} DB add failed".format(str(policy_bundle)))
 
-                        if bundle:
-                            resp = client.add_policy(bundle, active=policy_bundle["active"])
-                            if not resp:
-                                raise Exception("policy bundle {} DB add failed".format(str(policy_bundle)))
+        def process_exception(exception):
+            logger.error(
+                "could not load up bundles for user - exception: " + str(err)
+            )
+            raise
 
-                            return True
-                        else:
-                            raise Exception('No {} bundle found'.format(str(policy_bundle["bundle_path"])))
-                    except Exception as err:
-                        logger.error(
-                            "could not load up bundles for user - exception: " + str(err)
-                        )
-                        raise
+        try:
+            load_policy_bundles(config, process_bundle, process_exception)
+        except Exception:
+            raise
     else:
         logger.debug(
             "Existing bundle found for account: {}. Not expected on invocations of this function in most uses".format(
