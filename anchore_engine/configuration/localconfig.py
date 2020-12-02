@@ -184,14 +184,14 @@ def load_policy_bundle_paths(src_dir=None):
                     copy_config_files(file, file_name, src_dir)
                 except Exception as e:
                     logger.warn(
-                        "Policy bundle {} not found, unable to load.".format(file_name)
+                        "Policy bundle {} not found, unable to load. Exception: {}".format(file_name, e)
                     )
             localconfig["policy_bundles"] = policy_bundles
             return
-    except:
+    except Exception as e:
         logger.warn(
-            "Configured policy bundle dir at {} not found, unable to load."
-            .format(policy_bundles_dir)
+            "Configured policy bundle dir at {} not found, unable to load. Exception: {}"
+            .format(policy_bundles_dir, e)
         )
         localconfig["policy_bundles"] = None
 

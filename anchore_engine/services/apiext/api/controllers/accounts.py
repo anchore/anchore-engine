@@ -747,28 +747,29 @@ def _init_policy(accountname, config):
             "Account {} has no policy bundle - installing default".format(accountname)
         )
 
-        if config.get("default_bundle_file", None) and os.path.exists(
-            config["default_bundle_file"]
-        ):
-            logger.info("loading def bundle: " + str(config["default_bundle_file"]))
-            try:
-                default_bundle = {}
-                with open(config["default_bundle_file"], "r") as FH:
-                    default_bundle = json.loads(FH.read())
+        policy_bundles = config.get("policy_bundles", None)
+        if policy_bundles is not None and policy_bundles != []:
+            for policy_bundle in policy_bundles:
+                if policy_bundle["bundle_path"] and os.path.exists(policy_bundle["bundle_path"]):
+                    logger.info("loading policy bundle: " + str(policy_bundle))
+                    try:
+                        bundle = {}
+                        with open(policy_bundle["bundle_path"], 'r') as FH:
+                            bundle = json.loads(FH.read())
 
-                if default_bundle:
-                    resp = client.add_policy(default_bundle, active=True)
-                    if not resp:
-                        raise Exception("policy bundle DB add failed")
+                        if bundle:
+                            resp = client.add_policy(bundle, active=policy_bundle["active"])
+                            if not resp:
+                                raise Exception("policy bundle {} DB add failed".format(str(policy_bundle)))
 
-                    return True
-                else:
-                    raise Exception("No default bundle found")
-            except Exception as err:
-                logger.error(
-                    "could not load up default bundle for user - exception: " + str(err)
-                )
-                raise
+                            return True
+                        else:
+                            raise Exception('No {} bundle found'.format(str(policy_bundle["bundle_path"])))
+                    except Exception as err:
+                        logger.error(
+                            "could not load up bundles for user - exception: " + str(err)
+                        )
+                        raise
     else:
         logger.debug(
             "Existing bundle found for account: {}. Not expected on invocations of this function in most uses".format(
