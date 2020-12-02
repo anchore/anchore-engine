@@ -2753,6 +2753,8 @@ paths:
         500:
           description: "Internal Error"
     post:
+      tags:
+      - Imports
       x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.image_imports
       operationId: import_image_dockerfile
       x-anchore-authz-action: importImage
