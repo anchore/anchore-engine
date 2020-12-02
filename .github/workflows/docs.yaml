@@ -2,8 +2,8 @@ name: Publish Docs
 
 on:
   push:
-    tags:
-      - 'docs-v*.*.*'
+    branches:
+      - 'publish-docs'
 
 jobs:
   deploy:
