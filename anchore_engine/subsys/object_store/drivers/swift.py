@@ -13,7 +13,7 @@ from anchore_engine.subsys.object_store.exc import (
     ObjectStorageDriverError,
     BadCredentialsError,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 # Deal with the verbose logging verbosity of swiftclient
@@ -117,7 +117,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         try:
             container, key = self._parse_uri(uri)
             if container != self.container_name:
-                logger.warn(
+                logger.warning(
                     "Container mismatch between content_uri and configured cotnainer name: {} in db record, but {} in config".format(
                         container, self.container_name
                     )
@@ -145,7 +145,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         try:
             container, key = self._parse_uri(uri)
             if container != self.container_name:
-                logger.warn(
+                logger.warning(
                     "Container mismatch between content_uri and configured bucket name: {} in db record, but {} in config".format(
                         container, self.container_name
                     )
@@ -162,7 +162,7 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
         try:
             container, key = self._parse_uri(uri)
             if container != self.container_name:
-                logger.warn(
+                logger.warning(
                     "Bucket mismatch between content_uri and configured bucket name: {} in db record, but {} in config".format(
                         container, self.container_name
                     )

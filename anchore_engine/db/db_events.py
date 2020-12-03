@@ -4,7 +4,7 @@ from dateutil import parser as dateparser
 
 from anchore_engine import db
 from anchore_engine.db import Event
-from anchore_engine.subsys import logger
+import logging as logger
 
 import sqlalchemy
 from sqlalchemy import func

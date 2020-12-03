@@ -6,7 +6,7 @@ from anchore_engine.clients.services import http
 import anchore_engine.configuration.localconfig
 import anchore_engine.common
 import anchore_engine.clients.services.common
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.events import EventBase
 from anchore_engine.clients.services.internal import InternalServiceClient
 

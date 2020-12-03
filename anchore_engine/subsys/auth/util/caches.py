@@ -2,7 +2,8 @@ from threading import RLock
 
 from yosai.core.cache import abcs
 
-from anchore_engine.subsys import caching, logger
+from anchore_engine.subsys import caching
+import logging as logger
 
 
 class SimpleMemoryCache(abcs.CacheHandler):

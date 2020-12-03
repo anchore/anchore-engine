@@ -7,7 +7,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
 )
 from anchore_engine.db import AnalysisArtifact
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 class RetrievedFileMixin(object):

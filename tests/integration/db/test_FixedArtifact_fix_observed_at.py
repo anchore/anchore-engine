@@ -2,7 +2,7 @@ import pytest
 
 from tests.utils import init_test_logging
 from anchore_engine.db import session_scope, FixedArtifact, Vulnerability
-from anchore_engine.subsys import logger
+import logging as logger
 from tests.fixtures import anchore_db
 
 init_test_logging(level="info")

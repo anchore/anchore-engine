@@ -1,6 +1,6 @@
 import time
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def do_simple_pagination(

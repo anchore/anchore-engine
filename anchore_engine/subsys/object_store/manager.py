@@ -5,7 +5,8 @@ import zlib
 
 from anchore_engine import utils
 from anchore_engine.db import session_scope, db_archivemetadata
-from anchore_engine.subsys import object_store, logger
+from anchore_engine.subsys import object_store
+import logging as logger
 from anchore_engine.subsys.object_store.config import (
     DRIVER_SECTION_KEY,
     DRIVER_NAME_KEY,
@@ -295,7 +296,7 @@ class ObjectStorageManager(object):
                         userId, bucket, archiveid
                     )
                 else:
-                    logger.warn(
+                    logger.warning(
                         "Deleting archive document {}/{}/{}, but found no content url for backend delete so skipping backend operation".format(
                             userId, bucket, archiveid
                         )

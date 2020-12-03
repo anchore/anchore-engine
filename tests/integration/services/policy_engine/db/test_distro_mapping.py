@@ -1,5 +1,6 @@
+from anchore_engine.subsys.logger import enable_test_logging
 from tests.integration.services.policy_engine.utils import init_distro_mappings
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db.entities.policy_engine import (
     DistroMapping,
     DistroTuple,
@@ -7,7 +8,7 @@ from anchore_engine.db.entities.policy_engine import (
     get_thread_scoped_session,
 )
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def test_simple_map(anchore_db):

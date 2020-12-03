@@ -2,7 +2,7 @@ import copy
 from yosai.core.authc.authc import UsernamePasswordToken
 import time
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db import session_scope, get_session
 from anchore_engine.db.entities.identity import OAuth2Client, OAuth2Token
 from authlib.integrations.flask_oauth2.authorization_server import AuthorizationServer
@@ -53,7 +53,7 @@ class PasswordGrant(grants.ResourceOwnerPasswordCredentialsGrant):
             else:
                 return User(identity.user_uuid)
         except:
-            logger.debug_exception("Error authenticating")
+            logger.exception("Error authenticating")
             raise Exception("User authentication failed")
 
 

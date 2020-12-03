@@ -6,7 +6,7 @@ import hashlib
 import json
 
 from .context import ApiRequestContextProxy
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def do_request_prep(request, default_params=None):

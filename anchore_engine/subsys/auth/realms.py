@@ -6,7 +6,7 @@ from yosai.core.exceptions import IncorrectCredentialsException
 from anchore_engine.db import AccountTypes
 from anchore_engine.plugins.authorization.client import AuthzPluginHttpClient, Action
 from anchore_engine.apis.authentication import IdentityContext
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.auth.stores.verifier import JwtToken
 
 
@@ -93,7 +93,7 @@ class UsernamePasswordRealm(AccountStoreRealm):
                 "No account credentials found for identifiers [{0}].  "
                 "Returning None.".format(identifier)
             )
-            logger.warn(msg3)
+            logger.warning(msg3)
 
         if account_info:
             # Expect anchore to add the account_id already
@@ -248,5 +248,5 @@ class JwtRealm(UsernamePasswordRealm):
                 return authc_info
 
         except:
-            logger.debug_exception("Could not authenticate token")
+            logger.exception("Could not authenticate token")
             raise IncorrectCredentialsException()

@@ -16,7 +16,7 @@ from anchore_engine.db import (
     CpeVulnerability,
     select_nvd_classes,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     IntegerStringParameter,
@@ -596,7 +596,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 )
 
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "problem during non-os vulnerability evaluation - exception: {}".format(
                             err
                         )

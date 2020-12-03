@@ -12,7 +12,7 @@ import anchore_engine.common
 import anchore_engine.common.helpers
 from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
-from anchore_engine.subsys import logger
+import logging as logger
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.utils
@@ -68,7 +68,7 @@ def list_policies(active=None):
                             record["policybundlemeta"] = meta
 
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "failed to fetch policy bundle from archive - exception: "
                         + str(err)
                     )
@@ -122,7 +122,7 @@ def get_policy(policyId):
                         record["policybundlemeta"] = meta
 
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to fetch policy bundle from archive - exception: "
                     + str(err)
                 )
@@ -324,11 +324,11 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                             event, dbsession
                         )
                     except:
-                        logger.warn(
+                        logger.warning(
                             "Ignoring error creating active policy content change event"
                         )
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "Could not evaluate bundle content different on save for active bundle - exception: {}".format(
                     err
                 )
@@ -374,7 +374,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                                 event, dbsession
                             )
                         except:
-                            logger.warn(
+                            logger.warning(
                                 "Ignoring error creating active policy id change event"
                             )
 

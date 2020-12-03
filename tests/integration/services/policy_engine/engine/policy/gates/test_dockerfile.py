@@ -2,7 +2,9 @@
 Gate Unit tests
 """
 import pytest
-from anchore_engine.subsys import logger
+import logging as logger
+
+from anchore_engine.subsys.logger import enable_test_logging
 from tests.integration.services.policy_engine.engine.policy.gates import (
     GateUnitTest,
     cls_no_feeds_test_env,
@@ -18,7 +20,7 @@ from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import
 )
 
 
-logger.enable_test_logging()
+enable_test_logging()
 
 test_image = Image()
 test_image.distro_name = "debian"

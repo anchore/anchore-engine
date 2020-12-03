@@ -1,7 +1,8 @@
 from anchore_engine.services.policy_engine.engine import vulnerabilities
-from anchore_engine.subsys import logger
+import logging as logger
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging(level="info")
+enable_test_logging(level="info")
 
 
 def test_namespace_has_no_feed():

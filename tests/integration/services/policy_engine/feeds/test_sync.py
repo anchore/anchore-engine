@@ -1,7 +1,9 @@
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from anchore_engine.subsys import logger
+import logging as logger
 
-logger.enable_test_logging()
+from anchore_engine.subsys.logger import enable_test_logging
+
+enable_test_logging()
 
 
 def test_sync_fail(test_data_env):

@@ -7,9 +7,10 @@ import yaml
 import pytest
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.services.apiext.api.controllers import utils as api_utils
-from anchore_engine.subsys import logger
+import logging as logger
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging("INFO")
+enable_test_logging("INFO")
 
 spec_path = "anchore_engine/services/apiext/swagger/swagger.yaml"
 b64_dockerfile = str(

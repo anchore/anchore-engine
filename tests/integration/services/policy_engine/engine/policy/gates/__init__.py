@@ -5,7 +5,7 @@ from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine import _init_distro_mappings
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def load_images(request):

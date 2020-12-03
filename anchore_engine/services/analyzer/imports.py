@@ -3,7 +3,7 @@ import json
 import time
 
 from .tasks import WorkerTask
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.common.schemas import (
     InternalImportManifest,
     ImportQueueMessage,
@@ -255,8 +255,8 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
             if not image_record:
                 raise Exception("empty image record from catalog")
         except Exception as err:
-            logger.debug_exception("Could not get image record")
-            logger.warn(
+            logger.exception("Could not get image record")
+            logger.warning(
                 "dequeued image cannot be fetched from catalog - skipping analysis ("
                 + str(image_digest)
                 + ") - exception: "
@@ -321,7 +321,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                     notify_analysis_complete(image_record, last_analysis_status)
                 )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to enqueue notification on image analysis state update - exception: "
                     + str(err)
                 )
@@ -335,7 +335,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                     operation_id, status="complete"
                 )
             except Exception as err:
-                logger.debug_exception(
+                logger.exception(
                     "failed updating import status success, will continue and rely on expiration for GC later"
                 )
 
@@ -351,7 +351,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                 )
 
             except Exception as err:
-                logger.warn(str(err))
+                logger.warning(str(err))
 
         except Exception as err:
             run_time = float(time.time() - timer)
@@ -366,7 +366,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
             try:
                 catalog_client.update_image_import_status(operation_id, status="failed")
             except Exception as err:
-                logger.debug_exception(
+                logger.exception(
                     "failed updating import status failure, will continue and rely on expiration for GC later"
                 )
 
@@ -388,8 +388,8 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                 emit_events(catalog_client, analysis_events)
 
     except Exception as err:
-        logger.debug_exception("Could not import image")
-        logger.warn("job processing bailed - exception: " + str(err))
+        logger.exception("Could not import image")
+        logger.warning("job processing bailed - exception: " + str(err))
         raise err
 
     return True

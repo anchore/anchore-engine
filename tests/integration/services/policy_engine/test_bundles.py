@@ -20,10 +20,12 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     BundleTargetTagMismatchError,
 )
 
-from anchore_engine.subsys import logger
+import logging as logger
+
+from anchore_engine.subsys.logger import enable_test_logging
 from anchore_engine.utils import datetime_to_rfc3339
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def get_image_named(db, test_env, name):

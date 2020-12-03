@@ -13,7 +13,7 @@ from anchore_engine.clients.services.common import (
     get_service_endpoint,
     get_service_endpoints,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.identities import (
     AccessCredential,
     HttpBearerCredential,
@@ -89,7 +89,7 @@ class InternalServiceClient(object):
             try:
                 cfg = config_provider_fn()
             except:
-                logger.debug_exception(
+                logger.exception(
                     "Unexpected exception loading configuration from the config provider function"
                 )
                 raise
@@ -129,7 +129,7 @@ class InternalServiceClient(object):
                         self._connect_timeout = 0.0
                 except:
                     # Default to verify ssl if not set
-                    logger.debug_exception(
+                    logger.exception(
                         "Could not initialize ssl verification and client timeouts from config due to error"
                     )
                     raise
@@ -326,7 +326,7 @@ class InternalServiceClient(object):
                     files=files,
                 )
         except Exception as e:
-            logger.debug_exception(
+            logger.exception(
                 "Failed client call to service {} for url: {}. Response: {}".format(
                     self.__service__, final_url, e.__dict__
                 )

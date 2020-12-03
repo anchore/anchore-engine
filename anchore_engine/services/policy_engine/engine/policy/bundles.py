@@ -7,7 +7,7 @@ import itertools
 
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.util.docker import parse_dockerimage_string
 from anchore_engine.util.matcher import regexify, is_match
 from anchore_engine.services.policy_engine.engine.policy.formatting import (
@@ -1438,7 +1438,7 @@ class ExecutableBundle(VersionedEntityMixin):
                         image_obj=image_object, context=context
                     )
                     if errors:
-                        logger.warn(
+                        logger.warning(
                             "Evaluation encountered errors/warnings: {}".format(errors)
                         )
                         bundle_exec.errors += errors

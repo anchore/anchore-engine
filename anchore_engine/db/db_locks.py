@@ -16,7 +16,7 @@ from anchore_engine.db.entities.exceptions import (
     is_unique_violation,
     is_lock_acquisition_error,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 DEFAULT_ACQUIRE_TIMEOUT_SECONDS = 3
 DEFAULT_LOCK_DURATION_SECONDS = 10
@@ -172,7 +172,7 @@ def release_lease(lease_id, client_id, epoch):
         if not lease:
             raise KeyError(lease_id)
         elif lease.held_by != client_id or lease.epoch > epoch:
-            logger.warn("Lost the lease {}. Cannot update".format(lease_id))
+            logger.warning("Lost the lease {}. Cannot update".format(lease_id))
         else:
             lease.release_holder()
 

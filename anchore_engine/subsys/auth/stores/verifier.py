@@ -7,7 +7,7 @@ from yosai.core.authc.authc import (
     PasslibVerifier,
 )
 from yosai.core.authc.abcs import AuthenticationToken
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.utils import ensure_bytes
 from anchore_engine.auth.oauth import token_manager
 from anchore_engine.configuration import localconfig
@@ -98,7 +98,7 @@ class JwtToken(AuthenticationToken):
         try:
             self._parse()
         except:
-            logger.debug_exception("Error parsing/verifying token")
+            logger.exception("Error parsing/verifying token")
             self._identifier = None
             self._verified = False
             self._claims = None

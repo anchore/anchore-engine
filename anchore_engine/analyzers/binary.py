@@ -6,7 +6,7 @@ import tarfile
 import collections
 
 import anchore_engine.utils
-from anchore_engine.subsys import logger
+import logging as logger
 from . import utils
 
 binary_package_el = {

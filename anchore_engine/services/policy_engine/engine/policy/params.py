@@ -8,7 +8,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     ValidationError,
     ParameterValidationError,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 class InputValidator(object):

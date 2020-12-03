@@ -8,7 +8,7 @@ import time
 import importlib
 
 import anchore_engine.db
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_manager.util.logging import format_error_output, log_config, log_error
 from anchore_engine.db.entities.common import normalize_db_params
 
@@ -92,7 +92,7 @@ def connect_database(db_params, db_retries=1):
         except Exception as err:
             last_db_connect_err = str(err)
             if db_retries > 1:
-                logger.warn(
+                logger.warning(
                     "DB connection failed, retrying - exception: %s",
                     str(last_db_connect_err),
                 )

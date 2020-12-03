@@ -5,7 +5,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     TypeValidator,
 )
 from anchore_engine.db import GemMetadata
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )

@@ -1,8 +1,8 @@
 import datetime
 import hashlib
 import json
+import logging as log
 import re
-import time
 import zlib
 from collections import namedtuple
 
@@ -18,32 +18,21 @@ from sqlalchemy import (
     Enum,
     ForeignKeyConstraint,
     DateTime,
-    types,
     Text,
     Index,
     JSON,
     or_,
-    and_,
     Sequence,
     func,
     event,
 )
 from sqlalchemy.orm import relationship, synonym, joinedload
 
-from anchore_engine.utils import ensure_str, ensure_bytes
-
-from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
-from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
+from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
-
-try:
-    from anchore_engine.subsys import logger as log
-except:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    log = logger
+from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
+from anchore_engine.utils import ensure_str, ensure_bytes
 
 from .common import Base, UtilMixin, StringJSON
 from .common import get_thread_scoped_session
@@ -333,7 +322,7 @@ class Vulnerability(Base):
             cves = self.get_nvd_identifiers(_nvd_cls, _cpe_cls)
             nvd_records = db.query(_nvd_cls).filter(_nvd_cls.name.in_(cves)).all()
         except Exception as err:
-            log.warn(
+            log.warning(
                 "failed to gather NVD information for vulnerability due to exception: {}".format(
                     str(err)
                 )
@@ -365,7 +354,7 @@ class Vulnerability(Base):
                     if cve_id and cve_id not in cves:
                         cves.append(cve_id)
         except Exception as err:
-            log.warn(
+            log.warning(
                 "failed to gather NVD information for vulnerability due to exception: {}".format(
                     str(err)
                 )
@@ -438,7 +427,7 @@ class VulnerableArtifact(Base):
             vuln_obj.name != package_obj.name
             and vuln_obj.name != package_obj.normalized_src_pkg
         ):
-            log.warn(
+            log.warning(
                 "Name mismatch in vulnerable check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}".format(
                     vuln_obj.name,
                     package_obj.name,
@@ -527,7 +516,7 @@ class FixedArtifact(Base):
 
         dist = DistroNamespace.for_obj(package_obj)
         flavor = dist.flavor
-        log.spew(
+        log.debug(
             "Package: {}, Fix: {}, Flavor: {}".format(
                 package_obj.name, fix_obj.name, flavor
             )
@@ -538,7 +527,7 @@ class FixedArtifact(Base):
             fix_obj.name != package_obj.name
             and fix_obj.name != package_obj.normalized_src_pkg
         ):
-            log.warn(
+            log.warning(
                 "Name mismatch in fix check. This should not happen: Fix: {}, Package: {}, Package_Norm_Src: {}, Package_Src: {}".format(
                     fix_obj.name,
                     package_obj.name,
@@ -558,7 +547,7 @@ class FixedArtifact(Base):
             flavor == "RHEL"
         ):  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
             if rpm_compare_versions(package_obj.fullversion, fix_obj.version) < 0:
-                log.spew(
+                log.debug(
                     "rpm Compared: {} < {}: True".format(
                         package_obj.fullversion, fix_obj.version
                     )
@@ -568,7 +557,7 @@ class FixedArtifact(Base):
             flavor == "DEB"
         ):  # compare full package version with full fixed-in version, epoch handled in compare fn. fixes issue-265
             if dpkg_compare_versions(package_obj.fullversion, "lt", fix_obj.version):
-                log.spew(
+                log.debug(
                     "dpkg Compared: {} < {}: True".format(
                         package_obj.fullversion, fix_obj.version
                     )
@@ -580,7 +569,7 @@ class FixedArtifact(Base):
             if apkg_compare_versions(
                 package_obj.fullversion, "lt", fix_obj.epochless_version
             ):
-                log.spew(
+                log.debug(
                     "apkg Compared: {} < {}: True".format(
                         package_obj.fullversion, fix_obj.epochless_version
                     )
@@ -666,7 +655,7 @@ class NvdMetadata(Base):
         elif cvss_version == 2:
             score = self.cvss.get(base_metrics_key, {}).get("score", None)
         else:
-            log.warn(
+            log.warning(
                 "invalid cvss version specified as input ({})".format(cvss_version)
             )
             score = None
@@ -702,7 +691,7 @@ class NvdMetadata(Base):
             }
 
         else:
-            log.warn(
+            log.warning(
                 "invalid cvss version specified as input ({})".format(cvss_version)
             )
             ret = {
@@ -829,7 +818,7 @@ class NvdV2Metadata(Base):
         elif cvss_version == 2:
             metric = self.cvss_v2
         else:
-            log.warn(
+            log.warning(
                 "invalid cvss version specified as input ({})".format(cvss_version)
             )
 
@@ -1083,7 +1072,7 @@ class VulnDBMetadata(Base):
         elif cvss_version == 2:
             metric = self._get_max_cvss_v2_metric_nvd()
         else:
-            log.warning(
+            log.warninging(
                 "invalid cvss version specified as input ({})".format(cvss_version)
             )
 
@@ -1164,7 +1153,7 @@ class VulnDBMetadata(Base):
         elif cvss_version == 2:
             metric = self._get_highest_cvss_v2_rbs()
         else:
-            log.warning(
+            log.warninging(
                 "invalid cvss version specified as input ({})".format(cvss_version)
             )
 
@@ -3052,7 +3041,7 @@ def select_nvd_classes(db=None):
             _nvd_cls = NvdV2Metadata
             _cpe_cls = CpeV2Vulnerability
     except Exception as err:
-        log.warn("could not query for nvdv2 sync: {}".format(err))
+        log.warning("could not query for nvdv2 sync: {}".format(err))
 
     log.debug("selected {}/{} nvd classes".format(_nvd_cls, _cpe_cls))
     return _nvd_cls, _cpe_cls

@@ -1,30 +1,19 @@
 """
 Common functions and variables for all entity types including some bootstrap and init functions
 """
-import decimal
+import datetime
 import json
-import uuid
+import logging as logger
 import time
 import traceback
+import uuid
 from contextlib import contextmanager
 
 import sqlalchemy
 from sqlalchemy import types
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-import datetime
-from anchore_engine.utils import datetime_to_rfc3339
 
-try:
-    from anchore_engine.subsys import logger
-
-    # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
-except:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    log = logger
 
 Session = None  # Standard session maker
 ThreadLocalSession = None  # Separate thread-local session maker
@@ -294,7 +283,7 @@ def initialize(localconfig=None, versions=None):
                     + str(err)
                 )
             else:
-                log.err(
+                logger.error(
                     "WARN: could not connect to/initialize db, retrying in 5 seconds - exception: "
                     + str(err)
                 )
@@ -316,18 +305,18 @@ def session_scope():
 
     # session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
-    logger.spew("DB: opening session: " + str(session))
-    logger.spew("DB: call stack: \n" + "\n".join(traceback.format_stack()))
+    logger.debug("DB: opening session: " + str(session))
+    logger.debug("DB: call stack: \n" + "\n".join(traceback.format_stack()))
     try:
         yield session
         session.commit()
-        logger.spew("DB: committing session: " + str(session))
+        logger.debug("DB: committing session: " + str(session))
     except:
-        logger.spew("DB: rollbacking session: " + str(session))
+        logger.debug("DB: rollbacking session: " + str(session))
         session.rollback()
         raise
     finally:
-        logger.spew("DB: closing session: " + str(session))
+        logger.debug("DB: closing session: " + str(session))
         session.close()
 
 

@@ -16,7 +16,8 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.common.errors import AnchoreError
 from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
-from anchore_engine.subsys import logger, notifications
+from anchore_engine.subsys import notifications
+import logging as logger
 from anchore_engine.subsys.identities import manager_factory
 
 authorizer = get_authorizer()

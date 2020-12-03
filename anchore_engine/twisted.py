@@ -3,30 +3,28 @@ Twisted framework specific code for base plugin functionality. Used by each plug
 
 """
 
-import copy
+import datetime
+import faulthandler
 import json
 import os
 import sys
-import datetime
+
 from twisted import web
 from twisted.application import service
 from twisted.application.internet import TimerService, StreamServerEndpointService
-from twisted.internet.endpoints import TCP4ServerEndpoint, SSL4ServerEndpoint
-
 from twisted.internet import ssl, reactor
+from twisted.internet.endpoints import TCP4ServerEndpoint, SSL4ServerEndpoint
 from twisted.internet.task import LoopingCall
-from twisted.python import log
 from twisted.python import usage
-from twisted.web.resource import Resource
-from twisted.web import wsgi, rewrite
 from twisted.web import server
+from twisted.web import wsgi, rewrite
+from twisted.web.resource import Resource
 
 from anchore_engine.apis.ssl import _load_ssl_key, _load_ssl_cert
-from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
-from anchore_engine import utils
-import faulthandler
+import logging as logger
+from anchore_engine.subsys.logger import configure_logging
 
 # For the debug CLI, require a code modification to enable it. This allows on-host edits of the script and restart, but no accidental config from env vars or config.
 enable_dangerous_debug_cli = False
@@ -37,7 +35,7 @@ enable_thread_dumper = (
 )
 
 if enable_dangerous_debug_cli or enable_thread_dumper:
-    from twisted.application import internet, service
+    from twisted.application import internet
     from twisted.conch.insults import insults
     from twisted.conch.manhole import ColoredManhole
     from twisted.conch.telnet import TelnetTransport, TelnetBootstrapProtocol
@@ -99,7 +97,7 @@ def _load_config(config_option, validate_params=None):
         )
         my_config = localconfig.get_config()
         my_config["myservices"] = []
-        logger.spew("localconfig=" + json.dumps(my_config, indent=4, sort_keys=True))
+        logger.debug("localconfig=" + json.dumps(my_config, indent=4, sort_keys=True))
         return my_config
     except Exception as err:
         logger.error("cannot load configuration: exception - " + str(err))
@@ -134,12 +132,12 @@ class WsgiApiServiceMaker(object):
         self.resource_nodes = {}
 
     def _init_logging(self):
+        json_logging_enabled = False
         if self.global_configuration is None:
-            log.err(
+            logger.error(
                 "No configuration found to initialize logging for. Expecting other errors, so setting log level to DEBUG"
             )
             log_level = "DEBUG"
-            log_to_db = False
         else:
             try:
                 service_config = self.global_configuration["services"][
@@ -148,9 +146,12 @@ class WsgiApiServiceMaker(object):
                 log_level = service_config.get(
                     "log_level", self.global_configuration.get("log_level", "INFO")
                 )
-                log_to_db = self.global_configuration.get("log_to_db", False)
+                json_logging_enabled = service_config.get(
+                    "json_logging_enabled",
+                    self.global_configuration.get("json_logging_enabled", False),
+                )
             except Exception as err:
-                log.err(
+                logger.error(
                     "error checking for enabled services, check config file - exception: "
                     + str(err)
                 )
@@ -158,8 +159,7 @@ class WsgiApiServiceMaker(object):
                     "error checking for enabled services, check config file - exception: "
                     + str(err)
                 )
-
-        logger.set_log_level(log_level, log_to_db=log_to_db)
+        configure_logging(log_level, json_logging_enabled)
 
     def _check_enabled(self):
         if (
@@ -167,7 +167,7 @@ class WsgiApiServiceMaker(object):
             .get(self.service_cls.__service_name__, {})
             .get("enabled", False)
         ):
-            log.err(
+            logger.error(
                 "Service {} not enabled in configuration file: shutting down".format(
                     self.service_cls.__service_name__
                 )
@@ -210,7 +210,6 @@ class WsgiApiServiceMaker(object):
         return internet.TCPServer(args["telnet"], f)
 
     def makeService(self, options):
-
         try:
             logger.info("Initializing configuration")
             try:
@@ -225,8 +224,6 @@ class WsgiApiServiceMaker(object):
             self._init_logging()
 
             self._check_enabled()
-
-            # logger.enable_bootstrap_logging(self.tapname)
 
             assert issubclass(self.service_cls, ApiService)
             self.anchore_service = self.service_cls(options=options)
@@ -244,7 +241,7 @@ class WsgiApiServiceMaker(object):
                 lc = self._get_api_monitor(self.anchore_service)
                 lc.start(1)
             else:
-                logger.warn(
+                logger.warning(
                     "Skipped start of monitor threads due to task_handlers_enabled=false in config, or found ANCHORE_ENGINE_DISABLE_MONITORS in env"
                 )
 
@@ -261,7 +258,7 @@ class WsgiApiServiceMaker(object):
             s.setServiceParent(self.twistd_service)
 
             if enable_dangerous_debug_cli:
-                logger.warn(
+                logger.warning(
                     "Loading *dangerous* debug/telnet service as specified by debug config"
                 )
                 self.makeDebugCLIService(
@@ -324,7 +321,7 @@ class WsgiApiServiceMaker(object):
         )
 
         if enable_thread_dumper:
-            logger.warn(
+            logger.warning(
                 "Adding thread dump route for debugging since debug flag is set. This is dangerous and should not be done in normal production"
             )
             self._add_resource(b"threads", ThreadDumperResource())
@@ -346,28 +343,14 @@ class WsgiApiServiceMaker(object):
         )
 
         # Build the main site server
-        site = server.Site(root)
+        twistd_logfile = self.service_config.get(
+            "twistd_logfile", self.global_configuration.get("twistd_logfile", None)
+        )
+        if twistd_logfile:
+            site = server.Site(root, logPath=bytes(twistd_logfile, "utf-8"))
+        else:
+            site = server.Site(root)
         listen = self.anchore_service.configuration["listen"]
-
-        # Disable the twisted access logging by overriding the log function as it uses a raw 'write' and cannot otherwise be disabled, iff enable_access_logging is set to False in either the service or global config
-        try:
-            eal = True
-            if "enable_access_logging" in self.anchore_service.configuration:
-                eal = self.anchore_service.configuration.get(
-                    "enable_access_logging", True
-                )
-            elif "enable_access_logging" in self.configuration:
-                eal = self.configuration.get("enable_access_logging", True)
-
-            if not eal:
-
-                def _null_logger(request):
-                    pass
-
-                site.log = _null_logger
-
-        except:
-            pass
 
         if (
             str(self.anchore_service.configuration.get("ssl_enable", "")).lower()

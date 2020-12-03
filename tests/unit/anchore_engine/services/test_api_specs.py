@@ -9,7 +9,7 @@ import os
 import signal
 import time
 from tests.utils import init_test_logging
-from anchore_engine.subsys import logger
+import logging as logger
 
 init_test_logging()
 

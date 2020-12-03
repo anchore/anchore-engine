@@ -5,7 +5,7 @@ import random
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.db import db_services, session_scope
-from anchore_engine.subsys import logger
+import logging as logger
 
 localconfig = None
 
@@ -39,7 +39,7 @@ def update_service_cache(servicename, skipcache=False):
                 service_records = db_services.get_byname(servicename, session=dbsession)
             logger.debug("services fetched: " + str(service_records))
         except Exception as err:
-            logger.warn("cannot get service: " + str(err))
+            logger.warning("cannot get service: " + str(err))
             service_records = []
 
         if service_records:
@@ -206,7 +206,7 @@ def check_services_ready(servicelist):
             logger.debug("checking service readiness: " + str(servicename))
             services = get_enabled_services(servicename)
             if not services:
-                logger.warn(
+                logger.warning(
                     "required service (" + str(servicename) + ") is not (yet) available"
                 )
                 all_ready = False

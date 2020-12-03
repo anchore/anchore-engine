@@ -1,7 +1,9 @@
 import json
 
 import pytest
-from anchore_engine.subsys import logger
+import logging as logger
+
+from anchore_engine.subsys.logger import enable_test_logging
 from tests.functional.services.api import imports
 from tests.functional.services.utils.http_utils import (
     APIResponse,
@@ -11,7 +13,7 @@ from tests.functional.services.utils.http_utils import (
     http_post_bytes,
 )
 
-logger.enable_test_logging(level="info")
+enable_test_logging(level="info")
 
 
 @pytest.fixture

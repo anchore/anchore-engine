@@ -170,7 +170,9 @@ def check(configfile, analysis_archive):
     )
     result = mgr.put(test_user_id, test_bucket, test_archive_id, data=test_data)
     if not result:
-        logger.warn("Got empty response form archive PUT operation: {}".format(result))
+        logger.warning(
+            "Got empty response form archive PUT operation: {}".format(result)
+        )
 
     logger.info("Checking document fetch")
     loaded = str(mgr.get(test_user_id, test_bucket, test_archive_id), "utf-8")

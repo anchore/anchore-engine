@@ -4,7 +4,7 @@ import time
 import collections
 
 import anchore_engine.utils
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.configuration.localconfig import analyzer_paths
 from pkg_resources import resource_filename
 from anchore_engine.analyzers import syft

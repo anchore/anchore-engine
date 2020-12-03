@@ -1,7 +1,7 @@
 import pytest
 import os
 import sys
-from anchore_engine.subsys import logger
+import logging as logger
 
 test_s3_key = os.getenv("ANCHORE_TEST_S3_ACCESS_KEY")
 test_s3_secret_key = os.getenv("ANCHORE_TEST_S3_SECRET_KEY")
@@ -75,9 +75,11 @@ def s3_bucket():
         except botocore.exceptions.ClientError as e:
             logger.exception("Bucket cleanup exception")
             if e.response.get("Code") == "BucketNotEmpty":
-                logger.warn("Cannot clean up bucket {}, not empty".format(bucket_name))
+                logger.warning(
+                    "Cannot clean up bucket {}, not empty".format(bucket_name)
+                )
             else:
-                logger.warn(
+                logger.warning(
                     "Error cleaning up bucket {}, may result in other test failures".format(
                         bucket_name
                     )
@@ -111,7 +113,7 @@ def swift_container():
             client.delete(container=container_name)
         except Exception as e:
             logger.exception("Container cleanup exception")
-            logger.warn(
+            logger.warning(
                 "Error cleaning up swift container {}, may result in other test failures".format(
                     container_name
                 )

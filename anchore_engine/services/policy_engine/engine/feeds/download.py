@@ -17,7 +17,7 @@ from anchore_engine.common.schemas import (
     GroupDownloadResult,
 )
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 from anchore_engine.utils import ensure_bytes, timer
 
@@ -320,7 +320,7 @@ class FeedDownloader(object):
             self.local_repo.metadata.download_result = _download_start_metadata()
             self.local_repo.flush_metadata()
         except:
-            logger.debug_exception(
+            logger.exception(
                 "Could not initialize the feed data download location: {}. Failing fetch attempt".format(
                     self.local_repo.root_dir
                 )
@@ -386,7 +386,7 @@ class FeedDownloader(object):
                     FeedDownloader.State.complete.value
                 )
         except:
-            logger.debug_exception(
+            logger.exception(
                 "Error fetching feed data, setting status to failed for operation {}".format(
                     self.config.uuid
                 )

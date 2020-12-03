@@ -15,7 +15,7 @@ from anchore_engine.db import (
     ImagePackageManifestEntry,
     ImageCpe,
 )  # , ImageJava, ImagePython
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.util.rpm import split_rpm_filename
 from anchore_engine.common.helpers import safe_extract_json_value
 
@@ -92,7 +92,7 @@ class ImageLoader(object):
         repo_digests = image_report.get("docker_data", {}).get("RepoDigests", [])
         repo_tags = image_report.get("docker_data", {}).get("RepoTags", [])
         if len(repo_digests) > 1:
-            logger.warn(
+            logger.warning(
                 "Found more than one digest for the image {}. Using the first. Digests: {}, Tags: {}".format(
                     image.id, repo_digests, repo_tags
                 )
@@ -527,7 +527,7 @@ class ImageLoader(object):
         if pkgs:
             return pkgs, handled_pkgtypes
         else:
-            logger.warn("Pkg Allinfo not found, reverting to using pkgs.all")
+            logger.warning("Pkg Allinfo not found, reverting to using pkgs.all")
 
         all_pkgs = package_analysis_json["pkgs.all"]["base"]
         all_pkgs_src = package_analysis_json["pkgs_plus_source.all"]["base"]
@@ -1119,7 +1119,7 @@ class ImageLoader(object):
                 logger.err(err)
 
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "failed to detect java package name/version guesses - exception: "
                 + str(err)
             )

@@ -2,7 +2,7 @@ import os
 import time
 import pytest
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.common.schemas import LocalFeedDataRepoMetadata
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
@@ -12,8 +12,9 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
 )
 from anchore_engine.db import Vulnerability, GemMetadata, NpmMetadata, session_scope
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging()
+enable_test_logging()
 
 reason = "only packages"
 

@@ -7,7 +7,7 @@ import json
 from abc import abstractmethod, ABC
 import anchore_engine
 from collections import namedtuple
-from anchore_engine.subsys import logger
+import logging as logger
 from connexion import request as request_proxy
 from flask import Response
 from anchore_engine.apis.context import ApiRequestContextProxy
@@ -303,7 +303,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
             try:
                 subject.login(authc_token)
             except:
-                logger.debug_exception("Login failed")
+                logger.exception("Login failed")
                 raise
 
             user = subject.primary_identifier
@@ -323,9 +323,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                         logger.debug("Authc complete for user: {}".format(user))
                         return identity
                 except:
-                    logger.debug_exception(
-                        "Error looking up account for authenticated user"
-                    )
+                    logger.exception("Error looking up account for authenticated user")
                     return None
         else:
             logger.debug("Anon auth complete")
@@ -705,7 +703,7 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
 
         try:
             if not self.__external_authorizer__:
-                logger.warn(
+                logger.warning(
                     "Attempted health check for external authz handler but no client configured yet"
                 )
                 return False
@@ -743,7 +741,7 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
 
         try:
             if not self.__external_authorizer__:
-                logger.warn(
+                logger.warning(
                     "Got authz notification type: {} value:{}, but no client configured so nothing to do".format(
                         notification_type, notification_value
                     )
@@ -762,7 +760,7 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
                     fn = None
 
             if fn is None:
-                logger.warn(
+                logger.warning(
                     "Got notification type {} with no handler mapped".format(
                         notification_type
                     )
@@ -774,7 +772,7 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
                 try:
                     resp = fn(notification_value)
                     if not resp:
-                        logger.warn(
+                        logger.warning(
                             "Bad response from authz service, will retry: {}".format(
                                 resp
                             )

@@ -4,7 +4,7 @@ import semantic_version
 from distutils.version import LooseVersion, StrictVersion
 from pkg_resources import parse_version
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.util.maven import MavenVersion
 
 zerolikes = ["0", "0.0", "0.0.0", "0.0.0.0"]

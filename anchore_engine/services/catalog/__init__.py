@@ -58,10 +58,10 @@ from anchore_engine.db.entities.catalog import (
 from anchore_engine.subsys import (
     notifications,
     taskstate,
-    logger,
     archive,
     object_store,
 )
+import logging as logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.services.catalog import archiver
 from anchore_engine.subsys.object_store.config import (
@@ -74,10 +74,6 @@ from anchore_engine.common.schemas import (
     AnalysisQueueMessage,
     ImportQueueMessage,
     ImportManifest,
-)
-from anchore_engine.subsys.object_store.config import (
-    DEFAULT_OBJECT_STORE_MANAGER_ID,
-    ALT_OBJECT_STORE_CONFIG_KEY,
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
@@ -151,7 +147,7 @@ def do_account_resources_delete(account_name: str):
                 )
 
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "failed to delete resources in {} for account {}, will continue and try again - exception: {}".format(
                     resourcename, account_name, err
                 )
@@ -219,7 +215,7 @@ def handle_account_resource_cleanup(*args, **kwargs):
                 )
 
     except Exception as err:
-        logger.warn("failure in handler - exception: " + str(err))
+        logger.warning("failure in handler - exception: " + str(err))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -370,13 +366,13 @@ def handle_vulnerability_scan(*args, **kwargs):
                                         is_current=(imageDigest == current_imageDigest),
                                     )
                                 except Exception as err:
-                                    logger.warn(
+                                    logger.warning(
                                         "vulnerability scan failed - exception: "
                                         + str(err)
                                     )
 
     except Exception as err:
-        logger.warn("failure in feed sync handler - exception: " + str(err))
+        logger.warning("failure in feed sync handler - exception: " + str(err))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -473,7 +469,7 @@ def handle_service_watcher(*args, **kwargs):
                                     time.time() - service["heartbeat"]
                                     > max_service_heartbeat_timer
                                 ):
-                                    logger.warn(
+                                    logger.warning(
                                         "no service heartbeat within allowed time period ({}) for service ({}/{}) - disabling service".format(
                                             max_service_heartbeat_timer,
                                             service["hostid"],
@@ -516,7 +512,7 @@ def handle_service_watcher(*args, **kwargs):
                                     > max_service_cleanup_timer
                                 ):
                                     # remove the service entirely
-                                    logger.warn(
+                                    logger.warning(
                                         "no service heartbeat within allowed time period ({}) for service ({}/{}) - removing service".format(
                                             max_service_cleanup_timer,
                                             service["hostid"],
@@ -547,7 +543,7 @@ def handle_service_watcher(*args, **kwargs):
                                             ),
                                         )
                                     except Exception as err:
-                                        logger.warn(
+                                        logger.warning(
                                             "attempt to remove service {}/{} failed - exception: {}".format(
                                                 service.get("hostid"),
                                                 service.get("servicename"),
@@ -560,7 +556,7 @@ def handle_service_watcher(*args, **kwargs):
                                     > max_service_orphaned_timer
                                 ):
                                     # transition down service to orphaned
-                                    logger.warn(
+                                    logger.warning(
                                         "no service heartbeat within allowed time period ({}) for service ({}/{}) - orphaning service".format(
                                             max_service_orphaned_timer,
                                             service["hostid"],
@@ -592,13 +588,13 @@ def handle_service_watcher(*args, **kwargs):
                                         )
 
                         except Exception as err:
-                            logger.warn(
+                            logger.warning(
                                 "could not get/parse service status record for service: - exception: "
                                 + str(err)
                             )
 
                     except Exception as err:
-                        logger.warn(
+                        logger.warning(
                             "could not get service status: "
                             + str(service)
                             + " : exception: "
@@ -623,7 +619,7 @@ def handle_service_watcher(*args, **kwargs):
                     try:
                         db_services.update_record(service, session=dbsession)
                     except Exception as err:
-                        logger.warn("could not update DB: " + str(err))
+                        logger.warning("could not update DB: " + str(err))
 
         logger.debug("FIRING DONE: service watcher")
         try:
@@ -664,7 +660,7 @@ def handle_repo_watcher(*args, **kwargs):
             try:
                 catalog_impl.refresh_registry_creds(registry_creds, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -845,7 +841,7 @@ def handle_repo_watcher(*args, **kwargs):
 
                             added_repotags.append(repotag)
                         except Exception as err:
-                            logger.warn(
+                            logger.warning(
                                 "could not add discovered tag from repo ("
                                 + str(fulltag)
                                 + ") - exception: "
@@ -868,7 +864,7 @@ def handle_repo_watcher(*args, **kwargs):
                         "no new images in watched repo (" + str(regrepo) + "): skipping"
                     )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to process repo_update subscription - exception: "
                     + str(err)
                 )
@@ -934,7 +930,7 @@ def handle_image_watcher(*args, **kwargs):
             try:
                 catalog_impl.refresh_registry_creds(registry_creds, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -949,7 +945,7 @@ def handle_image_watcher(*args, **kwargs):
                     alltags.append(fulltag)
 
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "problem creating taglist for image watcher - exception: "
                     + str(err)
                 )
@@ -960,7 +956,7 @@ def handle_image_watcher(*args, **kwargs):
             except Exception as err:
                 registry_record["record_state_key"] = "auth_failure"
                 registry_record["record_state_val"] = str(int(time.time()))
-                logger.warn("registry ping failed - exception: " + str(err))
+                logger.warning("registry ping failed - exception: " + str(err))
 
         logger.debug("checking tags for update: " + str(userId) + " : " + str(alltags))
         for fulltag in alltags:
@@ -981,7 +977,7 @@ def handle_image_watcher(*args, **kwargs):
                         user_id=userId, image_pull_string=fulltag, data=err.__dict__
                     )
                     raise err
-                logger.spew("checking image: got registry info: " + str(image_info))
+                logger.debug("checking image: got registry info: " + str(image_info))
 
                 manifest = None
                 try:
@@ -1238,7 +1234,7 @@ def check_policybundle_update(userId, dbsession):
         if active_policy_record:
             last_bundle_update = active_policy_record["last_updated"]
         else:
-            logger.warn(
+            logger.warning(
                 "user has no active policy - queueing just in case" + str(userId)
             )
             return is_updated
@@ -1254,7 +1250,7 @@ def check_policybundle_update(userId, dbsession):
             bundle_user_last_updated[userId] = last_bundle_update
             is_updated = True
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "failed to get/parse active policy bundle for user ("
             + str(userId)
             + ") - exception: "
@@ -1385,13 +1381,13 @@ def handle_policyeval(*args, **kwargs):
                                         userId, imageDigest, dbsession, evaltag=fulltag
                                     )
                                 except Exception as err:
-                                    logger.warn(
+                                    logger.warning(
                                         "policy evaluation failed - exception: "
                                         + str(err)
                                     )
 
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "failure in policy eval / vuln scan handler - exception: " + str(err)
         )
 
@@ -1504,7 +1500,7 @@ def handle_analyzer_queue(*args, **kwargs):
                     + str(imageDigest)
                 )
                 if state_time > max_working_time:
-                    logger.warn(
+                    logger.warning(
                         "image has been in working state ("
                         + str(taskstate.working_state("analyze"))
                         + ") for over ("
@@ -1651,7 +1647,7 @@ def _perform_queue_rebalance(queue_rebalance, highest_neg_queueId):
             # shuffle the task into neg space
             highest_neg_queueId += 1
             if highest_neg_queueId <= -1:
-                logger.spew(
+                logger.debug(
                     "prioritizing user {} image in image analysis queue for fair-share (queueId={}, new_queueId={})".format(
                         userId, user_lowest_queueId, highest_neg_queueId
                     )
@@ -1812,7 +1808,7 @@ def handle_notifications(*args, **kwargs):
                                             )
                                         )
                                 if notification_record:
-                                    logger.spew(
+                                    logger.debug(
                                         "Storing NOTIFICATION: {} - {} - {}".format(
                                             account,
                                             notification_record,
@@ -1832,7 +1828,7 @@ def handle_notifications(*args, **kwargs):
                             import traceback
 
                             traceback.print_exc()
-                            logger.warn(
+                            logger.warning(
                                 "cannot store notification to DB - exception: "
                                 + str(err)
                             )
@@ -1844,7 +1840,7 @@ def handle_notifications(*args, **kwargs):
                     subscription_type, account["name"], session=dbsession
                 )
                 for notification_record in notification_records:
-                    logger.spew("drained to send: " + json.dumps(notification_record))
+                    logger.debug("drained to send: " + json.dumps(notification_record))
                     try:
                         rc = notifications.notify(account, notification_record)
                         if rc:
@@ -1913,7 +1909,9 @@ def handle_metrics(*args, **kwargs):
                     with db.session_scope() as dbsession:
                         anchore_record = db_anchore.get(session=dbsession)
             except Exception as err:
-                logger.warn("unable to perform DB read probe - exception: " + str(err))
+                logger.warning(
+                    "unable to perform DB read probe - exception: " + str(err)
+                )
 
             if anchore_record:
                 try:
@@ -1927,7 +1925,7 @@ def handle_metrics(*args, **kwargs):
                             )
 
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "unable to perform DB write probe - exception: " + str(err)
                     )
 
@@ -1940,7 +1938,7 @@ def handle_metrics(*args, **kwargs):
                         anchore_record["record_state_val"] = str(time.time())
                         rc = db_anchore.update_record(anchore_record, session=dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "unable to perform DB read/write probe - exception: " + str(err)
                 )
 
@@ -1954,7 +1952,7 @@ def handle_metrics(*args, **kwargs):
                     "anchore_tmpspace_available_bytes", available_bytes
                 )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "unable to detect available bytes probe - exception: " + str(err)
                 )
 
@@ -2059,11 +2057,11 @@ def handle_image_gc(*args, **kwargs):
                             account, to_be_deleted, dbsession, force=True
                         )
                         if httpcode != 200:
-                            logger.warn(
+                            logger.warning(
                                 "Image deletion failed with error: {}".format(retobj)
                             )
                     else:
-                        logger.warn(
+                        logger.warning(
                             "Skipping image gc due to status check mismatch. account id: %s, digest: %s, current status: %s, expected status: %s"
                             % (account, digest, current_status, expected_status)
                         )
@@ -2072,7 +2070,7 @@ def handle_image_gc(*args, **kwargs):
                 logger.exception("Error deleting image, may retry on next cycle")
                 # TODO state transition to faulty to avoid further usage?
     except Exception as err:
-        logger.warn("failure in handler - exception: " + str(err))
+        logger.warning("failure in handler - exception: " + str(err))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:
@@ -2168,7 +2166,7 @@ def watcher_func(*args, **kwargs):
                     )
                 )
             except Exception as err:
-                logger.warn("failed to process task this cycle: " + str(err))
+                logger.warning("failed to process task this cycle: " + str(err))
         logger.debug("generic watcher done")
         time.sleep(5)
 
@@ -2177,7 +2175,7 @@ def schedule_watcher(watcher):
     global watchers, watcher_task_template, system_user_auth
 
     if watcher not in watchers:
-        logger.warn(
+        logger.warning(
             "input watcher {} not in list of available watchers {}".format(
                 watcher, list(watchers.keys())
             )
@@ -2199,7 +2197,7 @@ def schedule_watcher(watcher):
 
             watchers[watcher]["last_queued"] = time.time()
         except Exception as err:
-            logger.warn("failed to enqueue watcher task: " + str(err))
+            logger.warning("failed to enqueue watcher task: " + str(err))
 
     return True
 
@@ -2240,7 +2238,7 @@ def monitor_func(**kwargs):
                                 )
                             )
                         elif config_cycle_timer < min_cycle_timer:
-                            logger.warn(
+                            logger.warning(
                                 "configured cycle timer for handler ("
                                 + str(watcher)
                                 + ") is less than the allowed min ("
@@ -2249,7 +2247,7 @@ def monitor_func(**kwargs):
                             )
                             the_cycle_timer = min_cycle_timer
                         elif config_cycle_timer > max_cycle_timer:
-                            logger.warn(
+                            logger.warning(
                                 "configured cycle timer for handler ("
                                 + str(watcher)
                                 + ") is greater than the allowed max ("
@@ -2262,7 +2260,7 @@ def monitor_func(**kwargs):
 
                         watchers[watcher]["cycle_timer"] = the_cycle_timer
                     except Exception as err:
-                        logger.warn(
+                        logger.warning(
                             "exception setting custom cycle timer for handler ("
                             + str(watcher)
                             + ") - using default"
@@ -2318,27 +2316,27 @@ def monitor(*args, **kwargs):
         donew = False
         if monitor_thread:
             if monitor_thread.isAlive():
-                logger.spew("MON: thread still running")
+                logger.debug("MON: thread still running")
             else:
-                logger.spew("MON: thread stopped running")
+                logger.debug("MON: thread stopped running")
                 donew = True
                 monitor_thread.join()
-                logger.spew(
+                logger.debug(
                     "MON: thread joined: isAlive=" + str(monitor_thread.isAlive())
                 )
         else:
-            logger.spew("MON: no thread")
+            logger.debug("MON: no thread")
             donew = True
 
         if donew:
-            logger.spew("MON: starting")
+            logger.debug("MON: starting")
             monitor_thread = threading.Thread(target=monitor_func, kwargs=kwargs)
             monitor_thread.start()
         else:
-            logger.spew("MON: skipping")
+            logger.debug("MON: skipping")
 
     except Exception as err:
-        logger.warn("MON thread start exception: " + str(err))
+        logger.warning("MON thread start exception: " + str(err))
 
 
 class CatalogService(ApiService):
@@ -2364,7 +2362,7 @@ class CatalogService(ApiService):
                 allow_legacy_fallback=True,
             )
             if not did_init:
-                logger.warn(
+                logger.warning(
                     "Unexpectedly found the object store already initialized. This is not an expected condition. Continuting with driver: {}".format(
                         object_store.get_manager().primary_client.__config_name__
                     )
@@ -2434,7 +2432,7 @@ class CatalogService(ApiService):
                         # its contents to json
                         def process_exception(exception):
                             if isinstance(exception, IntegrityError):
-                                logger.warn(
+                                logger.warning(
                                     "another process has already initialized, continuing"
                                 )
                             else:
@@ -2449,7 +2447,7 @@ class CatalogService(ApiService):
 
                 except Exception as err:
                     if isinstance(err, IntegrityError):
-                        logger.warn(
+                        logger.warning(
                             "another process has already initialized, continuing"
                         )
                     else:
@@ -2507,7 +2505,7 @@ def delete_import_operation(dbsession, operation: ImageImportOperation):
                 operation.uuid,
             )
         except:
-            logger.debug_exception(
+            logger.exception(
                 "could not delete import content of type %s for operation %s with digest %s",
                 content.content_type,
                 operation.uuid,
@@ -2636,12 +2634,12 @@ def handle_import_gc(*args, **kwargs):
     try:
         garbage_collect_imports()
     except Exception as err:
-        logger.warn("failure in handler - exception: " + str(err))
+        logger.warning("failure in handler - exception: " + str(err))
 
     try:
         expire_imports()
     except Exception as err:
-        logger.warn("failure in handler - exception: " + str(err))
+        logger.warning("failure in handler - exception: " + str(err))
 
     logger.debug("FIRING DONE: " + str(watcher))
     try:

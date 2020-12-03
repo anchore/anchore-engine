@@ -29,7 +29,8 @@ from anchore_engine.services.apiext.api.controllers.utils import (
     validate_image_add_source,
     make_response_vulnerability,
 )
-from anchore_engine.subsys import taskstate, logger
+from anchore_engine.subsys import taskstate
+import logging as logger
 from anchore_engine.subsys.metrics import flask_metrics
 from anchore_engine.utils import parse_dockerimage_string
 
@@ -517,9 +518,7 @@ def validate_pullstring_is_tag(pullstring):
         parsed = parse_dockerimage_string(pullstring)
         return parsed.get("tag") is not None
     except Exception as e:
-        logger.debug_exception(
-            "Error parsing pullstring {}. Err = {}".format(pullstring, e)
-        )
+        logger.exception("Error parsing pullstring {}. Err = {}".format(pullstring, e))
         raise ValueError("Error parsing pullstring {}".format(pullstring))
 
 
@@ -528,9 +527,7 @@ def validate_pullstring_is_digest(pullstring):
         parsed = parse_dockerimage_string(pullstring)
         return parsed.get("digest") is not None
     except Exception as e:
-        logger.debug_exception(
-            "Error parsing pullstring {}. Err = {}".format(pullstring, e)
-        )
+        logger.exception("Error parsing pullstring {}. Err = {}".format(pullstring, e))
         raise ValueError("Error parsing pullstring {}".format(pullstring))
 
 

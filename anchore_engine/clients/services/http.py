@@ -1,7 +1,7 @@
 import json
 import urllib3
 import requests
-from anchore_engine.subsys import logger
+import logging as logger
 
 http = urllib3.PoolManager()
 

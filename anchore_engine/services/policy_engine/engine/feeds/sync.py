@@ -47,7 +47,7 @@ from anchore_engine.subsys.events import (
     FeedGroupSyncFailed,
 )
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.common.schemas import (
     GroupDownloadOperationParams,
     GroupDownloadOperationConfiguration,
@@ -140,7 +140,7 @@ class DataFeeds(object):
                 f = feed_instance_by_name(feed.name)
                 f.update_counts()
             except KeyError:
-                logger.warn(
+                logger.warning(
                     "Could not find feed instance for name %s. Cannot update counts",
                     feed.name,
                 )
@@ -271,7 +271,7 @@ class DataFeeds(object):
                         db_group.description = api_group.description
                 except Exception as e:
                     logger.exception("Error syncing feed {}".format(feed_name))
-                    logger.warn(
+                    logger.warning(
                         "Could not sync metadata for feed: {} (operation_id={})".format(
                             feed_name, operation_id
                         )
@@ -451,7 +451,7 @@ class DataFeeds(object):
                         feed_name, str(e), operation_id
                     )
                 )
-                logger.warn(
+                logger.warning(
                     "Cannot sync metadata for feed {} from upstream source. Skipping. (operation_id={})".format(
                         feed_name, operation_id
                     )
@@ -496,7 +496,7 @@ class DataFeeds(object):
                         )
                     )
             else:
-                logger.warn(
+                logger.warning(
                     "No metadata found for feed {}. Unexpected but not an error (operation_id={})".format(
                         f.__feed_name__, operation_id
                     )

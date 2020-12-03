@@ -13,7 +13,7 @@ from anchore_engine.common import helpers
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.services.catalog import archiver, CatalogService
 from anchore_engine.services.catalog.archiver import ImageConflict
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.metrics import flask_metrics
 from anchore_engine.common.schemas import ImportManifest
 from anchore_engine.apis.exceptions import (
@@ -115,7 +115,7 @@ def list_images(
             )
 
     except Exception as err:
-        logger.debug_exception("Error listing images")
+        logger.exception("Error listing images")
         httpcode = 500
         return_object = str(err)
 
@@ -175,7 +175,7 @@ def add_image(
                     image_metadata["import_manifest"]
                 )
             except Exception as err:
-                logger.debug_exception("Error unmarshalling manifest")
+                logger.exception("Error unmarshalling manifest")
                 # If we hit this, it means the swagger spec doesn't match the marshmallow scheme
                 raise BadRequest(
                     message="invalid import manifest", detail={"error": str(err)}

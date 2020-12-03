@@ -3,7 +3,7 @@ api_utils is a module for common anchore api handling functions useful for all/a
 """
 from OpenSSL import crypto
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def _load_ssl_key(path):

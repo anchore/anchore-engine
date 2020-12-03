@@ -10,7 +10,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedNumberListParameter,
     BooleanStringParameter,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 DIRECTIVES = [
@@ -124,7 +124,7 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
         if match and match.groups():
             user = match.groups()[0]
         else:
-            logger.warn(
+            logger.warning(
                 "Found USER line in dockerfile that does not match expected regex: {}, Line: {}".format(
                     self._sanitize_regex, user
                 )

@@ -4,7 +4,7 @@ import stat
 
 import anchore_engine.configuration.localconfig
 from anchore_engine import utils
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.common import os_package_types
 
 
@@ -15,7 +15,7 @@ def make_image_content_response(content_type, content_data):
     )
 
     if content_type not in all_content_types:
-        logger.warn(
+        logger.warning(
             "input content_type (%s) not supported (%s)",
             content_type,
             all_content_types,
@@ -175,7 +175,7 @@ def _safe_base64_encode(data_provider):
     try:
         return utils.ensure_str(base64.encodebytes(utils.ensure_bytes(data_provider())))
     except Exception as err:
-        logger.warn("could not base64 encode content - exception: %s", err)
+        logger.warning("could not base64 encode content - exception: %s", err)
     return ""
 
 
@@ -237,7 +237,7 @@ def _build_malware_response(content_data):
     #     if not response:
     #         raise Exception("empty return list after generic element parse")
     # except Exception as err:
-    #     logger.debug_exception("couldn't parse any generic package elements, returning raw content_data: %s", err)
+    #     logger.exception("couldn't parse any generic package elements, returning raw content_data: %s", err)
     #     response = content_data
     #
     # return response

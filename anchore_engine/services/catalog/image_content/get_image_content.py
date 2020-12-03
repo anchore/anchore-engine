@@ -8,7 +8,8 @@ from anchore_engine import utils, db
 from anchore_engine.apis.exceptions import ResourceNotFound, BadRequest
 from anchore_engine.common.helpers import make_anchore_exception
 from anchore_engine.db import db_catalog_image
-from anchore_engine.subsys import taskstate, logger
+from anchore_engine.subsys import taskstate
+import logging as logger
 
 
 class ImageContentGetter:
@@ -143,7 +144,7 @@ class ImageDockerfileContentGetter(ImageContentGetter):
                 )
                 break
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "cannot fetch/decode dockerfile contents from image_detail - {}".format(
                     err
                 )

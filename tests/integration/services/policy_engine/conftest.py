@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from anchore_engine.subsys import logger
+import logging as logger
 from tests.integration.services.policy_engine.utils import LocalTestDataEnvironment
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.db import end_session

@@ -3,7 +3,7 @@ import re
 import time
 
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db import (
     db_accounts,
     db_account_users,
@@ -144,7 +144,7 @@ class IdentityBootstrapper(object):
 
             for userId, user_config in config_credentials["users"].items():
                 if not user_config:
-                    logger.warn(
+                    logger.warning(
                         "Found empty entry for userId {} in config file. Skipping initialization.".format(
                             userId
                         )

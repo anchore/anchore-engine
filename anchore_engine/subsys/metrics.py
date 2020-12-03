@@ -2,7 +2,7 @@ import functools
 from flask import request
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.version import version
 from anchore_engine.apis.authorization import auth_function_factory
 
@@ -110,7 +110,7 @@ def init_flask_metrics(flask_app, export_defaults=True, **kwargs):
         auth_enabled = not bool(metrics_config.get("auth_disabled", False))
 
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "unable to determine if metrics are enabled - exception: " + str(err)
         )
         enabled = False
@@ -161,7 +161,7 @@ def get_summary_obj(name, description="", **kwargs):
             metrics[name] = Summary(name, description, list(kwargs.keys()))
         ret = metrics[name]
     except:
-        logger.warn("could not create/get named metric (" + str(name) + ")")
+        logger.warning("could not create/get named metric (" + str(name) + ")")
 
     return ret
 
@@ -182,7 +182,7 @@ def summary_observe(name, observation, description="", **kwargs):
             metrics[name].observe(observation)
 
     except Exception as err:
-        logger.warn("adding metric failed - exception: " + str(err))
+        logger.warning("adding metric failed - exception: " + str(err))
 
     return True
 
@@ -208,7 +208,7 @@ def histogram_observe(name, observation, description="", buckets=None, **kwargs)
         else:
             metrics[name].observe(observation)
     except Exception as err:
-        logger.warn("adding metric failed - exception: " + str(err))
+        logger.warning("adding metric failed - exception: " + str(err))
 
     return True
 
@@ -229,7 +229,7 @@ def gauge_set(name, observation, description="", **kwargs):
             metrics[name].set(observation)
 
     except Exception as err:
-        logger.warn("adding metric failed - exception: " + str(err))
+        logger.warning("adding metric failed - exception: " + str(err))
 
     return True
 
@@ -250,6 +250,6 @@ def counter_inc(name, step=1, description="", **kwargs):
             metrics[name].inc(step)
 
     except Exception as err:
-        logger.warn("adding metric failed - exception: " + str(err))
+        logger.warning("adding metric failed - exception: " + str(err))
 
     return True

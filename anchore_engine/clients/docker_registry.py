@@ -7,7 +7,7 @@ import requests
 
 import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.clients.skopeo_wrapper import (
     get_image_manifest_skopeo,
     get_repo_tags_skopeo,
@@ -245,7 +245,7 @@ def ping_docker_registry(registry_record):
         )
         ret = True
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "failed check to access registry ("
             + str(url)
             + ","

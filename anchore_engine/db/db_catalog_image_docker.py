@@ -2,7 +2,7 @@ from sqlalchemy import and_, or_, desc
 
 from anchore_engine import db
 from anchore_engine.db import CatalogImageDocker, CatalogImage
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def update_record(record, session=None):

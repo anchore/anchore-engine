@@ -9,17 +9,9 @@ import anchore_engine.common.helpers
 from anchore_engine.db.entities.exceptions import is_table_not_found
 from distutils.version import StrictVersion
 from contextlib import contextmanager
+import logging as logger
+from anchore_engine.subsys import identities
 
-try:
-    from anchore_engine.subsys import logger, identities
-
-    # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
-except:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    log = logger
 
 upgrade_enabled = True
 
@@ -252,7 +244,7 @@ def do_upgrade(inplace, incode):
                             )
                             fn()
                         except Exception as e:
-                            log.err(
+                            logger.err(
                                 "Upgrade function {} raised an error. Failing upgrade.".format(
                                     fn.__name__
                                 )
@@ -388,7 +380,7 @@ def db_upgrade_003_004():
                 "ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s" % (table_name, cn, ct)
             )
         except Exception as e:
-            log.err(
+            logger.err(
                 "failed to perform DB upgrade on catalog_image adding column - exception: {}".format(
                     str(e)
                 )
@@ -406,7 +398,9 @@ def db_upgrade_003_004():
         userId = image_record["userId"]
         imageDigest = image_record["imageDigest"]
 
-        log.err("upgrade: processing image " + str(imageDigest) + " : " + str(userId))
+        logger.err(
+            "upgrade: processing image " + str(imageDigest) + " : " + str(userId)
+        )
         try:
 
             # get the image analysis data from archive
@@ -431,7 +425,7 @@ def db_upgrade_003_004():
                     + str(imageDigest)
                 )
         except Exception as err:
-            log.err(
+            logger.err(
                 "upgrade: failed to populate new columns with existing data for image ("
                 + str(imageDigest)
                 + "), record may be incomplete: "
@@ -457,7 +451,7 @@ def db_upgrade_004_005():
                 "ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s" % (table_name, cn, ct)
             )
         except Exception as e:
-            log.err(
+            logger.err(
                 "failed to perform DB upgrade on catalog_image adding column - exception: {}".format(
                     str(e)
                 )
@@ -501,7 +495,7 @@ def queue_data_upgrades_005_006():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on catalog_image adding column - exception: {}".format(
                         str(e)
                     )
@@ -652,7 +646,7 @@ def catalog_image_upgrades_006_007():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -750,7 +744,7 @@ def db_upgrade_007_008():
 def catalog_upgrade_007_008():
     from anchore_engine.db import session_scope
 
-    log.err("performing catalog table upgrades")
+    logger.err("performing catalog table upgrades")
     engine = anchore_engine.db.entities.common.get_engine()
     new_columns = [
         {
@@ -761,10 +755,10 @@ def catalog_upgrade_007_008():
         },
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -777,7 +771,7 @@ def catalog_upgrade_007_008():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -821,10 +815,10 @@ def policy_engine_packages_upgrade_007_008():
             },
         ]
 
-        log.err("creating new table columns")
+        logger.err("creating new table columns")
         for table in new_columns:
             for column in table["columns"]:
-                log.err(
+                logger.err(
                     "creating new column ({}) in table ({})".format(
                         column.name, table.get("table_name", "")
                     )
@@ -837,7 +831,7 @@ def policy_engine_packages_upgrade_007_008():
                         % (table["table_name"], cn, ct)
                     )
                 except Exception as e:
-                    log.err(
+                    logger.err(
                         "failed to perform DB upgrade on {} adding column - exception: {}".format(
                             table, str(e)
                         )
@@ -849,9 +843,9 @@ def policy_engine_packages_upgrade_007_008():
                     )
 
         # populate the new columns
-        log.err("updating new column (pkg_path) - this may take a while")
+        logger.err("updating new column (pkg_path) - this may take a while")
         for table in ["image_packages", "image_package_vulnerabilities"]:
-            log.err("updating table ({}) column (pkg_path)".format(table))
+            logger.err("updating table ({}) column (pkg_path)".format(table))
             done = False
             while not done:
                 startts = time.time()
@@ -860,7 +854,7 @@ def policy_engine_packages_upgrade_007_008():
                         table
                     )
                 )
-                log.err(
+                logger.err(
                     "updated {} records in {} (time={}), performing next range".format(
                         rc.rowcount, table, time.time() - startts
                     )
@@ -881,7 +875,7 @@ def policy_engine_packages_upgrade_007_008():
                 )
             )
             record_count = record_count + 1
-            log.err(
+            logger.err(
                 "updated {} image ({} / {}) in {} (time={}), performing next image update".format(
                     db_image_id,
                     record_count,
@@ -899,10 +893,10 @@ def policy_engine_packages_upgrade_007_008():
             "ALTER TABLE image_package_vulnerabilities DROP CONSTRAINT IF EXISTS image_package_vulnerabilities_pkey",
         ]
 
-        log.err("dropping primary key / foreign key relationships for new column")
+        logger.err("dropping primary key / foreign key relationships for new column")
         cmdcount = 1
         for command in exec_commands:
-            log.err(
+            logger.err(
                 "running update operation {} of {}: {}".format(
                     cmdcount, len(exec_commands), command
                 )
@@ -926,12 +920,12 @@ def policy_engine_packages_upgrade_007_008():
             "ALTER TABLE image_packages ALTER COLUMN origin TYPE varchar",
         ]
 
-        log.err(
+        logger.err(
             "updating primary key / foreign key relationships for new column - this may take a while"
         )
         cmdcount = 1
         for command in exec_commands:
-            log.err(
+            logger.err(
                 "running update operation {} of {}: {}".format(
                     cmdcount, len(exec_commands), command
                 )
@@ -939,7 +933,7 @@ def policy_engine_packages_upgrade_007_008():
             engine.execute(command)
             cmdcount = cmdcount + 1
 
-        log.err(
+        logger.err(
             "converting ImageNpm and ImageGem records into ImagePackage records - this may take a while"
         )
         # migrate ImageNpm and ImageGem records into ImagePackage records
@@ -947,7 +941,7 @@ def policy_engine_packages_upgrade_007_008():
             total_npms = dbsession.query(ImageNpm).count()
             total_gems = dbsession.query(ImageGem).count()
 
-        log.err("will migrate {} image npm records".format(total_npms))
+        logger.err("will migrate {} image npm records".format(total_npms))
 
         npms = []
         chunk_size = 8192
@@ -959,7 +953,7 @@ def policy_engine_packages_upgrade_007_008():
                 last_seq = -1
                 while record_count < total_npms:
                     chunk_time = time.time()
-                    log.err("Processing next chunk of records")
+                    logger.err("Processing next chunk of records")
                     for n in (
                         dbsession.query(ImageNpm)
                         .filter(ImageNpm.seq_id > last_seq)
@@ -996,24 +990,24 @@ def policy_engine_packages_upgrade_007_008():
                         last_seq = n.seq_id
 
                     if len(npms):
-                        log.err("Inserting {} new records".format(len(npms)))
+                        logger.err("Inserting {} new records".format(len(npms)))
 
                         startts = time.time()
                         try:
                             with session_scope() as dbsession2:
                                 dbsession2.bulk_save_objects(npms)
                         except Exception as err:
-                            log.err("skipping duplicates: {}".format(err))
+                            logger.err("skipping duplicates: {}".format(err))
                             skipped_count += 1
 
                         record_count = record_count + len(npms)
-                        log.err(
+                        logger.err(
                             "merged {} / {} npm records (time={})".format(
                                 record_count, total_npms, time.time() - startts
                             )
                         )
 
-                    log.err(
+                    logger.err(
                         "Chunk took: {} seconds to process {} records".format(
                             time.time() - chunk_time, len(npms)
                         )
@@ -1021,10 +1015,10 @@ def policy_engine_packages_upgrade_007_008():
                     npms = []
 
             except Exception as err:
-                log.err("Error during npm migration: {}".format(err))
+                logger.err("Error during npm migration: {}".format(err))
                 raise err
 
-        log.err("will migrate {} image gem records".format(total_gems))
+        logger.err("will migrate {} image gem records".format(total_gems))
         gems = []
         record_count = 0
         skipped_count = 0
@@ -1033,7 +1027,7 @@ def policy_engine_packages_upgrade_007_008():
                 last_seq = -1
                 while record_count < total_gems:
                     chunk_time = time.time()
-                    log.err("Processing next chunk of records")
+                    logger.err("Processing next chunk of records")
                     for n in (
                         dbsession.query(ImageGem)
                         .filter(ImageGem.seq_id > last_seq)
@@ -1070,24 +1064,24 @@ def policy_engine_packages_upgrade_007_008():
                         last_seq = n.seq_id
 
                     if len(gems):
-                        log.err("Inserting {} new records".format(len(gems)))
+                        logger.err("Inserting {} new records".format(len(gems)))
 
                         startts = time.time()
                         try:
                             with session_scope() as dbsession2:
                                 dbsession2.bulk_save_objects(gems)
                         except Exception as err:
-                            log.err("skipping duplicates: {}".format(err))
+                            logger.err("skipping duplicates: {}".format(err))
                             skipped_count += 1
 
                         record_count = record_count + len(gems)
-                        log.err(
+                        logger.err(
                             "merged {} / {} gem records (time={})".format(
                                 record_count, total_gems, time.time() - startts
                             )
                         )
 
-                    log.err(
+                    logger.err(
                         "Chunk took: {} seconds to process {} records".format(
                             time.time() - chunk_time, len(npms)
                         )
@@ -1095,7 +1089,7 @@ def policy_engine_packages_upgrade_007_008():
                     gems = []
 
             except Exception as err:
-                log.err("Error during gem migration: {}".format(err))
+                logger.err("Error during gem migration: {}".format(err))
                 raise err
 
 
@@ -1128,7 +1122,7 @@ def db_upgrade_008_009():
 
         cmdcount = 1
         for command in exec_commands:
-            log.err(
+            logger.err(
                 "running update operation {} of {}: {}".format(
                     cmdcount, len(exec_commands), command
                 )
@@ -1151,13 +1145,13 @@ def cpe_vulnerability_upgrade_009_010():
         "CREATE INDEX IF NOT EXISTS ix_feed_data_cpe_vulnerabilities_fk on feed_data_cpe_vulnerabilities (vulnerability_id, namespace_name, severity)"
     ]
 
-    log.err(
+    logger.err(
         "Creating index ix_feed_data_cpe_vulnerabilities_fk on table feed_data_cpe_vulnerabilities"
     )
 
     cmdcount = 1
     for command in exec_commands:
-        log.err(
+        logger.err(
             "running update operation {} of {}: {}".format(
                 cmdcount, len(exec_commands), command
             )
@@ -1183,7 +1177,7 @@ def archive_document_upgrade_009_010():
 
     cmdcount = 1
     for command in exec_commands:
-        log.err(
+        logger.err(
             "running update operation {} of {}: {}".format(
                 cmdcount, len(exec_commands), command
             )
@@ -1217,10 +1211,10 @@ def registry_name_upgrade_010_011():
         }
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -1233,7 +1227,7 @@ def registry_name_upgrade_010_011():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -1270,10 +1264,10 @@ def fixed_artifacts_upgrade_010_011():
         }
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -1286,7 +1280,7 @@ def fixed_artifacts_upgrade_010_011():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -1337,10 +1331,10 @@ def update_users_010_011():
         }
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -1353,7 +1347,7 @@ def update_users_010_011():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -1408,7 +1402,7 @@ def db_upgrade_package_size_011_012():
     engine = anchore_engine.db.entities.common.get_engine()
 
     # Add constraints and index
-    log.err("Updating image package table size column from int to bigint")
+    logger.err("Updating image package table size column from int to bigint")
     rc = engine.execute("ALTER TABLE image_packages ALTER COLUMN size type bigint")
 
 
@@ -1423,7 +1417,7 @@ def event_type_index_upgrade_011_012():
 
     engine = anchore_engine.db.entities.common.get_engine()
 
-    log.err("creating new column index")
+    logger.err("creating new column index")
     engine.execute("CREATE INDEX IF NOT EXISTS ix_type ON events using btree (type)")
 
 
@@ -1433,24 +1427,24 @@ def db_upgrade_011_012():
 
 
 def upgrade_feed_groups_013():
-    log.err("Upgrading feed and feed group schemas to add enabled flags")
+    logger.err("Upgrading feed and feed group schemas to add enabled flags")
 
     from anchore_engine.services.policy_engine.engine.feeds import sync
 
     engine = anchore_engine.db.entities.common.get_engine()
 
-    log.err("Updating feeds table to have enabled flag")
+    logger.err("Updating feeds table to have enabled flag")
     engine.execute("ALTER TABLE feeds ADD COLUMN IF NOT EXISTS enabled boolean")
     engine.execute("UPDATE feeds set enabled = TRUE")
 
-    log.err("Updating feed_groups table to have enabled flag")
+    logger.err("Updating feed_groups table to have enabled flag")
     engine.execute("ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS enabled boolean")
     engine.execute("UPDATE feed_groups set enabled = TRUE")
 
-    log.err("Updating feed groups table to have count for each group")
+    logger.err("Updating feed groups table to have count for each group")
     engine.execute("ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS count bigint")
 
-    log.err("Updating feed groups table to have last_update for each group")
+    logger.err("Updating feed groups table to have last_update for each group")
     engine.execute(
         "ALTER TABLE feed_groups ADD COLUMN IF NOT EXISTS last_update timestamp"
     )
@@ -1469,14 +1463,14 @@ def upgrade_distro_mappings_rhel_013():
     """
     engine = anchore_engine.db.entities.common.get_engine()
 
-    log.err(
+    logger.err(
         'Updating distro mappings to map centos, fedora, and rhel to new feed distro "rhel"'
     )
     rc = engine.execute(
         "UPDATE distro_mappings set to_distro = 'rhel' where from_distro in ('centos', 'fedora', 'rhel') and to_distro = 'centos'"
     )
-    log.err("Return = {}".format(rc.rowcount))
-    log.err(
+    logger.err("Return = {}".format(rc.rowcount))
+    logger.err(
         "Mapping updated. All centos, fedora, and rhel images will now get vulnerability data from the vulnerabilities/rhel:* feed groups instead of vulnerabilities/centos:*"
     )
 
@@ -1499,14 +1493,14 @@ def upgrade_flush_centos_vulns_013():
 
     engine = anchore_engine.db.entities.common.get_engine()
 
-    log.err("Disabling all centos feed groups")
+    logger.err("Disabling all centos feed groups")
     rc = engine.execute(
         "UPDATE feed_groups set enabled = false where name like 'centos:%%'"
     )
-    log.err("Return = {}".format(rc.rowcount))
-    log.err("Centos feed groups disabled")
+    logger.err("Return = {}".format(rc.rowcount))
+    logger.err("Centos feed groups disabled")
 
-    log.err(
+    logger.err(
         "Updating centos and rhel-based image vulnerability matches to be use the new rhel feed for CVE matches instead of centos feed, which provides RHSA. This is reversible if desired. See documentation"
     )
     upgrade_centos_rhel_synced_013()
@@ -1516,19 +1510,19 @@ def upgrade_flush_centos_vulns_013():
         rhel_ns = "rhel:{}".format(v)
         t = time.time()
         if have_vulnerabilities_for(DistroNamespace("rhel", v, "rhel")):
-            log.err(
+            logger.err(
                 "Flushing centos:5 feed data since {} synced and update has migrated matches".format(
                     rhel_ns
                 )
             )
             sync.DataFeeds.delete_feed_group("vulnerabilities", "{}".format(centos_ns))
-            log.err(
+            logger.err(
                 "Took {} seconds for flush of {} data".format(
                     time.time() - t, centos_ns
                 )
             )
 
-    log.err(
+    logger.err(
         "Migration of centos & rhel package matches from centos:* group data to rhel:* data and RHSA to CVE matches is complete"
     )
 
@@ -1545,7 +1539,7 @@ def upgrade_centos_rhel_synced_013():
     )
     from anchore_engine.db import session_scope
 
-    log.err(
+    logger.err(
         "Scanning all images applicable for the rhel data feed to create matches based on new CVE data in rhel:* groups in addition to RHSA-based data from old centos:* groups. This may take a while"
     )
 
@@ -1553,19 +1547,19 @@ def upgrade_centos_rhel_synced_013():
     # Add the RHEL feed matches
     with session_scope() as db:
         rescan_namespace(db, "rhel:5")
-    log.err("Creating rhel:5 matches took {} seconds".format(time.time() - t))
+    logger.err("Creating rhel:5 matches took {} seconds".format(time.time() - t))
 
     with session_scope() as db:
         rescan_namespace(db, "rhel:6")
-    log.err("Creating rhel:6 matches took {} seconds".format(time.time() - t))
+    logger.err("Creating rhel:6 matches took {} seconds".format(time.time() - t))
 
     with session_scope() as db:
         rescan_namespace(db, "rhel:7")
-    log.err("Creating rhel:7 matches took {} seconds".format(time.time() - t))
+    logger.err("Creating rhel:7 matches took {} seconds".format(time.time() - t))
 
     with session_scope() as db:
         rescan_namespace(db, "rhel:8")
-    log.err("Creating rhel:8 matches took {} seconds".format(time.time() - t))
+    logger.err("Creating rhel:8 matches took {} seconds".format(time.time() - t))
 
 
 def db_upgrade_012_013():
@@ -1615,10 +1609,10 @@ def upgrade_014_archive_rules():
         }
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -1631,7 +1625,7 @@ def upgrade_014_archive_rules():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -1845,9 +1839,9 @@ def remove_policy_engine_sizes():
         ("policy_engine_evaluation_cache", "user_id"),
     ]
 
-    log.err("Updating tables")
+    logger.err("Updating tables")
     for table_name, column_name in to_update:
-        log.err(
+        logger.err(
             "Updating table {} column {} to varchar".format(table_name, column_name)
         )
         try:
@@ -1857,7 +1851,7 @@ def remove_policy_engine_sizes():
                 )
             )
         except Exception as ex:
-            log.err(
+            logger.err(
                 "Failed updating {} column {} type to varchar. Err: {}".format(
                     table_name, column_name, str(ex)
                 )
@@ -1898,10 +1892,10 @@ def upgrade_oauth_client_014():
         }
     ]
 
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in new_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating new column ({}) in table ({})".format(
                     column.name, table.get("table_name", "")
                 )
@@ -1914,7 +1908,7 @@ def upgrade_oauth_client_014():
                     % (table["table_name"], cn, ct)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )
@@ -1948,10 +1942,10 @@ def upgrade_oauth_client_014():
             ],
         }
     ]
-    log.err("creating new table columns")
+    logger.err("creating new table columns")
     for table in drop_columns:
         for column in table["columns"]:
-            log.err(
+            logger.err(
                 "creating dropping column ({}) in table ({})".format(
                     column, table.get("table_name", "")
                 )
@@ -1962,7 +1956,7 @@ def upgrade_oauth_client_014():
                     % (table["table_name"], column)
                 )
             except Exception as e:
-                log.err(
+                logger.err(
                     "failed to perform DB upgrade on {} adding column - exception: {}".format(
                         table, str(e)
                     )

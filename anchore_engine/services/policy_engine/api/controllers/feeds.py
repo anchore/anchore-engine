@@ -20,7 +20,7 @@ from anchore_engine.services.policy_engine.api.models import (
 )
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
-from anchore_engine.subsys import logger as log
+import logging as log
 from anchore_engine.db import (
     FeedMetadata as DbFeedMetadata,
     FeedGroupMetadata as DbFeedGroupMetadata,

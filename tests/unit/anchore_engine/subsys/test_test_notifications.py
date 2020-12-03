@@ -1,7 +1,8 @@
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.notifications import Notification
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def test_policy_eval_test_notification_building_works():

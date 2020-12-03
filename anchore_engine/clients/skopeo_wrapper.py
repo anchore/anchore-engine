@@ -11,7 +11,7 @@ from anchore_engine.utils import (
     manifest_to_digest,
     AnchoreException,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.common.errors import AnchoreError
 from urllib.request import urlretrieve
 
@@ -43,7 +43,7 @@ def manifest_to_digest_shellout(rawmanifest):
         if rc == 0 and re.match("^sha256:.*", str(sout, "utf-8")):
             ret = sout.strip()
         else:
-            logger.warn(
+            logger.warning(
                 "failed to calculate digest from schema v1 manifest: cmd={} rc={} sout={} serr={}".format(
                     cmd, rc, sout, serr
                 )
@@ -560,7 +560,7 @@ def get_image_manifest_skopeo(
                     topmanifest=topmanifest,
                 )
         except Exception as err:
-            logger.warn("CMD failed - exception: " + str(err))
+            logger.warning("CMD failed - exception: " + str(err))
             raise err
 
     except Exception as err:

@@ -69,7 +69,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 )
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
-from anchore_engine.subsys import logger as log
+import logging as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.clients.services import internal_client_for, catalog
@@ -1584,7 +1584,7 @@ def query_vulnerabilities(
             .all()
         )
 
-        log.spew("Vuln query 1 timing: {}".format(time.time() - t1))
+        log.debug("Vuln query 1 timing: {}".format(time.time() - t1))
 
         api_endpoint = get_api_endpoint()
 
@@ -1630,7 +1630,7 @@ def query_vulnerabilities(
                 ):
                     dedupped_return_hash[namespace_el["id"]] = namespace_el
 
-            log.spew("Vuln merge took {}".format(time.time() - t1))
+            log.debug("Vuln merge took {}".format(time.time() - t1))
 
             return_object.extend(list(dedupped_return_hash.values()))
 
@@ -1654,10 +1654,10 @@ def query_vulnerabilities(
 
             vulnerabilities = qry.all()
 
-            log.spew("Vuln query 2 timing: {}".format(time.time() - t1))
+            log.debug("Vuln query 2 timing: {}".format(time.time() - t1))
 
         if vulnerabilities:
-            log.spew("Merging nvd data into the vulns")
+            log.debug("Merging nvd data into the vulns")
             t1 = time.time()
             merged_vulns = merge_nvd_metadata(
                 dbsession,
@@ -1666,7 +1666,7 @@ def query_vulnerabilities(
                 _cpe_cls,
                 already_loaded_nvds=nvd_vulnerabilities,
             )
-            log.spew("Vuln nvd query 2 timing: {}".format(time.time() - t1))
+            log.debug("Vuln nvd query 2 timing: {}".format(time.time() - t1))
 
             for entry in merged_vulns:
                 vulnerability = entry[0]

@@ -7,7 +7,7 @@ from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_A
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.subsys.object_store import manager
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db import session_scope
 from anchore_engine.db.entities.catalog import (
     ImageImportOperation,

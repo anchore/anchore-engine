@@ -1,10 +1,11 @@
 import pytest
 from anchore_engine.subsys.auth.stores.verifier import JwtToken, BearerTokenVerifier
-from anchore_engine.subsys import logger
+import logging as logger
+from anchore_engine.subsys.logger import enable_test_logging
 from anchore_engine.auth.oauth import token_manager
 from anchore_engine.utils import ensure_str
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def test_jwt_token():

@@ -7,7 +7,7 @@ from sqlalchemy import or_, func, and_
 from sqlalchemy.orm import Session, lazyload
 
 from anchore_engine.db import ArchivedImage, ArchivedImageDocker
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.utils import epoch_to_rfc3339
 
 

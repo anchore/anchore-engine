@@ -15,7 +15,7 @@ from anchore_engine.subsys.object_store.config import (
     DRIVER_NAME_KEY,
     extract_config as obj_store_extract_config,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 DEFAULT_BUCKET_PREFIX = "anchore_analysis_archive"
 
@@ -79,7 +79,7 @@ def initialize(config):
             logger.exception("Could not initialize analysis archive system")
             raise
     else:
-        logger.warn("Archive manager already initialized, skipping redundant init")
+        logger.warning("Archive manager already initialized, skipping redundant init")
 
 
 class ArchiveManager(object):

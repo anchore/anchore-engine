@@ -1,5 +1,5 @@
 from functools import lru_cache
-import logging
+import logging as logger
 import os
 import re
 import hashlib
@@ -10,8 +10,6 @@ import tarfile
 import collections
 
 import anchore_engine.utils
-
-logger = logging.getLogger(__name__)
 
 
 def init_analyzer_cmdline(argv, name):

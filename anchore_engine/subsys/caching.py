@@ -4,7 +4,7 @@ Module implements functions for cache structures. Primarily focused on thread-lo
 """
 import datetime
 import threading
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 class TTLCache(object):
@@ -30,16 +30,16 @@ class TTLCache(object):
     def lookup(self, key):
         found = self.cache.get(key)
         if found and (found[0] is None or found[0] >= datetime.datetime.now()):
-            logger.spew("TTLCache {} hit for {}".format(self.__hash__(), key))
+            logger.debug("TTLCache {} hit for {}".format(self.__hash__(), key))
             return found[1]
         elif found:
             self.cache.pop(key)
-            logger.spew(
+            logger.debug(
                 "TTLCache {} miss due to ttl for {}".format(self.__hash__(), key)
             )
             return None
         else:
-            logger.spew("TTLCache {} miss for {}".format(self.__hash__(), key))
+            logger.debug("TTLCache {} miss for {}".format(self.__hash__(), key))
             return None
 
     def flush(self):

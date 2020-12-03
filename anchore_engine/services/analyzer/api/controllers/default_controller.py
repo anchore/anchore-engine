@@ -7,7 +7,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.common.images
 import anchore_engine.services.analyzer.analysis
 import anchore_engine.subsys.servicestatus
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()

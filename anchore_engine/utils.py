@@ -20,7 +20,7 @@ from ijson import common as ijcommon
 from ijson.backends import python as ijpython
 
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.util.docker import parse_dockerimage_string
 
 
@@ -271,7 +271,7 @@ def run_check(cmd, **kwargs):
         # XXX: engine mangles the logger, so this way of checking the level is
         # non-standard. This line should be:
         #     if logger.level > logging.debug:
-        if logger.log_level < logger.log_level_map["DEBUG"]:
+        if logger.root.level < logger.DEBUG:
             for line in stderr_stream:
                 logger.error(line)
         raise CommandException(cmd, code, stdout, stderr)
@@ -738,12 +738,12 @@ class CPE(object):
                         if encoded:
                             result += encoded
                         else:  # no encoding found, let it go through as it is
-                            logger.warn(
+                            logger.warning(
                                 "No encoding found for {}{}".format(char, n_char)
                             )
                             result += char + n_char
                     else:  # this is the last char, nothing to percent encode
-                        logger.warn(
+                        logger.warning(
                             "{} is the last char, skipping percent encoded transformation".format(
                                 char
                             )
@@ -846,11 +846,11 @@ def timer(label, log_level="debug"):
                 "Execution of {} took: {} seconds".format(label, time.time() - t)
             )
         elif log_level == "warn":
-            logger.warn(
+            logger.warning(
                 "Execution of {} took: {} seconds".format(label, time.time() - t)
             )
         elif log_level == "spew":
-            logger.spew(
+            logger.debug(
                 "Execution of {} took: {} seconds".format(label, time.time() - t)
             )
         else:

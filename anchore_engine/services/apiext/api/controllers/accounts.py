@@ -23,7 +23,7 @@ from anchore_engine.db.db_accounts import (
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import (
     get_authorizer,

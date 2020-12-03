@@ -5,9 +5,11 @@ Common fixtures for use in any test, not specific to a thing being tested.
 
 import os
 import pytest
-from anchore_engine.subsys import logger
+import logging as logger
 
-logger.enable_test_logging()
+from anchore_engine.subsys.logger import enable_test_logging
+
+enable_test_logging()
 
 
 @pytest.fixture()

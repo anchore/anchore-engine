@@ -13,7 +13,7 @@ from anchore_engine.configuration.localconfig import (
     InvalidOauthConfigurationError,
 )
 from anchore_engine.utils import ensure_bytes
-from anchore_engine.subsys import logger
+import logging as logger
 
 ANCHORE_ISSUER = "anchore-engine"
 ANCHORE_AUDIENCE = "anchore-engine"

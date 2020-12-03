@@ -1,6 +1,6 @@
 from yosai.core import account_abcs
 from anchore_engine.db import session_scope, AccountTypes
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.apis.authentication import idp_factory, IdentityContext
 import json
 

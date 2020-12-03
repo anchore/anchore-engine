@@ -33,7 +33,8 @@ from anchore_engine.db import (
 )
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.catalog.catalog_impl import image_imageDigest
-from anchore_engine.subsys import logger, archive, object_store
+from anchore_engine.subsys import archive, object_store
+import logging as logger
 from anchore_engine.subsys.events import (
     ImageArchiveDeleted,
     ImageRestored,
@@ -1074,7 +1075,7 @@ class RestoreArchivedImageTask(object):
                                 self.account, [record], session
                             )
                     except Exception as ex:
-                        logger.warn(
+                        logger.warning(
                             "Could not insert records of type: {} due to exception: {}".format(
                                 r_type, ex
                             )
@@ -1402,7 +1403,7 @@ class ArchiveImageTask(object):
                             self.account, record.manifest_bucket, record.manifest_key
                         )
                     except Exception as ex:
-                        logger.warn(
+                        logger.warning(
                             "Could not delete the analysis archive tarball in storage. May have leaked. Err: {}".format(
                                 ex
                             )
@@ -1509,7 +1510,7 @@ class ArchiveImageTask(object):
 
         image_id = img_archive.manifest.metadata.get("image_id")
         if not image_id:
-            logger.warn(
+            logger.warning(
                 "No image id found in archive metadata for getting vuln history."
             )
             return []

@@ -5,7 +5,7 @@ import anchore_engine.services
 import anchore_engine.utils
 from anchore_engine import db
 from anchore_engine.clients import docker_registry
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def lookup_registry_image(userId, image_info, registry_creds):

@@ -5,7 +5,7 @@ import pkg_resources
 import anchore_engine.common
 import anchore_engine.subsys.simplequeue
 import anchore_engine.subsys.servicestatus
-from anchore_engine.subsys import logger
+import logging as logger
 import anchore_engine.subsys.metrics
 from anchore_engine.service import ApiService, LifeCycleStages
 
@@ -45,13 +45,13 @@ def handle_metrics(*args, **kwargs):
                         "anchore_queue_length", qlen, queuename=qname
                     )
                 except:
-                    logger.warn(
+                    logger.warning(
                         "could not get/set queue length metric for queue ("
                         + str(qname)
                         + ")"
                     )
         except Exception as err:
-            logger.warn("handler failed - exception: " + str(err))
+            logger.warning("handler failed - exception: " + str(err))
 
         time.sleep(cycle_timer)
 

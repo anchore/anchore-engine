@@ -10,7 +10,7 @@ from anchore_engine.subsys.object_store.drivers.rdbms import DbDriver
 from anchore_engine.subsys.object_store.drivers.s3 import S3ObjectStorageDriver
 from anchore_engine.subsys.object_store.drivers.swift import SwiftObjectStorageDriver
 from anchore_engine.subsys.object_store import exc
-from anchore_engine.subsys import logger
+import logging as logger
 from tests.fixtures import anchore_db
 from tests.integration.subsys.object_store.conftest import (
     test_s3_region,

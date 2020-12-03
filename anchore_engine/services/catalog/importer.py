@@ -19,7 +19,7 @@ from anchore_engine.db import (
 )
 from anchore_engine.db.entities.catalog import ImportState
 from anchore_engine.services.catalog.catalog_impl import add_or_update_image
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.util.docker import DockerImageReference
 from anchore_engine.subsys.object_store import get_manager
 from anchore_engine.subsys import taskstate
@@ -233,7 +233,7 @@ def finalize_import_operation(
         # Queue presence should be gated by the image record, not here
         # queue_import_task(account, operation_id, internal_manifest)
     except:
-        logger.debug_exception("Failed to queue task message. Setting failed status")
+        logger.exception("Failed to queue task message. Setting failed status")
         record.status = ImportState.failed
         raise
 

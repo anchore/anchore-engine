@@ -6,7 +6,7 @@ import copy
 import json
 import re
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def parse_dockerimage_string(instr, strict=True):

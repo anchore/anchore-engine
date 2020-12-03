@@ -1,6 +1,7 @@
 import pytest
 from anchore_engine.db import session_scope, AccountTypes, UserAccessCredentialTypes
-from anchore_engine.subsys import identities, logger
+from anchore_engine.subsys import identities
+import logging as logger
 from anchore_engine.configuration import localconfig
 from tests.fixtures import anchore_db
 

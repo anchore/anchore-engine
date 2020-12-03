@@ -9,7 +9,7 @@ from anchore_engine.apis.authorization import (
     ActionBoundPermission,
 )
 from anchore_engine.subsys.events import EventBase
-from anchore_engine.subsys import logger
+import logging as logger
 
 import anchore_engine.common
 
@@ -193,7 +193,7 @@ def list_event_types():
 
         httpcode = 200
     except Exception as err:
-        logger.debug_exception("Error listing types")
+        logger.exception("Error listing types")
         return_object = anchore_engine.common.helpers.make_response_error(
             err, in_httpcode=httpcode
         )

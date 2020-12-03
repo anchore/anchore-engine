@@ -1,6 +1,6 @@
 import click
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_manager.util.db import (
     db_context,
     init_db_context,

@@ -11,7 +11,7 @@ import dateutil.parser
 from tests.fixtures import anchore_db
 
 from anchore_engine.db import db_locks, session_scope, Lease
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.logger import enable_test_logging
 
 enable_test_logging()

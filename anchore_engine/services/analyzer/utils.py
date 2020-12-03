@@ -2,7 +2,7 @@ import time
 
 import anchore_engine.subsys
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.configuration.localconfig import get_config
 
 
@@ -15,7 +15,9 @@ def get_tempdir(config=None):
     try:
         return c["tmp_dir"]
     except Exception as err:
-        logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
+        logger.warning(
+            "could not get tmp_dir from localconfig - exception: " + str(err)
+        )
         return "/tmp"
 
 

@@ -4,7 +4,7 @@ Common threading utils for anchore engine services.
 """
 import time
 import threading
-from anchore_engine.subsys import logger
+import logging as logger
 
 # generic monitor_func implementation
 
@@ -36,7 +36,7 @@ def default_monitor_func(**kwargs):
         return True
 
     if round(time.time() - last_run) < kwargs["kick_timer"]:
-        logger.spew(
+        logger.debug(
             "timer hasn't kicked yet: "
             + str(round(time.time() - last_run))
             + " : "
@@ -69,7 +69,7 @@ def default_monitor_func(**kwargs):
                                 )
                             )
                         elif config_cycle_timer < min_cycle_timer:
-                            logger.warn(
+                            logger.warning(
                                 "configured cycle timer for handler ("
                                 + str(monitor_name)
                                 + ") is less than the allowed min ("
@@ -78,7 +78,7 @@ def default_monitor_func(**kwargs):
                             )
                             the_cycle_timer = min_cycle_timer
                         elif config_cycle_timer > max_cycle_timer:
-                            logger.warn(
+                            logger.warning(
                                 "configured cycle timer for handler ("
                                 + str(monitor_name)
                                 + ") is greater than the allowed max ("
@@ -91,7 +91,7 @@ def default_monitor_func(**kwargs):
 
                         my_monitors[monitor_name]["cycle_timer"] = the_cycle_timer
                     except Exception as err:
-                        logger.warn(
+                        logger.warning(
                             "exception setting custom cycle timer for handler ("
                             + str(monitor_name)
                             + ") - using default"
@@ -136,26 +136,26 @@ def monitor(*args, **kwargs):
         donew = False
         if monitor_thread:
             if monitor_thread.isAlive():
-                logger.spew("MON: thread still running")
+                logger.debug("MON: thread still running")
             else:
-                logger.spew("MON: thread stopped running")
+                logger.debug("MON: thread stopped running")
                 donew = True
                 monitor_thread.join()
-                logger.spew(
+                logger.debug(
                     "MON: thread joined: isAlive=" + str(monitor_thread.isAlive())
                 )
         else:
-            logger.spew("MON: no thread")
+            logger.debug("MON: no thread")
             donew = True
 
         if donew:
-            logger.spew("MON: starting")
+            logger.debug("MON: starting")
             monitor_thread = threading.Thread(
                 target=default_monitor_func, kwargs=kwargs
             )
             monitor_thread.start()
         else:
-            logger.spew("MON: skipping")
+            logger.debug("MON: skipping")
 
     except Exception as err:
-        logger.warn("MON thread start exception: " + str(err))
+        logger.warning("MON thread start exception: " + str(err))

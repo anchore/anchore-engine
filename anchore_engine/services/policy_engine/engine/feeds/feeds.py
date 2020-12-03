@@ -56,7 +56,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     lookup_feed,
     get_feed_json,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def build_group_sync_result(group=None, status="failure"):
@@ -546,7 +546,7 @@ class AnchoreServiceFeed(DataFeed):
             else []
         )
         if len(found) > 1:
-            logger.warn(
+            logger.warning(
                 "Found more than one group with name {} for feed {} in metadata db, not expected. Groups = {}".format(
                     group_name,
                     self.__feed_name__,
@@ -1098,7 +1098,7 @@ class NvdFeed(AnchoreServiceFeed):
         operation_id=None,
         group=None,
     ) -> dict:
-        logger.warn("Sync not supported for legacy nvd feed")
+        logger.warning("Sync not supported for legacy nvd feed")
         result = build_feed_sync_results(feed="nvd", status="failed")
         result["status"] = "failed"
         return result
@@ -1257,7 +1257,7 @@ def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
         try:
             client.add_event(event)
         except Exception as e:
-            logger.warn("Error adding feed start event: {}".format(e))
+            logger.warning("Error adding feed start event: {}".format(e))
 
     try:
         logger.info("Event: {} (operation_id={})".format(event.to_json(), operation_id))

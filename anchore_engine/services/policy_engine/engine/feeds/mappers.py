@@ -12,7 +12,7 @@ from anchore_engine.db import (
     Vulnerability,
     FixedArtifact,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.utils import CPE
 
 
@@ -182,7 +182,7 @@ class NvdV2FeedDataMapper(FeedDataMapper):
                 newcpe.other = cpe_obj.other
                 db_rec.vulnerable_cpes.append(newcpe)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to convert vulnerable-software-list into database CPEV2 record - exception: "
                     + str(err)
                 )
@@ -240,7 +240,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to convert vendor_product_info into database VulnDBCpe record - exception: "
                     + str(err)
                 )
@@ -267,7 +267,7 @@ class VulnDBFeedDataMapper(FeedDataMapper):
 
                 db_rec.cpes.append(newcpe)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to convert vendor_product_info into database VulnDBCpe record - exception: "
                     + str(err)
                 )

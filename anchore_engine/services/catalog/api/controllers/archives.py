@@ -25,7 +25,7 @@ from anchore_engine.services.catalog.archiver import (
     ArchiveImageTask,
     DeleteArchivedImageTask,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.metrics import flask_metrics
 from anchore_engine.utils import epoch_to_rfc3339
 

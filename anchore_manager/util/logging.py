@@ -1,10 +1,13 @@
 import json
+import logging
+import logging as logger
+import os
 import sys
 from collections import OrderedDict
-from anchore_engine.subsys import logger
-from anchore_manager.util.proc import ExitCode
+
+from anchore_engine.subsys.logger import configure_logging
 from anchore_manager.util.config import DEFAULT_CONFIG
-import logging
+from anchore_manager.util.proc import ExitCode
 
 # Sane default
 _log_config = DEFAULT_CONFIG
@@ -67,7 +70,9 @@ def log_config(config: dict):
         if config["debug"]:
             log_level = "DEBUG"
 
-        logger.set_log_level(log_level, log_to_stdout=True)
+        configure_logging(
+            log_level, os.getenv("ANCHORE_JSON_LOGGING_ENABLED", "false") == "true"
+        )
 
     except Exception as err:
         logger.error(format_error_output(config, "service", {}, err))

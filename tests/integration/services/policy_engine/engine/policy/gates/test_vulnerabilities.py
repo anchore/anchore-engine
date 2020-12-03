@@ -7,14 +7,15 @@ from anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities i
 )
 
 from anchore_engine.db import Image, get_thread_scoped_session
+from anchore_engine.subsys.logger import enable_test_logging
 from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
-from anchore_engine.subsys import logger
+import logging as logger
 from tests.integration.services.policy_engine.engine.policy.gates import (
     cls_fully_loaded_test_env,
     cls_no_feeds_test_env,
 )
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 @pytest.mark.usefixtures("cls_fully_loaded_test_env")

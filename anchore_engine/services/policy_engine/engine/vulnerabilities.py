@@ -19,7 +19,7 @@ from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerabi
 from anchore_engine.common import nonos_package_types
 import threading
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 # TODO: introduce a match cache for the fix key and package key to optimize the lookup and updates since its common to
@@ -410,7 +410,7 @@ def process_updated_vulnerability(db, vulnerability):
     :param: db: The db session to use, should be valid and open
     :return: list of (user_id, image_id) that were affected
     """
-    logger.spew("Processing CVE update for: {}".format(vulnerability.id))
+    logger.debug("Processing CVE update for: {}".format(vulnerability.id))
     changed_images = []
 
     # Find any packages already matched with the CVE ID.
@@ -418,7 +418,7 @@ def process_updated_vulnerability(db, vulnerability):
 
     # May need to remove vuln from some packages.
     if vulnerability.is_empty():
-        logger.spew("Detected an empty CVE. Removing all existing matches on this CVE")
+        logger.debug("Detected an empty CVE. Removing all existing matches on this CVE")
 
         # This is a flush, nothing can be vulnerable to this, so remove it from packages.
         if current_affected:
@@ -484,7 +484,7 @@ def process_updated_vulnerability(db, vulnerability):
 
         db.flush()
 
-    logger.spew(
+    logger.debug(
         "Images changed for cve {}: {}".format(vulnerability.id, changed_images)
     )
 

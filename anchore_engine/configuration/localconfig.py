@@ -9,7 +9,7 @@ import shutil
 
 from pkg_resources import resource_filename
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db.entities.identity import AccountTypes
 from anchore_engine.common import image_content_types, image_metadata_types
 
@@ -215,10 +215,10 @@ def load_policy_bundle_paths(src_dirs=None):
             localconfig["policy_bundles"] = policy_bundles
             return
         else:
-            logger.warn("No configured policy bundle dir was found, unable to load.")
+            logger.warning("No configured policy bundle dir was found, unable to load.")
             localconfig["policy_bundles"] = None
     except Exception as e:
-        logger.warn(
+        logger.warning(
             "Configured policy bundle dir at {} not found, unable to load. Exception: {}".format(
                 policy_bundles_dir, e
             )
@@ -376,7 +376,7 @@ def read_config(configfile=None):
                             if re.match("^ANCHORE.*", k):
                                 anchore_envs[k] = str(v)
                         except Exception as err:
-                            logger.warn(
+                            logger.warning(
                                 "cannot parse line from ANCHORE_ENV_FILE - exception: "
                                 + str(err)
                             )
@@ -395,7 +395,7 @@ def read_config(configfile=None):
                             "${" + str(e) + "}", anchore_envs[e]
                         )
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "problem replacing configuration variable values with overrides - exception: "
                         + str(err)
                     )
@@ -509,7 +509,7 @@ def validate_config(config, validate_params=None):
             # webhook checks
             if "webhooks" in validate_params and validate_params["webhooks"]:
                 if "webhooks" not in config or not config["webhooks"]:
-                    logger.warn(
+                    logger.warning(
                         "no webhooks defined in configuration file - notifications will be disabled"
                     )
 

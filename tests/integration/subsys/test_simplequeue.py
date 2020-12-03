@@ -1,14 +1,19 @@
 import datetime
 import pytest
+
+# This appears to be unused by IDE but it is in fact used in below tests and fixtures
 from tests.fixtures import anchore_db
-from anchore_engine.subsys import logger, simplequeue
+from anchore_engine.subsys import simplequeue
 from anchore_engine.subsys.logger import enable_test_logging
+import logging
 
 enable_test_logging()
 
 singleton_queue = "testq1"
 multi_queue = "testq2"
 std_queue = "testq3"
+
+logger = logging.getLogger()
 
 
 @pytest.fixture

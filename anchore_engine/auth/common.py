@@ -1,6 +1,6 @@
 import time
 import json
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def get_docker_registry_userpw(registry_record):

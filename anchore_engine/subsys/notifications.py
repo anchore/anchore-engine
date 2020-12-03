@@ -9,7 +9,7 @@ from anchore_engine.clients.services import http
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.db.entities.common import anchore_now
-from anchore_engine.subsys import logger
+import logging as logger
 
 NOTIFICATION_MAPPING = {
     "policy_eval": "PolicyEvalNotification",
@@ -226,7 +226,7 @@ def queue_notification(userId, subscription_key, subscription_type, payload):
         if not q_client.is_inqueue(subscription_type, nobj):
             rc = q_client.enqueue(subscription_type, nobj)
     except Exception as err:
-        logger.warn("failed to create/enqueue notification")
+        logger.warning("failed to create/enqueue notification")
         raise err
 
     return rc
@@ -318,7 +318,7 @@ def validate_schema(notification):
         )
         return ret
     elif not notification_type:
-        logger.warn("Notification Type not resolved: {}".format(notification))
+        logger.warning("Notification Type not resolved: {}".format(notification))
         return ret
 
     notification_schema_definition = NOTIFICATION_MAPPING.get(

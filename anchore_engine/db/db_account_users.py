@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from anchore_engine.db import AccountUser, AccessCredential, UserAccessCredentialTypes
 from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 class UserNotFoundError(Exception):

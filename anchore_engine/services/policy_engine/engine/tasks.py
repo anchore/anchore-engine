@@ -36,7 +36,8 @@ from anchore_engine.subsys.events import (
     FeedSyncTaskCompleted,
     FeedSyncTaskFailed,
 )
-from anchore_engine.subsys import identities, logger
+from anchore_engine.subsys import identities
+import logging as logger
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
@@ -333,7 +334,7 @@ class FeedsUpdateTask(IAsyncTask):
                             vulns = rescan_image(image_obj, db_session=db)
                             count += 1
                         else:
-                            logger.warn(
+                            logger.warning(
                                 "Failed to lookup image with tuple: {} (operation_id={})".format(
                                     str(img), self.uuid
                                 )

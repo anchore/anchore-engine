@@ -11,7 +11,7 @@ from anchore_engine.utils import get_threadbased_id
 from anchore_engine.db import session_scope, ObjectStorageMetadata
 from anchore_engine.db import ArchiveMigrationTask
 
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
 
 from anchore_engine.subsys.object_store.manager import ObjectStorageManager
@@ -142,11 +142,11 @@ def initiate_migration(
                     #     with session_scope() as db:
                     #         record = db.query(ArchiveMetadata).filter(ArchiveMetadata.userId == rec_tuple[0], ArchiveMetadata.bucket == rec_tuple[1], ArchiveMetadata.archiveId == rec_tuple[2]).first()
                     #         if not record:
-                    #             logger.warn('No record found in db for: {}'.format(rec_tuple))
+                    #             logger.warning('No record found in db for: {}'.format(rec_tuple))
                     #             continue
                     #
                     #         if not record.content_url.startswith(context.from_client.__uri_scheme__ + '://'):
-                    #             logger.warn('Initial query returned content url: {} but migration query found url {}. Skipping.'.format(rec_tuple[4], record.content_url))
+                    #             logger.warning('Initial query returned content url: {} but migration query found url {}. Skipping.'.format(rec_tuple[4], record.content_url))
                     #             continue
                     #
                     #         logger.info('Migrating document {}/{}/{} -- current uri: {}'.format(record.userId, record.bucket, record.archiveId, record.content_url))

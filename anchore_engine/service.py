@@ -3,34 +3,33 @@ Base types for all anchore engine services
 """
 
 import copy
-import connexion
 import enum
-from flask import g, jsonify
 import json
+import logging as logger
+from pythonjsonlogger import jsonlogger
 import os
-from pathlib import Path
-import yaml
-
-
-import time
 import threading
-import traceback
+import time
+from pathlib import Path
 
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
+import connexion
+import yaml
+from flask import g, jsonify
+
 from anchore_engine import monitors
-from anchore_engine.db import db_services, session_scope, initialize as initialize_db
-from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
-from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
+from anchore_engine.apis.exceptions import AnchoreApiError
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.common.helpers import make_response_error
+from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import (
-    OauthNotConfiguredError,
     InvalidOauthConfigurationError,
 )
-from anchore_engine.apis.exceptions import AnchoreApiError
-from anchore_engine.common.helpers import make_response_error
+from anchore_engine.db import db_services, session_scope, initialize as initialize_db
+from anchore_engine.subsys import metrics, servicestatus, taskstate
+from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
+from anchore_engine.subsys.identities import manager_factory
 
 
 class LifeCycleStages(enum.IntEnum):
@@ -185,7 +184,7 @@ class BaseService(object, metaclass=ServiceMeta):
 
     def _process_stage_handlers(self, stage):
         logger.info(
-            "Processing init handlers for bootsrap stage: {}".format(stage.name)
+            "Processing init handlers for bootstrap stage: {}".format(stage.name)
         )
         handlers = self.lifecycle_handlers.get(stage, [])
         logger.debug("Executing {} stage {} handlers".format(len(handlers), stage.name))
@@ -282,11 +281,11 @@ class BaseService(object, metaclass=ServiceMeta):
 
         if not self.task_handlers_enabled:
             if env_setting:
-                logger.warn(
+                logger.warning(
                     "Task handlers disabled by setting ANCHORE_ENGINE_DISABLE_MONITORS in environment"
                 )
             else:
-                logger.warn("Task handlers disabled by configuration file value")
+                logger.warning("Task handlers disabled by configuration file value")
 
         try:
             kick_timer = int(self.configuration["cycle_timer_seconds"])
@@ -500,7 +499,7 @@ class BaseService(object, metaclass=ServiceMeta):
                     servicestatus.set_my_service_record(my_service_record)
                     self.service_record = my_service_record
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "could not set local service information - exception: {}".format(
                             str(err)
                         )
@@ -607,6 +606,7 @@ class ApiService(BaseService):
             self._application = connexion.FlaskApp(
                 __name__, specification_dir=api_spec_dir, options=flask_app_options
             )
+
             flask_app = self._application.app
             flask_app.url_map.strict_slashes = False
 

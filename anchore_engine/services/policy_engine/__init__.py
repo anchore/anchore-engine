@@ -1,19 +1,19 @@
-import time
-import sys
-import pkg_resources
+import logging as logger
 import os
-import retrying
+import sys
+import time
 
+import pkg_resources
+import retrying
 from sqlalchemy.exc import IntegrityError
 
 # anchore modules
 import anchore_engine.clients.services.common
-import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.subsys import logger
-from anchore_engine.configuration import localconfig
+import anchore_engine.subsys.servicestatus
 from anchore_engine.clients.services import simplequeue, internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     VulnerabilityFeed,
@@ -24,10 +24,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_registry,
     NvdFeed,
 )
-
-# from anchore_engine.subsys.logger import enable_bootstrap_logging
-# enable_bootstrap_logging()
-from anchore_engine.utils import timer
 
 feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None
@@ -98,7 +94,7 @@ def _check_feed_client_credentials():
             logger.info("Feeds client credentials ok")
             return True
         except Exception as e:
-            logger.warn(
+            logger.warning(
                 "Could not verify feeds endpoint and/or config. Got exception: {}".format(
                     e
                 )
@@ -177,7 +173,7 @@ def _init_distro_mappings():
     except Exception as err:
 
         if isinstance(err, IntegrityError):
-            logger.warn("another process has already initialized, continuing")
+            logger.warning("another process has already initialized, continuing")
         else:
             raise Exception(
                 "unable to initialize default distro mappings - exception: " + str(err)
@@ -229,11 +225,11 @@ def do_feed_sync(msg):
         if result is not None:
             handler_success = True
         else:
-            logger.warn("Feed sync task marked as disabled, so skipping")
+            logger.warning("Feed sync task marked as disabled, so skipping")
     except ValueError as e:
-        logger.warn("Received msg of wrong type")
+        logger.warning("Received msg of wrong type")
     except Exception as err:
-        logger.warn("failure in feed sync handler - exception: " + str(err))
+        logger.warning("failure in feed sync handler - exception: " + str(err))
 
     if handler_success:
         anchore_engine.subsys.metrics.summary_observe(
@@ -308,7 +304,7 @@ def run_feed_sync(system_user):
                 backoff_time=FEED_SYNC_RETRY_BACKOFF,
             )
         except Exception as err:
-            logger.warn("failed to process task this cycle: " + str(err))
+            logger.warning("failed to process task this cycle: " + str(err))
 
 
 def handle_feed_sync_trigger(*args, **kwargs):

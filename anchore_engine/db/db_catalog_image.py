@@ -3,7 +3,7 @@ from sqlalchemy import desc, and_, or_, func
 import anchore_engine.db.db_catalog_image_docker
 from anchore_engine import db
 from anchore_engine.db import CatalogImage, CatalogImageDocker
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def add_record(input_image_record, session=None):
@@ -91,7 +91,7 @@ def update_record(input_image_record, session=None):
                                 tag_record, session=session
                             )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "unable to update all image_details with found imageId: " + str(err)
                 )
 
@@ -501,7 +501,7 @@ def get_oldest_images_with_limit(session, account, max_images):
                        Based on the number of images in Anchore, this will determine the number returned images
     """
     if max_images < 0:
-        logger.warn(
+        logger.warning(
             "Max images is negative, cannot transition images according to max_images_per_account setting"
         )
         return

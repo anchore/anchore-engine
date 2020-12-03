@@ -38,17 +38,7 @@ IMAGE_PULL_RETRY_WAIT_MS = 1000
 IMAGE_PULL_RETRY_WAIT_INCREMENT_MS = 1000
 
 
-try:
-    from anchore_engine.subsys import logger
-
-    # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
-except:
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel("DEBUG")
-    log = logger
+import logging as logger
 
 
 def get_layertarfile(unpackdir, cachedir, layer):
@@ -532,7 +522,7 @@ def squash(unpackdir, cachedir, layers):
                     import traceback
 
                     traceback.print_exc()
-                    logger.warn(
+                    logger.warning(
                         "failed to store hardlink ({} -> {}) - exception: {}".format(
                             member.name, member.linkname, err
                         )
@@ -605,7 +595,7 @@ def _rmtree_error_handler(infunc, inpath, inerr):
         # attempt to change the permissions and then retry removal
         os.chmod(inpath, 0o777)
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "unable to change permissions in error handler for path {} in shutil.rmtree".format(
                 inpath
             )
@@ -720,7 +710,7 @@ def retrying_pull_image(
             )
     except Exception as err:
         # Intentionally broad, just for logging since retry will swallow individual errors
-        logger.debug_exception(
+        logger.exception(
             "Could not pull image due to error: {}. Will retry".format(str(err))
         )
         raise
@@ -1242,7 +1232,7 @@ def get_anchorelock(lockId=None, driver=None):
                     shutil.copy(default_file, installed_file)
 
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "could not check/install analyzer anchore configurations (please check yaml format of your configuration files), continuing with default - exception: "
             + str(err)
         )
@@ -1252,7 +1242,7 @@ def get_anchorelock(lockId=None, driver=None):
         if lockId not in anchorelocks:
             anchorelocks[lockId] = threading.Lock()
         ret = anchorelocks[lockId]
-        logger.spew("all locks: " + str(anchorelocks))
+        logger.debug("all locks: " + str(anchorelocks))
     else:
         ret = anchorelock
 

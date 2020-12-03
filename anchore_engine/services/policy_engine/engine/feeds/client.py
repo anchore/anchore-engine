@@ -11,7 +11,7 @@ from io import BytesIO
 import ijson
 
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.utils import ensure_str, ensure_bytes, AnchoreException
 from anchore_engine.services.policy_engine.engine.feeds import (
     IFeedSource,

@@ -12,10 +12,11 @@ from anchore_engine.db import (
     FixedArtifact,
 )
 from anchore_engine.services.policy_engine.engine.feeds import feeds
-from anchore_engine.subsys import logger
+import logging as logger
 
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging(level="DEBUG")
+enable_test_logging(level="DEBUG")
 
 
 def test_cve_updates(test_data_env):

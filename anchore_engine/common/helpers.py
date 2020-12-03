@@ -6,7 +6,7 @@ import copy
 import json
 import time
 
-from anchore_engine.subsys import logger
+import logging as logger
 
 
 def make_response_error(errmsg, in_httpcode=None, details=None):
@@ -50,7 +50,7 @@ def make_response_error(errmsg, in_httpcode=None, details=None):
                     ret["detail"]["error_codes"] = []
                 ret["detail"]["error_codes"].append(err_json.get("error_code"))
         except KeyError:
-            logger.warn(
+            logger.warning(
                 "unable to marshal error details: source error {}".format(
                     errmsg.__dict__
                 )

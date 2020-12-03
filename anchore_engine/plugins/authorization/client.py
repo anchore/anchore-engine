@@ -2,7 +2,7 @@ import requests
 import copy
 import json
 import datetime
-from anchore_engine.subsys import logger
+import logging as logger
 from urllib import parse as urlparse
 from anchore_engine.utils import datetime_to_rfc3339
 

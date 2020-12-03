@@ -1,11 +1,12 @@
 import pytest
 from anchore_engine.subsys import object_store
+from anchore_engine.subsys.logger import enable_test_logging
 from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
 )
 from anchore_engine.subsys.object_store import migration
-from anchore_engine.subsys import logger
+import logging as logger
 from tests.fixtures import anchore_db
 from tests.integration.subsys.object_store.conftest import (
     test_swift_container,
@@ -19,7 +20,7 @@ from tests.integration.subsys.object_store.conftest import (
     test_s3_secret_key,
 )
 
-logger.enable_test_logging()
+enable_test_logging()
 
 document_1 = b'{"document": {"user_id": "admin", "final_action_reason": "policy_evaluation", "matched_whitelisted_images_rule": "matched_blacklisted_images_rule": false}}'
 document_json = {

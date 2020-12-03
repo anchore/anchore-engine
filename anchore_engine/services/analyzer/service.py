@@ -22,7 +22,8 @@ from anchore_engine.services.analyzer.analysis import (
 from anchore_engine.services.analyzer.layer_cache import handle_layer_cache
 from anchore_engine.services.analyzer.tasks import WorkerTask
 from anchore_engine.services.analyzer.imports import is_import_message, ImportTask
-from anchore_engine.subsys import logger, metrics
+from anchore_engine.subsys import metrics
+import logging as logger
 
 IMAGE_ANALYSIS_QUEUE = "images_to_analyze"
 
@@ -55,11 +56,11 @@ def handle_metrics(*args, **kwargs):
                 available_bytes = svfs.f_bsize * svfs.f_bavail
                 metrics.gauge_set("anchore_tmpspace_available_bytes", available_bytes)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "unable to detect available bytes probe - exception: " + str(err)
                 )
         except Exception as err:
-            logger.warn("handler failed - exception: " + str(err))
+            logger.warning("handler failed - exception: " + str(err))
 
         time.sleep(cycle_timer)
 
@@ -147,7 +148,7 @@ def handle_image_analyzer(*args, **kwargs):
                         athread.join()
                         logger.info("worker thread completed")
                     except Exception as err:
-                        logger.warn("cannot join thread - exception: " + str(err))
+                        logger.warning("cannot join thread - exception: " + str(err))
                 else:
                     alive_threads.append(athread)
             threads = alive_threads
@@ -159,7 +160,7 @@ def handle_image_analyzer(*args, **kwargs):
                     handle_layer_cache()
                     layer_cache_dirty = False
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "layer cache management failed - exception: " + str(err)
                     )
 

@@ -4,9 +4,9 @@ API handlers for /user routes
 These are handlers for routes available to standard users for managing their own credentials etc
 
 """
-
+import logging as logger
 from anchore_engine.db import session_scope, UserAccessCredentialTypes
-from anchore_engine.subsys import logger, identities
+from anchore_engine.subsys import identities
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.services.apiext.api.controllers.accounts import (
     user_db_to_msg,

@@ -4,9 +4,10 @@ from anchore_engine.clients.localanchore_standalone import (
     AnalysisError,
 )
 from anchore_engine.clients import localanchore_standalone
-from anchore_engine.subsys import logger
+import logging as logger
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging(level="DEBUG")
+enable_test_logging(level="DEBUG")
 
 fail_counter = 0
 fail_threshold = 2

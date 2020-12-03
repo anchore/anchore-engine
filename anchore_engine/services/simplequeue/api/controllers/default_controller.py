@@ -6,7 +6,7 @@ from anchore_engine import common
 from anchore_engine.subsys import simplequeue, locking
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
-from anchore_engine.subsys import logger
+import logging as logger
 import time
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 

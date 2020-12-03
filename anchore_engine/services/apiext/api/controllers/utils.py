@@ -13,7 +13,7 @@ import re
 import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.utils import parse_dockerimage_string
-from anchore_engine.subsys import logger
+import logging as logger
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryTagSource"
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryDigestSource"
@@ -27,9 +27,7 @@ def validate_pullstring_is_tag(pullstring: str) -> bool:
         parsed = parse_dockerimage_string(pullstring)
         return parsed.get("tag") is not None
     except Exception as e:
-        logger.debug_exception(
-            "Error parsing pullstring {}. Err = {}".format(pullstring, e)
-        )
+        logger.exception("Error parsing pullstring {}. Err = {}".format(pullstring, e))
         raise ValueError("Error parsing pullstring {}".format(pullstring))
 
 
@@ -38,9 +36,7 @@ def validate_pullstring_is_digest(pullstring: str) -> bool:
         parsed = parse_dockerimage_string(pullstring)
         return parsed.get("digest") is not None
     except Exception as e:
-        logger.debug_exception(
-            "Error parsing pullstring {}. Err = {}".format(pullstring, e)
-        )
+        logger.exception("Error parsing pullstring {}. Err = {}".format(pullstring, e))
         raise ValueError("Error parsing pullstring {}".format(pullstring))
 
 
@@ -304,7 +300,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     ret = []
 
     if not vulnerability_data:
-        logger.warn("empty query data given to format - returning empty result")
+        logger.warning("empty query data given to format - returning empty result")
         return ret
 
     eltemplate = {
@@ -383,7 +379,7 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                         dedup_hash[pkg_path].add(nvd_el.get("id"))
     except Exception as err:
         logger.exception("could not prepare query response")
-        logger.warn("could not prepare query response - exception: " + str(err))
+        logger.warning("could not prepare query response - exception: " + str(err))
         ret = []
 
     # non-os CPE search

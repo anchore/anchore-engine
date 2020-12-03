@@ -1,5 +1,5 @@
 import copy
-from anchore_engine.subsys import logger
+import logging as logger
 
 COMPRESSION_LEVEL = 3
 
@@ -61,7 +61,7 @@ def normalize_config(obj_store_config, legacy_fallback=False, service_config=Non
     # obj_store_config = extract_config(service_config, config_keys)
 
     if legacy_fallback and not obj_store_config:
-        logger.warn(
+        logger.warning(
             "no current object storage configuration found in service config, using legacy configuration options"
         )
         obj_store_config = {}

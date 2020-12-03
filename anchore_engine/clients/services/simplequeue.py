@@ -3,7 +3,7 @@ import threading
 import time
 
 from anchore_engine.clients.services import http
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.utils import get_threadbased_id
 from anchore_engine.clients.services.internal import InternalServiceClient
 from anchore_engine.clients.services import internal_client_for
@@ -237,7 +237,7 @@ def run_target_with_queue_ttl(
                                     )
                                 )
                         else:
-                            logger.warn(
+                            logger.warning(
                                 "Visibility refresh failed to succeed after retries. Msg {} may be replayed due to timeout".format(
                                     msg_id
                                 )
@@ -248,7 +248,7 @@ def run_target_with_queue_ttl(
                 # Just wait for thread to complete
                 task.join()
     except Exception as err:
-        logger.warn("failed to process task this cycle: " + str(err))
+        logger.warning("failed to process task this cycle: " + str(err))
     finally:
         client.delete_message(queue, receipt_handle)
         # Always delete the message. Other handlers will ensure things are queued ok.

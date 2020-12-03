@@ -5,7 +5,7 @@ from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 

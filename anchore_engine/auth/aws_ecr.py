@@ -8,7 +8,7 @@ import boto3
 import datetime
 
 from anchore_engine import utils
-from anchore_engine.subsys import logger
+import logging as logger
 import anchore_engine.configuration.localconfig
 from urllib.parse import urlparse
 
@@ -107,7 +107,7 @@ def refresh_ecr_credentials(registry, access_key_id, secret_access_key):
         r = client.get_authorization_token(registryIds=[account_id])
         ecr_data = r["authorizationData"][0]
     except Exception as err:
-        logger.warn("failure to get/refresh ECR credential - exception: " + str(err))
+        logger.warning("failure to get/refresh ECR credential - exception: " + str(err))
         raise err
 
     ret = {}

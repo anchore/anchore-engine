@@ -12,10 +12,11 @@ from anchore_engine.services.policy_engine.engine.policy.bundles import (
     ExecutableWhitelist,
 )
 from anchore_engine.db import get_thread_scoped_session as get_session, Image
-from anchore_engine.subsys import logger
+import logging as logger
 
+from anchore_engine.subsys.logger import enable_test_logging
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def test_basic_whitelist_evaluation(bundle, test_data_env_with_images_loaded):

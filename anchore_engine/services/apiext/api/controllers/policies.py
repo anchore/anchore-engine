@@ -13,7 +13,7 @@ from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 
 import anchore_engine.common
 import anchore_engine.configuration.localconfig
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.apis.authorization import (
     get_authorizer,
     RequestingAccountValue,
@@ -97,7 +97,7 @@ def list_policies(detail=None):
             policy_records = client.list_policies()
             httpcode = 200
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "unable to get policy_records for user ("
                 + str(userId)
                 + ") - exception: "
@@ -210,7 +210,7 @@ def get_policy(policyId, detail=None):
         try:
             policy_record = client.get_policy(policyId=policyId)
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "unable to get policy_records for user ("
                 + str(userId)
                 + ") - exception: "
@@ -268,7 +268,7 @@ def update_policy(bundle, policyId, active=False):
         try:
             policy_record = client.get_policy(policyId=policyId)
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "unable to get policy_records for user ("
                 + str(userId)
                 + ") - exception: "
@@ -350,7 +350,7 @@ def delete_policy(policyId):
             try:
                 policy_record = client.get_policy(policyId=policyId)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "unable to get policy_records for user ("
                     + str(userId)
                     + ") - exception: "

@@ -1,7 +1,7 @@
 import pytest
 import datetime
 import json
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import (
@@ -9,6 +9,7 @@ from anchore_engine.services.policy_engine.engine.tasks import (
     rescan_image,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
+from anchore_engine.subsys.logger import enable_test_logging
 from tests.integration.services.policy_engine.utils import reset_feed_sync_time
 from anchore_engine.services.policy_engine import (
     _init_distro_mappings,
@@ -16,7 +17,7 @@ from anchore_engine.services.policy_engine import (
 )
 
 
-logger.enable_test_logging()
+enable_test_logging()
 
 
 def _load_images(test_env):

@@ -5,6 +5,7 @@ Tests for the archive subsys. With each configured driver.
 import os
 import pytest
 from anchore_engine.subsys import object_store
+from anchore_engine.subsys.logger import enable_test_logging
 from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
@@ -26,9 +27,9 @@ from .conftest import (
     test_swift_key,
     test_swift_user,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 
-logger.enable_test_logging()
+enable_test_logging()
 
 document_1 = b'{"document": {"user_id": "admin", "final_action_reason": "policy_evaluation", "matched_whitelisted_images_rule": "matched_blacklisted_images_rule": false}}'
 document_json = {

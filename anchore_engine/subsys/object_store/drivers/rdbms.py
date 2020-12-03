@@ -5,7 +5,7 @@ from .interface import ObjectStorageDriver
 
 from anchore_engine import db, utils
 from anchore_engine.db import db_archivedocument, db_objectstorage
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.subsys.object_store.exc import (
     ObjectKeyNotFoundError,
     DriverNotInitializedError,

@@ -18,7 +18,8 @@ from anchore_engine.services.analyzer.utils import (
     update_analysis_failed,
     get_tempdir,
 )
-from anchore_engine.subsys import logger, events as events, metrics, taskstate
+from anchore_engine.subsys import events
+import logging as logger
 from anchore_engine.common.schemas import AnalysisQueueMessage, ValidationError
 from anchore_engine.utils import AnchoreException
 from anchore_engine.services.analyzer.errors import (
@@ -102,7 +103,9 @@ def notify_analysis_complete(
         if image_record.get("annotations", "{}"):
             annotations = json.loads(image_record.get("annotations", "{}"))
     except Exception as err:
-        logger.warn("could not marshal annotations from json - exception: " + str(err))
+        logger.warning(
+            "could not marshal annotations from json - exception: " + str(err)
+        )
 
     for image_detail in image_record["image_detail"]:
         event = analysis_complete_notification_factory(
@@ -181,7 +184,7 @@ def perform_analyze(
         )
 
     timer = int(time.time())
-    logger.spew("timing: analyze start: " + str(int(time.time()) - timer))
+    logger.debug("timing: analyze start: " + str(int(time.time()) - timer))
     logger.info("performing analysis on image: " + str([account, pullstring, fulltag]))
 
     logger.debug("obtaining anchorelock..." + str(pullstring))
@@ -239,7 +242,7 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
         )
         rc = pe_client.delete_image(user_id=account, image_id=image_id)
     except Exception as err:
-        logger.warn("exception on pre-delete - exception: " + str(err))
+        logger.warning("exception on pre-delete - exception: " + str(err))
 
     client_success = False
     last_exception = None
@@ -262,7 +265,7 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
             break
             # TODO: add a vuln eval and policy eval (with active policy), here to prime any caches since this isn't a highly latency sensitive code section
         except Exception as e:
-            logger.warn("attempt failed, will retry - exception: {}".format(e))
+            logger.warning("attempt failed, will retry - exception: {}".format(e))
             last_exception = e
             time.sleep(retry_wait)
 
@@ -302,7 +305,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
             if not image_record:
                 raise Exception("empty image record from catalog")
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "dequeued image cannot be fetched from catalog - skipping analysis ("
                 + str(image_digest)
                 + ") - exception: "
@@ -320,7 +323,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
             return True
 
         try:
-            logger.spew("TIMING MARK0: " + str(int(time.time()) - timer))
+            logger.debug("TIMING MARK0: " + str(int(time.time()) - timer))
 
             last_analysis_status = image_record["analysis_status"]
             image_record = update_analysis_started(
@@ -367,7 +370,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                     notify_analysis_complete(image_record, last_analysis_status)
                 )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to enqueue notification on image analysis state update - exception: "
                     + str(err)
                 )
@@ -375,7 +378,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
             logger.info(
                 "analysis complete: " + str(account) + " : " + str(image_digest)
             )
-            logger.spew("TIMING MARK1: " + str(int(time.time()) - timer))
+            logger.debug("TIMING MARK1: " + str(int(time.time()) - timer))
 
             try:
                 anchore_engine.subsys.metrics.counter_inc(
@@ -391,7 +394,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                 )
 
             except Exception as err:
-                logger.warn(str(err))
+                logger.warning(str(err))
                 pass
 
         except Exception as err:
@@ -422,7 +425,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                 emit_events(catalog_client, analysis_events)
 
     except Exception as err:
-        logger.warn("job processing bailed - exception: " + str(err))
+        logger.warning("job processing bailed - exception: " + str(err))
         raise err
 
     return True
@@ -488,14 +491,14 @@ def store_analysis_results(
     try:
         catalog_client = internal_client_for(CatalogClient, account)
     except:
-        logger.debug_exception("Cannot instantiate a catalog client to upload results")
+        logger.exception("Cannot instantiate a catalog client to upload results")
         raise
 
     imageId = None
     try:
         imageId = analysis_result[0]["image"]["imageId"]
     except Exception as err:
-        logger.warn(
+        logger.warning(
             "could not get imageId after analysis or from image record - exception: "
             + str(err)
         )
@@ -535,7 +538,7 @@ def store_analysis_results(
                     analysis_result, content_type, manifest=image_manifest
                 )
             except Exception as err:
-                logger.warn("ERR: {}".format(err))
+                logger.warning("ERR: {}".format(err))
                 image_content_data[content_type] = {}
 
         if image_content_data:
@@ -553,7 +556,7 @@ def store_analysis_results(
         import traceback
 
         traceback.print_exc()
-        logger.warn(
+        logger.warning(
             "could not store image content metadata to archive - exception: " + str(err)
         )
 

@@ -17,7 +17,8 @@ import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, notifications, object_store
+from anchore_engine.subsys import taskstate, notifications, object_store
+import logging as logger
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
 from anchore_engine.db import (
@@ -63,7 +64,7 @@ def policy_engine_image_load(client, imageUserId, imageId, imageDigest):
         resp = client.ingress_image(
             user_id=imageUserId, image_id=imageId, analysis_fetch_url=fetch_url
         )
-        logger.spew("policy engine response (image add): " + str(resp))
+        logger.debug("policy engine response (image add): " + str(resp))
     except Exception as err:
         logger.error("failed to add/check image: " + str(err))
         raise err
@@ -107,7 +108,7 @@ def registry_lookup(dbsession, request_inputs):
                 try:
                     refresh_registry_creds(registry_creds, dbsession)
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "failed to refresh registry credentials - exception: "
                         + str(err)
                     )
@@ -173,7 +174,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
             try:
                 refresh_registry_creds(registry_creds, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -184,7 +185,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 )
             except Exception as err:
                 httpcode = 404
-                logger.warn(
+                logger.warning(
                     "no tags could be added from input regrepo ("
                     + str(regrepo)
                     + ") - exception: "
@@ -295,7 +296,7 @@ def repo(dbsession, request_inputs, bodycontent={}):
                 rc = anchore_engine.services.catalog.schedule_watcher("repo_watcher")
                 logger.debug("scheduled repo_watcher task")
             except Exception as err:
-                logger.warn("failed to schedule repo_watcher task: " + str(err))
+                logger.warning("failed to schedule repo_watcher task: " + str(err))
                 pass
 
     except Exception as err:
@@ -391,7 +392,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         try:
                             refresh_registry_creds(registry_creds, dbsession)
                         except Exception as err:
-                            logger.warn(
+                            logger.warning(
                                 "failed to refresh registry credentials - exception: "
                                 + str(err)
                             )
@@ -414,7 +415,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                             try:
                                 add_event(fail_event, dbsession)
                             except:
-                                logger.warn(
+                                logger.warning(
                                     "Ignoring error creating image registry lookup event"
                                 )
                             raise err
@@ -521,7 +522,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                 try:
                     refresh_registry_creds(registry_creds, dbsession)
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "failed to refresh registry credentials - exception: "
                         + str(err)
                     )
@@ -570,7 +571,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         try:
                             add_event(fail_event, dbsession)
                         except:
-                            logger.warn(
+                            logger.warning(
                                 "Ignoring error creating image registry lookup event"
                             )
                         raise err
@@ -1249,7 +1250,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
             try:
                 refresh_registry_creds(registry_records, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -1314,7 +1315,7 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
                                 )
                             )
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
                 # if refresh fails for any reason (and validation is requested), remove the registry from the DB and raise a fault
@@ -1408,7 +1409,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             try:
                 refresh_registry_creds(registry_records, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -1447,7 +1448,7 @@ def system_registries_registry(dbsession, request_inputs, registry, bodycontent=
             try:
                 refresh_registry_creds(registry_records, dbsession)
             except Exception as err:
-                logger.warn(
+                logger.warning(
                     "failed to refresh registry credentials - exception: " + str(err)
                 )
 
@@ -1516,7 +1517,7 @@ def perform_vulnerability_scan(
             if image_record.get("annotations", "{}"):
                 annotations = json.loads(image_record.get("annotations", "{}"))
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "could not marshal annotations from json - exception: " + str(err)
             )
 
@@ -1551,7 +1552,7 @@ def perform_vulnerability_scan(
         try:
             resp = policy_engine_image_load(client, userId, imageId, imageDigest)
         except Exception as err:
-            logger.warn("failed to load image data into policy engine: " + str(err))
+            logger.warning("failed to load image data into policy engine: " + str(err))
 
         curr_vuln_result = client.get_image_vulnerabilities(
             user_id=userId, image_id=imageId, force_refresh=force_refresh
@@ -1592,7 +1593,7 @@ def perform_vulnerability_scan(
             else:
                 logger.debug("no difference in vulnerability scan")
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "unable to interpret vulnerability difference data - exception: "
                 + str(err)
             )
@@ -1616,11 +1617,13 @@ def perform_vulnerability_scan(
                 try:
                     add_event(success_event, dbsession)
                 except:
-                    logger.warn(
+                    logger.warning(
                         "Ignoring error creating image vulnerability update event"
                     )
             except Exception as err:
-                logger.warn("failed to enqueue notification - exception: " + str(err))
+                logger.warning(
+                    "failed to enqueue notification - exception: " + str(err)
+                )
 
     return True
 
@@ -1647,7 +1650,7 @@ def perform_policy_evaluation(
             if image_record.get("annotations", "{}"):
                 annotations = json.loads(image_record.get("annotations", "{}"))
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "could not marshal annotations from json - exception: " + str(err)
             )
 
@@ -1688,7 +1691,7 @@ def perform_policy_evaluation(
         )
         resp = policy_engine_image_load(client, userId, imageId, imageDigest)
     except Exception as err:
-        logger.warn("failed to load image data into policy engine: " + str(err))
+        logger.warning("failed to load image data into policy engine: " + str(err))
 
     tagset = [evaltag]
     for fulltag in tagset:
@@ -1764,7 +1767,7 @@ def perform_policy_evaluation(
                     else:
                         last_evaluation_result["status"] = "fail"
                 except:
-                    logger.warn("no last eval record - skipping")
+                    logger.warning("no last eval record - skipping")
 
             obj_store.put_document(
                 userId, "policy_evaluations", evalId, curr_evaluation_result
@@ -1813,11 +1816,11 @@ def perform_policy_evaluation(
                     try:
                         add_event(success_event, dbsession)
                     except:
-                        logger.warn(
+                        logger.warning(
                             "Ignoring error creating image policy evaluation update event"
                         )
                 except Exception as err:
-                    logger.warn(
+                    logger.warning(
                         "failed to enqueue notification - exception: " + str(err)
                     )
 
@@ -1891,7 +1894,7 @@ def add_or_update_image(
             # dockerfile = a['image']['imagedata']['image_report']['dockerfile_contents'].encode('base64')
             dockerfile_mode = a["image"]["imagedata"]["image_report"]["dockerfile_mode"]
         except Exception as err:
-            logger.warn(
+            logger.warning(
                 "could not extract dockerfile_contents from input anchore_data - exception: "
                 + str(err)
             )
@@ -1974,7 +1977,7 @@ def add_or_update_image(
                                     new_image_record, anchore_data
                                 )
                             except Exception as err:
-                                logger.warn(
+                                logger.warning(
                                     "unable to update image record with analysis data - exception: "
                                     + str(err)
                                 )
@@ -2049,7 +2052,7 @@ def add_or_update_image(
                                         image_record["annotations"]
                                     )
                                 except Exception as err:
-                                    logger.warn(
+                                    logger.warning(
                                         "could not marshal annotations into json - exception: "
                                         + str(err)
                                     )
@@ -2389,7 +2392,7 @@ def do_image_delete(userId, image_record, dbsession, force=False):
             httpcode = 409
             raise Exception(msgdelete)
     except Exception as err:
-        logger.warn("DELETE failed - exception: " + str(err))
+        logger.warning("DELETE failed - exception: " + str(err))
         return_object = str(err)
 
     return return_object, httpcode

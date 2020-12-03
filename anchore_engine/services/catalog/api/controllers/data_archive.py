@@ -15,7 +15,8 @@ from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_auth
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.subsys import archive, logger
+from anchore_engine.subsys import archive
+import logging as logger
 
 authorizer = get_authorizer()
 

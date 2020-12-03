@@ -4,7 +4,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     have_vulnerabilities_for,
     feed_registry,
 )
-from anchore_engine.subsys import logger
+import logging as logger
 from anchore_engine.db.entities.policy_engine import (
     DistroTuple,
     FeedMetadata,
@@ -16,9 +16,9 @@ from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.policy_engine import (
     process_preflight,
 )  # _init_distro_mappings
+from anchore_engine.subsys.logger import enable_test_logging
 
-
-logger.enable_test_logging()
+enable_test_logging()
 
 
 class AnotherVulnClass:

@@ -3,7 +3,7 @@ import urllib.parse
 import uuid
 
 from anchore_engine import utils
-from anchore_engine.subsys import logger
+import logging as logger
 from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import (
     DriverConfigurationError,
