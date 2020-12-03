@@ -2543,6 +2543,17 @@ def add_event_json(event_json, dbsession, quiet=True):
 
 
 def load_policy_bundles(config, process_bundle, process_exception):
+    """
+    A convenience function to avoid code duplication between accounts.py and catalog/__init.py. This
+    function iterates through the one to many policy bundle filepaths in the config, opens them, and
+    converts them to json. Since the (currently two) calling methods do slightly different things with
+    those bundles (and handle exceptions in slightly ways) this function requires two callbacks it can
+    call to do that processing.
+
+    :param config The config:
+    :param process_bundle A callback with logic for what to do with each bundle:
+    :param process_exception A callback with logic for parsing exceptions:
+    """
     policy_bundles = config.get("policy_bundles", None)
     if policy_bundles is not None and policy_bundles != []:
         for policy_bundle in policy_bundles:
@@ -2552,7 +2563,7 @@ def load_policy_bundles(config, process_bundle, process_exception):
                 )
                 try:
                     bundle = {}
-                    with open(policy_bundle["bundle_path"], 'r') as FH:
+                    with open(policy_bundle["bundle_path"], "r") as FH:
                         bundle = json.loads(FH.read())
                     if bundle:
                         process_bundle(policy_bundle, bundle)

@@ -2346,6 +2346,7 @@ class CatalogService(ApiService):
 
                         config = self.global_configuration
 
+                        # What to do with each policy bundle
                         def process_bundle(policy_bundle, bundle):
                             bundle_url = obj_mgr.put_document(
                                 userId,
@@ -2368,6 +2369,8 @@ class CatalogService(ApiService):
                             if not rc:
                                 raise Exception("policy bundle DB add failed")
 
+                        # How to handle any exceptions form opening the bundle file or converting
+                        # its contents to json
                         def process_exception(exception):
                             if isinstance(exception, IntegrityError):
                                 logger.warn(

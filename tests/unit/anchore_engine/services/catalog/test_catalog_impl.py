@@ -29,6 +29,7 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
             fp.flush()
 
         policy_bundle = {}
+        # Just make the first bundle active since it's arbitrary for these tests
         policy_bundle["active"] = len(policy_bundles) == 0
         policy_bundle["bundle_path"] = bundle_path
         policy_bundles.append(policy_bundle)

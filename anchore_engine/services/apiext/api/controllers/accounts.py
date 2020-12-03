@@ -748,14 +748,17 @@ def _init_policy(accountname, config):
             "Account {} has no policy bundle - installing default".format(accountname)
         )
 
+        # What to do with each policy bundle
         def process_bundle(policy_bundle, bundle):
             resp = client.add_policy(bundle, active=policy_bundle["active"])
             if not resp:
                 raise Exception("policy bundle {} DB add failed".format(str(policy_bundle)))
 
+        # How to handle any exceptions form opening the bundle file or converting its contents
+        # to json
         def process_exception(exception):
             logger.error(
-                "could not load up bundles for user - exception: " + str(err)
+                "could not load up bundles for user - exception: " + str(exception)
             )
             raise
 

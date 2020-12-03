@@ -181,7 +181,7 @@ def load_policy_bundle_paths(src_dir=None):
                         "active": file_name == default_bundle_name,
                         "bundle_path": file
                     })
-                    copy_config_files(file, file_name, src_dir)
+                    copy_config_file(file, file_name, src_dir)
                 except Exception as e:
                     logger.warn(
                         "Policy bundle {} not found, unable to load. Exception: {}".format(file_name, e)
@@ -204,12 +204,12 @@ def load_filepath_to_config(key, fname, src_dir=None):
         localconfig[key] = default_file
         if src_dir == None:
             src_dir = os.path.join(resource_filename("anchore_engine", "conf/"))
-        copy_config_files(default_file, fname, src_dir)
+        copy_config_file(default_file, fname, src_dir)
     except:
         localconfig[key] = None
 
 
-def copy_config_files(file, file_name, src_dir):
+def copy_config_file(file, file_name, src_dir):
     if not os.path.exists(file):
         src_file = os.path.join(src_dir, file_name)
         if os.path.exists(src_file):
