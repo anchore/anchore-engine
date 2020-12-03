@@ -520,6 +520,7 @@ class ArchiveTransitionRule(Base, UtilMixin):
     exclude_selector_repository = Column(String)
     exclude_selector_tag = Column(String)
     exclude_expiration_days = Column(Integer)
+    max_images_per_account = Column(Integer)
 
     def __repr__(self):
         return "<ArchiveTransitionRule account={},rule_id={}>".format(

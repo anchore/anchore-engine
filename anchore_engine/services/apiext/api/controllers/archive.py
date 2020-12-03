@@ -1,20 +1,20 @@
 import re
-from anchore_engine.subsys import logger
-from anchore_engine.configuration.localconfig import (
-    GLOBAL_RESOURCE_DOMAIN,
-    ADMIN_ACCOUNT_NAME,
-)
-from anchore_engine.apis.context import ApiRequestContextProxy
+
 from anchore_engine.apis.authorization import (
     get_authorizer,
     ActionBoundPermission,
     RequestingAccountValue,
-    AccountTypes,
     Permission,
 )
-from anchore_engine.common.helpers import make_response_error
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.common.helpers import make_response_error
+from anchore_engine.configuration.localconfig import (
+    GLOBAL_RESOURCE_DOMAIN,
+    ADMIN_ACCOUNT_NAME,
+)
 
 authorizer = get_authorizer()
 
@@ -78,6 +78,15 @@ def create_analysis_archive_rule(rule):
 
         # Will raise exception if unauthorized
         authorizer.authorize(ApiRequestContextProxy.identity(), [perm])
+
+    # Validation for max_images_per_account
+    if (
+        not rule.get("system_global")
+        and rule.get("max_images_per_account", None) is not None
+    ):
+        raise BadRequest(
+            "Cannot set max_images_per_account on a rule that isn't system_global", {}
+        )
 
     client = internal_client_for(CatalogClient, ApiRequestContextProxy.namespace())
     try:
