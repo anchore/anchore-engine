@@ -2349,7 +2349,7 @@ class CatalogService(ApiService):
                         # What to do with each policy bundle
                         def process_bundle(policy_bundle, bundle):
                             bundle_url = obj_mgr.put_document(
-                                userId, 'policy_bundles', bundle['id'], bundle
+                                userId, "policy_bundles", bundle["id"], bundle
                             )
                             policy_record = make_policy_record(
                                 userId, bundle, policy_bundle["active"]

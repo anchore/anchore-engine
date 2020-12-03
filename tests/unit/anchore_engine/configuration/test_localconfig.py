@@ -6,7 +6,7 @@ from anchore_engine.configuration.localconfig import (
     get_config,
     load_defaults,
     load_filepath_to_config,
-    load_policy_bundle_paths
+    load_policy_bundle_paths,
 )
 from pathlib import Path
 
@@ -47,7 +47,7 @@ def mock_test_file(input_dir, config_filename):
     [
         ([]),
         (["anchore_default_bundle.json"]),
-        (["anchore_default_bundle.json", "second_bundle.json"])
+        (["anchore_default_bundle.json", "second_bundle.json"]),
     ]
 )
 def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames):
@@ -84,11 +84,11 @@ def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames)
     "config_key, config_filename",
     [
         ("anchore_scanner_analyzer_config_file", "analyzer_config.yaml"),
-        ("anchore_scanner_analyzer_config_file", "other_config.yaml")
+        ("anchore_scanner_analyzer_config_file", "other_config.yaml"),
     ]
 )
 def test_load_filepath_to_config(
-        mock_default_config, tmpdir, config_key, config_filename
+    mock_default_config, tmpdir, config_key, config_filename
 ):
     # setup files to read
     input_dir = tmpdir.mkdir(INPUT_CONFIG_DIR)

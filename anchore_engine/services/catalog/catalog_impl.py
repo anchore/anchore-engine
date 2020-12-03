@@ -2558,7 +2558,7 @@ def load_policy_bundles(config, process_bundle, process_exception):
     if policy_bundles is not None and policy_bundles != []:
         for policy_bundle in policy_bundles:
             if policy_bundle["bundle_path"] and os.path.exists(
-                    policy_bundle["bundle_path"]
+                policy_bundle["bundle_path"]
             ):
                 logger.info("loading bundle: " + str(policy_bundle["bundle_path"]))
                 try:

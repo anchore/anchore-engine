@@ -168,7 +168,7 @@ def load_policy_bundle_paths(src_dir=None):
     try:
         if policy_bundles_dir is not None:
             policy_bundles_dir_full_path = os.path.join(
-                localconfig['service_dir'], policy_bundles_dir
+                localconfig["service_dir"], policy_bundles_dir
             )
             if not os.path.exists(policy_bundles_dir_full_path):
                 os.mkdir(policy_bundles_dir_full_path)
@@ -184,7 +184,7 @@ def load_policy_bundle_paths(src_dir=None):
                     policy_bundles.append(
                         {
                             "active": file_name == default_bundle_name,
-                            "bundle_path": file
+                            "bundle_path": file,
                         }
                     )
                     copy_config_file(file, file_name, src_dir)

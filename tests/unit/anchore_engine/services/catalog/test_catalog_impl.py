@@ -40,10 +40,10 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
         (["first_bundle.json"], False, 1, 0),
         (["first_bundle.json", "first_bundle.json"], False, 2, 0),
         (["first_bundle.json"], True, 0, 1),
-    ]
+    ],
 )
 def test_load_policy_bundles(
-        tmpdir, bundle_filenames, simulate_exception, expected_bundles, expected_exceptions
+    tmpdir, bundle_filenames, simulate_exception, expected_bundles, expected_exceptions
 ):
     config = get_mock_config_with_policy_bundles(
         tmpdir, bundle_filenames, simulate_exception
