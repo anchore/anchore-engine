@@ -227,17 +227,6 @@ def get_tag_histories(session, userId, registries=None, repositories=None, tags=
     :param tags:
     :return: constructed query to execute/iterate over that returns tuples of (CatalogImageDocker, CatalogImage) that match userId/account and digest
     """
-
-    # select_fields = [
-    #     CatalogImageDocker.userId,
-    #     CatalogImageDocker.imageDigest,
-    #     CatalogImageDocker.registry,
-    #     CatalogImageDocker.repo,
-    #     CatalogImageDocker.tag,
-    #     CatalogImageDocker.tag_detected_at,
-    #     CatalogImage.analyzed_at
-    #     ]
-
     select_fields = [CatalogImageDocker, CatalogImage]
 
     order_by_fields = [
@@ -260,33 +249,36 @@ def get_tag_histories(session, userId, registries=None, repositories=None, tags=
         .order_by(*order_by_fields)
     )
 
-    for field, filters in [
+    query_tuples = [
         (CatalogImageDocker.registry, registries),
         (CatalogImageDocker.repo, repositories),
         (CatalogImageDocker.tag, tags),
-    ]:
-        if filters:
-            wildcarded = []
-            exact = []
-            for r in filters:
-                if r.strip() == "*":
-                    continue
+    ]
+    for field, filters in query_tuples:
+        if not filters:
+            continue
 
-                if "*" in r:
-                    wildcarded.append(r)
-                else:
-                    exact.append(r)
+        wildcarded = []
+        exact = []
+        for r in filters:
+            if r.strip() == "*":
+                continue
 
-            conditions = []
-            if wildcarded:
-                for w in wildcarded:
-                    conditions.append(field.like(w.replace("*", "%")))
+            if "*" in r:
+                wildcarded.append(r)
+            else:
+                exact.append(r)
 
-            if exact:
-                conditions.append(field.in_(exact))
+        conditions = []
+        if wildcarded:
+            for w in wildcarded:
+                conditions.append(field.like(w.replace("*", "%")))
 
-            if conditions:
-                qry = qry.filter(or_(*conditions))
+        if exact:
+            conditions.append(field.in_(exact))
+
+        if conditions:
+            qry = qry.filter(or_(*conditions))
 
     logger.debug("Constructed tag history query: {}".format(qry))
     return qry
