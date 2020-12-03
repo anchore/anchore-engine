@@ -1,8 +1,13 @@
 import os
 import pytest
 
-from anchore_engine.configuration.localconfig import DEFAULT_CONFIG, get_config, load_defaults, \
-    load_filepath_to_config, load_policy_bundle_paths
+from anchore_engine.configuration.localconfig import (
+    DEFAULT_CONFIG,
+    get_config,
+    load_defaults,
+    load_filepath_to_config,
+    load_policy_bundle_paths
+)
 from pathlib import Path
 
 DEFAULT_CONFIG_FN = "config.yaml"
@@ -37,11 +42,14 @@ def mock_test_file(input_dir, config_filename):
     Path(input_dir.strpath + "/" + config_filename).touch()
 
 
-@pytest.mark.parametrize("config_filenames", [
-    ([]),
-    (["anchore_default_bundle.json"]),
-    (["anchore_default_bundle.json", "second_bundle.json"])
-])
+@pytest.mark.parametrize(
+    "config_filenames",
+    [
+        ([]),
+        (["anchore_default_bundle.json"]),
+        (["anchore_default_bundle.json", "second_bundle.json"])
+    ]
+)
 def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames):
     # setup files to read
     input_dir = tmpdir.mkdir(INPUT_BUNDLES_DIR)
@@ -59,8 +67,11 @@ def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames)
     assert config["policy_bundles"] is not None
     assert len(config["policy_bundles"]) == len(config_filenames)
     for config_filename in config_filenames:
-        policy_bundle = next(policy_bundle for policy_bundle in config["policy_bundles"]
-                             if policy_bundle["bundle_path"] == output_dir_name + "/" + config_filename)
+        policy_bundle = next(
+            policy_bundle
+            for policy_bundle in config["policy_bundles"]
+            if policy_bundle["bundle_path"] == output_dir_name + "/" + config_filename
+        )
         assert policy_bundle is not None
         if config_filename == "anchore_default_bundle.json":
             assert policy_bundle["active"]
@@ -69,11 +80,16 @@ def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames)
         assert os.path.exists(policy_bundle["bundle_path"])
 
 
-@pytest.mark.parametrize("config_key, config_filename", [
-    ("anchore_scanner_analyzer_config_file", "analyzer_config.yaml"),
-    ("anchore_scanner_analyzer_config_file", "other_config.yaml")
-])
-def test_load_filepath_to_config(mock_default_config, tmpdir, config_key, config_filename):
+@pytest.mark.parametrize(
+    "config_key, config_filename",
+    [
+        ("anchore_scanner_analyzer_config_file", "analyzer_config.yaml"),
+        ("anchore_scanner_analyzer_config_file", "other_config.yaml")
+    ]
+)
+def test_load_filepath_to_config(
+        mock_default_config, tmpdir, config_key, config_filename
+):
     # setup files to read
     input_dir = tmpdir.mkdir(INPUT_CONFIG_DIR)
     mock_test_file(input_dir, config_filename)
@@ -85,5 +101,8 @@ def test_load_filepath_to_config(mock_default_config, tmpdir, config_key, config
     load_filepath_to_config(config_key, config_filename, src_dir=input_dir.strpath)
     config = get_config()
     assert config["anchore_scanner_analyzer_config_file"] is not None
-    assert config["anchore_scanner_analyzer_config_file"] == output_dir_name + "/" + config_filename
+    assert (
+        config["anchore_scanner_analyzer_config_file"]
+        == output_dir_name + "/" + config_filename
+    )
     assert os.path.exists(config["anchore_scanner_analyzer_config_file"])

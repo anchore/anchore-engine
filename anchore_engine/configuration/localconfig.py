@@ -54,7 +54,7 @@ DEFAULT_CONFIG = {
             },
         },
     },
-    "policy_bundles_dir": "bundles/"
+    "policy_bundles_dir": "bundles/",
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50
@@ -167,31 +167,40 @@ def load_policy_bundle_paths(src_dir=None):
 
     try:
         if policy_bundles_dir is not None:
-            policy_bundles_dir_full_path = os.path.join(localconfig['service_dir'], policy_bundles_dir)
+            policy_bundles_dir_full_path = os.path.join(
+                localconfig['service_dir'], policy_bundles_dir
+            )
             if not os.path.exists(policy_bundles_dir_full_path):
                 os.mkdir(policy_bundles_dir_full_path)
 
             if src_dir == None:
-                src_dir = os.path.join(resource_filename("anchore_engine", "conf/bundles/"))
+                src_dir = os.path.join(
+                    resource_filename("anchore_engine", "conf/bundles/")
+                )
             policy_bundles = []
             for file_name in os.listdir(src_dir):
                 try:
                     file = os.path.join(policy_bundles_dir_full_path, file_name)
-                    policy_bundles.append({
-                        "active": file_name == default_bundle_name,
-                        "bundle_path": file
-                    })
+                    policy_bundles.append(
+                        {
+                            "active": file_name == default_bundle_name,
+                            "bundle_path": file
+                        }
+                    )
                     copy_config_file(file, file_name, src_dir)
                 except Exception as e:
                     logger.warn(
-                        "Policy bundle {} not found, unable to load. Exception: {}".format(file_name, e)
+                        "Policy bundle {} not found, unable to load. Exception: {}".format(
+                            file_name, e
+                        )
                     )
             localconfig["policy_bundles"] = policy_bundles
             return
     except Exception as e:
         logger.warn(
-            "Configured policy bundle dir at {} not found, unable to load. Exception: {}"
-            .format(policy_bundles_dir, e)
+            "Configured policy bundle dir at {} not found, unable to load. Exception: {}".format(
+                policy_bundles_dir, e
+            )
         )
         localconfig["policy_bundles"] = None
 
@@ -200,7 +209,7 @@ def load_filepath_to_config(key, fname, src_dir=None):
     global localconfig
 
     try:
-        default_file = os.path.join(localconfig['service_dir'], fname)
+        default_file = os.path.join(localconfig["service_dir"], fname)
         localconfig[key] = default_file
         if src_dir == None:
             src_dir = os.path.join(resource_filename("anchore_engine", "conf/"))
@@ -268,7 +277,9 @@ def load_config(configdir=None, configfile=None, validate_params=None):
 
     # copy the src installed files unless they already exist in the service dir conf
     load_policy_bundle_paths()
-    load_filepath_to_config("anchore_scanner_analyzer_config_file", "analyzer_config.yaml")
+    load_filepath_to_config(
+        "anchore_scanner_analyzer_config_file", "analyzer_config.yaml"
+    )
 
     # generate/setup the host_id in the service_dir
     localconfig["host_id"] = get_host_id()

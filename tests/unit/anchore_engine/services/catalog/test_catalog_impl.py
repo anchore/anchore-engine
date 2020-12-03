@@ -19,10 +19,7 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
         if simulate_exception:
             mock_body = "not json"
         else:
-            mock_body = json.dumps({
-                "id": str(mock_id),
-                "name": bundle_filename
-            })
+            mock_body = json.dumps({"id": str(mock_id), "name": bundle_filename})
         mock_id += 1
         with open(bundle_path, "w") as fp:
             fp.write(mock_body)
@@ -34,22 +31,23 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
         policy_bundle["bundle_path"] = bundle_path
         policy_bundles.append(policy_bundle)
 
-    return {
-        "policy_bundles": policy_bundles
-    }
+    return {"policy_bundles": policy_bundles}
 
 
-@pytest.mark.parametrize("bundle_filenames, simulate_exception, expected_bundles, expected_exceptions", [
-    (["first_bundle.json"], False, 1, 0),
-    (["first_bundle.json", "first_bundle.json"], False, 2, 0),
-    (["first_bundle.json"], True, 0, 1),
-])
-def test_load_policy_bundles(tmpdir,
-                             bundle_filenames,
-                             simulate_exception,
-                             expected_bundles,
-                             expected_exceptions):
-    config = get_mock_config_with_policy_bundles(tmpdir, bundle_filenames, simulate_exception)
+@pytest.mark.parametrize(
+    "bundle_filenames, simulate_exception, expected_bundles, expected_exceptions",
+    [
+        (["first_bundle.json"], False, 1, 0),
+        (["first_bundle.json", "first_bundle.json"], False, 2, 0),
+        (["first_bundle.json"], True, 0, 1),
+    ]
+)
+def test_load_policy_bundles(
+        tmpdir, bundle_filenames, simulate_exception, expected_bundles, expected_exceptions
+):
+    config = get_mock_config_with_policy_bundles(
+        tmpdir, bundle_filenames, simulate_exception
+    )
     policy_bundles = []
     bundles = []
     exceptions = []

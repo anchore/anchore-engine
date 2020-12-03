@@ -2349,22 +2349,17 @@ class CatalogService(ApiService):
                         # What to do with each policy bundle
                         def process_bundle(policy_bundle, bundle):
                             bundle_url = obj_mgr.put_document(
-                                userId,
-                                'policy_bundles',
-                                bundle['id'],
-                                bundle
+                                userId, 'policy_bundles', bundle['id'], bundle
                             )
                             policy_record = make_policy_record(
-                                userId,
-                                bundle,
-                                policy_bundle["active"]
+                                userId, bundle, policy_bundle["active"]
                             )
                             rc = db_policybundle.add(
-                                policy_record['policyId'],
+                                policy_record["policyId"],
                                 userId,
                                 policy_bundle["active"],
                                 policy_record,
-                                session=dbsession
+                                session=dbsession,
                             )
                             if not rc:
                                 raise Exception("policy bundle DB add failed")
@@ -2382,7 +2377,9 @@ class CatalogService(ApiService):
                                     + str(exception)
                                 )
 
-                        catalog_impl.load_policy_bundles(config, process_bundle, process_exception)
+                        catalog_impl.load_policy_bundles(
+                            config, process_bundle, process_exception
+                        )
 
                 except Exception as err:
                     if isinstance(err, IntegrityError):

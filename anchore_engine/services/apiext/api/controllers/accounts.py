@@ -752,7 +752,9 @@ def _init_policy(accountname, config):
         def process_bundle(policy_bundle, bundle):
             resp = client.add_policy(bundle, active=policy_bundle["active"])
             if not resp:
-                raise Exception("policy bundle {} DB add failed".format(str(policy_bundle)))
+                raise Exception(
+                    "policy bundle {} DB add failed".format(str(policy_bundle))
+                )
 
         # How to handle any exceptions form opening the bundle file or converting its contents
         # to json
