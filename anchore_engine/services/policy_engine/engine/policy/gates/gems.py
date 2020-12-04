@@ -31,7 +31,7 @@ class NotLatestTrigger(BaseTrigger):
         feed_gems = context.data.get(GEM_MATCH_KEY)
         img_gems = context.data.get(GEM_LIST_KEY)
 
-        if feed_gems or not img_gems:
+        if not feed_gems or not img_gems:
             return
 
         feed_names = {p.name: p.latest for p in feed_gems}
@@ -44,7 +44,7 @@ class NotLatestTrigger(BaseTrigger):
                 if v and v != feed_names.get(gem):
                     self._fire(
                         msg="Package ({}) version ({}) installed but is not the latest version ({})".format(
-                            gem, v, feed_names[gem]["latest"]
+                            gem, v, feed_names[gem]
                         )
                     )
 
@@ -67,7 +67,7 @@ class NotOfficialTrigger(BaseTrigger):
         feed_gems = context.data.get(GEM_MATCH_KEY)
         img_gems = context.data.get(GEM_LIST_KEY)
 
-        if feed_gems or not img_gems:
+        if not feed_gems or not img_gems:
             return
 
         feed_names = {p.name: p.versions_json for p in feed_gems}
@@ -98,7 +98,7 @@ class BadVersionTrigger(BaseTrigger):
         feed_gems = context.data.get(GEM_MATCH_KEY)
         img_gems = context.data.get(GEM_LIST_KEY)
 
-        if feed_gems or not img_gems:
+        if not feed_gems or not img_gems:
             return
 
         feed_names = {p.name: p.versions_json for p in feed_gems}
