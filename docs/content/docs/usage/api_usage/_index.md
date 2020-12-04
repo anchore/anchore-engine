@@ -24,7 +24,45 @@ http://localhost:8228/v1/swagger.json
 
 ### Local Swagger UI
 
-Finally, Anchore includes the ability to deploy a sidecar set of containers that provide a local Swagger UI, allowing for the API to be viewed and tested within a web browser. The Swagger UI is accessed by first enabling an nginx proxy service and swagger-ui service that run alongside your anchore engine deployment, and then directing your browser at the nginx proxy service.
+1. When using docker-compose: Uncomment the following section at the bottom of the docker-compose.yaml file:
 
+    ```
+    #  # Uncomment this section to run a swagger UI service, for inspecting and interacting with the anchore engine API via a browser (http://localhost:8080 by default, change if needed in both sections below)
+    #  swagger-ui-nginx:
+    #    image: docker.io/nginx:latest
+    #    depends_on:
+    #      - api
+    #      - swagger-ui
+    #    ports:
+    #      - "8080:8080"
+    #    volumes:
+    #      - ./anchore-swaggerui-nginx.conf:/etc/nginx/nginx.conf:z
+    #    logging:
+    #      driver: "json-file"
+    #      options:
+    #        max-size: 100m
+    #  swagger-ui:
+    #    image: docker.io/swaggerapi/swagger-ui
+    #    environment:
+    #      - URL=http://localhost:8080/v1/swagger.json
+    #    logging:
+    #      driver: "json-file"
+    #      options:
+    #        max-size: 100m
+    ```
 
-For instructions on deploying the Swagger UI as a sidecar, please see [Swagger in our FAQs.]({{< ref "/docs/faq" >}})
+1. Download the nginx configuration into the same directory as the docker-compose.yaml file, with name _anchore-swaggerui-nginx.conf_
+
+    ```
+    curl -O https://docs.anchore.com/current/docs/quickstart/anchore-swaggerui-nginx.conf
+    docker-compose up -d
+    ```
+
+    You should see a new container started and can access prometheus via your browser on `http://localhost:8080/ui/`
+
+~
+~
+~
+~
+~
+~

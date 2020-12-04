@@ -10,7 +10,7 @@ If you have not installed the Anchore CLI, please refer to the [installation gui
 
 To jump to a particular guide, select from the following below:
 
-- [Analyzing Images]({{< ref "/docs/using/cli_usage/images" >}})
-- [Inspecting Image Content]({{< ref "/docs/using/cli_usage/images/inspecting_image_content" >}})
-- [Scanning Repositories]({{< ref "/docs/using/cli_usage/repositories" >}})
-- [Viewing Security Vulnerabilities]({{< ref "/docs/using/cli_usage/images/viewing_security_vulnerabilities" >}})
+- [Analyzing Images]({{< ref "/docs/usage/cli_usage/images" >}})
+- [Inspecting Image Content]({{< ref "/docs/usage/cli_usage/images/inspecting_image_content" >}})
+- [Scanning Repositories]({{< ref "/docs/usage/cli_usage/repositories" >}})
+- [Viewing Security Vulnerabilities]({{< ref "/docs/usage/cli_usage/images/viewing_security_vulnerabilities" >}})

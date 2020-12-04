@@ -21,7 +21,7 @@ growth in a busy system.
 
 The Analysis Archive extends the object store even further by providing a system-managed way to move an image analysis 
 and all of its related data (policy evaluations, tags, annotations, etc) and moving it to a location outside of the main
-set of images such that it consumes much less storage in the database when using an object store, perserves the last 
+set of images such that it consumes much less storage in the database when using an object store, preserves the last 
 state of the image, and supports moving it back into the main image set if it is needed in the future without requiring 
 that the image itself be reanalzyed--restoring from the archive does not require the actual docker image to exist at all.
 
@@ -162,13 +162,13 @@ manage the rules that control automatic transitions. For more information see th
 
 ### Archiving an Image Analysis
 
-See: [Archiving an Image]({{< ref "/docs/using/cli_usage/analysis_archive#archiving-images" >}})
+See: [Archiving an Image]({{< ref "/docs/usage/cli_usage/analysis_archive#archiving-images" >}})
 
 ### Restoring an Image Analysis
 
-See: [Restoring an Image]({{< ref "/docs/using/cli_usage/analysis_archive#restoring-images" >}})
+See: [Restoring an Image]({{< ref "/docs/usage/cli_usage/analysis_archive#restoring-images" >}})
 
 ### Managing Archive Rules
 
-See: [Working with Archive Rules]({{< ref "/docs/using/cli_usage/analysis_archive#rules" >}})
+See: [Working with Archive Rules]({{< ref "/docs/usage/cli_usage/analysis_archive#rules" >}})
 

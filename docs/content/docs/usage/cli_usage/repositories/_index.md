@@ -24,7 +24,7 @@ The `repo add` command instructs the Anchore Engine to add the specified reposit
 
 `$ anchore-cli repo add repo.example.com/apps`
 
-By default the Anchore Engine will automatically add the discovered tags to the list of subscribed tags (see [Working with Subscriptions]({{< ref "/docs/using/cli_usage/subscriptions" >}}) this behavior can be overridden by passing the `--noautosubscribe` option.
+By default the Anchore Engine will automatically add the discovered tags to the list of subscribed tags (see [Working with Subscriptions]({{< ref "/docs/usage/cli_usage/subscriptions" >}}) this behavior can be overridden by passing the `--noautosubscribe` option.
 
 The Anchore Engine needs to find a single TAG in the repository before the repository can be added to the watch list. By default the Anchore Engine will look for a tag named latest this behavior can be overridden using the `--lookuptag` option.
 
