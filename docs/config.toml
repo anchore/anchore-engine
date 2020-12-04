@@ -1,4 +1,4 @@
-baseURL = "engine.anchore.io"
+baseURL = ""
 title = "Anchore Engine"
 
 enableRobotsTXT = true
@@ -98,4 +98,3 @@ no = 'Sorry to hear that. Please <a href="https://github.com/anchore/anchore-eng
   url = "https://anchore.com"
   icon = "fas fa-university"
     desc = "Anchore Company Site"
-

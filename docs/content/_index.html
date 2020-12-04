@@ -1,20 +1,20 @@
 +++
-title = "Enterprise Documentation"
-linkTitle = "Anchore Enterprise Documentation"
+title = "Anchore Engine Documentation"
+linkTitle = "Anchore Engine Documentation"
 +++
 
-{{< blocks/cover title="Anchore Container Analysis" subtitle="Welcome to the Anchore Docs! Ready to get started?" image-anchor="top" height="med" color="dark" >}}
+{{< blocks/cover title="Anchore Engine" subtitle="Welcome!" image-anchor="top" height="med" color="dark" >}}
 <div class="mx-auto">
-  <a class="btn btn-lg btn-secondary mr-3 mt-3 mb-3" href="{{< ref "docs/quickstart" >}}">
+	<a class="btn btn-lg btn-primary mr-3 mt-3 mb-3" href="{{< ref "docs/quickstart" >}}">
 		Quick Start
 	</a>
-	<a class="btn btn-lg btn-primary mr-3 mt-3 mb-3" href="{{< ref "docs" >}}">
+	<a class="btn btn-lg btn-secondary mr-3 mt-3 mb-3" href="{{< ref "docs" >}}">
 		Start Reading
 	</a>
 </div>
 {{< /blocks/cover >}}
 
-{{% blocks/section title="Integrations" subtitle="Integrate Anchore with your favorite CI/CD Systems, Orchestration Platforms, and more" color="primary" %}}
+{{% blocks/section title="Integrations" subtitle="Integrate Anchore Engine with your favorite CI/CD Systems, Orchestration Platforms, and more" color="primary" %}}
 
 {{% blocks/feature svg="icons/kubernetes-logo.svg" title="Kubernetes" %}}
 Install Anchore Engine using the [Helm Chart](https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine) and make admission decisions based on analysis and policy-based evaluations with our [Kubernetes Admission Controller](https://github.com/anchore/kubernetes-admission-controller)
@@ -54,10 +54,6 @@ Join our [Slack](https://anchore.com/slack) channel and chat live with members o
 
 {{% blocks/feature icon="fab fa-github" title="GitHub" %}}
 Browse the source code for [Anchore Engine](https://github.com/anchore/anchore-engine) and feel free to contribute via [Pull Request](https://github.com/anchore/anchore-engine/pulls)
-{{% /blocks/feature %}}
-
-{{% blocks/feature svg="icons/twitter-logo.svg" title="Twitter" %}}
-Follow us on [Twitter](https://twitter.com/anchore) for announcements of latest updates and features on everything Anchore
 {{% /blocks/feature %}}
 
 {{< /blocks/section >}}
