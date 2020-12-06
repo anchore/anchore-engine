@@ -1584,6 +1584,64 @@ def db_upgrade_012_013():
     upgrade_flush_centos_vulns_013()
 
 
+def db_upgrade_013_014():
+    from anchore_engine.db import session_scope
+    from anchore_engine.db.entities.identity import UserTypes
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    new_columns = [
+        {
+            "table_name": "catalog_archive_transition_rules",
+            "columns": [
+                Column(
+                    "exclude_selector_registry",
+                    String,
+                ),
+                Column(
+                    "exclude_selector_repository",
+                    String,
+                ),
+                Column(
+                    "exclude_selector_tag",
+                    String,
+                ),
+                Column(
+                    "exclude_expiration_days",
+                    Integer,
+                ),
+            ],
+        }
+    ]
+
+    log.err("creating new table columns")
+    for table in new_columns:
+        for column in table["columns"]:
+            log.err(
+                "creating new column ({}) in table ({})".format(
+                    column.name, table.get("table_name", "")
+                )
+            )
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute(
+                    "ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s"
+                    % (table["table_name"], cn, ct)
+                )
+            except Exception as e:
+                log.err(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+                raise Exception(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -1600,4 +1658,5 @@ upgrade_functions = (
     (("0.0.10", "0.0.11"), [db_upgrade_010_011]),
     (("0.0.11", "0.0.12"), [db_upgrade_011_012]),
     (("0.0.12", "0.0.13"), [db_upgrade_012_013]),
+    (("0.0.13", "0.0.14"), [db_upgrade_013_014]),
 )

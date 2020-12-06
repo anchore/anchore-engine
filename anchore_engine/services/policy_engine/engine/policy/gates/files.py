@@ -27,18 +27,17 @@ class ContentMatchTrigger(BaseTrigger):
     )
 
     def evaluate(self, image_obj, context):
-        match_filter = self.regex_name.value()
+        match_decoded = self.regex_name.value()
 
-        if match_filter:
-            match_decoded = ensure_str(base64.b64encode(ensure_bytes(match_filter)))
-        else:
-            return
+        if match_decoded:
+            match_encoded = ensure_str(base64.b64encode(ensure_bytes(match_decoded)))
 
         for thefile, regexps in list(context.data.get("content_regexp", {}).items()):
             thefile = ensure_str(thefile)
             if not regexps:
                 continue
             for regexp in regexps.keys():
+                found = False
                 decoded_regexp = ensure_str(base64.b64decode(ensure_bytes(regexp)))
                 try:
                     regexp_name, theregexp = decoded_regexp.split("=", 1)
@@ -46,19 +45,14 @@ class ContentMatchTrigger(BaseTrigger):
                     regexp_name = None
                     theregexp = decoded_regexp
 
-                if not match_filter:
-                    self._fire(
-                        msg="File content analyzer found regexp match in container: file={} regexp={}".format(
-                            thefile, decoded_regexp
-                        )
-                    )
-                elif regexp == match_filter or theregexp == match_decoded:
-                    self._fire(
-                        msg="File content analyzer found regexp match in container: file={} regexp={}".format(
-                            thefile, decoded_regexp
-                        )
-                    )
+                if not match_decoded:
+                    found = True
+                elif theregexp == match_decoded or regexp == match_encoded:
+                    found = True
                 elif regexp_name and regexp_name == match_decoded:
+                    found = True
+
+                if found:
                     self._fire(
                         msg="File content analyzer found regexp match in container: file={} regexp={}".format(
                             thefile, decoded_regexp
