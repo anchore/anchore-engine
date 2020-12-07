@@ -64,7 +64,7 @@ def manifest_to_digest_shellout(rawmanifest):
 
 
 def copy_image_from_docker_archive(source_archive, dest_dir):
-    cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(
+    cmdstr = "skopeo copy docker-archive:{} oci:{}:image --remove-signatures".format(
         source_archive, dest_dir
     )
     cmd = cmdstr.split()
