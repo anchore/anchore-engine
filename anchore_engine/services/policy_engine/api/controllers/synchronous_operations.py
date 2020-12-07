@@ -979,10 +979,11 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         try:
             all_cpe_matches = []
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
-                with timer("Image vulnerability cpe lookups", log_level="debug"):
-                    all_cpe_matches = img.cpe_vulnerabilities(
-                        _nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls
+                all_cpe_matches = (
+                    ApiRequestContextProxy.get_service().get_cpe_vulnerabilities(
+                        img, _nvd_cls, _cpe_cls
                     )
+                )
 
                 if not all_cpe_matches:
                     all_cpe_matches = []
