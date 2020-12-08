@@ -63,9 +63,14 @@ def manifest_to_digest_shellout(rawmanifest):
     return ret
 
 
-def copy_image_from_docker_archive(source_archive, dest_dir):
-    cmdstr = "skopeo copy docker-archive:{} oci:{}:image".format(
-        source_archive, dest_dir
+def copy_image_from_docker_archive(source_archive, dest_dir, remove_signatures=True):
+    if remove_signatures:
+        remove_signatures_string = "--remove-signatures"
+    else:
+        remove_signatures_string = ""
+
+    cmdstr = "skopeo copy {} docker-archive:{} oci:{}:image".format(
+        remove_signatures_string, source_archive, dest_dir
     )
     cmd = cmdstr.split()
     try:
@@ -96,6 +101,7 @@ def download_image(
     manifest=None,
     parent_manifest=None,
     use_cache_dir=None,
+    remove_signatures=True,
 ):
     try:
         proc_env = os.environ.copy()
@@ -157,6 +163,11 @@ def download_image(
                         os_overrides.insert(0, "windows")
                         break
 
+        if remove_signatures:
+            remove_signatures_string = "--remove-signatures"
+        else:
+            remove_signatures_string = ""
+
         for os_override in os_overrides:
             success = False
             if os_override not in ["", "linux"]:
@@ -175,9 +186,10 @@ def download_image(
             cmd = [
                 "/bin/sh",
                 "-c",
-                "skopeo {} {} copy {} {} {} docker://{} oci:{}:image".format(
+                "skopeo {} {} copy {} {} {} {} docker://{} oci:{}:image".format(
                     os_override_str,
                     global_timeout_str,
+                    remove_signatures_string,
                     tlsverifystr,
                     credstr,
                     cachestr,
