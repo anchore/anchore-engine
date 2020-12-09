@@ -1610,6 +1610,7 @@ def db_upgrade_013_014():
                     "exclude_expiration_days",
                     Integer,
                 ),
+                Column("max_images_per_account", Integer),
             ],
         }
     ]

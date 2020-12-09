@@ -10,6 +10,7 @@ from sqlalchemy import or_
 from anchore_engine import db
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import (
     session_scope,
@@ -65,10 +66,19 @@ def transition_rule_db_to_json(db_rule: ArchiveTransitionRule):
             "repository": db_rule.selector_repository,
             "tag": db_rule.selector_tag,
         },
+        "exclude": {
+            "expiration_days": db_rule.exclude_expiration_days,
+            "selector": {
+                "registry": db_rule.exclude_selector_registry,
+                "repository": db_rule.exclude_selector_repository,
+                "tag": db_rule.exclude_selector_tag,
+            },
+        },
         "analysis_age_days": db_rule.analysis_age_days,
         "tag_versions_newer": db_rule.tag_versions_newer,
         "transition": db_rule.transition.value,
         "system_global": db_rule.system_global,
+        "max_images_per_account": db_rule.max_images_per_account,
         "created_at": epoch_to_rfc3339(db_rule.created_at),
         "last_updated": epoch_to_rfc3339(db_rule.last_updated),
     }
@@ -166,6 +176,18 @@ def create_analysis_archive_rule(rule):
 
     try:
         with session_scope() as session:
+            # Validate that only one system_global rule has max_images_per_account set
+            qry = session.query(ArchiveTransitionRule).filter(
+                ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(),
+                ArchiveTransitionRule.system_global == True,
+                ArchiveTransitionRule.max_images_per_account != None,
+            )
+            if qry.first() is not None:
+                raise BadRequest(
+                    "A system_global Archive Transition Rule already exists with max_images_per_account set",
+                    {"existingRule": repr(qry.first())},
+                )
+
             r = ArchiveTransitionRule()
             r.account = ApiRequestContextProxy.namespace()
             r.rule_id = uuid.uuid4().hex
@@ -185,6 +207,7 @@ def create_analysis_archive_rule(rule):
             r.exclude_selector_repository = exclude_selector.get("repository", "")
             r.exclude_selector_tag = exclude_selector.get("tag", "")
             r.exclude_expiration_days = exclude.get("expiration_days", -1)
+            r.max_images_per_account = rule.get("max_images_per_account", None)
 
             session.add(r)
             session.flush()

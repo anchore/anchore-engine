@@ -2,14 +2,17 @@
 Module for handling archive tasks
 """
 import datetime
+import fnmatch
 import io
 import json
 import os
-import fnmatch
 import tarfile
 import tempfile
 import time
 import uuid
+
+# Json serialization stuff...
+from marshmallow import fields, post_load
 
 # Json serialization stuff...
 from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
@@ -31,10 +34,6 @@ from anchore_engine.db import (
 )
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.catalog.catalog_impl import image_imageDigest
-
-
-# Json serialization stuff...
-from marshmallow import fields, post_load
 from anchore_engine.subsys import logger, archive, object_store
 from anchore_engine.subsys.events import (
     ImageArchiveDeleted,
@@ -516,58 +515,102 @@ class ImageAnalysisArchiver(object):
                 CatalogImage.analyzed_at < min_time
             )
 
-        return self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
+        candidates, excluded_digests = self._evaluate_tag_history_and_exclude(
+            rule, tag_histories_qry
+        )
+
+        # Do an additional query to retrieve images which exceed the max image count
+        # NOTE: only applies to system rules that have the max_images_per_account set to a positive integer
+        if (
+            rule.system_global
+            and rule.max_images_per_account is not None
+            and rule.max_images_per_account > 0
+        ):
+            old_images_exceeding_max_count = (
+                db_catalog_image.get_oldest_images_with_limit(
+                    session, self.account, rule.max_images_per_account, excluded_digests
+                )
+            )
+            if old_images_exceeding_max_count:
+                images_exceeding_max_count = 0
+                for (
+                    catalog_image_docker,
+                    catalog_image,
+                ) in old_images_exceeding_max_count:
+                    candidates.append((catalog_image_docker, catalog_image))
+                    images_exceeding_max_count += 1
+                logger.info(
+                    "Transitioning {} images according to max_images_per_account setting".format(
+                        images_exceeding_max_count
+                    )
+                )
+        return candidates
 
     def _evaluate_tag_history_and_exclude(self, rule, image_tuple_generator):
         candidates = []
+        excluded_digests = []
         current_tag = None
         history_depth = 0
 
-        for tag_rec, image in image_tuple_generator:
-            logger.debug("Checking tag: {}, image: {}".format(tag_rec, image))
+        for catalog_image_docker, catalog_image in image_tuple_generator:
+            logger.debug(
+                "Checking tag: {}, image: {}".format(
+                    catalog_image_docker, catalog_image
+                )
+            )
 
             # If the image matches the exclude selector, we do not consider it to be a candidate for transition,
             # therefore, we should skip it
-            if self._is_exclude_match(rule, image):
+            if self._is_exclude_match(rule, catalog_image, catalog_image_docker):
+                logger.debug(
+                    "Image is excluded from archive transition rule: {}".format(
+                        catalog_image_docker
+                    )
+                )
+                excluded_digests.append(catalog_image.imageDigest)
                 continue
 
             if not current_tag:
-                current_tag = tag_rec
+                current_tag = catalog_image_docker
                 history_depth = 0
 
             if (
-                tag_rec.registry != current_tag.registry
-                or tag_rec.repo != current_tag.repo
-                or tag_rec.tag != current_tag.tag
+                catalog_image_docker.registry != current_tag.registry
+                or catalog_image_docker.repo != current_tag.repo
+                or catalog_image_docker.tag != current_tag.tag
             ):
                 #  No match, this is a new tag, so reset depth
-                current_tag = tag_rec
                 history_depth = 0
 
             # No depth required or at-or-beyond specified depth, the this is a candidate
             if rule.tag_versions_newer < 0 or rule.tag_versions_newer <= history_depth:
-                candidates.append((tag_rec, image))
+                candidates.append((catalog_image_docker, catalog_image))
 
             history_depth += 1
-            current_tag = tag_rec
+            current_tag = catalog_image_docker
 
-        return candidates
+        return candidates, excluded_digests
 
-    def _is_exclude_match(self, rule, image):
+    def _is_exclude_match(self, rule, catalog_image, catalog_image_docker):
         """
         If the exclude match is not expired,
         Evaluate a Rule Exclude selector from lead granular to most granular level of image (registry -> repo -> tag)
         """
-        if self._is_exclude_expired(rule, image):
+        if self._is_exclude_expired(rule, catalog_image):
+            logger.info("Exclude clause is expired: {}".format(rule))
             return False
 
         # Use fnmatch because it supports glob expression evaluation. Therefore, an exclude block could look like:
         #   {"exclude": {"registry": "docker.io", "repository": "alpine", "tag": "*"}} which should mean that
         # No docker.io/alpine images should ever be transitioned (archived/deleted) according to this rule
         return (
-            fnmatch.filter([image.registry], rule.exclude_selector_registry)
-            and fnmatch.filter([image.repo], rule.exclude_selector_repository)
-            and fnmatch.filter([image.tag], rule.exclude_selector_tag)
+            fnmatch.filter(
+                [catalog_image_docker.registry], rule.exclude_selector_registry
+            )
+            and fnmatch.filter(
+                [catalog_image_docker.repo], rule.exclude_selector_repository
+            )
+            and fnmatch.filter([catalog_image_docker.tag], rule.exclude_selector_tag)
         )
 
     def _is_exclude_expired(self, rule, image):
@@ -1488,21 +1531,3 @@ class ArchiveImageTask(object):
         except Exception as ex:
             logger.exception("Error flushing policy engine state for image")
             raise ex
-
-    # Removed since the archive task should not affect any sources
-    # def flush_source_objects(self, src_mgr, artifacts):
-    #     for artifact in artifacts:
-    #         logger.debug('Flushing source artifact: {}'.format(artifact.name))
-    #         if artifact.source and artifact.source.bucket:
-    #             src_mgr.delete(self.account, artifact.source.bucket, artifact.source.key)
-    #
-    #     with session_scope() as session:
-    #         db_catalog_image.delete(self.image_digest, self.account, session)
-    #
-    # def flush_policy_engine(self, image_id):
-    #     try:
-    #         pe_client = internal_client_for(PolicyEngineClient, userId=self.account)
-    #         pe_client.delete_image(self.account, image_id)
-    #     except Exception as ex:
-    #         logger.exception("Error flushing policy engine state for image")
-    #         raise ex
