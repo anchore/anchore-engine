@@ -201,11 +201,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
     )
 
     package_path_exclude = SimpleStringParameter(
-        name='package_path_exclude',
-        example_str='.*test\.jar*',
-        description='The regex to evaluate against the package path to exclude vulnerabilities',
+        name="package_path_exclude",
+        example_str=".*test\.jar*",
+        description="The regex to evaluate against the package path to exclude vulnerabilities",
         is_required=False,
-        sort_order=20
+        sort_order=20,
     )
 
     def evaluate(self, image_obj, context):
@@ -297,13 +297,15 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 parameter_data["pkg_type"] = image_cpe.pkg_type
 
                                 if package_path_re is not None:
-                                    match_found = package_path_re.match(image_cpe.pkg_path)
+                                    match_found = package_path_re.match(
+                                        image_cpe.pkg_path
+                                    )
                                     if match_found is not None:
                                         logger.debug(
                                             "Non-OS vulnerability {} package path {} matches package path exlcude {}, skipping".format(
                                                 vulnerability_cpe.parent.name,
                                                 image_cpe.pkg_path,
-                                                path_exclude_re_value
+                                                path_exclude_re_value,
                                             )
                                         )
                                         continue
