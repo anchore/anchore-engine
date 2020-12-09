@@ -299,7 +299,21 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 if package_path_re is not None:
                                     match_found = package_path_re.match(image_cpe.pkg_path)
                                     if match_found is not None:
+                                        logger.debug(
+                                            "Non-OS vulnerability {} package path {} matches package path exlcude {}, skipping".format(
+                                                vulnerability_cpe.parent.name,
+                                                image_cpe.pkg_path,
+                                                path_exclude_re_value
+                                            )
+                                        )
                                         continue
+
+                                # setting fixed_version here regardless of gate parameter,
+                                fix_available_in = vulnerability_cpe.get_fixed_in()
+                                if fix_available_in:
+                                    parameter_data["fixed_version"] = ", ".join(
+                                        fix_available_in
+                                    )
 
                                 # Check if the vulnerability is too recent for this policy
                                 if timeallowed:
@@ -399,20 +413,13 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                         [image_cpe.name, image_cpe.version]
                                     )
 
+                                # Check fix_available status if specified by user in policy
                                 if is_fix_available is not None:
-                                    # Must do a fix_available check
-                                    fix_available_in = vulnerability_cpe.get_fixed_in()
-
                                     # explicit fix state check matches fix availability
-                                    if is_fix_available == (
+                                    if is_fix_available != (
                                         fix_available_in is not None
                                         and len(fix_available_in) > 0
                                     ):
-                                        if is_fix_available:
-                                            parameter_data["fixed_version"] = ", ".join(
-                                                fix_available_in
-                                            )
-                                    else:
                                         # if_fix_available is set but does not match is_fix_available check
                                         continue
 
@@ -613,6 +620,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     "non-os" if pkg_vuln.pkg_type in nonos_package_types else "os"
                 )
 
+                # setting fixed_version here regardless of gate parameter,
+                fix_available_in = pkg_vuln.fixed_in()
+                if fix_available_in:
+                    parameter_data["fixed_version"] = fix_available_in
+
                 # Filter first by package class, if rule has a filter
                 if (
                     pkg_type_value != "all"
@@ -739,14 +751,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check fix_available status if specified by user in policy
                     if is_fix_available is not None:
-                        # Must to a fix_available check
-                        fix_available_in = pkg_vuln.fixed_in()
-
-                        if is_fix_available == (fix_available_in is not None):
-                            # explicit fix state check matches fix availability
-                            if is_fix_available:
-                                parameter_data["fixed_version"] = fix_available_in
-                        else:
+                        # explicit fix state check matches fix availability
+                        if is_fix_available != (fix_available_in is not None):
+                            # if_fix_available is set but does not match is_fix_available check
                             continue
 
                     parameter_data["link"] = pkg_vuln.vulnerability.link

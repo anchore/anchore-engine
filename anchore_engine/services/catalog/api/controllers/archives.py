@@ -176,6 +176,16 @@ def create_analysis_archive_rule(rule):
             r.tag_versions_newer = int(rule.get("tag_versions_newer", -1))
             r.transition = ArchiveTransitions(rule.get("transition"))
             r.system_global = rule.get("system_global", False)
+
+            # Transition Rule Exclude information (defaults to NOT exclude things), but will supercede the selector
+            # above
+            exclude = rule.get("exclude", {})
+            exclude_selector = exclude.get("selector", {})
+            r.exclude_selector_registry = exclude_selector.get("registry", "")
+            r.exclude_selector_repository = exclude_selector.get("repository", "")
+            r.exclude_selector_tag = exclude_selector.get("tag", "")
+            r.exclude_expiration_days = exclude.get("expiration_days", -1)
+
             session.add(r)
             session.flush()
             return transition_rule_db_to_json(r), 200
