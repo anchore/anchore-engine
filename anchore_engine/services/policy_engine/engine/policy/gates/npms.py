@@ -30,7 +30,7 @@ class NotLatestTrigger(BaseTrigger):
         feed_npms = context.data.get(NPM_MATCH_KEY)
         img_npms = context.data.get(NPM_LISTING_KEY)
 
-        if feed_npms or not img_npms:
+        if not feed_npms or not img_npms:
             return
 
         feed_names = {p.name: p.latest for p in feed_npms}
@@ -43,7 +43,7 @@ class NotLatestTrigger(BaseTrigger):
                 if v and v != feed_names.get(npm):
                     self._fire(
                         msg="NPMNOTLATEST Package ({}) version ({}) installed but is not the latest version ({})".format(
-                            npm, v, feed_names[npm]["latest"]
+                            npm, v, feed_names[npm]
                         )
                     )
 
@@ -66,7 +66,7 @@ class NotOfficialTrigger(BaseTrigger):
         feed_npms = context.data.get(NPM_MATCH_KEY)
         img_npms = context.data.get(NPM_LISTING_KEY)
 
-        if feed_npms or not img_npms:
+        if not feed_npms or not img_npms:
             return
 
         feed_names = {p.name: p.versions_json for p in feed_npms}
@@ -97,7 +97,7 @@ class BadVersionTrigger(BaseTrigger):
         feed_npms = context.data.get(NPM_MATCH_KEY)
         img_npms = context.data.get(NPM_LISTING_KEY)
 
-        if feed_npms or not img_npms:
+        if not feed_npms or not img_npms:
             return
 
         feed_names = {p.name: p.versions_json for p in feed_npms}
