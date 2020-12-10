@@ -1,7 +1,4 @@
-import time
-
-from sqlalchemy import desc
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, desc
 
 from anchore_engine import db
 from anchore_engine.db import CatalogImageDocker, CatalogImage
