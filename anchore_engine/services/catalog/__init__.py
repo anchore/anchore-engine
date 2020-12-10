@@ -1,39 +1,51 @@
+import copy
 import json
 import os
-import copy
 import threading
 import time
-import pkg_resources
 
+import pkg_resources
 from sqlalchemy.exc import IntegrityError
+
+import anchore_engine.clients.services.common
+import anchore_engine.common
 
 # anchore modules
 import anchore_engine.common.helpers
 import anchore_engine.common.images
+import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.events as events
+import anchore_engine.subsys.metrics
+import anchore_engine.subsys.servicestatus
+from anchore_engine import db
+from anchore_engine.clients import docker_registry
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services import simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-import anchore_engine.configuration.localconfig
-import anchore_engine.subsys.servicestatus
-import anchore_engine.subsys.metrics
-import anchore_engine.common
-import anchore_engine.clients.services.common
-from anchore_engine.clients import docker_registry
-from anchore_engine import db
+from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.db import (
     db_catalog_image,
     db_policybundle,
     db_queues,
     db_registries,
     db_subscriptions,
-    db_accounts,
     db_anchore,
     db_services,
-    db_events,
     AccountStates,
     AccountTypes,
-    ArchiveTransitionRule,
+)
+from anchore_engine.service import ApiService, LifeCycleStages
+from anchore_engine.services.catalog import archiver
+from anchore_engine.services.catalog import catalog_impl
+from anchore_engine.services.catalog.exceptions import (
+    TagManifestParseError,
+    TagManifestNotFoundError,
+    PolicyBundleValidationError,
+)
+from anchore_engine.services.catalog.image_content.get_image_content import (
+    ImageManifestContentGetter,
+    ImageDockerfileContentGetter,
+    ImageContentGetter,
 )
 from anchore_engine.subsys import (
     notifications,
@@ -42,23 +54,13 @@ from anchore_engine.subsys import (
     archive,
     object_store,
 )
-from anchore_engine.services.catalog import catalog_impl
-import anchore_engine.subsys.events as events
-from anchore_engine.utils import AnchoreException
-from anchore_engine.services.catalog.exceptions import (
-    TagManifestParseError,
-    TagManifestNotFoundError,
-    PolicyBundleValidationError,
-)
-from anchore_engine.service import ApiService, LifeCycleStages
-from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.services.catalog import archiver
 from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
-    ANALYSIS_ARCHIVE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
 )
+from anchore_engine.utils import AnchoreException
+
 
 ##########################################################
 
@@ -2393,6 +2395,19 @@ class CatalogService(ApiService):
                             "unable to initialize default user data - exception: "
                             + str(err)
                         )
+
+    @staticmethod
+    def get_image_content(account_id, content_type, image_digest):
+        if content_type == "manifest":
+            getter = ImageManifestContentGetter(account_id, content_type, image_digest)
+        elif content_type == "dockerfile":
+            getter = ImageDockerfileContentGetter(
+                account_id, content_type, image_digest
+            )
+        else:
+            getter = ImageContentGetter(account_id, content_type, image_digest)
+
+        return getter.get()
 
 
 watchers = {

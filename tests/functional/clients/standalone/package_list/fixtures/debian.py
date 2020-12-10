@@ -30,6 +30,10 @@ pkgs_allinfo = {
         "license": "LGPL-2+ GPL-2+ BSD-2-clause MIT",
         "sourcepkg": "ustr-1.0.4-6",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:libustr-1.0-1:1.0.4-6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libustr-1.0-1:libustr-1.0-1:1.0.4-6:*:*:*:*:*:*:*",
+        ],
     },
     "gcc-6-base": {
         "version": "6.3.0-18+deb9u1",
@@ -40,6 +44,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "gcc-6-6.3.0-18+deb9u1",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:gcc-6-base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gcc-6-base:gcc-6-base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+        ],
     },
     "libc-bin": {
         "version": "2.24-11+deb9u4",
@@ -50,6 +58,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "glibc-2.24-11+deb9u4",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:libc-bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libc-bin:libc-bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+        ],
     },
     "libaudit-common": {
         "version": "1:2.6.7-2",
@@ -60,6 +72,10 @@ pkgs_allinfo = {
         "license": "GPL-2 LGPL-2.1",
         "sourcepkg": "audit-1:2.6.7-2",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:libaudit-common:1:2.6.7-2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libaudit-common:libaudit-common:1:2.6.7-2:*:*:*:*:*:*:*",
+        ],
     },
     "e2fslibs": {
         "version": "1.43.4-2+deb9u2",
@@ -70,6 +86,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "e2fsprogs-1.43.4-2+deb9u2",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:e2fslibs:1.43.4-2+deb9u2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:e2fslibs:e2fslibs:1.43.4-2+deb9u2:*:*:*:*:*:*:*",
+        ],
     },
     "gzip": {
         "version": "1.6-5+b1",
@@ -80,6 +100,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "gzip-1.6-5+b1",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:gzip:1.6-5+b1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gzip:gzip:1.6-5+b1:*:*:*:*:*:*:*",
+        ],
     },
     "libpam0g": {
         "version": "1.1.8-3.6",
@@ -90,6 +114,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "pam-1.1.8-3.6",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:libpam0g:1.1.8-3.6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libpam0g:libpam0g:1.1.8-3.6:*:*:*:*:*:*:*",
+        ],
     },
     "sensible-utils": {
         "version": "0.0.9+deb9u1",
@@ -100,6 +128,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "N/A",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:sensible-utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:sensible-utils:sensible-utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+        ],
     },
     "bash": {
         "version": "4.4-5",
@@ -110,6 +142,10 @@ pkgs_allinfo = {
         "license": "Unknown",
         "sourcepkg": "N/A",
         "type": "dpkg",
+        "cpes": [
+            "cpe:2.3:a:*:bash:4.4-5:*:*:*:*:*:*:*",
+            "cpe:2.3:a:bash:bash:4.4-5:*:*:*:*:*:*:*",
+        ],
     },
 }
 

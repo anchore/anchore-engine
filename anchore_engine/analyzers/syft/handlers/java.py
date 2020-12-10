@@ -65,6 +65,7 @@ def translate_and_save_entry(findings, artifact):
         "origin": origin or "N/A",
         "location": pkg_key,  # this should be related to full path
         "type": "java-" + java_ext,
+        "cpes": artifact.get("cpes", []),
     }
 
     # inject the artifact document into the "raw" analyzer document

@@ -95,6 +95,13 @@ class CatalogClient(InternalServiceClient):
             path_params={"imageDigest": imageDigest},
         )
 
+    def get_image_content(self, image_digest, content_type):
+        return self.call_api(
+            http.anchy_get,
+            "images/{image_digest}/content/{content_type}",
+            path_params={"image_digest": image_digest, "content_type": content_type},
+        )
+
     def get_image_by_id(self, imageId):
         return self.call_api(
             http.anchy_get, "images", query_params={"imageId": imageId}

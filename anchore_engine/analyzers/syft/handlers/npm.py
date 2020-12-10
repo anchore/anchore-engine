@@ -37,6 +37,7 @@ def translate_and_save_entry(findings, artifact):
         "sourcepkg": dig(artifact, "metadata", "url", force_default=homepage),
         "origins": origins,
         "lics": dig(artifact, "metadata", "licenses", force_default=[]),
+        "cpes": artifact.get("cpes", []),
     }
 
     # inject the artifact document into the "raw" analyzer document

@@ -331,6 +331,32 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /images/{image_digest}/content/{content_type}:
+    get:
+      tags:
+        - "catalog"
+      summary: "Get image content"
+      description: ""
+      operationId: "get_image_content"
+      parameters:
+        - name: 'image_digest'
+          in: path
+          type: string
+          description: "imageDigest of image to get"
+          required: true
+        - name: 'content_type'
+          in: path
+          type: string
+          description: "image content type to retrieve"
+          required: true
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /registry_lookup:
     get:
       tags:
