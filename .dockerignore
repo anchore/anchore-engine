@@ -10,3 +10,4 @@ scripts/ci
 Makefile
 .cache
 tests/
+docs/
