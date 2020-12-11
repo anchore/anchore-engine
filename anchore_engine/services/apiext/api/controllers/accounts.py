@@ -23,7 +23,6 @@ from anchore_engine.db.db_accounts import (
 from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.utils import datetime_to_rfc3339
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.services.catalog.catalog_impl import load_policy_bundles
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.apis.authorization import (
@@ -40,6 +39,7 @@ from anchore_engine.configuration.localconfig import (
     USER_MOD_PROTECTED_ACCOUNT_NAMES,
     RESERVED_ACCOUNT_NAMES,
     get_config,
+    load_policy_bundles,
     DELETE_PROTECTED_USER_NAMES,
     DELETE_PROTECTED_ACCOUNT_TYPES,
 )

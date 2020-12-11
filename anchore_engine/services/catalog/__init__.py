@@ -2377,7 +2377,7 @@ class CatalogService(ApiService):
                                     + str(exception)
                                 )
 
-                        catalog_impl.load_policy_bundles(
+                        anchore_engine.configuration.localconfig.load_policy_bundles(
                             config, process_bundle, process_exception
                         )
 
