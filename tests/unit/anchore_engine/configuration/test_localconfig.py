@@ -44,6 +44,7 @@ def mock_test_file(input_dir, config_filename):
     # setup files to read and/or copy later
     Path(input_dir.strpath + "/" + config_filename).touch()
 
+
 def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exception):
     policy_bundles = []
 
