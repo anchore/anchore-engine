@@ -39,6 +39,7 @@ from anchore_engine.configuration.localconfig import (
     USER_MOD_PROTECTED_ACCOUNT_NAMES,
     RESERVED_ACCOUNT_NAMES,
     get_config,
+    load_policy_bundles,
     DELETE_PROTECTED_USER_NAMES,
     DELETE_PROTECTED_ACCOUNT_TYPES,
 )
@@ -747,28 +748,26 @@ def _init_policy(accountname, config):
             "Account {} has no policy bundle - installing default".format(accountname)
         )
 
-        if config.get("default_bundle_file", None) and os.path.exists(
-            config["default_bundle_file"]
-        ):
-            logger.info("loading def bundle: " + str(config["default_bundle_file"]))
-            try:
-                default_bundle = {}
-                with open(config["default_bundle_file"], "r") as FH:
-                    default_bundle = json.loads(FH.read())
-
-                if default_bundle:
-                    resp = client.add_policy(default_bundle, active=True)
-                    if not resp:
-                        raise Exception("policy bundle DB add failed")
-
-                    return True
-                else:
-                    raise Exception("No default bundle found")
-            except Exception as err:
-                logger.error(
-                    "could not load up default bundle for user - exception: " + str(err)
+        # What to do with each policy bundle
+        def process_bundle(policy_bundle, bundle):
+            resp = client.add_policy(bundle, active=policy_bundle["active"])
+            if not resp:
+                raise Exception(
+                    "policy bundle {} DB add failed".format(str(policy_bundle))
                 )
-                raise
+
+        # How to handle any exceptions form opening the bundle file or converting its contents
+        # to json
+        def process_exception(exception):
+            logger.error(
+                "could not load up bundles for user - exception: " + str(exception)
+            )
+            raise
+
+        try:
+            load_policy_bundles(config, process_bundle, process_exception)
+        except Exception:
+            raise
     else:
         logger.debug(
             "Existing bundle found for account: {}. Not expected on invocations of this function in most uses".format(
