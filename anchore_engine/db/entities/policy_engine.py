@@ -49,30 +49,6 @@ from .common import Base, UtilMixin, StringJSON
 from .common import get_thread_scoped_session
 
 
-# String field lengths for consistency across entities
-user_id_length = 64
-digest_length = 64 + 10  # pad for the method type, e.g. sha256: or md5:
-image_id_length = 80
-namespace_length = 64
-namespace_version_length = 32
-distro_length = 64
-distro_version_length = 64
-feed_record_id_length = 128
-feed_name_length = 64
-feed_group_length = 64
-vuln_id_length = feed_record_id_length
-pkg_name_length = 255
-pkg_version_length = 128
-pkg_type_length = 32
-link_length = 1024
-tag_length = 64
-registry_length = 255
-repository_length = 255
-fulltag_length = 255
-bundle_id_length = 128
-file_path_length = 512
-hash_length = 80
-
 DistroTuple = namedtuple("DistroTuple", ["distro", "version", "flavor"])
 
 base_score_key = "base_score"
@@ -87,8 +63,8 @@ cvss_v2_key = "cvss_v2"
 class FeedMetadata(Base, UtilMixin):
     __tablename__ = "feeds"
 
-    name = Column(String(feed_name_length), primary_key=True)
-    description = Column(String(512))
+    name = Column(String, primary_key=True)
+    description = Column(String)
     access_tier = Column(Integer)
     groups = relationship(
         "FeedGroupMetadata", back_populates="feed", cascade="all, delete-orphan"
@@ -127,11 +103,9 @@ class FeedMetadata(Base, UtilMixin):
 class FeedGroupMetadata(Base, UtilMixin):
     __tablename__ = "feed_groups"
 
-    name = Column(String(feed_group_length), primary_key=True)
-    feed_name = Column(
-        String(feed_name_length), ForeignKey(FeedMetadata.name), primary_key=True
-    )
-    description = Column(String(512))
+    name = Column(String, primary_key=True)
+    feed_name = Column(String, ForeignKey(FeedMetadata.name), primary_key=True)
+    description = Column(String)
     access_tier = Column(Integer)
     last_sync = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -173,9 +147,9 @@ class GenericFeedDataRecord(Base):
 
     __tablename__ = "feed_group_data"
 
-    feed = Column(String(feed_name_length), primary_key=True)
-    group = Column(String(feed_group_length), primary_key=True)
-    id = Column(String(feed_record_id_length), primary_key=True)
+    feed = Column(String, primary_key=True)
+    group = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)
     created_at = Column(
         DateTime,
         default=datetime.datetime.utcnow,
@@ -196,9 +170,9 @@ class GenericFeedDataRecord(Base):
 class GemMetadata(Base):
     __tablename__ = "feed_data_gem_packages"
 
-    name = Column(String(pkg_name_length), primary_key=True)
+    name = Column(String, primary_key=True)
     id = Column(BigInteger)
-    latest = Column(String(pkg_version_length))
+    latest = Column(String)
     licenses_json = Column(StringJSON)
     authors_json = Column(StringJSON)
     versions_json = Column(StringJSON)
@@ -221,11 +195,11 @@ class GemMetadata(Base):
 class NpmMetadata(Base):
     __tablename__ = "feed_data_npm_packages"
 
-    name = Column(String(pkg_name_length), primary_key=True)
-    sourcepkg = Column(String(pkg_name_length))
+    name = Column(String, primary_key=True)
+    sourcepkg = Column(String)
     lics_json = Column(StringJSON)
     origins_json = Column(StringJSON)
-    latest = Column(String(pkg_name_length))
+    latest = Column(String)
     versions_json = Column(StringJSON)
     created_at = Column(
         DateTime, default=datetime.datetime.utcnow
@@ -251,10 +225,8 @@ class Vulnerability(Base):
 
     __tablename__ = "feed_data_vulnerabilities"
 
-    id = Column(String(vuln_id_length), primary_key=True)  # CVE Id, RHSA id, etc
-    namespace_name = Column(
-        String(namespace_length), primary_key=True
-    )  # e.g. centos, rhel, "debian"
+    id = Column(String, primary_key=True)  # CVE Id, RHSA id, etc
+    namespace_name = Column(String, primary_key=True)  # e.g. centos, rhel, "debian"
     severity = Column(
         Enum(
             "Unknown",
@@ -268,9 +240,9 @@ class Vulnerability(Base):
         nullable=False,
     )
     description = Column(Text, nullable=True)
-    link = Column(String(link_length), nullable=True)
+    link = Column(String, nullable=True)
     metadata_json = Column(StringJSON, nullable=True)
-    cvss2_vectors = Column(String(256), nullable=True)
+    cvss2_vectors = Column(String, nullable=True)
     cvss2_score = Column(Float, nullable=True)
     created_at = Column(
         DateTime, default=datetime.datetime.utcnow
@@ -411,12 +383,12 @@ class VulnerableArtifact(Base):
 
     __tablename__ = "feed_data_vulnerabilities_vulnerable_artifacts"
 
-    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
-    namespace_name = Column(String(namespace_length), primary_key=True)
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    version_format = Column(String(pkg_type_length))
-    epochless_version = Column(String(pkg_version_length))
+    vulnerability_id = Column(String, primary_key=True)
+    namespace_name = Column(String, primary_key=True)
+    name = Column(String, primary_key=True)
+    version = Column(String, primary_key=True)
+    version_format = Column(String)
+    epochless_version = Column(String)
     include_previous_versions = Column(Boolean, default=True)
     parent = relationship("Vulnerability", back_populates="vulnerable_in")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -494,12 +466,12 @@ class FixedArtifact(Base):
 
     __tablename__ = "feed_data_vulnerabilities_fixed_artifacts"
 
-    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
-    namespace_name = Column(String(namespace_length), primary_key=True)
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    version_format = Column(String(pkg_type_length))
-    epochless_version = Column(String(pkg_version_length))
+    vulnerability_id = Column(String, primary_key=True)
+    namespace_name = Column(String, primary_key=True)
+    name = Column(String, primary_key=True)
+    version = Column(String, primary_key=True)
+    version_format = Column(String)
+    epochless_version = Column(String)
     include_later_versions = Column(Boolean, default=True)
     parent = relationship("Vulnerability", back_populates="fixed_in")
     vendor_no_advisory = Column(Boolean, default=False)
@@ -640,10 +612,8 @@ class FixedArtifact(Base):
 class NvdMetadata(Base):
     __tablename__ = "feed_data_nvd_vulnerabilities"
 
-    name = Column(String(vuln_id_length), primary_key=True)
-    namespace_name = Column(
-        String(namespace_length), primary_key=True
-    )  # e.g. nvddb:2018"
+    name = Column(String, primary_key=True)
+    namespace_name = Column(String, primary_key=True)  # e.g. nvddb:2018"
     severity = Column(
         Enum(
             "Unknown",
@@ -1377,9 +1347,9 @@ class VulnDBMetadata(Base):
 class CpeVulnerability(Base):
     __tablename__ = "feed_data_cpe_vulnerabilities"
 
-    feed_name = Column(String(feed_name_length), primary_key=True)
-    namespace_name = Column(String(namespace_length), primary_key=True)
-    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
+    feed_name = Column(String, primary_key=True)
+    namespace_name = Column(String, primary_key=True)
+    vulnerability_id = Column(String, primary_key=True)
     severity = Column(
         Enum(
             "Unknown",
@@ -1393,13 +1363,13 @@ class CpeVulnerability(Base):
         nullable=False,
         primary_key=True,
     )
-    cpetype = Column(String(pkg_name_length), primary_key=True)
-    vendor = Column(String(pkg_name_length), primary_key=True)
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    update = Column(String(pkg_version_length), primary_key=True)
-    meta = Column(String(pkg_name_length), primary_key=True)
-    link = Column(String(link_length), nullable=True)
+    cpetype = Column(String, primary_key=True)
+    vendor = Column(String, primary_key=True)
+    name = Column(String, primary_key=True)
+    version = Column(String, primary_key=True)
+    update = Column(String, primary_key=True)
+    meta = Column(String, primary_key=True)
+    link = Column(String, nullable=True)
     parent = relationship("NvdMetadata", back_populates="vulnerable_cpes")
     created_at = Column(
         DateTime, default=datetime.datetime.utcnow
@@ -1688,33 +1658,31 @@ class ImagePackage(Base):
 
     __tablename__ = "image_packages"
 
-    image_id = Column(String(image_id_length), primary_key=True)
-    image_user_id = Column(String(user_id_length), primary_key=True)
+    image_id = Column(String, primary_key=True)
+    image_user_id = Column(String, primary_key=True)
 
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    arch = Column(String(16), default="N/A", primary_key=True)
-    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
+    name = Column(String, primary_key=True)
+    version = Column(String, primary_key=True)
+    pkg_type = Column(String, primary_key=True)  # RHEL, DEB, APK, etc.
+    arch = Column(String, default="N/A", primary_key=True)
+    pkg_path = Column(String, default="pkgdb", primary_key=True)
 
-    pkg_path_hash = Column(String(hash_length))  # The sha256 hash of the path in hex
+    pkg_path_hash = Column(String)  # The sha256 hash of the path in hex
 
     # Could pkg namespace be diff than os? e.g. rpms in Deb?
-    distro_name = Column(String(distro_length))
-    distro_version = Column(String(distro_version_length))
-    like_distro = Column(String(distro_length))
+    distro_name = Column(String)
+    distro_version = Column(String)
+    like_distro = Column(String)
 
-    fullversion = Column(String(pkg_version_length))
-    release = Column(String(pkg_version_length), default="")
+    fullversion = Column(String)
+    release = Column(String, default="")
     origin = Column(String, default="N/A")
-    src_pkg = Column(String(pkg_name_length + pkg_version_length), default="N/A")
-    normalized_src_pkg = Column(
-        String(pkg_name_length + pkg_version_length), default="N/A"
-    )
+    src_pkg = Column(String, default="N/A")
+    normalized_src_pkg = Column(String, default="N/A")
 
     metadata_json = Column(StringJSON)
 
-    license = Column(String(1024), default="N/A")
+    license = Column(String, default="N/A")
     size = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(
@@ -1982,22 +1950,20 @@ class ImagePackageManifestEntry(Base):
     __tablename__ = "image_package_db_entries"
 
     # Package key
-    image_id = Column(String(image_id_length), primary_key=True)
-    image_user_id = Column(String(user_id_length), primary_key=True)
-    pkg_name = Column(String(pkg_name_length), primary_key=True)
-    pkg_version = Column(String(pkg_version_length), primary_key=True)
-    pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    pkg_arch = Column(String(16), default="N/A", primary_key=True)
-    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
+    image_id = Column(String, primary_key=True)
+    image_user_id = Column(String, primary_key=True)
+    pkg_name = Column(String, primary_key=True)
+    pkg_version = Column(String, primary_key=True)
+    pkg_type = Column(String, primary_key=True)  # RHEL, DEB, APK, etc.
+    pkg_arch = Column(String, default="N/A", primary_key=True)
+    pkg_path = Column(String, default="pkgdb", primary_key=True)
 
     # File path
-    file_path = Column(String(file_path_length), primary_key=True)
+    file_path = Column(String, primary_key=True)
 
     is_config_file = Column(Boolean, nullable=True)
-    digest = Column(
-        String(digest_length)
-    )  # Will include a prefix: sha256, sha1, md5 etc.
-    digest_algorithm = Column(String(8), nullable=True)
+    digest = Column(String)  # Will include a prefix: sha256, sha1, md5 etc.
+    digest_algorithm = Column(String, nullable=True)
     file_group_name = Column(String, nullable=True)
     file_user_name = Column(String, nullable=True)
     mode = Column(Integer, nullable=True)  # Mode as an integer in decimal, not octal
@@ -2038,18 +2004,16 @@ class ImageNpm(Base):
 
     __tablename__ = "image_npms"
 
-    image_user_id = Column(String(user_id_length), primary_key=True)
-    image_id = Column(String(image_id_length), primary_key=True)
-    path_hash = Column(
-        String(hash_length), primary_key=True
-    )  # The sha256 hash of the path in hex
-    path = Column(String(file_path_length))
-    name = Column(String(pkg_name_length))
+    image_user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    path_hash = Column(String, primary_key=True)  # The sha256 hash of the path in hex
+    path = Column(String)
+    name = Column(String)
     origins_json = Column(StringJSON)
-    source_pkg = Column(String(pkg_name_length))
+    source_pkg = Column(String)
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
-    latest = Column(String(pkg_version_length))
+    latest = Column(String)
     seq_id = Column(
         Integer, NPM_SEQ, server_default=NPM_SEQ.next_value()
     )  # Note this is not autoincrement as the upgrade code in upgrade.py sets. This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
@@ -2081,19 +2045,17 @@ class ImageGem(Base):
 
     __tablename__ = "image_gems"
 
-    image_user_id = Column(String(user_id_length), primary_key=True)
-    image_id = Column(String(image_id_length), primary_key=True)
-    path_hash = Column(
-        String(hash_length), primary_key=True
-    )  # The sha256 hash of the path in hex
-    path = Column(String(file_path_length))
-    name = Column(String(pkg_name_length))
+    image_user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    path_hash = Column(String, primary_key=True)  # The sha256 hash of the path in hex
+    path = Column(String)
+    name = Column(String)
     files_json = Column(StringJSON)
     origins_json = Column(StringJSON)
-    source_pkg = Column(String(pkg_name_length))
+    source_pkg = Column(String)
     licenses_json = Column(StringJSON)
     versions_json = Column(StringJSON)
-    latest = Column(String(pkg_version_length))
+    latest = Column(String)
     seq_id = Column(
         Integer, GEM_SEQ, server_default=GEM_SEQ.next_value()
     )  # This table is no longer used as of 0.3.1 and is here for upgrade continuity only.
@@ -2118,19 +2080,17 @@ class ImageGem(Base):
 class ImageCpe(Base):
     __tablename__ = "image_cpes"
 
-    image_user_id = Column(String(user_id_length), primary_key=True)
-    image_id = Column(String(image_id_length), primary_key=True)
-    pkg_type = Column(
-        String(pkg_type_length), primary_key=True
-    )  # java, python, gem, npm, etc
+    image_user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    pkg_type = Column(String, primary_key=True)  # java, python, gem, npm, etc
 
-    pkg_path = Column(String(file_path_length), primary_key=True)
-    cpetype = Column(String(pkg_name_length), primary_key=True)
-    vendor = Column(String(pkg_name_length), primary_key=True)
-    name = Column(String(pkg_name_length), primary_key=True)
-    version = Column(String(pkg_version_length), primary_key=True)
-    update = Column(String(pkg_version_length), primary_key=True)
-    meta = Column(String(pkg_name_length), primary_key=True)
+    pkg_path = Column(String, primary_key=True)
+    cpetype = Column(String, primary_key=True)
+    vendor = Column(String, primary_key=True)
+    name = Column(String, primary_key=True)
+    version = Column(String, primary_key=True)
+    update = Column(String, primary_key=True)
+    meta = Column(String, primary_key=True)
 
     image = relationship("Image", back_populates="cpes")
 
@@ -2213,10 +2173,10 @@ class FilesystemAnalysis(Base):
     compression_level = 6
     supported_algorithms = ["gzip"]
 
-    image_id = Column(String(image_id_length), primary_key=True)
-    image_user_id = Column(String(user_id_length), primary_key=True)
+    image_id = Column(String, primary_key=True)
+    image_user_id = Column(String, primary_key=True)
 
-    compressed_content_hash = Column(String(digest_length))
+    compressed_content_hash = Column(String)
     compressed_file_json = Column(LargeBinary, nullable=False)
     total_entry_count = Column(Integer, default=0)
     file_count = Column(Integer, default=0)
@@ -2224,7 +2184,7 @@ class FilesystemAnalysis(Base):
     non_packaged_count = Column(Integer, default=0)
     suid_count = Column(Integer, default=0)
     image = relationship("Image", back_populates="fs")
-    compression_algorithm = Column(String(32), default="gzip")
+    compression_algorithm = Column(String, default="gzip")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
@@ -2290,18 +2250,18 @@ class AnalysisArtifact(Base):
 
     __tablename__ = "image_analysis_artifacts"
 
-    image_id = Column(String(image_id_length), primary_key=True)
-    image_user_id = Column(String(user_id_length), primary_key=True)
+    image_id = Column(String, primary_key=True)
+    image_user_id = Column(String, primary_key=True)
     analyzer_id = Column(
-        String(128), primary_key=True
+        String, primary_key=True
     )  # The name of the analyzer (e.g. layer_info)
     analyzer_artifact = Column(
-        String(128), primary_key=True
+        String, primary_key=True
     )  # The analyzer artifact name (e.g. layers_to_dockerfile)
     analyzer_type = Column(
-        String(128), primary_key=True
+        String, primary_key=True
     )  # The analyzer type (e.g. base, user, or extra)
-    artifact_key = Column(String(256), primary_key=True)
+    artifact_key = Column(String, primary_key=True)
     str_value = Column(Text)
     json_value = Column(StringJSON)
     binary_value = Column(LargeBinary)
@@ -2337,9 +2297,9 @@ class Image(Base):
 
     __tablename__ = "images"
 
-    id = Column(String(image_id_length), primary_key=True)
+    id = Column(String, primary_key=True)
     user_id = Column(
-        String(user_id_length), primary_key=True
+        String, primary_key=True
     )  # Images are namespaced in the system to prevent overlap
 
     state = Column(
@@ -2372,10 +2332,10 @@ class Image(Base):
         nullable=False,
     )
 
-    digest = Column(String(digest_length))
-    distro_name = Column(String(distro_length))
-    distro_version = Column(String(distro_version_length))
-    like_distro = Column(String(distro_length))
+    digest = Column(String)
+    distro_name = Column(String)
+    distro_version = Column(String)
+    like_distro = Column(String)
 
     # Should be native JSON, can be handled
     layers_json = Column(StringJSON)
@@ -2384,7 +2344,7 @@ class Image(Base):
     familytree_json = Column(StringJSON)
     layer_info_json = Column(StringJSON)
     dockerfile_contents = Column(Text)
-    dockerfile_mode = Column(String(16), default="Guessed")
+    dockerfile_mode = Column(String, default="Guessed")
 
     packages = relationship(
         "ImagePackage",
@@ -2529,17 +2489,17 @@ class ImagePackageVulnerability(Base):
 
     __tablename__ = "image_package_vulnerabilities"
 
-    pkg_user_id = Column(String(user_id_length), primary_key=True)
-    pkg_image_id = Column(String(image_id_length), primary_key=True)
-    pkg_name = Column(String(pkg_name_length), primary_key=True)
-    pkg_version = Column(String(pkg_version_length), primary_key=True)
-    pkg_type = Column(String(pkg_type_length), primary_key=True)  # RHEL, DEB, APK, etc.
-    pkg_arch = Column(String(16), default="N/A", primary_key=True)
+    pkg_user_id = Column(String, primary_key=True)
+    pkg_image_id = Column(String, primary_key=True)
+    pkg_name = Column(String, primary_key=True)
+    pkg_version = Column(String, primary_key=True)
+    pkg_type = Column(String, primary_key=True)  # RHEL, DEB, APK, etc.
+    pkg_arch = Column(String, default="N/A", primary_key=True)
 
-    pkg_path = Column(String(file_path_length), default="pkgdb", primary_key=True)
+    pkg_path = Column(String, default="pkgdb", primary_key=True)
 
-    vulnerability_id = Column(String(vuln_id_length), primary_key=True)
-    vulnerability_namespace_name = Column(String(namespace_length))
+    vulnerability_id = Column(String, primary_key=True)
+    vulnerability_namespace_name = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     package = relationship("ImagePackage", back_populates="vulnerabilities")
@@ -2860,15 +2820,11 @@ class DistroMapping(Base):
     __tablename__ = "distro_mappings"
     __distro_mapper_cls__ = VersionPreservingDistroMapper
 
-    from_distro = Column(
-        String(distro_length), primary_key=True
-    )  # The distro to be checked
+    from_distro = Column(String, primary_key=True)  # The distro to be checked
     to_distro = Column(
-        String(distro_length)
+        String
     )  # The distro to use instead of the pk distro to do cve checks
-    flavor = Column(
-        String(distro_length)
-    )  # The distro flavor to use (e.g. RHEL, or DEB)
+    flavor = Column(String)  # The distro flavor to use (e.g. RHEL, or DEB)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     @classmethod
