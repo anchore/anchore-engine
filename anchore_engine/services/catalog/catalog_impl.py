@@ -17,7 +17,7 @@ import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, notifications
+from anchore_engine.subsys import taskstate, logger, notifications, object_store
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
 from anchore_engine.db import (
@@ -2539,6 +2539,131 @@ def add_event_json(event_json, dbsession, quiet=True):
             )
         else:
             raise
+
+
+def list_evals_impl(
+    dbsession,
+    userId,
+    policyId=None,
+    imageDigest=None,
+    tag=None,
+    evalId=None,
+    newest_only=False,
+    interactive=False,
+):
+    logger.debug("looking up eval record: " + userId)
+
+    object_store_mgr = object_store.get_manager()
+
+    # set up the filter based on input
+    dbfilter = {}
+    latest_eval_record = latest_eval_result = None
+
+    if policyId is not None:
+        dbfilter["policyId"] = policyId
+
+    if imageDigest is not None:
+        dbfilter["imageDigest"] = imageDigest
+
+    if tag is not None:
+        dbfilter["tag"] = tag
+
+    if evalId is not None:
+        dbfilter["evalId"] = evalId
+
+    # perform an interactive eval to get/install the latest
+    try:
+        logger.debug("performing eval refresh: " + str(dbfilter))
+        imageDigest = dbfilter["imageDigest"]
+        if "tag" in dbfilter:
+            evaltag = dbfilter["tag"]
+        else:
+            evaltag = None
+
+        if "policyId" in dbfilter:
+            policyId = dbfilter["policyId"]
+        else:
+            policyId = None
+
+        latest_eval_record, latest_eval_result = perform_policy_evaluation(
+            userId,
+            imageDigest,
+            dbsession,
+            evaltag=evaltag,
+            policyId=policyId,
+            interactive=interactive,
+            newest_only=newest_only,
+        )
+    except Exception as err:
+        logger.error("interactive eval failed - exception: {}".format(err))
+
+    records = []
+    if interactive or newest_only:
+        try:
+            latest_eval_record["result"] = latest_eval_result
+            records = [latest_eval_record]
+        except:
+            raise Exception(
+                "interactive or newest_only eval requested, but unable to perform eval at this time"
+            )
+    else:
+        records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+        for record in records:
+            try:
+                result = object_store_mgr.get_document(
+                    userId, "policy_evaluations", record["evalId"]
+                )
+                record["result"] = result
+            except:
+                record["result"] = {}
+
+    return records
+
+
+def delete_evals_impl(
+    dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None
+):
+    # set up the filter based on input
+    dbfilter = {}
+
+    if policyId is not None:
+        dbfilter["policyId"] = policyId
+
+    if imageDigest is not None:
+        dbfilter["imageDigest"] = imageDigest
+
+    if tag is not None:
+        dbfilter["tag"] = tag
+
+    if evalId is not None:
+        dbfilter["evalId"] = evalId
+
+    logger.debug("looking up eval record: " + userId)
+
+    if not dbfilter:
+        raise Exception("not enough detail in body to find records to delete")
+
+    rc = db_policyeval.delete_byfilter(userId, session=dbsession, **dbfilter)
+    if not rc:
+        raise Exception("DB delete failed")
+    else:
+        return True
+
+
+def upsert_eval(dbsession, userId, record):
+    rc = db_policyeval.tsadd(
+        record["policyId"],
+        userId,
+        record["imageDigest"],
+        record["tag"],
+        record["final_action"],
+        {"policyeval": record["policyeval"], "evalId": record["evalId"]},
+        session=dbsession,
+    )
+    if not rc:
+        raise Exception("DB update failed")
+    else:
+        return record
 
 
 ################################################################################
