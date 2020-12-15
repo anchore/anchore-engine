@@ -1,15 +1,12 @@
-# Enterprise Documentation
+# Anchore Engine Documentation
 
-This is the repository for the Anchore Enterprise Documentation site.
+This is the source for the engine.anchore.io site and the site is updated in conjunction with Engine releases.
 
 ## Filing Bugs/Issues:
 
-See [Issues](https://github.com/anchore/enterprise-docs/issues)
+See [Issues](https://github.com/anchore/anchore-engine/issues) and mark the issue as a docs issue by
+putting [docs] as a prefix on the issue title
 
-## Contributing
-
-See [Contributing](CONTRIBUTING.rst) for the DCO and sign-off information. In short, sign all
-commits with 'Signed-of-by X' with `git commit -s`.
 
 ### Making Changes/Contribution Workflow
 
@@ -27,13 +24,15 @@ commits with 'Signed-of-by X' with `git commit -s`.
   `git submodule update --init --recursive`
 
 1. Run hugo for local debugging/dev:
-`cd enterprise-docs ; hugo server`
+`cd anchore-engine/docs ; hugo server`
 
 1. Make changes
 
 1. Commit and push
 
-1. Open PR to github.com/anchore/enterprise-docs for merge to master
+1. Open PR to github.com/anchore/anchore-engine for merge to master
+
+1. Project maintainers will publish docs updates on engine releases
 
 
 
