@@ -403,7 +403,7 @@ paths:
         200:
           description: Successfully added image to analysis queue
           schema:
-            $ref: "#/definitions/AnchoreImage"
+            $ref: "#/definitions/AnchoreImageList"
         500:
           description: Internal Error
           schema:
