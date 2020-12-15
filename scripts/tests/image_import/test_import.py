@@ -173,12 +173,17 @@ add_payload = {
             "tags": tags,
             "operation_uuid": operation_id,
         }
-    }
+    },
+    "annotations": {"key1": "testvalue1", "key2": "testvalue2"},
 }
 
 # Step 4: Add the image for processing the import via the analysis queue
 print("Adding image/finalizing")
-resp = requests.post(endpoint + "/images", json=add_payload, auth=AUTHC)
+resp = requests.post(
+    endpoint + "/images",
+    json=add_payload,
+    auth=AUTHC,
+)
 result = check_response(resp)
 
 # Step 5: Verify the image record now exists
@@ -193,7 +198,8 @@ wait_for_image(image_digest)
 
 print("Vuln scan: {}".format(get_vuln_scan(image_digest)))
 
-print("Policy eval: {}".format(get_policy_eval(image_digest, tag_to_scan)))
+for tag in tag_to_scan:
+    print("Policy eval for tag {}: {}".format(tag, get_policy_eval(image_digest, tag)))
 
 # Check for finished
 print("Completed successfully!")
