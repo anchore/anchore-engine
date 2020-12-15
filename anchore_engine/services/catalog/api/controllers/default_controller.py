@@ -151,6 +151,7 @@ def add_image(
             )
 
         if from_archive:
+            # Restore an image from the analysis archive into the working set
             task = archiver.RestoreArchivedImageTask(
                 account=ApiRequestContextProxy.namespace(), image_digest=digest
             )
@@ -168,6 +169,7 @@ def add_image(
                 )
 
         elif image_metadata.get("import_manifest"):
+            # Import an image from the upload API
             try:
                 import_manifest = ImportManifest.from_json(
                     image_metadata["import_manifest"]
@@ -202,6 +204,7 @@ def add_image(
                 )
                 httpcode = 200
         else:
+            # Regular image-add case: analyze from a registry
             with db.session_scope() as session:
                 (
                     return_object,

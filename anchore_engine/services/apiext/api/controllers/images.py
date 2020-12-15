@@ -5,6 +5,7 @@ import re
 import tarfile
 
 from connexion import request
+import typing
 
 import anchore_engine.apis
 import anchore_engine.common
@@ -803,21 +804,14 @@ def add_image(image, force=False, autosubscribe=False):
 
         source = normalized["source"]
 
-        if source.get("import"):
-            client = internal_client_for(
-                CatalogClient, userId=ApiRequestContextProxy.namespace()
-            )
-            return_object = client.import_image(source.get("import"))
-            httpcode = 200
-        else:
-            return_object = analyze_image(
-                ApiRequestContextProxy.namespace(),
-                source,
-                force,
-                enable_subscriptions,
-                image.get("annotations"),
-            )
-            httpcode = 200
+        return_object = analyze_image(
+            ApiRequestContextProxy.namespace(),
+            source,
+            force,
+            enable_subscriptions,
+            image.get("annotations"),
+        )
+        httpcode = 200
 
     except api_exceptions.AnchoreApiError as err:
         raise err
@@ -1287,6 +1281,7 @@ def analyze_image(
     is_from_archive = False
     dockerfile = None
     image_check = None
+    image_record = None
     try:
         logger.debug(
             "handling POST: source={}, force={}, enable_subscriptions={}, annotations={}".format(
@@ -1295,138 +1290,92 @@ def analyze_image(
         )
 
         # if not, add it and set it up to be analyzed
-        if source.get("archive"):
-            img_source = source.get("archive")
-            # Do archive-based add
-            digest = img_source["digest"]
-            is_from_archive = True
-        elif source.get("tag"):
-            # Do tag-based add
-            img_source = source.get("tag")
-            tag = img_source["pullstring"]
-            dockerfile = img_source.get("dockerfile")
-
-        elif source.get("digest"):
-            # Do digest-based add
-            img_source = source.get("digest")
-
-            tag = img_source["tag"]
-            digest_info = anchore_engine.utils.parse_dockerimage_string(
-                img_source["pullstring"]
+        if source.get("import"):
+            client = internal_client_for(
+                CatalogClient, userId=ApiRequestContextProxy.namespace()
             )
-            digest = digest_info["digest"]
-            dockerfile = img_source.get("dockerfile")
-
-            ts = img_source.get("creation_timestamp_override")
-            if ts:
-                try:
-                    ts = utils.rfc3339str_to_epoch(ts)
-                except Exception as err:
-                    raise api_exceptions.InvalidDateFormat(
-                        "source.creation_timestamp_override", ts
-                    )
-
-            if force:
-                # Grab the trailing digest sha section and ensure it exists
-                try:
-                    image_check = client.get_image(digest)
-                    if not image_check:
-                        raise Exception("No image found for digest {}".format(digest))
-                    if not ts:
-                        # Timestamp required for analysis by digest & tag (if none specified,
-                        # default to previous image's timestamp)
-                        ts = image_check.get("created_at", anchore_now())
-                except Exception as err:
-                    raise ValueError(
-                        "image digest must already exist to force re-analyze using tag+digest"
-                    )
-            elif not ts:
-                # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history
-                # properly. Therefore, if no timestamp is provided, we use the current time
-                ts = anchore_now()
+            image_record = client.import_image(
+                source.get("import"), annotations=annotations, force=force
+            )
+            # The import path will fail with an expected error if the image is already analyzed and not in a failed state
+            # and the user did not specify a force re-load of the image. The regular image analysis path will allow such
+            # a case for idempotent operation and to permit updates to things like annotations.
         else:
-            raise ValueError(
-                "The source property must have at least one of tag, digest, or archive set to non-null"
+            if source.get("archive"):
+                img_source = source.get("archive")
+                # Do archive-based add
+                digest = img_source["digest"]
+                is_from_archive = True
+            elif source.get("tag"):
+                # Do tag-based add
+                img_source = source.get("tag")
+                tag = img_source["pullstring"]
+                dockerfile = img_source.get("dockerfile")
+
+            elif source.get("digest"):
+                # Do digest-based add
+                img_source = source.get("digest")
+
+                tag = img_source["tag"]
+                digest_info = anchore_engine.utils.parse_dockerimage_string(
+                    img_source["pullstring"]
+                )
+                digest = digest_info["digest"]
+                dockerfile = img_source.get("dockerfile")
+
+                ts = img_source.get("creation_timestamp_override")
+                if ts:
+                    try:
+                        ts = utils.rfc3339str_to_epoch(ts)
+                    except Exception as err:
+                        raise api_exceptions.InvalidDateFormat(
+                            "source.creation_timestamp_override", ts
+                        )
+
+                if force:
+                    # Grab the trailing digest sha section and ensure it exists
+                    try:
+                        image_check = client.get_image(digest)
+                        if not image_check:
+                            raise Exception(
+                                "No image found for digest {}".format(digest)
+                            )
+                        if not ts:
+                            # Timestamp required for analysis by digest & tag (if none specified,
+                            # default to previous image's timestamp)
+                            ts = image_check.get("created_at", anchore_now())
+                    except Exception as err:
+                        raise ValueError(
+                            "image digest must already exist to force re-analyze using tag+digest"
+                        )
+                elif not ts:
+                    # If a new analysis of an image by digest + tag, we need a timestamp to insert into the tag history
+                    # properly. Therefore, if no timestamp is provided, we use the current time
+                    ts = anchore_now()
+            else:
+                raise ValueError(
+                    "The source property must have at least one of tag, digest, or archive set to non-null"
+                )
+
+            image_record = client.add_image(
+                tag=tag,
+                digest=digest,
+                dockerfile=dockerfile,
+                annotations=annotations,
+                created_at=ts,
+                from_archive=is_from_archive,
+                allow_dockerfile_update=force,
             )
-
-        # add the image to the catalog
-        image_record = client.add_image(
-            tag=tag,
-            digest=digest,
-            dockerfile=dockerfile,
-            annotations=annotations,
-            created_at=ts,
-            from_archive=is_from_archive,
-            allow_dockerfile_update=force,
-        )
-
-        imageDigest = image_record["imageDigest"]
 
         # finally, do any state updates and return
         if image_record:
+            imageDigest = image_record["imageDigest"]
+
             logger.debug("added image: " + str(imageDigest))
 
-            # auto-subscribe for NOW
-            for image_detail in image_record["image_detail"]:
-                fulltag = (
-                    image_detail["registry"]
-                    + "/"
-                    + image_detail["repo"]
-                    + ":"
-                    + image_detail["tag"]
-                )
+            initialize_subscriptions(client, image_record, enable_subscriptions)
 
-                foundtypes = []
-                try:
-                    subscription_records = client.get_subscription(
-                        subscription_key=fulltag
-                    )
-                except Exception as err:
-                    subscription_records = []
-
-                for subscription_record in subscription_records:
-                    if subscription_record["subscription_key"] == fulltag:
-                        foundtypes.append(subscription_record["subscription_type"])
-
-                sub_types = anchore_engine.common.subscription_types
-                for sub_type in sub_types:
-                    if sub_type in ["repo_update"]:
-                        continue
-                    if sub_type not in foundtypes:
-                        try:
-                            default_active = False
-                            if (
-                                enable_subscriptions
-                                and sub_type in enable_subscriptions
-                            ):
-                                logger.debug("auto-subscribing image: " + str(sub_type))
-                                default_active = True
-                            client.add_subscription(
-                                {
-                                    "active": default_active,
-                                    "subscription_type": sub_type,
-                                    "subscription_key": fulltag,
-                                }
-                            )
-                        except:
-                            try:
-                                client.update_subscription(
-                                    {
-                                        "subscription_type": sub_type,
-                                        "subscription_key": fulltag,
-                                    }
-                                )
-                            except:
-                                pass
-                    else:
-                        if enable_subscriptions and sub_type in enable_subscriptions:
-                            client.update_subscription(
-                                {
-                                    "active": True,
-                                    "subscription_type": sub_type,
-                                    "subscription_key": fulltag,
-                                }
-                            )
+            imageDigest = image_record["imageDigest"]
 
             # set the state of the image appropriately
             currstate = image_record["analysis_status"]
@@ -1464,6 +1413,147 @@ def analyze_image(
     except Exception as err:
         logger.debug("operation exception: " + str(err))
         raise err
+
+
+def initialize_subscriptions(
+    catalog_client: CatalogClient, image_record, enable_subscriptions=None
+):
+    """
+    Setup the subscriptions for an image record
+
+    :param image_record:
+    :param enable_subscriptions:
+    :return:
+    """
+    for image_detail in image_record["image_detail"]:
+        fulltag = (
+            image_detail["registry"]
+            + "/"
+            + image_detail["repo"]
+            + ":"
+            + image_detail["tag"]
+        )
+
+        foundtypes = []
+        try:
+            subscription_records = catalog_client.get_subscription(
+                subscription_key=fulltag
+            )
+        except Exception as err:
+            subscription_records = []
+
+        for subscription_record in subscription_records:
+            if subscription_record["subscription_key"] == fulltag:
+                foundtypes.append(subscription_record["subscription_type"])
+
+        sub_types = anchore_engine.common.subscription_types
+        for sub_type in sub_types:
+            if sub_type in ["repo_update"]:
+                continue
+            if sub_type not in foundtypes:
+                try:
+                    default_active = False
+                    if enable_subscriptions and sub_type in enable_subscriptions:
+                        logger.debug("auto-subscribing image: " + str(sub_type))
+                        default_active = True
+                    catalog_client.add_subscription(
+                        {
+                            "active": default_active,
+                            "subscription_type": sub_type,
+                            "subscription_key": fulltag,
+                        }
+                    )
+                except:
+                    try:
+                        catalog_client.update_subscription(
+                            {
+                                "subscription_type": sub_type,
+                                "subscription_key": fulltag,
+                            }
+                        )
+                    except:
+                        pass
+            else:
+                if enable_subscriptions and sub_type in enable_subscriptions:
+                    catalog_client.update_subscription(
+                        {
+                            "active": True,
+                            "subscription_type": sub_type,
+                            "subscription_key": fulltag,
+                        }
+                    )
+
+
+def next_analysis_state(image_record, force=False):
+    """
+    Return the next state for the image record to transition to
+
+    :param currstate:
+    :param force:
+    :return:
+    """
+    currstate = image_record["analysis_status"]
+
+    if not currstate:
+        newstate = taskstate.init_state("analyze", None)
+    elif force or currstate == taskstate.fault_state("analyze"):
+        newstate = taskstate.reset_state("analyze")
+    elif image_record["image_status"] != taskstate.base_state("image_status"):
+        newstate = taskstate.reset_state("analyze")
+    else:
+        newstate = currstate
+
+    return newstate
+
+
+def update_image_status(
+    catalog_client: CatalogClient, image_record, to_status: str, force=False
+) -> dict:
+    """
+    Update the image status to the requested new status, idempotently
+
+    If not a valid transtion, an ConflictingRequest exception is raised
+
+    :param image_record:
+    :param to_status:
+    :param force: bool to force the transition if the state machine doesn't already support it (e.g. re-analyze requested by user)
+    :return:
+    """
+
+    analysis_status = image_record["analysis_status"]
+    next_status = next_analysis_state(image_record, force=force)
+
+    # Code carried over from previous impl. Not sure if this has any effect if force=True but the states are the same
+    # The only thing may be annotation updates etc that force the body to update event though the status is the same
+    # That needs to be fixed to use another route or PUT/PATCH explicitly rather than another POST
+    if next_status != analysis_status or force:
+        logger.debug(
+            "state change detected: " + str(analysis_status) + " : " + str(next_status)
+        )
+        image_record.update(
+            {
+                "image_status": taskstate.reset_state("image_status"),
+                "analysis_status": next_status,
+            }
+        )
+
+        # Yes, this returns an array, need to fix that but is always an array of size 1
+        updated_image_records = catalog_client.update_image(
+            image_record["imageDigest"], image_record
+        )
+        if updated_image_records:
+            image_record = updated_image_records[0]
+        else:
+            raise Exception("no response found from image update API call to catalog")
+    else:
+        logger.debug(
+            "no state change detected: "
+            + str(analysis_status)
+            + " : "
+            + str(next_status)
+        )
+
+    return image_record
 
 
 def images_imageDigest(request_inputs, imageDigest):

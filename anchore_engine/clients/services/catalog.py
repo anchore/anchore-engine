@@ -81,11 +81,14 @@ class CatalogClient(InternalServiceClient):
             body=json.dumps(payload),
         )
 
-    def import_image(self, import_manifest):
+    def import_image(self, import_manifest, annotations=None, force=False):
         return self.call_api(
             http.anchy_post,
             "images",
-            body=json.dumps({"import_manifest": import_manifest}),
+            body=json.dumps(
+                {"import_manifest": import_manifest, "annotations": annotations}
+            ),
+            query_params={"allow_dockerfile_update": force},
         )
 
     def get_imagetags(self, image_status=None):

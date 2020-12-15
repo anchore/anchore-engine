@@ -22,6 +22,7 @@ from anchore_engine.services.catalog.catalog_impl import add_or_update_image
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import DockerImageReference
 from anchore_engine.subsys.object_store import get_manager
+from anchore_engine.subsys import taskstate
 
 IMPORT_QUEUE = "images_to_analyze"
 ANCHORE_SYSTEM_ANNOTATION_KEY_PREFIX = "anchore.system/"
@@ -181,7 +182,11 @@ def check_required_content(import_manifest: ImportManifest):
 
 
 def finalize_import_operation(
-    db_session, account: str, operation_id: str, import_manifest: ImportManifest
+    db_session,
+    account: str,
+    operation_id: str,
+    import_manifest: ImportManifest,
+    final_state: ImportState = ImportState.processing,
 ) -> InternalImportManifest:
     """
     Finalize the import operation itself
@@ -224,7 +229,7 @@ def finalize_import_operation(
         )
 
         # Update the status
-        record.status = ImportState.processing
+        record.status = final_state
         # Queue presence should be gated by the image record, not here
         # queue_import_task(account, operation_id, internal_manifest)
     except:
@@ -288,24 +293,15 @@ def import_image(
     """
 
     logger.debug(
-        "Processing import image request with source operation_id = {}".format(
-            operation_id
-        )
+        "Processing import image request with source operation_id = %s, annotations = %s",
+        operation_id,
+        annotations,
     )
 
     # Add annotation indicating this is an import
     annotations = add_import_annotations(import_manifest, annotations)
 
-    # Check for dockerfile updates to an existing image
-    found_img = db_catalog_image.get(
-        imageDigest=import_manifest.digest, userId=account, session=dbsession
-    )
-    if found_img and not force:
-        raise BadRequest(
-            "Cannot reload image that already exists unless using force=True for re-analysis",
-            detail={"digest": import_manifest.digest},
-        )
-
+    # Import analysis for a new digest, or re-load analysis for existing image
     logger.debug("Loading image info using import operation id %s", operation_id)
     image_references = []
     for t in import_manifest.tags:
@@ -322,34 +318,73 @@ def import_image(
     if not (image_references and image_references[0].has_digest()):
         raise ValueError("Must have image digest in image reference")
 
-    # Finalize the import
-    internal_import_manifest = finalize_import_operation(
-        dbsession, account, operation_id, import_manifest
+    # Check for dockerfile updates to an existing image
+    found_img = db_catalog_image.get(
+        imageDigest=import_manifest.digest, userId=account, session=dbsession
     )
 
-    # Get the dockerfile content if available
-    if import_manifest.contents.dockerfile:
-        rec = [
-            ref
-            for ref in internal_import_manifest.contents
-            if ref.content_type == ImportTypes.dockerfile.value
-        ][0]
+    # Removed this to align processing with how analysis works: the status is updated *after* the add call
+    # if the record already had an older status it will get reset
+    if (
+        found_img
+        and found_img["analysis_status"] not in taskstate.fault_state("analyze")
+        and not force
+    ):
+        # Load the existing manifest since we aren't going to use the import manifest for analysis
         obj_mgr = get_manager()
-        dockerfile_content = obj_mgr.get_document(
-            userId=account,
-            bucket=rec.bucket,
-            archiveId=rec.key,
+        manifest = obj_mgr.get_document(
+            account, "manifest_data", found_img["imageDigest"]
         )
-        dockerfile_mode = "Actual"
+        parent_manifest = obj_mgr.get_document(
+            account, "parent_manifest_data", found_img["imageDigest"]
+        )
+
+        # Don't allow a dockerfile update via import path
+        dockerfile_content = None
+        dockerfile_mode = None
+
+        # Finalize the import, go straight to complete
+        finalize_import_operation(
+            dbsession,
+            account,
+            operation_id,
+            import_manifest,
+            final_state=ImportState.complete,
+        )
+
+        # raise BadRequest(
+        #     "Cannot reload image that already exists unless using force=True for re-analysis",
+        #     detail={"digest": import_manifest.digest},
+        # )
     else:
-        dockerfile_content = ""
-        dockerfile_mode = "Guessed"
+        # Finalize the import
+        internal_import_manifest = finalize_import_operation(
+            dbsession, account, operation_id, import_manifest
+        )
 
-    # Set the manifest to the import manifest. This is swapped out for the real manifest during the import operation on
-    # the analyzer
-    manifest = internal_import_manifest.to_json()
+        # Get the dockerfile content if available
+        if import_manifest.contents.dockerfile:
+            rec = [
+                ref
+                for ref in internal_import_manifest.contents
+                if ref.content_type == ImportTypes.dockerfile.value
+            ][0]
+            obj_mgr = get_manager()
+            dockerfile_content = obj_mgr.get_document(
+                userId=account,
+                bucket=rec.bucket,
+                archiveId=rec.key,
+            )
+            dockerfile_mode = "Actual"
+        else:
+            dockerfile_content = ""
+            dockerfile_mode = "Guessed"
 
-    parent_manifest = ""
+        # Set the manifest to the import manifest. This is swapped out for the real manifest during the import operation on
+        # the analyzer
+        manifest = internal_import_manifest.to_json()
+
+        parent_manifest = ""
 
     # Update the db for the image record
     image_records = add_or_update_image(
@@ -363,7 +398,7 @@ def import_image(
         else import_manifest.digest,
         dockerfile=dockerfile_content,
         dockerfile_mode=dockerfile_mode,
-        manifest=manifest,  # Fo now use the import manifest as the image manifest. This will get set properly later
+        manifest=manifest,  # Fo now use the import manifest as the image manifest. This will get set to the actual manifest on the analyzer
         parent_manifest=parent_manifest,
         annotations=annotations,
     )

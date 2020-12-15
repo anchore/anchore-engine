@@ -1914,6 +1914,7 @@ def add_or_update_image(
                         imageDigest, userId, session=dbsession
                     )
                     if not image_record:
+                        # Create a new iamge
                         new_image_record["image_status"] = taskstate.init_state(
                             "image_status", None
                         )
@@ -1999,6 +2000,7 @@ def add_or_update_image(
                             )
 
                     else:
+                        # Update existing image record
                         new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(
                             new_image_record["image_detail"]
                         )
