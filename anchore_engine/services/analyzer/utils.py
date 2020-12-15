@@ -112,9 +112,11 @@ def update_catalog_image_status(
     :param new_image_status: str new image status value, optional
     :return:
     """
-    assert image_digest is not None
-    assert image_record is not None
-    assert new_analysis_status or new_image_status
+
+    if not (new_analysis_status or new_image_status):
+        raise ValueError(
+            "one of new_analysis_status or new_image_status must be non None"
+        )
 
     if new_analysis_status:
         image_record["analysis_status"] = new_analysis_status
