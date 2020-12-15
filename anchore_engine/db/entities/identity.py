@@ -18,12 +18,9 @@ from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
 
-from authlib.flask.oauth2.sqla import (
-    OAuth2ClientMixin,
-    OAuth2AuthorizationCodeMixin,
-    OAuth2TokenMixin,
-    TokenMixin,
-)
+from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
+
+from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
 
 
 class AccountTypes(enum.Enum):
