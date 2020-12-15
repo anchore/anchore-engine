@@ -51,12 +51,12 @@ class UtilMixin(object):
 
         :return: string
         """
+
+        # TODO: should normalize DateTime's to use RFC3339 in the future to make the timezone explicit
         return dict(
             (
                 key,
-                value
-                if type(value) != datetime.datetime
-                else datetime_to_rfc3339(value),
+                value if type(value) != datetime.datetime else value.isoformat(),
             )
             for key, value in vars(self).items()
             if not key.startswith("_")
