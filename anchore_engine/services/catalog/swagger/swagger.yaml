@@ -331,6 +331,32 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /images/{image_digest}/content/{content_type}:
+    get:
+      tags:
+        - "catalog"
+      summary: "Get image content"
+      description: ""
+      operationId: "get_image_content"
+      parameters:
+        - name: 'image_digest'
+          in: path
+          type: string
+          description: "imageDigest of image to get"
+          required: true
+        - name: 'content_type'
+          in: path
+          type: string
+          description: "image content type to retrieve"
+          required: true
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /registry_lookup:
     get:
       tags:
@@ -1744,6 +1770,21 @@ definitions:
         type: string
         format: date-time
         description: Rule last update timestamp
+      exclude:
+        $ref: "#/definitions/AnalysisArchiveTransitionRuleExclude"
+      max_images_per_account:
+        type: integer
+        description: This is the maximum number of image analyses an account can have. Can only be set on system_global rules
+  AnalysisArchiveTransitionRuleExclude:
+    type: object
+    description: Which Images to exclude from auto-archiving logic
+    properties:
+      selector:
+        $ref: "#/definitions/ImageSelector"
+      expiration_days:
+        type: integer
+        description: How long the image selected will be excluded from the archive transition
+        default: -1
   AnalysisArchiveTransitionHistory:
     type: object
     description: A rule for auto-archiving image analysis by time and/or tag-history

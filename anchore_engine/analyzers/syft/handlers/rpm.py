@@ -37,6 +37,7 @@ def _all_package_info(findings, artifact):
         "release": release,
         "size": str(dig(artifact, "metadata", "size", force_default="N/A")),
         "license": dig(artifact, "metadata", "license", force_default="N/A"),
+        "cpes": artifact.get("cpes", []),
     }
     if pkg_value["arch"] == "amd64":
         pkg_value["arch"] = "x86_64"

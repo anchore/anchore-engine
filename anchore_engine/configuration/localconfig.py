@@ -54,6 +54,7 @@ DEFAULT_CONFIG = {
             },
         },
     },
+    "policy_bundles_dir": "bundles/",
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50
@@ -156,6 +157,74 @@ def load_defaults(configdir=None):
     return localconfig
 
 
+def load_policy_bundle_paths(src_dir=None):
+    global localconfig
+
+    default_bundle_name = "anchore_default_bundle.json"
+
+    # Get the dir containing policy bundles to put in the config
+    policy_bundles_dir = localconfig["policy_bundles_dir"]
+
+    try:
+        if policy_bundles_dir is not None:
+            policy_bundles_dir_full_path = os.path.join(
+                localconfig["service_dir"], policy_bundles_dir
+            )
+            if not os.path.exists(policy_bundles_dir_full_path):
+                os.mkdir(policy_bundles_dir_full_path)
+
+            if src_dir == None:
+                src_dir = os.path.join(
+                    resource_filename("anchore_engine", "conf/bundles/")
+                )
+            policy_bundles = []
+            for file_name in os.listdir(src_dir):
+                try:
+                    file = os.path.join(policy_bundles_dir_full_path, file_name)
+                    policy_bundles.append(
+                        {
+                            "active": file_name == default_bundle_name,
+                            "bundle_path": file,
+                        }
+                    )
+                    copy_config_file(file, file_name, src_dir)
+                except Exception as e:
+                    logger.warn(
+                        "Policy bundle {} not found, unable to load. Exception: {}".format(
+                            file_name, e
+                        )
+                    )
+            localconfig["policy_bundles"] = policy_bundles
+            return
+    except Exception as e:
+        logger.warn(
+            "Configured policy bundle dir at {} not found, unable to load. Exception: {}".format(
+                policy_bundles_dir, e
+            )
+        )
+        localconfig["policy_bundles"] = None
+
+
+def load_filepath_to_config(key, fname, src_dir=None):
+    global localconfig
+
+    try:
+        default_file = os.path.join(localconfig["service_dir"], fname)
+        localconfig[key] = default_file
+        if src_dir == None:
+            src_dir = os.path.join(resource_filename("anchore_engine", "conf/"))
+        copy_config_file(default_file, fname, src_dir)
+    except:
+        localconfig[key] = None
+
+
+def copy_config_file(file, file_name, src_dir):
+    if not os.path.exists(file):
+        src_file = os.path.join(src_dir, file_name)
+        if os.path.exists(src_file):
+            shutil.copy(src_file, file)
+
+
 def load_config(configdir=None, configfile=None, validate_params=None):
     global localconfig
 
@@ -207,21 +276,10 @@ def load_config(configdir=None, configfile=None, validate_params=None):
             )
 
     # copy the src installed files unless they already exist in the service dir conf
-    for key, fname in [
-        ("default_bundle_file", "anchore_default_bundle.json"),
-        ("anchore_scanner_analyzer_config_file", "analyzer_config.yaml"),
-    ]:
-        try:
-            default_file = os.path.join(localconfig["service_dir"], fname)
-            localconfig[key] = default_file
-            if not os.path.exists(default_file):
-                src_file = os.path.join(
-                    resource_filename("anchore_engine", "conf/"), fname
-                )
-                if os.path.exists(src_file):
-                    shutil.copy(src_file, default_file)
-        except:
-            localconfig[key] = None
+    load_policy_bundle_paths()
+    load_filepath_to_config(
+        "anchore_scanner_analyzer_config_file", "analyzer_config.yaml"
+    )
 
     # generate/setup the host_id in the service_dir
     localconfig["host_id"] = get_host_id()
@@ -528,6 +586,35 @@ def get_versions():
     ret["db_version"] = version.db_version
 
     return ret
+
+
+def load_policy_bundles(config, process_bundle, process_exception):
+    """
+    A convenience function to avoid code duplication between accounts.py and catalog/__init.py. This
+    function iterates through the one to many policy bundle filepaths in the config, opens them, and
+    converts them to json. Since the (currently two) calling methods do slightly different things with
+    those bundles (and handle exceptions in slightly ways) this function requires two callbacks it can
+    call to do that processing.
+
+    :param config The config:
+    :param process_bundle A callback with logic for what to do with each bundle:
+    :param process_exception A callback with logic for parsing exceptions:
+    """
+    policy_bundles = config.get("policy_bundles", None)
+    if policy_bundles is not None and policy_bundles != []:
+        for policy_bundle in policy_bundles:
+            if policy_bundle["bundle_path"] and os.path.exists(
+                policy_bundle["bundle_path"]
+            ):
+                logger.info("loading bundle: " + str(policy_bundle["bundle_path"]))
+                try:
+                    bundle = {}
+                    with open(policy_bundle["bundle_path"], "r") as FH:
+                        bundle = json.loads(FH.read())
+                    if bundle:
+                        process_bundle(policy_bundle, bundle)
+                except Exception as err:
+                    process_exception(err)
 
 
 class OauthNotConfiguredError(Exception):

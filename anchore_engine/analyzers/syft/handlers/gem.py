@@ -36,6 +36,7 @@ def translate_and_save_entry(findings, artifact):
         "files": dig(artifact, "metadata", "files", force_default=[]),
         "origins": dig(artifact, "metadata", "authors", force_default=[]),
         "lics": dig(artifact, "metadata", "licenses", force_default=[]),
+        "cpes": artifact.get("cpes", []),
     }
 
     save_entry(findings, pkg_value, pkg_key)

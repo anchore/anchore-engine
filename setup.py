@@ -22,6 +22,7 @@ for root, dirnames, filenames in os.walk("./" + package_name):
 package_data = {
     package_name: [
         "conf/*",
+        "conf/bundles/*",
         "analyzers/modules/*",
     ]
     + swaggers,

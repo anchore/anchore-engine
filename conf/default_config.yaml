@@ -10,7 +10,6 @@
 service_dir: ${ANCHORE_SERVICE_DIR}
 tmp_dir: /analysis_scratch
 log_level: ${ANCHORE_LOG_LEVEL}
-cleanup_images: true
 
 # When set, if a registry credential username is set to 'iamauto' for an ecr registry, the engine will
 # use whatever aws creds are available in the standard boto search path (.aws, env, etc)
@@ -41,7 +40,6 @@ user_authentication:
   # don't also use oauth and tokens for internal communications (which requires keys/secret to be configured as well)
   # WARNING: you should not change this after a system has been initialized as it may cause a mismatch in existing passwords
   hashed_passwords: ${ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS}
-
 
 metrics:
   enabled: ${ANCHORE_ENABLE_METRICS}

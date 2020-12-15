@@ -55,6 +55,7 @@ def translate_and_save_entry(findings, artifact):
         "license": dig(artifact, "metadata", "license", force_default=""),
         "location": site_pkg_root,
         "type": "python",
+        "cpes": artifact.get("cpes", []),
     }
 
     # inject the artifact document into the "raw" analyzer document

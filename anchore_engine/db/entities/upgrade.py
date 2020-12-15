@@ -1584,7 +1584,7 @@ def db_upgrade_012_013():
     upgrade_flush_centos_vulns_013()
 
 
-def db_upgrade_013_014():
+def upgrade_014_archive_rules():
     from anchore_engine.db import session_scope
     from anchore_engine.db.entities.identity import UserTypes
 
@@ -1610,6 +1610,7 @@ def db_upgrade_013_014():
                     "exclude_expiration_days",
                     Integer,
                 ),
+                Column("max_images_per_account", Integer),
             ],
         }
     ]
@@ -1640,6 +1641,233 @@ def db_upgrade_013_014():
                         table, str(e)
                     )
                 )
+
+
+def remove_policy_engine_sizes():
+    """
+    Removes all varchar size hints for policy engine tables
+
+    :return:
+    """
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    to_update = [
+        # Feeds
+        ("feeds", "name"),
+        ("feeds", "description"),
+        # Feed Groups
+        ("feed_groups", "description"),
+        ("feed_groups", "name"),
+        # GenericFeedDataRecord
+        ("feed_group_data", "feed"),
+        ("feed_group_data", "group"),
+        ("feed_group_data", "id"),
+        # GemMetadata
+        ("feed_data_gem_packages", "name"),
+        ("feed_data_gem_packages", "latest"),
+        # NpmMetadata
+        ("feed_data_npm_packages", "name"),
+        ("feed_data_npm_packages", "sourcepkg"),
+        ("feed_data_npm_packages", "latest"),
+        # Vulnerability
+        ("feed_data_vulnerabilities", "id"),
+        ("feed_data_vulnerabilities", "namespace_name"),
+        ("feed_data_vulnerabilities", "link"),
+        # VulnerableArtifact
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "vulnerability_id"),
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "namespace_name"),
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "name"),
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "version"),
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "version_format"),
+        ("feed_data_vulnerabilities_vulnerable_artifacts", "epochless_version"),
+        # FixedArtifact
+        ("feed_data_vulnerabilities_fixed_artifacts", "vulnerability_id"),
+        ("feed_data_vulnerabilities_fixed_artifacts", "namespace_name"),
+        ("feed_data_vulnerabilities_fixed_artifacts", "name"),
+        ("feed_data_vulnerabilities_fixed_artifacts", "version"),
+        ("feed_data_vulnerabilities_fixed_artifacts", "version_format"),
+        ("feed_data_vulnerabilities_fixed_artifacts", "epochless_version"),
+        # CpeVulnerability
+        # ('feed_data_cpe_vulnerabilities', 'feed_name'),
+        # ('feed_data_cpe_vulnerabilities', 'namespace_name'),
+        # ('feed_data_cpe_vulnerabilities', 'vulnerability_id'),
+        # ('feed_data_cpe_vulnerabilities', 'cpetype'),
+        # ('feed_data_cpe_vulnerabilities', 'vendor'),
+        # ('feed_data_cpe_vulnerabilities', 'name'),
+        # ('feed_data_cpe_vulnerabilities', 'version'),
+        # ('feed_data_cpe_vulnerabilities', 'update'),
+        # ('feed_data_cpe_vulnerabilities', 'meta'),
+        # ('feed_data_cpe_vulnerabilities', 'link'),
+        #
+        # # NvdMetadata (has cast error, but this is deprecated table, so skip
+        # ('feed_data_nvd_vulnerabilities', 'name'),
+        # ('feed_data_nvd_vulnerabilities', 'namespace_name'),
+        # ('feed_data_nvd_vulnerabilities', 'summary'),
+        # NvdV2Metadata
+        ("feed_data_nvdv2_vulnerabilities", "name"),
+        ("feed_data_nvdv2_vulnerabilities", "namespace_name"),
+        ("feed_data_nvdv2_vulnerabilities", "description"),
+        ("feed_data_nvdv2_vulnerabilities", "link"),
+        # VulnDBMetadata
+        ("feed_data_vulndb_vulnerabilities", "name"),
+        ("feed_data_vulndb_vulnerabilities", "namespace_name"),
+        ("feed_data_vulndb_vulnerabilities", "title"),
+        ("feed_data_vulndb_vulnerabilities", "description"),
+        ("feed_data_vulndb_vulnerabilities", "solution"),
+        # CpeV2Vulnerability
+        ("feed_data_cpev2_vulnerabilities", "feed_name"),
+        ("feed_data_cpev2_vulnerabilities", "namespace_name"),
+        ("feed_data_cpev2_vulnerabilities", "vulnerability_id"),
+        ("feed_data_cpev2_vulnerabilities", "part"),
+        ("feed_data_cpev2_vulnerabilities", "vendor"),
+        ("feed_data_cpev2_vulnerabilities", "product"),
+        ("feed_data_cpev2_vulnerabilities", "version"),
+        ("feed_data_cpev2_vulnerabilities", "update"),
+        ("feed_data_cpev2_vulnerabilities", "edition"),
+        ("feed_data_cpev2_vulnerabilities", "language"),
+        ("feed_data_cpev2_vulnerabilities", "sw_edition"),
+        ("feed_data_cpev2_vulnerabilities", "target_sw"),
+        ("feed_data_cpev2_vulnerabilities", "target_hw"),
+        ("feed_data_cpev2_vulnerabilities", "other"),
+        # VulnDBCpe
+        ("feed_data_vulndb_cpes", "feed_name"),
+        ("feed_data_vulndb_cpes", "namespace_name"),
+        ("feed_data_vulndb_cpes", "vulnerability_id"),
+        ("feed_data_vulndb_cpes", "part"),
+        ("feed_data_vulndb_cpes", "vendor"),
+        ("feed_data_vulndb_cpes", "product"),
+        ("feed_data_vulndb_cpes", "version"),
+        ("feed_data_vulndb_cpes", "update"),
+        ("feed_data_vulndb_cpes", "edition"),
+        ("feed_data_vulndb_cpes", "language"),
+        ("feed_data_vulndb_cpes", "sw_edition"),
+        ("feed_data_vulndb_cpes", "target_sw"),
+        ("feed_data_vulndb_cpes", "target_hw"),
+        ("feed_data_vulndb_cpes", "other"),
+        # ImagePackage
+        ("image_packages", "image_id"),
+        ("image_packages", "image_user_id"),
+        ("image_packages", "name"),
+        ("image_packages", "version"),
+        ("image_packages", "pkg_type"),
+        ("image_packages", "arch"),
+        ("image_packages", "pkg_path"),
+        ("image_packages", "pkg_path_hash"),
+        ("image_packages", "distro_name"),
+        ("image_packages", "distro_version"),
+        ("image_packages", "like_distro"),
+        ("image_packages", "fullversion"),
+        ("image_packages", "release"),
+        ("image_packages", "origin"),
+        ("image_packages", "src_pkg"),
+        ("image_packages", "normalized_src_pkg"),
+        ("image_packages", "license"),
+        # ImagePackageManifest
+        ("image_package_db_entries", "image_id"),
+        ("image_package_db_entries", "image_user_id"),
+        ("image_package_db_entries", "pkg_name"),
+        ("image_package_db_entries", "pkg_version"),
+        ("image_package_db_entries", "pkg_type"),
+        ("image_package_db_entries", "pkg_arch"),
+        ("image_package_db_entries", "pkg_path"),
+        ("image_package_db_entries", "file_path"),
+        ("image_package_db_entries", "digest"),
+        ("image_package_db_entries", "digest_algorithm"),
+        ("image_package_db_entries", "file_group_name"),
+        ("image_package_db_entries", "file_user_name"),
+        # ImageNpm
+        ("image_npms", "image_user_id"),
+        ("image_npms", "image_id"),
+        ("image_npms", "path_hash"),
+        ("image_npms", "path"),
+        ("image_npms", "name"),
+        ("image_npms", "source_pkg"),
+        ("image_npms", "latest"),
+        # ImageGem
+        ("image_gems", "image_user_id"),
+        ("image_gems", "image_id"),
+        ("image_gems", "path_hash"),
+        ("image_gems", "path"),
+        ("image_gems", "name"),
+        ("image_gems", "source_pkg"),
+        ("image_gems", "latest"),
+        # ImageCpe
+        ("image_cpes", "image_user_id"),
+        ("image_cpes", "image_id"),
+        ("image_cpes", "pkg_type"),
+        ("image_cpes", "pkg_path"),
+        ("image_cpes", "cpetype"),
+        ("image_cpes", "vendor"),
+        ("image_cpes", "name"),
+        ("image_cpes", "version"),
+        ("image_cpes", "update"),
+        ("image_cpes", "meta"),
+        # FilesystemAnalysis
+        ("image_fs_analysis_dump", "image_user_id"),
+        ("image_fs_analysis_dump", "image_id"),
+        ("image_fs_analysis_dump", "compressed_content_hash"),
+        ("image_fs_analysis_dump", "compression_algorithm"),
+        # AnalysisArtifact
+        ("image_analysis_artifacts", "image_id"),
+        ("image_analysis_artifacts", "image_user_id"),
+        ("image_analysis_artifacts", "analyzer_id"),
+        ("image_analysis_artifacts", "analyzer_artifact"),
+        ("image_analysis_artifacts", "analyzer_type"),
+        ("image_analysis_artifacts", "artifact_key"),
+        # Image
+        ("images", "id"),
+        ("images", "user_id"),
+        ("images", "digest"),
+        ("images", "distro_name"),
+        ("images", "distro_version"),
+        ("images", "like_distro"),
+        ("images", "dockerfile_mode"),
+        # ImagePackageVulnerability
+        ("image_package_vulnerabilities", "pkg_user_id"),
+        ("image_package_vulnerabilities", "pkg_image_id"),
+        ("image_package_vulnerabilities", "pkg_name"),
+        ("image_package_vulnerabilities", "pkg_version"),
+        ("image_package_vulnerabilities", "pkg_type"),
+        ("image_package_vulnerabilities", "pkg_arch"),
+        ("image_package_vulnerabilities", "pkg_path"),
+        ("image_package_vulnerabilities", "vulnerability_id"),
+        ("image_package_vulnerabilities", "vulnerability_namespace_name"),
+        # DistroMapping
+        ("distro_mappings", "from_distro"),
+        ("distro_mappings", "to_distro"),
+        ("distro_mappings", "flavor"),
+        # PolicyEvaluationCache
+        ("policy_engine_evaluation_cache", "user_id"),
+        ("policy_engine_evaluation_cache", "image_id"),
+        ("policy_engine_evaluation_cache", "eval_tag"),
+        ("policy_engine_evaluation_cache", "bundle_id"),
+        ("policy_engine_evaluation_cache", "bundle_digest"),
+        ("policy_engine_evaluation_cache", "user_id"),
+    ]
+
+    log.err("Updating tables")
+    for table_name, column_name in to_update:
+        log.err(
+            "Updating table {} column {} to varchar".format(table_name, column_name)
+        )
+        try:
+            rc = engine.execute(
+                'ALTER TABLE {} ALTER COLUMN "{}" type varchar'.format(
+                    table_name, column_name
+                )
+            )
+        except Exception as ex:
+            log.err(
+                "Failed updating {} column {} type to varchar. Err: {}".format(
+                    table_name, column_name, str(ex)
+                )
+            )
+            raise ex
+
+
+def db_upgrade_013_014():
+    remove_policy_engine_sizes()
+    upgrade_014_archive_rules()
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here

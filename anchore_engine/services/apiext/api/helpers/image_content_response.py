@@ -38,7 +38,7 @@ def _build_os_response(content_data):
         el = {}
         try:
             el["package"] = package_name
-            for field in ["license", "origin", "size", "type", "version"]:
+            for field in ["license", "origin", "size", "type", "version", "cpes"]:
                 if field in package_info:
                     el[field] = package_info[field]
                 else:
@@ -74,6 +74,7 @@ def _build_npm_response(content_data):
             el["origin"] = ",".join(content_data[package]["origins"]) or "Unknown"
             el["license"] = " ".join(content_data[package]["lics"]) or "Unknown"
             el["licenses"] = content_data[package]["lics"] or ["Unknown"]
+            el["cpes"] = content_data[package].get("cpes", [])
         except:
             continue
         response.append(el)
@@ -92,6 +93,7 @@ def _build_gem_response(content_data):
             el["origin"] = ",".join(content_data[package]["origins"]) or "Unknown"
             el["license"] = " ".join(content_data[package]["lics"]) or "Unknown"
             el["licenses"] = content_data[package]["lics"] or ["Unknown"]
+            el["cpes"] = content_data[package].get("cpes", [])
         except:
             continue
         response.append(el)
@@ -110,6 +112,7 @@ def _build_python_response(content_data):
             el["origin"] = content_data[package]["origin"] or "Unknown"
             el["license"] = content_data[package]["license"] or "Unknown"
             el["licenses"] = content_data[package]["license"].split(" ") or ["Unknown"]
+            el["cpes"] = content_data[package].get("cpes", [])
         except:
             continue
         response.append(el)
@@ -130,6 +133,7 @@ def _build_java_response(content_data):
             ]
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
+            el["cpes"] = content_data[package].get("cpes", [])
         except:
             continue
         response.append(el)
@@ -204,6 +208,7 @@ def _build_default_response(content_data):
                 el["licenses"] = (
                     content_data[package].get("license", "Unknown").split(" ")
                 )
+                el["cpes"] = content_data[package].get("cpes", [])
             except Exception as err:
                 continue
             response.append(el)

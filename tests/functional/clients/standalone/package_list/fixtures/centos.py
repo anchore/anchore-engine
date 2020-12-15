@@ -35,6 +35,10 @@ pkgs_allinfo = {
         "sourcepkg": "libmnl-1.0.4-6.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libmnl:1.0.4-6.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libmnl:libmnl:1.0.4-6.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libdb": {
         "version": "5.3.28",
@@ -45,6 +49,10 @@ pkgs_allinfo = {
         "sourcepkg": "libdb-5.3.28-37.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libdb:5.3.28-37.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libdb:libdb:5.3.28-37.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libseccomp": {
         "version": "2.4.1",
@@ -55,6 +63,10 @@ pkgs_allinfo = {
         "sourcepkg": "libseccomp-2.4.1-1.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libseccomp:2.4.1-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libseccomp:libseccomp:2.4.1-1.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libsepol": {
         "version": "2.9",
@@ -65,6 +77,10 @@ pkgs_allinfo = {
         "sourcepkg": "libsepol-2.9-1.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libsepol:2.9-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libsepol:libsepol:2.9-1.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libunistring": {
         "version": "0.9.9",
@@ -75,6 +91,10 @@ pkgs_allinfo = {
         "sourcepkg": "libunistring-0.9.9-3.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libunistring:0.9.9-3.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libunistring:libunistring:0.9.9-3.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libkcapi": {
         "version": "1.1.1",
@@ -85,6 +105,10 @@ pkgs_allinfo = {
         "sourcepkg": "libkcapi-1.1.1-16_1.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libkcapi:1.1.1-16_1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libkcapi:libkcapi:1.1.1-16_1.el8:*:*:*:*:*:*:*",
+        ],
     },
     "tzdata": {
         "version": "2020a",
@@ -95,6 +119,10 @@ pkgs_allinfo = {
         "sourcepkg": "tzdata-2020a-1.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:tzdata:2020a-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:tzdata:tzdata:2020a-1.el8:*:*:*:*:*:*:*",
+        ],
     },
     "cracklib": {
         "version": "2.9.6",
@@ -105,6 +133,10 @@ pkgs_allinfo = {
         "sourcepkg": "cracklib-2.9.6-15.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:cracklib:2.9.6-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:cracklib:cracklib:2.9.6-15.el8:*:*:*:*:*:*:*",
+        ],
     },
     "bash": {
         "version": "4.4.19",
@@ -115,6 +147,10 @@ pkgs_allinfo = {
         "sourcepkg": "bash-4.4.19-10.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:bash:4.4.19-10.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:bash:bash:4.4.19-10.el8:*:*:*:*:*:*:*",
+        ],
     },
     "libnsl2": {
         "version": "1.2.0",
@@ -125,5 +161,9 @@ pkgs_allinfo = {
         "sourcepkg": "libnsl2-1.2.0-2.20180605git4a062cf.el8.src.rpm",
         "origin": "CentOS",
         "type": "rpm",
+        "cpes": [
+            "cpe:2.3:a:*:libnsl2:1.2.0-2.20180605git4a062cf.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libnsl2:libnsl2:1.2.0-2.20180605git4a062cf.el8:*:*:*:*:*:*:*",
+        ],
     },
 }
