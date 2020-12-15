@@ -13,13 +13,13 @@ def handle_layer_cache():
     """
 
     localconfig = get_config()
-    myconfig = localconfig['services']['analyzer']
+    myconfig = localconfig["services"]["analyzer"]
 
-    cachemax_gbs = int(myconfig.get('layer_cache_max_gigabytes', 1))
+    cachemax_gbs = int(myconfig.get("layer_cache_max_gigabytes", 1))
     cachemax = cachemax_gbs * 1000000000
 
     try:
-        tmpdir = localconfig['tmp_dir']
+        tmpdir = localconfig["tmp_dir"]
     except Exception as err:
         logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
         tmpdir = "/tmp"
@@ -29,15 +29,23 @@ def handle_layer_cache():
         layertimes = {}
         layersizes = {}
 
-        for f in os.listdir(os.path.join(use_cache_dir, 'sha256')):
-            layerfile = os.path.join(use_cache_dir, 'sha256', f)
+        for f in os.listdir(os.path.join(use_cache_dir, "sha256")):
+            layerfile = os.path.join(use_cache_dir, "sha256", f)
             layerstat = os.stat(layerfile)
             totalsize = totalsize + layerstat.st_size
             layersizes[layerfile] = layerstat.st_size
-            layertimes[layerfile] = max([layerstat.st_mtime, layerstat.st_ctime, layerstat.st_atime])
+            layertimes[layerfile] = max(
+                [layerstat.st_mtime, layerstat.st_ctime, layerstat.st_atime]
+            )
 
         if totalsize > cachemax:
-            logger.debug("layer cache total size ("+str(totalsize)+") exceeds configured cache max ("+str(cachemax)+") - performing cleanup")
+            logger.debug(
+                "layer cache total size ("
+                + str(totalsize)
+                + ") exceeds configured cache max ("
+                + str(cachemax)
+                + ") - performing cleanup"
+            )
             currsize = totalsize
             sorted_layers = sorted(list(layertimes.items()), key=operator.itemgetter(1))
             while currsize > cachemax:

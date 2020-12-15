@@ -10,11 +10,11 @@ import threading
 
 
 class Status(enum.Enum):
-    pending = 'pending'
-    running = 'running'
-    failed = 'failed'
-    success = 'success'
-    complete = 'complete'
+    pending = "pending"
+    running = "running"
+    failed = "failed"
+    success = "success"
+    complete = "complete"
 
 
 class WorkerTask(threading.Thread):
@@ -58,7 +58,3 @@ class WorkerTask(threading.Thread):
             self._post_exec()
         except Exception as ex:
             self._post_exec(ex)
-
-
-
-
