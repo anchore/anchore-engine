@@ -27,7 +27,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
-
+from anchore_engine.utils import timer
 
 feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None
@@ -413,6 +413,6 @@ class PolicyEngineService(ApiService):
 
     __lifecycle_handlers__ = {LifeCycleStages.pre_register: [(process_preflight, None)]}
 
-    # def _register_instance_handlers(self):
-    #    super()._register_instance_handlers()
-    #    self.register_handler(LifeCycleStages.pre_register, process_preflight, None)
+    def get_cpe_vulnerabilities(self, image, nvd_cls, cpe_cls):
+        with timer("Image vulnerability cpe lookups", log_level="debug"):
+            return image.cpe_vulnerabilities(_nvd_cls=nvd_cls, _cpe_cls=cpe_cls)

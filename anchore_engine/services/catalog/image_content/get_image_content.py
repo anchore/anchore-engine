@@ -13,6 +13,7 @@ from anchore_engine.subsys import taskstate, logger
 
 class ImageContentGetter:
     __normalize_to_user_format_on_load__ = True
+    __verify_content_type__ = True
 
     def __init__(self, account_id, content_type, image_digest):
         self.account_id = account_id
@@ -49,7 +50,7 @@ class ImageContentGetter:
 
         image_content_data = self.get_image_content_data(self.image_digest)
 
-        if self.content_type not in image_content_data:
+        if self.__verify_content_type__ and self.content_type not in image_content_data:
             raise BadRequest(
                 "image content of type (%s) was not an available type at analysis time for this image"
                 % str(self.content_type),
