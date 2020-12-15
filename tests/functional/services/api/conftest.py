@@ -235,3 +235,15 @@ def add_alpine_latest_image(request):
 
     request.addfinalizer(remove_image_by_id)
     return resp, request.param
+
+
+@pytest.fixture(scope="session", params=USER_API_CONFS)
+def make_image_analysis_request(request):
+    """
+    Returns a function that can be used to add an image with given tag for analysis
+    """
+
+    def _add_image_for_analysis(tag):
+        return http_post(["images"], {"tag": tag}, config=request.param)
+
+    return _add_image_for_analysis
