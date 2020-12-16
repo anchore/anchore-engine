@@ -9,7 +9,7 @@ an update to the feed handling code is ok to be required as well.
 """
 import os
 import time
-import typing
+import uuid
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import (
@@ -48,6 +48,42 @@ from anchore_engine.subsys.events import (
 )
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
+from anchore_engine.common.schemas import (
+    GroupDownloadOperationParams,
+    GroupDownloadOperationConfiguration,
+    DownloadOperationConfiguration,
+)
+
+
+def download_operation_config_factory(
+    source_uri, db_groups_to_sync, is_full_download=False
+):
+    """
+    Create new operation configuration from the set of db entities
+
+    :param source_uri:
+    :param db_groups_to_sync: list of FeedGroupMetadata objects from the db
+    :param is_full_download:
+    :return:
+    """
+    conf = DownloadOperationConfiguration(
+        uuid=uuid.uuid4().hex, source_uri=source_uri, groups=[]
+    )
+
+    for g in db_groups_to_sync:
+        if not isinstance(g, FeedGroupMetadata):
+            raise TypeError(
+                "db_groups_to_sync must be list of FeedGroupMetadata objects"
+            )
+
+        group_download_conf = GroupDownloadOperationConfiguration()
+        group_download_conf.feed = g.feed_name
+        group_download_conf.group = g.name
+        group_since = g.last_sync if not is_full_download else None
+        group_download_conf.parameters = GroupDownloadOperationParams(since=group_since)
+        conf.groups.append(group_download_conf)
+
+    return conf
 
 
 def get_feeds_config(full_config):
@@ -504,10 +540,8 @@ class DataFeeds(object):
                     for g in groups_to_sync:
 
                         # Down load just one group into a download result
-                        group_download_config = (
-                            DownloadOperationConfiguration.generate_new(
-                                feed_client.feed_url, db_groups_to_sync=[g]
-                            )
+                        group_download_config = download_operation_config_factory(
+                            feed_client.feed_url, db_groups_to_sync=[g]
                         )
                         downloader = FeedDownloader(
                             download_root_dir=download_dir,

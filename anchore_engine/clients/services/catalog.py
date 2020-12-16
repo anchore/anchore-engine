@@ -46,6 +46,7 @@ class CatalogClient(InternalServiceClient):
         created_at=None,
         from_archive=False,
         allow_dockerfile_update=False,
+        manifest=None,
     ):
         """
 
@@ -64,6 +65,9 @@ class CatalogClient(InternalServiceClient):
         if annotations:
             payload["annotations"] = annotations
 
+        if manifest:
+            payload["manifest"] = manifest
+
         return self.call_api(
             http.anchy_post,
             "images",
@@ -75,6 +79,19 @@ class CatalogClient(InternalServiceClient):
                 "allow_dockerfile_update": allow_dockerfile_update,
             },
             body=json.dumps(payload),
+        )
+
+    def import_image(self, import_manifest, annotations=None, force=False):
+        if annotations is None:
+            payload = {"import_manifest": import_manifest}
+        else:
+            payload = {"import_manifest": import_manifest, "annotations": annotations}
+
+        return self.call_api(
+            http.anchy_post,
+            "images",
+            body=json.dumps(payload),
+            query_params={"allow_dockerfile_update": force},
         )
 
     def get_imagetags(self, image_status=None):
@@ -157,9 +174,6 @@ class CatalogClient(InternalServiceClient):
             "images",
             query_params={"force": force, "imageDigests": ",".join(imageDigests)},
         )
-
-    #    def import_image(self, anchore_data):
-    #        return self.call_api(http.anchy_post, 'import', body=json.dumps(anchore_data))
 
     def add_policy(self, bundle, active=False):
         try:
@@ -600,4 +614,47 @@ class CatalogClient(InternalServiceClient):
             "archives/images/data/{imageDigest}/import",
             path_params={"imageDigest": imageDigest},
             files=files,
+        )
+
+    def create_image_import(self):
+        return self.call_api(http.anchy_post, "imports/images")
+
+    def list_image_import_operations(self):
+        return self.call_api(http.anchy_get, "imports/images")
+
+    def get_image_import_operation(self, operation_id):
+        return self.call_api(
+            http.anchy_get,
+            "imports/images/{operation}",
+            path_params={"operation": operation_id},
+        )
+
+    def upload_image_import_content(self, operation_id, content_type, data: bytes):
+        return self.call_api(
+            http.anchy_post,
+            "imports/images/{operation}/{content_type}",
+            path_params={"operation": operation_id, "content_type": content_type},
+            body=data,
+        )
+
+    def cancel_image_import(self, operation_id):
+        return self.call_api(
+            http.anchy_delete,
+            "imports/images/{operation}",
+            path_params={"operation": operation_id},
+        )
+
+    def list_import_content(self, operation_id, content_type):
+        return self.call_api(
+            http.anchy_get,
+            "imports/images/{operation}/{content_type}",
+            path_params={"operation": operation_id, "content_type": content_type},
+        )
+
+    def update_image_import_status(self, operation_id, status):
+        return self.call_api(
+            http.anchy_put,
+            "imports/images/{operation}",
+            path_params={"operation": operation_id},
+            body=json.dumps({"status": status}),
         )

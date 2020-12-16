@@ -2,4 +2,4 @@ from .apiext import ExternalApiService
 from .simplequeue import SimpleQueueService
 from .policy_engine import PolicyEngineService
 from .catalog import CatalogService
-from .analyzer import AnalyzerService
+from .analyzer.service import AnalyzerService

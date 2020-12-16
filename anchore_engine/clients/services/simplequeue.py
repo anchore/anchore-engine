@@ -29,6 +29,7 @@ class LeaseAcquisitionFailedError(Exception):
 class SimpleQueueClient(InternalServiceClient):
     __service__ = "simplequeue"
 
+    # Core Queueing API
     def get_queues(self):
         return self.call_api(http.anchy_get, "/queues")
 
@@ -99,6 +100,7 @@ class SimpleQueueClient(InternalServiceClient):
             },
         )
 
+    # Lease API
     def create_lease(self, lease_id):
         return self.round_robin_call_api(
             http.anchy_post, "leases", query_params={"lease_id": lease_id}
@@ -168,11 +170,7 @@ def run_target_with_queue_ttl(
     :return:
     """
 
-    # client = SimpleQueueClient(as_account=user_auth[0], user=user_auth[0], password=user_auth[1])
     client = internal_client_for(SimpleQueueClient, account)
-
-    ex = None
-    qobj = None
 
     @retrying.retry(
         stop_max_attempt_number=retries,
@@ -213,7 +211,7 @@ def run_target_with_queue_ttl(
 
             if autorefresh:
                 # Run the task thread and monitor it, refreshing the task lease as needed
-                while task.isAlive():
+                while task.is_alive():
                     # If we're halfway to the timeout, refresh to have a safe buffer
                     if time.time() - t > (visibility_timeout / 2):
                         # refresh the lease
@@ -232,7 +230,7 @@ def run_target_with_queue_ttl(
                                         )
                                     )
                                     break
-                            except Exception as e:
+                            except Exception:
                                 logger.exception(
                                     "Error updating visibility timeout {}".format(
                                         receipt_handle

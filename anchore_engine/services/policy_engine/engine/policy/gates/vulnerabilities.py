@@ -1,5 +1,6 @@
 import calendar
 import time
+import re
 from collections import OrderedDict
 
 from anchore_engine.services.policy_engine.engine.feeds.db import (
@@ -199,6 +200,14 @@ class VulnerabilityMatchTrigger(BaseTrigger):
         sort_order=19,
     )
 
+    package_path_exclude = SimpleStringParameter(
+        name="package_path_exclude",
+        example_str=".*test\.jar*",
+        description="The regex to evaluate against the package path to exclude vulnerabilities",
+        is_required=False,
+        sort_order=20,
+    )
+
     def evaluate(self, image_obj, context):
         is_fix_available = self.fix_available.value()
         is_vendor_only = self.vendor_only.value(default_if_none=True)
@@ -263,6 +272,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             None  # for populating vulnerability links that point back to engine
         )
 
+        package_path_re = None
+        path_exclude_re_value = self.package_path_exclude.value()
+        if path_exclude_re_value is not None:
+            package_path_re = re.compile(path_exclude_re_value)
+
         if self.package_type.value() in ["all", "non-os"]:
             cpevulns = context.data.get("loaded_cpe_vulnerabilities")
             if cpevulns:
@@ -281,6 +295,20 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 ] = vulnerability_cpe.vulnerability_id
                                 parameter_data["pkg_class"] = "non-os"
                                 parameter_data["pkg_type"] = image_cpe.pkg_type
+
+                                if package_path_re is not None:
+                                    match_found = package_path_re.match(
+                                        image_cpe.pkg_path
+                                    )
+                                    if match_found is not None:
+                                        logger.debug(
+                                            "Non-OS vulnerability {} package path {} matches package path exlcude {}, skipping".format(
+                                                vulnerability_cpe.parent.name,
+                                                image_cpe.pkg_path,
+                                                path_exclude_re_value,
+                                            )
+                                        )
+                                        continue
 
                                 # setting fixed_version here regardless of gate parameter,
                                 fix_available_in = vulnerability_cpe.get_fixed_in()

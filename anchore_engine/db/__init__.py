@@ -69,6 +69,8 @@ from .entities.policy_engine import ImagePackageManifestEntry
 from .entities.policy_engine import CachedPolicyEvaluation
 from .entities.policy_engine import select_nvd_classes
 
+from .entities.catalog import ImageImportContent, ImageImportOperation
+
 
 def Session():
     return get_session()

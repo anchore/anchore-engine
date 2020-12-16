@@ -2,13 +2,13 @@
 Common utilities/lib for use by multiple services
 """
 
-subscription_types = [
-    "policy_eval",
-    "tag_update",
-    "vuln_update",
-    "repo_update",
-    "analysis_update",
-]
+repository_subscription_types = ["repo_update"]
+
+tag_subscription_types = ["policy_eval", "tag_update", "vuln_update", "analysis_update"]
+
+subscription_types = repository_subscription_types + tag_subscription_types
+
+
 resource_types = [
     "registries",
     "users",

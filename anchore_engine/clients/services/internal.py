@@ -284,11 +284,12 @@ class InternalServiceClient(object):
         else:
             filtered_qry_params = None
 
+        log_body = ensure_str(body[:512]) + "..." if body and len(body) > 512 else body
         logger.debug(
             "Dispatching: url={url}, headers={headers}, body={body}, params={params}, timeout=({conn_timeout}, {read_timeout}), files={files}".format(
                 url=final_url,
                 headers=request_headers,
-                body=body[:512] + ("..." if len(body) > 512 else "") if body else body,
+                body=log_body,
                 params=filtered_qry_params,
                 conn_timeout=connect_timeout,
                 read_timeout=read_timeout,

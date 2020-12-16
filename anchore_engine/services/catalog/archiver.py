@@ -10,12 +10,11 @@ import tarfile
 import tempfile
 import time
 import uuid
+from marshmallow import Schema, fields, post_load
 
-# Json serialization stuff...
-from marshmallow import fields, post_load
-
-# Json serialization stuff...
-from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
+from anchore_engine.common.schemas import JsonSerializable
+from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
+from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.configuration import localconfig
@@ -111,13 +110,13 @@ class ImageConflict(Exception):
         )
 
 
-class ObjectStoreLocation(JsonMappedMixin):
-    class ObjectStoreLocationV1Schema(JitSchema):
+class ObjectStoreLocation(JsonSerializable):
+    class ObjectStoreLocationV1Schema(Schema):
         bucket = fields.Str()
         key = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return ObjectStoreLocation(**data)
 
     __schema__ = ObjectStoreLocationV1Schema()
@@ -127,12 +126,12 @@ class ObjectStoreLocation(JsonMappedMixin):
         self.key = key
 
 
-class TarballLocation(JsonMappedMixin):
-    class TarballLocationV1Schema(JitSchema):
+class TarballLocation(JsonSerializable):
+    class TarballLocationV1Schema(Schema):
         tarfile_path = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return TarballLocation(**data)
 
     __schema__ = TarballLocationV1Schema()
@@ -141,8 +140,8 @@ class TarballLocation(JsonMappedMixin):
         self.tarfile_path = tarfile_path
 
 
-class Artifact(JsonMappedMixin):
-    class ArtifactV1Schema(JitSchema):
+class Artifact(JsonSerializable):
+    class ArtifactV1Schema(Schema):
 
         name = fields.Str()
         metadata = fields.Dict(allow_none=True)
@@ -152,7 +151,7 @@ class Artifact(JsonMappedMixin):
         dest = fields.Nested(TarballLocation.TarballLocationV1Schema, allow_none=True)
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return Artifact(**data)
 
     __schema__ = ArtifactV1Schema()
@@ -164,8 +163,8 @@ class Artifact(JsonMappedMixin):
         self.dest = dest
 
 
-class ArchiveManifest(JsonMappedMixin):
-    class ArchiveManifestV1Schema(JitSchema):
+class ArchiveManifest(JsonSerializable):
+    class ArchiveManifestV1Schema(Schema):
         image_digest = fields.Str()
         account = fields.Str()
         archived_at = fields.DateTime()
@@ -173,7 +172,7 @@ class ArchiveManifest(JsonMappedMixin):
         artifacts = fields.List(fields.Nested(Artifact.ArtifactV1Schema))
 
         @post_load
-        def make_manifest(self, data):
+        def make_manifest(self, data, **kwargs):
             return ArchiveManifest(**data)
 
     __schema__ = ArchiveManifestV1Schema()

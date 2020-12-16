@@ -139,7 +139,7 @@ def make_response_routes(apiversion, inroutes):
 
 
 def update_image_record_with_analysis_data(image_record, image_data):
-
+    formatted_image_summary_data = {}
     image_summary_data = extract_analyzer_content(image_data, "metadata")
 
     try:

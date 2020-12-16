@@ -17,7 +17,7 @@ import anchore_engine.services.catalog
 import anchore_engine.utils
 
 from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, notifications
+from anchore_engine.subsys import taskstate, logger, notifications, object_store
 import anchore_engine.subsys.metrics
 from anchore_engine.clients import docker_registry
 from anchore_engine.db import (
@@ -35,8 +35,7 @@ from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
 import anchore_engine.subsys.events
 from anchore_engine.db import session_scope
 from collections import namedtuple
-import threading
-from anchore_engine import db
+from anchore_engine.util.docker import DockerImageReference
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
@@ -349,6 +348,8 @@ def image(dbsession, request_inputs, bodycontent=None):
     analysis_status = params.get("analysis_status") if params else None
 
     httpcode = 500
+    input_string = None
+    image_reference = None
     try:
         for t in ["tag", "digest", "imageId"]:
             if t in params:
@@ -362,6 +363,7 @@ def image(dbsession, request_inputs, bodycontent=None):
                         registry_lookup=False,
                         registry_creds=(None, None),
                     )
+                    image_reference = DockerImageReference.from_info_dict(image_info)
                     break
 
         image_status_filter = (
@@ -716,73 +718,6 @@ def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
         )
 
     return return_object, httpcode
-
-
-# def image_import(dbsession, request_inputs, bodycontent=None):
-#    user_auth = request_inputs['auth']
-#    method = request_inputs['method']
-#    params = request_inputs['params']
-#    userId = request_inputs['userId']
-#
-#    return_object = {}
-#    httpcode = 500
-#
-#    try:
-#        jsondata = {}
-#        if bodycontent:
-#            try:
-#                jsondata = bodycontent
-#            except Exception as err:
-#                raise err
-#
-#        anchore_data = [jsondata]
-#
-#        try:
-#            # extract necessary input from anchore analysis data
-#            a = anchore_data[0]
-#            imageId = a['image']['imageId']
-#            docker_data = a['image']['imagedata']['image_report']['docker_data']
-#
-#            digests = []
-#            islocal = False
-#            if not docker_data['RepoDigests']:
-#                islocal = True
-#            else:
-#                for digest in docker_data['RepoDigests']:
-#                    digests.append(digest)
-#
-#            tags = []
-#            for tag in docker_data['RepoTags']:
-#                image_info = anchore_engine.utils.parse_dockerimage_string(tag)
-#                if islocal:
-#                    image_info['registry'] = 'localbuild'
-#                    digests.append(image_info['registry'] + "/" + image_info['repo'] + "@local:" + imageId)
-#                fulltag = image_info['registry'] + "/" + image_info['repo'] + ":" + image_info['tag']
-#                tags.append(fulltag)
-#
-#            # add the image w input anchore_analysis, as already analyzed
-#            logger.debug("ADDING/UPDATING IMAGE IN IMAGE IMPORT: " + str(imageId))
-#            ret_list = add_or_update_image(dbsession, userId, imageId, tags=tags, digests=digests, anchore_data=anchore_data)
-#
-#            client = internal_client_for(PolicyEngineClient, userId)
-#            for image_report in ret_list:
-#                imageDigest = image_report['imageDigest']
-#                try:
-#                    resp = policy_engine_image_load(client, userId, imageId, imageDigest)
-#                except Exception as err:
-#                    logger.warn("failed to load image data into policy engine: " + str(err))
-#            # return the new image:
-#            return_object = ret_list
-#            httpcode = 200
-#        except Exception as err:
-#            httpcode = 500
-#            raise err
-#
-#    except Exception as err:
-#        return_object = anchore_engine.common.helpers.make_response_error(err, in_httpcode=httpcode)
-#
-#
-#    return(return_object, httpcode)
 
 
 def subscriptions(dbsession, request_inputs, subscriptionId=None, bodycontent=None):
@@ -1979,6 +1914,7 @@ def add_or_update_image(
                         imageDigest, userId, session=dbsession
                     )
                     if not image_record:
+                        # Create a new iamge
                         new_image_record["image_status"] = taskstate.init_state(
                             "image_status", None
                         )
@@ -2064,6 +2000,7 @@ def add_or_update_image(
                             )
 
                     else:
+                        # Update existing image record
                         new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(
                             new_image_record["image_detail"]
                         )
@@ -2539,6 +2476,131 @@ def add_event_json(event_json, dbsession, quiet=True):
             )
         else:
             raise
+
+
+def list_evals_impl(
+    dbsession,
+    userId,
+    policyId=None,
+    imageDigest=None,
+    tag=None,
+    evalId=None,
+    newest_only=False,
+    interactive=False,
+):
+    logger.debug("looking up eval record: " + userId)
+
+    object_store_mgr = object_store.get_manager()
+
+    # set up the filter based on input
+    dbfilter = {}
+    latest_eval_record = latest_eval_result = None
+
+    if policyId is not None:
+        dbfilter["policyId"] = policyId
+
+    if imageDigest is not None:
+        dbfilter["imageDigest"] = imageDigest
+
+    if tag is not None:
+        dbfilter["tag"] = tag
+
+    if evalId is not None:
+        dbfilter["evalId"] = evalId
+
+    # perform an interactive eval to get/install the latest
+    try:
+        logger.debug("performing eval refresh: " + str(dbfilter))
+        imageDigest = dbfilter["imageDigest"]
+        if "tag" in dbfilter:
+            evaltag = dbfilter["tag"]
+        else:
+            evaltag = None
+
+        if "policyId" in dbfilter:
+            policyId = dbfilter["policyId"]
+        else:
+            policyId = None
+
+        latest_eval_record, latest_eval_result = perform_policy_evaluation(
+            userId,
+            imageDigest,
+            dbsession,
+            evaltag=evaltag,
+            policyId=policyId,
+            interactive=interactive,
+            newest_only=newest_only,
+        )
+    except Exception as err:
+        logger.error("interactive eval failed - exception: {}".format(err))
+
+    records = []
+    if interactive or newest_only:
+        try:
+            latest_eval_record["result"] = latest_eval_result
+            records = [latest_eval_record]
+        except:
+            raise Exception(
+                "interactive or newest_only eval requested, but unable to perform eval at this time"
+            )
+    else:
+        records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
+        for record in records:
+            try:
+                result = object_store_mgr.get_document(
+                    userId, "policy_evaluations", record["evalId"]
+                )
+                record["result"] = result
+            except:
+                record["result"] = {}
+
+    return records
+
+
+def delete_evals_impl(
+    dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None
+):
+    # set up the filter based on input
+    dbfilter = {}
+
+    if policyId is not None:
+        dbfilter["policyId"] = policyId
+
+    if imageDigest is not None:
+        dbfilter["imageDigest"] = imageDigest
+
+    if tag is not None:
+        dbfilter["tag"] = tag
+
+    if evalId is not None:
+        dbfilter["evalId"] = evalId
+
+    logger.debug("looking up eval record: " + userId)
+
+    if not dbfilter:
+        raise Exception("not enough detail in body to find records to delete")
+
+    rc = db_policyeval.delete_byfilter(userId, session=dbsession, **dbfilter)
+    if not rc:
+        raise Exception("DB delete failed")
+    else:
+        return True
+
+
+def upsert_eval(dbsession, userId, record):
+    rc = db_policyeval.tsadd(
+        record["policyId"],
+        userId,
+        record["imageDigest"],
+        record["tag"],
+        record["final_action"],
+        {"policyeval": record["policyeval"], "evalId": record["evalId"]},
+        session=dbsession,
+    )
+    if not rc:
+        raise Exception("DB update failed")
+    else:
+        return record
 
 
 ################################################################################

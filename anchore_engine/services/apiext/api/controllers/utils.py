@@ -209,6 +209,7 @@ def validate_image_add_source(analysis_request_dict, api_schema):
         digest_source = source.get("digest")
         tag_source = source.get("tag")
         archive_source = source.get("archive")
+        import_source = source.get("import")
 
         if digest_source:
             return validate_digest_source(digest_source, api_schema)
@@ -216,6 +217,8 @@ def validate_image_add_source(analysis_request_dict, api_schema):
             return validate_tag_source(tag_source, api_schema)
         elif archive_source:
             return validate_archive_source(archive_source, api_schema)
+        elif import_source:
+            return True
         else:
             raise BadRequest("Must have one source propery set", detail={})
 

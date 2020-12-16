@@ -19,7 +19,7 @@ from anchore_engine.services.policy_engine.engine.feeds import (
     FeedList,
     GroupData,
 )
-from anchore_engine.services.policy_engine.engine.feeds.schemas import (
+from anchore_engine.common.schemas import (
     FeedAPIRecord,
     FeedAPIGroupRecord,
 )

@@ -40,7 +40,7 @@ def get_evals(
         user_id = request_inputs["userId"]
 
         with db.session_scope() as session:
-            evals = list_evals_impl(
+            evals = catalog_impl.list_evals_impl(
                 session,
                 userId=user_id,
                 policyId=policyId,
@@ -86,7 +86,7 @@ def add_eval(bodycontent):
         user_id = request_inputs["userId"]
 
         with db.session_scope() as session:
-            return_object, httpcode = upsert_eval(
+            return_object, httpcode = catalog_impl.upsert_eval(
                 session, userId=user_id, record=bodycontent
             )
 
@@ -112,7 +112,7 @@ def update_eval(bodycontent):
         user_id = request_inputs["userId"]
 
         with db.session_scope() as session:
-            return_object, httpcode = upsert_eval(
+            return_object, httpcode = catalog_impl.upsert_eval(
                 session, userId=user_id, record=bodycontent
             )
 
@@ -131,6 +131,7 @@ def delete_eval(bodycontent):
     :return:
     """
     httpcode = 500
+
     try:
 
         request_inputs = anchore_engine.apis.do_request_prep(
@@ -146,14 +147,15 @@ def delete_eval(bodycontent):
             evalId = bodycontent.get("evalId")
 
         with db.session_scope() as session:
-            if delete_evals_impl(
+            return_object = catalog_impl.delete_evals_impl(
                 session,
                 userId=user_id,
                 policyId=policyId,
                 imageDigest=imageDigest,
                 tag=tag,
                 evalId=evalId,
-            ):
+            )
+            if return_object:
                 httpcode = 200
             else:
                 httpcode = 500
@@ -168,128 +170,3 @@ def delete_eval(bodycontent):
         return_object = str(err)
 
     return return_object, httpcode
-
-
-def list_evals_impl(
-    dbsession,
-    userId,
-    policyId=None,
-    imageDigest=None,
-    tag=None,
-    evalId=None,
-    newest_only=False,
-    interactive=False,
-):
-    logger.debug("looking up eval record: " + userId)
-
-    object_store_mgr = object_store.get_manager()
-
-    # set up the filter based on input
-    dbfilter = {}
-    latest_eval_record = latest_eval_result = None
-
-    if policyId is not None:
-        dbfilter["policyId"] = policyId
-
-    if imageDigest is not None:
-        dbfilter["imageDigest"] = imageDigest
-
-    if tag is not None:
-        dbfilter["tag"] = tag
-
-    if evalId is not None:
-        dbfilter["evalId"] = evalId
-
-    # perform an interactive eval to get/install the latest
-    try:
-        logger.debug("performing eval refresh: " + str(dbfilter))
-        imageDigest = dbfilter["imageDigest"]
-        if "tag" in dbfilter:
-            evaltag = dbfilter["tag"]
-        else:
-            evaltag = None
-
-        if "policyId" in dbfilter:
-            policyId = dbfilter["policyId"]
-        else:
-            policyId = None
-
-        latest_eval_record, latest_eval_result = catalog_impl.perform_policy_evaluation(
-            userId,
-            imageDigest,
-            dbsession,
-            evaltag=evaltag,
-            policyId=policyId,
-            interactive=interactive,
-            newest_only=newest_only,
-        )
-    except Exception as err:
-        logger.error("interactive eval failed - exception: {}".format(err))
-
-    records = []
-    if interactive or newest_only:
-        try:
-            latest_eval_record["result"] = latest_eval_result
-            records = [latest_eval_record]
-        except:
-            raise Exception(
-                "interactive or newest_only eval requested, but unable to perform eval at this time"
-            )
-    else:
-        records = db_policyeval.tsget_byfilter(userId, session=dbsession, **dbfilter)
-        for record in records:
-            try:
-                result = object_store_mgr.get_document(
-                    userId, "policy_evaluations", record["evalId"]
-                )
-                record["result"] = result
-            except:
-                record["result"] = {}
-
-    return records
-
-
-def delete_evals_impl(
-    dbsession, userId, policyId=None, imageDigest=None, tag=None, evalId=None
-):
-    # set up the filter based on input
-    dbfilter = {}
-
-    if policyId is not None:
-        dbfilter["policyId"] = policyId
-
-    if imageDigest is not None:
-        dbfilter["imageDigest"] = imageDigest
-
-    if tag is not None:
-        dbfilter["tag"] = tag
-
-    if evalId is not None:
-        dbfilter["evalId"] = evalId
-
-    logger.debug("looking up eval record: " + userId)
-
-    if not dbfilter:
-        raise Exception("not enough detail in body to find records to delete")
-
-    rc = db_policyeval.delete_byfilter(userId, session=dbsession, **dbfilter)
-    if not rc:
-        raise Exception("DB delete failed")
-    else:
-        return True
-
-
-def upsert_eval(dbsession, userId, record):
-    rc = db_policyeval.tsadd(
-        record["policyId"],
-        userId,
-        record["imageDigest"],
-        record["tag"],
-        record["final_action"],
-        {"policyeval": record["policyeval"], "evalId": record["evalId"]},
-        session=dbsession,
-    )
-    if not rc:
-        raise Exception("DB update failed")
-    else:
-        return record
