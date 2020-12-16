@@ -342,16 +342,14 @@ class DockerV2ManifestMetadata:
         # add support for cases where image metadata does not contain a history element at all
         rawhistory = copy.copy(self.image_config.get("history"))
         rawlayers = copy.copy(
-            list(self.raw.get("layers", []))
+            self.raw.get("layers", [])
         )  # This is carried over from old impl
 
         if rawhistory is None:
             # Construct the right number of empty history elements for each layer
-            rawhistory = [{} for layer in rawlayers]
+            rawhistory = [{}] * len(rawlayers)
 
-        done = False
         history = []
-        idx = 0
         for entry in rawhistory:
             if entry.get("empty_layer", False):
                 lid = "<missing>"
@@ -371,8 +369,6 @@ class DockerV2ManifestMetadata:
                     "Tags": [],
                 }
             )
-
-            idx += 1
 
         return history
 
