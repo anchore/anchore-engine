@@ -10,12 +10,12 @@ common_maxtime = 60
 
 try:
     image = str(sys.argv[1])
-except:
+except Exception:
     image = "docker.io/alpine:latest"
 
 try:
     aecontainer = str(sys.argv[2])
-except:
+except Exception:
     aecontainer = "qadc_anchore-engine_1"
 
 # precmd = "docker exec " + str(aecontainer) + " anchore-cli --json --u admin --p foobar --url http://localhost:8228/v1 "
@@ -26,7 +26,7 @@ try:
     reg = str(sys.argv[3])
     user = str(sys.argv[4])
     pw = str(sys.argv[5])
-except:
+except Exception:
     pass
 
 
@@ -40,7 +40,7 @@ def aecmd(cmd):
         try:
             print("err response: " + str(err.output))
             result = json.loads(err.output)
-        except:
+        except Exception:
             pass
         raise err
 
@@ -54,7 +54,7 @@ if reg and user and pw:
     try:
         result = aecmd("registry add " + reg + " " + user + " " + pw)
         print("success adding registry")
-    except:
+    except Exception:
         print("failed to add registry")
         sys.exit(1)
 
@@ -89,7 +89,7 @@ if reg:
     try:
         result = aecmd("registry del " + reg)
         print("success deleting registry")
-    except:
+    except Exception:
         print("failed to del registry")
         sys.exit(1)
 
@@ -125,7 +125,7 @@ for i in range(0, common_maxtime):
                 print("STATUS: " + status)
                 done = True
                 break
-        except:
+        except Exception:
             pass
         print("policy eval not ready yet: " + str(err))
     time.sleep(1)
@@ -140,7 +140,7 @@ for i in range(0, common_maxtime):
         result = aecmd("image del " + image + "")
         print("was able to delete latest/subscribed image (incorrect)")
         sys.exit(1)
-    except:
+    except Exception:
         print("could not delete latest/subscribed image (correct)")
 
     try:

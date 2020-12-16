@@ -86,7 +86,7 @@ class InternalServiceClient(object):
         if config_provider_fn:
             try:
                 cfg = config_provider_fn()
-            except:
+            except Exception:
                 logger.debug_exception(
                     "Unexpected exception loading configuration from the config provider function"
                 )
@@ -125,7 +125,7 @@ class InternalServiceClient(object):
 
                     if self._connect_timeout < 0:
                         self._connect_timeout = 0.0
-                except:
+                except Exception:
                     # Default to verify ssl if not set
                     logger.debug_exception(
                         "Could not initialize ssl verification and client timeouts from config due to error"

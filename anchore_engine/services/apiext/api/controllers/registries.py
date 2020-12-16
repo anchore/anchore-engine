@@ -42,7 +42,7 @@ def make_response_registry(user_auth, registry_record, params):
                     ).isoformat()
                     + "Z"
                 )
-            except:
+            except Exception:
                 pass
     except Exception as err:
         raise Exception("failed to format registry response: " + str(err))

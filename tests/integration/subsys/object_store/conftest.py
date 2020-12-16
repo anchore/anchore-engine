@@ -63,7 +63,7 @@ def s3_bucket():
     try:
         try:
             s3_client.create_bucket(Bucket=bucket_name)
-        except:
+        except Exception:
             pass
 
         yield bucket_name, s3_client

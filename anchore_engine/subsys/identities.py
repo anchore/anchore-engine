@@ -159,7 +159,7 @@ class IdentityBootstrapper(object):
                         )
                     except db_accounts.AccountAlreadyExistsError:
                         pass
-                    except:
+                    except Exception:
                         logger.exception(
                             "Error initializing account: {}".format(userId)
                         )
@@ -171,7 +171,7 @@ class IdentityBootstrapper(object):
                         )
                     except db_account_users.UserAlreadyExistsError:
                         pass
-                    except:
+                    except Exception:
                         logger.exception("Error initializing user: {}".format(userId))
                         raise
 

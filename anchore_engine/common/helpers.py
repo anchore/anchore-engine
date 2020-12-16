@@ -96,7 +96,7 @@ def make_anchore_exception(
 
             if hasattr(err, "error_code"):
                 error_codes.append(getattr(err, "error_code"))
-    except:
+    except Exception:
         pass
 
     if override_existing or not anchore_error_json:
@@ -369,7 +369,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
             try:
                 if manifest:
                     ret = json.loads(manifest)
-            except:
+            except Exception:
                 ret = {}
         elif content_type == "docker_history":
             ret = []
@@ -379,7 +379,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
                     .get("image_report", {})
                     .get("docker_history", [])
                 )
-            except:
+            except Exception:
                 ret = []
         elif content_type == "dockerfile":
             ret = ""
@@ -396,7 +396,7 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
                         .get("image_report", {})
                         .get("dockerfile_contents", "")
                     )
-            except:
+            except Exception:
                 ret = ""
 
     except Exception as err:

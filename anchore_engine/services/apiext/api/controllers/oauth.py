@@ -58,6 +58,6 @@ def get_oauth_token(
         resp = authz.create_token_response()
         logger.debug("Token resp: {}".format(resp))
         return resp
-    except:
+    except Exception:
         logger.debug_exception("Error authenticating")
         raise

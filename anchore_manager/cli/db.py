@@ -78,7 +78,7 @@ def upgrade(dontask, skip_db_compat_check):
             answer = input(
                 "Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)"
             )
-        except:
+        except Exception:
             answer = "n"
         if "y" != answer.lower():
             logger.info("Skipping upgrade")

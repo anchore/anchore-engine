@@ -160,7 +160,7 @@ def get_summary_obj(name, description="", **kwargs):
         if name not in metrics:
             metrics[name] = Summary(name, description, list(kwargs.keys()))
         ret = metrics[name]
-    except:
+    except Exception:
         logger.warn("could not create/get named metric (" + str(name) + ")")
 
     return ret

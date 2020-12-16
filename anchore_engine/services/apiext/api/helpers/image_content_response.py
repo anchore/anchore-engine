@@ -56,7 +56,7 @@ def _build_os_response(content_data):
                 r = package_info.get("release", None)
                 if (v and r) and (v.lower() != "n/a") and r.lower() != "n/a":
                     el["version"] = "{}-{}".format(v, r)
-        except:
+        except Exception:
             continue
         response.append(el)
     return response
@@ -75,7 +75,7 @@ def _build_npm_response(content_data):
             el["license"] = " ".join(content_data[package]["lics"]) or "Unknown"
             el["licenses"] = content_data[package]["lics"] or ["Unknown"]
             el["cpes"] = content_data[package].get("cpes", [])
-        except:
+        except Exception:
             continue
         response.append(el)
     return response
@@ -94,7 +94,7 @@ def _build_gem_response(content_data):
             el["license"] = " ".join(content_data[package]["lics"]) or "Unknown"
             el["licenses"] = content_data[package]["lics"] or ["Unknown"]
             el["cpes"] = content_data[package].get("cpes", [])
-        except:
+        except Exception:
             continue
         response.append(el)
     return response
@@ -113,7 +113,7 @@ def _build_python_response(content_data):
             el["license"] = content_data[package]["license"] or "Unknown"
             el["licenses"] = content_data[package]["license"].split(" ") or ["Unknown"]
             el["cpes"] = content_data[package].get("cpes", [])
-        except:
+        except Exception:
             continue
         response.append(el)
     return response
@@ -134,7 +134,7 @@ def _build_java_response(content_data):
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
             el["cpes"] = content_data[package].get("cpes", [])
-        except:
+        except Exception:
             continue
         response.append(el)
     return response
@@ -158,14 +158,14 @@ def _build_files_response(content_data):
             for elkey in list(elmap.keys()):
                 try:
                     el[elmap[elkey]] = content_data[filename][elkey]
-                except:
+                except Exception:
                     el[elmap[elkey]] = None
 
             # special formatting
             el["mode"] = format(stat.S_IMODE(el["mode"]), "05o")
             if el["sha256"] == "DIRECTORY_OR_OTHER":
                 el["sha256"] = None
-        except:
+        except Exception:
             continue
         response.append(el)
     return response

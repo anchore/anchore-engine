@@ -47,7 +47,7 @@ def get_creds_by_registry(registry, repository, registry_creds=None):
                     if registry_record["record_state_key"] not in ["active"]:
                         try:
                             last_try = int(registry_record["record_state_val"])
-                        except:
+                        except Exception:
                             last_try = 0
 
                         if (int(time.time()) - last_try) < 60:

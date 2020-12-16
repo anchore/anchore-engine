@@ -221,7 +221,7 @@ def load_filepath_to_config(key, fname, src_dir=None):
         if src_dir == None:
             src_dir = os.path.join(resource_filename("anchore_engine", "conf/"))
         copy_config_file(default_file, fname, src_dir)
-    except:
+    except Exception:
         localconfig[key] = None
 
 
@@ -261,7 +261,7 @@ def load_config(configdir=None, configfile=None, validate_params=None):
             try:
                 os.makedirs(os.path.join(localconfig["service_dir"]))
                 success = True
-            except:
+            except Exception:
                 time.sleep(1)
         if not success:
             raise Exception(
@@ -275,7 +275,7 @@ def load_config(configdir=None, configfile=None, validate_params=None):
             try:
                 os.makedirs(os.path.join(localconfig["tmp_dir"]))
                 success = True
-            except:
+            except Exception:
                 time.sleep(1)
         if not success:
             raise Exception(
@@ -547,7 +547,7 @@ def validate_user_auth_config(config):
                     expiration = oconf["default_token_expiration_seconds"]
                     if type(expiration) != int or expiration < 0:
                         raise TypeError("Expiration must be an integer >= 0")
-                except:
+                except Exception:
                     raise Exception(
                         'oauth configuration object must contain "default_token_expiration_seconds" value that is an integer >= 0'
                     )

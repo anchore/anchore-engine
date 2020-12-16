@@ -69,7 +69,7 @@ for sub_analyzer_name in sub_analyzer_names:
                     if key == "MAXFILESIZE":
                         params[sub_analyzer_name]["maxfilesize"] = int(value)
 
-                except:
+                except Exception:
                     print(
                         "WARN: could not parse parameter (should be 'key=value'), ignoring: "
                         + str(param)
@@ -135,7 +135,7 @@ with tarfile.open(
                             for regexp in regexps[sub_analyzer_name]:
                                 try:
                                     regexpname, theregexp = regexp.split("=", 1)
-                                except:
+                                except Exception:
                                     theregexp = regexp
 
                                 try:

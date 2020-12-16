@@ -135,7 +135,7 @@ class ImageMetadataGateTest(GateUnitTest):
                 )
                 if not expect_ok and t:
                     self.assertEqual(expect_ok, bool(t))
-            except:
+            except Exception:
                 if not expect_ok:
                     logger.info(
                         (

@@ -77,7 +77,7 @@ class SecretContentChecksTrigger(BaseTrigger):
 
                     try:
                         regexp_name, theregexp = decoded_regexp.split("=", 1)
-                    except:
+                    except Exception:
                         regexp_name = None
                         theregexp = decoded_regexp
 

@@ -127,7 +127,7 @@ def check(configfile, analysis_archive):
                 manager_id=ANALYSIS_ARCHIVE_MANAGER_ID,
                 config_keys=[ANALYSIS_ARCHIVE_MANAGER_ID],
             )
-        except:
+        except Exception:
             logger.error(
                 'No "analysis_archive" configuration section found in the configuration. To check a config that uses the default backend for analysis archive data, use the regular object storage check'
             )
@@ -342,7 +342,7 @@ def migrate(
                 answer = input(
                     "Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)"
                 )
-            except:
+            except Exception:
                 answer = "n"
             if "y" == answer.lower():
                 do_migrate = True

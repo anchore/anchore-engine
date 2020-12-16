@@ -39,7 +39,7 @@ def make_response_service(user_auth, service_record, params):
         if "short_description" in service_record:
             try:
                 ret["service_detail"] = json.loads(service_record["short_description"])
-            except:
+            except Exception:
                 ret["service_detail"] = str(service_record["short_description"])
 
     except Exception as err:
@@ -134,7 +134,7 @@ def get_service_detail():
                     err, in_httpcode=httpcode
                 )
                 httpcode = return_object["httpcode"]
-        except:
+        except Exception:
             service_detail = {}
 
         return_object = service_detail

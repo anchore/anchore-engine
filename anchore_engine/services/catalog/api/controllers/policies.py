@@ -286,7 +286,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
     try:
         active_record = db_policybundle.get_active_policy(user_id, session=dbsession)
         last_active_policyId = active_record.get("policyId", None)
-    except:
+    except Exception:
         last_active_policyId = None
 
     object_store_mgr = object_store.get_manager()
@@ -321,7 +321,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                         anchore_engine.services.catalog.catalog_impl.add_event(
                             event, dbsession
                         )
-                    except:
+                    except Exception:
                         logger.warn(
                             "Ignoring error creating active policy content change event"
                         )
@@ -371,7 +371,7 @@ def save_policy(user_id, policyId, active, policy_bundle, dbsession):
                             anchore_engine.services.catalog.catalog_impl.add_event(
                                 event, dbsession
                             )
-                        except:
+                        except Exception:
                             logger.warn(
                                 "Ignoring error creating active policy id change event"
                             )

@@ -191,9 +191,9 @@ def get_docker_created_at(record):
             try:
                 if image_detail["created_at"] > latest_ts:
                     latest_ts = image_detail["created_at"]
-            except:
+            except Exception:
                 pass
-    except:
+    except Exception:
         pass
     return latest_ts
 

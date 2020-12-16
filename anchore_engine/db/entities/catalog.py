@@ -620,7 +620,7 @@ class PolicyEval(Base, UtilMixin):
             try:
                 if selfdata[k] != otherdata[k]:
                     return False
-            except:
+            except Exception:
                 return False
         return True
 

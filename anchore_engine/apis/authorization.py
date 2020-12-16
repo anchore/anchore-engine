@@ -305,7 +305,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
             subject = Yosai.get_current_subject()
             try:
                 subject.login(authc_token)
-            except:
+            except Exception:
                 logger.debug_exception("Login failed")
                 raise
 
@@ -325,7 +325,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
 
                         logger.debug("Authc complete for user: {}".format(user))
                         return identity
-                except:
+                except Exception:
                     logger.debug_exception(
                         "Error looking up account for authenticated user"
                     )
@@ -489,7 +489,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                         if not identity.username:
                             raise UnauthenticatedError("Authentication Required")
 
-                    except:
+                    except Exception:
                         raise UnauthenticatedError("Authentication Required")
 
                     ApiRequestContextProxy.set_identity(identity)
@@ -553,7 +553,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                                     raise UnauthenticatedError(
                                         "Authentication Required"
                                     )
-                            except:
+                            except Exception:
                                 raise UnauthenticatedError("Authentication Required")
 
                             ApiRequestContextProxy.set_identity(identity)
@@ -616,7 +616,7 @@ class DbAuthorizationHandler(AuthorizationHandler):
                                     raise UnauthenticatedError(
                                         "Authentication Required"
                                     )
-                            except:
+                            except Exception:
                                 raise UnauthenticatedError("Authentication Required")
 
                             ApiRequestContextProxy.set_identity(identity)
@@ -807,7 +807,7 @@ class ExternalAuthorizationHandler(DbAuthorizationHandler):
 
             return True
 
-        except:
+        except Exception:
             logger.exception(
                 "Notification handler for external authz plugin caught exception and could not complete: {} {}".format(
                     notification_type, notification_type
@@ -882,7 +882,7 @@ def auth_function_factory():
                         else:
                             return Response(resp[0], status=resp[1])
                 return resp
-        except:
+        except Exception:
             return Response(
                 "Unauthorized",
                 status=401,

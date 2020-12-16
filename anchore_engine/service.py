@@ -287,13 +287,13 @@ class BaseService(object, metaclass=ServiceMeta):
 
         try:
             kick_timer = int(self.configuration["cycle_timer_seconds"])
-        except:
+        except Exception:
             kick_timer = 1
 
         try:
             cycle_timers = {}
             cycle_timers.update(self.configuration["cycle_timers"])
-        except:
+        except Exception:
             cycle_timers = {}
 
         self.monitor_kwargs["kick_timer"] = kick_timer

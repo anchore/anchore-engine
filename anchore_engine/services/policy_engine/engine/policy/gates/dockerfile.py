@@ -312,19 +312,19 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
                                 try:
                                     iexpose.remove(str(p))
                                     done = False
-                                except:
+                                except Exception:
                                     done = True
 
                                 try:
                                     iexpose.remove(str(p) + "/tcp")
                                     done = False
-                                except:
+                                except Exception:
                                     done = True
 
                                 try:
                                     iexpose.remove(str(p) + "/udp")
                                     done = False
-                                except:
+                                except Exception:
                                     done = True
 
                         for ip in iexpose:

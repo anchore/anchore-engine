@@ -57,7 +57,7 @@ with tarfile.open(
         thefile = re.sub("^/+", "", name)
         try:
             member = tfl.getmember(thefile)
-        except:
+        except Exception:
             member = None
 
         if member and member.isreg():

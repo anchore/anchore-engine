@@ -32,7 +32,7 @@ def manifest_to_digest_shellout(rawmanifest):
             global_timeout = int(global_timeout)
             if global_timeout < 0:
                 global_timeout = 0
-        except:
+        except Exception:
             global_timeout = 0
 
         if global_timeout:
@@ -143,7 +143,7 @@ def download_image(
             global_timeout = int(global_timeout)
             if global_timeout < 0:
                 global_timeout = 0
-        except:
+        except Exception:
             global_timeout = 0
 
         if global_timeout:
@@ -373,7 +373,7 @@ def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
             global_timeout = int(global_timeout)
             if global_timeout < 0:
                 global_timeout = 0
-        except:
+        except Exception:
             global_timeout = 0
 
         if global_timeout:
@@ -444,7 +444,7 @@ def get_image_manifest_skopeo_raw(pullstring, user=None, pw=None, verify=True):
             global_timeout = int(global_timeout)
             if global_timeout < 0:
                 global_timeout = 0
-        except:
+        except Exception:
             global_timeout = 0
 
         if global_timeout:
@@ -621,7 +621,7 @@ class SkopeoError(AnchoreException):
                 self.error_code = AnchoreError.OSARCH_MISMATCH.name
             else:
                 self.error_code = AnchoreError.SKOPEO_UNKNOWN_ERROR.name
-        except:
+        except Exception:
             self.error_code = AnchoreError.UNKNOWN.name
 
     def __repr__(self):

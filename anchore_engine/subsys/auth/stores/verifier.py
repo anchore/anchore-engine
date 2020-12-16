@@ -98,7 +98,7 @@ class JwtToken(AuthenticationToken):
 
         try:
             self._parse()
-        except:
+        except Exception:
             logger.debug_exception("Error parsing/verifying token")
             self._identifier = None
             self._verified = False

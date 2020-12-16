@@ -38,14 +38,14 @@ def make_response_policy(policy_record, params):
                 update_ts = policy_record[datekey]
                 if update_ts > latest_ts:
                     latest_ts = update_ts
-            except:
+            except Exception:
                 pass
 
             try:
                 update_ts = policy_record["policybundlemeta"][datekey]
                 if update_ts > latest_ts:
                     latest_ts = update_ts
-            except:
+            except Exception:
                 pass
 
         policy_record["created_at"] = (

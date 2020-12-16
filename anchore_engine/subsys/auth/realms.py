@@ -247,6 +247,6 @@ class JwtRealm(UsernamePasswordRealm):
             else:
                 return authc_info
 
-        except:
+        except Exception:
             logger.debug_exception("Could not authenticate token")
             raise IncorrectCredentialsException()

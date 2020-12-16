@@ -83,7 +83,7 @@ def get_image_manifest_docker_registry(
             else:
                 try:
                     rawtext = str(r.text)
-                except:
+                except Exception:
                     rawtext = ""
                 raise Exception(
                     "got bad code ("

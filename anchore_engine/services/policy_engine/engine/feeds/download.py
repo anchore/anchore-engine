@@ -368,7 +368,7 @@ class FeedDownloader(object):
             self.local_repo.initialize()
             self.local_repo.metadata.download_result = _download_start_metadata()
             self.local_repo.flush_metadata()
-        except:
+        except Exception:
             logger.debug_exception(
                 "Could not initialize the feed data download location: {}. Failing fetch attempt".format(
                     self.local_repo.root_dir
@@ -414,7 +414,7 @@ class FeedDownloader(object):
                             self.local_repo.flush_metadata()
 
                     _update_download_complete(meta, record_count)
-                except:
+                except Exception:
                     logger.exception(
                         "Error downloading data for group {}/{}".format(
                             group.feed, group.group
@@ -435,7 +435,7 @@ class FeedDownloader(object):
                 self.local_repo.metadata.download_result.status = (
                     FeedDownloader.State.complete.value
                 )
-        except:
+        except Exception:
             logger.debug_exception(
                 "Error fetching feed data, setting status to failed for operation {}".format(
                     self.config.uuid

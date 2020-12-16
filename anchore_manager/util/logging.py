@@ -24,7 +24,7 @@ def format_error_output(config, op, params, payload):
 
     try:
         errdata = json.loads(str(payload))
-    except:
+    except Exception:
         errdata = {"message": str(payload)}
 
     if config["jsonmode"]:

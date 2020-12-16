@@ -493,7 +493,7 @@ def start(
 
                     try:
                         alive = service_thread.thread.is_alive()
-                    except:
+                    except Exception:
                         pass
                     if not alive:
                         logger.info("service thread has stopped {}".format(service))

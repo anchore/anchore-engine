@@ -97,13 +97,13 @@ vulnerabilities_cache_enabled = (
 def get_api_endpoint():
     try:
         return get_service_endpoint("apiext").strip("/")
-    except:
+    except Exception:
         log.warn(
             "Could not find valid apiext endpoint for links so will use policy engine endpoint instead"
         )
         try:
             return get_service_endpoint("policy_engine").strip("/")
-        except:
+        except Exception:
             log.warn(
                 "No policy engine endpoint found either, using default but invalid url"
             )
@@ -390,7 +390,7 @@ class EvaluationCacheManager(object):
                         self._default_catalog_read_timeout,
                     ) as timeout_client:
                         data = timeout_client.get_document(bucket, key)
-                except:
+                except Exception:
                     log.exception(
                         "Unexpected error getting document {}/{} from archive".format(
                             bucket, key
@@ -418,7 +418,7 @@ class EvaluationCacheManager(object):
                     ) as timeout_client:
                         resp = timeout_client.delete_document(bucket, key)
                     break
-                except:
+                except Exception:
                     log.exception(
                         "Could not delete policy eval from cache, will retry. Bucket={}, Key={}".format(
                             bucket, key
@@ -540,7 +540,7 @@ class EvaluationCacheManager(object):
             try:
                 self._delete_entry(entry)
 
-            except:
+            except Exception:
                 log.exception("Could not delete eval cache entry: {}".format(entry))
 
         return True
@@ -571,7 +571,7 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
 
         try:
             img_obj = db.query(Image).get((image_id, user_id))
-        except:
+        except Exception:
             return make_response_error("Image not found", in_httpcode=404), 404
 
         if not img_obj:

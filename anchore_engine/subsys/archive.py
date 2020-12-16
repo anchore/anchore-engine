@@ -78,7 +78,7 @@ def initialize(config):
 
             except Exception as ex:
                 logger.exception("Error initializing archive manager")
-        except:
+        except Exception:
             logger.exception("Could not initialize analysis archive system")
             raise
     else:

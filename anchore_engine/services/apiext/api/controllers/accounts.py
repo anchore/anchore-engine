@@ -205,7 +205,7 @@ def list_accounts(state=None):
             if state is not None:
                 try:
                     state = AccountStates(state)
-                except:
+                except Exception:
                     return (
                         make_response_error(
                             "Bad Request: state {} not a valid value", in_httpcode=400
@@ -552,7 +552,7 @@ def create_user_credential(accountname, username, credential):
 
             try:
                 cred_type = UserAccessCredentialTypes(credential["type"])
-            except:
+            except Exception:
                 return (
                     make_response_error(
                         errmsg="Invalid credential type", in_httpcode=400

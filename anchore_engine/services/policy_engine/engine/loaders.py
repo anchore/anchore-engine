@@ -306,7 +306,7 @@ class ImageLoader(object):
             match.artifact_key = filename
             try:
                 match.binary_value = base64.b64decode(ensure_bytes(match_string))
-            except:
+            except Exception:
                 logger.exception(
                     "Could not b64 decode the file content for {}".format(filename)
                 )
@@ -340,7 +340,7 @@ class ImageLoader(object):
             match.artifact_key = filename
             try:
                 match.json_value = safe_extract_json_value(match_string)
-            except:
+            except Exception:
                 logger.exception(
                     "json decode failed for regex match record on {}. Saving as raw text".format(
                         filename
@@ -377,7 +377,7 @@ class ImageLoader(object):
             match.artifact_key = filename
             try:
                 match.json_value = safe_extract_json_value(match_string)
-            except:
+            except Exception:
                 logger.exception(
                     "json decode failed for regex match record on {}. Saving as raw text".format(
                         filename
@@ -433,7 +433,7 @@ class ImageLoader(object):
             scan_artifact.artifact_key = scanner_name
             try:
                 scan_artifact.json_value = safe_extract_json_value(scan_result)
-            except:
+            except Exception:
                 logger.exception(
                     "json decode failed for malware scan result on {}. Saving as raw text".format(
                         scan_result
@@ -478,7 +478,7 @@ class ImageLoader(object):
             p.origin = metadata.get("origin")
             try:
                 psize = int(metadata.get("size", 0))
-            except:
+            except Exception:
                 psize = 0
             p.size = psize
             # p.size = metadata.get('size')
@@ -545,7 +545,7 @@ class ImageLoader(object):
             elif img_distro.flavor == "DEB":
                 try:
                     p.version, p.release = version.split("-")
-                except:
+                except Exception:
                     p.version = version
                     p.release = None
 
@@ -1275,7 +1275,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
                         if cpekey not in allcpes:
@@ -1319,7 +1319,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
 
@@ -1363,7 +1363,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
 
@@ -1407,7 +1407,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
 
@@ -1454,7 +1454,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
 
@@ -1498,7 +1498,7 @@ class ImageLoader(object):
                                     final_cpe[i] = toks[i]
                                 else:
                                     final_cpe[i] = "-"
-                            except:
+                            except Exception:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
 

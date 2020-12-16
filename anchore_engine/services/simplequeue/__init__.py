@@ -45,7 +45,7 @@ def handle_metrics(*args, **kwargs):
                     anchore_engine.subsys.metrics.gauge_set(
                         "anchore_queue_length", qlen, queuename=qname
                     )
-                except:
+                except Exception:
                     logger.warn(
                         "could not get/set queue length metric for queue ("
                         + str(qname)

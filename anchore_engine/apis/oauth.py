@@ -52,7 +52,7 @@ class PasswordGrant(grants.ResourceOwnerPasswordCredentialsGrant):
                 raise Exception("Unknown user")
             else:
                 return User(identity.user_uuid)
-        except:
+        except Exception:
             logger.debug_exception("Error authenticating")
             raise Exception("User authentication failed")
 
@@ -104,7 +104,7 @@ def init_oauth(app, grant_types, expiration_config):
             db = get_session()
             db.add(tok)
             db.commit()
-        except:
+        except Exception:
             logger.exception("Exception saving token")
             raise
 

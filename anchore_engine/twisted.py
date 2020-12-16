@@ -75,7 +75,7 @@ class ThreadDumperResource(Resource):
                 "w",
             ) as dest:
                 faulthandler.dump_traceback(dest, all_threads=True)
-        except:
+        except Exception:
             logger.exception("Error dumping thread frames")
             return b"Failed"
 
@@ -366,7 +366,7 @@ class WsgiApiServiceMaker(object):
 
                 site.log = _null_logger
 
-        except:
+        except Exception:
             pass
 
         if (

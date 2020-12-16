@@ -40,7 +40,7 @@ class ContentMatchTrigger(BaseTrigger):
                 decoded_regexp = ensure_str(base64.b64decode(ensure_bytes(regexp)))
                 try:
                     regexp_name, theregexp = decoded_regexp.split("=", 1)
-                except:
+                except Exception:
                     regexp_name = None
                     theregexp = decoded_regexp
 

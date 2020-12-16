@@ -28,11 +28,11 @@ def doexit(ecode: ExitCode):
 
     try:
         sys.stdout.close()
-    except:
+    except Exception:
         pass
     try:
         sys.stderr.close()
-    except:
+    except Exception:
         pass
 
     sys.exit(ecode.value)

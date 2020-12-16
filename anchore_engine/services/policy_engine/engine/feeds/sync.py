@@ -208,7 +208,7 @@ class DataFeeds(object):
                         feed=f.__feed_name__, total_time_seconds=int(time.time() - t)
                     )
                     result.append(fail_result)
-            except:
+            except Exception:
                 logger.exception(
                     "Error syncing feed {} (operation_id={})".format(
                         f.__feed_name__, operation_id

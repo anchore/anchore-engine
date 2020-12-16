@@ -343,7 +343,7 @@ def nested_item_delim_parser(param_value, item_delimiter=",", item_splitter="|")
             if param != [""]:
                 k, v = param.split(item_splitter)
                 matches[k.strip()] = v.strip()
-    except:
+    except Exception:
         raise ValueError(param_value)
 
     return matches

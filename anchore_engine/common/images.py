@@ -130,32 +130,32 @@ def make_image_record(
     if image_type == "docker":
         try:
             dockerfile = image_metadata.get("dockerfile", None)
-        except:
+        except Exception:
             dockerfile = None
 
         try:
             dockerfile_mode = image_metadata.get("dockerfile_mode", None)
-        except:
+        except Exception:
             dockerfile_mode = None
 
         try:
             tag = image_metadata.get("tag", None)
-        except:
+        except Exception:
             tag = None
 
         try:
             imageId = image_metadata.get("imageId", None)
-        except:
+        except Exception:
             imageId = None
 
         try:
             digest = image_metadata.get("digest", None)
-        except:
+        except Exception:
             digest = None
 
         try:
             annotations = image_metadata.get("annotations", {})
-        except:
+        except Exception:
             annotations = {}
 
         parentdigest = image_metadata.get("parentdigest", None)
