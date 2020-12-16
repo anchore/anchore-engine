@@ -363,7 +363,9 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
             )
 
             try:
-                notify_analysis_complete(image_record, last_analysis_status)
+                analysis_events.extend(
+                    notify_analysis_complete(image_record, last_analysis_status)
+                )
             except Exception as err:
                 logger.warn(
                     "failed to enqueue notification on image analysis state update - exception: "
