@@ -72,22 +72,25 @@ class ImageLoader(object):
         logger.info("Loading image json")
 
         if type(self.image_export_json) == list and len(self.image_export_json) == 1:
-            image_id = self.image_export_json[0]["image"]["imageId"]
-            self.image_export_json = self.image_export_json[0]["image"]["imagedata"]
+            image_id = self.image_export_json[0].get("image", {}).get("imageId")
+            assert image_id
+            self.image_export_json = (
+                self.image_export_json[0].get("image", {}).get("imagedata", {})
+            )
             logger.info(
                 "Detected a direct export format for image id: {} rather than a catalog analysis export".format(
                     image_id
                 )
             )
 
-        analysis_report = self.image_export_json["analysis_report"]
-        image_report = self.image_export_json["image_report"]
+        analysis_report = self.image_export_json.get("analysis_report")
+        image_report = self.image_export_json.get("image_report")
 
         image = Image()
-        image.id = image_report["meta"]["imageId"]
-        image.size = int(image_report["meta"]["sizebytes"])
-        repo_digests = image_report["docker_data"].get("RepoDigests", [])
-        repo_tags = image_report["docker_data"].get("RepoTags", [])
+        image.id = image_report.get("meta", {}).get("imageId")
+        image.size = int(image_report.get("meta", {}).get("sizebytes", -1))
+        repo_digests = image_report.get("docker_data", {}).get("RepoDigests", [])
+        repo_tags = image_report.get("docker_data", {}).get("RepoTags", [])
         if len(repo_digests) > 1:
             logger.warn(
                 "Found more than one digest for the image {}. Using the first. Digests: {}, Tags: {}".format(
@@ -100,26 +103,31 @@ class ImageLoader(object):
         # Tags handled in another phase using the docker_data in the image record.
 
         # get initial metadata
-        analyzer_meta = analysis_report["analyzer_meta"]["analyzer_meta"]["base"]
-        if "LIKEDISTRO" in analyzer_meta:
-            like_dist = analyzer_meta["LIKEDISTRO"]
-        else:
-            like_dist = analyzer_meta["DISTRO"]
+        analyzer_meta = (
+            analysis_report.get("analyzer_meta", {})
+            .get("analyzer_meta", {})
+            .get("base", {})
+        )
 
-        image.distro_name = analyzer_meta["DISTRO"]
-        image.distro_version = analyzer_meta["DISTROVERS"]
+        if "LIKEDISTRO" in analyzer_meta:
+            like_dist = analyzer_meta.get("LIKEDISTRO")
+        else:
+            like_dist = analyzer_meta.get("DISTRO")
+
+        image.distro_name = analyzer_meta.get("DISTRO")
+        image.distro_version = analyzer_meta.get("DISTROVERS")
         image.like_distro = like_dist
 
-        image.dockerfile_mode = image_report["dockerfile_mode"]
+        image.dockerfile_mode = image_report.get("dockerfile_mode")
 
         # JSON data
-        image.docker_data_json = image_report["docker_data"]
-        image.docker_history_json = image_report["docker_history"]
-        image.dockerfile_contents = image_report["dockerfile_contents"]
+        image.docker_data_json = image_report.get("docker_data")
+        image.docker_history_json = image_report.get("docker_history")
+        image.dockerfile_contents = image_report.get("dockerfile_contents")
         image.layers_to_dockerfile_json = analysis_report.get("layer_info")
-        image.layers_json = image_report["layers"]
-        image.familytree_json = image_report["familytree"]
-        image.analyzer_manifest = self.image_export_json["analyzer_manifest"]
+        image.layers_json = image_report.get("layers")
+        image.familytree_json = image_report.get("familytree")
+        image.analyzer_manifest = self.image_export_json.get("analyzer_manifest")
 
         # Image content
 

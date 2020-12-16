@@ -5,6 +5,7 @@ import anchore_engine.clients.services.catalog
 import anchore_engine.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.common.images
+import anchore_engine.services.analyzer.analysis
 import anchore_engine.subsys.servicestatus
 from anchore_engine.subsys import logger
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
@@ -92,7 +93,16 @@ def interactive_analyze(bodycontent):
                 httpcode = 404
                 raise Exception(str(err))
 
-            image_data, query_data = anchore_engine.services.analyzer.perform_analyze(
+            (
+                image_data,
+                query_data,
+            ) = anchore_engine.services.analyzer.analysis.perform_analyze(
+                userId, pullstring, fulltag, image_detail, registry_creds
+            )
+            (
+                image_data,
+                query_data,
+            ) = anchore_engine.services.analyzer.analysis.perform_analyze(
                 userId, pullstring, fulltag, image_detail, registry_creds
             )
             if image_data:

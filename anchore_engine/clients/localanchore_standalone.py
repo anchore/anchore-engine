@@ -23,6 +23,10 @@ import anchore_engine.common.images
 import anchore_engine.analyzers.utils
 import anchore_engine.analyzers.syft
 from anchore_engine.utils import AnchoreException
+from anchore_engine.util.docker import (
+    DockerV1ManifestMetadata,
+    DockerV2ManifestMetadata,
+)
 import retrying
 
 from anchore_engine import utils
@@ -725,235 +729,143 @@ def retrying_pull_image(
     return result
 
 
+def get_blob_list(copydir, cachedir):
+    blobdir = None
+    blobs = []
+    index_path = os.path.join(copydir, "index.json")
+    if os.path.exists(index_path):
+        if cachedir:
+            blobdir = os.path.join(cachedir, "sha256")
+        else:
+            blobdir = os.path.join(copydir, "blobs", "sha256")
+
+        if os.path.exists(blobdir):
+            blobs = os.listdir(blobdir)
+
+    return blobdir, blobs
+
+
+def get_image_config(copydir, cachedir, image_id) -> dict:
+    """
+    Load the image config from disk
+
+    :param copydir:
+    :param cachedir:
+    :param image_id:
+    :return: Image Config json object
+    """
+
+    # Try the tar from the image id
+    for ifile in ["{}.tar".format(image_id), "{}".format(image_id)]:
+        if os.path.exists(os.path.join(copydir, ifile)):
+            image_config = os.path.join(copydir, ifile)
+            with open(image_config, "r") as FH:
+                return json.loads(FH.read())
+
+    # Not found in the tar directly, so lookup using the index.json
+    blobdir, blobs = get_blob_list(copydir, cachedir)
+    if not blobdir:
+        raise Exception("No blob directory found to read image configuration")
+
+    dfile = nfile = None
+    with open(os.path.join(copydir, "index.json"), "r") as FH:
+        idata = json.loads(FH.read())
+        d_digest = idata["manifests"][0]["digest"].split(":", 1)[1]
+        dfile = os.path.join(blobdir, d_digest)
+
+    if not dfile:
+        raise Exception(
+            "could not find intermediate digest - no blob digest data file found in index.json"
+        )
+
+    with open(dfile, "r") as FH:
+        n_data = json.loads(FH.read())
+        n_digest = n_data["config"]["digest"].split(":", 1)[1]
+        nfile = os.path.join(blobdir, n_digest)
+
+    if not nfile:
+        raise Exception(
+            "could not find final digest - no blob config file found in digest file: {}".format(
+                dfile
+            )
+        )
+
+    with open(nfile, "r") as FH:
+        return json.loads(FH.read())
+
+
 def get_image_metadata_v1(
     staging_dirs,
-    imageDigest,
-    imageId,
     manifest_data,
     dockerfile_contents="",
     dockerfile_mode="",
 ):
-    outputdir = staging_dirs["outputdir"]
+    """
+    Extract image metadata from the manifest and content/dockerfile
+
+    :param staging_dirs:
+    :param manifest_data:
+    :param dockerfile_contents:
+    :param dockerfile_mode:
+    :return:
+    """
     unpackdir = staging_dirs["unpackdir"]
-    copydir = staging_dirs["copydir"]
 
-    docker_history = []
-    layers = []
-    imageArch = ""
+    parser = DockerV1ManifestMetadata(manifest_data)
+    docker_history = parser.history
+    layers = parser.layer_ids
+    architecture = parser.architecture
 
-    try:
-        imageArch = manifest_data["architecture"]
-    except:
-        imageArch = ""
-
-    try:
-        for fslayer in manifest_data["fsLayers"]:
-            layers.append(fslayer["blobSum"])
-    except Exception as err:
-        logger.error("cannot get layers - exception: " + str(err))
-        raise err
-
-    try:
-        hfinal = []
-        count = 0
-        for rawhel in manifest_data["history"]:
-            hel = json.loads(rawhel["v1Compatibility"])
-            try:
-                lsize = hel["Size"]
-            except:
-                lsize = 0
-
-            try:
-                lcreatedby = " ".join(hel["container_config"]["Cmd"])
-            except:
-                lcreatedby = ""
-
-            try:
-                lcreated = hel["created"]
-            except:
-                lcreated = ""
-            lid = layers[count]
-            count = count + 1
-            hfinal.append(
-                {
-                    "Created": lcreated,
-                    "CreatedBy": lcreatedby,
-                    "Comment": "",
-                    "Id": lid,
-                    "Size": lsize,
-                    "Tags": [],
-                }
-            )
-
-        docker_history = hfinal
-        if hfinal:
-            with open(os.path.join(unpackdir, "docker_history.json"), "w") as OFH:
-                OFH.write(json.dumps(hfinal))
-    except Exception as err:
-        logger.error("cannot construct history - exception: " + str(err))
-        raise err
-
-    if not dockerfile_contents:
-        # get dockerfile_contents (translate history to guessed DF)
-        dockerfile_contents = "FROM scratch\n"
-        for hel in docker_history:
-            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel["CreatedBy"])
-            if patt:
-                cmd = patt.group(1)
-            elif hel["CreatedBy"]:
-                cmd = "RUN " + hel["CreatedBy"]
-            else:
-                cmd = None
-            if cmd:
-                dockerfile_contents = dockerfile_contents + cmd + "\n"
-        dockerfile_mode = "Guessed"
-    elif not dockerfile_mode:
+    if dockerfile_contents:
         dockerfile_mode = "Actual"
+    else:
+        dockerfile_contents = parser.inferred_dockerfile
+        dockerfile_mode = "Guessed"
 
-    layers.reverse()
+    with open(os.path.join(unpackdir, "docker_history.json"), "w") as OFH:
+        OFH.write(json.dumps(docker_history))
 
-    return docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch
+    return docker_history, layers, dockerfile_contents, dockerfile_mode, architecture
 
 
 def get_image_metadata_v2(
     staging_dirs,
-    imageDigest,
     imageId,
     manifest_data,
     dockerfile_contents="",
-    dockerfile_mode="",
 ):
-    outputdir = staging_dirs["outputdir"]
+    """
+    Load the image metadata such as building docker history, best effort dockerfile, and layers from the metadata and on-disk image data
+
+    :param staging_dirs:
+    :param imageDigest:
+    :param imageId:
+    :param manifest_data:
+    :param dockerfile_contents:
+    :param dockerfile_mode:
+    :return:
+    """
     unpackdir = staging_dirs["unpackdir"]
     copydir = staging_dirs["copydir"]
     cachedir = staging_dirs["cachedir"]
 
-    rawlayers = list(manifest_data["layers"])
+    image_config = get_image_config(copydir, cachedir, imageId)
+    parser = DockerV2ManifestMetadata(manifest_data, image_config)
+    docker_history = parser.history
+    layers = parser.layer_ids
 
-    hfinal = []
-    layers = []
-    docker_history = []
-    imageArch = ""
-    rawhistory = None
+    if dockerfile_contents:
+        dockerfile_mode = "Actual"
+    else:
+        dockerfile_contents = parser.inferred_dockerfile
+        dockerfile_mode = "Guessed"
 
-    # get "history"
-    image_config = None
-    for ifile in ["{}.tar".format(imageId), "{}".format(imageId)]:
-        if os.path.exists(os.path.join(copydir, ifile)):
-            image_config = os.path.join(copydir, ifile)
-            break
-
-    if image_config:
-        with open(image_config, "r") as FH:
-            configdata = json.loads(FH.read())
-            rawhistory = configdata.get("history", None)
-            imageArch = configdata["architecture"]
-            imageOs = configdata.get("os", None)
-            # Possible future checks for configuration of anchore to fast fail
-            # on arch/os images that are not supported
-    elif os.path.exists(os.path.join(copydir, "index.json")):
-        blobdir = os.path.join(copydir, "blobs", "sha256")
-        if cachedir:
-            blobdir = os.path.join(cachedir, "sha256")
-
-        dfile = nfile = None
-        with open(os.path.join(copydir, "index.json"), "r") as FH:
-            idata = json.loads(FH.read())
-            d_digest = idata["manifests"][0]["digest"].split(":", 1)[1]
-            dfile = os.path.join(blobdir, d_digest)
-
-        if dfile:
-            with open(dfile, "r") as FH:
-                n_data = json.loads(FH.read())
-                n_digest = n_data["config"]["digest"].split(":", 1)[1]
-                nfile = os.path.join(blobdir, n_digest)
-        else:
-            raise Exception(
-                "could not find intermediate digest - no blob digest data file found in index.json"
-            )
-
-        if nfile:
-            with open(nfile, "r") as FH:
-                configdata = json.loads(FH.read())
-                rawhistory = configdata.get("history", None)
-                imageArch = configdata["architecture"]
-                imageOs = configdata.get("os", None)
-                # Possible future checks for configuration of anchore to fast fail on arch/os images that are not supported
-        else:
-            raise Exception(
-                "could not find final digest - no blob config file found in digest file: {}".format(
-                    dfile
-                )
-            )
-
-    done = False
-    idx = 0
-
-    # add support for cases where image metadata does not contain a history element at all
-    if rawhistory is None:
-        rawhistory = []
-        for l in rawlayers:
-            ldigest = l.get("digest", "sha256:NA").split(":")[1]
-            if os.path.exists(os.path.join(blobdir, ldigest)):
-                rawhistory.append({})
-
-    while not done:
-        if not rawhistory:
-            done = True
-        else:
-            hel = rawhistory.pop(0)
-            if "empty_layer" in hel and hel["empty_layer"]:
-                lid = "<missing>"
-                lsize = 0
-            else:
-                lel = rawlayers.pop(0)
-                lid = lel["digest"]
-                layers.append(lid)
-                lsize = lel["size"]
-
-            try:
-                lcreatedby = hel["created_by"]
-            except:
-                lcreatedby = ""
-
-            try:
-                lcreated = hel["created"]
-            except:
-                lcreated = ""
-
-            hfinal.append(
-                {
-                    "Created": lcreated,
-                    "CreatedBy": lcreatedby,
-                    "Comment": "",
-                    "Id": lid,
-                    "Size": lsize,
-                    "Tags": [],
-                }
-            )
-
-    docker_history = hfinal
     with open(os.path.join(unpackdir, "docker_history.json"), "w") as OFH:
         OFH.write(json.dumps(docker_history))
 
-    if not dockerfile_contents:
-        # get dockerfile_contents (translate history to guessed DF)
-        dockerfile_contents = "FROM scratch\n"
-        for hel in docker_history:
-            patt = re.match(r"^/bin/sh -c #\(nop\) +(.*)", hel["CreatedBy"])
-            if patt:
-                cmd = patt.group(1)
-            elif hel["CreatedBy"]:
-                cmd = "RUN " + hel["CreatedBy"]
-            else:
-                cmd = None
-            if cmd:
-                dockerfile_contents = dockerfile_contents + cmd + "\n"
-        dockerfile_mode = "Guessed"
-    elif not dockerfile_mode:
-        dockerfile_mode = "Actual"
+    architecture = parser.architecture
 
-    return docker_history, layers, dockerfile_contents, dockerfile_mode, imageArch
+    return docker_history, layers, dockerfile_contents, dockerfile_mode, architecture
 
 
 def unpack(staging_dirs, layers):
@@ -1004,6 +916,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
     for f in list_analyzers():
         cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
         if True:
+            logger.info("Executing analyzer %s", f)
             timer = time.time()
             try:
                 rc, sout, serr = utils.run_command(cmdstr)
@@ -1058,8 +971,6 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
 
 def generate_image_export(
-    staging_dirs,
-    imageDigest,
     imageId,
     analyzer_report,
     imageSize,
@@ -1194,6 +1105,7 @@ def analyze_image(
             )
 
             manifest = get_manifest_from_staging(staging_dirs)
+
         manifest_data = json.loads(manifest)
 
         if image_source != "docker-archive":
@@ -1214,11 +1126,8 @@ def analyze_image(
                 imageArch,
             ) = get_image_metadata_v1(
                 staging_dirs,
-                imageDigest,
-                imageId,
                 manifest_data,
                 dockerfile_contents=dockerfile_contents,
-                dockerfile_mode=dockerfile_mode,
             )
         elif manifest_data["schemaVersion"] == 2:
             (
@@ -1229,11 +1138,9 @@ def analyze_image(
                 imageArch,
             ) = get_image_metadata_v2(
                 staging_dirs,
-                imageDigest,
                 imageId,
                 manifest_data,
                 dockerfile_contents=dockerfile_contents,
-                dockerfile_mode=dockerfile_mode,
             )
         else:
             raise ManifestSchemaVersionError(
@@ -1256,6 +1163,7 @@ def analyze_image(
         analyzer_report = run_anchore_analyzers(
             staging_dirs, imageDigest, imageId, localconfig
         )
+
         logger.debug(
             "timing: total analyzer time: {} - {}".format(
                 pullstring, time.time() - timer
@@ -1263,8 +1171,6 @@ def analyze_image(
         )
 
         image_report = generate_image_export(
-            staging_dirs,
-            imageDigest,
             imageId,
             analyzer_report,
             imageSize,
@@ -1278,7 +1184,6 @@ def analyze_image(
             pullstring,
             analyzer_manifest,
         )
-
     except Exception as err:
         raise AnalysisError(
             cause=err,

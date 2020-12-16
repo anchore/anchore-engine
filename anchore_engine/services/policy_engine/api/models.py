@@ -1,16 +1,17 @@
-from anchore_engine.apis.serialization import JitSchema, JsonMappedMixin
+from anchore_engine.common.schemas import Schema, JsonSerializable, RFC3339DateTime
 from marshmallow import fields, post_load
+from anchore_engine.utils import rfc3339str_to_datetime, datetime_to_rfc3339
 
 
-class DistroMapping(JsonMappedMixin):
-    class DistroMappingV1Schema(JitSchema):
+class DistroMapping(JsonSerializable):
+    class DistroMappingV1Schema(Schema):
         from_distro = fields.Str()
         to_distro = fields.Str()
         flavor = fields.Str()
-        created_at = fields.DateTime()
+        created_at = RFC3339DateTime()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return DistroMapping(**data)
 
     __schema__ = DistroMappingV1Schema()
@@ -24,14 +25,14 @@ class DistroMapping(JsonMappedMixin):
         self.created_at = created_at
 
 
-class ErrorResponse(JsonMappedMixin):
-    class ErrorResponseV1Schema(JitSchema):
+class ErrorResponse(JsonSerializable):
+    class ErrorResponseV1Schema(Schema):
         code = fields.Int()
         type = fields.Str()
         message = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return ErrorResponse(**data)
 
     __schema__ = ErrorResponseV1Schema()
@@ -42,14 +43,14 @@ class ErrorResponse(JsonMappedMixin):
         self.message = message
 
 
-class EventStatus(JsonMappedMixin):
-    class EventStatusV1Schema(JitSchema):
+class EventStatus(JsonSerializable):
+    class EventStatusV1Schema(Schema):
         event_id = fields.Str()
-        event_timestamp = fields.DateTime()
+        event_timestamp = RFC3339DateTime()
         event_state = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return EventStatus(**data)
 
     def __init__(
@@ -60,17 +61,17 @@ class EventStatus(JsonMappedMixin):
         self.event_state = event_state
 
 
-class FeedGroupMetadata(JsonMappedMixin):
-    class FeedGroupMetadataV1Schema(JitSchema):
+class FeedGroupMetadata(JsonSerializable):
+    class FeedGroupMetadataV1Schema(Schema):
         name = fields.Str()
-        created_at = fields.DateTime()
-        updated_at = fields.DateTime()
-        last_sync = fields.DateTime()
+        created_at = RFC3339DateTime()
+        updated_at = RFC3339DateTime()
+        last_sync = RFC3339DateTime()
         enabled = fields.Boolean()
         record_count = fields.Integer()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return FeedGroupMetadata(**data)
 
     __schema__ = FeedGroupMetadataV1Schema()
@@ -92,17 +93,17 @@ class FeedGroupMetadata(JsonMappedMixin):
         self.updated_at = updated_at
 
 
-class FeedMetadata(JsonMappedMixin):
-    class FeedMetadataV1Schema(JitSchema):
+class FeedMetadata(JsonSerializable):
+    class FeedMetadataV1Schema(Schema):
         name = fields.Str()
-        created_at = fields.DateTime()
-        updated_at = fields.DateTime()
-        last_full_sync = fields.DateTime()
+        created_at = RFC3339DateTime()
+        updated_at = RFC3339DateTime()
+        last_full_sync = RFC3339DateTime()
         enabled = fields.Boolean()
         groups = fields.List(fields.Nested(FeedGroupMetadata.FeedGroupMetadataV1Schema))
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return FeedMetadata(**data)
 
     __schema__ = FeedMetadataV1Schema()
@@ -124,19 +125,19 @@ class FeedMetadata(JsonMappedMixin):
         self.enabled = enabled
 
 
-class Image(JsonMappedMixin):
-    class ImageV1Schema(JitSchema):
+class Image(JsonSerializable):
+    class ImageV1Schema(Schema):
         id = fields.Str()
         digest = fields.Str()
         user_id = fields.Str()
         state = fields.Str()
         distro_namespace = fields.Str()
-        created_at = fields.DateTime()
-        last_modified = fields.DateTime()
+        created_at = RFC3339DateTime()
+        last_modified = RFC3339DateTime()
         tags = fields.List(fields.Str())
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return Image(**data)
 
     __schema__ = ImageV1Schema()
@@ -162,14 +163,14 @@ class Image(JsonMappedMixin):
         self.tags = tags
 
 
-class CvssScore(JsonMappedMixin):
-    class CvssScoreV1Schema(JitSchema):
+class CvssScore(JsonSerializable):
+    class CvssScoreV1Schema(Schema):
         base_score = fields.Float()
         exploitability_score = fields.Float()
         impact_score = fields.Float()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return CvssScore(**data)
 
     __schema__ = CvssScoreV1Schema()
@@ -180,14 +181,14 @@ class CvssScore(JsonMappedMixin):
         self.impact_score = impact_score
 
 
-class CvssCombined(JsonMappedMixin):
-    class CvssCombinedV1Schema(JitSchema):
+class CvssCombined(JsonSerializable):
+    class CvssCombinedV1Schema(Schema):
         id = fields.Str()
         cvss_v2 = fields.Nested(CvssScore.CvssScoreV1Schema)
         cvss_v3 = fields.Nested(CvssScore.CvssScoreV1Schema)
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return CvssCombined(**data)
 
     __schema__ = CvssCombinedV1Schema()
@@ -198,8 +199,8 @@ class CvssCombined(JsonMappedMixin):
         self.cvss_v3 = cvss_v3
 
 
-class CpeVulnerability(JsonMappedMixin):
-    class CpeVulnerabilityV1Schema(JitSchema):
+class CpeVulnerability(JsonSerializable):
+    class CpeVulnerabilityV1Schema(Schema):
         vulnerability_id = fields.Str()
         severity = fields.Str()
         link = fields.Str()
@@ -216,7 +217,7 @@ class CpeVulnerability(JsonMappedMixin):
         fixed_in = fields.List(fields.Str())
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return CpeVulnerability(**data)
 
     __schema__ = CpeVulnerabilityV1Schema()
@@ -254,15 +255,15 @@ class CpeVulnerability(JsonMappedMixin):
         self.fixed_id = fixed_in
 
 
-class LegacyTableReport(JsonMappedMixin):
-    class LegacyTableReportV1Schema(JitSchema):
+class LegacyTableReport(JsonSerializable):
+    class LegacyTableReportV1Schema(Schema):
         rowcount = fields.Int()
         colcount = fields.Int()
         header = fields.List(fields.Str())
         rows = fields.List(fields.List(fields.Str()))
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return LegacyTableReport(**data)
 
     __schema__ = LegacyTableReportV1Schema()
@@ -274,14 +275,14 @@ class LegacyTableReport(JsonMappedMixin):
         self.rows = rows
 
 
-class LegacyMultiReport(JsonMappedMixin):
-    class LegacyMultiReportV1Schema(JitSchema):
+class LegacyMultiReport(JsonSerializable):
+    class LegacyMultiReportV1Schema(Schema):
         url_column_index = fields.Int()
         result = fields.Nested(LegacyTableReport.LegacyTableReportV1Schema)
         warns = fields.List(fields.Str())
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return LegacyMultiReport(**data)
 
     __schema__ = LegacyMultiReportV1Schema()
@@ -292,12 +293,12 @@ class LegacyMultiReport(JsonMappedMixin):
         self.warns = warns
 
 
-class LegacyVulnerabilityReport(JsonMappedMixin):
-    class LegacyVulnerabilityReportV1Schema(JitSchema):
+class LegacyVulnerabilityReport(JsonSerializable):
+    class LegacyVulnerabilityReportV1Schema(Schema):
         multi = fields.Nested(LegacyMultiReport.LegacyMultiReportV1Schema)
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return LegacyVulnerabilityReport(**data)
 
     __schema__ = LegacyVulnerabilityReportV1Schema()
@@ -306,8 +307,8 @@ class LegacyVulnerabilityReport(JsonMappedMixin):
         self.multi = multi
 
 
-class ImageVulnerabilityListing(JsonMappedMixin):
-    class ImageVulnerabilityListingV1Schema(JitSchema):
+class ImageVulnerabilityListing(JsonSerializable):
+    class ImageVulnerabilityListingV1Schema(Schema):
         user_id = fields.Str()
         image_id = fields.Str()
         legacy_report = fields.Nested(
@@ -318,7 +319,7 @@ class ImageVulnerabilityListing(JsonMappedMixin):
         )
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return ImageVulnerabilityListing(**data)
 
     __schema__ = ImageVulnerabilityListingV1Schema()
@@ -341,16 +342,16 @@ class ImageVulnerabilityListing(JsonMappedMixin):
         self.cpe_report = cpe_report
 
 
-class ImageIngressRequest(JsonMappedMixin):
-    class ImageIngressRequestV1Schema(JitSchema):
+class ImageIngressRequest(JsonSerializable):
+    class ImageIngressRequestV1Schema(Schema):
         user_id = fields.Str()
         image_id = fields.Str()
-        fetch_url = (
-            fields.Str()
-        )  # Could use a Url() here but one of the scheme options we use 'catalog://' isn't valid in their regex, bug in the Url() field code for custom schema support
+
+        # Could use a Url() here but one of the scheme options we use 'catalog://' isn't valid in their regex, bug in the Url() field code for custom schema support
+        fetch_url = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return ImageIngressRequest(**data)
 
     __schema__ = ImageIngressRequestV1Schema()
@@ -361,12 +362,12 @@ class ImageIngressRequest(JsonMappedMixin):
         self.fetch_url = fetch_url
 
 
-class ImageIngressResponse(JsonMappedMixin):
-    class ImageIngressResponseV1Schema(JitSchema):
+class ImageIngressResponse(JsonSerializable):
+    class ImageIngressResponseV1Schema(Schema):
         status = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return ImageIngressResponse(**data)
 
     __schema__ = ImageIngressResponseV1Schema()
@@ -375,8 +376,8 @@ class ImageIngressResponse(JsonMappedMixin):
         self.status = status
 
 
-class TriggerParamSpec(JsonMappedMixin):
-    class TriggerParamSpecV1Schema(JitSchema):
+class TriggerParamSpec(JsonSerializable):
+    class TriggerParamSpecV1Schema(Schema):
         name = fields.Str()
         description = fields.Str()
         example = fields.Str()
@@ -386,7 +387,7 @@ class TriggerParamSpec(JsonMappedMixin):
         validator = fields.Dict()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return TriggerParamSpec(**data)
 
     __schema__ = TriggerParamSpecV1Schema()
@@ -410,8 +411,8 @@ class TriggerParamSpec(JsonMappedMixin):
         self.validator = validator
 
 
-class TriggerSpec(JsonMappedMixin):
-    class TriggerSpecV1Schema(JitSchema):
+class TriggerSpec(JsonSerializable):
+    class TriggerSpecV1Schema(Schema):
         name = fields.Str()
         description = fields.Str()
         state = fields.Str()
@@ -421,7 +422,7 @@ class TriggerSpec(JsonMappedMixin):
         )
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return TriggerSpec(**data)
 
     __schema__ = TriggerSpecV1Schema()
@@ -441,8 +442,8 @@ class TriggerSpec(JsonMappedMixin):
         self.parameters = parameters
 
 
-class GateSpec(JsonMappedMixin):
-    class GateSpecV1Schema(JitSchema):
+class GateSpec(JsonSerializable):
+    class GateSpecV1Schema(Schema):
         name = fields.Str()
         description = fields.Str()
         state = fields.Str()
@@ -450,7 +451,7 @@ class GateSpec(JsonMappedMixin):
         triggers = fields.List(fields.Nested(TriggerSpec.TriggerSpecV1Schema))
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return GateSpec(**data)
 
     __schema__ = GateSpecV1Schema()
@@ -465,14 +466,14 @@ class GateSpec(JsonMappedMixin):
         self.triggers = triggers
 
 
-class PolicyEvaluationProblem(JsonMappedMixin):
-    class PolicyEvaluationProblemV1Schema(JitSchema):
+class PolicyEvaluationProblem(JsonSerializable):
+    class PolicyEvaluationProblemV1Schema(Schema):
         severity = fields.Str()
         problem_type = fields.Str()
         details = fields.Str()
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return PolicyEvaluationProblem(**data)
 
     __schema__ = PolicyEvaluationProblemV1Schema()
@@ -483,8 +484,8 @@ class PolicyEvaluationProblem(JsonMappedMixin):
         self.details = details
 
 
-class PolicyEvaluation(JsonMappedMixin):
-    class PolicyEvaluationV1Schema(JitSchema):
+class PolicyEvaluation(JsonSerializable):
+    class PolicyEvaluationV1Schema(Schema):
         user_id = fields.Str()
         image_id = fields.Str()
         tag = fields.Str()
@@ -502,7 +503,7 @@ class PolicyEvaluation(JsonMappedMixin):
         )
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return PolicyEvaluation(**data)
 
     __schema__ = PolicyEvaluationV1Schema()
@@ -538,15 +539,15 @@ class PolicyEvaluation(JsonMappedMixin):
         self.evaluation_problems = evaluation_problems
 
 
-class PolicyValidationResponse(JsonMappedMixin):
-    class PolicyValidationResponseV1Schema(JitSchema):
+class PolicyValidationResponse(JsonSerializable):
+    class PolicyValidationResponseV1Schema(Schema):
         valid = fields.Bool()
         validation_details = fields.List(
             fields.Nested(PolicyEvaluationProblem.PolicyEvaluationProblemV1Schema)
         )
 
         @post_load
-        def make(self, data):
+        def make(self, data, **kwargs):
             return PolicyValidationResponse(**data)
 
     __schema__ = PolicyValidationResponseV1Schema()

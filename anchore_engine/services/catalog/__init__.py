@@ -1,3 +1,4 @@
+import datetime
 import copy
 import json
 import os
@@ -47,6 +48,11 @@ from anchore_engine.services.catalog.image_content.get_image_content import (
     ImageDockerfileContentGetter,
     ImageContentGetter,
 )
+from anchore_engine.db.entities.catalog import (
+    ImageImportContent,
+    ImageImportOperation,
+    ImportState,
+)
 from anchore_engine.subsys import (
     notifications,
     taskstate,
@@ -55,6 +61,18 @@ from anchore_engine.subsys import (
     object_store,
 )
 from anchore_engine.subsys.identities import manager_factory
+from anchore_engine.services.catalog import archiver
+from anchore_engine.subsys.object_store.config import (
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
+    ANALYSIS_ARCHIVE_MANAGER_ID,
+    ALT_OBJECT_STORE_CONFIG_KEY,
+)
+from anchore_engine.common.schemas import (
+    QueueMessage,
+    AnalysisQueueMessage,
+    ImportQueueMessage,
+    ImportManifest,
+)
 from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
@@ -1470,9 +1488,14 @@ def handle_analyzer_queue(*args, **kwargs):
             image_record = basestate_image_record
 
             if image_record["image_status"] == taskstate.complete_state("image_status"):
-                logger.debug("image check")
+                logger.debug(
+                    "image check of queue status for digest {}".format(imageDigest)
+                )
                 if image_record["analysis_status"] == taskstate.base_state("analyze"):
                     logger.debug("image in base state - " + str(imageDigest))
+
+                    # TODO: This is expensive once the queue gets longer... need to find a more efficient way to check status
+                    # The right way is keep a msg/task ID in the db record so we can do a quick lookup in the queue for the id rather than full content match
                     try:
                         manifest = obj_mgr.get_document(
                             userId, "manifest_data", image_record["imageDigest"]
@@ -2406,6 +2429,138 @@ class CatalogService(ApiService):
         return getter.get()
 
 
+def delete_import_operation(dbsession, operation: ImageImportOperation):
+    """
+    Execute the deletion path for an import operation
+
+    :param dbsession:
+    :param operation:
+    :return:
+    """
+    logger.info("garbage collecting import operation: %s", operation.uuid)
+
+    obj_mgr = object_store.get_manager()
+    failed = False
+
+    for content in operation.contents:
+        try:
+            logger.debug(
+                "deleting import content digest %s of type %s for operation %s",
+                content.digest,
+                content.content_type,
+                operation.uuid,
+            )
+            obj_mgr.delete_document(
+                userId=operation.account,
+                bucket=content.content_storage_bucket,
+                archiveid=content.content_storage_key,
+            )
+            dbsession.delete(content)
+            logger.debug(
+                "deleted import content digest %s of type %s for operation %s successfully",
+                content.digest,
+                content.content_type,
+                operation.uuid,
+            )
+        except:
+            logger.debug_exception(
+                "could not delete import content of type %s for operation %s with digest %s",
+                content.content_type,
+                operation.uuid,
+                content.digest,
+            )
+            failed = True
+
+    if not failed:
+        uuid = operation.uuid
+        dbsession.delete(operation)
+    else:
+        return operation
+
+    logger.info("garbage collection of import operation %s complete", operation.uuid)
+    return None
+
+
+def garbage_collect_imports():
+    """
+    Flush all imports that are in a state ready for collection
+
+    :return:
+    """
+
+    # iterate over all imports ready for GC
+    with db.session_scope() as dbsession:
+        to_clean = dbsession.query(ImageImportOperation).filter(
+            ImageImportOperation.status.in_(
+                [
+                    ImportState.invalidated,
+                    ImportState.complete,
+                    ImportState.failed,
+                    ImportState.expired,
+                ]
+            )
+        )
+
+        for op in to_clean:
+            try:
+                logger.debug(
+                    "Starting import operation gc for account id: %s, operation id: %s"
+                    % (op.account, op.uuid)
+                )
+                delete_import_operation(dbsession, op)
+            except:
+                logger.exception("Error deleting image, may retry on next cycle")
+
+
+def expire_imports():
+    """
+    Flush all imports that are in a state ready for collection
+    :return:
+    """
+
+    # iterate over all imports ready for GC
+    with db.session_scope() as dbsession:
+        for operation in dbsession.query(ImageImportOperation).filter(
+            ImageImportOperation.status.in_(
+                [ImportState.pending, ImportState.processing]
+            ),
+            ImageImportOperation.expires_at < datetime.datetime.utcnow(),
+        ):
+            operation.status = ImportState.expired
+
+
+def handle_import_gc(*args, **kwargs):
+    """
+    Cleanup import operations that are expired or complete and reclaim resources
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+
+    watcher = str(kwargs["mythread"]["taskType"])
+    handler_success = True
+
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+
+    try:
+        garbage_collect_imports()
+    except Exception as err:
+        logger.warn("failure in handler - exception: " + str(err))
+
+    try:
+        expire_imports()
+    except Exception as err:
+        logger.warn("failure in handler - exception: " + str(err))
+
+    logger.debug("FIRING DONE: " + str(watcher))
+    try:
+        kwargs["mythread"]["last_return"] = handler_success
+    except:
+        pass
+
+
 watchers = {
     "image_watcher": {
         "handler": handle_image_watcher,
@@ -2543,6 +2698,18 @@ watchers = {
         "handler": handle_image_gc,
         "task_lease_id": "image_gc",
         "taskType": "handle_image_gc",
+        "args": [],
+        "cycle_timer": 60,
+        "min_cycle_timer": 60,
+        "max_cycle_timer": 86400,
+        "last_queued": 0,
+        "last_return": False,
+        "initialized": False,
+    },
+    "import_gc": {
+        "handler": handle_import_gc,
+        "task_lease_id": "import_gc",
+        "taskType": "handle_import_gc",
         "args": [],
         "cycle_timer": 60,
         "min_cycle_timer": 60,
