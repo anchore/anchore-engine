@@ -174,8 +174,6 @@ def add_image(
                 import_manifest = ImportManifest.from_json(
                     image_metadata["import_manifest"]
                 )
-            except AnchoreApiError:
-                raise
             except Exception as err:
                 logger.debug_exception("Error unmarshalling manifest")
                 # If we hit this, it means the swagger spec doesn't match the marshmallow scheme
