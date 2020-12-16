@@ -123,13 +123,7 @@ def test_LocalFeedDataRepo():
 
         r.initialize()
         assert os.listdir(tmpdir) == ["metadata.json"]
-        ts = (
-            datetime.datetime.utcnow()
-            .replace(tzinfo=datetime.timezone.utc)
-            .replace(
-                microsecond=0
-            )  # Zero this since RFC3339 rendering to json won't preserve it. If removed the later comparison will fail
-        )
+        ts = ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
         r.metadata.download_result = DownloadOperationResult(
             started=ts, status=FeedDownloader.State.in_progress.value, results=[]
         )
