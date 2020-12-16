@@ -226,7 +226,8 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
     :param image_digest:
     :return:
     """
-    assert image_id is not None
+    if image_id is None:
+        raise ValueError("image_id must not be None")
 
     pe_client = internal_client_for(PolicyEngineClient, account)
 

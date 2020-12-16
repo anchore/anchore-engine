@@ -181,13 +181,17 @@ class DockerImageReference:
         return self.image_id is not None
 
     def tag_pullstring(self):
-        assert self.registry and self.repository and self.tag
+        raise Exception(
+            "missing one of registry, repository or tag to construct the pullstring"
+        )
         return self._tag_pullstring_format.format(
             registry=self.registry, repository=self.repository, tag=self.tag
         )
 
     def digest_pullstring(self):
-        assert self.registry and self.repository and self.digest
+        raise Exception(
+            "missing one of registry, repository or digest to construct the digest pullstring"
+        )
         return self._digest_pullstring_format.format(
             registry=self.registry, repository=self.repository, digest=self.digest
         )
