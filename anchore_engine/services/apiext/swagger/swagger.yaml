@@ -3465,11 +3465,11 @@ definitions:
     description: A metadata detail record for a specific image. Multiple detail records may map a single catalog image.
     properties:
       created_at:
-        # server returning epoch
-        type: number
+        type: string
+        format: date-time
       last_updated:
-        # server returning epoch
-        type: number
+        type: string
+        format: date-time
       fulltag:
         description: "Full docker-pullable tag string referencing the image"
         type: string
@@ -3529,11 +3529,11 @@ definitions:
         items:
           $ref: "#/definitions/ImageDetail"
       last_updated:
-        # server returning epoch
-        type: number
+        type: string
+        format: date-time
       created_at:
-        # server returning epoch
-        type: number
+        type: string
+        format: date-time
       imageDigest:
         type: string
       userId:
