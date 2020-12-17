@@ -63,35 +63,3 @@ def get_oauth_token(
     except:
         logger.debug_exception("Error authenticating")
         raise
-
-
-# @authorizer.requires_account(with_types=[AccountTypes.admin])
-# def create_client(client_definition):
-#     """
-#     POST /create_client
-#
-#     :return:
-#     """
-#     with session_scope() as db:
-#         # Use for handling form-urlencoded input instead of json
-#         if not request.is_json:
-#             logger.debug('Using non-json handler for defining the client')
-#             client_definition = request.form.to_dict(flat=True)
-#
-#         logger.debug('Saving client from form: {}'.format(client_definition))
-#
-#         user = client_definition.get('user_id', ApiRequestContextProxy.identity().username)
-#
-#         if not client_definition.get('user_id'):
-#             client_definition['user_id'] = user
-#
-#         client = OAuth2Client(**client_definition)
-#         client.user_id = user
-#         client.client_id = gen_salt(24)
-#         if client.token_endpoint_auth_method == 'none':
-#             client.client_secret = ''
-#         else:
-#             client.client_secret = gen_salt(48)
-#
-#         db.add(client)
-#         return {'client_id': client.client_id, 'client_secret': client.client_secret}, 200

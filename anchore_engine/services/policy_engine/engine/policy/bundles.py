@@ -1121,7 +1121,7 @@ class HybridTriggerIdKeyedItemIndex(IWhitelistItemIndex):
 
 
 class StandardCVETriggerIdKey(object):
-    cve_trigger_id_regex = re.compile("([A-Za-z0-9\-])+\+\*")
+    cve_trigger_id_regex = re.compile(r"([A-Za-z0-9\-])+\+\*")
     supported_gates = [AnchoreSecGate.__gate_name__.lower()]
 
     @classmethod
