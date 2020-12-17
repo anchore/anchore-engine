@@ -116,3 +116,8 @@ ENV/
 anchore-ci*/
 
 tags
+
+# Docs npms
+docs/node_modules/
+docs/public
+docs/resources/_gen
