@@ -1,0 +1,344 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Feeds Overview</title><link>/docs/usage/cli_usage/feeds/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/cli_usage/feeds/</link></image><atom:link href="/docs/usage/cli_usage/feeds/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Feed Configuration</title><link>/docs/usage/cli_usage/feeds/feed_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/feeds/feed_configuration/</guid><description>
+&lt;h3 id="feed-synchronization-interval">Feed Synchronization Interval&lt;/h3>
+&lt;p>The default configuration for the Anchore Engine will download vulnerability data from Anchore&amp;rsquo;s feed service every 21,600 seconds (6hours).&lt;/p>
+&lt;p>For most users the only configuration option that is typically updated is the feed synchronization interval - the time interval (in seconds) at which the feed sync is run.&lt;/p>
+&lt;pre>&lt;code class="language-policy_engine:" data-lang="policy_engine:"> .....
+cycle_timers:
+...
+feed_sync: 14400
+&lt;/code>&lt;/pre>&lt;h3 id="feed-settings">Feed Settings&lt;/h3>
+&lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>feeds&lt;/code> section of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Ensure these are synchronized between
+containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
+&lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the us-west-2 region.&lt;/p>
+&lt;p>By default the Anchore Engine will perform a selective sync enabling only the vulnerabilities feed. Setting the (selective_sync) enabled flag to false, or updating the other feed types to True will enable synchronization of the specified feed.&lt;/p>
+&lt;pre>&lt;code>feeds:
+selective_sync:
+# If enabled only sync specific feeds instead of all.
+enabled: True
+feeds:
+vulnerabilities: True
+packages: False
+nvdv2: True
+github: True
+url: 'https://ancho.re/v1/service/feeds'
+connection_timeout_seconds: 3
+read_timeout_seconds: 60
+&lt;/code>&lt;/pre>&lt;h4 id="read-timeout">Read Timeout&lt;/h4>
+&lt;p>Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
+some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
+&lt;pre>&lt;code>feeds:
+...
+read_timeout_seconds: 180
+&lt;/code>&lt;/pre>&lt;h3 id="controlling-which-feeds-and-groups-are-synced">Controlling Which Feeds and Groups are Synced&lt;/h3>
+&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time time.&lt;/p>
+&lt;p>During initial feed sync, you can always query the progress and status of the feed sync using the anchore-cli.&lt;/p>
+&lt;pre>&lt;code>anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
+Feed Group LastSync RecordCount
+github github:composer 2020-03-27T22:19:57.328440 78
+github github:gem 2020-03-27T22:19:59.069349 333
+github github:java 2020-03-27T22:20:03.393652 432
+github github:npm 2020-03-27T22:20:09.422600 653
+github github:nuget 2020-03-27T22:20:16.628054 50
+github github:python 2020-03-27T22:20:17.754270 250
+nvdv2 nvdv2:cves 2020-03-27T20:42:13.104384 141090
+vulnerabilities alpine:3.10 2020-03-27T19:47:27.188488 1725
+vulnerabilities alpine:3.11 2020-03-27T19:47:42.467000 1904
+vulnerabilities alpine:3.3 2020-03-27T19:47:59.309026 457
+vulnerabilities alpine:3.4 2020-03-27T19:48:03.531092 681
+vulnerabilities alpine:3.5 2020-03-27T19:48:09.396503 875
+vulnerabilities alpine:3.6 2020-03-27T19:48:17.029289 1051
+vulnerabilities alpine:3.7 2020-03-27T19:48:27.230411 1395
+vulnerabilities alpine:3.8 2020-03-27T19:48:39.811189 1486
+vulnerabilities alpine:3.9 2020-03-27T19:48:53.472895 1558
+vulnerabilities amzn:2 2020-03-27T19:49:08.039725 320
+vulnerabilities centos:5 2020-03-27T19:49:19.232142 1347
+vulnerabilities centos:6 2020-03-27T19:49:45.948061 1393
+vulnerabilities centos:7 2020-03-27T19:50:16.913685 1004
+vulnerabilities centos:8 2020-03-27T19:50:47.762328 199
+vulnerabilities debian:10 2020-03-27T19:50:56.298579 22407
+vulnerabilities debian:11 2020-03-27T19:55:05.935002 19443
+vulnerabilities debian:7 2020-03-27T19:58:55.500030 20455
+vulnerabilities debian:8 2020-03-27T20:01:58.427061 23481
+vulnerabilities debian:9 2020-03-27T20:05:20.356754 22507
+vulnerabilities debian:unstable 2020-03-27T20:09:37.909305 23701
+vulnerabilities ol:5 2020-03-27T20:12:55.707457 1245
+vulnerabilities ol:6 2020-03-27T20:13:25.500670 1504
+vulnerabilities ol:7 2020-03-27T20:14:03.279049 1121
+vulnerabilities ol:8 2020-03-27T20:14:37.144376 157
+vulnerabilities rhel:5 2020-03-27T20:14:43.707760 7237
+vulnerabilities rhel:6 2020-03-27T20:16:59.010218 6805
+vulnerabilities rhel:7 2020-03-27T20:18:09.917886 5846
+vulnerabilities rhel:8 2020-03-27T20:19:12.650326 1428
+vulnerabilities ubuntu:12.04 2020-03-27T20:19:28.540257 14948
+vulnerabilities ubuntu:12.10 2020-03-27T20:21:27.080478 5652
+vulnerabilities ubuntu:13.04 2020-03-27T20:23:09.806360 4127
+vulnerabilities ubuntu:14.04 2020-03-27T20:23:40.672987 21176
+vulnerabilities ubuntu:14.10 2020-03-27T20:27:27.221192 4456
+vulnerabilities ubuntu:15.04 2020-03-27T20:28:05.360075 5877
+vulnerabilities ubuntu:15.10 2020-03-27T20:28:53.416816 6513
+vulnerabilities ubuntu:16.04 2020-03-27T20:29:51.105326 18288
+vulnerabilities ubuntu:16.10 2020-03-27T20:33:29.612544 8647
+vulnerabilities ubuntu:17.04 2020-03-27T20:35:33.512059 9157
+vulnerabilities ubuntu:17.10 2020-03-27T20:36:39.141950 7936
+vulnerabilities ubuntu:18.04 2020-03-27T20:37:35.077867 12547
+vulnerabilities ubuntu:18.10 2020-03-27T20:39:20.097963 8397
+vulnerabilities ubuntu:19.04 2020-03-27T20:40:18.628869 8664
+vulnerabilities ubuntu:19.10 2020-03-27T20:41:20.828796 7327
+&lt;/code>&lt;/pre>&lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
+&lt;p>The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default,
+the &lt;em>vulnerabilities&lt;/em>, &lt;em>nvdv2&lt;/em>, and &lt;em>github&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
+and application package types. Normally it will not be necessary to modify that set.&lt;/p>
+&lt;p>To disable a feed or enable a disabled feed, modify the config.yaml&amp;rsquo;s &lt;em>feeds&lt;/em> section to:&lt;/p>
+&lt;pre>&lt;code>feeds:
+selective_sync:
+enabled: true
+feeds:
+vulnerabilities: true
+nvdv2: true
+github: true
+packages: false
+&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settng
+a feed to &amp;lsquo;false&amp;rsquo; will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.&lt;/p>
+&lt;h3 id="using-the-cli-to-configure-feeds">Using the CLI to Configure Feeds&lt;/h3>
+&lt;h4 id="disabling-an-entire-feed">Disabling an Entire Feed&lt;/h4>
+&lt;p>An entire feed can be disabled. This means that all the feed&amp;rsquo;s groups will no longer be updated and no new groups will be synced either on subsequent sync operations.
+This does not, however, remove any existing data nor will it remove the feed or feed group metadata records.&lt;/p>
+&lt;p>Example:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds config github --disable
+Feed Group LastSync RecordCount
+github(disabled) github:composer 2020-03-27T22:19:57.328440 78
+github(disabled) github:gem 2020-03-27T22:19:59.069349 333
+github(disabled) github:java 2020-03-27T22:20:03.393652 432
+github(disabled) github:npm 2020-03-27T22:20:09.422600 653
+github(disabled) github:nuget 2020-03-27T22:20:16.628054 50
+github(disabled) github:python 2020-03-27T22:20:17.754270 250
+&lt;/code>&lt;/pre>&lt;p>The feed can be enabled again using a similar command and on the next sync operation its data will be updated.
+Example:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds config github --enable
+Feed Group LastSync RecordCount
+github github:composer 2020-03-27T22:19:57.328440 78
+github github:gem 2020-03-27T22:19:59.069349 333
+github github:java 2020-03-27T22:20:03.393652 432
+github github:npm 2020-03-27T22:20:09.422600 653
+github github:nuget 2020-03-27T22:20:16.628054 50
+github github:python 2020-03-27T22:20:17.754270 250
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+github github:composer success 0 0.59s
+github github:gem success 0 0.47s
+github github:java success 0 0.60s
+github github:npm success 0 0.52s
+github github:nuget success 0 0.45s
+github github:python success 0 0.50s
+nvdv2 nvdv2:cves success 0 0.68s
+vulnerabilities alpine:3.10 success 0 0.56s
+vulnerabilities alpine:3.11 success 0 0.50s
+...
+&lt;/code>&lt;/pre>&lt;h4 id="disabling-specific-feed-groups">Disabling Specific Feed Groups&lt;/h4>
+&lt;p>For a more granular approach, you can disable a single group within a feed.&lt;/p>
+&lt;h3 id="using-the-cli-to-delete-feed-data">Using the CLI to Delete Feed Data&lt;/h3>
+&lt;h4 id="deleting-and-entire-feed">Deleting and Entire Feed&lt;/h4>
+&lt;p>Deleting feed data&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds delete github
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
+Feed Group LastSync RecordCount
+nvdv2 nvdv2:cves 2020-03-28T00:03:34.079006 141090
+vulnerabilities alpine:3.10 2020-03-28T00:03:32.065414 1725
+vulnerabilities alpine:3.11 2020-03-28T00:03:32.685733 1904
+vulnerabilities alpine:3.3 2020-03-28T00:02:03.906147 457
+vulnerabilities alpine:3.4 2020-03-28T00:02:03.160375 681
+vulnerabilities alpine:3.5 2020-03-28T00:02:04.693883 875
+vulnerabilities alpine:3.6 2020-03-28T00:02:06.155002 1051
+vulnerabilities alpine:3.7 2020-03-28T00:02:06.717063 1395
+vulnerabilities alpine:3.8 2020-03-28T00:02:07.329353 1486
+vulnerabilities alpine:3.9 2020-03-28T00:02:05.434095 1558
+vulnerabilities amzn:2 2020-03-28T00:02:08.671245 320
+vulnerabilities centos:5 2020-03-28T00:02:09.375775 1347
+vulnerabilities centos:6 2020-03-28T00:02:10.061647 1393
+vulnerabilities centos:7 2020-03-28T00:02:10.656073 1004
+vulnerabilities centos:8 2020-03-28T00:02:11.268366 199
+vulnerabilities debian:10 2020-03-28T00:03:33.244902 22414
+vulnerabilities debian:11 2020-03-28T00:02:11.914975 19450
+vulnerabilities debian:7 2020-03-28T00:02:12.732607 20455
+vulnerabilities debian:8 2020-03-28T00:02:13.759757 23488
+vulnerabilities debian:9 2020-03-28T00:02:07.960085 22514
+vulnerabilities debian:unstable 2020-03-28T00:02:14.585239 23708
+vulnerabilities ol:5 2020-03-28T00:02:15.882825 1245
+vulnerabilities ol:6 2020-03-28T00:02:15.368850 1504
+vulnerabilities ol:7 2020-03-28T00:02:17.334177 1121
+vulnerabilities ol:8 2020-03-28T00:02:18.057855 157
+vulnerabilities rhel:5 2020-03-28T00:02:18.748398 7237
+vulnerabilities rhel:6 2020-03-28T00:02:16.548115 6805
+vulnerabilities rhel:7 2020-03-28T00:03:20.039569 5846
+vulnerabilities rhel:8 2020-03-28T00:03:21.424688 1428
+vulnerabilities ubuntu:12.04 2020-03-28T00:03:30.795672 14948
+vulnerabilities ubuntu:12.10 2020-03-28T00:03:20.686089 5652
+vulnerabilities ubuntu:13.04 2020-03-28T00:03:22.630122 4127
+vulnerabilities ubuntu:14.04 2020-03-28T00:03:23.376621 21176
+vulnerabilities ubuntu:14.10 2020-03-28T00:03:24.059663 4456
+vulnerabilities ubuntu:15.04 2020-03-28T00:03:22.070692 5877
+vulnerabilities ubuntu:15.10 2020-03-28T00:03:24.656382 6513
+vulnerabilities ubuntu:16.04 2020-03-28T00:03:26.013850 18288
+vulnerabilities ubuntu:16.10 2020-03-28T00:03:25.370678 8647
+vulnerabilities ubuntu:17.04 2020-03-28T00:03:27.278963 9157
+vulnerabilities ubuntu:17.10 2020-03-28T00:03:26.605719 7936
+vulnerabilities ubuntu:18.04 2020-03-28T00:03:27.845497 12547
+vulnerabilities ubuntu:18.10 2020-03-28T00:03:28.482261 8397
+vulnerabilities ubuntu:19.04 2020-03-28T00:03:31.400152 8664
+vulnerabilities ubuntu:19.10 2020-03-28T00:03:29.122119 7327
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+nvdv2 nvdv2:cves success 0 0.81s
+vulnerabilities alpine:3.10 success 0 0.54s
+vulnerabilities alpine:3.11 success 0 0.60s
+vulnerabilities alpine:3.3 success 0 0.59s
+vulnerabilities alpine:3.4 success 0 0.75s
+vulnerabilities alpine:3.5 success 0 0.95s
+vulnerabilities alpine:3.6 success 0 0.57s
+vulnerabilities alpine:3.7 success 0 0.59s
+vulnerabilities alpine:3.8 success 0 0.51s
+vulnerabilities alpine:3.9 success 0 1.34s
+vulnerabilities amzn:2 success 0 0.52s
+vulnerabilities centos:5 success 0 0.64s
+vulnerabilities centos:6 success 0 0.80s
+vulnerabilities centos:7 success 0 0.82s
+vulnerabilities centos:8 success 0 0.58s
+vulnerabilities debian:10 success 0 0.47s
+vulnerabilities debian:11 success 0 0.58s
+vulnerabilities debian:7 success 0 0.64s
+vulnerabilities debian:8 success 0 0.71s
+vulnerabilities debian:9 success 0 0.76s
+vulnerabilities debian:unstable success 0 0.78s
+vulnerabilities ol:5 success 0 0.65s
+vulnerabilities ol:6 success 0 0.68s
+vulnerabilities ol:7 success 0 0.69s
+vulnerabilities ol:8 success 0 0.68s
+vulnerabilities rhel:5 success 0 0.76s
+vulnerabilities rhel:6 success 0 0.49s
+vulnerabilities rhel:7 success 0 0.61s
+vulnerabilities rhel:8 success 0 0.89s
+vulnerabilities ubuntu:12.04 success 0 0.76s
+vulnerabilities ubuntu:12.10 success 0 0.60s
+vulnerabilities ubuntu:13.04 success 0 0.65s
+vulnerabilities ubuntu:14.04 success 0 0.59s
+vulnerabilities ubuntu:14.10 success 0 1.01s
+vulnerabilities ubuntu:15.04 success 0 0.70s
+vulnerabilities ubuntu:15.10 success 0 0.60s
+vulnerabilities ubuntu:16.04 success 0 0.82s
+vulnerabilities ubuntu:16.10 success 0 0.57s
+vulnerabilities ubuntu:17.04 success 0 0.61s
+vulnerabilities ubuntu:17.10 success 0 0.51s
+vulnerabilities ubuntu:18.04 success 0 0.60s
+vulnerabilities ubuntu:18.10 success 0 0.60s
+vulnerabilities ubuntu:19.04 success 0 0.61s
+vulnerabilities ubuntu:19.10 success 0 0.60s
+&lt;/code>&lt;/pre>&lt;h4 id="deleting-specific-feed-groups">Deleting Specific Feed Groups&lt;/h4>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config --disable vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5(disabled) 2020-03-28T00:22:57.113534 1347
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds delete vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5(disabled) pending 0
+&lt;/code>&lt;/pre>&lt;h4 id="restoring-deleted-data">Restoring Deleted Data&lt;/h4>
+&lt;p>If you want to get data back, simply enable the feed and/or group and run a feed sync manually or wait for the next scheduled sync.&lt;/p>
+&lt;p>For an entire feed, here is an example of removal and re-adding it:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config github --disable
+Feed Group LastSync RecordCount
+github(disabled) github:composer 2020-03-28T01:08:58.652868 78
+github(disabled) github:gem 2020-03-28T01:08:59.179493 333
+github(disabled) github:java 2020-03-28T01:08:59.699348 432
+github(disabled) github:npm 2020-03-28T00:34:48.167115 653
+github(disabled) github:nuget 2020-03-28T01:12:01.116613 50
+github(disabled) github:python 2020-03-28T01:08:58.083361 250
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds delete github
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds config github --enable
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+github github:composer success 78 1.64s
+github github:gem success 333 4.48s
+github github:java success 432 6.07s
+github github:npm success 653 7.39s
+github github:nuget success 50 1.10s
+github github:python success 250 3.34s
+nvdv2 nvdv2:cves success 0 60.90s
+vulnerabilities alpine:3.10 success 0 0.52s
+vulnerabilities alpine:3.11 success 0 0.47s
+vulnerabilities alpine:3.3 success 0 0.56s
+vulnerabilities alpine:3.4 success 0 0.46s
+vulnerabilities alpine:3.5 success 0 0.52s
+vulnerabilities alpine:3.6 success 0 0.54s
+vulnerabilities alpine:3.7 success 0 60.76s
+vulnerabilities alpine:3.8 success 0 0.54s
+vulnerabilities alpine:3.9 success 0 0.54s
+vulnerabilities amzn:2 success 0 0.49s
+vulnerabilities centos:5 success 0 0.47s
+vulnerabilities centos:6 success 0 0.49s
+vulnerabilities centos:7 success 0 0.48s
+vulnerabilities centos:8 success 0 0.53s
+vulnerabilities debian:10 success 0 0.62s
+vulnerabilities debian:11 success 0 0.50s
+...
+&lt;/code>&lt;/pre>&lt;p>For a single feed group, here is an example of removal and re-adding it:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config --enable vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5 pending 0
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+...
+vulnerabilities centos:5 success 1347 27.41s
+...
+&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the db. However, note that this should not normally be necessary
+and modifying feed groups &amp;amp; data has implication on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Feed Synchronization</title><link>/docs/usage/cli_usage/feeds/feed_synchronization/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/feeds/feed_synchronization/</guid><description>
+&lt;p>When the Anchore Engine runs it will begin to synchronize security feed data from the Anchore feed service.&lt;/p>
+&lt;p>CVE data for Linux distributions such as Alpine, CentOS, Debian, Oracle, Red Hat and Ubuntu will be downloaded. The initial sync may take anywhere from 10 to 60 minutes depending on the speed of your network connection.&lt;/p>
+&lt;h3 id="checking-feed-status">Checking Feed Status&lt;/h3>
+&lt;p>Starting with Anchore Engine version 0.2.0 the status of the feed synchronization can be retrieved through the API and Anchore CLI.&lt;/p>
+&lt;pre>&lt;code>anchore-cli system feeds list
+Feed Group LastSync RecordCount
+vulnerabilities alpine:3.3 2018-04-25T11:51:33.567214Z 457
+vulnerabilities alpine:3.4 2018-04-25T11:51:33.976689Z 594
+vulnerabilities alpine:3.5 2018-04-25T11:51:24.447436Z 649
+vulnerabilities alpine:3.6 2018-04-25T11:51:32.413834Z 632
+vulnerabilities alpine:3.7 2018-04-25T11:51:36.313911Z 689
+vulnerabilities centos:5 2018-04-25T11:51:22.453408Z 1270
+vulnerabilities centos:6 2018-04-25T11:51:22.966213Z 1245
+vulnerabilities centos:7 2018-04-25T11:51:35.102044Z 621
+vulnerabilities debian:10 2018-04-25T11:51:37.509069Z 16858
+vulnerabilities debian:7 2018-04-25T11:51:20.383254Z 20225
+vulnerabilities debian:8 2018-04-25T11:51:21.275382Z 19027
+vulnerabilities debian:9 2018-04-25T11:51:23.704236Z 17662
+vulnerabilities debian:unstable 2018-04-25T11:51:25.831878Z 17859
+vulnerabilities ol:5 2018-04-25T11:51:24.931268Z 1213
+vulnerabilities ol:6 2018-04-25T11:51:28.358076Z 1276
+vulnerabilities ol:7 2018-04-25T11:51:28.733646Z 685
+vulnerabilities ubuntu:12.04 2018-04-25T11:51:34.452081Z 14945
+vulnerabilities ubuntu:12.10 2018-04-25T11:51:35.517364Z 5652
+vulnerabilities ubuntu:13.04 2018-04-25T11:51:35.923466Z 4127
+vulnerabilities ubuntu:14.04 2018-04-25T11:51:29.495143Z 15311
+vulnerabilities ubuntu:14.10 2018-04-25T11:51:33.162533Z 4456
+vulnerabilities ubuntu:15.04 2018-04-25T11:51:30.617371Z 5676
+vulnerabilities ubuntu:15.10 2018-04-25T11:51:31.957883Z 6511
+vulnerabilities ubuntu:16.04 2018-04-25T11:51:26.467438Z 12288
+vulnerabilities ubuntu:16.10 2018-04-25T11:51:27.961046Z 8646
+vulnerabilities ubuntu:17.04 2018-04-25T11:51:39.485986Z 9156
+vulnerabilities ubuntu:17.10 2018-04-25T11:51:22.047635Z 7169
+&lt;/code>&lt;/pre>&lt;p>This command will report list the feeds synchronized by the Anchore engine, last sync time and current record count.&lt;/p>
+&lt;p>Note: Time is reported as UTC, not local time.&lt;/p>
+&lt;h3 id="manually-initiating-feed-sync">Manually initiating feed sync&lt;/h3>
+&lt;p>After the initial sync has completed the engine will run an incremental sync at a user defined period, by default every 4 hours. At any time a feed sync can be initiated through the API or CLI.&lt;/p>
+&lt;p>A sync operation can be manually initiated by running the system feeds sync command however this should not be required under normal operation.&lt;/p>
+&lt;p>&lt;code>anchore-cli system feeds sync&lt;/code>&lt;/p>
+&lt;h3 id="performing-full-resync">Performing full resync&lt;/h3>
+&lt;p>The Anchore Engine can be instructed to flush the current feed data and perform a full synchronization.&lt;/p>
+&lt;p>Under normal circumstances this operation should not be required since the Anchore Engine performs regular incremental sync.&lt;/p>
+&lt;p>This process may take anywhere from 10 to 60 minutes depending on the speed of your network connection.&lt;/p>
+&lt;p>&lt;code>anchore-cli system feeds sync --flush&lt;/code>&lt;/p>
+&lt;p>The CLI will issue a warning and prompt for confirmation before proceeding with a sync.&lt;/p></description></item></channel></rss>

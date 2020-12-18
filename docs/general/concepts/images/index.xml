@@ -1,0 +1,29 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Analyzing Images</title><link>/docs/general/concepts/images/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/concepts/images/</link></image><atom:link href="/docs/general/concepts/images/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Image Analysis Process</title><link>/docs/general/concepts/images/analysis/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/analysis/</guid><description>
+&lt;p>Image analysis is performed as a distinct, asynchronous, and scheduled task driven by queues that analyzer workers periodically poll. Image records have a small state-machine as follows:&lt;/p>
+&lt;p>&lt;img src="ImageAnalysisState.jpg" alt="alt text">&lt;/p>
+&lt;p>The analysis process is composed of several steps and utilizes several system components. The, basic flow of that task is as follows:&lt;/p>
+&lt;p>&lt;img src="ImageAnalysisTask.jpg" alt="alt text">&lt;/p>
+&lt;p>Adding more detail, the API call trace between services looks approximately like (somewhat simplified for ease of presentation):&lt;/p>
+&lt;p>&lt;img src="ImageAnalysisAPI.jpg" alt="alt text">&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;p>Now let&amp;rsquo;s get familiar with &lt;a href="/docs/general/concepts/images/watchers/">Watching Images and Tags&lt;/a> with Anchore.&lt;/p></description></item><item><title>Docs: Image and Tag Watchers</title><link>/docs/general/concepts/images/watchers/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/watchers/</guid><description>
+&lt;h3 id="overview">Overview&lt;/h3>
+&lt;p>Anchore has the capability to monitor external Docker Registries for updates to tags as well as new tags. It also watches for updates to vulnerability databases and package metadata (the &amp;ldquo;Feeds&amp;rdquo;).&lt;/p>
+&lt;h3 id="repository-updates-new-tags">Repository Updates: New Tags&lt;/h3>
+&lt;p>The process for monitoring updates to repositories, the addition of new tag names, is done on a duty cycle and performed by the Engine Catalog component(s). The scheduling and tasks are driven by queues provided by the SimpleQueue service.&lt;/p>
+&lt;ol>
+&lt;li>Periodically, controlled by the cycle_timers configuration in the config.yaml of the catalog, a process is triggered to list all the Repository Subscription records in the system and for each record, add a task to a specific queue.&lt;/li>
+&lt;li>Periodically, also controlled by the cycle_timers config, a process is triggered to pick up tasks off that queue and process repository scan tasks. Each task looks approximately like the following:&lt;/li>
+&lt;/ol>
+&lt;p>&lt;img src="RepoUpdateTask.jpg" alt="alt text">&lt;/p>
+&lt;p>The output of this process is new tag_update subscription records, which are subsequently processed by the Tag Update handlers as described below. You can view the tag_update subscriptions using the Anchore CLI:&lt;/p>
+&lt;p>&lt;code>anchore-cli subscription list | grep tag_update&lt;/code>&lt;/p>
+&lt;h3 id="tag-updates-new-images">Tag Updates: New Images&lt;/h3>
+&lt;p>To detect updates to tags, mapping of a new image digest to a tag name, Anchore periodically checks the registry and downloads the tag&amp;rsquo;s image manifest to compare the computed digests. This is done on a duty cycle for every tag_update subscription record. Therefore, the more subscribed tags exist in the system, the higher the load on the system to check for updates and detect changes. This processing, like repository update monitoring, is performed by the Catalog component(s).&lt;/p>
+&lt;p>The process, the duty-cycle of which is configured in the cycle_timers section of the catalog config.yaml is described below:&lt;/p>
+&lt;p>&lt;img src="TagUpdateTask.jpg" alt="alt text">&lt;/p>
+&lt;p>As new updates are discovered, they are automatically submitted to the analyzers, via the image analysis internal queue, for processing.&lt;/p>
+&lt;p>The overall process and interaction of these duty cycles works like:&lt;/p>
+&lt;p>&lt;img src="UpdateFlow.jpg" alt="alt text">&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;p>Now let&amp;rsquo;s get familiar with &lt;a href="/docs/general/concepts/policy/">Policies&lt;/a> in Anchore.&lt;/p></description></item></channel></rss>

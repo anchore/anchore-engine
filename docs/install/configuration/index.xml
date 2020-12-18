@@ -1,0 +1,642 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Configuring Anchore</title><link>/docs/install/configuration/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/configuration/</link></image><atom:link href="/docs/install/configuration/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Feed Configuration</title><link>/docs/install/configuration/feed_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/feed_configuration/</guid><description>
+&lt;h3 id="feed-synchronization-interval">Feed Synchronization Interval&lt;/h3>
+&lt;p>The default configuration for the Anchore Engine will download vulnerability data from Anchore&amp;rsquo;s feed service every 21,600 seconds (6hours).&lt;/p>
+&lt;p>For most users the only configuration option that is typically updated is the feed synchronization interval - the time interval (in seconds) at which the feed sync is run.&lt;/p>
+&lt;pre>&lt;code class="language-policy_engine:" data-lang="policy_engine:"> .....
+cycle_timers:
+...
+feed_sync: 14400
+&lt;/code>&lt;/pre>&lt;h3 id="feed-settings">Feed Settings&lt;/h3>
+&lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>feeds&lt;/code> section of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Ensure these are synchronized between
+containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
+&lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the us-west-2 region.&lt;/p>
+&lt;p>By default the Anchore Engine will perform a selective sync enabling only the vulnerabilities feed. Setting the (selective_sync) enabled flag to false, or updating the other feed types to True will enable synchronization of the specified feed.&lt;/p>
+&lt;pre>&lt;code>feeds:
+selective_sync:
+# If enabled only sync specific feeds instead of all.
+enabled: True
+feeds:
+vulnerabilities: True
+packages: False
+nvdv2: True
+github: True
+url: 'https://ancho.re/v1/service/feeds'
+connection_timeout_seconds: 3
+read_timeout_seconds: 60
+&lt;/code>&lt;/pre>&lt;h4 id="read-timeout">Read Timeout&lt;/h4>
+&lt;p>Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
+some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
+&lt;pre>&lt;code>feeds:
+...
+read_timeout_seconds: 180
+&lt;/code>&lt;/pre>&lt;h3 id="controlling-which-feeds-and-groups-are-synced">Controlling Which Feeds and Groups are Synced&lt;/h3>
+&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time time.&lt;/p>
+&lt;p>During initial feed sync, you can always query the progress and status of the feed sync using the anchore-cli.&lt;/p>
+&lt;pre>&lt;code>anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
+Feed Group LastSync RecordCount
+github github:composer 2020-03-27T22:19:57.328440 78
+github github:gem 2020-03-27T22:19:59.069349 333
+github github:java 2020-03-27T22:20:03.393652 432
+github github:npm 2020-03-27T22:20:09.422600 653
+github github:nuget 2020-03-27T22:20:16.628054 50
+github github:python 2020-03-27T22:20:17.754270 250
+nvdv2 nvdv2:cves 2020-03-27T20:42:13.104384 141090
+vulnerabilities alpine:3.10 2020-03-27T19:47:27.188488 1725
+vulnerabilities alpine:3.11 2020-03-27T19:47:42.467000 1904
+vulnerabilities alpine:3.3 2020-03-27T19:47:59.309026 457
+vulnerabilities alpine:3.4 2020-03-27T19:48:03.531092 681
+vulnerabilities alpine:3.5 2020-03-27T19:48:09.396503 875
+vulnerabilities alpine:3.6 2020-03-27T19:48:17.029289 1051
+vulnerabilities alpine:3.7 2020-03-27T19:48:27.230411 1395
+vulnerabilities alpine:3.8 2020-03-27T19:48:39.811189 1486
+vulnerabilities alpine:3.9 2020-03-27T19:48:53.472895 1558
+vulnerabilities amzn:2 2020-03-27T19:49:08.039725 320
+vulnerabilities centos:5 2020-03-27T19:49:19.232142 1347
+vulnerabilities centos:6 2020-03-27T19:49:45.948061 1393
+vulnerabilities centos:7 2020-03-27T19:50:16.913685 1004
+vulnerabilities centos:8 2020-03-27T19:50:47.762328 199
+vulnerabilities debian:10 2020-03-27T19:50:56.298579 22407
+vulnerabilities debian:11 2020-03-27T19:55:05.935002 19443
+vulnerabilities debian:7 2020-03-27T19:58:55.500030 20455
+vulnerabilities debian:8 2020-03-27T20:01:58.427061 23481
+vulnerabilities debian:9 2020-03-27T20:05:20.356754 22507
+vulnerabilities debian:unstable 2020-03-27T20:09:37.909305 23701
+vulnerabilities ol:5 2020-03-27T20:12:55.707457 1245
+vulnerabilities ol:6 2020-03-27T20:13:25.500670 1504
+vulnerabilities ol:7 2020-03-27T20:14:03.279049 1121
+vulnerabilities ol:8 2020-03-27T20:14:37.144376 157
+vulnerabilities rhel:5 2020-03-27T20:14:43.707760 7237
+vulnerabilities rhel:6 2020-03-27T20:16:59.010218 6805
+vulnerabilities rhel:7 2020-03-27T20:18:09.917886 5846
+vulnerabilities rhel:8 2020-03-27T20:19:12.650326 1428
+vulnerabilities ubuntu:12.04 2020-03-27T20:19:28.540257 14948
+vulnerabilities ubuntu:12.10 2020-03-27T20:21:27.080478 5652
+vulnerabilities ubuntu:13.04 2020-03-27T20:23:09.806360 4127
+vulnerabilities ubuntu:14.04 2020-03-27T20:23:40.672987 21176
+vulnerabilities ubuntu:14.10 2020-03-27T20:27:27.221192 4456
+vulnerabilities ubuntu:15.04 2020-03-27T20:28:05.360075 5877
+vulnerabilities ubuntu:15.10 2020-03-27T20:28:53.416816 6513
+vulnerabilities ubuntu:16.04 2020-03-27T20:29:51.105326 18288
+vulnerabilities ubuntu:16.10 2020-03-27T20:33:29.612544 8647
+vulnerabilities ubuntu:17.04 2020-03-27T20:35:33.512059 9157
+vulnerabilities ubuntu:17.10 2020-03-27T20:36:39.141950 7936
+vulnerabilities ubuntu:18.04 2020-03-27T20:37:35.077867 12547
+vulnerabilities ubuntu:18.10 2020-03-27T20:39:20.097963 8397
+vulnerabilities ubuntu:19.04 2020-03-27T20:40:18.628869 8664
+vulnerabilities ubuntu:19.10 2020-03-27T20:41:20.828796 7327
+&lt;/code>&lt;/pre>&lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
+&lt;p>The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default,
+the &lt;em>vulnerabilities&lt;/em>, &lt;em>nvdv2&lt;/em>, and &lt;em>github&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
+and application package types. Normally it will not be necessary to modify that set.&lt;/p>
+&lt;p>To disable a feed or enable a disabled feed, modify the config.yaml&amp;rsquo;s &lt;em>feeds&lt;/em> section to:&lt;/p>
+&lt;pre>&lt;code>feeds:
+selective_sync:
+enabled: true
+feeds:
+vulnerabilities: true
+nvdv2: true
+github: true
+packages: false
+&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settng
+a feed to &amp;lsquo;false&amp;rsquo; will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.&lt;/p>
+&lt;h3 id="using-the-cli-to-configure-feeds">Using the CLI to Configure Feeds&lt;/h3>
+&lt;h4 id="disabling-an-entire-feed">Disabling an Entire Feed&lt;/h4>
+&lt;p>An entire feed can be disabled. This means that all the feed&amp;rsquo;s groups will no longer be updated and no new groups will be synced either on subsequent sync operations.
+This does not, however, remove any existing data nor will it remove the feed or feed group metadata records.&lt;/p>
+&lt;p>Example:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds config github --disable
+Feed Group LastSync RecordCount
+github(disabled) github:composer 2020-03-27T22:19:57.328440 78
+github(disabled) github:gem 2020-03-27T22:19:59.069349 333
+github(disabled) github:java 2020-03-27T22:20:03.393652 432
+github(disabled) github:npm 2020-03-27T22:20:09.422600 653
+github(disabled) github:nuget 2020-03-27T22:20:16.628054 50
+github(disabled) github:python 2020-03-27T22:20:17.754270 250
+&lt;/code>&lt;/pre>&lt;p>The feed can be enabled again using a similar command and on the next sync operation its data will be updated.
+Example:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds config github --enable
+Feed Group LastSync RecordCount
+github github:composer 2020-03-27T22:19:57.328440 78
+github github:gem 2020-03-27T22:19:59.069349 333
+github github:java 2020-03-27T22:20:03.393652 432
+github github:npm 2020-03-27T22:20:09.422600 653
+github github:nuget 2020-03-27T22:20:16.628054 50
+github github:python 2020-03-27T22:20:17.754270 250
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+github github:composer success 0 0.59s
+github github:gem success 0 0.47s
+github github:java success 0 0.60s
+github github:npm success 0 0.52s
+github github:nuget success 0 0.45s
+github github:python success 0 0.50s
+nvdv2 nvdv2:cves success 0 0.68s
+vulnerabilities alpine:3.10 success 0 0.56s
+vulnerabilities alpine:3.11 success 0 0.50s
+...
+&lt;/code>&lt;/pre>&lt;h4 id="disabling-specific-feed-groups">Disabling Specific Feed Groups&lt;/h4>
+&lt;p>For a more granular approach, you can disable a single group within a feed.&lt;/p>
+&lt;h3 id="using-the-cli-to-delete-feed-data">Using the CLI to Delete Feed Data&lt;/h3>
+&lt;h4 id="deleting-and-entire-feed">Deleting and Entire Feed&lt;/h4>
+&lt;p>Deleting feed data&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds delete github
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
+Feed Group LastSync RecordCount
+nvdv2 nvdv2:cves 2020-03-28T00:03:34.079006 141090
+vulnerabilities alpine:3.10 2020-03-28T00:03:32.065414 1725
+vulnerabilities alpine:3.11 2020-03-28T00:03:32.685733 1904
+vulnerabilities alpine:3.3 2020-03-28T00:02:03.906147 457
+vulnerabilities alpine:3.4 2020-03-28T00:02:03.160375 681
+vulnerabilities alpine:3.5 2020-03-28T00:02:04.693883 875
+vulnerabilities alpine:3.6 2020-03-28T00:02:06.155002 1051
+vulnerabilities alpine:3.7 2020-03-28T00:02:06.717063 1395
+vulnerabilities alpine:3.8 2020-03-28T00:02:07.329353 1486
+vulnerabilities alpine:3.9 2020-03-28T00:02:05.434095 1558
+vulnerabilities amzn:2 2020-03-28T00:02:08.671245 320
+vulnerabilities centos:5 2020-03-28T00:02:09.375775 1347
+vulnerabilities centos:6 2020-03-28T00:02:10.061647 1393
+vulnerabilities centos:7 2020-03-28T00:02:10.656073 1004
+vulnerabilities centos:8 2020-03-28T00:02:11.268366 199
+vulnerabilities debian:10 2020-03-28T00:03:33.244902 22414
+vulnerabilities debian:11 2020-03-28T00:02:11.914975 19450
+vulnerabilities debian:7 2020-03-28T00:02:12.732607 20455
+vulnerabilities debian:8 2020-03-28T00:02:13.759757 23488
+vulnerabilities debian:9 2020-03-28T00:02:07.960085 22514
+vulnerabilities debian:unstable 2020-03-28T00:02:14.585239 23708
+vulnerabilities ol:5 2020-03-28T00:02:15.882825 1245
+vulnerabilities ol:6 2020-03-28T00:02:15.368850 1504
+vulnerabilities ol:7 2020-03-28T00:02:17.334177 1121
+vulnerabilities ol:8 2020-03-28T00:02:18.057855 157
+vulnerabilities rhel:5 2020-03-28T00:02:18.748398 7237
+vulnerabilities rhel:6 2020-03-28T00:02:16.548115 6805
+vulnerabilities rhel:7 2020-03-28T00:03:20.039569 5846
+vulnerabilities rhel:8 2020-03-28T00:03:21.424688 1428
+vulnerabilities ubuntu:12.04 2020-03-28T00:03:30.795672 14948
+vulnerabilities ubuntu:12.10 2020-03-28T00:03:20.686089 5652
+vulnerabilities ubuntu:13.04 2020-03-28T00:03:22.630122 4127
+vulnerabilities ubuntu:14.04 2020-03-28T00:03:23.376621 21176
+vulnerabilities ubuntu:14.10 2020-03-28T00:03:24.059663 4456
+vulnerabilities ubuntu:15.04 2020-03-28T00:03:22.070692 5877
+vulnerabilities ubuntu:15.10 2020-03-28T00:03:24.656382 6513
+vulnerabilities ubuntu:16.04 2020-03-28T00:03:26.013850 18288
+vulnerabilities ubuntu:16.10 2020-03-28T00:03:25.370678 8647
+vulnerabilities ubuntu:17.04 2020-03-28T00:03:27.278963 9157
+vulnerabilities ubuntu:17.10 2020-03-28T00:03:26.605719 7936
+vulnerabilities ubuntu:18.04 2020-03-28T00:03:27.845497 12547
+vulnerabilities ubuntu:18.10 2020-03-28T00:03:28.482261 8397
+vulnerabilities ubuntu:19.04 2020-03-28T00:03:31.400152 8664
+vulnerabilities ubuntu:19.10 2020-03-28T00:03:29.122119 7327
+[anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+nvdv2 nvdv2:cves success 0 0.81s
+vulnerabilities alpine:3.10 success 0 0.54s
+vulnerabilities alpine:3.11 success 0 0.60s
+vulnerabilities alpine:3.3 success 0 0.59s
+vulnerabilities alpine:3.4 success 0 0.75s
+vulnerabilities alpine:3.5 success 0 0.95s
+vulnerabilities alpine:3.6 success 0 0.57s
+vulnerabilities alpine:3.7 success 0 0.59s
+vulnerabilities alpine:3.8 success 0 0.51s
+vulnerabilities alpine:3.9 success 0 1.34s
+vulnerabilities amzn:2 success 0 0.52s
+vulnerabilities centos:5 success 0 0.64s
+vulnerabilities centos:6 success 0 0.80s
+vulnerabilities centos:7 success 0 0.82s
+vulnerabilities centos:8 success 0 0.58s
+vulnerabilities debian:10 success 0 0.47s
+vulnerabilities debian:11 success 0 0.58s
+vulnerabilities debian:7 success 0 0.64s
+vulnerabilities debian:8 success 0 0.71s
+vulnerabilities debian:9 success 0 0.76s
+vulnerabilities debian:unstable success 0 0.78s
+vulnerabilities ol:5 success 0 0.65s
+vulnerabilities ol:6 success 0 0.68s
+vulnerabilities ol:7 success 0 0.69s
+vulnerabilities ol:8 success 0 0.68s
+vulnerabilities rhel:5 success 0 0.76s
+vulnerabilities rhel:6 success 0 0.49s
+vulnerabilities rhel:7 success 0 0.61s
+vulnerabilities rhel:8 success 0 0.89s
+vulnerabilities ubuntu:12.04 success 0 0.76s
+vulnerabilities ubuntu:12.10 success 0 0.60s
+vulnerabilities ubuntu:13.04 success 0 0.65s
+vulnerabilities ubuntu:14.04 success 0 0.59s
+vulnerabilities ubuntu:14.10 success 0 1.01s
+vulnerabilities ubuntu:15.04 success 0 0.70s
+vulnerabilities ubuntu:15.10 success 0 0.60s
+vulnerabilities ubuntu:16.04 success 0 0.82s
+vulnerabilities ubuntu:16.10 success 0 0.57s
+vulnerabilities ubuntu:17.04 success 0 0.61s
+vulnerabilities ubuntu:17.10 success 0 0.51s
+vulnerabilities ubuntu:18.04 success 0 0.60s
+vulnerabilities ubuntu:18.10 success 0 0.60s
+vulnerabilities ubuntu:19.04 success 0 0.61s
+vulnerabilities ubuntu:19.10 success 0 0.60s
+&lt;/code>&lt;/pre>&lt;h4 id="deleting-specific-feed-groups">Deleting Specific Feed Groups&lt;/h4>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config --disable vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5(disabled) 2020-03-28T00:22:57.113534 1347
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds delete vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5(disabled) pending 0
+&lt;/code>&lt;/pre>&lt;h4 id="restoring-deleted-data">Restoring Deleted Data&lt;/h4>
+&lt;p>If you want to get data back, simply enable the feed and/or group and run a feed sync manually or wait for the next scheduled sync.&lt;/p>
+&lt;p>For an entire feed, here is an example of removal and re-adding it:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config github --disable
+Feed Group LastSync RecordCount
+github(disabled) github:composer 2020-03-28T01:08:58.652868 78
+github(disabled) github:gem 2020-03-28T01:08:59.179493 333
+github(disabled) github:java 2020-03-28T01:08:59.699348 432
+github(disabled) github:npm 2020-03-28T00:34:48.167115 653
+github(disabled) github:nuget 2020-03-28T01:12:01.116613 50
+github(disabled) github:python 2020-03-28T01:08:58.083361 250
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds delete github
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds config github --enable
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+github github:composer success 78 1.64s
+github github:gem success 333 4.48s
+github github:java success 432 6.07s
+github github:npm success 653 7.39s
+github github:nuget success 50 1.10s
+github github:python success 250 3.34s
+nvdv2 nvdv2:cves success 0 60.90s
+vulnerabilities alpine:3.10 success 0 0.52s
+vulnerabilities alpine:3.11 success 0 0.47s
+vulnerabilities alpine:3.3 success 0 0.56s
+vulnerabilities alpine:3.4 success 0 0.46s
+vulnerabilities alpine:3.5 success 0 0.52s
+vulnerabilities alpine:3.6 success 0 0.54s
+vulnerabilities alpine:3.7 success 0 60.76s
+vulnerabilities alpine:3.8 success 0 0.54s
+vulnerabilities alpine:3.9 success 0 0.54s
+vulnerabilities amzn:2 success 0 0.49s
+vulnerabilities centos:5 success 0 0.47s
+vulnerabilities centos:6 success 0 0.49s
+vulnerabilities centos:7 success 0 0.48s
+vulnerabilities centos:8 success 0 0.53s
+vulnerabilities debian:10 success 0 0.62s
+vulnerabilities debian:11 success 0 0.50s
+...
+&lt;/code>&lt;/pre>&lt;p>For a single feed group, here is an example of removal and re-adding it:&lt;/p>
+&lt;pre>&lt;code>[anchore@93d6977e2061 ~]$ anchore-cli system feeds config --enable vulnerabilities --group centos:5
+Group LastSync RecordCount
+centos:5 pending 0
+[anchore@93d6977e2061 ~]$ anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+...
+vulnerabilities centos:5 success 1347 27.41s
+...
+&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the db. However, note that this should not normally be necessary
+and modifying feed groups &amp;amp; data has implication on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Configuration</title><link>/docs/install/configuration/config/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/config/</guid><description>
+&lt;h2 id="initial-configuration">Initial Configuration&lt;/h2>
+&lt;p>A single configuration file config.yaml is required to run the Anchore Engine - by default, this file is embedded in the anchore-engine container image, located in /config/config.yaml. The default configuration file is provided as a way to get started, which is functional out of the box, without modification, when combined with either the Helm method or docker-compose method of installing anchore-engine. The default configuration is set up to use environment variable substitutions so that configuration values can be controlled by setting the corresponding environment variables at deployment time (see &lt;a href="/docs/install/configuration/using_env_vars/">Using Environment Variables in Anchore&lt;/a>. To review the embedded configuration file settings, see the &lt;a href="https://github.com/anchore/anchore-engine/blob/master/conf/default_config.yaml">default config.yaml on github&lt;/a> which is populated with several environment variables (all starting with ANCHORE_), the &lt;a href="https://github.com/anchore/anchore-engine/blob/master/docker-compose.yaml">example docker-compose.yaml on github&lt;/a> which includes several site-specific environment variable default settings, and the &lt;a href="https://github.com/anchore/anchore-engine/tree/master/Dockerfile">anchore engine Dockerfile on github&lt;/a> which sets baseline environment variable settings.&lt;/p>
+&lt;p>Each environment variable (starting with ANCHORE_) in the default config.yaml is set (either the baseline as set in the Dockerfile, or an override in docker-compose or Helm) to ensure that the system comes up with a fully populated configuration.&lt;/p>
+&lt;p>Some examples of useful initial settings follow.&lt;/p>
+&lt;ul>
+&lt;li>Default admin credentials: by default, the &lt;strong>admin&lt;/strong> has a password of &lt;strong>foobar&lt;/strong> and email &lt;strong>admin@myanchore&lt;/strong>, set using the &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables, respectively, in the Dockerfile. To change these settings, simply add overrides for &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables, set to your preferred values prior to deploying anchore engine.&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">default_admin_password&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_ADMIN_PASSWORD}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#204a87;font-weight:bold">default_admin_email&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_ADMIN_EMAIL}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;ul>
+&lt;li>Log level: anchore engine is configured to run at the INFO log level by default. The full set of options are FATAL, ERROR, WARN, INFO, and DEBUG (in ascending order of log output verbosity). To set the log level of anchore engine services, add an override for &lt;strong>ANCHORE_LOG_LEVEL&lt;/strong> prior to deploying anchore engine.&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">log_level&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_LOG_LEVEL}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;ul>
+&lt;li>Postgres Database: the anchore engine requires access to a PostgreSQL database to operate. The database can be run as a container with a persistent volume or outside of your container environment (which is set up automatically if the example docker-compose.yaml is used). If you wish to use an external Postgres Database, the elements of the connection string in the config.yaml can be specified as environment variable overrides. The default configuration is set up to connect to a postgres DB that is deployed alongside the engine services when using docker-compose or Helm, to the internal host &lt;strong>anchore-db&lt;/strong> on port &lt;strong>5432&lt;/strong> using username &lt;strong>postgres&lt;/strong> with password &lt;strong>mysecretpassword&lt;/strong> and db &lt;strong>postgres&lt;/strong>. If an external database service is being used then you will need to provide the use, password, host, port and DB name environment variables, as shown below.&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">db_connect&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;postgresql://${ANCHORE_DB_USER}:${ANCHORE_DB_PASSWORD}@${ANCHORE_DB_HOST}:${ANCHORE_DB_PORT}/${ANCHORE_DB_NAME}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;h2 id="manual-configuration-file-override">Manual Configuration File Override&lt;/h2>
+&lt;p>While anchore engine is set up to run out of the box without modifications, and many useful values can be overriden using environment variables as described above, one can always opt to have full control over the configuration by providing a config.yaml file explicitly, typically by generating the file and making it available from an external mount/configmap/etc. at deployment time. A good method to start if you wish to provide your own config.yaml is to extract the default config.yaml from the anchore engine container image, modify it, and then override the embedded /config/config.yaml at deployment time. For example:&lt;/p>
+&lt;ul>
+&lt;li>Extract the default config file from the anchore-engine container image:&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code># docker pull docker.io/anchore/anchore-engine:latest
+# docker create --name ae docker.io/anchore/anchore-engine:latest
+# docker cp ae:/config/config.yaml ./my_config.yaml
+# docker rm ae
+&lt;/code>&lt;/pre>&lt;ul>
+&lt;li>
+&lt;p>Modify the configuration file to your liking.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Set up your deployment to override the embedded &lt;strong>/config/config.yaml&lt;/strong> at run time (below example shows how to achieve this with docker-compose). Edit the docker-compose.yaml to include a volume mount that mounts your &lt;strong>my_config.yaml&lt;/strong> over the embedded &lt;strong>/config/config.yaml&lt;/strong>, resulting in a volume section for each anchore engine service definition.&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">engine-api&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">volumes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">/path/to/my_config.yaml:/config/config.yaml:z&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">engine-catalog&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">volumes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">/path/to/my_config.yaml:/config/config.yaml:z&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">engine-simpleq&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">volumes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">/path/to/my_config.yaml:/config/config.yaml:z&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">engine-policy-engine&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">volumes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">/path/to/my_config.yaml:/config/config.yaml:z&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">engine-analyzer&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">volumes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">/path/to/my_config.yaml:/config/config.yaml:z&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#000">...&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>Now, each service will come up with your external &lt;strong>my_config.yaml&lt;/strong> mounted over the embedded &lt;strong>/config/config.yaml&lt;/strong>.&lt;/p></description></item><item><title>Docs: Adding Custom Certificate Authority</title><link>/docs/install/configuration/custom_certs/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/custom_certs/</guid><description>
+&lt;p>If a custom CA certificate is required to access an external resource then the Trust Store in the Anchore Engine container needs to be updated in two places.&lt;/p>
+&lt;ol>
+&lt;li>The operating system provided trust store.&lt;/li>
+&lt;li>The Certifi trust store.&lt;/li>
+&lt;/ol>
+&lt;p>The operating system trust store is read by the skopeo utility and python requests library that is used to access container registries to read manifests and pull image layers.&lt;/p>
+&lt;p>If your container registry users a custom CA then you can update the trust store to trust the certificate or use the &amp;ndash;insecure option when configuring the registry.&lt;/p>
+&lt;p>To add a certificate to the operating system trust store the CA certificate should be placed in the /etc location that is appropriate for the container image being used.&lt;/p>
+&lt;ul>
+&lt;li>For anchore 0.2.X and earlier, the base container is CentOS 7, which stores certs in &lt;code>/etc/pki/ca-trust/source/anchors/&lt;/code> and requires user to run update-ca-trust command as root to update the system certs.&lt;/li>
+&lt;li>For anchore 0.3.X, the base container is Ubuntu 18.04, which stores certs in &lt;code>/usr/local/share/ca-certificates/&amp;lt;new_directory&amp;gt;/&amp;lt;new_cert_file&amp;gt;.crt&lt;/code> and requires the user to run update-ca-certificates command as root to update the system certs.&lt;/li>
+&lt;li>For anchore 0.4.X and newer, the base container is Red Hat Universal Base Image 7, which stores certs in &lt;code>/etc/pki/ca-trust/source/anchors/&lt;/code> and requires user to run update-ca-trust command as root to update the system certs.&lt;/li>
+&lt;li>For anchore 0.7.X and newer, the base container is Red Hat Universal Base Image 8, which stores certs in &lt;code>/etc/pki/ca-trust/source/anchors/&lt;/code> and requires user to run update-ca-trust command as root to update the system certs.&lt;/li>
+&lt;/ul>
+&lt;p>&lt;a href="https://pypi.org/project/certifi/">Certifi&lt;/a> is a curated list of trusted certificate authorities that is used by the Python requests HTTP client library. The Python requests library is used by Anchore Engine for all HTTP interactions, including when communicating with Anchore Feed service, when webhooks are sent to a TLS enabled endpoint and inbetween Anchore Engine services if TLS has been configured. To update the Certifi trust store the CA certificate should be appended onto the cacert.pem file provided by the Certifi library.&lt;/p>
+&lt;ul>
+&lt;li>For anchore 0.2.X and earlier, the base container is CentOS 7, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/lib/python2.7/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;li>For anchore 0.3.X, the base container is Ubuntu 18.04, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/dist-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;li>For anchore 0.4.X and newer, the base container is Red Hat Universal Base Image 7, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;li>For anchore 0.7.X and newer, the base container is Red Hat Universal Base Image 8, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;p>The following Dockerfile illustrates an example of how this general process can be automated to produce your own anchore-engine container (based on version 0.2.4 of anchore-engine) with new custom CA cert installed. A similiar process can be used for anchore-engine 0.4.X or newer, with the commands adjusted as appropriate with the differences described above.&lt;/p>
+&lt;p>&lt;strong>Dockerfile&lt;/strong>&lt;/p>
+&lt;pre>&lt;code>FROM docker.io/anchore/anchore-engine:v0.4.0
+USER root:root
+COPY ./custom-ca.pem /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+RUN /usr/bin/cat /etc/pki/ca-trust/source/anchors/custom-ca.pem &amp;gt;&amp;gt; /opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem
+USER anchore:anchore
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Build Custom Image&lt;/strong>&lt;/p>
+&lt;pre>&lt;code>$ sudo docker build -t anchore/anchore-engine:v0.4.0custom .
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Configuring TLS / SSL</title><link>/docs/install/configuration/tls_ssl_config/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/tls_ssl_config/</guid><description>
+&lt;p>Communication with the Anchore Engine and between Anchore Engine service can be secured with TLS/SSL. This can be performed in two ways&lt;/p>
+&lt;ul>
+&lt;li>Externally through a load balancing, ingress controller or reverse proxy such as NGINX&lt;/li>
+&lt;li>Natively within the Anchore Engine&lt;/li>
+&lt;/ul>
+&lt;p>For most use cases an external service such as a proxy or load balancer will provide the simplest approach, especially when keys need to be rotated, new instances added, etc.&lt;/p>
+&lt;p>The Anchore Engine is comprised of 6 services, typically only the external API service (apiext) and Kubernetes webhook service are published externally, all other services are used for internal communication.&lt;/p>
+&lt;p>Transport Level Security (TLS/SSL) is enabled on a per-service basis. In the sample configuration the SSL/TLS configuration options are commented out.&lt;/p>
+&lt;p>In the following example the external API service is configured to listen on port 443 and is configured with a certificate for its external hostname anchore.example.com&lt;/p>
+&lt;p>Each service published in the Anchore Engine configuration (apiext, catalog, simplequeue, analyzer, policy_engine and kubernetes_webhook) can be configured to use transport level security.&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">services&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">apiext&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">endpoint_hostname&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;anchore.example.com&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">listen&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;0.0.0.0&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">port&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">443&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">ssl_enable&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">ssl_cert&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;/config/anchore-ex.crt&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">ssl_key&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;/config/anchore-ex.key&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">ssl_chain&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;/config/anchore-ex.crt&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Setting&lt;/th>
+&lt;th style="text-align:left">Notes&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">enabled&lt;/td>
+&lt;td style="text-align:left">If the service is enabled&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">endpoint_hostname&lt;/td>
+&lt;td style="text-align:left">DNS name of service&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">listen&lt;/td>
+&lt;td style="text-align:left">IP address of interface on which the service should listen (use &amp;lsquo;0.0.0.0&amp;rsquo; for all - default)&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">port&lt;/td>
+&lt;td style="text-align:left">Port on which service should listen.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">ssl_enable&lt;/td>
+&lt;td style="text-align:left">Enable transport level security&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">ssl_cert&lt;/td>
+&lt;td style="text-align:left">name, including full path of private key file.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">ssl_chain&lt;/td>
+&lt;td style="text-align:left">[optional] name, including full path of certificate chain&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>The certificate files should be placed on a path accessible to the Anchore Engine service, for example in the /config directory which is typically mapped as a volume into the container. Note that the location outside the container will depend on your configuration - for example if you are volume mounting &amp;lsquo;/path/to/aevolume/config/&amp;rsquo; on the docker host to &amp;lsquo;/config&amp;rsquo; within the container, you&amp;rsquo;ll need to place the ssl files in &amp;lsquo;/path/to/aevolume/config/&amp;rsquo; on the docker host, so that they are accessible in &amp;lsquo;/config/&amp;rsquo; inside the container, before starting the service.&lt;/p>
+&lt;p>The ssl_chain file is optional and may be required by some certificate authorities. If your certificate authority provides a chain certificate then include it within the configuration.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> While a certificate may be purchased from a well-known and trusted certificate authority in some cases the certificate is signed by an intermediate certificate which is not included within a TLS/SSL clients trust stores. In these cases the intermediate certificate is signed by the certificate authority however without the full &amp;lsquo;chain&amp;rsquo; showing the provenance and integrity of the certificate the TLS/SSL client may not trust the certificate.&lt;/p>
+&lt;p>Any certificates used by the Anchore Engine services need to be trusted by all other Anchore Engine services.&lt;/p>
+&lt;p>If an internal certificate authority is used the root certificate for the internal CA can be added to the Anchore engine using the following procedure or SSL verification can be disabled by setting the following parameter:&lt;/p>
+&lt;p>&lt;code>internal_ssl_verify: True&lt;/code>&lt;/p></description></item><item><title>Docs: Configuring User Credential Storage</title><link>/docs/install/configuration/user_credential_storage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/user_credential_storage/</guid><description>
+&lt;h2 id="overview">Overview&lt;/h2>
+&lt;p>When using the Anchore internal DB to manage user identities (external management is optional in the Enterprise version), all user information is stored in
+the Anchore DB. The credentials can be stored plaintext in the DB, which allows efficient usage internally for dev/test systems, or the credentials can be
+stored in hashed form using the Argon2 hashing algorithm.&lt;/p>
+&lt;p>Hashed passwords are much more secure, but are expensive to compare and cannot be used for internal service communication since they cannot be reversed. Anchore
+provides a token based authentication mechanism as well (a simplified Password-Grant flow of Oauth2) to mitigate the performance issue, but it requires that
+all Anchore services be deployed with a shared secret in the configuration or a public/private keypair common to all services.&lt;/p>
+&lt;h2 id="passwords">Passwords&lt;/h2>
+&lt;p>The configuration of how passwords are stored is set in the &lt;code>user_authentication&lt;/code> section of the &lt;em>config.yaml&lt;/em> file and &lt;em>must&lt;/em> be consistent across all components of an Anchore Engine deployment. Mismatch
+in this configuration between components of the system will result in the system not being able to communicate internally.&lt;/p>
+&lt;pre>&lt;code>user_authentication:
+hashed_passwords: true|false
+&lt;/code>&lt;/pre>&lt;p>By default, &lt;code>hashed_passwords&lt;/code> is set to &lt;code>false&lt;/code>. This supports upgrade from previous versions of Anchore as well as usage for installations without a shared key or public/private keys for Anchore. When oauth
+is not configured in the system, Anchore must be able to use HTTP Basic authentication between internal services and thus requires credentials that can be read.&lt;/p>
+&lt;h2 id="bearer-tokensoauth2">Bearer Tokens/OAuth2&lt;/h2>
+&lt;p>If Anchore is configured to support bearer tokens, the tokens are generated and returned to the user but never persisted in the database. All tokens expire, and currently
+Anchore does not support refresh tokens, upon expiration a user must re-authenticate with the username and password to get a new token. Users must still have password credentials, however.
+Password persistence and protection configuration still applies as in the Password section above.&lt;/p>
+&lt;h2 id="configuring-hashed-passwords-and-oauth">Configuring Hashed Passwords and OAuth&lt;/h2>
+&lt;p>NOTE: password storage configuration must be done at the time of deployment, it cannot be modified at runtime or after installation with an existing DB since
+it will invalidate all existing credentials, including internal system credentials and the system will not be functional. You must choose the mechanism
+at system deployment time.&lt;/p>
+&lt;p>Set in &lt;em>config.yaml&lt;/em> for all components of the deployment:&lt;/p>
+&lt;p>Option 1: Use a shared secret for signing/verifying oauth tokens&lt;/p>
+&lt;pre>&lt;code>user_authentication:
+oauth:
+enabled: true
+hashed_passwords: true
+keys:
+secret: mysecretvalue
+&lt;/code>&lt;/pre>
+&lt;p>Option 2: Use a public/private key pair, delivered as pem files on the filesystem of the containers anchore runs in:&lt;/p>
+&lt;pre>&lt;code>user_authentication:
+oauth:
+enabled: true
+hashed_passwords: true
+keys:
+private_key_path: &amp;lt;path to private key pem file&amp;gt;
+public_key_path: &amp;lt;path to public key pem file&amp;gt;
+&lt;/code>&lt;/pre>
+&lt;p>Using environment variables with the &lt;em>config.yaml&lt;/em> bundled into the Anchore provided anchore-engine image is also an option.
+NOTE: These are &lt;em>only&lt;/em> valid when using the &lt;em>config.yaml&lt;/em> provided in the image due to that file referencing them explicitly as replacement values.&lt;/p>
+&lt;pre>&lt;code>ANCHORE_AUTH_SECRET = the string to use as a secret
+ANCHORE_AUTH_PUBKEY = path to public key file
+ANCHORE_AUTH_PRIVKEY = path to the private key file
+ANCHORE_OAUTH_ENABLED = boolean to enable/disable oauth support
+ANCHORE_OAUTH_TOKEN_EXPIRATION = the integer value to set number of seconds a token should be valid (default is 3600/1 hr)
+ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS = boolean to enable/disable hashed password storage in the anchore db instead of clear text
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Configuring Content Hints</title><link>/docs/install/configuration/content_hints/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/content_hints/</guid><description>
+&lt;p>For an overview of the content hints and overrides features, see the &lt;a href="/docs/general/concepts/images/analysis/content_hints/">feature overview&lt;/a>&lt;/p>
+&lt;h2 id="enabling-content-hints">Enabling Content Hints&lt;/h2>
+&lt;p>This feature is disabled by default to ensure that images may not exercise this feature without the admin&amp;rsquo;s explicit approval.&lt;/p>
+&lt;p>In the each analyzer&amp;rsquo;s &lt;code>config.yaml&lt;/code> file (by default at &lt;code>/config/config.yaml&lt;/code>):&lt;/p>
+&lt;p>Set the &lt;code>enable_hints: true&lt;/code> setting in the &lt;code>analyzer&lt;/code> service section of config.yaml.&lt;/p>
+&lt;p>If using the default config.yaml included in the image, you may instead set an environment variable (e.g for use in our provided config for Docker Compose for &lt;a href="/docs/quickstart/">Quickstart&lt;/a>):&lt;/p>
+&lt;p>&lt;code>ANCHORE_HINTS_ENABLED=true&lt;/code> environment variable for the analyzer service.&lt;/p>
+&lt;p>For Helm: see the Helm installation instructions for enabling the hints file mechanism when deploying with Helm.&lt;/p></description></item><item><title>Docs: Network Proxies</title><link>/docs/install/configuration/network_proxies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/network_proxies/</guid><description>
+&lt;p>As covered in the Network sections of the requirements document the Anchore Engine requires three categories of network connectivity.&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>Registry Access
+Network connectivity, including DNS resolution, to the registries from which the Anchore Engine needs to download images.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Feed Service
+The Anchore Engine synchronizes feed data such as operating system vulnerabilities (CVEs) from the Anchore Cloud Service. Only a single end point is required for this synchronization, host: ancho.re TCP port: 443&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Access to Anchore Internal Services
+The Anchore Engine is comprised of six smaller micro-services that can be deployed in a single container or scaled out to handle load. Each Anchore service should be able to connect the other services over the network.&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;p>In environments were access to the public internet is restricted then a proxy server may be required to allow the Anchore Engine to connect to the Anchore Cloud Feed Service or to a publicly hosted container registry.&lt;/p>
+&lt;p>The Anchore Engine can be configured to access a proxy server by using environment variables that are read by the Anchore Engine at run time.&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>https_proxy:
+Address of the proxy service to use for HTTPS traffic in the following form: {PROTOCOL}://{IP or HOSTNAME}:{PORT}
+eg. &lt;a href="https://proxy.corp.example.com">https://proxy.corp.example.com&lt;/a>:8128&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>http_proxy: &lt;br>
+Address of the proxy service to use for HTTP traffic in the following form: {PROTOCOL}://{IP or HOSTNAME}:{PORT}&lt;br>
+eg. &lt;a href="http://proxy.corp.example.com">http://proxy.corp.example.com&lt;/a>:8128&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>no_proxy:&lt;br>
+Comma delimited list of hostnames or IP address which should be accessed directly without using the proxy service.
+eg. localhost,127.0.0.1,registry,example.com&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="notes">Notes:&lt;/h3>
+&lt;ul>
+&lt;li>Do not use double quotes (&amp;quot;) around the proxy variable values.&lt;/li>
+&lt;/ul>
+&lt;h3 id="authentication">Authentication&lt;/h3>
+&lt;p>For proxy servers that require authentication the username and password can be provided as part of the URL:&lt;/p>
+&lt;p>eg. https_proxy=https://user:password@proxy.corp.example.com:8128&lt;/p>
+&lt;p>If the username or password contains and non-url safe characters then these should be urlencoded.&lt;/p>
+&lt;p>For example:&lt;/p>
+&lt;p>&lt;code>The password F@oBar! would be encoded as F%40oBar%21&lt;/code>&lt;/p>
+&lt;h3 id="setting-environment-variables">Setting Environment Variables&lt;/h3>
+&lt;p>Docker Compose: &lt;a href="https://docs.docker.com/compose/environment-variables/">https://docs.docker.com/compose/environment-variables/&lt;/a>&lt;/p>
+&lt;p>Kubernetes: &lt;a href="https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/">https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/&lt;/a>&lt;/p>
+&lt;h3 id="deployment-architecture-notes">Deployment Architecture Notes&lt;/h3>
+&lt;p>When setting up a network proxy, keep in mind that you will need to explicitly allow inter-service communication within the anchore engine deployment to bypass the proxy, and potentially other hostnames as well (e.g. internal registries) to ensure that traffic is directed correctly. In general, all anchore engine service endpoints (the URLs for enabled services in the output of an &amp;lsquo;anchore-cli system status&amp;rsquo; command) as well as any internal registries (the hostnames you may have set up with &amp;lsquo;anchore-cli registry add &lt;!-- raw HTML omitted --> &amp;hellip;&amp;rsquo; or as part of an un-credentialed image add &amp;lsquo;anchore-cli image add &lt;a href="registry:port">registry:port&lt;/a>/&amp;hellip;.'), should not be proxied (i.e. added to the no_proxy list, as described above).&lt;/p>
+&lt;p>If you wish to tune this further, below is a list of each component that makes an external URL fetch for various purposes:&lt;/p>
+&lt;ul>
+&lt;li>catalog: makes connections to image registries (any host added via &amp;lsquo;anchore-cli registry add&amp;rsquo; or directly via &amp;lsquo;anchore-cli image add&amp;rsquo;)&lt;/li>
+&lt;li>analyzer: same as catalog&lt;/li>
+&lt;li>policy_engine: by default, makes HTTPS connection to &lt;a href="https://ancho.re">https://ancho.re&lt;/a> feed service, unless on-prem feed service is deployed&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Using Environment Variables in Anchore</title><link>/docs/install/configuration/using_env_vars/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/using_env_vars/</guid><description>
+&lt;p>Environment variable references may be used in the Anchore config.yaml file to set values that need to be configurable during deployment.&lt;/p>
+&lt;p>Using this mechanism a common configuration file can be used with multiple Anchore Engine instances with key values being passed using environment variables.&lt;/p>
+&lt;p>The config.yaml configuration file is read by the Anchore Engine any references to variables prefixed with ANCHORE will be replaced by the value of the matching environment variable.&lt;/p>
+&lt;p>For example in the sample configuration file the &lt;em>host_id&lt;/em> parameter is set be appending the ANCHORE_HOST_ID variable to the string &lt;em>dockerhostid&lt;/em>&lt;/p>
+&lt;p>&lt;code>host_id: 'dockerhostid-${ANCHORE_HOST_ID}'&lt;/code>&lt;/p>
+&lt;p>Notes:&lt;/p>
+&lt;ol>
+&lt;li>Only variables prefixed with ANCHORE will be replaced&lt;/li>
+&lt;li>If an environment variable is referenced in the configuration file but not set in the environment then a warning will be logged&lt;/li>
+&lt;li>It is recommend to use curly braces, for example ${ANCHORE_PARAM} to avoid potentially ambiguous cases&lt;/li>
+&lt;/ol>
+&lt;h3 id="passing-environment-variables-as-a-file">Passing Environment Variables as a File&lt;/h3>
+&lt;p>Environment Variables may also be passed as a file contained key value pairs.&lt;/p>
+&lt;pre>&lt;code>ANCHORE_HOST_ID=myservice1
+ANCHORE_LOG_LEVEL=DEBUG
+&lt;/code>&lt;/pre>&lt;p>The Anchore Engine will check for an environment variable named &lt;em>ANCHORE_ENV_FILE&lt;/em> if this variable is set the the Anchore Engine will attempt to read a file at the location specified in this variable.&lt;/p>
+&lt;p>The Anchore environment file is read before any other Anchore environment variables so any ANCHORE variables passed in the environment will override the values set in the environment file.&lt;/p></description></item><item><title>Docs: Configuring Malware Scans of Images</title><link>/docs/install/configuration/malware/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/malware/</guid><description>
+&lt;h2 id="malware-scanning-overview">Malware Scanning Overview&lt;/h2>
+&lt;p>See &lt;a href="/docs/general/concepts/images/analysis/malware_scanning/">Malware Scanning&lt;/a> for an overview of the feature and how it works. This section is for configuration of scan behavior.&lt;/p>
+&lt;p>Customizing the &lt;code>analyzer_config.yaml&lt;/code> requires a restart of the analyzer container. The typical process is to mount it externally into &lt;code>/config/analyzer_config.yaml&lt;/code> from a host volume or as a ConfigMap in Kubernetes and
+all analyzers in the deployment share the same configuration.&lt;/p>
+&lt;h2 id="enabling--disabling-malware-scans">Enabling &amp;amp; Disabling Malware Scans&lt;/h2>
+&lt;p>Each analyzer needs to have it&amp;rsquo;s analyzer_config.yaml file updated to include:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-yaml" data-lang="yaml">&lt;span style="color:#204a87;font-weight:bold">malware&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">clamav&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">true&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">db_update_enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">true&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>malware.clamav.enabled = true will enable the analyzer that runs the scan. If not enabled, the analyzer will run but will not execute a ClamAV scan so no scan results
+will be reported.&lt;/p>
+&lt;blockquote>
+&lt;p>:warning: &lt;strong>Malware Scanning currently only supports image sizes up to 4gb.&lt;/strong>&lt;/p>
+&lt;/blockquote>
+&lt;h2 id="disabling-db-updates-for-clamav">Disabling DB Updates for ClamAV&lt;/h2>
+&lt;p>The &lt;code>db_update_enabled&lt;/code> property of the malware.clamav object shown above in the analyzer_config.yaml controls whether the analyzer will invoke a &lt;code>refreshclam&lt;/code> call prior to each
+analysis execution. By default it is enabled and should be left on for up-to-date scan results. The db version is returned in the metadata section of the scan results available from the engine API.&lt;/p>
+&lt;p>You can disable the update if you want to mount an external volume to provide the db data in &lt;em>/home/anchore/clamav/db&lt;/em> inside the container (must be read-write for the anchore user) This can be used
+to cache or share a db across multiple analyzers (e.g. using AWS EFS) or to support air-gapped deployments where the db cannot be automatically updated from deployment itself.&lt;/p>
+&lt;h2 id="advanced-configuration">Advanced Configuration&lt;/h2>
+&lt;p>The path for the db and db update configuration are also available as environment variables inside the analyzer containers. These should not need to be used in most cases, but
+for air-gapped or other installation where the default configuration is not sufficient they are available for customization.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Name&lt;/th>
+&lt;th>Description&lt;/th>
+&lt;th>Default&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>ANCHORE_FRESHCLAM_CONFIG_FILE&lt;/td>
+&lt;td>Location of freshclam.conf to use&lt;/td>
+&lt;td>/home/anchore/clamav/freshclam.conf&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>ANCHORE_CLAMAV_DB_DIR&lt;/td>
+&lt;td>Location of the db dir to read/write&lt;/td>
+&lt;td>/home/anchore/clamav/db&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>For most cases, anchore uses the default values for the &lt;code>clamscan&lt;/code> and &lt;code>freshclam&lt;/code> invocations. The parameters that are already specified
+can be found in the &lt;a href="https://github.com/anchore/anchore-engine/blob/master/anchore_engine/analyzers/malware.py">analyzer source&lt;/a>.
+If you would like to override any of the default values of those commands or replace existing ones, you can add the following to the analyzer_config.yaml:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-yaml" data-lang="yaml">&lt;span style="color:#204a87;font-weight:bold">malware&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">clamav&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">clamscan_args&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">max-filesize=1000m&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">max-scansize=1000m&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">freshclam_args&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">datadir=/tmp/different/datadir&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>Please note that the value above will be passed &lt;em>directly&lt;/em> to the corresponding commands, e.g.:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-shell" data-lang="shell">clamscan --suppress-ok-results --infected --recursive --allmatch --archive-verbose --tempdir&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>tempdir&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --database&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>database&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --max-filesize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m --max-scansize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m &amp;lt;path_to_tar&amp;gt;
+&lt;/code>&lt;/pre>&lt;/div></description></item></channel></rss>

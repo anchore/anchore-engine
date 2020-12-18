@@ -1,0 +1,522 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Working with Policies</title><link>/docs/usage/cli_usage/policies/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/cli_usage/policies/</link></image><atom:link href="/docs/usage/cli_usage/policies/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Policies Checks</title><link>/docs/usage/cli_usage/policies/policy_checks/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/policies/policy_checks/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>Information about the latest available policy gates, triggers and parameters can be retrieved from a running anchore-engine, using the anchore-cli command below:&lt;/p>
+&lt;p>&lt;code># anchore-cli policy describe (--gate &amp;lt;gatename&amp;gt; ( --trigger &amp;lt;triggername))&lt;/code>&lt;/p>
+&lt;h2 id="gates">Gates&lt;/h2>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Gate&lt;/th>
+&lt;th>Description&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>always&lt;/td>
+&lt;td>Triggers that fire unconditionally if present in policy, useful for things like testing and blacklisting&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>dockerfile&lt;/td>
+&lt;td>Checks against the content of a dockerfile if provided, or a guessed dockerfile based on docker layer history if the dockerfile is not provided&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>files&lt;/td>
+&lt;td>Checks against files in the analyzed image including file content, file names, and filesystem attributes&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>licenses&lt;/td>
+&lt;td>License checks against found software licenses in the container image&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>malware&lt;/td>
+&lt;td>Checks for malware scan findings in the image&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>metadata&lt;/td>
+&lt;td>Checks against image metadata, such as size, OS, distro, architecture, etc.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>npms&lt;/td>
+&lt;td>NPM Checks&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>packages&lt;/td>
+&lt;td>Distro package checks&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>passwd_file&lt;/td>
+&lt;td>Content checks for /etc/passwd for things like usernames, group ids, shells, or full entries&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>retrieved_files&lt;/td>
+&lt;td>Checks against content and/or presence of files retrieved at analysis time from an image&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>ruby_gems&lt;/td>
+&lt;td>Ruby Gem Checks&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>secret_scans&lt;/td>
+&lt;td>Checks for secrets and content found in the image using configured regexes found in the &amp;ldquo;secret_search&amp;rdquo; section of analyzer_config.yaml&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>vulnerabilities&lt;/td>
+&lt;td>CVE/Vulnerability checks&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>For a more in-depth list of available gates/triggers, refer to &lt;a href="/docs/general/concepts/policy/policy_checks/">Anchore Policy Checks&lt;/a>&lt;/p></description></item><item><title>Docs: Evaluating Images Against Policies</title><link>/docs/usage/cli_usage/policies/evaluating_images_against_policies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/policies/evaluating_images_against_policies/</guid><description>
+&lt;p>The &lt;code>evaluate&lt;/code> command can be used to evaluate a given image for policy compliance.&lt;/p>
+&lt;p>The image to be evaluated can be in the following format:&lt;/p>
+&lt;ul>
+&lt;li>Image Digest&lt;/li>
+&lt;li>Image ID&lt;/li>
+&lt;li>registry/repo:tag&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code>$ anchore-cli evaluate check debian:latest
+Image Digest: sha256:427752aa7da803378f765f5a8efba421df5925cbde8ab011717f3642f406fb15
+Full Tag: docker.io/debian:latest
+Status: fail
+Last Eval: 2017-09-02T15:19:55
+Policy ID: 715a6056-87ab-49fb-abef-f4b4198c67bf
+&lt;/code>&lt;/pre>&lt;p>By default only the summary of the evaluation is shown. Passing the &lt;code>--detail&lt;/code> parameter will show the policy checks that raised warnings or errors.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli evaluate check debian:latest
+Image Digest: sha256:427752aa7da803378f765f5a8efba421df5925cbde8ab011717f3642f406fb15
+Full Tag: docker.io/debian:latest
+Status: fail
+Last Eval: 2017-09-02T15:19:55
+Policy ID: 715a6056-87ab-49fb-abef-f4b4198c67bf
+Gate Trigger Detail Status
+DOCKERFILECHECK NOHEALTHCHECK Dockerfile does not contain any HEALTHCHECK instructions
+ANCHORESEC VULNHIGH HIGH Vulnerability found in package - mount (CVE-2016-2779 - https://security-tracker.debian.org/tracker/CVE-2016-2779) stop
+ANCHORESEC VULNHIGH HIGH Vulnerability found in package - libuuid1 (CVE-2016-2779 - https://security-tracker.debian.org/tracker/CVE-2016-2779) stop
+&lt;/code>&lt;/pre>&lt;p>In this example we specified library/repo:tag which could be ambiguous. At the time of writing the image Digest for &lt;code>library/debian:latest&lt;/code> was &lt;code>sha:256:427752aa.....&lt;/code> however previously different images may have been tagged as &lt;code>library/debian:latest&lt;/code>. The &lt;code>--show-history&lt;/code> parameter can be passed to show historic evaluations based on previous images or previous policy bundles.&lt;/p>
+&lt;p>Anchore supports whitelisting and blacklisting images by their name, ID or digest. A blacklist or whitelist takes precedence over any policy checks. For example if an image is explicitly listed as &lt;em>blacklisted&lt;/em> then even if all the individual policy checks pass the image will still fail evaluation.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli evaluate check library/alpine:latest --detail
+Image Digest: sha256:8c03bb07a531c53ad7d0f6e7041b64d81f99c6e493cb39abba56d956b40eacbc
+Full Tag: docker.io/library/alpine:latest
+Image ID: 3fd9065eaf02feaf94d68376da52541925650b81698c53c6824d92ff63f98353
+Status: fail
+Last Eval: 2018-04-29T13:50:32
+Policy ID: 2c53a13c-1765-11e8-82ef-23527761d060
+Final Action: stop
+Final Action Reason: blacklisted
+Gate Trigger Detail Status
+dockerfile instruction Dockerfile directive 'HEALTHCHECK' not found, matching condition 'not_exists' check warn
+&lt;/code>&lt;/pre>&lt;p>In this example even though the image only had one policy check that raised a warning the image fails policy evaluation since it is present on a blacklist.&lt;/p>
+&lt;h3 id="evaluating-status-based-on-digest-or-id">Evaluating status based on Digest or ID&lt;/h3>
+&lt;p>Performing an evaluation on an image specified by name is not recommended since an image name is ambiguous. For example the tag &lt;code>docker.io/library/centos:latest&lt;/code> refers to whatever image has the tag &lt;code>library/centos:latest&lt;/code> at the time of evaluation. At any point in time another image may be tagged as &lt;code>library/centos:latest&lt;/code>.&lt;/p>
+&lt;p>It is recommended that images are referenced by their Digest. For example at the time of writing the digest of the &amp;lsquo;current&amp;rsquo; library/centos:latest image is &lt;code>sha256:191c883e479a7da2362b2d54c0840b2e8981e5ab62e11ab925abf8808d3d5d44&lt;/code>&lt;/p>
+&lt;p>If the image to be evaluated is specified by Image ID or Image Digest then the &lt;code>--tag&lt;/code> parameter must be added. Policies are mapped to images based on registry/repo:tag so since an Image ID may may to multiple different names we must specify the name user in the evaluation.&lt;/p>
+&lt;p>For example - referencing by Image Digest:&lt;/p>
+&lt;p>&lt;code>$ anchore-cli evaluate check docker.io/library/centos@sha256:191c883e479a7da2362b2d54c0840b2e8981e5ab62e11ab925abf8808d3d5d44 --tag=latest&lt;/code>&lt;/p>
+&lt;p>For example - referencing by image ID:&lt;/p>
+&lt;p>&lt;code>$ anchore-cli evaluate check e934aafc22064b7322c0250f1e32e5ce93b2d19b356f4537f5864bd102e8531f --tag=docker.io/library/centos:latest&lt;/code>&lt;/p></description></item><item><title>Docs: Policy Gate: dockerfile</title><link>/docs/usage/cli_usage/policies/policy_gate_dockerfile/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/policies/policy_gate_dockerfile/</guid><description>
+&lt;p>This article reviews the &amp;ldquo;dockerfile&amp;rdquo; gate and its triggers. The dockerfile gate allows users to perform checks on the content of the dockerfile or docker history for an image and make policy actions based on the construction of an image, not just its content. This is particularly useful for enforcing best practices or metadata inclusion (e.g. labels) on images.&lt;/p>
+&lt;p>Anchore is either given a dockerfile or infers one from the docker image layer history. There are implications to what data is available and what it means depending on these differing sources, so first, we&amp;rsquo;ll cover the input data for the gate and how it impacts the triggers and parameters used.&lt;/p>
+&lt;h3 id="the-dockerfile">The &amp;ldquo;dockerfile&amp;rdquo;&lt;/h3>
+&lt;p>The data that this gate operates on can come from two different sources:&lt;/p>
+&lt;ol>
+&lt;li>The actual dockerfile used to build an image, as provided by the user at the time of running &lt;code>anchore-cli image add &amp;lt;img ref&amp;gt; --dockerfile &amp;lt;filename&amp;gt;&lt;/code> or the corresponding API call to: POST /images?dockerfile=&lt;!-- raw HTML omitted -->&lt;/li>
+&lt;li>The history from layers as encoded in the image itself (see &lt;code>docker history &amp;lt;img&amp;gt;&lt;/code> for this output)&lt;/li>
+&lt;/ol>
+&lt;p>All images have data from history available, but data from the actual dockerfile is only available when a user provides it. This also means that any images analyzed by the tag watcher functionality will not have an actual dockerfile.&lt;/p>
+&lt;h4 id="the-from-line">The FROM line&lt;/h4>
+&lt;p>In the actual dockerfile, the FROM instruction is preserved and available as used to build the image, however in the history data, the FROM line will always be the very first FROM instruction used to build the image and all of its dependent based image. Thus, for most images, the value in the history will be omitted and Anchore will automatically infer a FROM scratch line, which is logically inserted for this gate if the dockerfile/history does not contain an explicit FROM entry.&lt;/p>
+&lt;p>For example, using the docker.io/jenkins/jenkins image:&lt;/p>
+&lt;pre>&lt;code>IMAGE CREATED CREATED BY SIZE COMMENT
+sha256:3b9c9666a66e53473c05a3c69eb2cb888a8268f76935eecc7530653cddc28981 11 hours ago /bin/sh -c #(nop) COPY file:3a15c25533fd87983edc33758f62af7b543ccc3ce9dd570e473eb0702f5f298e in /usr/local/bin/install-plugins.sh 8.79kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:f97999fac8a63cf8b635a54ea84a2bc95ae3da4d81ab55267c92b28b502d8812 in /usr/local/bin/plugins.sh 3.96kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENTRYPOINT [&amp;quot;/sbin/tini&amp;quot; &amp;quot;--&amp;quot; &amp;quot;/usr/local/bin/jenkins.sh&amp;quot;] 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:dc942ca949bb159f81bbc954773b3491e433d2d3e3ef90bac80ecf48a313c9c9 in /bin/tini 529B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:a8f986413b77bf4d88562b9d3a0dce98ab6e75403192aa4d4153fb41f450843d in /usr/local/bin/jenkins.sh 1.45kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:55594d9d2aed007553a6743a43039b1a48b30527f8fb991ad93e1fd5b1298f60 in /usr/local/bin/jenkins-support 6.12kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) USER jenkins 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV COPY_REFERENCE_FILE_LOG=/var/jenkins_home/copy_reference_file.log 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) EXPOSE 50000 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) EXPOSE 8080 0B
+&amp;lt;missing&amp;gt; 11 hours ago |9 JENKINS_SHA=e026221efcec9528498019b6c1581cca70fe9c3f6b10303777d85c6699bca0e4 JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/2.161/jenkins-war-2.161.war TINI_VERSION=v0.16.1 agent_port=50000 gid=1000 group=jenkins http_port=8080 uid=1000 user=jenkins /bin/sh -c chown -R ${user} &amp;quot;$JENKINS_HOME&amp;quot; /usr/share/jenkins/ref 328B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_INCREMENTALS_REPO_MIRROR=https://repo.jenkins-ci.org/incrementals 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_UC_EXPERIMENTAL=https://updates.jenkins.io/experimental 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_UC=https://updates.jenkins.io 0B
+&amp;lt;missing&amp;gt; 11 hours ago |9 JENKINS_SHA=e026221efcec9528498019b6c1581cca70fe9c3f6b10303777d85c6699bca0e4 JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/2.161/jenkins-war-2.161.war TINI_VERSION=v0.16.1 agent_port=50000 gid=1000 group=jenkins http_port=8080 uid=1000 user=jenkins /bin/sh -c curl -fsSL ${JENKINS_URL} -o /usr/share/jenkins/jenkins.war &amp;amp;&amp;amp; echo &amp;quot;${JENKINS_SHA} /usr/share/jenkins/jenkins.war&amp;quot; | sha256sum -c - 76MB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/2.161/jenkins-war-2.161.war 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG JENKINS_SHA=5bb075b81a3929ceada4e960049e37df5f15a1e3cfc9dc24d749858e70b48919 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_VERSION=2.161 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG JENKINS_VERSION 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:c84b91c835048a52bb864c1f4662607c56befe3c4b1520b0ea94633103a4554f in /usr/share/jenkins/ref/init.groovy.d/tcp-slave-agent-port.groovy 328B
+&amp;lt;missing&amp;gt; 11 hours ago |7 TINI_VERSION=v0.16.1 agent_port=50000 gid=1000 group=jenkins http_port=8080 uid=1000 user=jenkins /bin/sh -c curl -fsSL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static-$(dpkg --print-architecture) -o /sbin/tini &amp;amp;&amp;amp; curl -fsSL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static-$(dpkg --print-architecture).asc -o /sbin/tini.asc &amp;amp;&amp;amp; gpg --no-tty --import ${JENKINS_HOME}/tini_pub.gpg &amp;amp;&amp;amp; gpg --verify /sbin/tini.asc &amp;amp;&amp;amp; rm -rf /sbin/tini.asc /root/.gnupg &amp;amp;&amp;amp; chmod +x /sbin/tini 866kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) COPY file:653491cb486e752a4c2b4b407a46ec75646a54eabb597634b25c7c2b82a31424 in /var/jenkins_home/tini_pub.gpg 7.15kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG TINI_VERSION=v0.16.1 0B
+&amp;lt;missing&amp;gt; 11 hours ago |6 agent_port=50000 gid=1000 group=jenkins http_port=8080 uid=1000 user=jenkins /bin/sh -c mkdir -p /usr/share/jenkins/ref/init.groovy.d 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) VOLUME [/var/jenkins_home] 0B
+&amp;lt;missing&amp;gt; 11 hours ago |6 agent_port=50000 gid=1000 group=jenkins http_port=8080 uid=1000 user=jenkins /bin/sh -c mkdir -p $JENKINS_HOME &amp;amp;&amp;amp; chown ${uid}:${gid} $JENKINS_HOME &amp;amp;&amp;amp; groupadd -g ${gid} ${group} &amp;amp;&amp;amp; useradd -d &amp;quot;$JENKINS_HOME&amp;quot; -u ${uid} -g ${gid} -m -s /bin/bash ${user} 328kB
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_SLAVE_AGENT_PORT=50000 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ENV JENKINS_HOME=/var/jenkins_home 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG JENKINS_HOME=/var/jenkins_home 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG agent_port=50000 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG http_port=8080 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG gid=1000 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG uid=1000 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG group=jenkins 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c #(nop) ARG user=jenkins 0B
+&amp;lt;missing&amp;gt; 11 hours ago /bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y git curl &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/* 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c set -ex; if [ ! -d /usr/share/man/man1 ]; then mkdir -p /usr/share/man/man1; fi; apt-get update; apt-get install -y --no-install-recommends openjdk-8-jdk=&amp;quot;$JAVA_DEBIAN_VERSION&amp;quot; ; rm -rf /var/lib/apt/lists/*; [ &amp;quot;$(readlink -f &amp;quot;$JAVA_HOME&amp;quot;)&amp;quot; = &amp;quot;$(docker-java-home)&amp;quot; ]; update-alternatives --get-selections | awk -v home=&amp;quot;$(readlink -f &amp;quot;$JAVA_HOME&amp;quot;)&amp;quot; 'index($3, home) == 1 { $2 = &amp;quot;manual&amp;quot;; print | &amp;quot;update-alternatives --set-selections&amp;quot; }'; update-alternatives --query java | grep -q 'Status: manual' 348MB
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) ENV JAVA_DEBIAN_VERSION=8u181-b13-2~deb9u1 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) ENV JAVA_VERSION=8u181 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) ENV JAVA_HOME=/docker-java-home 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c ln -svT &amp;quot;/usr/lib/jvm/java-8-openjdk-$(dpkg --print-architecture)&amp;quot; /docker-java-home 33B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c { echo '#!/bin/sh'; echo 'set -e'; echo; echo 'dirname &amp;quot;$(dirname &amp;quot;$(readlink -f &amp;quot;$(which javac || which java)&amp;quot;)&amp;quot;)&amp;quot;'; } &amp;gt; /usr/local/bin/docker-java-home &amp;amp;&amp;amp; chmod +x /usr/local/bin/docker-java-home 87B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) ENV LANG=C.UTF-8 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y --no-install-recommends bzip2 unzip xz-utils &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/* 2.21MB
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y --no-install-recommends bzr git mercurial openssh-client subversion procps &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/* 142MB
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c set -ex; if ! command -v gpg &amp;gt; /dev/null; then apt-get update; apt-get install -y --no-install-recommends gnupg dirmngr ; rm -rf /var/lib/apt/lists/*; fi 7.81MB
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y --no-install-recommends ca-certificates curl netbase wget &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/* 23.2MB
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) CMD [&amp;quot;bash&amp;quot;] 0B
+&amp;lt;missing&amp;gt; 3 weeks ago /bin/sh -c #(nop) ADD file:da71baf0d22cb2ede91c5e3ff959607e47459a9d7bda220a62a3da362b0e59ea in / 101MB
+&lt;/code>&lt;/pre>&lt;p>Where the actual dockerfile for that image is:&lt;/p>
+&lt;pre>&lt;code>FROM openjdk:8-jdk-stretch
+RUN apt-get update &amp;amp;&amp;amp; apt-get install -y git curl &amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/*
+ARG user=jenkins
+ARG group=jenkins
+ARG uid=1000
+ARG gid=1000
+ARG http_port=8080
+ARG agent_port=50000
+ARG JENKINS_HOME=/var/jenkins_home
+ENV JENKINS_HOME $JENKINS_HOME
+ENV JENKINS_SLAVE_AGENT_PORT ${agent_port}
+# Jenkins is run with user `jenkins`, uid = 1000
+# If you bind mount a volume from the host or a data container,
+# ensure you use the same uid
+RUN mkdir -p $JENKINS_HOME \
+&amp;amp;&amp;amp; chown ${uid}:${gid} $JENKINS_HOME \
+&amp;amp;&amp;amp; groupadd -g ${gid} ${group} \
+&amp;amp;&amp;amp; useradd -d &amp;quot;$JENKINS_HOME&amp;quot; -u ${uid} -g ${gid} -m -s /bin/bash ${user}
+# Jenkins home directory is a volume, so configuration and build history
+# can be persisted and survive image upgrades
+VOLUME $JENKINS_HOME
+# `/usr/share/jenkins/ref/` contains all reference configuration we want
+# to set on a fresh new installation. Use it to bundle additional plugins
+# or config file with your custom jenkins Docker image.
+RUN mkdir -p /usr/share/jenkins/ref/init.groovy.d
+# Use tini as subreaper in Docker container to adopt zombie processes
+ARG TINI_VERSION=v0.16.1
+COPY tini_pub.gpg ${JENKINS_HOME}/tini_pub.gpg
+RUN curl -fsSL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static-$(dpkg --print-architecture) -o /sbin/tini \
+&amp;amp;&amp;amp; curl -fsSL https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-static-$(dpkg --print-architecture).asc -o /sbin/tini.asc \
+&amp;amp;&amp;amp; gpg --no-tty --import ${JENKINS_HOME}/tini_pub.gpg \
+&amp;amp;&amp;amp; gpg --verify /sbin/tini.asc \
+&amp;amp;&amp;amp; rm -rf /sbin/tini.asc /root/.gnupg \
+&amp;amp;&amp;amp; chmod +x /sbin/tini
+COPY init.groovy /usr/share/jenkins/ref/init.groovy.d/tcp-slave-agent-port.groovy
+# jenkins version being bundled in this docker image
+ARG JENKINS_VERSION
+ENV JENKINS_VERSION ${JENKINS_VERSION:-2.121.1}
+# jenkins.war checksum, download will be validated using it
+ARG JENKINS_SHA=5bb075b81a3929ceada4e960049e37df5f15a1e3cfc9dc24d749858e70b48919
+# Can be used to customize where jenkins.war get downloaded from
+ARG JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/${JENKINS_VERSION}/jenkins-war-${JENKINS_VERSION}.war
+# could use ADD but this one does not check Last-Modified header neither does it allow to control checksum
+# see https://github.com/docker/docker/issues/8331
+RUN curl -fsSL ${JENKINS_URL} -o /usr/share/jenkins/jenkins.war \
+&amp;amp;&amp;amp; echo &amp;quot;${JENKINS_SHA} /usr/share/jenkins/jenkins.war&amp;quot; | sha256sum -c -
+ENV JENKINS_UC https://updates.jenkins.io
+ENV JENKINS_UC_EXPERIMENTAL=https://updates.jenkins.io/experimental
+ENV JENKINS_INCREMENTALS_REPO_MIRROR=https://repo.jenkins-ci.org/incrementals
+RUN chown -R ${user} &amp;quot;$JENKINS_HOME&amp;quot; /usr/share/jenkins/ref
+# for main web interface:
+EXPOSE ${http_port}
+# will be used by attached slave agents:
+EXPOSE ${agent_port}
+ENV COPY_REFERENCE_FILE_LOG $JENKINS_HOME/copy_reference_file.log
+USER ${user}
+COPY jenkins-support /usr/local/bin/jenkins-support
+COPY jenkins.sh /usr/local/bin/jenkins.sh
+COPY tini-shim.sh /bin/tini
+ENTRYPOINT [&amp;quot;/sbin/tini&amp;quot;, &amp;quot;--&amp;quot;, &amp;quot;/usr/local/bin/jenkins.sh&amp;quot;]
+# from a derived Dockerfile, can use `RUN plugins.sh active.txt` to setup /usr/share/jenkins/ref/plugins from a support bundle
+COPY plugins.sh /usr/local/bin/plugins.sh
+COPY install-plugins.sh /usr/local/bin/install-plugins.sh
+&lt;/code>&lt;/pre>&lt;p>Anchore will detect the history/dockerfile as this, if not explicitly provided (note order is reversed from docker history output, so it reads in same order as actual dockerfile):&lt;/p>
+&lt;pre>&lt;code>[
+{
+&amp;quot;Size&amp;quot; : 45323792,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:cd8eada9c7bb496eb685fc6d2198c33db7cb05daf0fde42e4cf5bf0127cbdf38&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2018-12-28T23:29:37.981962131Z&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c #(nop) ADD file:da71baf0d22cb2ede91c5e3ff959607e47459a9d7bda220a62a3da362b0e59ea in / &amp;quot;
+},
+{
+&amp;quot;Size&amp;quot; : 0,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;&amp;lt;missing&amp;gt;&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2018-12-28T23:29:38.226681736Z&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c #(nop) CMD [\&amp;quot;bash\&amp;quot;]&amp;quot;
+},
+{
+&amp;quot;Size&amp;quot; : 10780911,
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y --no-install-recommends \t\tca-certificates \t\tcurl \t\tnetbase \t\twget \t&amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/*&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2018-12-29T00:04:28.920875483Z&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:c2677faec825930a8844845f55454ee0495ceb5bea9fc904d5b3125de863dc1d&amp;quot;
+},
+{
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Size&amp;quot; : 4340024,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c set -ex; \tif ! command -v gpg &amp;gt; /dev/null; then \t\tapt-get update; \t\tapt-get install -y --no-install-recommends \t\t\tgnupg \t\t\tdirmngr \t\t; \t\trm -rf /var/lib/apt/lists/*; \tfi&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2018-12-29T00:04:34.642152001Z&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:fcce419a96b1219a265bf7a933d66b585a6f8d73448533f3833c73ad49fb5e88&amp;quot;
+},
+{
+&amp;quot;Size&amp;quot; : 50062697,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:045b51e26e750443c84216071a1367a7aae0b76245800629dc04934628b4b1ea&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c apt-get update &amp;amp;&amp;amp; apt-get install -y --no-install-recommends \t\tbzr \t\tgit \t\tmercurial \t\topenssh-client \t\tsubversion \t\t\t\tprocps \t&amp;amp;&amp;amp; rm -rf /var/lib/apt/lists/*&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2018-12-29T00:04:59.676112605Z&amp;quot;
+},
+... &amp;lt;truncated for brevity&amp;gt; ...
+{
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Size&amp;quot; : 0,
+&amp;quot;Id&amp;quot; : &amp;quot;&amp;lt;missing&amp;gt;&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c #(nop) ENTRYPOINT [\&amp;quot;/sbin/tini\&amp;quot; \&amp;quot;--\&amp;quot; \&amp;quot;/usr/local/bin/jenkins.sh\&amp;quot;]&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2019-01-21T08:56:30.737221895Z&amp;quot;
+},
+{
+&amp;quot;Size&amp;quot; : 1549,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:283cd3aba8691a3b9d22d923de66243b105758e74de7d9469fe55a6a58aeee30&amp;quot;,
+&amp;quot;Created&amp;quot; : &amp;quot;2019-01-21T08:56:32.015667468Z&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c #(nop) COPY file:f97999fac8a63cf8b635a54ea84a2bc95ae3da4d81ab55267c92b28b502d8812 in /usr/local/bin/plugins.sh &amp;quot;
+},
+{
+&amp;quot;Comment&amp;quot; : &amp;quot;&amp;quot;,
+&amp;quot;Tags&amp;quot; : [],
+&amp;quot;Size&amp;quot; : 3079,
+&amp;quot;Created&amp;quot; : &amp;quot;2019-01-21T08:56:33.158854485Z&amp;quot;,
+&amp;quot;CreatedBy&amp;quot; : &amp;quot;/bin/sh -c #(nop) COPY file:3a15c25533fd87983edc33758f62af7b543ccc3ce9dd570e473eb0702f5f298e in /usr/local/bin/install-plugins.sh &amp;quot;,
+&amp;quot;Id&amp;quot; : &amp;quot;sha256:b0ce8ab5a5a7da5d762f25af970f4423b98437a8318cb9852c3f21354cbf914f&amp;quot;
+}
+]
+&lt;/code>&lt;/pre>&lt;p>NOTE: Anchore processes the leading /bin/sh commands, so you do not have to include those in any trigger param config if using the docker history output.&lt;/p>
+&lt;h4 id="the-actual_dockerfile_only-parameter">The actual_dockerfile_only Parameter&lt;/h4>
+&lt;p>The actual vs history impacts the semantics of the dockerfile gate&amp;rsquo;s triggers. To allow explicit control of the differences, most triggers in this gate includes a parameter: actual_dockerfile_only that if set to true or false will ensure the trigger check is only done on the source of data specified. If actual_dockerfile_only = true, then the trigger will evaluate only if an actual dockerfile is available for the image and will skip evaluation if not. If actual_dockerfile_only is false or omitted, then the trigger will run on the actual dockerfile if available, or the history data if the dockerfile was not provided.&lt;/p>
+&lt;h4 id="differences-in-data-between-docker-history-and-actual-dockerfile">Differences in data between Docker History and actual Dockerfile&lt;/h4>
+&lt;p>With Actual Dockerfile:&lt;/p>
+&lt;ol>
+&lt;li>FROM line is preserved, so the parent tag of the image is easily available&lt;/li>
+&lt;li>Instruction checks are all against instructions created during the build for that exact image, not any parent images
+&lt;ol>
+&lt;li>When the actual_dockerfile_only parameter is set to true, all instructions from the parent image are ignored in policy processing. This may have some unexpected consequences depending on how your images are structured and layered (e.g. golden base images that establish common patterns of volumes, labels, healthchecks)&lt;/li>
+&lt;/ol>
+&lt;/li>
+&lt;li>COPY/ADD instructions will maintain the actual values used&lt;/li>
+&lt;li>Multistage-builds in that specific dockerfile will be visible with multiple FROM lines in the output&lt;/li>
+&lt;/ol>
+&lt;p>With Docker History data, when no dockerfile is provided:&lt;/p>
+&lt;ol>
+&lt;li>FROM line is not accurate, and will nearly always default to &amp;lsquo;FROM scratch&amp;rsquo;&lt;/li>
+&lt;li>Instructions are processed from all layers in the image&lt;/li>
+&lt;li>COPY and ADD instructions are transformed into SHAs rather than the actual file path/name used at build-time&lt;/li>
+&lt;li>Multi-stage builds are not tracked with multiple FROM lines, only the copy operations between the phases&lt;/li>
+&lt;/ol>
+&lt;h3 id="trigger-instruction">Trigger: instruction&lt;/h3>
+&lt;p>This trigger evaluates instructions found in the &amp;ldquo;dockerfile&amp;rdquo;&lt;/p>
+&lt;p>Supported Directives/Instructions (as of Anchore Engine v.0.3.2):&lt;/p>
+&lt;h4 id="parameters">Parameters&lt;/h4>
+&lt;p>actual_dockerfile_only (optional): See above&lt;/p>
+&lt;p>instruction: The dockerfile instruction to check against. One of:&lt;/p>
+&lt;ul>
+&lt;li>ADD&lt;/li>
+&lt;li>ARG&lt;/li>
+&lt;li>COPY&lt;/li>
+&lt;li>CMD&lt;/li>
+&lt;li>ENTRYPOINT&lt;/li>
+&lt;li>ENV&lt;/li>
+&lt;li>EXPOSE&lt;/li>
+&lt;li>FROM&lt;/li>
+&lt;li>HEALTHCHECK&lt;/li>
+&lt;li>LABEL&lt;/li>
+&lt;li>MAINTAINER&lt;/li>
+&lt;li>ONBUILD&lt;/li>
+&lt;li>USER&lt;/li>
+&lt;li>RUN&lt;/li>
+&lt;li>SHELL&lt;/li>
+&lt;li>STOPSIGNAL&lt;/li>
+&lt;li>VOLUME&lt;/li>
+&lt;li>WORKDIR&lt;/li>
+&lt;/ul>
+&lt;p>&lt;em>check:&lt;/em> The comparison/evaluation to perform. One of: =, != , exists, not_exists, like, not_like, in, not_in.&lt;/p>
+&lt;p>&lt;em>value&lt;/em> (optional): A string value to compare against, if applicable&lt;/p>
+&lt;h4 id="examples">Examples&lt;/h4>
+&lt;ol>
+&lt;li>Ensure an image has a HEALTHCHECK defined in the image (warn if not found):&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;instruction&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;instruction&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;HEALTHCHECK&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;check&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;not_exists&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;ol start="2">
+&lt;li>Check for AWS environment variables set:&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;instruction&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;stop&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;instruction&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;ENV&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;check&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;like&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;value&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;AWS_.*KEY&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;h3 id="trigger-effective_user">Trigger: effective_user&lt;/h3>
+&lt;p>This trigger processes all &lt;code>USER&lt;/code> directives in the dockerfile or history to determine which user will be used to run the container by default (assuming no user is set explicitly at runtime). The detected value is then subject to a whitelist or blacklist filter depending on the configured parameters. Typically, this is used for blacklisting the root user.&lt;/p>
+&lt;h4 id="parameters-1">Parameters&lt;/h4>
+&lt;p>&lt;em>actual_dockerfile_only&lt;/em> (optional): See above&lt;/p>
+&lt;p>&lt;em>users:&lt;/em> A string with a comma delimited list of username to check for&lt;/p>
+&lt;p>&lt;em>type:&lt;/em> The type of check to perform. One of: &amp;lsquo;blacklist&amp;rsquo; or &amp;lsquo;whitelist&amp;rsquo;. This determines how the value of the &amp;lsquo;users&amp;rsquo; parameter is interpreted.&lt;/p>
+&lt;h4 id="examples-1">Examples&lt;/h4>
+&lt;ol>
+&lt;li>Blacklist root user&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;effective_user&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;stop&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;users&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;root&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;type&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;blacklist&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;ol start="2">
+&lt;li>Blacklist root user but only if set in actual dockerfile, not inherited from parent image&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;effective_user&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;stop&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;users&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;root&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;type&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;blacklist&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;actual_dockerfile_only&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;true&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;ol start="3">
+&lt;li>Warn if the user is not either &amp;ldquo;nginx&amp;rdquo; or &amp;ldquo;jenkins&amp;rdquo;&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;effective_user&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;users&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;nginx,jenkins&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;type&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;whitelist&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;h3 id="trigger-exposed_ports">Trigger: exposed_ports&lt;/h3>
+&lt;p>This trigger processes the set of &lt;code>EXPOSE&lt;/code> directives in the dockerfile/history to determine the set of ports that are defined to be exposed (since it can span multiple directives). It performs checks on that set to blacklist/whitelist them based on parameter settings.&lt;/p>
+&lt;h4 id="parameters-2">Parameters&lt;/h4>
+&lt;p>&lt;em>actual_dockerfile_only&lt;/em> (optional): See above&lt;/p>
+&lt;p>&lt;em>ports:&lt;/em> String of comma delimited port numbers to be checked&lt;/p>
+&lt;p>&lt;em>type:&lt;/em> The type of check to perform. One of: &amp;lsquo;blacklist&amp;rsquo; or &amp;lsquo;whitelist&amp;rsquo;. This determines how the value of the &amp;lsquo;users&amp;rsquo; parameter is interpreted&lt;/p>
+&lt;h4 id="examples-2">Examples&lt;/h4>
+&lt;ol>
+&lt;li>Allow only ports 80 and 443. Trigger will fire on any port defined to be exposed that is not 80 or 443&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;exposed_ports&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;ports&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;80,443&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;type&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;whitelist&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;ol start="2">
+&lt;li>Blacklist ports 21 (ftp), 22 (ssh), and 53 (dns) . Trigger will fire a match on ports 21, 22, 53 if found in EXPOSE directives&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;exposed_ports&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;parameters&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;ports&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;21,22,53&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;type&amp;quot;,
+&amp;quot;value&amp;quot;: &amp;quot;blacklist&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;h3 id="trigger-no_dockerfile_provided">Trigger: no_dockerfile_provided&lt;/h3>
+&lt;p>This trigger allows checks on the way the image was added, firing if the dockerfile was not explicitly provided at analysis time. This is useful in identifying and qualifying other trigger matches.&lt;/p>
+&lt;h4 id="parameters-3">Parameters&lt;/h4>
+&lt;p>None&lt;/p>
+&lt;h4 id="examples-3">Examples&lt;/h4>
+&lt;ol>
+&lt;li>Raise a warning if no dockerfile was provided at analysis time&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>{
+&amp;quot;gate&amp;quot;: &amp;quot;dockerfile&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;no_dockerfile_provided&amp;quot;,
+&amp;quot;action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;parameters&amp;quot;: []
+}
+&lt;/code>&lt;/pre></description></item></channel></rss>

@@ -1,0 +1,333 @@
+<!doctype html><html lang=en class=no-js><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=generator content="Hugo 0.75.1"><meta name=ROBOTS content="NOINDEX, NOFOLLOW"><link rel="shortcut icon" href=/favicons/favicon.ico><link rel=apple-touch-icon href=/favicons/apple-touch-icon-180x180.png sizes=180x180><link rel=icon type=image/png href=/favicons/favicon-16x16.png sizes=16x16><link rel=icon type=image/png href=/favicons/favicon-32x32.png sizes=32x32><link rel=icon type=image/png href=/favicons/android-36x36.png sizes=36x36><link rel=icon type=image/png href=/favicons/android-48x48.png sizes=48x48><link rel=icon type=image/png href=/favicons/android-72x72.png sizes=72x72><link rel=icon type=image/png href=/favicons/android-96x196.png sizes=96x196><link rel=icon type=image/png href=/favicons/android-144x144.png sizes=144x144><link rel=icon type=image/png href=/favicons/android-192x192.png sizes=192x192><title>Migrating Data to New Drivers | Anchore Engine</title><meta property="og:title" content="Migrating Data to New Drivers"><meta property="og:description" content="Overview To cleanly migrate data from one archive driver to another, Anchore Engine includes some tooling that automates the process in the &lsquo;anchore-manager&rsquo; tool packaged with the system.
+The migration process is an offline process; Anchore Engine is not designed to handle an online migration.
+For the migration process you will need:
+ The original config.yaml used by the services already, if services are split out or using different config.yaml for different services, you need the config."><meta property="og:type" content="article"><meta property="og:url" content="/docs/install/storage/object_store/migration/"><meta property="article:modified_time" content="2020-11-23T15:52:18-08:00"><meta itemprop=name content="Migrating Data to New Drivers"><meta itemprop=description content="Overview To cleanly migrate data from one archive driver to another, Anchore Engine includes some tooling that automates the process in the &lsquo;anchore-manager&rsquo; tool packaged with the system.
+The migration process is an offline process; Anchore Engine is not designed to handle an online migration.
+For the migration process you will need:
+ The original config.yaml used by the services already, if services are split out or using different config.yaml for different services, you need the config."><meta itemprop=dateModified content="2020-11-23T15:52:18-08:00"><meta itemprop=wordCount content="2219"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="Migrating Data to New Drivers"><meta name=twitter:description content="Overview To cleanly migrate data from one archive driver to another, Anchore Engine includes some tooling that automates the process in the &lsquo;anchore-manager&rsquo; tool packaged with the system.
+The migration process is an offline process; Anchore Engine is not designed to handle an online migration.
+For the migration process you will need:
+ The original config.yaml used by the services already, if services are split out or using different config.yaml for different services, you need the config."><link rel=preload href=/scss/main.min.937e83c369c498b6459fa907d495c576482035c5e1427c3f3d67ef3dd2f2e0a6.css as=style><link href=/scss/main.min.937e83c369c498b6459fa907d495c576482035c5e1427c3f3d67ef3dd2f2e0a6.css rel=stylesheet integrity><script src=https://code.jquery.com/jquery-3.3.1.min.js integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin=anonymous></script><title>Migrating Data to New Drivers | Anchore Engine</title></head><body class=td-page><header><nav class="navbar navbar-expand navbar-dark bg-dark flex-column flex-md-row td-navbar"><a class=navbar-brand href=/><span class=navbar-logo><svg height="38" viewBox="0 0 144 38" width="144" xmlns="http://www.w3.org/2000/svg"><g fill="#fff" fill-rule="evenodd"><path d="m9.016 34.799c-3.135.0-5.41-1.812-5.41-4.31.0-2.283 1.249-2.984 3.88-3.613l5.469-1.466c.725-.161 1.246-.351 1.6-.587l-.13 4.491v.005c0 4.946-3.783 5.48-5.409 5.48zm0-23.306c-4.041.0-7.511 2.335-8.641 5.847-.047.445.068 1.251 1.376 1.655 1.434.441 1.963-.297 2.155-.784.744-2.139 2.75-3.522 5.11-3.522 3.216.0 5.551 2.151 5.551 5.113v1.27c0 .594-.794.981-1.543 1.147l-6.385 1.668c-4.777 1.088-6.639 2.939-6.639 6.602.0 4.282 3.876 7.511 9.016 7.511 5.476.0 9.015-3.347 9.015-8.526l.141-9.721c0-4.786-3.85-8.26-9.156-8.26z"/><path d="m59.434 28.434c-1.144-.161-1.853.334-1.961.91-.46 2.521-2.769 4.351-5.489 4.351-3.387.0-5.576-2.372-5.576-6.042v-6.884c0-3.67 2.189-6.042 5.576-6.042 2.721.0 5.029 1.83 5.489 4.352.108.574.81 1.068 1.961.909.635-.089 1.138-.348 1.419-.728.188-.254.265-.553.218-.848-.738-4.009-4.559-6.919-9.087-6.919-4.441.0-9.221 2.821-9.221 9.016v7.404c0 6.195 4.78 9.016 9.221 9.016 4.528.0 8.349-2.91 9.087-6.924.047-.29-.03-.59-.218-.844-.281-.38-.785-.638-1.419-.727"/><path d="m100.722 27.567c0 3.67-2.19 6.041-5.58 6.041-3.388.0-5.577-2.371-5.577-6.041v-6.798c0-3.67 2.189-6.042 5.577-6.042 3.39.0 5.58 2.372 5.58 6.042zm-5.58-16.074c-4.441.0-9.221 2.821-9.221 9.016v7.313c0 6.195 4.78 9.017 9.221 9.017 4.443.0 9.225-2.822 9.225-9.017v-7.313c0-6.195-4.782-9.016-9.225-9.016z"/><path d="m30.419 11.493c-4.441.0-9.221 2.821-9.221 9.016v14.056c0 .19.042.356.079.479l.064.216.195-.113c1.542-.897 2.682-2.262 3.296-3.95l.011-10.428c0-3.67 2.188-6.042 5.576-6.042 3.39.0 5.581 2.372 5.581 6.042v7.536l.013.068c.659 1.605 1.823 2.901 3.368 3.746l.263.144V20.509c0-6.195-4.781-9.016-9.225-9.016"/><path d="m73.429 11.493c-2.061.0-4.028.581-5.581 1.644V2.112c0-.964-.664-1.516-1.822-1.516s-1.822.552-1.822 1.516v30.151l.263-.144c1.545-.846 2.709-2.141 3.368-3.746l.013-7.604c0-3.67 2.191-6.042 5.581-6.042 3.388.0 5.576 2.372 5.576 6.042v10.366l.011.061c.614 1.688 1.754 3.054 3.296 3.951l.195.113.065-.217c.036-.123.078-.289.078-.478V20.509c0-6.195-4.78-9.016-9.221-9.016"/><path d="m124.05 14.965c-1.615-2.419-4.647-3.368-7.014-3.456v-.016l-.32.003-.062-.003-.178.008v.004c-6.103.196-8.838 4.645-8.838 9.004v14.056c0 .189.041.355.078.478l.064.217.196-.113c1.541-.897 2.681-2.263 3.296-3.951l.01-10.427c0-3.628 2.159-5.996 5.495-6.035 1.726.032 3.161.716 4.264 2.034.672.81 1.44.943 2.288.396.93-.6 1.201-1.42.725-2.193z"/><path d="m136.514 22.618-5.469 1.465c-.726.161-1.248.352-1.601.588l.131-4.492v-.005c0-4.946 3.783-5.48 5.409-5.48 3.135.0 5.41 1.812 5.41 4.31.0 2.283-1.25 2.984-3.88 3.614zm5.735 7.88c-1.432-.44-1.963.298-2.155.784-.744 2.139-2.75 3.522-5.11 3.522-3.216.0-5.551-2.151-5.551-5.113v-1.27c0-.593.793-.981 1.543-1.147l6.384-1.668c4.778-1.087 6.64-2.939 6.64-6.602.0-4.282-3.876-7.511-9.016-7.511-5.476.0-9.015 3.347-9.015 8.526l-.142 9.721c0 4.786 3.851 8.26 9.157 8.26 4.041.0 7.511-2.335 8.64-5.847.058-.543-.133-1.272-1.375-1.655z"/></g></svg></span></a><div class="td-navbar-nav-scroll ml-md-auto" id=main_navbar><ul class="navbar-nav mt-2 mt-lg-0"></ul></div><div class="navbar-nav d-none d-lg-block"></div></nav></header><div class="container-fluid td-outer"><div class=td-main><div class="row flex-xl-nowrap"><div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none"><div id=td-sidebar-menu class=td-sidebar__inner><form class="td-sidebar__search d-flex align-items-center"><button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type=button data-toggle=collapse data-target=#td-section-nav aria-controls=td-docs-nav aria-expanded=false aria-label="Toggle section navigation"></button></form><nav class="collapse td-sidebar-nav pt-2 pl-4" id=td-section-nav><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/ class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section">Anchore Engine Documentation</a></li><ul><li class="collapse show" id=docs><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/quickstart/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Quickstart</a></li><ul><li class=collapse id=docsquickstart></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Overview</a></li><ul><li class=collapse id=docsgeneral><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Concepts</a></li><ul><li class=collapse id=docsgeneralconcepts><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/accessing_engine/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Access</a></li><ul><li class=collapse id=docsgeneralconceptsaccessing_engine></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/images/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Images</a></li><ul><li class=collapse id=docsgeneralconceptsimages><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/images/analysis/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Image Analysis</a></li><ul><li class=collapse id=docsgeneralconceptsimagesanalysis><a class="td-sidebar-link td-sidebar-link__page" id=m-docsgeneralconceptsimagesanalysismalware_scanning href=/docs/general/concepts/images/analysis/malware_scanning/>Malware Scanning</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsgeneralconceptsimagesanalysiscontent_hints href=/docs/general/concepts/images/analysis/content_hints/>Content Hints</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/images/watchers/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Watching Images</a></li><ul><li class=collapse id=docsgeneralconceptsimageswatchers></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/policy/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Policy</a></li><ul><li class=collapse id=docsgeneralconceptspolicy><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/policy/bundles/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Policy Bundles</a></li><ul><li class=collapse id=docsgeneralconceptspolicybundles></li></ul></ul><a class="td-sidebar-link td-sidebar-link__page" id=m-docsgeneralconceptspolicypolicy_mappings href=/docs/general/concepts/policy/policy_mappings/>Policy Mappings</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsgeneralconceptspolicywhitelists href=/docs/general/concepts/policy/whitelists/>Whitelists</a><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/policy/policies/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Policies</a></li><ul><li class=collapse id=docsgeneralconceptspolicypolicies></li></ul></ul><a class="td-sidebar-link td-sidebar-link__page" id=m-docsgeneralconceptspolicypolicy_checks href=/docs/general/concepts/policy/policy_checks/>Policy Checks</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/analysis_archive/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Analysis Archive</a></li><ul><li class=collapse id=docsgeneralconceptsanalysis_archive></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/registries/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Registries</a></li><ul><li class=collapse id=docsgeneralconceptsregistries></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/subscriptions/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Subscriptions</a></li><ul><li class=collapse id=docsgeneralconceptssubscriptions></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/integrations/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Integrations</a></li><ul><li class=collapse id=docsgeneralconceptsintegrations><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/integrations/ci_cd/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">CI / CD Integration</a></li><ul><li class=collapse id=docsgeneralconceptsintegrationsci_cd></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/integrations/kubernetes/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Kubernetes Integration</a></li><ul><li class=collapse id=docsgeneralconceptsintegrationskubernetes></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/general/concepts/authorization_plugins/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Authorization Plugins</a></li><ul><li class=collapse id=docsgeneralconceptsauthorization_plugins></li></ul></ul></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/ class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section">Installing</a></li><ul><li class="collapse show" id=docsinstall><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/docker_compose/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Docker Compose</a></li><ul><li class=collapse id=docsinstalldocker_compose></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/helm/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Kubernetes</a></li><ul><li class=collapse id=docsinstallhelm><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/helm/amazon_marketplace/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Amazon Marketplace</a></li><ul><li class=collapse id=docsinstallhelmamazon_marketplace></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/anchore_cli/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Anchore CLI</a></li><ul><li class=collapse id=docsinstallanchore_cli><a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallanchore_clicli_config href=/docs/install/anchore_cli/cli_config/>Configuring the Anchore CLI</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallanchore_clicli_upgrade href=/docs/install/anchore_cli/cli_upgrade/>Upgrading the Anchore CLI</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/requirements/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Requirements</a></li><ul><li class=collapse id=docsinstallrequirements><a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallrequirementsdatabase href=/docs/install/requirements/database/>Database</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallrequirementsmemory href=/docs/install/requirements/memory/>Memory</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallrequirementsnetwork href=/docs/install/requirements/network/>Network</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallrequirementssecurity href=/docs/install/requirements/security/>Security</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallrequirementsstorage href=/docs/install/requirements/storage/>Storage</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/configuration/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Configuration</a></li><ul><li class=collapse id=docsinstallconfiguration><a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationfeed_configuration href=/docs/install/configuration/feed_configuration/>Configuration</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationconfig href=/docs/install/configuration/config/>General</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationcustom_certs href=/docs/install/configuration/custom_certs/>Custom Certificates</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationtls_ssl_config href=/docs/install/configuration/tls_ssl_config/>TLS / SSL</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationuser_credential_storage href=/docs/install/configuration/user_credential_storage/>Configuring User Credential Storage</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationcontent_hints href=/docs/install/configuration/content_hints/>Configuring Content Hints</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationnetwork_proxies href=/docs/install/configuration/network_proxies/>Network Proxies</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationusing_env_vars href=/docs/install/configuration/using_env_vars/>Environment Variables</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconfigurationmalware href=/docs/install/configuration/malware/>Configuring Malware Scanning</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/storage/ class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section">Storage</a></li><ul><li class="collapse show" id=docsinstallstorage><a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstorageanalysis_archive href=/docs/install/storage/analysis_archive/>Analysis Archive</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstoragedatabase href=/docs/install/storage/database/>Database</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstoragelayer_caching href=/docs/install/storage/layer_caching/>Layer Caching</a><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/storage/object_store/ class="align-left pl-0 pr-2 active td-sidebar-link td-sidebar-link__section">Object Storage</a></li><ul><li class="collapse show" id=docsinstallstorageobject_store><a class="td-sidebar-link td-sidebar-link__page active" id=m-docsinstallstorageobject_storemigration href=/docs/install/storage/object_store/migration/>Changing Drivers</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstorageobject_storedatabase_driver href=/docs/install/storage/object_store/database_driver/>Database Driver</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstorageobject_storefilesystem_driver href=/docs/install/storage/object_store/filesystem_driver/>Filesystem Driver</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstorageobject_stores3_driver href=/docs/install/storage/object_store/s3_driver/>S3 Object Store Driver</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallstorageobject_storeswift_driver href=/docs/install/storage/object_store/swift_driver/>Swift Archive Driver</a></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/upgrade/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Upgrade</a></li><ul><li class=collapse id=docsinstallupgrade></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/install/considerations/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Considerations</a></li><ul><li class=collapse id=docsinstallconsiderations><a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconsiderationsmac_special_considerations href=/docs/install/considerations/mac_special_considerations/>Considerations for Mac</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsinstallconsiderationsrhel_special_considerations href=/docs/install/considerations/rhel_special_considerations/>Considerations for RHEL</a></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Usage</a></li><ul><li class=collapse id=docsusage><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Using the CLI</a></li><ul><li class=collapse id=docsusagecli_usage><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/analysis_archive/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Analysis Archive</a></li><ul><li class=collapse id=docsusagecli_usageanalysis_archive></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/images/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Images</a></li><ul><li class=collapse id=docsusagecli_usageimages><a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageimagesinspecting_image_content href=/docs/usage/cli_usage/images/inspecting_image_content/>Inspecting Image Content</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageimagesviewing_security_vulnerabilities href=/docs/usage/cli_usage/images/viewing_security_vulnerabilities/>Viewing Security Vulnerabilities</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/policies/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Policies</a></li><ul><li class=collapse id=docsusagecli_usagepolicies><a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usagepoliciespolicy_checks href=/docs/usage/cli_usage/policies/policy_checks/>Anchore Policies Checks</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usagepoliciesevaluating_images_against_policies href=/docs/usage/cli_usage/policies/evaluating_images_against_policies/>Evaluating Images Against Policies</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usagepoliciespolicy_gate_dockerfile href=/docs/usage/cli_usage/policies/policy_gate_dockerfile/>Policy Gate: dockerfile</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/registries/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Registries</a></li><ul><li class=collapse id=docsusagecli_usageregistries><a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageregistriesconfiguring_registries href=/docs/usage/cli_usage/registries/configuring_registries/>Configuring Registries</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageregistriesecr_configuration href=/docs/usage/cli_usage/registries/ecr_configuration/>Working with Amazon ECR Registry Credentials</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageregistriesacr_configuration href=/docs/usage/cli_usage/registries/acr_configuration/>Working with Azure Registry Credentials</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usageregistriesgcr_configuration href=/docs/usage/cli_usage/registries/gcr_configuration/>Working with Google Container Registry (GCR) Credentials</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/subscriptions/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Subscriptions</a></li><ul><li class=collapse id=docsusagecli_usagesubscriptions></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/repositories/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Repositories</a></li><ul><li class=collapse id=docsusagecli_usagerepositories></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/event/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Events</a></li><ul><li class=collapse id=docsusagecli_usageevent></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/feeds/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Feeds</a></li><ul><li class=collapse id=docsusagecli_usagefeeds><a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usagefeedsfeed_configuration href=/docs/usage/cli_usage/feeds/feed_configuration/>Configuration</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusagecli_usagefeedsfeed_synchronization href=/docs/usage/cli_usage/feeds/feed_synchronization/>Synchronization</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/cli_usage/accounts/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">User Management</a></li><ul><li class=collapse id=docsusagecli_usageaccounts></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/api_usage/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Using the API</a></li><ul><li class=collapse id=docsusageapi_usage><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/api_usage/authentication/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Authentication Modes</a></li><ul><li class=collapse id=docsusageapi_usageauthentication></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/integration/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Integration</a></li><ul><li class=collapse id=docsusageintegration><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/integration/ci_cd/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">CI / CD</a></li><ul><li class=collapse id=docsusageintegrationci_cd><a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdcircleci href=/docs/usage/integration/ci_cd/circleci/>CircleCI</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdjenkins href=/docs/usage/integration/ci_cd/jenkins/>Jenkins</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdgithub href=/docs/usage/integration/ci_cd/github/>GitHub</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdinline_analysis href=/docs/usage/integration/ci_cd/inline_analysis/>Inline Image Analysis</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdinline_scanning href=/docs/usage/integration/ci_cd/inline_scanning/>Inline Scanning</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsusageintegrationci_cdgitlab href=/docs/usage/integration/ci_cd/gitlab/>Gitlab</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/usage/integration/kubernetes/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Kubernetes</a></li><ul><li class=collapse id=docsusageintegrationkubernetes></li></ul></ul></li></ul></ul></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/releasenotes/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Release Notes</a></li><ul><li class=collapse id=docsreleasenotes><a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes081 href=/docs/releasenotes/081/>0.8.1</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes082 href=/docs/releasenotes/082/>0.8.2</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes080 href=/docs/releasenotes/080/>0.8.0</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes073 href=/docs/releasenotes/073/>0.7.3</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes072 href=/docs/releasenotes/072/>0.7.2</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes071 href=/docs/releasenotes/071/>0.7.1</a><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/releasenotes/0.7.0/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">0.7.0</a></li><ul><li class=collapse id=docsreleasenotes070><a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes070data_matching_rollback href=/docs/releasenotes/0.7.0/data_matching_rollback/>Revert back to RHSA post-0.7.0 upgrade</a></li></ul></ul><a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes061 href=/docs/releasenotes/061/>0.6.1</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes060 href=/docs/releasenotes/060/>0.6.0</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes052 href=/docs/releasenotes/052/>0.5.2</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes051 href=/docs/releasenotes/051/>0.5.1</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes050 href=/docs/releasenotes/050/>0.5.0</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes042 href=/docs/releasenotes/042/>0.4.2</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes041 href=/docs/releasenotes/041/>0.4.1</a>
+<a class="td-sidebar-link td-sidebar-link__page" id=m-docsreleasenotes040 href=/docs/releasenotes/040/>0.4.0</a></li></ul></ul><ul class="td-sidebar-nav__section pr-md-3"><li class=td-sidebar-nav__section-title><a href=/docs/data_privacy/ class="align-left pl-0 pr-2 collapsed td-sidebar-link td-sidebar-link__section">Data Privacy</a></li><ul><li class=collapse id=docsdata_privacy></li></ul></ul></li></ul></ul></nav></div></div><div class="d-none d-xl-block col-xl-2 td-toc d-print-none"><div class="td-page-meta ml-2 pb-1 pt-2 mb-0"><a href=https://github.com/anchore/anchore-engine/edit/master/content/docs/install/storage/object_store/migration.md target=_blank><i class="fa fa-edit fa-fw"></i>Edit this page</a>
+<a href="https://github.com/anchore/anchore-engine/issues/new?title=Migrating%20Data%20to%20New%20Drivers" target=_blank><i class="fab fa-github fa-fw"></i>Create issue</a></div><nav id=TableOfContents><ul><li><ul><li><a href=#overview>Overview</a></li><li><a href=#migration-example-using-docker-compose-deployed-anchore-engine>Migration Example Using Docker Compose Deployed Anchore Engine</a></li><li><a href=#step-7-replace-old-configyaml-with-updated-dest-configyaml>Step 7: Replace old config.yaml with updated dest-config.yaml</a></li><li><a href=#things-to-watch-for-in-a-multi-node-anchore-engine-installation>Things to Watch for in a Multi-Node Anchore Engine Installation</a></li><li><a href=#example-process-with-docker-compose>Example Process with docker-compose</a></li></ul></li><li><a href=#migrating-analysis-archive-data>Migrating Analysis Archive Data</a><ul><li><a href=#migrating-a-single-backend-to-split-backend>Migrating a single backend to split backend</a></li><li><a href=#migrating-from-dual-object-storage-backends-to-a-single-backend>Migrating from dual object storage backends to a single backend</a></li></ul></li></ul></nav></div><main class="col-12 col-md-9 col-xl-8 pl-md-5" role=main><nav aria-label=breadcrumb class="d-none d-md-block d-print-none"><ol class="breadcrumb spb-1"><li class=breadcrumb-item><a href=/docs/>Anchore Engine Documentation</a></li><li class=breadcrumb-item><a href=/docs/install/>Installing</a></li><li class=breadcrumb-item><a href=/docs/install/storage/>Storage</a></li><li class=breadcrumb-item><a href=/docs/install/storage/object_store/>Object Storage</a></li><li class="breadcrumb-item active" aria-current=page><a href=/docs/install/storage/object_store/migration/>Changing Drivers</a></li></ol></nav><div class=td-content><h1>Migrating Data to New Drivers</h1><h3 id=overview>Overview</h3><p>To cleanly migrate data from one archive driver to another, Anchore Engine includes some tooling that automates the process in the &lsquo;anchore-manager&rsquo; tool packaged with the system.</p><p>The migration process is an offline process; Anchore Engine is not designed to handle an online migration.</p><p>For the migration process you will need:</p><ol><li>The original config.yaml used by the services already, if services are split out or using different config.yaml for different services, you need the config.yaml used by the catalog services</li><li>An updated config.yaml (named dest-config.yaml in this example), with the archive driver section of the catalog service config set to the config you want to migrate <em>to</em></li><li>The db connection string from config.yaml, this is needed by the anchore-manager script directly</li><li>Credentials and resources (bucket etc) for the destination of the migration</li></ol><p>At a high-level the process is:</p><ol><li>Shutdown all anchore engine services and components. The system should be fully offline, but the database must be online and available. For a docker-compose install, this is achieved by simply stopping the engine container, but not deleting it.</li><li>Prepare a new config.yaml that includes the new driver configuration for the destination of the migration (dest-config.yaml) in the same location as the existing config.yaml</li><li>Test the new dest-config.yaml to ensure correct configuration</li><li>Run the migration</li><li>Get coffee&mldr; this could take a while if you have a lot of analysis data</li><li>When complete, view the results</li><li>Ensure the dest-config.yaml is in place for all the components as config.yaml</li><li>Start anchore-engine</li></ol><h3 id=migration-example-using-docker-compose-deployed-anchore-engine>Migration Example Using Docker Compose Deployed Anchore Engine</h3><p>The following is an example migration for an anchore-engine deployed via docker-compose on a single host with a local postgresql container&ndash;basically the example used in &lsquo;Installing Anchore Engine&rsquo; documents. At the end of this section, we&rsquo;ll cover the caveats and things to watch for a multi-node install of anchore engine.</p><p>This process requires that you run the command in a location that has access to both the source archive driver configuration and the new archive driver configuration.</p><h4 id=step-1-shutdown-all-services>Step 1: Shutdown all services</h4><p>All services should be stopped, but the postgresql db must still be available and running.</p><p><code>docker-compose stop anchore-engine</code></p><h4 id=step-2-prepare-a-new-configyaml>Step 2: Prepare a new config.yaml</h4><p>Both the original and new configurations are needed, so create a copy and update the archive driver section to the configuration you want to migrate to</p><pre><code>cd config
+cp config.yaml dest-config.yaml
+&lt;edit dest-config.yaml&gt;
+</code></pre><h4 id=step-3-test-the-destination-config>Step 3: Test the destination config</h4><p>Assuming that config is <code>dest-config.yaml</code>:</p><pre><code>[user@host aevolume]$ docker-compose run anchore-engine /bin/bash
+[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} check /config/dest-config.yaml 
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&quot;db_pool_size&quot;: 30, &quot;db_connect&quot;: &quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&quot;, &quot;db_connect_args&quot;: {&quot;ssl&quot;: false, &quot;connect_timeout&quot;: 120, &quot;timeout&quot;: 30}, &quot;db_pool_max_overflow&quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Using config file /config/dest-config.yaml
+[MainThread] [anchore_engine.subsys.object_store.operations/initialize()] [INFO] Archive initialization complete
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Checking existence of test document with user_id = test, bucket = anchorecliconfigtest and archive_id = cliconfigtest
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Creating test document with user_id = test, bucket = anchorecliconfigtest and archive_id = cliconfigtest
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Checking document fetch
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Removing test object
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Archive config check completed successfully
+</code></pre><h4 id=step-3a-test-the-current-configyaml>Step 3a: Test the current config.yaml</h4><p>If you are running the migration for a different location than one of the anchore engine containers</p><p>Same as above but using <code>/config/config.yaml</code> as the input to check (skipped in this instance since we&rsquo;re running the migration from the same container)</p><h4 id=step-4-run-the-migration>Step 4: Run the Migration</h4><p>By default, the migration process will remove data from the source once it has confirmed it has been copied to the destination and the metadata has been updated in the anchore db. To skip the deletion on the source, use the &lsquo;&ndash;nodelete&rsquo; option. it is the safest option, but if you use it, you are responsible for removing the data later.</p><pre><code>[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} migrate /config/config.yaml /config/dest-config.yaml 
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&quot;db_pool_size&quot;: 30, &quot;db_connect&quot;: &quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&quot;, &quot;db_connect_args&quot;: {&quot;ssl&quot;: false, &quot;connect_timeout&quot;: 120, &quot;timeout&quot;: 30}, &quot;db_pool_max_overflow&quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Loading configs
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration from config: {
+  &quot;storage_driver&quot;: {
+    &quot;config&quot;: {}, 
+    &quot;name&quot;: &quot;db&quot;
+  }, 
+  &quot;compression&quot;: {
+    &quot;enabled&quot;: false, 
+    &quot;min_size_kbytes&quot;: 100
+  }
+}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration to config: {
+  &quot;storage_driver&quot;: {
+    &quot;config&quot;: {
+      &quot;access_key&quot;: &quot;9EB92C7W61YPFQ6QLDOU&quot;, 
+      &quot;create_bucket&quot;: true, 
+      &quot;url&quot;: &quot;http://minio-ephemeral-test:9000/&quot;, 
+      &quot;region&quot;: false, 
+      &quot;bucket&quot;: &quot;anchore-engine-testing&quot;, 
+      &quot;prefix&quot;: &quot;internaltest&quot;, 
+      &quot;secret_key&quot;: &quot;TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s&quot;
+    }, 
+    &quot;name&quot;: &quot;s3&quot;
+  }, 
+  &quot;compression&quot;: {
+    &quot;enabled&quot;: true, 
+    &quot;min_size_kbytes&quot;: 100
+  }
+}
+Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)y
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Initializing migration from {'storage_driver': {'config': {}, 'name': 'db'}, 'compression': {'enabled': False, 'min_size_kbytes': 100}} to {'storage_driver': {'config': {'access_key': '9EB92C7W61YPFQ6QLDOU', 'create_bucket': True, 'url': 'http://minio-ephemeral-test:9000/', 'region': False, 'bucket': 'anchore-engine-testing', 'prefix': 'internaltest', 'secret_key': 'TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s'}, 'name': 's3'}, 'compression': {'enabled': True, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/migration_context()] [INFO] Initializing source object_store: {'storage_driver': {'config': {}, 'name': 'db'}, 'compression': {'enabled': False, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/migration_context()] [INFO] Initializing dest object_store: {'storage_driver': {'config': {'access_key': '9EB92C7W61YPFQ6QLDOU', 'create_bucket': True, 'url': 'http://minio-ephemeral-test:9000/', 'region': False, 'bucket': 'anchore-engine-testing', 'prefix': 'internaltest', 'secret_key': 'TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s'}, 'name': 's3'}, 'compression': {'enabled': True, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration Task Id: 1
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Entering main migration loop
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migrating 7 documents
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/policy_bundles/2c53a13c-1765-11e8-82ef-23527761d060
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/manifest_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/analysis_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/image_content_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/manifest_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/analysis_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/image_content_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration result summary: {&quot;last_state&quot;: &quot;running&quot;, &quot;executor_id&quot;: &quot;3209ad44d7bb:37:139731996518208:&quot;, &quot;archive_documents_migrated&quot;: 7, &quot;last_updated&quot;: &quot;2018-08-15T18:03:52.951364&quot;, &quot;online_migration&quot;: null, &quot;created_at&quot;: &quot;2018-08-15T18:03:52.951354&quot;, &quot;migrate_from_driver&quot;: &quot;db&quot;, &quot;archive_documents_to_migrate&quot;: 7, &quot;state&quot;: &quot;complete&quot;, &quot;migrate_to_driver&quot;: &quot;s3&quot;, &quot;ended_at&quot;: &quot;2018-08-15T18:03:53.720554&quot;, &quot;started_at&quot;: &quot;2018-08-15T18:03:52.949956&quot;, &quot;type&quot;: &quot;archivemigrationtask&quot;, &quot;id&quot;: 1}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] After this migration, your anchore-engine config.yaml MUST have the following configuration options added before starting up again:
+compression:
+  enabled: true
+  min_size_kbytes: 100
+storage_driver:
+  config:
+    access_key: 9EB92C7W61YPFQ6QLDOU
+    bucket: anchore-engine-testing
+    create_bucket: true
+    prefix: internaltest
+    region: false
+    secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+    url: http://minio-ephemeral-test:9000/
+  name: s3
+</code></pre><p><strong>Note:</strong> If something goes wrong you can reverse the parameters of the migrate command to migrate back to the original configuration (e.g. &mldr; migrate /config/dest-config.yaml /config/config.yaml)</p><h4 id=step-5-get-coffee>Step 5: Get coffee!</h4><p>The migration time will depend on the amount of data and the source and destination systems performance.</p><h4 id=step-6-view-results-summary>Step 6: View results summary</h4><pre><code>[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} list-migrations
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&quot;db_pool_size&quot;: 30, &quot;db_connect&quot;: &quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&quot;, &quot;db_connect_args&quot;: {&quot;ssl&quot;: false, &quot;connect_timeout&quot;: 120, &quot;timeout&quot;: 30}, &quot;db_pool_max_overflow&quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+id         state                  start time                         end time                 from        to        migrated count        total to migrate               last updated               
+1         complete        2018-08-15T18:03:52.949956        2018-08-15T18:03:53.720554         db         s3              7                      7                2018-08-15T18:03:53.724628   
+</code></pre><p>This lists all migrations for the service and the number of objects migrated. If you&rsquo;ve run multiple migrations you&rsquo;ll see multiple rows in this response.</p><h3 id=step-7-replace-old-configyaml-with-updated-dest-configyaml>Step 7: Replace old config.yaml with updated dest-config.yaml</h3><pre><code>[root@3209ad44d7bb ~]# cp /config/config.yaml /config/config.old.yaml
+[root@3209ad44d7bb ~]# cp /config/dest-config.yaml /config/config.yaml
+</code></pre><h4 id=step-8-restart-anchore-engine-services>Step 8: Restart anchore-engine services</h4><p><code>[user@host aevolume]$ docker-compose start anchore-engine</code></p><p>The system should now be up and running using the new configuration! You can verify with the anchore-cli by fetching a policy bundle, which will have been migrated:</p><pre><code>[root@d8d3f49d9328 /]# anchore-cli policy list
+Policy ID                                   Active        Created                     Updated                     
+2c53a13c-1765-11e8-82ef-23527761d060        True          2018-08-15T17:16:33Z        2018-08-15T18:11:01Z        
+[root@d8d3f49d9328 /]# anchore-cli policy get 2c53a13c-1765-11e8-82ef-23527761d060 --detail
+{
+    &quot;blacklisted_images&quot;: [], 
+    &quot;comment&quot;: &quot;Default bundle&quot;, 
+    &quot;id&quot;: &quot;2c53a13c-1765-11e8-82ef-23527761d060&quot;, 
+... &lt;lots of json&gt;
+</code></pre><p>If that returns the content properly, then you&rsquo;re all done!</p><h3 id=things-to-watch-for-in-a-multi-node-anchore-engine-installation>Things to Watch for in a Multi-Node Anchore Engine Installation</h3><ul><li>Before migration:
+Ensure all services are down before starting migration</li><li>At migration:
+Ensure the place you&rsquo;re running the migration from has the same db access and network access to the archive locations</li><li>After migration:
+Ensure that all components get the update config.yaml. Strictly speaking, only containers that run the catalog service need the update configuration, but its best to ensure that any config.yaml in the system which has a services.catalog definition also has the proper and up-to-date configuration to avoid confusion or accidental reverting of the config.</li></ul><h3 id=example-process-with-docker-compose>Example Process with docker-compose</h3><pre><code># ls docker-compose.yaml 
+docker-compose.yaml
+
+# docker-compose ps
+              Name                            Command               State                       Ports                     
+--------------------------------------------------------------------------------------------------------------------------
+aevolumepy3_anchore-db_1           docker-entrypoint.sh postgres    Up      5432/tcp                                      
+aevolumepy3_anchore-engine_1       /bin/sh -c anchore-engine        Up      0.0.0.0:8228-&gt;8228/tcp, 0.0.0.0:8338-&gt;8338/tcp
+aevolumepy3_anchore-minio_1        /usr/bin/docker-entrypoint ...   Up      0.0.0.0:9000-&gt;9000/tcp                        
+aevolumepy3_anchore-prometheus_1   /bin/prometheus --config.f ...   Up      0.0.0.0:9090-&gt;9090/tcp                        
+aevolumepy3_anchore-redis_1        docker-entrypoint.sh redis ...   Up      6379/tcp                                      
+aevolumepy3_anchore-ui_1           /bin/sh -c node /home/node ...   Up      0.0.0.0:3000-&gt;3000/tcp                        
+
+# docker-compose stop anchore-engine
+Stopping aevolume_anchore-engine_1 ... done
+
+# docker-compose run anchore-engine anchore-manager objectstorage --db-connect postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres check /config/config.yaml.new
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&quot;db_connect&quot;: &quot;postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres&quot;, &quot;db_connect_args&quot;: {&quot;timeout&quot;: 30, &quot;ssl&quot;: false}, &quot;db_pool_size&quot;: 30, &quot;db_pool_max_overflow&quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Using config file /config/config.yaml.new
+...
+...
+
+# docker-compose run anchore-engine anchore-manager objectstorage --db-connect postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres migrate /config/config.yaml /config/config.yaml.new
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&quot;db_connect&quot;: &quot;postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres&quot;, &quot;db_connect_args&quot;: {&quot;timeout&quot;: 30, &quot;ssl&quot;: false}, &quot;db_pool_size&quot;: 30, &quot;db_pool_max_overflow&quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Loading configs
+[MainThread] [anchore_engine.configuration.localconfig/validate_config()] [WARN] no webhooks defined in configuration file - notifications will be disabled
+[MainThread] [anchore_engine.configuration.localconfig/validate_config()] [WARN] no webhooks defined in configuration file - notifications will be disabled
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration from config: {
+  &quot;compression&quot;: {
+    &quot;enabled&quot;: false,
+    &quot;min_size_kbytes&quot;: 100
+  },
+  &quot;storage_driver&quot;: {
+    &quot;name&quot;: &quot;db&quot;,
+    &quot;config&quot;: {}
+  }
+}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration to config: {
+  &quot;compression&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;min_size_kbytes&quot;: 100
+  },
+  &quot;storage_driver&quot;: {
+    &quot;name&quot;: &quot;s3&quot;,
+    &quot;config&quot;: {
+      &quot;access_key&quot;: &quot;Z54LPSMFKXSP2E2L4TGX&quot;,
+      &quot;secret_key&quot;: &quot;EMaLAWLVhUmV/f6hnEqjJo5+/WeZ7ukyHaBKlscB&quot;,
+      &quot;url&quot;: &quot;http://anchore-minio:9000&quot;,
+      &quot;region&quot;: false,
+      &quot;bucket&quot;: &quot;anchorearchive&quot;,
+      &quot;create_bucket&quot;: true
+    }
+  }
+}
+Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N) y
+...
+...
+...
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration result summary: {&quot;last_updated&quot;: &quot;2018-08-14T22:19:39.985250&quot;, &quot;started_at&quot;: &quot;2018-08-14T22:19:39.984603&quot;, &quot;last_state&quot;: &quot;running&quot;, &quot;online_migration&quot;: null, &quot;archive_documents_migrated&quot;: 500, &quot;migrate_to_driver&quot;: &quot;s3&quot;, &quot;id&quot;: 9, &quot;executor_id&quot;: &quot;e9fc8f77714d:1:140375539468096:&quot;, &quot;ended_at&quot;: &quot;2018-08-14T22:20:03.957291&quot;, &quot;created_at&quot;: &quot;2018-08-14T22:19:39.985246&quot;, &quot;state&quot;: &quot;complete&quot;, &quot;archive_documents_to_migrate&quot;: 500, &quot;migrate_from_driver&quot;: &quot;db&quot;, &quot;type&quot;: &quot;archivemigrationtask&quot;}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] After this migration, your anchore-engine config.yaml MUST have the following configuration options added before starting up again:
+...
+...
+
+# cp config/config.yaml config/config.yaml.original
+
+# cp config/config.yaml.new config/config.yaml
+
+# docker-compose start anchore-engine
+Starting anchore-engine ... done
+</code></pre><h2 id=migrating-analysis-archive-data>Migrating Analysis Archive Data</h2><p>The object storage migration process migrates any data stored in the source config to the destination configuration, if
+the analysis archive is configured to use the same storage backend as the primary object store then that data is migrated
+along with all other data, but if the source or destination configurations define different storage backends for the
+analysis archive than that which is used by the primary object store, then additional paramters are necesary in the
+migration commands to indicate which configurations to migrate to/from.</p><p>The most common migration patterns are:</p><ol><li><p>Migrate from a single backend configuration to a split configuration to move analysis archive data to an external system (db -> db + s3)</p></li><li><p>Migrate from a dual-backend configuration to a single-backend configuration with a different config (e.g. db + s3 -> s3)</p></li></ol><h3 id=migrating-a-single-backend-to-split-backend>Migrating a single backend to split backend</h3><p>For example, moving from unified db backend (default config) to a db + s3 configuration with s3 for the analysis archive .</p><p>source-config.yaml snippet:</p><pre><code>...
+services:
+...
+  catalog:
+    ...
+    object_store:
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: db
+        config: {}        
+...
+
+</code></pre><p>dest-config.yaml snippet:</p><pre><code>...
+services:
+...
+  catalog:
+    ...
+    object_store:
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: db
+        config: {}
+    analysis_archive:
+      enabled: true
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: s3
+        config: 
+          access_key: 9EB92C7W61YPFQ6QLDOU
+          secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+          url: 'http://minio-ephemeral-test:9000'
+          region: null
+          bucket: analysisarchive
+      ...   
+
+</code></pre><p>Anchore stores its internal data in logical &lsquo;buckets&rsquo; that are overlayed onto the storage backed in a driver-specific
+way, so to migrate specific internal buckets (effectively these are classes of data), use the &ndash;bucket option in the
+manager cli. This should generally not be necessary, but for specific kinds of migrations it may be needed.</p><p>The following command will execute the migration. Note that the &ndash;bucket option is for an internal Anchore logical-bucket, not
+and actual bucket in S3:</p><pre><code>anchore-manager objectstorage --db-connect migrate --to-analysis-archive --bucket analysis_archive source-config.yaml dest-config.yaml
+</code></pre><h3 id=migrating-from-dual-object-storage-backends-to-a-single-backend>Migrating from dual object storage backends to a single backend</h3><p>For example, migrating from a db + s3 backend to a single s3 backend in a different bucket:</p><p>Example source-config.yaml snippet:</p><pre><code>...
+services:
+...
+  catalog:
+    ...
+    object_store:
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: db
+        config: {}
+    analysis_archive:
+      enabled: true
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: s3
+        config: 
+          access_key: 9EB92C7W61YPFQ6QLDOU
+          secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+          url: 'http://minio-ephemeral-test:9000'
+          region: null
+          bucket: analysisarchive        
+...
+
+</code></pre><p>The dest config is a single backend. In this case, note the S3 bucket has changed so all data must be migrated.</p><p>Example dest-config.yaml snippet:</p><pre><code>...
+services:
+...
+  catalog:
+    ...
+    object_store:
+      enabled: true
+      compression:
+        enabled: false
+        min_size_kbytes: 100
+      storage_driver:
+        name: s3
+        config: 
+          access_key: 9EB92C7W61YPFQ6QLDOU
+          secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+          url: 'http://minio-ephemeral-test:9000'
+          region: null
+          bucket: newanchorebucket
+      ...
+
+</code></pre><p>First, migrate the object data in the db on the source:</p><pre><code>anchore-manager objectstorage --db-connect migrate source-config.yaml dest-config.yaml
+</code></pre><p>Next, migrate the object data in the analysis archive from the old config (s3 bucket &lsquo;analysisarchive&rsquo; to the new config
+(s3 bucket &lsquo;newanchorebucket&rsquo;):</p><pre><code>anchore-manager objectstorage --db-connect migrate --from-analysis-archive source-config.yaml dest-config.yaml  
+
+</code></pre><div class="text-muted mt-5 pt-3 border-top">Last modified November 23, 2020: <a href=https://github.com/anchore/anchore-engine/commit/9dabbe730868b41c29991115d761b9a59933389c>Initial rough impl adding engine docs directory (9dabbe73)</a></div></div></main></div></div><footer class="bg-dark py-4 row d-print-none"><div class="container-fluid mx-sm-3"><div class=row><div class="col-6 col-sm-4 text-xs-center order-sm-2"></div><div class="col-6 col-sm-4 text-right text-xs-center order-sm-3"><ul class="list-inline mb-0"><li class="list-inline-item mx-2 h3" data-toggle=tooltip data-placement=top title=Slack><a class=link-white target=_blank href=https://anchore.com/slack><i class="fab fa-slack"></i></a></li><li class="list-inline-item mx-2 h3" data-toggle=tooltip data-placement=top title=GitHub><a class=link-white target=_blank href=https://github.com/anchore/anchore-engine><i class="fab fa-github"></i></a></li><li class="list-inline-item mx-2 h3" data-toggle=tooltip data-placement=top title="Anchore, Inc."><a class=link-white target=_blank href=https://anchore.com><i class="fas fa-university"></i></a></li></ul></div><div class="col-12 col-sm-4 text-center py-2 order-sm-2"><small class=text-white>&copy; 2020 Anchore Inc All Rights Reserved</small>
+<small class=ml-1><a href=https://anchore.com/privacy>Privacy Policy</a></small></div></div></div></footer></div><script src=https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js integrity=sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49 crossorigin=anonymous></script><script src=https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js integrity=sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy crossorigin=anonymous></script><script src=/js/main.min.b4d3ede36a772c3819749f5af3fe521f735af2871639b3d6d5bfe26904c36057.js integrity="sha256-tNPt42p3LDgZdJ9a8/5SH3Na8ocWObPW1b/iaQTDYFc="></script></body></html>

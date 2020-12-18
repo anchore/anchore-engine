@@ -1,0 +1,247 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Installation</title><link>/docs/install/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/</link></image><atom:link href="/docs/install/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Install with Docker Compose</title><link>/docs/install/docker_compose/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/docker_compose/</guid><description>
+&lt;p>For using Docker Compose for installation, see the &lt;a href="/docs/quickstart/">Engine Quickstart Guide&lt;/a>&lt;/p></description></item><item><title>Docs: Install with Helm on Kubernetes</title><link>/docs/install/helm/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/helm/</guid><description>
+&lt;p>The Anchore Engine Helm chart can be found in the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine">anchore-charts repository&lt;/a>.&lt;/p>
+&lt;p>The &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> in the chart repository should always be consulted before proceeding with installation or upgrades.&lt;/p>
+&lt;h3 id="background">Background&lt;/h3>
+&lt;p>Helm is the package manager for Kubernetes, inspired by packaged managers such as homebrew, yum, npm and apt. Applications are packaged in Charts which are a collection of files that contain the definition and configuration of resources to be deployed to a Kubernetes cluster. Helm was created by Deis who donated the project to the Cloud Native Computing Foundation (CNCF).&lt;/p>
+&lt;p>Helm makes it simple to package and deploy applications to be deployed including versioning. upgrade and rollback of applications. Helm does not replace Docker images, in fact docker images are deployed by Helm into a kubernetes cluster.&lt;/p>
+&lt;p>Helm is comprised a client side component, Helm, which helps with creating, installing, and managing applications inside of Kubernetes. Helm applications, packaged as charts, can be deployed and managed using a single command:&lt;/p>
+&lt;p>&lt;code>helm install myAppName myApp&lt;/code>&lt;/p>
+&lt;h3 id="requirements">Requirements&lt;/h3>
+&lt;p>The following guide requires:&lt;/p>
+&lt;ul>
+&lt;li>A running Kubernetes Cluster&lt;/li>
+&lt;li>kubectl configured to access your Kubernetes cluster&lt;/li>
+&lt;li>Helm binary installed and available in your path&lt;/li>
+&lt;/ul>
+&lt;h3 id="installation">Installation&lt;/h3>
+&lt;p>First, the official stable repository needs to be added to your helm client.&lt;/p>
+&lt;pre>&lt;code>helm repo add stable https://kubernetes-charts.storage.googleapis.com
+&lt;/code>&lt;/pre>&lt;p>Next we need to ensure that we have an up to date list of Helm Charts.&lt;/p>
+&lt;pre>&lt;code>$ helm repo update
+Hang tight while we grab the latest from your chart repositories...
+...Skip local chart repository
+...Successfully got an update from the &amp;quot;stable&amp;quot; chart repository
+Update Complete. ⎈ Happy Helming!⎈
+&lt;/code>&lt;/pre>&lt;p>By default, the Anchore Engine chart will deploy a single pod for each Anchore Engine service along with a PostgreSQL database container. This behavior can be overridden if you have an existing PostgreSQL service available, see the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> for more details.&lt;/p>
+&lt;p>In this example we will deploy the database, and a single pod of every Open Source Anchore Engine service. Please refer to the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> for more sophisticated deployments including scaling options.&lt;/p>
+&lt;p>The installation can be completed with the following commands:&lt;/p>
+&lt;pre>&lt;code>$ helm repo add anchore https://charts.anchore.io
+$ helm install anchore-demo anchore/anchore-engine
+&lt;/code>&lt;/pre>&lt;p>The Helm installation should complete in a matter of seconds after which time it will output details of the deployed resources showing the secrets, configMaps, volumes, services, deployments and pods that have been created.&lt;/p>
+&lt;p>In addition some further help text providing URLs and a quick start will be displayed.&lt;/p>
+&lt;p>Running helm list (or helm ls) will show your deployment&lt;/p>
+&lt;pre>&lt;code>$ helm ls
+NAME NAMESPACE REVISION UPDATED STATUS CHART APP VERSION
+anchore-demo default 1 2019-12-10 10:14:39.920361 -0800 PST deployed anchore-engine-1.4.0 0.6.0
+&lt;/code>&lt;/pre>&lt;p>We can use kubectl to show the deployments on the kubernetes cluster.&lt;/p>
+&lt;pre>&lt;code>$ kubectl get deployments
+NAME DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
+anchore-demo-anchore-engine-analyzer 1/1 1 1 5m
+anchore-demo-anchore-engine-api 1/1 1 1 5m
+anchore-demo-anchore-engine-catalog 1/1 1 1 5m
+anchore-demo-anchore-engine-policy 1/1 1 1 5m
+anchore-demo-anchore-engine-simplequeue 1/1 1 1 5m
+anchore-demo-postgresql 1/1 1 1 5m
+&lt;/code>&lt;/pre>&lt;p>When the engine is started for the first time it will perform a full synchronization of feed data, including CVE vulnerability data. This first sync may last for several hours during which time the Anchore Engine can analyze images but not perform policy evaluation or CVE reporting until successful completion of the feed sync.&lt;/p>
+&lt;p>The Anchore Engine exposes a REST API however the easiest way to interact with the Anchore Engine is through the Anchore CLI which can be installed using Python PiP.&lt;/p>
+&lt;pre>&lt;code>$ pip install anchorecli
+&lt;/code>&lt;/pre>&lt;p>Documentation for installing the CLI can be found in following document.&lt;/p>
+&lt;p>The Anchore CLI can be configured using command line options, environment variables or a configuration file. See the CLI documentation for details.&lt;/p>
+&lt;p>In this example we will use environment variables.&lt;/p>
+&lt;pre>&lt;code>export ANCHORE_CLI_USER=admin
+export ANCHORE_CLI_PASS=foobar
+&lt;/code>&lt;/pre>&lt;p>The password can be retrieved from kubernetes by accessing the secrets passed to the container.&lt;/p>
+&lt;pre>&lt;code>export ANCHORE_CLI_PASS=$(kubectl get secret --namespace default anchore-demo-anchore-engine -o jsonpath=&amp;quot;{.data.ANCHORE_ADMIN_PASSWORD}&amp;quot; | base64 --decode; echo)
+&lt;/code>&lt;/pre>&lt;p>Note: The deployment name in this example, anchore-demo-anchore-engine, was retrieved from the output of the helm installation or helm status command.&lt;/p>
+&lt;p>The helm installation or status command will also show the Anchore Engine URL, which is accessible from within the kubernetes cluster. For example:&lt;/p>
+&lt;pre>&lt;code>export ANCHORE_CLI_URL=http://anchore-demo-anchore-engine.default.svc.cluster.local:8228/v1/
+&lt;/code>&lt;/pre>&lt;p>To access the Anchore Engine API, get the name of the API service and then use port forwarding to make the API accessible through your localhost.&lt;/p>
+&lt;pre>&lt;code>$ kubectl get service
+NAME TYPE CLUSTER-IP EXTERNAL-IP PORT(S) AGE
+anchore-anchore-engine-api ClusterIP 10.0.12.49 &amp;lt;none&amp;gt; 8228/TCP 33h
+&lt;/code>&lt;/pre>&lt;pre>&lt;code>$ kubectl port-forward svc/anchore-demo-anchore-engine-api 8228:8228
+&lt;/code>&lt;/pre>&lt;p>In this example the Anchore URL should be set to:&lt;/p>
+&lt;pre>&lt;code>export ANCHORE_CLI_URL=http://localhost:8228/v1
+&lt;/code>&lt;/pre>&lt;p>Now you can use the Anchore CLI to analyze and report on images.&lt;/p></description></item><item><title>Docs: Anchore CLI</title><link>/docs/install/anchore_cli/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/anchore_cli/</guid><description>
+&lt;h3 id="overview">Overview&lt;/h3>
+&lt;p>The Anchore CLI is published as a Python Package that can be installed from source from the Python PyPI package repository on any platform supporting PyPi.&lt;/p>
+&lt;h4 id="installing-anchore-cli-on-centos-and-red-hat-enterprise-linux">Installing Anchore CLI on CentOS and Red Hat Enterprise Linux&lt;/h4>
+&lt;pre>&lt;code>sudo yum install -y epel-release
+sudo yum install -y python-pip
+pip install --user --upgrade anchorecli
+&lt;/code>&lt;/pre>&lt;h4 id="installing-anchore-cli-on-debian-and-ubuntu">Installing Anchore CLI on Debian and Ubuntu&lt;/h4>
+&lt;pre>&lt;code>sudo apt-get update
+sudo apt-get install python-pip
+pip install --user --upgrade anchorecli
+&lt;/code>&lt;/pre>&lt;h4 id="installing-anchore-cli-on-mac-osx">Installing Anchore CLI on Mac osX&lt;/h4>
+&lt;pre>&lt;code>sudo easy_install pip
+pip install --user --upgrade anchorecli
+&lt;/code>&lt;/pre>&lt;h4 id="installing-the-anchore-cli-from-source">Installing the ANCHORE CLI from source&lt;/h4>
+&lt;pre>&lt;code>git clone https://github.com/anchore/anchore-cli
+cd anchore-cli
+pip install --user --upgrade .
+&lt;/code>&lt;/pre>&lt;h4 id="setting-the-path">Setting the Path&lt;/h4>
+&lt;p>Once installed the anchore-cli utility has been installed you may need to adjust your PATH to ensure that the anchore-cli executable is in the user&amp;rsquo;s path.&lt;/p>
+&lt;p>The install location is system dependent, governed by PIP and may vary based the distribution on which you are running.
+The most common default locations are:&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Apple macOS:&lt;/strong> $HOME/Library/Python/2.7/bin&lt;/li>
+&lt;li>&lt;strong>Linux:&lt;/strong> $/HOME/.local/bin&lt;/li>
+&lt;/ul>
+&lt;p>You can verify the install location by running the following command:&lt;/p>
+&lt;pre>&lt;code>$ python -m site --user-base
+/home/myusername/.local
+&lt;/code>&lt;/pre>&lt;p>Executable files installed by pip &amp;ndash;user will be placed in the bin sub directory.&lt;/p>
+&lt;h4 id="configuring-the-anchore-cli">Configuring the Anchore CLI&lt;/h4>
+&lt;p>Once the Anchore CLI has been installed it should be configured to access the Anchore Engine.&lt;/p>
+&lt;p>See &lt;a href="/docs/install/anchore_cli/cli_config/">Configuring the Anchore CLI&lt;/a>.&lt;/p></description></item><item><title>Docs: Requirements</title><link>/docs/install/requirements/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>This section details the requirements needed to run Anchore Enterprise&lt;/p>
+&lt;h3 id="database">Database&lt;/h3>
+&lt;p>The Anchore Engine requires PostgreSQL version 9.6 or higher database to provide persistent storage for image, policy and analysis data.&lt;/p>
+&lt;p>This database can be run in a container, as configured in the example Docker Compose file or can be provided as an external service to the Anchore Engine.
+PostgreSQL compatible databases such as Amazon RDS for PostgreSQL can be used for highly scalable cloud deployments.&lt;/p>
+&lt;h3 id="memory">Memory&lt;/h3>
+&lt;p>The Anchore Engine container will typically operate at a steady state using less than 2 GB of memory. However under load and during large feed synchronization operations, memory usage may burst above 4GB. Anchore recommends a minimum of 8GB for each service, for production deployments.&lt;/p>
+&lt;h3 id="network">Network&lt;/h3>
+&lt;p>Anchore requires two categories of network access:&lt;/p>
+&lt;ul>
+&lt;li>Registry Access
+Network connectivity, including DNS resolution, to the registries from which the Anchore Engine needs to download images.&lt;/li>
+&lt;li>Feed Service
+The Anchore Engine synchronizes feed data such as operating system vulnerabilities (CVEs) from the Anchore Cloud Service. The initial synchronization may take 5 to 10 minutes, based on network speed, after which time the Anchore Engine will download updated feed data at a user configurable interval, by default every 4 hours. Only a single end point is required for this synchronization, host: ancho.re TCP port: 443&lt;/li>
+&lt;/ul>
+&lt;h3 id="security">Security&lt;/h3>
+&lt;p>Anchore is deployed as container images that can be run manually, using Docker Compose, Kubernetes or any container platform that supports Docker compatible images.&lt;/p>
+&lt;p>By default, the Anchore does not require any special permissions and can be run as an unprivileged container with no access to the underlying Docker host.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Anchore can be configured to pull images through the Docker Socket however this is not a recommended configuration as it grants the Anchore container added privileges and may incur a performance impact on the Docker Host.&lt;/p>
+&lt;h3 id="storage">Storage&lt;/h3>
+&lt;p>Anchore uses a PostgreSQL database to store persistent data for images, tags, policies, subscriptions and other artifacts. One persistent storage volume is required for configuration information and two optional storage volumes may be provided as described below.&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Configuration volume&lt;/strong>
+This volume is used to provide persistent storage to the container from which it will read its configuration files and optionally certificates. &lt;em>Requirement&lt;/em>: Less than 1MB&lt;/li>
+&lt;li>[Optional] &lt;strong>Temporary storage&lt;/strong>
+The temporary storage volume is recommended but not required. During the analysis of images Anchore Engine downloads and extracts all of the layers required for an image. These layers are extracted and analyzed after which the layers and extracted data are deleted. If a temporary storage is not configured then the container&amp;rsquo;s ephemeral storage will be used to store temporary files, however performance is likely be improved by using a dedicated volume. A temporary storage volume may also be used for image layer caching to speed up analysis. Requirement: 3 times the uncompressed image size to be analyzed. &lt;em>Note&lt;/em>: For container hosts using OverlayFS or OverlayFS2 storage with a kernel older than 4.13 a temporary volume is required to work around a kernel driver bug.&lt;/li>
+&lt;li>[Optional] &lt;strong>Object storage&lt;/strong>
+The Anchore Engine stores documents containing archives of image analysis data and policies as JSON documents. By default these documents are be stored within the PostgreSQL database however the Anchore Engine can be configured to store archive documents in a filesystem (volume), S3 Object store, or Swift Object Store. &lt;em>Requirement&lt;/em>: Number of images x 10MB (estimated).&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Configuring Anchore</title><link>/docs/install/configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>Anchore engine services require a single configuration which is ready from /config/config.yaml when each service starts up. Settings in this file are mostly related to static settings that are fundamental to the deployment of anchore-engine services, and are most often updated when the system is being initially tuned for a deployment (and very infrequently need to be updated after they have been set as appropriate for any given deployment of anchore-engine). By default, anchore-engine includes a config.yaml that is functional out of the box, with some parameters set to an environment variable for common site-specific settings (which are then set either in docker-compose.yaml, by the Helm chart, or as appropriate for other orchestration/deployment tools).&lt;/p>
+&lt;p>To review an example config.yaml that will be embedded in the anchore engine container image (default config), see &lt;a href="https://github.com/anchore/anchore-engine/blob/master/conf/default_config.yaml">the config.yaml on github&lt;/a> and an associated example &lt;a href="https://github.com/anchore/anchore-engine/blob/master/docker-compose.yaml">docker-compose.yaml on github&lt;/a> which sets several environment variables required by the default config.yaml.&lt;/p>
+&lt;p>Jump to the following configuration guide below:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/configuration/config/">General Anchore Engine Configuration&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/configuration/using_env_vars/">Environment Variable Substitution&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/configuration/custom_certs/">Custom Certificates&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/configuration/tls_ssl_config/">TLS / SSL&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/configuration/network_proxies/">Network Proxies&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>NOTE&lt;/strong> - The latest default configuration file can always be extracted from the Anchore Engine container to review the latest options and environment overrides using the following process:&lt;/p>
+&lt;pre>&lt;code># docker pull docker.io/anchore/anchore-engine:latest
+# docker create --name ae docker.io/anchore/anchore-engine:latest
+# docker cp ae:/config/config.yaml /tmp/my-config.yaml
+# docker rm ae
+# cat /tmp/my-config.yaml
+...
+...
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Storage Overview</title><link>/docs/install/storage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/</guid><description>
+&lt;h2 id="storage-during-analysis">Storage During Analysis&lt;/h2>
+&lt;h3 id="scratch-space">Scratch Space&lt;/h3>
+&lt;p>Anchore uses a local directory for image analysis operations including downloading layers and unpacking the image content
+for the analysis process. This space is necessary on each analyzer worker service and should not be shared. The scratch
+space is ephemeral and can have its lifecycle bound to that of the service container.&lt;/p>
+&lt;h3 id="layer-cache">Layer Cache&lt;/h3>
+&lt;p>The layer cache is an extension of the analyzer&amp;rsquo;s scratch space that is used to cache layer downloads to reduce analysis
+time and network usage during the analysis process itself. See: &lt;a href="/docs/install/storage/layer_caching/">Layer Caching&lt;/a>&lt;/p>
+&lt;h2 id="storing-analysis-results">Storing Analysis Results&lt;/h2>
+&lt;p>Anchore Engine is a data intensive system and uses external storage systems for all data persistence. None of the services
+are stateful in themselves.&lt;/p>
+&lt;p>For structured data that must be quickly queried and indexed, Anchore relies on PostgreSQL as its primary data store. Any
+database that is compatible with PostgresSQL 9.6+ should work (e.g. Amazon Aurora, Google Cloud SQL,&amp;hellip;).&lt;/p>
+&lt;p>See: &lt;a href="/docs/install/storage/database/">Database&lt;/a>&lt;/p>
+&lt;p>For less structured data, Anchore implements an internal object store that can be overlayed on different backend providers,
+but defaults to also using the main postgres db to reduce the out-of-the-box dependencies. However, S3 and Swift APIs are
+both supported for leveraging external systems.&lt;/p>
+&lt;p>For more information on configuration and requirements for the core database and object stores see: &lt;a href="/docs/install/storage/object_store/">Object Storage&lt;/a>&lt;/p>
+&lt;h2 id="analysis-archive">Analysis Archive&lt;/h2>
+&lt;p>To aid in capacity management, anchore provides a separate storage location that completed image analysis can be moved to
+in order to reduce consumption of database capacity and primary object storage and remove the analysis from most API actions
+but make it available to restore into the primary storage systems in the future as needed. The analysis archive is
+configured as an alternate object store. See: &lt;a href="/docs/install/storage/analysis_archive/">Configuring Analysis Archive&lt;/a> for more information.&lt;/p></description></item><item><title>Docs: Upgrading Anchore Engine</title><link>/docs/install/upgrade/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/upgrade/</guid><description>
+&lt;p>The anchore-engine is distributed as a &lt;a href="https://hub.docker.com/r/anchore/anchore-engine">Docker Image&lt;/a>, which is comprised of smaller micro-services that can be deployed in a single container or scaled out to handle load.&lt;/p>
+&lt;p>The latest version of the anchore-engine image will be tagged with both the latest tag and a version number. For example &lt;strong>latest&lt;/strong> and &lt;strong>v0.7.1&lt;/strong>.&lt;/p>
+&lt;p>To retrieve the version of a running anchore-engine the system status command can be run.&lt;/p>
+&lt;pre>&lt;code># anchore-cli system status
+...
+...
+...
+Engine DB Version: 0.0.13
+Engine Code Version: 0.7.0
+&lt;/code>&lt;/pre>&lt;p>In this example the anchore-engine is version 0.7.0 and the database schema is version 0.0.13. In cases where the database schema is changed between releases of the anchore-engine, the engine will upgrade the database schema at launch.&lt;/p>
+&lt;h3 id="pre-upgrade-procedure">Pre-upgrade Procedure&lt;/h3>
+&lt;p>Prior to upgrading anchore-engine, we highly recommend performing a database backup/snapshot by stopping your anchore-engine installation, and backing up the anchore engine database in its entirely. There is no automatic downgrade capability in anchore-engine, thus the only way to downgrade after an upgrade (whether it succeeds or fails) is to restore your database contents to a state from a prior version of anchore-engine, and explicitly run the compatible version of anchore-engine against the corresponding database contents.&lt;/p>
+&lt;p>Whether or not you wish to have the ability to downgrade, we recommend backing up your anchore-engine database prior to upgrading the software as a best practice.&lt;/p>
+&lt;h3 id="upgrade-procedure-for-deployments-using-helm">Upgrade Procedure (for deployments using Helm)&lt;/h3>
+&lt;p>For the latest upgrade instructions using the Helm chart, please refer to the official Anchore Helm Chart documentation&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine">Anchore Helm Chart&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrade-procedure-example-with-docker-compose">Upgrade Procedure (example with docker-compose)&lt;/h3>
+&lt;ol>
+&lt;li>Stop all running instances of the Anchore Engine&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code># docker-compose down
+&lt;/code>&lt;/pre>&lt;ol start="2">
+&lt;li>Make a copy of your original docker-compose.yaml file as backup&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code># cp docker-compose.yaml docker.compose.yaml.backup
+&lt;/code>&lt;/pre>&lt;ol start="3">
+&lt;li>Pull the desired version of anchore-engine container image&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code># docker pull docker.io/anchore/anchore-engine:v0.7.1
+&lt;/code>&lt;/pre>&lt;ol start="4">
+&lt;li>Download the latest docker-compose.yaml&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code># curl https://docs.anchore.com/current/docs/quickstart/docker-compose.yaml
+&lt;/code>&lt;/pre>&lt;ol start="5">
+&lt;li>
+&lt;p>Review the latest docker-compose.yaml and merge any edits/changes from your original docker-compose.yaml.backup to the latest docker-compose.yaml&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Restart the Anchore Engine containers&lt;/p>
+&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code># docker-compose up -d
+&lt;/code>&lt;/pre>&lt;p>To monitor the progress of your upgrade, you can watch the docker logs from your anchore-engine container, where you should see some initial output indicating whether or not an upgrade is needed or being performed, followed by the regular anchore-engine log output.&lt;/p>
+&lt;pre>&lt;code># docker-compose logs -f anchore-engine
+&lt;/code>&lt;/pre>&lt;p>Once completed, you can review the new state of your engine to verify the new version is running using the regular system status command.&lt;/p>
+&lt;pre>&lt;code># anchore-cli system status
+...
+...
+...
+Engine DB Version: 0.0.13
+Engine Code Version: 0.7.1
+&lt;/code>&lt;/pre>&lt;h3 id="advanced--manual-upgrade-procedure">Advanced / Manual Upgrade Procedure&lt;/h3>
+&lt;p>If for any reason the automated upgrade fails, or you would like to perform the upgrade of the anchore database manually, you can use the following (general) procedure. This should only be done by advanced operators after backing up the anchore database, ensuring that the anchore database is up and running, and that all running anchore-engine components are stopped.&lt;/p>
+&lt;ul>
+&lt;li>Install the desired anchore-engine container manually&lt;/li>
+&lt;li>Run the anchore-engine container but override the entrypoint to run an interactive shell instead of the default &amp;lsquo;anchore-manager service start&amp;rsquo; entrypoint command&lt;/li>
+&lt;li>Manually execute the database upgrade command, using the appropriate db_connect string. For example, if using Postgres, the db_connect string will look like &lt;code>postgresql://$ANCHORE_DB_HOST/$ANCHORE_DB_NAME?user=$ANCHORE_DB_USER&amp;amp;password=$ANCHORE_DB_PASSWORD&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code># anchore-manager db --db-connect &amp;quot;postgresql://$ANCHORE_DB_HOST/$ANCHORE_DB_NAME?user=$ANCHORE_DB_USER&amp;amp;password=$ANCHORE_DB_PASSWORD&amp;quot; upgrade
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_connect_args&amp;quot;: {&amp;quot;timeout&amp;quot;: 86400, &amp;quot;ssl&amp;quot;: false}, &amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+...
+...
+&lt;/code>&lt;/pre>&lt;ul>
+&lt;li>The output will indicate whether or not a DB upgrade is needed, prompt for confirmation if it is, and will display upgrade progress output before completing.&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Considerations</title><link>/docs/install/considerations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/considerations/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>Depending on where you choose to install Anchore Engine, there are some special considerations. Jump to the following section below:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/considerations/mac_special_considerations/">Mac Special Considerations&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/considerations/rhel_special_considerations/">RHEL Special Considerations&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

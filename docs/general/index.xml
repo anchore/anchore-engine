@@ -1,0 +1,22 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Overview</title><link>/docs/general/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/</link></image><atom:link href="/docs/general/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Concepts</title><link>/docs/general/concepts/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/</guid><description>
+&lt;h3 id="what-is-anchore-engine">What is Anchore Engine?&lt;/h3>
+&lt;p>&lt;strong>&lt;em>Anchore Engine&lt;/em>&lt;/strong> is an open-source Docker container static analysis and policy-based compliance tool that automates the inspection, analysis, and evaluation of images against user-defined checks to allow high confidence in container deployments by ensuring workload content meets the required criteria. Anchore Engine ultimately provides a policy evaluation result for each image: pass/fail against policies defined by the user. Additionally, the way that policies are defined and evaluated allows the policy evaluation itself to double as an audit mechanism that allows point-in-time evaluations of specific image properties and content attributes.&lt;/p>
+&lt;h3 id="how-does-it-work">How does it work?&lt;/h3>
+&lt;p>Anchore takes a data-driven approach to analysis and policy enforcement. The system essentially has discrete phases for each image analyzed:&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Fetch&lt;/strong> the image content and extract it, but never execute it&lt;/li>
+&lt;li>&lt;strong>Analyze&lt;/strong> the image by running a set of Anchore analyzers over the image content to extract and classify as much metadata as possible&lt;/li>
+&lt;li>&lt;strong>Save&lt;/strong> the resulting analysis in the database for future use and audit&lt;/li>
+&lt;li>&lt;strong>Evaluate&lt;/strong> policies against the analysis result, including vulnerability matches on the artifacts discovered in the image&lt;/li>
+&lt;li>&lt;strong>Update&lt;/strong> to the latest external data used for policy evaluation and vulnerability matches (we call this external data sync a feed sync), and automatically update image analysis results against any new data found upstream.&lt;/li>
+&lt;li>&lt;strong>Notify&lt;/strong> users of changes to policy evaluations and vulnerability matches
+Repeat 5 &amp;amp; 6 on intervals to ensure latest external data and updated image evaluations&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="../HowItWorks.png" alt="alt text">&lt;/p>
+&lt;p>The primary interface is a RESTful API that provides mechanisms to request analysis, policy evaluation, and monitoring of images in registries as well as query for image contents and analysis results. We also provide a CLI and its own container.&lt;/p>
+&lt;p>There are, generally speaking, two different ways to use Anchore, within its single API:&lt;/p>
+&lt;ul>
+&lt;li>Interactive Mode - Use the APIs to explicitly request an image analysis, get a policy evaluation and content reports, but the engine only performs operations when specifically requested by a user&lt;/li>
+&lt;li>Watch Mode - Use the APIs to configure Anchore Engine to poll specific registries and repositories/tags to watch for new images added and automatically pull and evaluate them, emitting notifications when a given tag&amp;rsquo;s vulnerability or policy evaluation state changes&lt;/li>
+&lt;/ul>
+&lt;p>With these two modes of operation, integration into CI/CD with Interative Mode or less intrusive watching of production image repositories with Watch Mode, Anchore can be easily integrated into most environments and processes.&lt;/p></description></item></channel></rss>

@@ -1,0 +1,134 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Image Analysis Process</title><link>/docs/general/concepts/images/analysis/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/concepts/images/analysis/</link></image><atom:link href="/docs/general/concepts/images/analysis/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Malware Scanning</title><link>/docs/general/concepts/images/analysis/malware_scanning/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/analysis/malware_scanning/</guid><description>
+&lt;h2 id="overview">Overview&lt;/h2>
+&lt;p>Anchore Engine now supports the use of the open-source &lt;a href="https://clamav.net">ClamAV&lt;/a> malware scanner to detect malicious code embedded in container images.
+This scan occurs only at analysis time when the image content itself is available, and the scan results are available via the Engine API as well as for consumption
+in new policy gates to allow gating of image with malware findings.&lt;/p>
+&lt;h2 id="signature-db-updates">Signature DB Updates&lt;/h2>
+&lt;p>Each analyzer service will run a malware signature update before analyzing each image. This does add some latency to the overall analysis time but ensures the signatures
+are as up-to-date as possible for each image analyzed. The update behavior can be disabled if you prefer to manage the freshness of the db via another route, such as a shared filesystem
+mounted to all analyzer nodes that is updated on a schedule. See the configuration section for details on disabling the db update.&lt;/p>
+&lt;p>The status of the db update is present in each scan output for each image.&lt;/p>
+&lt;h2 id="scan-results">Scan Results&lt;/h2>
+&lt;p>The &lt;code>malware&lt;/code> content type is a list of scan results. Each result is the run of a malware scanner, by default &lt;code>clamav&lt;/code>.&lt;/p>
+&lt;p>The list of files found to contain malware signature matches is in the &lt;code>findings&lt;/code> property of each scan result. An empty array value indicates no matches found.&lt;/p>
+&lt;p>The &lt;code>metadata&lt;/code> property provides generic metadata specific to the scanner. For the ClamAV implementation, this includes the version data about the signature db used and
+if the db update was enabled during the scan. If the db update is disabled, then the &lt;code>db_version&lt;/code> property of the metadata will not have values since the only way to get
+the version metadata is during a db update.&lt;/p>
+&lt;pre>&lt;code>{
+&amp;quot;content&amp;quot;: [
+{
+&amp;quot;findings&amp;quot;: [
+{
+&amp;quot;path&amp;quot;: &amp;quot;/somebadfile&amp;quot;,
+&amp;quot;signature&amp;quot;: &amp;quot;Unix.Trojan.MSShellcode-40&amp;quot;
+},
+{
+&amp;quot;path&amp;quot;: &amp;quot;/somedir/somepath/otherbadfile&amp;quot;,
+&amp;quot;signature&amp;quot;: &amp;quot;Unix.Trojan.MSShellcode-40&amp;quot;
+}
+],
+&amp;quot;metadata&amp;quot;: {
+&amp;quot;db_update_enabled&amp;quot;: true,
+&amp;quot;db_version&amp;quot;: {
+&amp;quot;bytecode&amp;quot;: &amp;quot;331&amp;quot;,
+&amp;quot;daily&amp;quot;: &amp;quot;25890&amp;quot;,
+&amp;quot;main&amp;quot;: &amp;quot;59&amp;quot;
+}
+},
+&amp;quot;scanner&amp;quot;: &amp;quot;clamav&amp;quot;
+}
+],
+&amp;quot;content_type&amp;quot;: &amp;quot;malware&amp;quot;,
+&amp;quot;imageDigest&amp;quot;: &amp;quot;sha256:0eb874fcad5414762a2ca5b2496db5291aad7d3b737700d05e45af43bad3ce4d&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;h2 id="policy-rules">Policy Rules&lt;/h2>
+&lt;p>A policy gate called &lt;code>malware&lt;/code> is available with a &lt;code>scans&lt;/code> trigger that will fire for each file and signature combination found in the image so that you can fail an evaluation of an image
+if malware was detected during the analysis scan.&lt;/p>
+&lt;p>See &lt;a href="/docs/usage/cli_usage/policies/policy_checks/">policy checks&lt;/a> for more details&lt;/p></description></item><item><title>Docs: Content Hints</title><link>/docs/general/concepts/images/analysis/content_hints/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/analysis/content_hints/</guid><description>
+&lt;p>Anchore Engine includes the ability to read a user-supplied &amp;lsquo;hints&amp;rsquo; file to allow users to override and/or augment the software artifacts that are
+discovered by Anchore during its image analysis process. The hints file, if present, contains records that describe a software package characteristics explicitly,
+and are then added to the software bill of materials (SBOM). For example, if the owner of a CI/CD container build process knows that there are some
+software packages installed explicitly in a container image, but Anchore&amp;rsquo;s regular analyzers are either not discovering the software or the analysis of the software
+package is incomplete, this mechanism can be used to include that information in the image&amp;rsquo;s SBOM, exactly as if the package were discovered normally.&lt;/p>
+&lt;h3 id="configuration">Configuration&lt;/h3>
+&lt;p>See &lt;a href="/docs/install/configuration/content_hints/">Configuring Content Hints&lt;/a>&lt;/p>
+&lt;p>Once enabled, the analyzer services will look for a file with a specific name, location and format located within the container image - &lt;code>/anchore_hints.json&lt;/code>.&lt;br>
+The format of the file is illustrated using some examples, below.&lt;/p>
+&lt;h3 id="os-package-records">OS Package Records&lt;/h3>
+&lt;p>OS Packages are those that will represent packages installed using OS / Distro style package managers. Currently supported package types are &lt;code>rpm, dpkg, apkg&lt;/code>
+for RedHat, Debian, and Alpine flavored package managers respectively. Note that, for OS Packages, the name of the package is unique per SBOM, meaning
+that only one package named &amp;lsquo;somepackage&amp;rsquo; can exist in an image&amp;rsquo;s SBOM, and specifying a name in the hints file that conflicts with one with the same name
+discovered by the Anchore analyzers will result in the record from the hints file taking precedence (override).&lt;/p>
+&lt;ul>
+&lt;li>Minimum required values for a package record in anchore_hints.json&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code> {
+&amp;quot;name&amp;quot;: &amp;quot;musl&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1.1.20-r8&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;apkg&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;ul>
+&lt;li>Complete record demonstrating all of the available characteristics of a software package that can be specified&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code> {
+&amp;quot;name&amp;quot;: &amp;quot;musl&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1.1.20&amp;quot;,
+&amp;quot;release&amp;quot;: &amp;quot;r8&amp;quot;,
+&amp;quot;origin&amp;quot;: &amp;quot;Timo Ter\u00e4s &amp;lt;timo.teras@iki.fi&amp;gt;&amp;quot;,
+&amp;quot;license&amp;quot;: &amp;quot;MIT&amp;quot;,
+&amp;quot;size&amp;quot;: &amp;quot;61440&amp;quot;,
+&amp;quot;source&amp;quot;: &amp;quot;musl&amp;quot;,
+&amp;quot;files&amp;quot;: [&amp;quot;/lib/ld-musl-x86_64.so.1&amp;quot;, &amp;quot;/lib/libc.musl-x86_64.so.1&amp;quot;, &amp;quot;/lib&amp;quot;],
+&amp;quot;type&amp;quot;: &amp;quot;apkg&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;h3 id="non-oslanguage-package-records">Non-OS/Language Package Records&lt;/h3>
+&lt;p>Non-OS / language package records are similar in form to the OS package records, but with some extra/different characteristics being supplied, namely
+the &lt;code>location&lt;/code> field. Since multiple non-os packages can be installed that have the same name, the location field is particularly important as it
+is used to distinguish between package records that might otherwise be identical. Valid types for non-os packages are currently &lt;code>java, python, gem, npm, nuget, go, binary&lt;/code>.&lt;br>
+For the latest types that are available, see the &lt;code>anchore-cli image content &amp;lt;someimage&amp;gt;&lt;/code> output, which lists available types for any given deployment of Anchore Engine.&lt;/p>
+&lt;ul>
+&lt;li>Minimum required values for a package record in anchore_hints.json&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code> {
+&amp;quot;name&amp;quot;: &amp;quot;wicked&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;0.6.1&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;gem&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;ul>
+&lt;li>Complete record demonstrating all of the available characteristics of a software package that can be specified&lt;/li>
+&lt;/ul>
+&lt;pre>&lt;code> {
+&amp;quot;name&amp;quot;: &amp;quot;wicked&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;0.6.1&amp;quot;,
+&amp;quot;location&amp;quot;: &amp;quot;/app/gems/specifications/wicked-0.9.0.gemspec&amp;quot;,
+&amp;quot;origin&amp;quot;: &amp;quot;schneems&amp;quot;,
+&amp;quot;license&amp;quot;: &amp;quot;MIT&amp;quot;,
+&amp;quot;source&amp;quot;: &amp;quot;http://github.com/schneems/wicked&amp;quot;,
+&amp;quot;files&amp;quot;: [&amp;quot;README.md&amp;quot;],
+&amp;quot;type&amp;quot;: &amp;quot;gem&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;h3 id="putting-it-all-together">Putting it all together&lt;/h3>
+&lt;p>Using the above examples, a complete anchore_hints.json file, when discovered by Anchore Engine located in &lt;code>/anchore_hints.json&lt;/code> inside any container image, is provided here:&lt;/p>
+&lt;pre>&lt;code>{
+&amp;quot;packages&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;musl&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1.1.20-r8&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;apkg&amp;quot;
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;wicked&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;0.6.1&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;gem&amp;quot;
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;p>With such a hints file in an image based for example on &lt;code>alpine:latest&lt;/code>, the resulting image content would report these two package/version records
+as part of the SBOM for the analyzed image, when viewed using &lt;code>anchore-cli image content &amp;lt;image&amp;gt; os&lt;/code> and &lt;code>anchore-cli image content &amp;lt;image&amp;gt; gem&lt;/code>
+to view the &lt;code>musl&lt;/code> and &lt;code>wicked&lt;/code> package records, respectively.&lt;/p>
+&lt;h5 id="note-about-using-the-hints-file-feature">Note about using the hints file feature&lt;/h5>
+&lt;p>The hints file feature is disabled by default, and is meant to be used in very specific circumstances where a trusted entity is entrusted with creating
+and installing, or removing an anchore_hints.json file from all containers being built. It is not meant to be enabled when the container image builds
+are not explicitly controlled, as the entity that is building container images could override any SBOM entry that Anchore would normally discover, which
+affects the vulnerability/policy status of an image. For this reason, the feature is disabled by default and must be explicitly enabled in configuration
+only if appropriate for your use case .&lt;/p></description></item></channel></rss>

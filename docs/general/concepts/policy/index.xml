@@ -1,0 +1,1258 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Policy</title><link>/docs/general/concepts/policy/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/concepts/policy/</link></image><atom:link href="/docs/general/concepts/policy/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Policy Bundles</title><link>/docs/general/concepts/policy/bundles/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/bundles/</guid><description>
+&lt;p>Policy bundles are the unit of policy definition and evaluation in Anchore Engine. A user may have multiple bundles, but for a policy evaluation, the user must specify a bundle to be evaluated or default to the bundle currently marked &amp;lsquo;active&amp;rsquo;. See Working with Policies for more detail on manipulating and configuring policies using the Engine CLI.&lt;/p>
+&lt;h3 id="components-of-a-policy-bundle">Components of a Policy Bundle&lt;/h3>
+&lt;p>A policy bundle is a single JSON document, composed of several parts:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/general/concepts/policy/policies/">Policies&lt;/a> - The named sets of rules and actions&lt;/li>
+&lt;li>&lt;a href="/docs/general/concepts/policy/whitelists/">Whitelists&lt;/a> - Named sets of rule exclusions to override a match in a policy rule&lt;/li>
+&lt;li>&lt;a href="/docs/general/concepts/policy/policy_mappings/">Mappings&lt;/a> - Ordered rules that determine which policies and whitelists should be applied to a specific image at evaluation time.&lt;/li>
+&lt;li>Whitelisted Images - Overrides for specific images to statically set the final result to a pass regardless of the policy evaluation result.&lt;/li>
+&lt;li>Blacklisted Images - Overrides for specific images to statically set the final result to a fail regardless of the policy evaluation result.&lt;/li>
+&lt;/ul>
+&lt;p>Example JSON for an empty bundle, showing the sections and top-level elements:&lt;/p>
+&lt;pre>&lt;code>{
+&amp;quot;id&amp;quot;: &amp;quot;default0,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;My Default bundle&amp;quot;,
+&amp;quot;comment&amp;quot;: &amp;quot;My system's default bundle&amp;quot;,
+&amp;quot;whitelisted_images&amp;quot;: [],
+&amp;quot;blacklisted_images&amp;quot;: [],
+&amp;quot;mappings&amp;quot;: [],
+&amp;quot;whitelists&amp;quot;: [],
+&amp;quot;policies&amp;quot;: []
+}
+&lt;/code>&lt;/pre>&lt;h3 id="policies">Policies&lt;/h3>
+&lt;p>A bundle contains zero or more policies. The policies of a bundle define the checks to make against an image and the actions to recommend if the checks find a match.&lt;/p>
+&lt;p>Example of a single policy JSON object, one entry in the policies array of the larger policy bundle document:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;DefaultPolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;version&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;1_0&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;comment&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;Policy for basic checks&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;ba6daa06-da3b-46d3-9e22-f01f07b0489a&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;rules&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;action&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;STOP&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;80569900-d6b3-4391-b2a0-bf34cf6d813d&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;params&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package_type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;all&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;severity_comparison&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;&amp;gt;=&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;severity&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;medium&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package&amp;#34;&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>The above example defines a stop action to be produced for all package vulnerabilities found in an image that are severity medium or higher.&lt;/p>
+&lt;p>For information on how policies work and are evaluated, see: &lt;a href="/docs/general/concepts/policy/policies/">Policies&lt;/a>&lt;/p>
+&lt;h3 id="whitelists">Whitelists&lt;/h3>
+&lt;p>A whitelist is a set of exclusion rules for trigger matches found during policy evaluation. A whitelist defines a specific gate and trigger_id (part of the output of a policy rule evaluation) that should have it&amp;rsquo;s action recommendation statically set to go. When a policy rule result is whitelisted, it is still present in the output of the policy evaluation, but it&amp;rsquo;s action is set to go and it is indicated that there was a whitelist match.&lt;/p>
+&lt;p>Whitelists are useful for things like:&lt;/p>
+&lt;ul>
+&lt;li>Ignoring CVE matches that are known to be false-positives&lt;/li>
+&lt;li>Ignoring CVE matches on specific packages (perhaps if they are known to be custom patched)&lt;/li>
+&lt;/ul>
+&lt;p>Example of a simple whitelist as a JSON object from a bundle:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;Simple Whitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;version&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;1_0&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;items&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;item1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;CVE-10000+libssl&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;item2&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;CVE-10001+*&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>For more information, see: &lt;a href="/docs/general/concepts/policy/whitelists/">Whitelists&lt;/a>&lt;/p>
+&lt;h3 id="mappings">Mappings&lt;/h3>
+&lt;p>Mappings are named rules that define which policies and whitelists to evaluate for a given image. The list of mappings is evaluated in order, so the ordering of the list matters because the first rule that matches an input image will be used and all others ignored.&lt;/p>
+&lt;p>Example of a simple mapping rule set:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;DockerHub&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;docker.io&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;library/postgres&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;latest&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;policy1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;policy2&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist2&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;default&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;policy1&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist1&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>For more information about mappings see: &lt;a href="/docs/general/concepts/policy/policy_mappings/">Mappings&lt;/a>&lt;/p>
+&lt;h3 id="whitelisted-images">Whitelisted Images&lt;/h3>
+&lt;p>Whitelisted images are images, defined by registry, repository, and tag/digest/imageId, that will always result in a pass status for bundle evaluation unless the image is also matched in the blacklisted images section.&lt;/p>
+&lt;p>Example image whitelist section:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;WhitelistDebianStable&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;docker.io&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;library/debian&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;stable&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;h3 id="blacklisted-images">Blacklisted Images&lt;/h3>
+&lt;p>Blacklisted images are images, defined by registry, repository, and tag/digest/imageId, that will always result in a policy bundle evaluation status of fail. It is important to note that blacklisting an image does not short-circuit the mapping evaluation or policy evaluations, so the full set of trigger matches will still be visible in the bundle evaluation result.&lt;/p>
+&lt;p>Blacklisted image matches override any whitelisted image matches (e.g. a tag matches a rule in both lists will always be blacklisted/fail).&lt;/p>
+&lt;p>Example image blacklist section:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;BlacklistDebianUnstable&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;docker.io&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;library/debian&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;unstable&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>A complete bundle example with all sections containing data:&lt;/p>
+&lt;pre>&lt;code>{
+&amp;quot;id&amp;quot;: &amp;quot;default0&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;My Default bundle&amp;quot;,
+&amp;quot;comment&amp;quot;: &amp;quot;My system's default bundle&amp;quot;,
+&amp;quot;whitelisted_images&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;WhitelistDebianStable&amp;quot;,
+&amp;quot;registry&amp;quot;: &amp;quot;docker.io&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;library/debian&amp;quot;,
+&amp;quot;image&amp;quot;: { &amp;quot;type&amp;quot;: &amp;quot;tag&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;stable&amp;quot; }
+}
+],
+&amp;quot;blacklisted_images&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;BlacklistDebianUnstable&amp;quot;,
+&amp;quot;registry&amp;quot;: &amp;quot;docker.io&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;library/debian&amp;quot;,
+&amp;quot;image&amp;quot;: { &amp;quot;type&amp;quot;: &amp;quot;tag&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;unstable&amp;quot; }
+}
+],
+&amp;quot;mappings&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;DockerHub&amp;quot;,
+&amp;quot;registry&amp;quot;: &amp;quot;docker.io&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;library/postgres&amp;quot;,
+&amp;quot;image&amp;quot;: { &amp;quot;type&amp;quot;: &amp;quot;tag&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;latest&amp;quot; },
+&amp;quot;policy_ids&amp;quot;: [ &amp;quot;policy1&amp;quot;, &amp;quot;policy2&amp;quot; ],
+&amp;quot;whitelist_ids&amp;quot;: [ &amp;quot;whitelist1&amp;quot;, &amp;quot;whitelist2&amp;quot; ]
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;default&amp;quot;,
+&amp;quot;registry&amp;quot;: &amp;quot;*&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;*&amp;quot;,
+&amp;quot;image&amp;quot;: { &amp;quot;type&amp;quot;: &amp;quot;tag&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;*&amp;quot; },
+&amp;quot;policy_ids&amp;quot;: [ &amp;quot;policy1&amp;quot; ],
+&amp;quot;whitelist_ids&amp;quot;: [ &amp;quot;whitelist1&amp;quot; ]
+}
+],
+&amp;quot;whitelists&amp;quot;: [
+{
+&amp;quot;id&amp;quot;: &amp;quot;whitelist1&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;Simple Whitelist&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;items&amp;quot;: [
+{ &amp;quot;id&amp;quot;: &amp;quot;item1&amp;quot;, &amp;quot;gate&amp;quot;: &amp;quot;vulnerabilities&amp;quot;, &amp;quot;trigger&amp;quot;: &amp;quot;package&amp;quot;, &amp;quot;trigger_id&amp;quot;: &amp;quot;CVE-10000+libssl&amp;quot; },
+{ &amp;quot;id&amp;quot;: &amp;quot;item2&amp;quot;, &amp;quot;gate&amp;quot;: &amp;quot;vulnerabilities&amp;quot;, &amp;quot;trigger&amp;quot;: &amp;quot;package&amp;quot;, &amp;quot;trigger_id&amp;quot;: &amp;quot;CVE-10001+*&amp;quot; }
+]
+},
+{
+&amp;quot;id&amp;quot;: &amp;quot;whitelist2&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;Simple Whitelist&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;items&amp;quot;: [
+{ &amp;quot;id&amp;quot;: &amp;quot;item1&amp;quot;, &amp;quot;gate&amp;quot;: &amp;quot;vulnerabilities&amp;quot;, &amp;quot;trigger&amp;quot;: &amp;quot;package&amp;quot;, &amp;quot;trigger_id&amp;quot;: &amp;quot;CVE-1111+*&amp;quot; }
+]
+}
+],
+&amp;quot;policies&amp;quot;: [
+{
+&amp;quot;name&amp;quot;: &amp;quot;DefaultPolicy&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;comment&amp;quot;: &amp;quot;Policy for basic checks&amp;quot;,
+&amp;quot;id&amp;quot;: &amp;quot;policy1&amp;quot;,
+&amp;quot;rules&amp;quot;: [
+{
+&amp;quot;action&amp;quot;: &amp;quot;STOP&amp;quot;,
+&amp;quot;gate&amp;quot;: &amp;quot;vulnerabilities&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;package&amp;quot;,
+&amp;quot;id&amp;quot;: &amp;quot;rule1&amp;quot;,
+&amp;quot;params&amp;quot;: [
+{ &amp;quot;name&amp;quot;: &amp;quot;package_type&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;all&amp;quot; },
+{ &amp;quot;name&amp;quot;: &amp;quot;severity_comparison&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;&amp;gt;=&amp;quot; },
+{ &amp;quot;name&amp;quot;: &amp;quot;severity&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;medium&amp;quot; }
+]
+}
+]
+},
+{
+&amp;quot;name&amp;quot;: &amp;quot;DBPolicy&amp;quot;,
+&amp;quot;version&amp;quot;: &amp;quot;1_0&amp;quot;,
+&amp;quot;comment&amp;quot;: &amp;quot;Policy for basic checks on a db&amp;quot;,
+&amp;quot;id&amp;quot;: &amp;quot;policy2&amp;quot;,
+&amp;quot;rules&amp;quot;: [
+{
+&amp;quot;action&amp;quot;: &amp;quot;STOP&amp;quot;,
+&amp;quot;gate&amp;quot;: &amp;quot;vulnerabilities&amp;quot;,
+&amp;quot;trigger&amp;quot;: &amp;quot;package&amp;quot;,
+&amp;quot;id&amp;quot;: &amp;quot;rule1&amp;quot;,
+&amp;quot;params&amp;quot;: [
+{ &amp;quot;name&amp;quot;: &amp;quot;package_type&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;all&amp;quot; },
+{ &amp;quot;name&amp;quot;: &amp;quot;severity_comparison&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;&amp;gt;=&amp;quot; },
+{ &amp;quot;name&amp;quot;: &amp;quot;severity&amp;quot;, &amp;quot;value&amp;quot;: &amp;quot;low&amp;quot; }
+]
+}
+]
+}
+]
+}
+&lt;/code>&lt;/pre>&lt;h3 id="bundle-evaluation">Bundle Evaluation&lt;/h3>
+&lt;p>A bundle evaluation results in a status of: &lt;em>pass&lt;/em> or &lt;em>fail&lt;/em> and that result based on the evaluation:&lt;/p>
+&lt;ol>
+&lt;li>The mapping section to determine with policies and whitelists to select for evaluation against the given image and tag&lt;/li>
+&lt;li>The output of the policies' triggers and applied whitelists.&lt;/li>
+&lt;li>Blacklisted images section&lt;/li>
+&lt;li>Whitelisted images section&lt;/li>
+&lt;/ol>
+&lt;p>A &lt;em>pass&lt;/em> status means the image evaluated against the bundle and only &lt;em>go&lt;/em> or &lt;em>warn&lt;/em> actions resulted from the policy evaluation and whitelist evaluations, or the image was whitelisted. A fail status means the image evaluated against the bundle and at least one &lt;em>stop&lt;/em> action resulted from the policy evaluation and whitelist evaluation, or the image was blacklisted.&lt;/p>
+&lt;p>The flow chart for policy bundle evaluation:&lt;/p>
+&lt;p>&lt;img src="AnchoreFlowchart.jpg" alt="alt text">&lt;/p></description></item><item><title>Docs: Policy Mappings</title><link>/docs/general/concepts/policy/policy_mappings/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/policy_mappings/</guid><description>
+&lt;p>Mappings in the policy bundle are a set of rules, evaluated in order, that describe matches on an image, id, digest, or tag and the corresponding sets of policies and whitelists to apply to any image that matches the rule&amp;rsquo;s criteria.&lt;/p>
+&lt;p>A mapping has:&lt;/p>
+&lt;ul>
+&lt;li>Registry - The registry url to match, including wildcards (e.g. &amp;lsquo;docker.io&amp;rsquo;, &amp;lsquo;quay.io&amp;rsquo;, &amp;lsquo;gcr.io&amp;rsquo;, &amp;lsquo;*')&lt;/li>
+&lt;li>Repository - The repository name to match, including wildcards (e.g. &amp;lsquo;library/nginx&amp;rsquo;, &amp;lsquo;mydockerhubusername/myrepositoryname&amp;rsquo;, &amp;lsquo;library/&lt;em>&amp;rsquo;, &amp;lsquo;&lt;/em>')&lt;/li>
+&lt;li>Image - The way to select an image that matches the registry and repository filters
+&lt;ul>
+&lt;li>type: how to reference the image and the expected format of the &amp;lsquo;value&amp;rsquo; property
+&lt;ul>
+&lt;li>&amp;ldquo;tag&amp;rdquo; - just the tag name itself (the part after the &amp;lsquo;:&amp;rsquo; in a docker pull string: e.g. nginx:latest -&amp;gt; &amp;lsquo;latest&amp;rsquo; is the tag name)&lt;/li>
+&lt;li>&amp;ldquo;id&amp;rdquo; - the image id&lt;/li>
+&lt;li>&amp;ldquo;digest&amp;rdquo; - the image digest (e.g. sha256@abc123)&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>value: the value to match against, including wildcards&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>Note:&lt;/strong> Unlike other parts of the policy bundle, Mappings are evaluated in order and will halt on the first matching rule. This is important to understand when combined with wildcard matches since it enables sophisticated matching behavior.&lt;/p>
+&lt;h3 id="examples">Examples&lt;/h3>
+&lt;p>Example 1, all images match a single catch-all rule:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>&lt;span style="color:#4e9a06">&amp;#34;defaultpolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>&lt;span style="color:#4e9a06">&amp;#34;defaultwhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>Example 2, all &amp;ldquo;official&amp;rdquo; images from DockerHub are evaluated against &lt;em>officialspolicy&lt;/em> and &lt;em>officialswhitelist&lt;/em> (made up names for this example), while all others from DockerHub will be evaluated against &lt;em>defaultpolicy&lt;/em> and &lt;em>defaultwhitelist&lt;/em> , and private GCR images will be evaluated against &lt;em>gcrpolicy&lt;/em> and &lt;em>gcrwhitelist&lt;/em>:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;docker.io&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;library/*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;officialspolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;officialswhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;gcr.io&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;gcrpolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;gcrwhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;defaultpolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;defaultwhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>Example 3, all images from a non-known registry will be evaluated against &lt;em>defaultpolicy&lt;/em> and &lt;em>defaultwhitelist&lt;/em>, and an internal registry&amp;rsquo;s images will be evaluated against a different set (&lt;em>internalpolicy&lt;/em> and &lt;em>internalwhitelist&lt;/em>):&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;myregistry.mydomain.com:5000&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;internalpolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;internalwhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;registry&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;repository&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;image&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;tag&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;policy_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;defaultpolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_ids&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;defaultwhitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;h3 id="using-multiple-policies-and-whitelists">Using Multiple Policies and Whitelists&lt;/h3>
+&lt;p>The result of the evaluation of the mapping section of a policy bundle is the list of policies and whitelists that will be used for actually evaluating the image. Because multiple policies and whitelists can be specified in each mapping rule, you can use granular policies and whitelists and the combined them in the mapping rules.&lt;/p>
+&lt;p>Examples of schemes to use for how to split-up policies include:&lt;/p>
+&lt;ul>
+&lt;li>Different policies for different types of checks such that each policy only uses one or two gates (e.g. vulnerabilities, packages, dockerfile)&lt;/li>
+&lt;li>Different policies for web servers, another for database servers, another for logging infrastructure, etc.&lt;/li>
+&lt;li>Different policies for different parts of the stack: os-packages vs. application packages&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Whitelists</title><link>/docs/general/concepts/policy/whitelists/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/whitelists/</guid><description>
+&lt;p>Whitelists provide a mechanism within a policy bundle to explicitly override a policy-rule match. A whitelist is a named set of exclusion rules that match trigger outputs.&lt;/p>
+&lt;p>Example whitelist:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;My First Whitelist&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;comment&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;A whitelist for my first try&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;version&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;1_0&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;items&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;CVE-2018-0737+*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;rule1&amp;#34;&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>The components:&lt;/p>
+&lt;ul>
+&lt;li>Gate: The gate to whitelist matches from (ensures trigger_ids are not matched in the wrong context)&lt;/li>
+&lt;li>Trigger Id: The specific trigger result to match and whitelists. This id is gate/trigger specific as each trigger may have its own trigger_id format. We&amp;rsquo;ll use the most common for this example: the CVE trigger ids produced by the vulnerability-&amp;gt;package gate-trigger. The trigger_id specified may include wildcards for partial matches.&lt;/li>
+&lt;li>id: an identifier for the rule, must only be unique within the whitelist object itself&lt;/li>
+&lt;/ul>
+&lt;p>The whitelist is processed if it is specified in the mapping rule that was matched during bundle evaluation and is applied to the results of the policy evaluation defined in that same mapping rule. If a whitelist item matches a specific policy trigger output, then the action for that output is set to go and the policy evaluation result notes that the trigger output was matched for a whitelist item by associating it with the whitelist id and item id of the match.&lt;/p>
+&lt;p>An example of a whitelisted match from a snippet of a policy evaluation result (See Policies for more information on the format of the policy evaluation result). This a single row entry from the result:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;0e2811757f931e2259e09784938f0b0990e7889a37d15efbbe63912fa39ff8b0&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;docker.io/node:latest&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;CVE-2018-0737+openssl&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;package&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;MEDIUM Vulnerability found in os package type (dpkg) - openssl (fixed in: 1.0.1t-1+deb8u9) - (CVE-2018-0737 - https://security-tracker.debian.org/tracker/CVE-2018-0737)&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;go&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;matched_rule_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;rule1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;whitelist1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;whitelist_name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;My First Whitelist&amp;#34;&lt;/span>
+&lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#4e9a06">&amp;#34;myfirstpolicy&amp;#34;&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>The items in order are:&lt;/p>
+&lt;ul>
+&lt;li>Image ID&lt;/li>
+&lt;li>Tag used for evaluation&lt;/li>
+&lt;li>Trigger ID of the policy rule match&lt;/li>
+&lt;li>Gate name&lt;/li>
+&lt;li>Trigger name&lt;/li>
+&lt;li>Trigger Check Output message&lt;/li>
+&lt;li>&lt;strong>Whitelist result object&lt;/strong> - This shows that the match was whitelisted by our example whitelist policy and its rule.
+Policy Id&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>Note:&lt;/strong> Whitelists are evaluated only as far as necessary. Once a policy rule match has been whitelisted by one whitelist item, it will not be checked again for whitelist matches. But, whitelist items may be evaluated out-of-order for performance optimization, so if multiple whitelist items match the same policy rule match any one of them may be the item that is actually matched against a given trigger_id.&lt;/p></description></item><item><title>Docs: Policies</title><link>/docs/general/concepts/policy/policies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/policies/</guid><description>
+&lt;h3 id="overview">Overview&lt;/h3>
+&lt;p>A policy is a named set of rules, represented as a JSON object within a Policy Bundle, each of which define a specific check to perform and an resulting action to emit if the check returns a match against then image analysis.&lt;/p>
+&lt;p>A policy:&lt;/p>
+&lt;ul>
+&lt;li>ID: a unique id for the policy within the bundle&lt;/li>
+&lt;li>Name: a human readable name to give the policy (may contain spaces etc)&lt;/li>
+&lt;li>A list of rules to define what to evaluate and the action to recommend on any matches for the rule&lt;/li>
+&lt;/ul>
+&lt;p>A simple example of a policy JSON object (found within a larger policy bundle object):&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;DefaultPolicy&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;version&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;1_0&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;comment&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;Policy for basic checks&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;policy1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;rules&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;action&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;STOP&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;rule1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;params&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package_type&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;all&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;severity_comparison&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;&amp;gt;=&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;severity&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;medium&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;package&amp;#34;&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">]&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>The above example defines a stop action to be produced for all package vulnerabilities found in an image that are severity &lt;em>medium&lt;/em> or higher.&lt;/p>
+&lt;p>Policy evaluation is the execution of all defined triggers in the policy against the image analysis result and feed data and results in a set of output trigger matches, each of which contains the &lt;em>defined&lt;/em> action from the rule definition. The final recommendation value for the policy evaluation is called the &lt;em>final action&lt;/em>, and is computed from the set of output matches: &lt;em>stop&lt;/em>, &lt;em>go&lt;/em>, or &lt;em>warn&lt;/em>.&lt;/p>
+&lt;p>&lt;img src="AnchorePolicyOutcome.jpg" alt="alt text">&lt;/p>
+&lt;h3 id="policy-rules">Policy Rules&lt;/h3>
+&lt;p>Rules define the behavior of the policy at evaluation time. Each rule defines:&lt;/p>
+&lt;ul>
+&lt;li>Gate - Example: dockerfile&lt;/li>
+&lt;li>Trigger - Example: &lt;em>exposed_ports&lt;/em>&lt;/li>
+&lt;li>Parameters - Parameters specific to the gate/trigger to customize its match behavior&lt;/li>
+&lt;li>Action - The action to emit if a trigger evaluation finds a match. One of &lt;em>stop&lt;/em>, &lt;em>go&lt;/em>, &lt;em>warn&lt;/em>. The only semantics of these values are in the aggregation behavior for the policy result.&lt;/li>
+&lt;/ul>
+&lt;h3 id="gates">Gates&lt;/h3>
+&lt;p>A &amp;ldquo;Gate&amp;rdquo; is a logical grouping of trigger definitions and provides a broader context for the execution of triggers against image analysis data. You can think of gates as the &amp;ldquo;things to be checked&amp;rdquo;, while the triggers provide the &amp;ldquo;which check to run&amp;rdquo; context. Gates do not have parameters themselves, but namespace the set of triggers to ensure there are no name conflicts.&lt;/p>
+&lt;p>Examples of gates:&lt;/p>
+&lt;ul>
+&lt;li>&lt;em>vulnerabilities&lt;/em>&lt;/li>
+&lt;li>&lt;em>packages&lt;/em>&lt;/li>
+&lt;li>&lt;em>npms&lt;/em>&lt;/li>
+&lt;li>&lt;em>files&lt;/em>&lt;/li>
+&lt;li>&lt;em>&amp;hellip;&lt;/em>&lt;/li>
+&lt;/ul>
+&lt;p>For a complete listing see: Anchore Policy Checks&lt;/p>
+&lt;h3 id="triggers">Triggers&lt;/h3>
+&lt;p>Triggers define a specific condition to check within the context of a gate, optionally with one or more input parameters. A trigger is logically a piece of code that executes with the image analysis content and feed data as inputs and performs a specific check. A trigger emits matches for each instance of the condition for which it checks in the image. Thus, a single gate/trigger policy rule may result in many matches in final policy result, often with different match specifics (e.g. package names, cves, or filenames&amp;hellip;).&lt;/p>
+&lt;p>Trigger parameters are passed as name, value pairs in the rule JSON:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-JSON" data-lang="JSON">&lt;span style="color:#000;font-weight:bold">{&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;action&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;WARN&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;parameters&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#000;font-weight:bold">[&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;param1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;value1&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;param2&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;value2&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">},&lt;/span>
+&lt;span style="color:#000;font-weight:bold">{&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;name&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;paramN&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span> &lt;span style="color:#204a87;font-weight:bold">&amp;#34;value&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;valueN&amp;#34;&lt;/span> &lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;span style="color:#000;font-weight:bold">],&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;packages&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#000;font-weight:bold">}&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>For a complete listing of gates, triggers, and the parameters, see: Anchore Policy Checks&lt;/p>
+&lt;h3 id="policy-evaluation">Policy Evaluation&lt;/h3>
+&lt;ul>
+&lt;li>All rules in a selected policy are evaluated, no short-circuits&lt;/li>
+&lt;li>Rules who&amp;rsquo;s triggers and parameters find a match in the image analysis data, will &amp;ldquo;fire&amp;rdquo; resulting in a record of the match and parameters. A trigger may fire many times during an evaluation (e.g. many cves found).&lt;/li>
+&lt;li>Each firing of a trigger generates a trigger_id for that match&lt;/li>
+&lt;li>Rules may be executed in any order, and are executed in isolation (e.g. conflicting rules are allowed, it&amp;rsquo;s up to the user to ensure that policies make sense)&lt;/li>
+&lt;/ul>
+&lt;p>See Anchore Policy Checks for a complete list of all gates, triggers, and parameters&lt;/p>
+&lt;p>Each output match from a rule contains the matching rule&amp;rsquo;s:&lt;/p>
+&lt;ul>
+&lt;li>Gate&lt;/li>
+&lt;li>Trigger&lt;/li>
+&lt;li>A trigger_id identifying the match&lt;/li>
+&lt;li>Check Output - A short message (human readable) describing the condition and match details&lt;/li>
+&lt;li>Whitelisted - a JSON object of details about a whitelist match (whitelist id and whitelist item id if available), or a &amp;lsquo;false&amp;rsquo; if the match was not whitelisted&lt;/li>
+&lt;li>Policy ID - the id of the policy that generated this match, to disambiguate in cases where multiple policies are evaluated as defined in the bundle. See: policy bundle&lt;/li>
+&lt;/ul>
+&lt;p>Excerpt from a bundle evaluation, showing just the policy evaluation output:&lt;/p>
+&lt;pre>&lt;code>...
+&amp;quot;result&amp;quot;: {
+&amp;quot;final_action&amp;quot;: &amp;quot;warn&amp;quot;,
+&amp;quot;header&amp;quot;: [
+&amp;quot;Image_Id&amp;quot;,
+&amp;quot;Repo_Tag&amp;quot;,
+&amp;quot;Trigger_Id&amp;quot;,
+&amp;quot;Gate&amp;quot;,
+&amp;quot;Trigger&amp;quot;,
+&amp;quot;Check_Output&amp;quot;,
+&amp;quot;Gate_Action&amp;quot;,
+&amp;quot;Whitelisted&amp;quot;,
+&amp;quot;Policy_Id&amp;quot;
+],
+&amp;quot;row_count&amp;quot;: 55,
+&amp;quot;rows&amp;quot;: [
+[
+&amp;quot;52fe93b8eea726594f3b8efefedc2e3a1db02828ab57632b217b953f00192950&amp;quot;,
+&amp;quot;docker.io/node:latest&amp;quot;,
+&amp;quot;CVE-2008-3134+imagemagick-6.q16&amp;quot;,
+&amp;quot;vulnerabilities&amp;quot;,
+&amp;quot;package&amp;quot;,
+&amp;quot;MEDIUM Vulnerability found in os package type (dpkg) - imagemagick-6.q16 (CVE-2008-3134 - https://security-tracker.debian.org/tracker/CVE-2008-3134)&amp;quot;,
+&amp;quot;go&amp;quot;,
+false,
+&amp;quot;48e6f7d6-1765-11e8-b5f9-8b6f228548b6&amp;quot;
+],
+[
+&amp;quot;52fe93b8eea726594f3b8efefedc2e3a1db02828ab57632b217b953f00192950&amp;quot;,
+&amp;quot;docker.io/node:latest&amp;quot;,
+&amp;quot;CVE-2008-3134+libmagickwand-6.q16-2&amp;quot;,
+&amp;quot;vulnerabilities&amp;quot;,
+&amp;quot;package&amp;quot;,
+&amp;quot;MEDIUM Vulnerability found in os package type (dpkg) - libmagickwand-6.q16-2 (CVE-2008-3134 - https://security-tracker.debian.org/tracker/CVE-2008-3134)&amp;quot;,
+&amp;quot;go&amp;quot;,
+false,
+&amp;quot;48e6f7d6-1765-11e8-b5f9-8b6f228548b6&amp;quot;
+]
+...
+&lt;/code>&lt;/pre>&lt;p>See: policy bundles for more information on the policy bundle evaluation result object itself, which contains the policy evaluation result as a component.&lt;/p>
+&lt;h3 id="final-action">Final Action&lt;/h3>
+&lt;p>The &lt;em>final action&lt;/em> of a policy evaluation is the policy&amp;rsquo;s recommendation based on the aggregation of all trigger evaluations defined in the policy and the resulting matches emitted.&lt;/p>
+&lt;p>The &lt;em>final action&lt;/em> of a policy evaluation will be:&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>stop&lt;/strong> - If there are any triggers that match with this action, the policy evaluation will result in an overall stop.&lt;/li>
+&lt;li>&lt;strong>warn&lt;/strong> - If there are any triggers that match with this action, and no triggers that match with stop, then the policy evaluation will result in &lt;em>warn&lt;/em>.&lt;/li>
+&lt;li>&lt;strong>go&lt;/strong> - If there are no triggers that match with either stop or warn, then the policy evaluation is result is a &lt;em>go&lt;/em>. &lt;em>go&lt;/em> actions have no impact on the evaluation result, but are useful for recording the results of specific checks on an image in the audit trail of policy evaluations over time&lt;/li>
+&lt;/ul>
+&lt;p>The policy evaluation is one part of the broader policy bundle evaluation which includes things like image whitelists and blacklists and makes a final bundle evaluation status determination based on the combination of several component executions. See policy bundles for more information on that process.&lt;/p></description></item><item><title>Docs: Anchore Policy Checks</title><link>/docs/general/concepts/policy/policy_checks/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/policy_checks/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>In this document, we describe the current anchore gates (and related triggers/parameters) that are supported within anchore policy bundles. If you have a running anchore engine, this information can also be obtained using the CLI:&lt;/p>
+&lt;p>&lt;code># anchore-cli policy describe (--gate &amp;lt;gatename&amp;gt; ( --trigger &amp;lt;triggername))&lt;/code>&lt;/p>
+&lt;h3 id="gate-dockerfile">Gate: dockerfile&lt;/h3>
+&lt;p>Checks against the content of a dockerfile if provided, or a guessed dockerfile based on docker layer history if the dockerfile is not provided.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">instruction&lt;/td>
+&lt;td style="text-align:left">Triggers if any directives in the list are found to match the described condition in the dockerfile.&lt;/td>
+&lt;td style="text-align:left">instruction&lt;/td>
+&lt;td style="text-align:left">The Dockerfile instruction to check.&lt;/td>
+&lt;td style="text-align:left">from&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">instruction&lt;/td>
+&lt;td style="text-align:left">Triggers if any directives in the list are found to match the described condition in the dockerfile.&lt;/td>
+&lt;td style="text-align:left">check&lt;/td>
+&lt;td style="text-align:left">The type of check to perform.&lt;/td>
+&lt;td style="text-align:left">=&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">instruction&lt;/td>
+&lt;td style="text-align:left">Triggers if any directives in the list are found to match the described condition in the dockerfile.&lt;/td>
+&lt;td style="text-align:left">value&lt;/td>
+&lt;td style="text-align:left">The value to check the dockerfile instruction against.&lt;/td>
+&lt;td style="text-align:left">scratch&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">instruction&lt;/td>
+&lt;td style="text-align:left">Triggers if any directives in the list are found to match the described condition in the dockerfile.&lt;/td>
+&lt;td style="text-align:left">actual_dockerfile_only&lt;/td>
+&lt;td style="text-align:left">Only evaluate against a user-provided dockerfile, skip evaluation on inferred/guessed dockerfiles. Default is False.&lt;/td>
+&lt;td style="text-align:left">true&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">effective_user&lt;/td>
+&lt;td style="text-align:left">Checks if the effective user matches the provided user names, either as a whitelist or blacklist depending on the type parameter setting.&lt;/td>
+&lt;td style="text-align:left">users&lt;/td>
+&lt;td style="text-align:left">User names to check against as the effective user (last user entry) in the images history.&lt;/td>
+&lt;td style="text-align:left">root,docker&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">effective_user&lt;/td>
+&lt;td style="text-align:left">Checks if the effective user matches the provided user names, either as a whitelist or blacklist depending on the type parameter setting.&lt;/td>
+&lt;td style="text-align:left">type&lt;/td>
+&lt;td style="text-align:left">How to treat the provided user names.&lt;/td>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">exposed_ports&lt;/td>
+&lt;td style="text-align:left">Evaluates the set of ports exposed. Allows configuring whitelist or blacklist behavior. If type=whitelist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=blacklist, then any ports exposed that are in the list will cause the trigger to fire.&lt;/td>
+&lt;td style="text-align:left">ports&lt;/td>
+&lt;td style="text-align:left">List of port numbers.&lt;/td>
+&lt;td style="text-align:left">80,8080,8088&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">exposed_ports&lt;/td>
+&lt;td style="text-align:left">Evaluates the set of ports exposed. Allows configuring whitelist or blacklist behavior. If type=whitelist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=blacklist, then any ports exposed that are in the list will cause the trigger to fire.&lt;/td>
+&lt;td style="text-align:left">type&lt;/td>
+&lt;td style="text-align:left">Whether to use port list as a whitelist or blacklist.&lt;/td>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">exposed_ports&lt;/td>
+&lt;td style="text-align:left">Evaluates the set of ports exposed. Allows configuring whitelist or blacklist behavior. If type=whitelist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=blacklist, then any ports exposed that are in the list will cause the trigger to fire.&lt;/td>
+&lt;td style="text-align:left">actual_dockerfile_only&lt;/td>
+&lt;td style="text-align:left">Only evaluate against a user-provided dockerfile, skip evaluation on inferred/guessed dockerfiles. Default is False.&lt;/td>
+&lt;td style="text-align:left">true&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">no_dockerfile_provided&lt;/td>
+&lt;td style="text-align:left">Triggers if anchore analysis was performed without supplying the actual image Dockerfile.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-files">Gate: files&lt;/h3>
+&lt;p>Checks against files in the analyzed image including file content, file names, and filesystem attributes.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">content_regex_match&lt;/td>
+&lt;td style="text-align:left">Triggers for each file where the content search analyzer has found a match using configured regexes in the analyzer_config.yaml &amp;ldquo;content_search&amp;rdquo; section. If the parameter is set, the trigger will only fire for files that matched the named regex. Refer to your analyzer_config.yaml for the regex values.&lt;/td>
+&lt;td style="text-align:left">regex_name&lt;/td>
+&lt;td style="text-align:left">Regex string that also appears in the FILECHECK_CONTENTMATCH analyzer parameter in analyzer configuration, to limit the check to. If set, will only fire trigger when the specific named regex was found in a file.&lt;/td>
+&lt;td style="text-align:left">.&lt;em>password.&lt;/em>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">name_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a file exists in the container that has a filename that matches the provided regex. This does have a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">regex&lt;/td>
+&lt;td style="text-align:left">Regex to apply to file names for match.&lt;/td>
+&lt;td style="text-align:left">.*.pem&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">filename&lt;/td>
+&lt;td style="text-align:left">Filename to check against provided checksum.&lt;/td>
+&lt;td style="text-align:left">/etc/passwd&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">checksum_algorithm&lt;/td>
+&lt;td style="text-align:left">Checksum algorithm&lt;/td>
+&lt;td style="text-align:left">sha256&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">checksum&lt;/td>
+&lt;td style="text-align:left">Checksum of file.&lt;/td>
+&lt;td style="text-align:left">832cd0f75b227d13aac82b1f70b7f90191a4186c151f9db50851d209c45ede11&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">checksum_match&lt;/td>
+&lt;td style="text-align:left">Checksum operation to perform.&lt;/td>
+&lt;td style="text-align:left">equals&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">mode&lt;/td>
+&lt;td style="text-align:left">File mode of file.&lt;/td>
+&lt;td style="text-align:left">00644&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">mode_op&lt;/td>
+&lt;td style="text-align:left">File mode operation to perform.&lt;/td>
+&lt;td style="text-align:left">equals&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute_match&lt;/td>
+&lt;td style="text-align:left">Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation.&lt;/td>
+&lt;td style="text-align:left">skip_missing&lt;/td>
+&lt;td style="text-align:left">If set to true, do not fire this trigger if the file is not present. If set to false, fire this trigger ignoring the other parameter settings.&lt;/td>
+&lt;td style="text-align:left">true&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">suid_or_guid_set&lt;/td>
+&lt;td style="text-align:left">Fires for each file found to have suid or sgid bit set.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-passwd_file">Gate: passwd_file&lt;/h3>
+&lt;p>Content checks for /etc/passwd for things like usernames, group ids, shells, or full entries.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">content_not_available&lt;/td>
+&lt;td style="text-align:left">Triggers if the /etc/passwd file is not present/stored in the evaluated image.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_usernames&lt;/td>
+&lt;td style="text-align:left">Triggers if specified username is found in the /etc/passwd file&lt;/td>
+&lt;td style="text-align:left">user_names&lt;/td>
+&lt;td style="text-align:left">List of usernames that will cause the trigger to fire if found in /etc/passwd.&lt;/td>
+&lt;td style="text-align:left">daemon,ftp&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_userids&lt;/td>
+&lt;td style="text-align:left">Triggers if specified user id is found in the /etc/passwd file&lt;/td>
+&lt;td style="text-align:left">user_ids&lt;/td>
+&lt;td style="text-align:left">List of userids (numeric) that will cause the trigger to fire if found in /etc/passwd.&lt;/td>
+&lt;td style="text-align:left">0,1&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_groupids&lt;/td>
+&lt;td style="text-align:left">Triggers if specified group id is found in the /etc/passwd file&lt;/td>
+&lt;td style="text-align:left">group_ids&lt;/td>
+&lt;td style="text-align:left">List of groupids (numeric) that will cause the trigger ot fire if found in /etc/passwd.&lt;/td>
+&lt;td style="text-align:left">999,20&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_shells&lt;/td>
+&lt;td style="text-align:left">Triggers if specified login shell for any user is found in the /etc/passwd file&lt;/td>
+&lt;td style="text-align:left">shells&lt;/td>
+&lt;td style="text-align:left">List of shell commands to blacklist.&lt;/td>
+&lt;td style="text-align:left">/bin/bash,/bin/zsh&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_full_entry&lt;/td>
+&lt;td style="text-align:left">Triggers if entire specified passwd entry is found in the /etc/passwd file.&lt;/td>
+&lt;td style="text-align:left">entry&lt;/td>
+&lt;td style="text-align:left">Full entry to match in /etc/passwd.&lt;/td>
+&lt;td style="text-align:left">ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-packages">Gate: packages&lt;/h3>
+&lt;p>Distro package checks&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">required_package&lt;/td>
+&lt;td style="text-align:left">Triggers if the specified package and optionally a specific version is not found in the image.&lt;/td>
+&lt;td style="text-align:left">name&lt;/td>
+&lt;td style="text-align:left">Name of package that must be found installed in image.&lt;/td>
+&lt;td style="text-align:left">libssl&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">required_package&lt;/td>
+&lt;td style="text-align:left">Triggers if the specified package and optionally a specific version is not found in the image.&lt;/td>
+&lt;td style="text-align:left">version&lt;/td>
+&lt;td style="text-align:left">Optional version of package for exact version match.&lt;/td>
+&lt;td style="text-align:left">1.10.3rc3&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">required_package&lt;/td>
+&lt;td style="text-align:left">Triggers if the specified package and optionally a specific version is not found in the image.&lt;/td>
+&lt;td style="text-align:left">version_match_type&lt;/td>
+&lt;td style="text-align:left">The type of comparison to use for version if a version is provided.&lt;/td>
+&lt;td style="text-align:left">exact&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">verify&lt;/td>
+&lt;td style="text-align:left">Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected &amp;ldquo;dirs&amp;rdquo; parameter if provided, and can filter type of check with the &amp;ldquo;check_only&amp;rdquo; parameter.&lt;/td>
+&lt;td style="text-align:left">only_packages&lt;/td>
+&lt;td style="text-align:left">List of package names to limit verification.&lt;/td>
+&lt;td style="text-align:left">libssl,openssl&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">verify&lt;/td>
+&lt;td style="text-align:left">Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected &amp;ldquo;dirs&amp;rdquo; parameter if provided, and can filter type of check with the &amp;ldquo;check_only&amp;rdquo; parameter.&lt;/td>
+&lt;td style="text-align:left">only_directories&lt;/td>
+&lt;td style="text-align:left">List of directories to limit checks so as to avoid checks on all dir.&lt;/td>
+&lt;td style="text-align:left">/usr,/var/lib&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">verify&lt;/td>
+&lt;td style="text-align:left">Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected &amp;ldquo;dirs&amp;rdquo; parameter if provided, and can filter type of check with the &amp;ldquo;check_only&amp;rdquo; parameter.&lt;/td>
+&lt;td style="text-align:left">check&lt;/td>
+&lt;td style="text-align:left">Check to perform instead of all.&lt;/td>
+&lt;td style="text-align:left">changed&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well.&lt;/td>
+&lt;td style="text-align:left">name&lt;/td>
+&lt;td style="text-align:left">Package name to blacklist.&lt;/td>
+&lt;td style="text-align:left">openssh-server&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well.&lt;/td>
+&lt;td style="text-align:left">version&lt;/td>
+&lt;td style="text-align:left">Specific version of package to blacklist.&lt;/td>
+&lt;td style="text-align:left">1.0.1&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-vulnerabilities">Gate: vulnerabilities&lt;/h3>
+&lt;p>CVE/Vulnerability checks.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">package_type&lt;/td>
+&lt;td style="text-align:left">Only trigger for specific package type.&lt;/td>
+&lt;td style="text-align:left">all&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">severity_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for severity evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">severity&lt;/td>
+&lt;td style="text-align:left">Severity to compare against.&lt;/td>
+&lt;td style="text-align:left">high&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_base_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for CVSS v3 base score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_base_score&lt;/td>
+&lt;td style="text-align:left">CVSS v3 base score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_exploitability_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for CVSS v3 exploitability sub score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_exploitability_score&lt;/td>
+&lt;td style="text-align:left">CVSS v3 exploitability sub score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_impact_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for CVSS v3 impact sub score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">cvss_v3_impact_score&lt;/td>
+&lt;td style="text-align:left">CVSS v3 impact sub score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">fix_available&lt;/td>
+&lt;td style="text-align:left">If present, the fix availability for the vulnerability record must match the value of this parameter.&lt;/td>
+&lt;td style="text-align:left">true&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_only&lt;/td>
+&lt;td style="text-align:left">If True, an available fix for this CVE must not be explicitly marked as wont be addressed by the vendor&lt;/td>
+&lt;td style="text-align:left">true&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">max_days_since_creation&lt;/td>
+&lt;td style="text-align:left">If provided, this CVE must be older than the days provided to trigger.&lt;/td>
+&lt;td style="text-align:left">7&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">max_days_since_fix&lt;/td>
+&lt;td style="text-align:left">If provided (only evaluated when fix_available option is also set to true), the fix first observed time must be older than days provided, to trigger.&lt;/td>
+&lt;td style="text-align:left">30&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_base_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for vendor specified CVSS v3 base score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_base_score&lt;/td>
+&lt;td style="text-align:left">Vendor CVSS v3 base score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_exploitability_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for vendor specified CVSS v3 exploitability sub score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_exploitability_score&lt;/td>
+&lt;td style="text-align:left">Vendor CVSS v3 exploitability sub score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_impact_score_comparison&lt;/td>
+&lt;td style="text-align:left">The type of comparison to perform for vendor specified CVSS v3 impact sub score evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">package&lt;/td>
+&lt;td style="text-align:left">Triggers if a found vulnerability in an image meets the comparison criteria.&lt;/td>
+&lt;td style="text-align:left">vendor_cvss_v3_impact_score&lt;/td>
+&lt;td style="text-align:left">Vendor CVSS v3 impact sub score to compare against.&lt;/td>
+&lt;td style="text-align:left">None&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if any of a list of specified vulnerabilities has been detected in the image.&lt;/td>
+&lt;td style="text-align:left">vulnerability_ids&lt;/td>
+&lt;td style="text-align:left">List of vulnerability IDs, will cause the trigger to fire if any are detected.&lt;/td>
+&lt;td style="text-align:left">CVE-2019-1234&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if any of a list of specified vulnerabilities has been detected in the image.&lt;/td>
+&lt;td style="text-align:left">vulnerability_ids&lt;/td>
+&lt;td style="text-align:left">If set to True, discard matches against this vulnerability if vendor has marked as will not fix in the vulnerability record.&lt;/td>
+&lt;td style="text-align:left">True&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">stale_feed_data&lt;/td>
+&lt;td style="text-align:left">Triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days).&lt;/td>
+&lt;td style="text-align:left">max_days_since_sync&lt;/td>
+&lt;td style="text-align:left">Fire the trigger if the last sync was more than this number of days ago.&lt;/td>
+&lt;td style="text-align:left">10&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">vulnerability_data_unavailable&lt;/td>
+&lt;td style="text-align:left">Triggers if vulnerability data is unavailable for the image&amp;rsquo;s distro.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-licenses">Gate: licenses&lt;/h3>
+&lt;p>License checks against found software licenses in the container image&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_exact_match&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s).&lt;/td>
+&lt;td style="text-align:left">licenses&lt;/td>
+&lt;td style="text-align:left">List of license names to blacklist exactly.&lt;/td>
+&lt;td style="text-align:left">GPLv2+,GPL-3+,BSD-2-clause&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist_partial_match&lt;/td>
+&lt;td style="text-align:left">triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)&lt;/td>
+&lt;td style="text-align:left">licenses&lt;/td>
+&lt;td style="text-align:left">List of strings to do substring match for blacklist.&lt;/td>
+&lt;td style="text-align:left">LGPL,BSD&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-ruby_gems">Gate: ruby_gems&lt;/h3>
+&lt;p>Ruby Gem Checks&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">newer_version_found_in_feed&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed GEM is not the latest version according to GEM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">not_found_in_feed&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed GEM is not in the official GEM database, according to GEM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">version_not_found_in_feed&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed GEM version is not listed in the official GEM feed as a valid version.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has a GEM package installed that matches the specified name and version.&lt;/td>
+&lt;td style="text-align:left">name&lt;/td>
+&lt;td style="text-align:left">Gem name to blacklist.&lt;/td>
+&lt;td style="text-align:left">time_diff&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklist&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has a GEM package installed that matches the specified name and version.&lt;/td>
+&lt;td style="text-align:left">version&lt;/td>
+&lt;td style="text-align:left">Optional version to blacklist specifically.&lt;/td>
+&lt;td style="text-align:left">0.2.9&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">feed_data_unavailable&lt;/td>
+&lt;td style="text-align:left">Triggers if anchore does not have access to the GEM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-npms">Gate: npms&lt;/h3>
+&lt;p>NPM Checks&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">newer_version_in_feed&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed NPM is not the latest version according to NPM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">unknown_in_feeds&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed NPM is not in the official NPM database, according to NPM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">version_not_in_feeds&lt;/td>
+&lt;td style="text-align:left">Triggers if an installed NPM version is not listed in the official NPM feed as a valid version.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklisted_name_version&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters.&lt;/td>
+&lt;td style="text-align:left">name&lt;/td>
+&lt;td style="text-align:left">Npm package name to blacklist.&lt;/td>
+&lt;td style="text-align:left">time_diff&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">blacklisted_name_version&lt;/td>
+&lt;td style="text-align:left">Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters.&lt;/td>
+&lt;td style="text-align:left">version&lt;/td>
+&lt;td style="text-align:left">Npm package version to blacklist specifically.&lt;/td>
+&lt;td style="text-align:left">0.2.9&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">feed_data_unavailable&lt;/td>
+&lt;td style="text-align:left">Triggers if the engine does not have access to the NPM data feed.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-secret_scans">Gate: secret_scans&lt;/h3>
+&lt;p>Checks for secrets and content found in the image using configured regexes found in the &amp;ldquo;secret_search&amp;rdquo; section of analyzer_config.yaml.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">content_regex_checks&lt;/td>
+&lt;td style="text-align:left">Triggers if the secret content search analyzer has found any matches with the configured and named regexes. Checks can be configured to trigger if a match is found or is not found (selected using match_type parameter). Matches are filtered by the content_regex_name and filename_regex if they are set. The content_regex_name shoud be a value from the &amp;ldquo;secret_search&amp;rdquo; section of the analyzer_config.yaml.&lt;/td>
+&lt;td style="text-align:left">content_regex_name&lt;/td>
+&lt;td style="text-align:left">Name of content regexps configured in the analyzer that match if found in the image, instead of matching all. Names available by default are: [&amp;lsquo;AWS_ACCESS_KEY&amp;rsquo;, &amp;lsquo;AWS_SECRET_KEY&amp;rsquo;, &amp;lsquo;PRIV_KEY&amp;rsquo;, &amp;lsquo;DOCKER_AUTH&amp;rsquo;, &amp;lsquo;API_KEY&amp;rsquo;].&lt;/td>
+&lt;td style="text-align:left">AWS_ACCESS_KEY&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">content_regex_checks&lt;/td>
+&lt;td style="text-align:left">Triggers if the secret content search analyzer has found any matches with the configured and named regexes. Checks can be configured to trigger if a match is found or is not found (selected using match_type parameter). Matches are filtered by the content_regex_name and filename_regex if they are set. The content_regex_name shoud be a value from the &amp;ldquo;secret_search&amp;rdquo; section of the analyzer_config.yaml.&lt;/td>
+&lt;td style="text-align:left">filename_regex&lt;/td>
+&lt;td style="text-align:left">Regexp to filter the content matched files by.&lt;/td>
+&lt;td style="text-align:left">/etc/.*&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">content_regex_checks&lt;/td>
+&lt;td style="text-align:left">Triggers if the secret content search analyzer has found any matches with the configured and named regexes. Checks can be configured to trigger if a match is found or is not found (selected using match_type parameter). Matches are filtered by the content_regex_name and filename_regex if they are set. The content_regex_name shoud be a value from the &amp;ldquo;secret_search&amp;rdquo; section of the analyzer_config.yaml.&lt;/td>
+&lt;td style="text-align:left">match_type&lt;/td>
+&lt;td style="text-align:left">Set to define the type of match - trigger if match is found (default) or not found.&lt;/td>
+&lt;td style="text-align:left">found&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-metadata">Gate: metadata&lt;/h3>
+&lt;p>Checks against image metadata, such as size, OS, distro, architecture, etc.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">attribute&lt;/td>
+&lt;td style="text-align:left">Triggers if a named image metadata value matches the given condition.&lt;/td>
+&lt;td style="text-align:left">attribute&lt;/td>
+&lt;td style="text-align:left">Attribute name to be checked.&lt;/td>
+&lt;td style="text-align:left">size&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute&lt;/td>
+&lt;td style="text-align:left">Triggers if a named image metadata value matches the given condition.&lt;/td>
+&lt;td style="text-align:left">check&lt;/td>
+&lt;td style="text-align:left">The operation to perform the evaluation.&lt;/td>
+&lt;td style="text-align:left">&amp;gt;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">attribute&lt;/td>
+&lt;td style="text-align:left">Triggers if a named image metadata value matches the given condition.&lt;/td>
+&lt;td style="text-align:left">value&lt;/td>
+&lt;td style="text-align:left">Value used in comparison.&lt;/td>
+&lt;td style="text-align:left">1073741824&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-always">Gate: always&lt;/h3>
+&lt;p>Triggers that fire unconditionally if present in policy, useful for things like testing and blacklisting.&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">always&lt;/td>
+&lt;td style="text-align:left">Fires if present in a policy being evaluated. Useful for things like blacklisting images or testing mappings and whitelists by using this trigger in combination with policy mapping rules.&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;td style="text-align:left">&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-retrieved_files">Gate: retrieved_files&lt;/h3>
+&lt;p>Checks against content and/or presence of files retrieved at analysis time from an image&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th style="text-align:left">Trigger Name&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Parameter&lt;/th>
+&lt;th style="text-align:left">Description&lt;/th>
+&lt;th style="text-align:left">Example&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td style="text-align:left">content_not_available&lt;/td>
+&lt;td style="text-align:left">Triggers if the specified file is not present/stored in the evaluated image.&lt;/td>
+&lt;td style="text-align:left">path&lt;/td>
+&lt;td style="text-align:left">The path of the file to verify has been retrieved during analysis&lt;/td>
+&lt;td style="text-align:left">/etc/httpd.conf&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">content_regex&lt;/td>
+&lt;td style="text-align:left">Evaluation of regex on retrieved file content&lt;/td>
+&lt;td style="text-align:left">path&lt;/td>
+&lt;td style="text-align:left">The path of the file to verify has been retrieved during analysis&lt;/td>
+&lt;td style="text-align:left">/etc/httpd.conf&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">content_regex&lt;/td>
+&lt;td style="text-align:left">Evaluation of regex on retrieved file content&lt;/td>
+&lt;td style="text-align:left">check&lt;/td>
+&lt;td style="text-align:left">The type of check to perform with the regex&lt;/td>
+&lt;td style="text-align:left">match&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td style="text-align:left">content_regex&lt;/td>
+&lt;td style="text-align:left">Evaluation of regex on retrieved file content&lt;/td>
+&lt;td style="text-align:left">regex&lt;/td>
+&lt;td style="text-align:left">The regex to evaluate against the content of the file&lt;/td>
+&lt;td style="text-align:left">.&lt;em>SSlEnabled.&lt;/em>&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="gate-malware">Gate: Malware&lt;/h3>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Trigger&lt;/th>
+&lt;th>Description&lt;/th>
+&lt;th>Parameters&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>scans&lt;/td>
+&lt;td>Triggers if any malware scanner has found any matches in the image.&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>scan_not_run&lt;/td>
+&lt;td>Triggers if no scan was found for the image.&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;p>Now that you have a good grasp on the core concepts and architecture, check out the &lt;a href="/docs/install/requirements/">Requirements&lt;/a> section for running Anchore.&lt;/p></description></item></channel></rss>

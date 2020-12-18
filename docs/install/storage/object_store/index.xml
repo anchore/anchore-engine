@@ -1,0 +1,494 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Object Storage</title><link>/docs/install/storage/object_store/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/storage/object_store/</link></image><atom:link href="/docs/install/storage/object_store/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Migrating Data to New Drivers</title><link>/docs/install/storage/object_store/migration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/migration/</guid><description>
+&lt;h3 id="overview">Overview&lt;/h3>
+&lt;p>To cleanly migrate data from one archive driver to another, Anchore Engine includes some tooling that automates the process in the &amp;lsquo;anchore-manager&amp;rsquo; tool packaged with the system.&lt;/p>
+&lt;p>The migration process is an offline process; Anchore Engine is not designed to handle an online migration.&lt;/p>
+&lt;p>For the migration process you will need:&lt;/p>
+&lt;ol>
+&lt;li>The original config.yaml used by the services already, if services are split out or using different config.yaml for different services, you need the config.yaml used by the catalog services&lt;/li>
+&lt;li>An updated config.yaml (named dest-config.yaml in this example), with the archive driver section of the catalog service config set to the config you want to migrate &lt;em>to&lt;/em>&lt;/li>
+&lt;li>The db connection string from config.yaml, this is needed by the anchore-manager script directly&lt;/li>
+&lt;li>Credentials and resources (bucket etc) for the destination of the migration&lt;/li>
+&lt;/ol>
+&lt;p>At a high-level the process is:&lt;/p>
+&lt;ol>
+&lt;li>Shutdown all anchore engine services and components. The system should be fully offline, but the database must be online and available. For a docker-compose install, this is achieved by simply stopping the engine container, but not deleting it.&lt;/li>
+&lt;li>Prepare a new config.yaml that includes the new driver configuration for the destination of the migration (dest-config.yaml) in the same location as the existing config.yaml&lt;/li>
+&lt;li>Test the new dest-config.yaml to ensure correct configuration&lt;/li>
+&lt;li>Run the migration&lt;/li>
+&lt;li>Get coffee&amp;hellip; this could take a while if you have a lot of analysis data&lt;/li>
+&lt;li>When complete, view the results&lt;/li>
+&lt;li>Ensure the dest-config.yaml is in place for all the components as config.yaml&lt;/li>
+&lt;li>Start anchore-engine&lt;/li>
+&lt;/ol>
+&lt;h3 id="migration-example-using-docker-compose-deployed-anchore-engine">Migration Example Using Docker Compose Deployed Anchore Engine&lt;/h3>
+&lt;p>The following is an example migration for an anchore-engine deployed via docker-compose on a single host with a local postgresql container&amp;ndash;basically the example used in &amp;lsquo;Installing Anchore Engine&amp;rsquo; documents. At the end of this section, we&amp;rsquo;ll cover the caveats and things to watch for a multi-node install of anchore engine.&lt;/p>
+&lt;p>This process requires that you run the command in a location that has access to both the source archive driver configuration and the new archive driver configuration.&lt;/p>
+&lt;h4 id="step-1-shutdown-all-services">Step 1: Shutdown all services&lt;/h4>
+&lt;p>All services should be stopped, but the postgresql db must still be available and running.&lt;/p>
+&lt;p>&lt;code>docker-compose stop anchore-engine&lt;/code>&lt;/p>
+&lt;h4 id="step-2-prepare-a-new-configyaml">Step 2: Prepare a new config.yaml&lt;/h4>
+&lt;p>Both the original and new configurations are needed, so create a copy and update the archive driver section to the configuration you want to migrate to&lt;/p>
+&lt;pre>&lt;code>cd config
+cp config.yaml dest-config.yaml
+&amp;lt;edit dest-config.yaml&amp;gt;
+&lt;/code>&lt;/pre>&lt;h4 id="step-3-test-the-destination-config">Step 3: Test the destination config&lt;/h4>
+&lt;p>Assuming that config is &lt;code>dest-config.yaml&lt;/code>:&lt;/p>
+&lt;pre>&lt;code>[user@host aevolume]$ docker-compose run anchore-engine /bin/bash
+[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} check /config/dest-config.yaml
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_connect&amp;quot;: &amp;quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&amp;quot;, &amp;quot;db_connect_args&amp;quot;: {&amp;quot;ssl&amp;quot;: false, &amp;quot;connect_timeout&amp;quot;: 120, &amp;quot;timeout&amp;quot;: 30}, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Using config file /config/dest-config.yaml
+[MainThread] [anchore_engine.subsys.object_store.operations/initialize()] [INFO] Archive initialization complete
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Checking existence of test document with user_id = test, bucket = anchorecliconfigtest and archive_id = cliconfigtest
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Creating test document with user_id = test, bucket = anchorecliconfigtest and archive_id = cliconfigtest
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Checking document fetch
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Removing test object
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Archive config check completed successfully
+&lt;/code>&lt;/pre>&lt;h4 id="step-3a-test-the-current-configyaml">Step 3a: Test the current config.yaml&lt;/h4>
+&lt;p>If you are running the migration for a different location than one of the anchore engine containers&lt;/p>
+&lt;p>Same as above but using &lt;code>/config/config.yaml&lt;/code> as the input to check (skipped in this instance since we&amp;rsquo;re running the migration from the same container)&lt;/p>
+&lt;h4 id="step-4-run-the-migration">Step 4: Run the Migration&lt;/h4>
+&lt;p>By default, the migration process will remove data from the source once it has confirmed it has been copied to the destination and the metadata has been updated in the anchore db. To skip the deletion on the source, use the &amp;lsquo;&amp;ndash;nodelete&amp;rsquo; option. it is the safest option, but if you use it, you are responsible for removing the data later.&lt;/p>
+&lt;pre>&lt;code>[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} migrate /config/config.yaml /config/dest-config.yaml
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_connect&amp;quot;: &amp;quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&amp;quot;, &amp;quot;db_connect_args&amp;quot;: {&amp;quot;ssl&amp;quot;: false, &amp;quot;connect_timeout&amp;quot;: 120, &amp;quot;timeout&amp;quot;: 30}, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Loading configs
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration from config: {
+&amp;quot;storage_driver&amp;quot;: {
+&amp;quot;config&amp;quot;: {},
+&amp;quot;name&amp;quot;: &amp;quot;db&amp;quot;
+},
+&amp;quot;compression&amp;quot;: {
+&amp;quot;enabled&amp;quot;: false,
+&amp;quot;min_size_kbytes&amp;quot;: 100
+}
+}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration to config: {
+&amp;quot;storage_driver&amp;quot;: {
+&amp;quot;config&amp;quot;: {
+&amp;quot;access_key&amp;quot;: &amp;quot;9EB92C7W61YPFQ6QLDOU&amp;quot;,
+&amp;quot;create_bucket&amp;quot;: true,
+&amp;quot;url&amp;quot;: &amp;quot;http://minio-ephemeral-test:9000/&amp;quot;,
+&amp;quot;region&amp;quot;: false,
+&amp;quot;bucket&amp;quot;: &amp;quot;anchore-engine-testing&amp;quot;,
+&amp;quot;prefix&amp;quot;: &amp;quot;internaltest&amp;quot;,
+&amp;quot;secret_key&amp;quot;: &amp;quot;TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s&amp;quot;
+},
+&amp;quot;name&amp;quot;: &amp;quot;s3&amp;quot;
+},
+&amp;quot;compression&amp;quot;: {
+&amp;quot;enabled&amp;quot;: true,
+&amp;quot;min_size_kbytes&amp;quot;: 100
+}
+}
+Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N)y
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Initializing migration from {'storage_driver': {'config': {}, 'name': 'db'}, 'compression': {'enabled': False, 'min_size_kbytes': 100}} to {'storage_driver': {'config': {'access_key': '9EB92C7W61YPFQ6QLDOU', 'create_bucket': True, 'url': 'http://minio-ephemeral-test:9000/', 'region': False, 'bucket': 'anchore-engine-testing', 'prefix': 'internaltest', 'secret_key': 'TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s'}, 'name': 's3'}, 'compression': {'enabled': True, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/migration_context()] [INFO] Initializing source object_store: {'storage_driver': {'config': {}, 'name': 'db'}, 'compression': {'enabled': False, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/migration_context()] [INFO] Initializing dest object_store: {'storage_driver': {'config': {'access_key': '9EB92C7W61YPFQ6QLDOU', 'create_bucket': True, 'url': 'http://minio-ephemeral-test:9000/', 'region': False, 'bucket': 'anchore-engine-testing', 'prefix': 'internaltest', 'secret_key': 'TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s'}, 'name': 's3'}, 'compression': {'enabled': True, 'min_size_kbytes': 100}}
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration Task Id: 1
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Entering main migration loop
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migrating 7 documents
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/policy_bundles/2c53a13c-1765-11e8-82ef-23527761d060
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/manifest_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/analysis_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/image_content_data/sha256:0873c923e00e0fd2ba78041bfb64a105e1ecb7678916d1f7776311e45bf5634b
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/manifest_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/analysis_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Deleting document on source after successful migration to destination. Src = db://admin/image_content_data/sha256:a0cd2c88c5cc65499e959ac33c8ebab45f24e6348b48d8c34fd2308fcb0cc138
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration result summary: {&amp;quot;last_state&amp;quot;: &amp;quot;running&amp;quot;, &amp;quot;executor_id&amp;quot;: &amp;quot;3209ad44d7bb:37:139731996518208:&amp;quot;, &amp;quot;archive_documents_migrated&amp;quot;: 7, &amp;quot;last_updated&amp;quot;: &amp;quot;2018-08-15T18:03:52.951364&amp;quot;, &amp;quot;online_migration&amp;quot;: null, &amp;quot;created_at&amp;quot;: &amp;quot;2018-08-15T18:03:52.951354&amp;quot;, &amp;quot;migrate_from_driver&amp;quot;: &amp;quot;db&amp;quot;, &amp;quot;archive_documents_to_migrate&amp;quot;: 7, &amp;quot;state&amp;quot;: &amp;quot;complete&amp;quot;, &amp;quot;migrate_to_driver&amp;quot;: &amp;quot;s3&amp;quot;, &amp;quot;ended_at&amp;quot;: &amp;quot;2018-08-15T18:03:53.720554&amp;quot;, &amp;quot;started_at&amp;quot;: &amp;quot;2018-08-15T18:03:52.949956&amp;quot;, &amp;quot;type&amp;quot;: &amp;quot;archivemigrationtask&amp;quot;, &amp;quot;id&amp;quot;: 1}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] After this migration, your anchore-engine config.yaml MUST have the following configuration options added before starting up again:
+compression:
+enabled: true
+min_size_kbytes: 100
+storage_driver:
+config:
+access_key: 9EB92C7W61YPFQ6QLDOU
+bucket: anchore-engine-testing
+create_bucket: true
+prefix: internaltest
+region: false
+secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+url: http://minio-ephemeral-test:9000/
+name: s3
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> If something goes wrong you can reverse the parameters of the migrate command to migrate back to the original configuration (e.g. &amp;hellip; migrate /config/dest-config.yaml /config/config.yaml)&lt;/p>
+&lt;h4 id="step-5-get-coffee">Step 5: Get coffee!&lt;/h4>
+&lt;p>The migration time will depend on the amount of data and the source and destination systems performance.&lt;/p>
+&lt;h4 id="step-6-view-results-summary">Step 6: View results summary&lt;/h4>
+&lt;pre>&lt;code>[root@3209ad44d7bb ~]# anchore-manager objectstorage --db-connect ${db} list-migrations
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_connect&amp;quot;: &amp;quot;postgresql+pg8000://postgres:postgres.dev@postgres-dev:5432/postgres&amp;quot;, &amp;quot;db_connect_args&amp;quot;: {&amp;quot;ssl&amp;quot;: false, &amp;quot;connect_timeout&amp;quot;: 120, &amp;quot;timeout&amp;quot;: 30}, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+id state start time end time from to migrated count total to migrate last updated
+1 complete 2018-08-15T18:03:52.949956 2018-08-15T18:03:53.720554 db s3 7 7 2018-08-15T18:03:53.724628
+&lt;/code>&lt;/pre>&lt;p>This lists all migrations for the service and the number of objects migrated. If you&amp;rsquo;ve run multiple migrations you&amp;rsquo;ll see multiple rows in this response.&lt;/p>
+&lt;h3 id="step-7-replace-old-configyaml-with-updated-dest-configyaml">Step 7: Replace old config.yaml with updated dest-config.yaml&lt;/h3>
+&lt;pre>&lt;code>[root@3209ad44d7bb ~]# cp /config/config.yaml /config/config.old.yaml
+[root@3209ad44d7bb ~]# cp /config/dest-config.yaml /config/config.yaml
+&lt;/code>&lt;/pre>&lt;h4 id="step-8-restart-anchore-engine-services">Step 8: Restart anchore-engine services&lt;/h4>
+&lt;p>&lt;code>[user@host aevolume]$ docker-compose start anchore-engine&lt;/code>&lt;/p>
+&lt;p>The system should now be up and running using the new configuration! You can verify with the anchore-cli by fetching a policy bundle, which will have been migrated:&lt;/p>
+&lt;pre>&lt;code>[root@d8d3f49d9328 /]# anchore-cli policy list
+Policy ID Active Created Updated
+2c53a13c-1765-11e8-82ef-23527761d060 True 2018-08-15T17:16:33Z 2018-08-15T18:11:01Z
+[root@d8d3f49d9328 /]# anchore-cli policy get 2c53a13c-1765-11e8-82ef-23527761d060 --detail
+{
+&amp;quot;blacklisted_images&amp;quot;: [],
+&amp;quot;comment&amp;quot;: &amp;quot;Default bundle&amp;quot;,
+&amp;quot;id&amp;quot;: &amp;quot;2c53a13c-1765-11e8-82ef-23527761d060&amp;quot;,
+... &amp;lt;lots of json&amp;gt;
+&lt;/code>&lt;/pre>&lt;p>If that returns the content properly, then you&amp;rsquo;re all done!&lt;/p>
+&lt;h3 id="things-to-watch-for-in-a-multi-node-anchore-engine-installation">Things to Watch for in a Multi-Node Anchore Engine Installation&lt;/h3>
+&lt;ul>
+&lt;li>Before migration:
+Ensure all services are down before starting migration&lt;/li>
+&lt;li>At migration:
+Ensure the place you&amp;rsquo;re running the migration from has the same db access and network access to the archive locations&lt;/li>
+&lt;li>After migration:
+Ensure that all components get the update config.yaml. Strictly speaking, only containers that run the catalog service need the update configuration, but its best to ensure that any config.yaml in the system which has a services.catalog definition also has the proper and up-to-date configuration to avoid confusion or accidental reverting of the config.&lt;/li>
+&lt;/ul>
+&lt;h3 id="example-process-with-docker-compose">Example Process with docker-compose&lt;/h3>
+&lt;pre>&lt;code># ls docker-compose.yaml
+docker-compose.yaml
+# docker-compose ps
+Name Command State Ports
+--------------------------------------------------------------------------------------------------------------------------
+aevolumepy3_anchore-db_1 docker-entrypoint.sh postgres Up 5432/tcp
+aevolumepy3_anchore-engine_1 /bin/sh -c anchore-engine Up 0.0.0.0:8228-&amp;gt;8228/tcp, 0.0.0.0:8338-&amp;gt;8338/tcp
+aevolumepy3_anchore-minio_1 /usr/bin/docker-entrypoint ... Up 0.0.0.0:9000-&amp;gt;9000/tcp
+aevolumepy3_anchore-prometheus_1 /bin/prometheus --config.f ... Up 0.0.0.0:9090-&amp;gt;9090/tcp
+aevolumepy3_anchore-redis_1 docker-entrypoint.sh redis ... Up 6379/tcp
+aevolumepy3_anchore-ui_1 /bin/sh -c node /home/node ... Up 0.0.0.0:3000-&amp;gt;3000/tcp
+# docker-compose stop anchore-engine
+Stopping aevolume_anchore-engine_1 ... done
+# docker-compose run anchore-engine anchore-manager objectstorage --db-connect postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres check /config/config.yaml.new
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_connect&amp;quot;: &amp;quot;postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres&amp;quot;, &amp;quot;db_connect_args&amp;quot;: {&amp;quot;timeout&amp;quot;: 30, &amp;quot;ssl&amp;quot;: false}, &amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/check()] [INFO] Using config file /config/config.yaml.new
+...
+...
+# docker-compose run anchore-engine anchore-manager objectstorage --db-connect postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres migrate /config/config.yaml /config/config.yaml.new
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB params: {&amp;quot;db_connect&amp;quot;: &amp;quot;postgresql+pg8000://postgres:mysecretpassword@anchore-db:5432/postgres&amp;quot;, &amp;quot;db_connect_args&amp;quot;: {&amp;quot;timeout&amp;quot;: 30, &amp;quot;ssl&amp;quot;: false}, &amp;quot;db_pool_size&amp;quot;: 30, &amp;quot;db_pool_max_overflow&amp;quot;: 100}
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connection configured: True
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB attempting to connect...
+[MainThread] [anchore_manager.cli.utils/connect_database()] [INFO] DB connected: True
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Loading configs
+[MainThread] [anchore_engine.configuration.localconfig/validate_config()] [WARN] no webhooks defined in configuration file - notifications will be disabled
+[MainThread] [anchore_engine.configuration.localconfig/validate_config()] [WARN] no webhooks defined in configuration file - notifications will be disabled
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration from config: {
+&amp;quot;compression&amp;quot;: {
+&amp;quot;enabled&amp;quot;: false,
+&amp;quot;min_size_kbytes&amp;quot;: 100
+},
+&amp;quot;storage_driver&amp;quot;: {
+&amp;quot;name&amp;quot;: &amp;quot;db&amp;quot;,
+&amp;quot;config&amp;quot;: {}
+}
+}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] Migration to config: {
+&amp;quot;compression&amp;quot;: {
+&amp;quot;enabled&amp;quot;: true,
+&amp;quot;min_size_kbytes&amp;quot;: 100
+},
+&amp;quot;storage_driver&amp;quot;: {
+&amp;quot;name&amp;quot;: &amp;quot;s3&amp;quot;,
+&amp;quot;config&amp;quot;: {
+&amp;quot;access_key&amp;quot;: &amp;quot;Z54LPSMFKXSP2E2L4TGX&amp;quot;,
+&amp;quot;secret_key&amp;quot;: &amp;quot;EMaLAWLVhUmV/f6hnEqjJo5+/WeZ7ukyHaBKlscB&amp;quot;,
+&amp;quot;url&amp;quot;: &amp;quot;http://anchore-minio:9000&amp;quot;,
+&amp;quot;region&amp;quot;: false,
+&amp;quot;bucket&amp;quot;: &amp;quot;anchorearchive&amp;quot;,
+&amp;quot;create_bucket&amp;quot;: true
+}
+}
+}
+Performing this operation requires *all* anchore-engine services to be stopped - proceed? (y/N) y
+...
+...
+...
+[MainThread] [anchore_engine.subsys.object_store.migration/initiate_migration()] [INFO] Migration result summary: {&amp;quot;last_updated&amp;quot;: &amp;quot;2018-08-14T22:19:39.985250&amp;quot;, &amp;quot;started_at&amp;quot;: &amp;quot;2018-08-14T22:19:39.984603&amp;quot;, &amp;quot;last_state&amp;quot;: &amp;quot;running&amp;quot;, &amp;quot;online_migration&amp;quot;: null, &amp;quot;archive_documents_migrated&amp;quot;: 500, &amp;quot;migrate_to_driver&amp;quot;: &amp;quot;s3&amp;quot;, &amp;quot;id&amp;quot;: 9, &amp;quot;executor_id&amp;quot;: &amp;quot;e9fc8f77714d:1:140375539468096:&amp;quot;, &amp;quot;ended_at&amp;quot;: &amp;quot;2018-08-14T22:20:03.957291&amp;quot;, &amp;quot;created_at&amp;quot;: &amp;quot;2018-08-14T22:19:39.985246&amp;quot;, &amp;quot;state&amp;quot;: &amp;quot;complete&amp;quot;, &amp;quot;archive_documents_to_migrate&amp;quot;: 500, &amp;quot;migrate_from_driver&amp;quot;: &amp;quot;db&amp;quot;, &amp;quot;type&amp;quot;: &amp;quot;archivemigrationtask&amp;quot;}
+[MainThread] [anchore_manager.cli.objectstorage/migrate()] [INFO] After this migration, your anchore-engine config.yaml MUST have the following configuration options added before starting up again:
+...
+...
+# cp config/config.yaml config/config.yaml.original
+# cp config/config.yaml.new config/config.yaml
+# docker-compose start anchore-engine
+Starting anchore-engine ... done
+&lt;/code>&lt;/pre>&lt;h2 id="migrating-analysis-archive-data">Migrating Analysis Archive Data&lt;/h2>
+&lt;p>The object storage migration process migrates any data stored in the source config to the destination configuration, if
+the analysis archive is configured to use the same storage backend as the primary object store then that data is migrated
+along with all other data, but if the source or destination configurations define different storage backends for the
+analysis archive than that which is used by the primary object store, then additional paramters are necesary in the
+migration commands to indicate which configurations to migrate to/from.&lt;/p>
+&lt;p>The most common migration patterns are:&lt;/p>
+&lt;ol>
+&lt;li>
+&lt;p>Migrate from a single backend configuration to a split configuration to move analysis archive data to an external system (db -&amp;gt; db + s3)&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Migrate from a dual-backend configuration to a single-backend configuration with a different config (e.g. db + s3 -&amp;gt; s3)&lt;/p>
+&lt;/li>
+&lt;/ol>
+&lt;h3 id="migrating-a-single-backend-to-split-backend">Migrating a single backend to split backend&lt;/h3>
+&lt;p>For example, moving from unified db backend (default config) to a db + s3 configuration with s3 for the analysis archive .&lt;/p>
+&lt;p>source-config.yaml snippet:&lt;/p>
+&lt;pre>&lt;code>...
+services:
+...
+catalog:
+...
+object_store:
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: db
+config: {}
+...
+&lt;/code>&lt;/pre>&lt;p>dest-config.yaml snippet:&lt;/p>
+&lt;pre>&lt;code>...
+services:
+...
+catalog:
+...
+object_store:
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: db
+config: {}
+analysis_archive:
+enabled: true
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: s3
+config:
+access_key: 9EB92C7W61YPFQ6QLDOU
+secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+url: 'http://minio-ephemeral-test:9000'
+region: null
+bucket: analysisarchive
+...
+&lt;/code>&lt;/pre>&lt;p>Anchore stores its internal data in logical &amp;lsquo;buckets&amp;rsquo; that are overlayed onto the storage backed in a driver-specific
+way, so to migrate specific internal buckets (effectively these are classes of data), use the &amp;ndash;bucket option in the
+manager cli. This should generally not be necessary, but for specific kinds of migrations it may be needed.&lt;/p>
+&lt;p>The following command will execute the migration. Note that the &amp;ndash;bucket option is for an internal Anchore logical-bucket, not
+and actual bucket in S3:&lt;/p>
+&lt;pre>&lt;code>anchore-manager objectstorage --db-connect migrate --to-analysis-archive --bucket analysis_archive source-config.yaml dest-config.yaml
+&lt;/code>&lt;/pre>&lt;h3 id="migrating-from-dual-object-storage-backends-to-a-single-backend">Migrating from dual object storage backends to a single backend&lt;/h3>
+&lt;p>For example, migrating from a db + s3 backend to a single s3 backend in a different bucket:&lt;/p>
+&lt;p>Example source-config.yaml snippet:&lt;/p>
+&lt;pre>&lt;code>...
+services:
+...
+catalog:
+...
+object_store:
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: db
+config: {}
+analysis_archive:
+enabled: true
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: s3
+config:
+access_key: 9EB92C7W61YPFQ6QLDOU
+secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+url: 'http://minio-ephemeral-test:9000'
+region: null
+bucket: analysisarchive
+...
+&lt;/code>&lt;/pre>&lt;p>The dest config is a single backend. In this case, note the S3 bucket has changed so all data must be migrated.&lt;/p>
+&lt;p>Example dest-config.yaml snippet:&lt;/p>
+&lt;pre>&lt;code>...
+services:
+...
+catalog:
+...
+object_store:
+enabled: true
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: s3
+config:
+access_key: 9EB92C7W61YPFQ6QLDOU
+secret_key: TuHo2UbBx+amD3YiCeidy+R3q82MPTPiyd+dlW+s
+url: 'http://minio-ephemeral-test:9000'
+region: null
+bucket: newanchorebucket
+...
+&lt;/code>&lt;/pre>&lt;p>First, migrate the object data in the db on the source:&lt;/p>
+&lt;pre>&lt;code>anchore-manager objectstorage --db-connect migrate source-config.yaml dest-config.yaml
+&lt;/code>&lt;/pre>&lt;p>Next, migrate the object data in the analysis archive from the old config (s3 bucket &amp;lsquo;analysisarchive&amp;rsquo; to the new config
+(s3 bucket &amp;lsquo;newanchorebucket&amp;rsquo;):&lt;/p>
+&lt;pre>&lt;code>anchore-manager objectstorage --db-connect migrate --from-analysis-archive source-config.yaml dest-config.yaml
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Database Driver</title><link>/docs/install/storage/object_store/database_driver/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/database_driver/</guid><description>
+&lt;p>The default object store driver is the PostgreSQL database driver which stores all object store documents within the PostgreSQL database.&lt;/p>
+&lt;p>Compression is not supported for this driver since the underlying database will handle compression.&lt;/p>
+&lt;p>There are no configuration options required for the Database driver.&lt;/p>
+&lt;p>The embedded configuration for anchore engine includes the default configuration for the db driver.&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">False&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">db&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>{}&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: Filesystem Driver</title><link>/docs/install/storage/object_store/filesystem_driver/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/filesystem_driver/</guid><description>
+&lt;p>Using the file system driver object store documents can be stored on a filesystem volume passed to the Anchore Engine container.&lt;/p>
+&lt;p>&lt;strong>The filesystem driver does not handle distribution or replication.&lt;/strong> To replicate the file system across nodes for performance and redundancy a clustered / shared filesystem such as Gluster, CephFS or Amazon EFS should be used.&lt;/p>
+&lt;p>&lt;strong>WARNING:&lt;/strong> This driver is not recommended for scale-out production deployments&lt;/p>
+&lt;p>For environments who do not want to utilize the default PostgresSQL storage and need scale or redundancy an object store such as S3 or Swift will provide a better solution than the filesystem driver.&lt;/p>
+&lt;h3 id="compression">Compression&lt;/h3>
+&lt;p>The localfs (filesystem) driver supports compression of object_store documents. The object_store documents are JSON formatted and will see significant reduction in size through compression there is an overhead incurred by running compression and decompression on every access of these documents. The Anchore Engine can be configured to only compress documents above a certain size to reduce unnecessary overhead. In the example below any document over 100kb in size will be compressed.&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">localfs&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">archive_data_dir&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;/object_store&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: S3 Object Store Driver</title><link>/docs/install/storage/object_store/s3_driver/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/s3_driver/</guid><description>
+&lt;p>Using the S3 driver, data can be stored using Amazon&amp;rsquo;s S3 storage or any Amazon S3 API compatible system.&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">False&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;s3&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">access_key&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;MY_ACCESS_KEY&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">secret_key&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;MY_SECRET_KEY&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#8f5902;font-style:italic">#iamauto: True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">url&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;https://S3-end-point.example.com&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">region&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">False&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">bucket&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;anchorearchive&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">create_bucket&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;h3 id="compression">Compression&lt;/h3>
+&lt;p>The S3 driver supports compression of documents. The documents are JSON formatted and will see significant reduction in
+size through compression there is an overhead incurred by running compression and decompression on every access of these
+documents. The Anchore Engine can be configured to only compress documents above a certain size to reduce unnecessary
+overhead. In the example below any document over 100kb in size will be compressed.&lt;/p>
+&lt;h3 id="authentication">Authentication&lt;/h3>
+&lt;p>The Anchore Engine can authenticate against the S3 service using one of two methods:&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>Amazon Access Keys
+Using this method an Access Key and Secret Access key that have access to read and write to the bucket. Parameters:
+access_key and secret_key&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Inherit IAM Role
+The Anchore Engine can be configured to inherit the IAM role from the EC2 or ECS instance that is running the Anchore
+Engine. When launching the EC2 instance that will run the Anchore Engine you need to specify a role that includes the
+ability to read and write from the archive bucket. To use IAM roles to authenticate the access_key and secret_access
+configurations should be replaced by iamauto: True
+Parameters: iamauto&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="bucket">Bucket&lt;/h3>
+&lt;ul>
+&lt;li>The url parameter points to the endpoint for the Amazon S3 bucket&lt;/li>
+&lt;li>The region parameter should be set to the AWS region hosting the bucket or False for an AWS compatible service that
+does not support regions&lt;/li>
+&lt;li>The bucket parameter should be set to the name of the bucket that will be used to store the archive documents.&lt;/li>
+&lt;li>The create_bucket parameter is used to configure if the Anchore Engine attempts to create a bucket. If this option is
+set then ensure that the IAM role or Access Keys have sufficient access to create a new bucket.&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Swift Archive Driver</title><link>/docs/install/storage/object_store/swift_driver/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/swift_driver/</guid><description>
+&lt;p>Using the Swift driver archive documents can be stored in an OpenStack Swift Object storage service.&lt;/p>
+&lt;p>The Swift driver supports three authentication methods:&lt;/p>
+&lt;ul>
+&lt;li>Keystone V3&lt;/li>
+&lt;li>Keystone V2&lt;/li>
+&lt;li>Legacy (username / password)&lt;/li>
+&lt;/ul>
+&lt;h3 id="common-configuration-options">Common Configuration Options&lt;/h3>
+&lt;h4 id="compression">Compression&lt;/h4>
+&lt;p>The Swift driver supports compression of archive documents. The archive documents are JSON formatted and will see significant reduction in size through compression there is an overhead incurred by running compression and decompression on every access of these documents. The Anchore Engine can be configured to only compress documents above a certain size to reduce unnecessary overhead. In the example below any document over 100kb in size will be compressed.&lt;/p>
+&lt;h4 id="container">Container&lt;/h4>
+&lt;ul>
+&lt;li>The container parameter specifies the name of the container to be used.&lt;/li>
+&lt;li>The create_container parameter is used to configure if the Anchore Engine attempts to create a container. If this option is set then ensure that the user has the appropriate rights to create a container.&lt;/li>
+&lt;/ul>
+&lt;h3 id="legacy-authentication">Legacy Authentication&lt;/h3>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;swift&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">user&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;user:password&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">auth&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;http://swift.example.com:8080/auth/v1.0&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">key&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;anchore&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">container&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;anchorearchive&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">create_container&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;ul>
+&lt;li>The user configuration option should include the colon delimited username and password. eg. &amp;lsquo;admin:secret&amp;rsquo;&lt;/li>
+&lt;li>The auth parameter specifies the authentication end point for the Swift Service&lt;/li>
+&lt;li>The key parameter specifies the key for the Swift Service&lt;/li>
+&lt;/ul>
+&lt;h3 id="keystone-v3">Keystone V3&lt;/h3>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;swift&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">auth_version&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;3&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_username&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;myusername&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_password&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;mypassword&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_project_name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">myproject&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_project_domain_name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">example.com&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_auth_url&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;foo.example.com:8000/auth/etc&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">container&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;anchorearchive&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">create_container&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;ul>
+&lt;li>The auth_version configuration option specified Keystone V3 authentication&lt;/li>
+&lt;li>The os_username parameter specifies the username&lt;/li>
+&lt;li>The os_password parameter specifies the password&lt;/li>
+&lt;li>The os_project_name parameter specifies the OpenStack project name under which the Swift service is configured&lt;/li>
+&lt;li>The os_project_domain_name parameter specifies the domain name for the OpenStack project&lt;/li>
+&lt;li>The os_auth_url parameter specifies the URL to the OpenStack Keystone service&lt;/li>
+&lt;/ul>
+&lt;h3 id="keystone-v2">Keystone V2&lt;/h3>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">object_store&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">compression&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">true&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">min_size_kbyte&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">100&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">storage_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;swift&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">auth_version&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;2&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_username&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;myusername&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_password&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;mypassword&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_tenant_name&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;mytenant&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">os_auth_url&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;foo.example.com:8000/auth/etc&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;ul>
+&lt;li>The auth_version configuration option specified Keystone V3 authentication&lt;/li>
+&lt;li>The os_username parameter specifies the username&lt;/li>
+&lt;li>The os_password parameter specifies the password&lt;/li>
+&lt;li>The os_tenant_name parameter specifies the name of the OpenStack tenant under which the Swift service is configured&lt;/li>
+&lt;li>The os_auth_url parameter specifies the URL to the OpenStack Keystone service&lt;/li>
+&lt;/ul>
+&lt;h4 id="note">Note&lt;/h4>
+&lt;p>The Anchore Engine archive drivers users the OpenStack Python SwiftClient library. The config section is passed to the SwiftClient library allowing any advanced parameters supported by the Swift library to be configured.&lt;/p></description></item></channel></rss>

@@ -1,0 +1,88 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Accessing the Anchore Engine API</title><link>/docs/usage/api_usage/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/api_usage/</link></image><atom:link href="/docs/usage/api_usage/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Supported Authentication Modes</title><link>/docs/usage/api_usage/authentication/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/api_usage/authentication/</guid><description>
+&lt;h2 id="anchore-engine-authentication-overview">Anchore Engine Authentication Overview&lt;/h2>
+&lt;p>Anchore Engine supports two ways for users to authenticate to the API: HTTP Basic and Bearer Tokens. HTTP Basic is always
+supported but Bearer token auth must be explicitly configured to be used.&lt;/p>
+&lt;p>For production installation, it is recommended to &lt;a href="/docs/install/configuration/user_credential_storage/">configure bearer tokens as well as hashed password storage&lt;/a>
+in the db to ensure that no clear text password is present anywhere in the system. Because the system uses credentials for
+internal service-to-service communication, it is required that if hashing passwords is configured that oauth also be enabled
+to allow inter-service communication using service-generated tokens.&lt;/p>
+&lt;p>This will require providing a shared secret across all components or a pair of public/private keys. Each service must have
+exactly the same secret or key-pair present.&lt;/p>
+&lt;h3 id="basic-auth">Basic Auth&lt;/h3>
+&lt;p>By default, Anchore Engine uses &lt;a href="https://tools.ietf.org/html/rfc2617">HTTP Basic&lt;/a> auth for all internal and external API
+operations. For production deployments with this mode, it is critical to use HTTPS to secure the communication channel
+between services and users. See: &lt;a href="/docs/install/configuration/tls_ssl_config/">Configuring HTTPS&lt;/a> for setup information.&lt;/p>
+&lt;p>Example Usage:&lt;/p>
+&lt;pre>&lt;code>[root@4a1b1d9105a8 ~]# curl -v -u admin:foobar http://localhost:8228/v1/accounts
+* About to connect() to localhost port 8228 (#0)
+* Trying 127.0.0.1...
+* Connected to localhost (127.0.0.1) port 8228 (#0)
+* Server auth using Basic with user 'admin'
+&amp;gt; GET /v1/accounts HTTP/1.1
+&amp;gt; Authorization: Basic YWRtaW46Zm9vYmFy
+&amp;gt; User-Agent: curl/7.29.0
+&amp;gt; Host: localhost:8228
+&amp;gt; Accept: */*
+&amp;gt;
+&amp;lt; HTTP/1.1 200 OK
+&amp;lt; Server: TwistedWeb/19.2.1
+&amp;lt; Date: Wed, 28 Aug 2019 20:18:15 GMT
+&amp;lt; Content-Type: application/json
+&amp;lt; Content-Length: 195
+&amp;lt;
+[
+{
+&amp;quot;created_at&amp;quot;: &amp;quot;2019-08-28T07:32:39Z&amp;quot;,
+&amp;quot;email&amp;quot;: &amp;quot;admin@myanchore&amp;quot;,
+&amp;quot;last_updated&amp;quot;: &amp;quot;2019-08-28T07:32:39Z&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;admin&amp;quot;,
+&amp;quot;state&amp;quot;: &amp;quot;enabled&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;admin&amp;quot;
+}
+]
+&lt;/code>&lt;/pre>
+&lt;h3 id="bearer-tokensoauth">Bearer Tokens/Oauth&lt;/h3>
+&lt;p>When configured, anchore implements the Oauth2 Password grant flow. Anchore is configured with a default &amp;lsquo;anonymous&amp;rsquo; client
+id that is used to avoid requiring registering specific clients.&lt;/p>
+&lt;p>Required payload, must be www-form-urlencoded:&lt;/p>
+&lt;pre>&lt;code>grant_type=password
+username=&amp;lt;user&amp;gt;
+password=&amp;lt;password&amp;gt;
+client_id=anonymous
+&lt;/code>&lt;/pre>
+&lt;p>The payload is sent using HTTP POST to the &lt;em>/v1/oauth/token&lt;/em> endpoint. The returned token is valid until expiration (typically 1 hour)
+and is used by sending it in the &lt;em>Authorization&lt;/em> header as a bearer token:&lt;/p>
+&lt;p>Example usage:&lt;/p>
+&lt;pre>&lt;code>root@4a1b1d9105a8 ~]# curl -v -d 'grant_type=password&amp;amp;client_id=anonymous&amp;amp;username=admin&amp;amp;password=foobar' -X POST http://localhost:8228/v1/oauth/token
+* About to connect() to localhost port 8228 (#0)
+* Trying 127.0.0.1...
+* Connected to localhost (127.0.0.1) port 8228 (#0)
+&amp;gt; POST /v1/oauth/token HTTP/1.1
+&amp;gt; User-Agent: curl/7.29.0
+&amp;gt; Host: localhost:8228
+&amp;gt; Accept: */*
+&amp;gt; Content-Length: 70
+&amp;gt; Content-Type: application/x-www-form-urlencoded
+&amp;gt;
+* upload completely sent off: 70 out of 70 bytes
+&amp;lt; HTTP/1.1 200 OK
+&amp;lt; Server: TwistedWeb/19.2.1
+&amp;lt; Date: Wed, 28 Aug 2019 20:14:32 GMT
+&amp;lt; Content-Type: application/json
+&amp;lt; Cache-Control: no-store
+&amp;lt; Pragma: no-cache
+&amp;lt; Content-Length: 332
+&amp;lt;
+* Connection #0 to host localhost left intact
+{&amp;quot;access_token&amp;quot;: &amp;quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhbmNob3JlLWVuZ2luZSIsInN1YiI6IjRhYjQ3NzczOTQ0MjRkM2RiNmY1MTczMzU1ZjE3YTZhIiwiZXhwIjoxNTY3MDI2ODcyLCJpYXQiOjE1NjcwMjMyNzIsImp0aSI6IjFmMzhjOWUwZmQ2YzQyZTJiNWRlZmU2NTU2NGU3MzE5In0.dxpW3k5OFn5_CGD2_GIeJ6KO2hWMVZqh4adoqPj8t7g&amp;quot;, &amp;quot;expires_in&amp;quot;: 3600, &amp;quot;token_type&amp;quot;: &amp;quot;Bearer&amp;quot;}
+root@4a1b1d9105a8 ~]# curl -H &amp;quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhbmNob3JlLWVuZ2luZSIsInN1YiI6IjRhYjQ3NzczOTQ0MjRkM2RiNmY1MTczMzU1ZjE3YTZhIiwiZXhwIjoxNTY3MDI3NTEyLCJpYXQiOjE1NjcwMjM5MTIsImp0aSI6IjMzY2I1NTA1NjU3ZDRkZjBhYzY2MWE5Yjk3NWEyYjJmIn0.nQkkZ17lU_UeWVuVAt2RlLJ-mY935bP6OV3R1fBL_24&amp;quot; http://localhost:8228/v1/account
+{
+&amp;quot;created_at&amp;quot;: &amp;quot;2019-08-28T07:32:39Z&amp;quot;,
+&amp;quot;email&amp;quot;: &amp;quot;admin@myanchore&amp;quot;,
+&amp;quot;last_updated&amp;quot;: &amp;quot;2019-08-28T07:32:39Z&amp;quot;,
+&amp;quot;name&amp;quot;: &amp;quot;admin&amp;quot;,
+&amp;quot;state&amp;quot;: &amp;quot;enabled&amp;quot;,
+&amp;quot;type&amp;quot;: &amp;quot;admin&amp;quot;
+}
+[root@4a1b1d9105a8 ~]#
+&lt;/code>&lt;/pre></description></item></channel></rss>

@@ -1,0 +1,65 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Using Anchore Engine</title><link>/docs/usage/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/</link></image><atom:link href="/docs/usage/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Using the Anchore CLI</title><link>/docs/usage/cli_usage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/</guid><description>
+&lt;p>The Anchore CLI provides a command line interface on top of the Anchore Engine REST API. The Anchore CLI is published as a Python Package that can be installed from source from the Python PyPI package repository on any platform supporting PyPi. Using the Anchore CLI users can manage and inspect images, policies, subscriptions, and registries.&lt;/p>
+&lt;p>If you have not installed the Anchore CLI, please refer to the &lt;a href="/docs/install/anchore_cli/">installation guide&lt;/a>.&lt;/p>
+&lt;p>To jump to a particular guide, select from the following below:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/usage/cli_usage/images/">Analyzing Images&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/images/inspecting_image_content/">Inspecting Image Content&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/repositories/">Scanning Repositories&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/images/viewing_security_vulnerabilities/">Viewing Security Vulnerabilities&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Accessing the Anchore Engine API</title><link>/docs/usage/api_usage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/api_usage/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>The Anchore Engine API is documented using the OpenAPI Specification (Swagger) and the source for the latest development version can be found in GitHub in &lt;a href="https://github.com/anchore/anchore-engine/blob/master/anchore_engine/services/apiext/swagger/swagger.yaml">swagger.yaml&lt;/a> document within the external API service. There are also a variety of ways in which the API specification can be accessed.&lt;/p>
+&lt;h3 id="online">Online&lt;/h3>
+&lt;p>You can browse latest stable the Anchore API specification &lt;a href="./specs/swagger.yaml">here&lt;/a>&lt;/p>
+&lt;h3 id="local-swagger-json">Local Swagger JSON&lt;/h3>
+&lt;p>The JSON definition for the API specification for your specific instance of Anchore can be downloaded from a running Anchore Engine service at the following URI:&lt;/p>
+&lt;p>http://{servername:port}/v1/swagger.json&lt;/p>
+&lt;p>e.g.&lt;/p>
+&lt;p>http://localhost:8228/v1/swagger.json&lt;/p>
+&lt;h3 id="local-swagger-ui">Local Swagger UI&lt;/h3>
+&lt;ol>
+&lt;li>
+&lt;p>When using docker-compose: Uncomment the following section at the bottom of the docker-compose.yaml file:&lt;/p>
+&lt;pre>&lt;code># # Uncomment this section to run a swagger UI service, for inspecting and interacting with the anchore engine API via a browser (http://localhost:8080 by default, change if needed in both sections below)
+# swagger-ui-nginx:
+# image: docker.io/nginx:latest
+# depends_on:
+# - api
+# - swagger-ui
+# ports:
+# - &amp;quot;8080:8080&amp;quot;
+# volumes:
+# - ./anchore-swaggerui-nginx.conf:/etc/nginx/nginx.conf:z
+# logging:
+# driver: &amp;quot;json-file&amp;quot;
+# options:
+# max-size: 100m
+# swagger-ui:
+# image: docker.io/swaggerapi/swagger-ui
+# environment:
+# - URL=http://localhost:8080/v1/swagger.json
+# logging:
+# driver: &amp;quot;json-file&amp;quot;
+# options:
+# max-size: 100m
+&lt;/code>&lt;/pre>&lt;/li>
+&lt;li>
+&lt;p>Download the nginx configuration into the same directory as the docker-compose.yaml file, with name &lt;em>anchore-swaggerui-nginx.conf&lt;/em>&lt;/p>
+&lt;pre>&lt;code>curl -O https://docs.anchore.com/current/docs/quickstart/anchore-swaggerui-nginx.conf
+docker-compose up -d
+&lt;/code>&lt;/pre>&lt;p>You should see a new container started and can access prometheus via your browser on &lt;code>http://localhost:8080/ui/&lt;/code>&lt;/p>
+&lt;/li>
+&lt;/ol>
+&lt;p>~
+~
+~
+~
+~
+~&lt;/p></description></item><item><title>Docs: Integration</title><link>/docs/usage/integration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>There are several different ways to integrate with Anchore Engine:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/usage/integration/ci_cd/">CI/CD Integration&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/integration/kubernetes/">Kubernetes Integration&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

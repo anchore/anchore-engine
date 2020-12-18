@@ -1,0 +1,37 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore CLI</title><link>/docs/install/anchore_cli/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/anchore_cli/</link></image><atom:link href="/docs/install/anchore_cli/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Configuring the Anchore CLI</title><link>/docs/install/anchore_cli/cli_config/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/anchore_cli/cli_config/</guid><description>
+&lt;p>By default the Anchore CLI will try to connect to the Anchore Engine at http://localhost/v1 with no authentication.&lt;/p>
+&lt;p>The username, password and URL for the server can be passed to the Anchore CLI using one of three methods:&lt;/p>
+&lt;h3 id="command-line-parameters">Command Line Parameters&lt;/h3>
+&lt;p>The following command line parameters are used to configure the Anchore CLI to connect to and authenticate with the Anchore Engine.&lt;/p>
+&lt;pre>&lt;code>--u TEXT Username eg. admin
+--p TEXT Password eg. foobar
+--url TEXT Service URL eg. http://localhost:8228/v1
+--insecure Skip certificate validation checks (optional)
+&lt;/code>&lt;/pre>&lt;p>These connection parameters should be passed before any other commands.
+eg.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli --u admin --p foobar --url http://anchore.example.com:8228/v1&lt;/code>&lt;/p>
+&lt;h3 id="environment-variables">Environment Variables&lt;/h3>
+&lt;p>Rather than passing command line parameters for every call to the Anchore CLI they can be stored as environment variables.&lt;/p>
+&lt;pre>&lt;code>ANCHORE_CLI_URL=http://myserver.example.com:8228/v1
+ANCHORE_CLI_USER=admin
+ANCHORE_CLI_PASS=foobar
+ANCHORE_CLI_SSL_VERIFY=n
+&lt;/code>&lt;/pre>&lt;h3 id="credentials-file-recommended">Credentials File (recommended)&lt;/h3>
+&lt;p>The server URL and authentications credentials can be stored in a configuration file stored in the user&amp;rsquo;s home directory.&lt;/p>
+&lt;p>The file should be stored in the following location: $HOME/.anchore/credentials.yaml&lt;/p>
+&lt;pre>&lt;code>default:
+ANCHORE_CLI_USER: 'admin'
+ANCHORE_CLI_PASS: 'foobar'
+ANCHORE_CLI_URL: 'http://localhost:8228/v1'
+&lt;/code>&lt;/pre>&lt;h3 id="order-or-precedence">Order or Precedence&lt;/h3>
+&lt;p>The Anchore CLi will first look for configuration via command line parameters. If no command line parameters are passed then the environment is checked, finally the CLI will check for a credentials file.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> All examples in the documentation will presume that the credentials have been configured using either environment variables or the credentials file.&lt;/p></description></item><item><title>Docs: Upgrading the Anchore CLI</title><link>/docs/install/anchore_cli/cli_upgrade/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/anchore_cli/cli_upgrade/</guid><description>
+&lt;p>The Anchore CLI is published as a Python Package that can be installed from source from the Python PyPI package repository on any platform supporting PyPi. Upgrades to the Anchore CLI are performed using the identical method used for installation.&lt;/p>
+&lt;p>&lt;code>$ pip install --user --upgrade anchorecli&lt;/code>&lt;/p>
+&lt;p>To check if an update is available from the PyPI package repository run the following command:&lt;/p>
+&lt;pre>&lt;code>$ pip search anchorecli
+anchorecli (0.2.0) - Anchore Service CLI
+INSTALLED: 0.1.10
+LATEST: 0.2.0
+&lt;/code>&lt;/pre>&lt;p>In this example the pip search command shows that we have anchorecli version 0.1.10 installed however the latest available version is 0.2.0.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Python package names cannot include a dash so while the command name is anchore-cli the PyPi packages is anchorecli.&lt;/p></description></item></channel></rss>

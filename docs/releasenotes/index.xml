@@ -1,0 +1,406 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 0.8.1</title><link>/docs/releasenotes/081/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/081/</guid><description>
+&lt;h2 id="anchore-engine-081">Anchore Engine 0.8.1&lt;/h2>
+&lt;p>Anchore Engine 0.8.1, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>Additional trigger &amp;lsquo;scan_not_run&amp;rsquo; in &amp;lsquo;malware&amp;rsquo; trigger that fires if no scan was performed for the image. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/576">576&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Do not always require a created_timestamp_override field for analysis by digest. Fixes &lt;a href="https://github.com/anchore/anchore-engine/552">552&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="fixes">Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Image analysis scratch space cleanup may fail if image files have non-readable modes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/579">579&lt;/a>&lt;/li>
+&lt;li>Prevent &amp;lsquo;admin&amp;rsquo; account from being disabled. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/522">522&lt;/a>&lt;/li>
+&lt;li>Make permissions consistent for /account and /accounts/&lt;!-- raw HTML omitted --> routes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/565">565&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor bug fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.8.2</title><link>/docs/releasenotes/082/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/082/</guid><description>
+&lt;h2 id="anchore-engine-082">Anchore Engine 0.8.2&lt;/h2>
+&lt;p>Anchore Engine 0.8.2, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>Ability to set pool_recycle and other SQLAlchemy engine parameters via config. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/641">#641&lt;/a>&lt;/li>
+&lt;li>Updates image build to support dynamic UID mapping in OpenShift. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/586">#586&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="fixes">Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Malware scan fails to find EICAR string in image over 25Mb. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/615">#615&lt;/a>&lt;/li>
+&lt;li>Policy engine should return HTTP 400 with instructive message on invalid bundle upload instead of HTTP 500. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/634">#634&lt;/a>&lt;/li>
+&lt;li>Vulnerability fix version not correct for vulnerabilities with multiple fixes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/639">#639&lt;/a>&lt;/li>
+&lt;li>npm and gem packages not matching GHSA sources properly. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/633">#633&lt;/a>&lt;/li>
+&lt;li>Update urllib3 to 1.25.9 to address CVE-2020-26137. Engine not affected. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/662">#662&lt;/a>&lt;/li>
+&lt;li>Deactivating repo subscription does not halt repo scan. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/635">#635&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor bug fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.8.0</title><link>/docs/releasenotes/080/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/080/</guid><description>
+&lt;h2 id="anchore-engine-080">Anchore Engine 0.8.0&lt;/h2>
+&lt;p>Anchore Engine 0.8.0, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;p>Of specific note, 0.8.0 adds: malware scanning capabilities, makes deletion of images asynchronous, adds new analyzers for binaries not delivered in packages, and includes a &amp;ldquo;content hints&amp;rdquo; capability in the
+analyzers so developers or image builders can pass metadata to augmentation analysis results.&lt;/p>
+&lt;h3 id="malware-scanning">Malware Scanning&lt;/h3>
+&lt;p>Engine 0.8.0 now integrates ClamAV for optional (disabled by default) malware scanning of image content during the analysis phase and with policy rules to trigger on findings. This is particularly useful for using Engine to validate
+external images in an image catalog or &amp;ldquo;golden repo&amp;rdquo; where you must guard against both vulnerable and malicious code from external sources.&lt;/p>
+&lt;p>For more information see: &lt;a href="/docs/general/concepts/images/analysis/malware_scanning/">Malware Scanning&lt;/a>&lt;/p>
+&lt;h3 id="new-binary-content-type">New Binary Content Type&lt;/h3>
+&lt;p>A new binary analyzer will check for and inspect binaries that are often installed outside of package managers. This supports a common use-case of language or runtime-specific base images
+such as Python and Go images where the runtime is installed via an archive and thus no package db entry exists. The analyzer supports specific binaries that it searches and can get metadata for: Go, Python, and BusyBox.&lt;/p>
+&lt;p>Once detected, these are checked for vulnerabilities, just like regular packages using the NVD and other non-OS vulnerability sources.&lt;/p>
+&lt;h3 id="content-hints">Content Hints&lt;/h3>
+&lt;p>A new &amp;ldquo;hints&amp;rdquo; feature allows users to pass specific metadata into the analyzers to help identify and augment content that existing analyzers would not have been discovered. This feature is useful
+if you have libraries statically compiled into another binary or installed outside of a package manager that you want to tell Anchore about so you can get vulnerability matches for and include them in the
+image&amp;rsquo;s content manifests. This is accomplished with a specific JSON file present in the image: &lt;code>/anchore_hints.JSON&lt;/code>. The entries are merged into the analyzer results to augment their findings for
+different content types.&lt;/p>
+&lt;p>For more information, see: &lt;a href="/docs/general/concepts/images/analysis/content_hints/">Content Hints&lt;/a>&lt;/p>
+&lt;h3 id="changed-image-deletion-behavior">Changed Image Deletion Behavior&lt;/h3>
+&lt;p>Image deletion is now an asynchronous operation and the &lt;code>image_status&lt;/code> property in the image record now has possible states &amp;lsquo;active&amp;rsquo; and &amp;lsquo;deleting&amp;rsquo;. Deletion of an image by API call will
+transition the image record to a &lt;code>deleting&lt;/code> status as indicated by the &lt;code>image_status&lt;/code> property. Images in that state will be deleted by an asynchronous process on a duty cycle. This approach helps manage database
+load under a high volume of delete operations and also makes the client-perceived response time much lower.&lt;/p>
+&lt;p>&lt;em>NOTE: Responses for &lt;code>GET /images&lt;/code> and &lt;code>GET /summaries/imagetags&lt;/code> do &lt;em>not&lt;/em> include images in the deleting state by default, though new query parameters
+allow those images to be returned in those calls if desired (&lt;code>image_status=deleting&lt;/code> or &lt;code>image_status=all&lt;/code>)&lt;/em>&lt;/p>
+&lt;h3 id="new-api-revision">New API Revision&lt;/h3>
+&lt;p>The API is updated to version &lt;a href="https://github.com/anchore/anchore-engine/blob/v0.8.0/anchore_engine/services/apiext/swagger/swagger.yaml">0.1.15&lt;/a>&lt;/p>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>Changed image deletion to asynchronous behavior to make API more responsive and throttle db load during image deletes.&lt;/li>
+&lt;li>New dry-run mode for repository scan request to return list of tags that would be scanned without scanning or persisting the record. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/510">510&lt;/a>&lt;/li>
+&lt;li>Support for a &amp;ldquo;hints&amp;rdquo; JSON file in the image. JSON file to pass additional metadata to augment analyzer findings. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/550">550&lt;/a>&lt;/li>
+&lt;li>Adds API support for deleting multiple images in a single call. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/502">502&lt;/a>&lt;/li>
+&lt;li>Support for malware scanning using ClamAV and new &amp;lsquo;malware&amp;rsquo; content type in API and policy gate to trigger on findings. Disabled by default. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/498">498&lt;/a>&lt;/li>
+&lt;li>Support for content type &amp;lsquo;binary&amp;rsquo; with analyzers to detect specific binaries: python, golang, busybox not installed by package manager. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/531">531&lt;/a>, &lt;a href="https://github.com/anchore/anchore-engine/issues/533">533&lt;/a>, &lt;a href="https://github.com/anchore/anchore-engine/issues/534">534&lt;/a>, &lt;a href="https://github.com/anchore/anchore-engine/issues/340">340&lt;/a>&lt;/li>
+&lt;li>Query parameter filters for GET /images calls to filter by image_status and analysis_status. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/561">561&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Change image analysis queue processing behavior from first come first served to fair share across accounts. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/491">491&lt;/a>&lt;/li>
+&lt;li>Removes image_to_get property in GET body of /images route, since body in GET operations is not standard behavior. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/562">562&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="fixes">Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Handle scratch images correctly in files gate behavior. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/530">503&lt;/a>&lt;/li>
+&lt;li>Add missing fields in swagger JSON spec for GET /query/vulnerabilities. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/558">558&lt;/a>&lt;/li>
+&lt;li>Better handling of java packages missing certain metadata in MANIFEST.MF files. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/524">524&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor bug fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.7.3</title><link>/docs/releasenotes/073/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/073/</guid><description>
+&lt;h2 id="anchore-engine-073">Anchore Engine 0.7.3&lt;/h2>
+&lt;p>Anchore Engine 0.7.3, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Adds retry wrapper on image download operations on analyzer. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/483">#483&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Fix - Adds release to version string for all os package types if one is present. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/504">#504&lt;/a>&lt;/li>
+&lt;li>Fix - Fixes global analysis archive rule application for non-admin accounts. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/503">#503&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor bug fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.7.2</title><link>/docs/releasenotes/072/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/072/</guid><description>
+&lt;h2 id="anchore-engine-072">Anchore Engine 0.7.2&lt;/h2>
+&lt;p>Anchore Engine 0.7.2, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>Added - CVE Blacklisting via new policy rule. Implements #173&lt;/li>
+&lt;li>Added - New &amp;ldquo;licenses&amp;rdquo; field in API response for content (pkgs etc) that is an array type for easier parsing. Supplements existing &amp;ldquo;license&amp;rdquo; field that is a comma-delimited list in a single string. Implements #313&lt;/li>
+&lt;/ul>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Update base docker image to UBI 8.2 from 8.1. Fixes #465&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Fix - package_type parameter now handles GHSA matches correctly as non-os types. Fixes #450&lt;/li>
+&lt;li>Fix - Correctly finds java content in cases where file permissions prevent a read. Fixes #476&lt;/li>
+&lt;li>Fix - Updates pyyaml dependency to 5.3.1. Fixes #456&lt;/li>
+&lt;li>Fix - Fixes API documentation in swagger spec for registry digest-style POST /image call. Fixes #462&lt;/li>
+&lt;li>Fix - Fixes db upgrade failure during upgrades of deployments that still have the &amp;lsquo;nvd&amp;rsquo; data from the deprecated driver. Fixes #473&lt;/li>
+&lt;li>Additional minor bug fixes and enhancements&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.7.1</title><link>/docs/releasenotes/071/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/071/</guid><description>
+&lt;h2 id="anchore-engine-071">Anchore Engine 0.7.1&lt;/h2>
+&lt;p>Anchore Engine 0.7.1 bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>Added - anchore-manager command now has &amp;ndash;no-auto-upgrade option to support more deployment and upgrade control&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Fix - Ensure only supported os overrides are used in skopeo download commands. Fixes #430&lt;/li>
+&lt;li>Fix - Errors during feed data download can cause mismatched timestamps and missed feed data on sync. Fixes #406&lt;/li>
+&lt;li>Fix - Removed variable reference before assignment in squasher. Fixes #401&lt;/li>
+&lt;li>Fix - Fixes mis-labeled GHSA matches on python packages in policy evaluation to be correctly non-os matches. Fixes #400&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Removes docker-compose.yaml, prometheus, and nginx-proxy swaggerui configs from inside image, those available via documentation site. Resolves #435&lt;/li>
+&lt;li>Improved - Bumped twisted and requests dependencies&lt;/li>
+&lt;li>Additional minor bug fixes, enhancements, and test framework improvements.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.7.0</title><link>/docs/releasenotes/0.7.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0.7.0/</guid><description>
+&lt;h2 id="anchore-engine-070">Anchore Engine 0.7.0&lt;/h2>
+&lt;p>NOTE: This version of Anchore Engine is not compatible with Anchore Enterprise 2.2.x. If you are an Enterprise user you should not upgrade to this version, but instead wait for the Enterprise 2.3 release.&lt;/p>
+&lt;p>Anchore Engine 0.7.0 new Features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="features">Features&lt;/h3>
+&lt;ul>
+&lt;li>
+&lt;p>New vulnerability data feed and package matching from the GitHub Advisory Database (&lt;a href="https://github.com/advisories)">https://github.com/advisories)&lt;/a>.&lt;/p>
+&lt;p>This will result in GHSA matches for non-os packages such as java, python, ruby, and npm. The GHSA match includes the relevant CVEs that the GHSA addresses.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>New vulnerability data feed from the Red Hat Security Data API, replaces RHSA as default RPM vulnerability matching data source. NOTE: RHSA information is still available, but the primary identifier is now CVE ids for RPM matches, using this new data source.&lt;/p>
+&lt;p>This provides better matches for CVEs that are not yet fixed or will not be fixed since those do not yet have RHSAs. It also makes the CVE the match key rather than RHSA for more consistent whitelisting and policy handling compared to other distros.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>New APIs for granular control of data feeds, including enable/disable toggles and data flush capabilities.&lt;/p>
+&lt;p>This provides finer grained control over which feeds will sync and which are used for matching vulnerabilities against images. Includes new anchore-cli commands
+to use the API calls:&lt;/p>
+&lt;p>&lt;code>anchore-cli system feeds config --enable|--disable &amp;lt;feed&amp;gt; [ --group &amp;lt;group name&amp;gt; ]&lt;/code>&lt;br>
+and&lt;br>
+&lt;code>anchore-cli system feeds delete &amp;lt;feed&amp;gt; [ --group &amp;lt;group name&amp;gt; ]&lt;/code>&lt;/p>
+&lt;p>For more information see &lt;a href="/docs/usage/cli_usage/feeds/feed_configuration/">CLI Usage - Feeds&lt;/a>&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Switched base OS for all services to Redhat UBI 8 from Redhat UBI 7.&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>API change to use query args instead of JSON body when doing an HTTP DELETE. Fixes #366.&lt;/li>
+&lt;li>Update external api version to 0.1.14 due to new feed config operations. Fixes #375.&lt;/li>
+&lt;li>Correctly handle UnsupportedVersionError in policy validation. Fixes #151.&lt;/li>
+&lt;li>Switch logger from policy engine specific passthrough to system default logger, to address incompatible calls to debug_exception. Fixes #346.&lt;/li>
+&lt;li>Update to improve permissions check, simplify IAM requirements. Fixes #297. Fixes #94.&lt;/li>
+&lt;li>Policy evaluation errors out if retrieved_files gate w/content_regex trigger references file not saved. Fixes #379.&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Updated third party dependencies and reduced dependency version locks. Addresses #344.&lt;/li>
+&lt;li>More efficient image squasher implementation to improve performance when image layers include many hardlinks.&lt;/li>
+&lt;li>Many new unit/functional tests and better test logging outputs.&lt;/li>
+&lt;/ul>
+&lt;h3 id="removed">Removed&lt;/h3>
+&lt;ul>
+&lt;li>Deprecated kubernetes_webhook service that handles webhook no longer supported in k8s. Fixes #357.&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor bug fixes, significant test framework improvements, and performance updates in image analysis.&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;p>0.7.0 Upgrade Information&lt;/p>
+&lt;p>The upgrade from 0.6.1 to 0.7.0 involves some data migration to support the move from RHSA-based vulnerability reporting to CVE-based for RedHat-based image.
+The ancho.re feed service has already been updated to serve the new data which shows up in 0.6.1 and 0.7.0 systems as:&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>rhel:5&lt;/code>&lt;/li>
+&lt;li>&lt;code>rhel:6&lt;/code>&lt;/li>
+&lt;li>&lt;code>rhel:7&lt;/code>&lt;/li>
+&lt;li>&lt;code>rhel:8&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;p>During the upgrade process the system will automatically perform the following steps:&lt;/p>
+&lt;ol>
+&lt;li>Disabled the &lt;em>centos:*&lt;/em> vulnerability feed groups. This means they will no longer be synced with updates. You&amp;rsquo;ll see this reflected in the output of &lt;code>anchore-cli system feeds list&lt;/code> if you upgrade to the 0.7.0 version of anchore-cli.a&lt;/li>
+&lt;li>Rescans all images in your db that are rhel-based (centos, redhat, etc) using the vulnerabiliy data from the &lt;em>rhel:*&lt;/em> groups to update all matches&lt;/li>
+&lt;li>Flushes the &lt;em>centos:*&lt;/em> matches and all vulnerability records&lt;/li>
+&lt;/ol>
+&lt;p>The logging during this process is verbose to give you plenty of insight into what the system is doing. Because it must re-scan all rpm packages, step #2 can take quite a while depending on your specific deployment and how many images you have
+analyzed that are based on centos or rhel.&lt;/p>
+&lt;p>NOTE: Restoring RHSA-based matching is possible, but not recommended. See the &lt;a href="/docs/releasenotes/0.7.0/data_matching_rollback/">Reverting Back to RHSA Data&lt;/a>&lt;/p></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.6.1</title><link>/docs/releasenotes/061/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/061/</guid><description>
+&lt;h2 id="anchore-engine-061">Anchore Engine 0.6.1&lt;/h2>
+&lt;p>Anchore Engine 0.6.1 bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Fix - Adds the release component of package version for rpms in package listing of OS packages in API responses. Fixes #320.&lt;/li>
+&lt;li>Fix - Removes the embedded swagger ui to keep image smaller and less dependencies with reduced security surface. Uses a side-card model instead with another container for the UI if browsing the API is desired. Fixes #323.&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Substantial updates to feed sync process in policy engine service to increate transparency in the process, show incremental updates, and use much less memory during the sync. Fixes #284&lt;/li>
+&lt;li>Improved - Adds commented out defaults in docker-compose.yaml embedded in image to easily support starting prometheus and a swagger ui sidecar for API browsing.&lt;/li>
+&lt;li>Improved - Adds backoff/retry in analyzer task flow for loads to policy engine to handle transient failures. Fixes #322.&lt;/li>
+&lt;li>Improved - Dependency updates&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.6.0</title><link>/docs/releasenotes/060/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/060/</guid><description>
+&lt;h2 id="anchore-engine-060">Anchore Engine 0.6.0&lt;/h2>
+&lt;p>Anchore Engine 0.6.0 includes new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="new-features">New Features&lt;/h3>
+&lt;ul>
+&lt;li>Substantial updates to event subsystem, adding new many new info and error level event types and implementation.&lt;/li>
+&lt;li>Auth toggle for prometheus metrics routes (using disable_auth in metrics section of config.yaml).&lt;/li>
+&lt;li>Group API metrics by function name instead of URI to handle the large number of routes when using Ids in the route.&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Change the db column type for the image_packages.size column from int -&amp;gt; bigint for larger packages than 2GB. Fixes #239.&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Improvements in vuln listing for an image and vuln query performance. Resolves #286.&lt;/li>
+&lt;li>Introduce retries for individual feed group syncs and introduce more granular feed sync events to better track sync progress.&lt;/li>
+&lt;li>Quickstart/initial install via docker-compose now uses pre-loaded vulnerability data (preload DB) to reduce initial feed sync.&lt;/li>
+&lt;li>Moves deprecated gates/triggers to the EOL lifecycle stage. Resolves #276.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.5.2</title><link>/docs/releasenotes/052/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/052/</guid><description>
+&lt;h2 id="anchore-engine-052">Anchore Engine 0.5.2&lt;/h2>
+&lt;p>Anchore Engine 0.5.2 is a bug fix release. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Remove failing (deprecated) code block from periodic vulnerability scan - Fixes #294.&lt;/li>
+&lt;li>Address issue where the gate is incorrectly triggering when params are meant to filter by filename or content regex name. Fixes #290.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.5.1</title><link>/docs/releasenotes/051/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/051/</guid><description>
+&lt;h2 id="anchore-engine-051">Anchore Engine 0.5.1&lt;/h2>
+&lt;p>Anchore Engine 0.5.1 includes many new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="new-features">New Features&lt;/h3>
+&lt;ul>
+&lt;li>Array support for the id param in /query/vulnerabilities and a namespace parameter for same route. Fixes #278.&lt;/li>
+&lt;li>Support for images based on google distroless OS, including detection of base OS/version and installed OS dpkg packages. Fixes #277.&lt;/li>
+&lt;li>Ability to import an image analysis archive where the resulting image is owned by the account used to initiate the import. Fixes #269.&lt;/li>
+&lt;li>New parameter to secret_search gate, which allows the user to specify whether to trigger if a match is found (default) or is not found (new behavior). Fixes #264.&lt;/li>
+&lt;li>New trigger in the &amp;lsquo;files&amp;rsquo; gate to allow for checks against various file attributes - checksum and mode. Fixes #262. Fixes #204.&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Better parsing of www-authentiate response header when performing registry credential validation on registry add. Fixes #275.&lt;/li>
+&lt;li>Add fall-thru on fix_available check for os packages in vulnerbility gate, addressing duplicate trigger matches that are disregarded by policy. Fixes #273.&lt;/li>
+&lt;li>Addresses analysis failure in cases where image config document metadata does not contain a history element. Fixes #260.&lt;/li>
+&lt;li>Addresses external_id reference before assignment error on ecr iam role usage. Fixes #259&lt;/li>
+&lt;li>Improvements and fixes within the version comparison implementation for dpkg and rpm. Fixes #274 and #265.&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Enforce stricter api checks for &amp;ldquo;source&amp;rdquo; object in POST /images. Fixes #261&lt;/li>
+&lt;li>Many minor bug fixes and improvements, in API input validation, CPE-based CVE matching performance, and others&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.5.0</title><link>/docs/releasenotes/050/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/050/</guid><description>
+&lt;h2 id="anchore-engine-050">Anchore Engine 0.5.0&lt;/h2>
+&lt;p>Anchore Engine 0.5.0 includes many new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="new-features">New Features&lt;/h3>
+&lt;ul>
+&lt;li>Support for local image analysis tool and process, including local analyzer operation in anchore_manager and new image analysis archive import API operation&lt;/li>
+&lt;li>Switch NVD feed driver to consume normalized vulnerability data from latest NVD JSON 1.0 Schema&lt;/li>
+&lt;li>New parameter to vulnerabilities gate to only trigger if a fix has been available for over a specified number of days&lt;/li>
+&lt;li>New parameters in vulnerabilities gate to allow for triggers based on CVSSv3 scoring information. Implements #164.&lt;/li>
+&lt;li>Structured CVSS scoring information throughout external API responses, where vulnerability information is returned (vulnerability scans, vulnerability queries). Implements #163, #160, #223.&lt;/li>
+&lt;li>Optional support using hashed passwords on anchore user credential storage, and adds support token-based user authentication&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>More complete CPE version strings now available from latest NVD data feed, improving scope of non-os package vulnerability matches&lt;/li>
+&lt;li>Spelling, grammar and broken link updates to top level README. Contributions by Neil Levine (&lt;a href="mailto:levine@yoyo.org">levine@yoyo.org&lt;/a>) and MichaelSimons (&lt;a href="mailto:msimons@microsoft.com">msimons@microsoft.com&lt;/a>)&lt;/li>
+&lt;li>Updated validation and improved error detail for user and account management API operations&lt;/li>
+&lt;li>Updates to quickstart/example docker-compose.yaml, and bootstrap entrypoint for better custom root CA inclusion&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.4.2</title><link>/docs/releasenotes/042/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/042/</guid><description>
+&lt;h2 id="anchore-engine-042">Anchore Engine 0.4.2&lt;/h2>
+&lt;p>Anchore Engine 0.4.2 includes many new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Update to image analysis speed for some images exhibiting long unpack times due to layer complications. Improves squashing speed by going through layer tarfiles sequentially.&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Update to CPE match DB query, to account for package names that are not reported as lowercase. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/227">#227&lt;/a>&lt;/li>
+&lt;li>Update to fix incorrect arg passing for error message construction of &amp;ldquo;detail&amp;rdquo; property, on policy bundle add validation failures.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.4.1</title><link>/docs/releasenotes/041/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/041/</guid><description>
+&lt;h2 id="anchore-engine-041">Anchore Engine 0.4.1&lt;/h2>
+&lt;p>Anchore Engine 0.4.1 includes many new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="new-features">New Features&lt;/h3>
+&lt;ul>
+&lt;li>Store a set of digests in a subscription record, allowing engine to run vuln_update/policy_eval checks over specified digests as well as latest. Contribution by Mattia Pagnozzi &lt;a href="mailto:mattia.pagnozzi@gmail.com">mattia.pagnozzi@gmail.com&lt;/a>&lt;/li>
+&lt;li>New debug_exception logger function to dump stack only at debug or higher log level, otherwise just print error.&lt;/li>
+&lt;li>Adds global internal client timeouts configurable in the config.yaml file. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/210">#210&lt;/a> add annotations key to AnchoreImage response definition type in.&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>Update Dockerfile using multi-stage model&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>GET /images?history=true not returning full history list. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/215">#215&lt;/a>&lt;/li>
+&lt;li>Allow distro discovery routine to handle case where system os metadata files are broken softlinks inside the container image. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/213">#213&lt;/a>&lt;/li>
+&lt;li>Update to analyzer code, to keep a consistent map of files regardless of any file name slash and dot prefixes that may be present in the layer tars. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/209">#209&lt;/a>&lt;/li>
+&lt;li>Add input validation for registry add to prevent trailing slash and prefix schema in the registry input string. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/208">#208&lt;/a>&lt;/li>
+&lt;li>Implement dockerfile update check to invoke on only the specific digest, not tag. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/201">#201&lt;/a>&lt;/li>
+&lt;li>Incorrect 500 response on successful feed sync call. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/198">#198&lt;/a>&lt;/li>
+&lt;li>On image add, ensure that subscriptions are (re)activated based on API input. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/195">#195&lt;/a>&lt;/li>
+&lt;li>Use of body in GET /images to filter by tag and/or digest rather than only using query param&lt;/li>
+&lt;li>Don&amp;rsquo;t require type and key on PUT /subscriptions, reconciling code behavior with swagger spec. Contribution by by Mattia Pagnozzi &lt;a href="mailto:mattia.pagnozzi@gmail.com">mattia.pagnozzi@gmail.com&lt;/a>&lt;/li>
+&lt;li>Add missing &amp;lsquo;annotations&amp;rsquo; key to AnchoreImage response definition type in swagger spec.&lt;/li>
+&lt;li>Add correct DB filter on userId to prevent images deleted from one user account from resulting in deletions of images in other accounts, when Image Digests align across accounts. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/224">#224&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.4.0</title><link>/docs/releasenotes/040/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/040/</guid><description>
+&lt;h2 id="anchore-engine-040">Anchore Engine 0.4.0&lt;/h2>
+&lt;p>Anchore Engine 0.4.0 includes many new features, bug fixes and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h3 id="new-features">New Features&lt;/h3>
+&lt;ul>
+&lt;li>Image Analysis Archive Subsystem. See &lt;a href="https://github.com/anchore/anchore-engine/issues/165">#165&lt;/a>.&lt;/li>
+&lt;li>all anchore-engine services now run (by default) as non-root, including the analyzer (with new analyzer implementation)&lt;/li>
+&lt;li>optional policy parameter for vulnerabilities older than N days. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/156">#156&lt;/a>. Contribution by &lt;code>i845783 &amp;lt;dan.wilson01@sap.com&amp;gt;&lt;/code>&lt;/li>
+&lt;li>new facility to carry anchore error codes through to API error response envelope. Addresses &lt;a href="https://github.com/anchore/anchore-engine/issues/150">#150&lt;/a> and will extend in future for richer error information in API responses.&lt;/li>
+&lt;li>/system/error_codes route to describe possible anchore error codes.&lt;/li>
+&lt;li>re-platformed anchore engine and CLI container image on Red Hat Universal Base Image (UBI)&lt;/li>
+&lt;/ul>
+&lt;h3 id="improvements">Improvements&lt;/h3>
+&lt;ul>
+&lt;li>cleanup feed sync error path where another sync is in progress. use the new anchore error code mechanism&lt;/li>
+&lt;li>support for psycopg2 SQL Alchemy Driver&lt;/li>
+&lt;li>new docker-compose quickstart method&lt;/li>
+&lt;li>combined analyzer module functionality&lt;/li>
+&lt;li>error message from parse_dockerimage_string. Contributed by &lt;code>Nicolas Simonds &amp;lt;nisimond@cisco.com&amp;gt;&lt;/code>&lt;/li>
+&lt;li>re-introduce many integration tests and integration testing framework&lt;/li>
+&lt;li>remove more verbose logging around lease ops in monitor function of catalog&lt;/li>
+&lt;li>update workspace analyzer directory deletion to handle nested permissions errors using onerror shutil.rmtree handler, to avoid permission denied possibilities from rootless analyzer&lt;/li>
+&lt;/ul>
+&lt;h3 id="bug-fixes">Bug Fixes&lt;/h3>
+&lt;ul>
+&lt;li>improved handling of case where default_bundle_file key is unset internally for initializers that reference that configuration key. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/113">#113&lt;/a>.&lt;/li>
+&lt;li>skip dpkg results that are not in the explicit installed (ii) state. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/169">#169&lt;/a>.&lt;/li>
+&lt;li>bug in passwd_file gate&amp;rsquo;s context setup that was parsing entries incorrectly.&lt;/li>
+&lt;li>bytes decode issue in the object store manager interface that is masked in py3.6 but exposed in py3.5&lt;/li>
+&lt;li>update to handle redirect for quay.io when trailing slash is omitted, during initial registry ping in validation routine. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/175">#175&lt;/a>.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

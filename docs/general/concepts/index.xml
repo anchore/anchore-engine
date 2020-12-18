@@ -1,0 +1,297 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Concepts</title><link>/docs/general/concepts/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/concepts/</link></image><atom:link href="/docs/general/concepts/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Accessing the Engine</title><link>/docs/general/concepts/accessing_engine/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/accessing_engine/</guid><description>
+&lt;p>The Anchore engine exposes two RESTful web services:&lt;/p>
+&lt;ul>
+&lt;li>API Service : The public interface to the Anchore Engine providing APIs to allow management and inspection of images, policies, subscriptions and registries.&lt;/li>
+&lt;li>Kubernetes WebHook : An optional service exposing the Kubernetes Image Policy WebHook interface.&lt;/li>
+&lt;/ul>
+&lt;p>&lt;img src="AnchoreEngineAccess.png" alt="alt text">&lt;/p>
+&lt;p>While the Anchore Engine can be accessed directly through the REST API the simplest way to interact with the Anchore Engine is using the Anchore command line utility that provides a simple interface to manage and interact with the Anchore Engine from Linux, Mac or Windows.&lt;/p>
+&lt;p>Using the REST API or CLI the Anchore Engine can be queried for image data and policy evaluations&lt;/p>
+&lt;ul>
+&lt;li>Image metadata&lt;/li>
+&lt;li>Image content (files, packages, software libraries)&lt;/li>
+&lt;li>Image vulnerabilities&lt;/li>
+&lt;li>Historic image data&lt;/li>
+&lt;li>Image policy status&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Analyzing Images</title><link>/docs/general/concepts/images/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/</guid><description>
+&lt;p>Once an image is submitted to the Anchore Engine for analysis the Engine will attempt to retrieve metadata about the image from the Docker registry and if successful will download the image and queue the image for analysis.&lt;/p>
+&lt;p>The Anchore Engine can run one or more analyzer services to scale out processing of images. The next available analyzer worker will process the image.&lt;/p>
+&lt;p>&lt;img src="AnalyzingImages.png" alt="alt text">&lt;/p>
+&lt;p>During analysis every package, software library and file are inspected and this data is stored in the Anchore Database.&lt;/p>
+&lt;p>The Anchore Engine includes a number of analyzer modules that extract data from the image including:&lt;/p>
+&lt;ul>
+&lt;li>Image metadata&lt;/li>
+&lt;li>Image layers&lt;/li>
+&lt;li>Operating System Package Data (RPM, DEB, APKG)&lt;/li>
+&lt;li>File Data&lt;/li>
+&lt;li>Ruby Gems&lt;/li>
+&lt;li>Node.JS NPMs&lt;/li>
+&lt;li>Java Archives&lt;/li>
+&lt;li>Python Packages&lt;/li>
+&lt;li>.NET NuGet Packages&lt;/li>
+&lt;li>File content&lt;/li>
+&lt;/ul>
+&lt;p>Once a tag has been added to the Anchore Engine the repository will be monitored for updates to that tag.&lt;/p>
+&lt;p>Any updated images will be downloaded and analyzed.&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;p>Now let&amp;rsquo;s get familiar with the &lt;a href="/docs/general/concepts/images/analysis/">Image Analysis Process&lt;/a>.&lt;/p></description></item><item><title>Docs: Policy</title><link>/docs/general/concepts/policy/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/policy/</guid><description>
+&lt;p>Once an image has been analyzed and its content has been discovered, categorized, and processed, the results can be evaluated against a user-defined set of checks to give a final pass/fail recommendation for an image. Anchore Engine policies are how users describe which checks to perform on what images and how the results should be interpreted.&lt;/p>
+&lt;p>A policy is expressed as a policy bundle, which is made up from a set of rules that are used to perform an evaluation of a container image. The rules can define checks against an image for things such as:&lt;/p>
+&lt;ul>
+&lt;li>security vulnerabilities&lt;/li>
+&lt;li>package whitelists and blacklists&lt;/li>
+&lt;li>configuration file contents&lt;/li>
+&lt;li>presence of credentials in image&lt;/li>
+&lt;li>image manifest changes&lt;/li>
+&lt;li>exposed ports&lt;/li>
+&lt;/ul>
+&lt;p>These checks are defined as Gates that contain Triggers that perform specific checks and emit matching results and these define the things that the engine can automatically evaluate and return a decision about.&lt;/p>
+&lt;p>For a full listing of gates, triggers, and their parameters see: &lt;a href="/docs/general/concepts/policy/policy_checks/">Anchore Policy Checks&lt;/a>&lt;/p>
+&lt;p>These policies can be applied globally or customized for specific images or categories of applications.&lt;/p>
+&lt;p>&lt;img src="AnchorePolicyEval.png" alt="alt text">&lt;/p>
+&lt;p>A policy can return one of two results:&lt;/p>
+&lt;p>&lt;strong>PASSED&lt;/strong> indicating that image complies with your policy&lt;/p>
+&lt;p>&lt;img src="https://anchore.com/wp-content/uploads/2017/07/pass.png" alt="alt text">&lt;/p>
+&lt;p>&lt;strong>FAILED&lt;/strong> indicating that the image is out of compliance with your policy.&lt;/p>
+&lt;p>&lt;img src="https://anchore.com/wp-content/uploads/2017/07/fail.png" alt="alt text">&lt;/p>
+&lt;p>For more information on the concepts of policies and how policies are defined and evaluated, see: &lt;a href="/docs/general/concepts/policy/bundles/">Policy Bundles and Evaluation&lt;/a>&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;p>Read more on &lt;a href="/docs/general/concepts/policy/policies/">Policies&lt;/a>&lt;/p></description></item><item><title>Docs: Analysis Archive</title><link>/docs/general/concepts/analysis_archive/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/analysis_archive/</guid><description>
+&lt;p>Anchore Engine is a data intensive system. Storage consumption grows with the number of images analyzed, which leaves the
+following options for storage management:&lt;/p>
+&lt;ol>
+&lt;li>Over-provisioning storage significantly&lt;/li>
+&lt;li>Increasing capacity over time, resulting in downtime (e.g. stop system, grow the db volume, restart)&lt;/li>
+&lt;li>Manually deleting image analysis to free space as needed&lt;/li>
+&lt;/ol>
+&lt;p>In most cases, option 1 only works for a while, which then requires using 2 or 3. Managing storage provisioned for a
+postgres DB is somewhat complex and may require significant data copies to new volumes to grow capacity over time.&lt;/p>
+&lt;p>To help mitigate the storage growth of the db itself, Anchore Engine already provides an object storage subsystem that
+enables using external object stores like S3 or Swift to offload the unstructured data storage needs to systems that are
+more growth tolerant and flexible. This lowers the db overhead but does not fundamentally address the issue of unbounded
+growth in a busy system.&lt;/p>
+&lt;p>The Analysis Archive extends the object store even further by providing a system-managed way to move an image analysis
+and all of its related data (policy evaluations, tags, annotations, etc) and moving it to a location outside of the main
+set of images such that it consumes much less storage in the database when using an object store, preserves the last
+state of the image, and supports moving it back into the main image set if it is needed in the future without requiring
+that the image itself be reanalzyed&amp;ndash;restoring from the archive does not require the actual docker image to exist at all.&lt;/p>
+&lt;p>To facilitate this, the system can be thought of as two sets of analysis with different capabilities and properties:&lt;/p>
+&lt;p>&lt;img src="analysis_archive_overview.svg" alt="Analysis Data Sets">&lt;/p>
+&lt;h3 id="working-set-images">Working Set Images&lt;/h3>
+&lt;p>The working set is the set of images in the &amp;lsquo;analyzed&amp;rsquo; state in the system. These images are stored in the database,
+optionally with some data in an external object store. Specifically:&lt;/p>
+&lt;ul>
+&lt;li>State = &amp;lsquo;analyzed&amp;rsquo;&lt;/li>
+&lt;li>The set of images available from the &lt;em>/images&lt;/em> api routes&lt;/li>
+&lt;li>Available for policy evaluation, content queries, and vulnerability updates&lt;/li>
+&lt;/ul>
+&lt;h3 id="archive-set-images">Archive Set Images&lt;/h3>
+&lt;p>The archive set of images are image analyses that reside almost entirely in the object store, which can be configured to
+be a different location than the object store used for the working set, with minimal metadata in the anchore DB necessary
+to track and restore the analysis back into the working set in the future. An archived image analysis preserves all the
+annotations, tags, and metadata of the original analysis as well as all existing policy evaluation histories, but
+are not updated with new vulnerabilities during feed syncs and are not available for new policy evaluations or content
+queries without first being restored into the working set.&lt;/p>
+&lt;ul>
+&lt;li>Not listed in &lt;em>/images&lt;/em> API routes&lt;/li>
+&lt;li>Cannot have policy evaluations executed&lt;/li>
+&lt;li>No vulnerability updates automatically (must be restored to working set first)&lt;/li>
+&lt;li>Available from the &lt;em>/archives/images&lt;/em> API routes&lt;/li>
+&lt;li>Point-in-time snapshot of the analysis, policy evaluation, and vulnerability state of an image&lt;/li>
+&lt;li>Independently configurable storage location (&lt;em>analysis_archive&lt;/em> property in the &lt;em>services.catalog&lt;/em> property of config.yaml)&lt;/li>
+&lt;li>Small db storage consumption (if using external object store, only a few small records, bytes)&lt;/li>
+&lt;li>Able to use different type of storage for cost effectiveness&lt;/li>
+&lt;li>Can be restored to the working set at any time to restore full query and policy capabilities&lt;/li>
+&lt;li>The archive object store is not used for any API operations other than the restore process&lt;/li>
+&lt;/ul>
+&lt;p>An image analysis, identified by the digest of the image, may exist in both sets at the same time, they are not mutually
+exclusive, however the archive is not automatically updated and must be deleted an re-archived to capture updated state
+from the working set image if desired.&lt;/p>
+&lt;h2 id="benefits-of-the-archive">Benefits of the Archive&lt;/h2>
+&lt;p>Because archived image analyses are stored in a distinct object store and tracked with their own metadata in the db, the
+images in that set will not impact the performance of working set image operations such as API operations, feed syncs, or
+notification handling. This helps keep the system responsive and performant in cases where the set of images that you&amp;rsquo;re
+interested in is much smaller than the set of images in the system, but you don&amp;rsquo;t want to delete the analysis because it
+has value for audit or historical reasons.&lt;/p>
+&lt;ol>
+&lt;li>Leverage cheaper and more scalable cloud-based storage solutions (e.g. S3 IA class)&lt;/li>
+&lt;li>Keep the working set small to manage capacity and api performance&lt;/li>
+&lt;li>Ensure the working set is images you actively need to monitor without losing old data by sending it to the archive&lt;/li>
+&lt;/ol>
+&lt;h2 id="automatic-archiving">Automatic Archiving&lt;/h2>
+&lt;p>The help facilitate data management automatically, Anchore supports rules to define which data to archive and when
+based on a few qualities of the image analysis itself. These rules are evaluated periodically by the system.&lt;/p>
+&lt;p>Anchore supports both account-scoped rules, editable by users in the account, and global system rules, editable only by
+the system admin account users. All users can view system global rules such that they can understand what will affect
+their images but they cannot update or delete the rules.&lt;/p>
+&lt;p>The process of automatic rule evaluation:&lt;/p>
+&lt;ol>
+&lt;li>
+&lt;p>The catalog component periodically (daily by default, but configurable) will run through each rule in the system and
+identify image digests should be archived according to either account-local rules or system global rules.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Each matching image analysis is added to the archive.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Each successfully added analysis is deleted from the working set.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>For each digest migrated, a system event log entry is created, indicating that the image digest was moved to the
+archive.&lt;/p>
+&lt;/li>
+&lt;/ol>
+&lt;h2 id="archive-rules">Archive Rules&lt;/h2>
+&lt;p>The rules that match images are provide 3 selectors:&lt;/p>
+&lt;ol>
+&lt;li>Analysis timestamp - the age of the analysis itself, as expressed in days&lt;/li>
+&lt;li>Source metadata (registry, repo, tag) - the values of the registry, repo, and tag values&lt;/li>
+&lt;li>Tag history depth &amp;ndash; the number of images mapped to a tag ordered by detected_at timestamp (the time at which the
+system observed the mapping of a tag to a specific image manifest digest)&lt;/li>
+&lt;/ol>
+&lt;p>Rule scope:&lt;/p>
+&lt;ul>
+&lt;li>global - these rules will be evaluated against all images and all tags in the system, regardless of the owning account.
+(system_global = true)&lt;/li>
+&lt;li>account - these rules are only evaluated against the images and tags of the account which owns the rule. (system_global = false)&lt;/li>
+&lt;/ul>
+&lt;p>Example Rule:&lt;/p>
+&lt;pre>&lt;code>{
+&amp;quot;analysis_age_days&amp;quot;: 10,
+&amp;quot;created_at&amp;quot;: &amp;quot;2019-03-30T22:23:50Z&amp;quot;,
+&amp;quot;last_updated&amp;quot;: &amp;quot;2019-03-30T22:23:50Z&amp;quot;,
+&amp;quot;rule_id&amp;quot;: &amp;quot;67b5f8bfde31497a9a67424cf80edf24&amp;quot;,
+&amp;quot;selector&amp;quot;: {
+&amp;quot;registry&amp;quot;: &amp;quot;*&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;*&amp;quot;,
+&amp;quot;tag&amp;quot;: &amp;quot;*&amp;quot;
+},
+&amp;quot;system_global&amp;quot;: false,
+&amp;quot;tag_versions_newer&amp;quot;: 10,
+&amp;quot;transition&amp;quot;: &amp;quot;archive&amp;quot;
+}
+&lt;/code>&lt;/pre>&lt;ul>
+&lt;li>selector: a json object defining a set of filters on registry, repository, and tag that this rule will apply to.
+&lt;ul>
+&lt;li>Each entry supports wildcards. e.g. &lt;code>{&amp;quot;registry&amp;quot;: &amp;quot;*&amp;quot;, &amp;quot;repository&amp;quot;: &amp;quot;library/*&amp;quot;, &amp;quot;tag&amp;quot;: &amp;quot;latest&amp;quot;}&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>tag_versions_newer: the minimum number of tag-&amp;gt;digest mappings with newer timestamps that must be preset for this rule to
+match an image tag.&lt;/li>
+&lt;li>analysis_age_days: the minimum age of the analysis to match, as indicated by the &amp;lsquo;analyzed_at&amp;rsquo; timestamp on the image record.&lt;/li>
+&lt;li>transition: the operation to perform, one of the following
+&lt;ul>
+&lt;li>&lt;em>archive&lt;/em>: works on the working set and transitions to archive, while deleting the source analysis upon successful
+archive creation. Specifically: the analysis will &amp;ldquo;move&amp;rdquo; to the archive and no longer be in the working set.&lt;/li>
+&lt;li>&lt;em>delete&lt;/em>: works on the archive set and deletes the archived record on a match&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="rule-conflicts-and-application">Rule conflicts and application:&lt;/h3>
+&lt;p>For an image to be transitioned by a rule it must:&lt;/p>
+&lt;ul>
+&lt;li>Match at least 1 rule for each of its tag entries (either in working set if transition is &lt;em>archive&lt;/em> or those in the
+archive set, if a &lt;em>delete&lt;/em> transition)&lt;/li>
+&lt;li>All rule matches must be of the same scope, global and account rules cannot interact&lt;/li>
+&lt;/ul>
+&lt;p>Put another way, if any tag record for an image analysis is not defined to be transitioned, then the analysis record is
+not transitioned.&lt;/p>
+&lt;h2 id="usage">Usage&lt;/h2>
+&lt;p>Image analysis can be archived explicitly via the API (and CLI) as well as restored. Alternatively, the API and CLI can
+manage the rules that control automatic transitions. For more information see the following:&lt;/p>
+&lt;h3 id="archiving-an-image-analysis">Archiving an Image Analysis&lt;/h3>
+&lt;p>See: &lt;a href="/docs/usage/cli_usage/analysis_archive/#archiving-images">Archiving an Image&lt;/a>&lt;/p>
+&lt;h3 id="restoring-an-image-analysis">Restoring an Image Analysis&lt;/h3>
+&lt;p>See: &lt;a href="/docs/usage/cli_usage/analysis_archive/#restoring-images">Restoring an Image&lt;/a>&lt;/p>
+&lt;h3 id="managing-archive-rules">Managing Archive Rules&lt;/h3>
+&lt;p>See: &lt;a href="/docs/usage/cli_usage/analysis_archive/#rules">Working with Archive Rules&lt;/a>&lt;/p></description></item><item><title>Docs: Accessing Registries</title><link>/docs/general/concepts/registries/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/registries/</guid><description>
+&lt;p>Using the API or CLI the Anchore Engine can be instructed to download an image from a public or private container registry.&lt;/p>
+&lt;p>The Anchore Engine will attempt to download images from any registry without requiring further configuration. However if
+your registry requires authentication then the registry and corresponding credentials will need to be defined.
+Anchore Engine can analyze images from any Docker V2 compatible registry.&lt;/p>
+&lt;p>&lt;img src="RegistryAccess.png" alt="alt text">&lt;/p>
+&lt;p>Registry credentials can stored in the Anchore Engine for authentication or in the case of an Amazon EC2 deployment IAM roles can be used for authentication.&lt;/p>
+&lt;p>For more information on configuring access to registries please see here: Configuring Access to Registries.&lt;/p></description></item><item><title>Docs: Subscriptions</title><link>/docs/general/concepts/subscriptions/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/subscriptions/</guid><description>
+&lt;p>The Anchore Engine can be configured to emit webhooks corresponding to changes in images and tags.&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>New TAG analyzed&lt;/p>
+&lt;ul>
+&lt;li>This class of notification is triggered when a new TAG had be analyzed.
+A new tag can be explicitly added to the system, for example adding myrepo.example.com/prodapp/web:latest
+In this case once the corresponding image has been downloaded and analyzed the notification will triggered.
+If the Anchore Engine has been configured to watch a repository then it will implicitly add new tags that are found.&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>
+&lt;p>Image updated&lt;/p>
+&lt;ul>
+&lt;li>This class of notification is triggered if a new image is tagged with the tag to which you have subscribed. For example a new image is tagged as prod/myapp:latest&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>Anchore will monitor repositories for changes to images and tags and if a user is subscribed to a Tag that has been updated then a notification is triggered.&lt;/p>
+&lt;ul>
+&lt;li>Vulnerability updates
+&lt;ul>
+&lt;li>This class of notification is triggered if the list of CVEs or other security vulnerabilities in the image changes. These updates are based on the changes in data from the upstream providers of CVE data (operating system vendors and NIST) CVEs may be added, removed or modified – for example a CVE initially marked as severity level Unknown may be upgraded to a higher severity level.&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>&lt;em>Note:&lt;/em> A change to the CVE list in a Tag may not trigger a policy status change based on the policy rules configured for an image.
+For example adding a new low severity level CVE to an image is unlikely to change the image policy evaluation to fail.&lt;/p>
+&lt;ul>
+&lt;li>Change in policy status
+&lt;ul>
+&lt;li>This class of notification is triggered if a Tag to which a user has subscribed has a change in its policy evaluation status. The policy evaluation status of an image can be one of two states: Pass or Fail. If an image that was previously marked as Pass changes status to Fail or vice-versa then the policy update notification will be triggered. The policy status of a Tag may be changed by a number of methods.
+&lt;ul>
+&lt;li>&lt;strong>Change to policy&lt;/strong>
+If an policy was changed, for example adding, editing or removing a policy check, then the policy status of an image may be effected. For example adding policy rule that blacklists a specific package that is present in a given Tag may cause the Tag’s policy status to move to Fail.&lt;/li>
+&lt;li>&lt;strong>Changes to whitelist&lt;/strong>
+If a whitelist is changed to add or remove a CVE then this may cause a policy status change. For example if an image contains a package that is vulnerable to Crticial Severity CVE-2017-9999 then this image may fail in it’s policy evaluation. If CVE-2017-9999 is added to a CVE Whitelist that is mapped to the subscribed Tag then the policy status may change from Fail to Pass.&lt;/li>
+&lt;li>&lt;strong>Change in Policy/Whitelist Mapping&lt;/strong>
+Within the Policy Editor mappings are maintained that define what Policy and Whitelist are applied to a given Tag. If the policy mapping is changed then a new policy or whitelist may be applied to an image which may change the status of the image. For example changing the mapping to add a more restrictive policy may change an Tag’s status from Pass to Fail.&lt;/li>
+&lt;li>&lt;strong>Change in Package or Vulnerability Data&lt;/strong>
+Some policy checks make use of data from external feeds. For example vulnerability checks use CVE data feeds. Changes in data within these feed may change the policy status, such as adding a new CVE vulnerability.&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Integrations</title><link>/docs/general/concepts/integrations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/integrations/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>There are several different ways to integrate with Anchore Engine:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/general/concepts/integrations/ci_cd/">CI/CD Integration&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/general/concepts/integrations/kubernetes/">Kubernetes Integration&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Authorization Plugins</title><link>/docs/general/concepts/authorization_plugins/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/authorization_plugins/</guid><description>
+&lt;p>New in Anchore Engine 0.3.0, an open interface for allowing authorization decisions to be made by external plugins has been implemented. The interface is an HTTP API and has a swagger specification that can be found &lt;a href="https://github.com/anchore/anchore-engine/blob/master/anchore_engine/plugins/authorization/swagger/swagger.yaml">here&lt;/a>.&lt;/p>
+&lt;p>The interface is simple and relies on just a few operations:&lt;/p>
+&lt;ol>
+&lt;li>Principal lifecycle notifications (initialize, delete)
+&lt;ol>
+&lt;li>Principals are basically users. These are merely notifications and may be ignored by an implementation. They are intended to allow an external plugin to synchronize the lifecycle of its data with that of the account store in anchore engine. For example, flushing all authorization rules when a user is deleted, or initializing new defaults when a principal/user is created.&lt;/li>
+&lt;/ol>
+&lt;/li>
+&lt;li>Domain lifecycle notifications (initialize, delete)
+&lt;ol>
+&lt;li>Domains are basically accounts. As for principals, these notifications may be ignored by an implementation. They are intended to allow an external plugin to synchronize the lifecycle of its data with that of the account store in anchore engine. For example, flushing all permission mappings when an account is deleted, or initializing defaults on creation of a new account/domain.&lt;/li>
+&lt;/ol>
+&lt;/li>
+&lt;li>Authorization Request
+&lt;ol>
+&lt;li>Determine if the requested (domain, action, target) tuples are authorized. See Accounts, User, and Access Control for more information on how domains, actions, and targets.&lt;/li>
+&lt;/ol>
+&lt;/li>
+&lt;/ol>
+&lt;p>Configuring which authorization plugin to use for a service is determined by the: &lt;em>authorization_handler&lt;/em> setting in the service&amp;rsquo;s config section of the config.yaml. The default value is &lt;em>native&lt;/em>, but to use an external provider (e.g. the RBAC plugin provided by Anchore Enterprise), set the value to &lt;em>external and provide a authorization_handler_config&lt;/em> map object with the url to which requests should be made. For example:&lt;/p>
+&lt;p>The default (which applies if it is omitted):&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">services&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">apiext&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">authorization_handler&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">native&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>To use an external handler:&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">services&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">apiext&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">authorization_handler&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#000">external&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">authorization_handler_config&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">endpoint&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#34;http://localhost:89&amp;#34;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>&lt;strong>Note:&lt;/strong> This interface is currently not authenticated or authorized, and should be properly secured via network controls, or ideally, only available on the local host and not externally connected. This is intended to follow a side-car pattern where an authorizer is deployed locally with each external Anchore API component.&lt;/p></description></item></channel></rss>

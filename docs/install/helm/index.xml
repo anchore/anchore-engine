@@ -1,0 +1,61 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Install with Helm on Kubernetes</title><link>/docs/install/helm/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/helm/</link></image><atom:link href="/docs/install/helm/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Install Amazon Marketplace listing with Helm on EKS</title><link>/docs/install/helm/amazon_marketplace/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/helm/amazon_marketplace/</guid><description>
+&lt;h2 id="aws-marketplace-anchore-engine-on-eks">AWS Marketplace: Anchore Engine on EKS&lt;/h2>
+&lt;p>This document willl walkthough deploying the Anchore Engine AWS Marketplace listing on Amazon EKS.&lt;/p>
+&lt;h2 id="prerequisites">Prerequisites&lt;/h2>
+&lt;ul>
+&lt;li>A running Amazon EKS cluster&lt;/li>
+&lt;li>kubectl installed and configured to access your EKS cluster&lt;/li>
+&lt;li>Helm installed and available in your path&lt;/li>
+&lt;li>Tiller, the server side component of Helm, installed in your EKS cluster&lt;/li>
+&lt;/ul>
+&lt;h2 id="anchore-engine-marketplace-listing">Anchore Engine Marketplace Listing&lt;/h2>
+&lt;p>Navigate to the &lt;a href="https://aws.amazon.com/marketplace/pp/B07XZ3JZ2R">Anchore Engine Marketplace Listing&lt;/a>, and select &amp;ldquo;Continue to Subscribe&amp;rdquo;, &amp;ldquo;Continue to Configuration&amp;rdquo;, and &amp;ldquo;Continue to Launch&amp;rdquo;.&lt;/p>
+&lt;p>On the Launch Configuration screen, select &amp;ldquo;View container image details&amp;rdquo;&lt;/p>
+&lt;p>&lt;img src="launch-config.png" alt="launch-screen">&lt;/p>
+&lt;p>Selecting this will present the following popup:&lt;/p>
+&lt;p>&lt;img src="launch-config-popup.png" alt="launch-popup">&lt;/p>
+&lt;p>Follow the steps on the popup to verify you are able to pull down the required images (Anchore Engine and Postgres) from Amazon ECR.&lt;/p>
+&lt;h2 id="initial-configuration">Initial configuration&lt;/h2>
+&lt;p>Create a custom &lt;code>values.yaml&lt;/code> file to pass the Anchore Engine Helm Chart during your installation.&lt;/p>
+&lt;p>You will need to reference the Amazon ECR Marketplace images in this Helm chart.&lt;/p>
+&lt;pre>&lt;code>postgresql:
+image: 709373726912.dkr.ecr.us-east-1.amazonaws.com/e4506d98-2de6-4375-8d5e-10f8b1f5d7e3/cg-3671661136/docker.io/library/postgres
+imageTag: v.0.5.0-latest
+imagePullPolicy: IfNotPresent
+anchoreGlobal:
+image: 709373726912.dkr.ecr.us-east-1.amazonaws.com/e4506d98-2de6-4375-8d5e-10f8b1f5d7e3/cg-3671661136/docker.io/anchore/anchore-engine
+imageTag: v.0.5.0-latest
+imagePullPolicy: IfNotPresent
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> You will also need create a secret with a Docker Config in order to fetch the Amazon ECR images.&lt;/p>
+&lt;h3 id="further-configuration">Further configuration&lt;/h3>
+&lt;p>For the complete list of configuration options for installation of the Anchore Helm chart, please check out the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine">GitHub Repository&lt;/a>&lt;/p>
+&lt;h4 id="example-steps-to-create-a-secret">Example steps to create a secret&lt;/h4>
+&lt;pre>&lt;code>#
+# RUN me where kubectl is available,&amp;amp; make sure to replace account,region etc
+# Set ENV vars
+ACCOUNT=123456789
+REGION=my-region
+SECRET_NAME=${REGION}-ecr-registry
+EMAIL=email@email.com ( can be anything)
+#
+# Fetch token (which will expire in 12 hours)
+#
+TOKEN=`aws ecr --region=$REGION get-authorization-token --output text --query authorizationData[].authorizationToken | base64 -d | cut -d: -f2`
+#
+# Create registry secret
+#
+kubectl create secret docker-registry $SECRET_NAME --docker-server=https://${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com--docker-username=AWS --docker-password=&amp;quot;${TOKEN}&amp;quot; --docker-email=&amp;quot;${EMAIL}&amp;quot;
+&lt;/code>&lt;/pre>&lt;p>After the secret is created you will need to add ImagePullSecrets to a service account.&lt;/p>
+&lt;p>You can read more about this here:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="https://kubernetes.io/docs/concepts/containers/images/">https://kubernetes.io/docs/concepts/containers/images/&lt;/a>&lt;/li>
+&lt;li>&lt;a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account">https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h2 id="installation">Installation&lt;/h2>
+&lt;p>Ensure you have the latest Helm Charts.&lt;/p>
+&lt;p>&lt;code>helm repo update&lt;/code>&lt;/p>
+&lt;h4 id="install-anchore-engine">Install Anchore Engine&lt;/h4>
+&lt;p>Run the following command to install the Anchore Engine Helm chart in your EKS cluster&lt;/p>
+&lt;pre>&lt;code>helm repo add anchore https://charts.anchore.io
+helm install helm install --name anchore-engine -f values.yaml anchore/anchore-engine
+&lt;/code>&lt;/pre></description></item></channel></rss>

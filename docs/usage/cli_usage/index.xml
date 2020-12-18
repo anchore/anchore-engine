@@ -1,0 +1,678 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Using the Anchore CLI</title><link>/docs/usage/cli_usage/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/cli_usage/</link></image><atom:link href="/docs/usage/cli_usage/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Using the Analysis Archive</title><link>/docs/usage/cli_usage/analysis_archive/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/analysis_archive/</guid><description>
+&lt;p>As mentioned in &lt;a href="/docs/general/concepts/analysis_archive/">concepts&lt;/a>, there are two locations for image analysis to be stored:&lt;/p>
+&lt;ul>
+&lt;li>The working set: the standard state after analysis completes. In this location, the image is fully loaded and available for policy evaluation, content, and vulnerability queries.&lt;/li>
+&lt;li>The archive set: a location to keep image analysis data that cannot be used for policy evaluation or queries but can use cheaper storage and less db space and can be reloaded into the working set as needed.&lt;/li>
+&lt;/ul>
+&lt;h2 id="working-with-the-analysis-archive">Working with the Analysis Archive&lt;/h2>
+&lt;p>List archived images:&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli analysis-archive images list
+Digest Tags Analyzed At Archived At Status Archive Size Bytes
+sha256:5c40b3c27b9f13c873fefb2139765c56ce97fd50230f1f2d5c91e55dec171907 docker.io/alpine:latest 2019-04-16T22:56:14Z 2019-04-19T18:17:05Z archived 84785
+&lt;/code>&lt;/pre>&lt;p>To add an image to the archive, use the digest. All analysis, policy evaluations, and tags will be added to the archive.
+NOTE: this does &lt;em>not&lt;/em> remove it from the working set. To fully move it you must first archive and then delete image in the working set using the cli/api.&lt;/p>
+&lt;h3 id="archiving-images">Archiving Images&lt;/h3>
+&lt;p>Archiving an image analysis creates a snapshot of the image&amp;rsquo;s analysis data, policy evaluation history, and tags and stores in a different storage location and
+different record location than working set images.&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli image list
+Full Tag Image Digest Analysis Status
+docker.io/alpine:3.4 sha256:0325f4ff0aa8c89a27d1dbe10b29a71a8d4c1a42719a4170e0552a312e22fe88 analyzed
+docker.io/alpine:3.5 sha256:f7d2b5725685826823bc6b154c0de02832e5e6daf7dc25a00ab00f1158fabfc8 analyzed
+docker.io/alpine:3.7 sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b analyzed
+docker.io/alpine:3.8 sha256:899a03e9816e5283edba63d71ea528cd83576b28a7586cf617ce78af5526f209 analyzed
+docker.io/alpine:latest sha256:5c40b3c27b9f13c873fefb2139765c56ce97fd50230f1f2d5c91e55dec171907 analyzed
+root@37a8b1e75d0a:~# anchore-cli analysis-archive images add sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b
+Image Digest Archive Status Details
+sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b archived Completed successfully
+&lt;/code>&lt;/pre>&lt;p>Then to delete it in the working set (optionally):&lt;/p>
+&lt;p>&lt;em>NOTE: You may need to use &amp;ndash;force if the image is the newest of its tags and has active subscriptions&lt;/em>_&lt;/p>
+&lt;p>&lt;code>root@37a8b1e75d0a:~# anchore-cli image del sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b&lt;/code>&lt;/p>
+&lt;p>At this point the image in the archive only.&lt;/p>
+&lt;h3 id="restoring-images-from-the-archive-into-the-working-set">Restoring images from the archive into the working set&lt;/h3>
+&lt;p>This will not delete the archive entry, only add it back to the working set. Restore and image to working set from archive:&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli analysis-archive images restore sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b
+Image Digest: sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b
+Parent Digest: sha256:fea30b82fd63049b797ab37f13bf9772b59c15a36b1eec6b031b6e483fd7f252
+Analysis Status: analyzed
+Image Type: docker
+Image ID: 6d1ef012b5674ad8a127ecfa9b5e6f5178d171b90ee462846974177fd9bdd39f
+Dockerfile Mode: Guessed
+Distro: alpine
+Distro Version: 3.7.3
+Size: 4464640
+Architecture: amd64
+Layer Count: 1
+Full Tag: docker.io/alpine:3.7
+&lt;/code>&lt;/pre>&lt;p>To view the restored image:&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli image get sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b
+Image Digest: sha256:92251458088c638061cda8fd8b403b76d661a4dc6b7ee71b6affcf1872557b2b
+Parent Digest: sha256:fea30b82fd63049b797ab37f13bf9772b59c15a36b1eec6b031b6e483fd7f252
+Analysis Status: analyzed
+Image Type: docker
+Image ID: 6d1ef012b5674ad8a127ecfa9b5e6f5178d171b90ee462846974177fd9bdd39f
+Dockerfile Mode: Guessed
+Distro: alpine
+Distro Version: 3.7.3
+Size: 4464640
+Architecture: amd64
+Layer Count: 1
+Full Tag: docker.io/alpine:3.7
+&lt;/code>&lt;/pre>&lt;h2 id="working-with-archive-rules">Working with Archive rules&lt;/h2>
+&lt;p>As with all CLI commands, the &lt;code>--help&lt;/code> option will show the arguments, options and descriptions of valid values.&lt;/p>
+&lt;p>List existing rules:&lt;/p>
+&lt;pre>&lt;code>anchore-cli analysis-archive rules list
+Rule Id Global Analysis Age (Days) Tag Versions Newer Registry Repository Tag Last Updated
+134d7f8b36e44c1893d98bc9ee50d9c6 False 1 0 * * * 2019-04-30T22:40:30Z
+&lt;/code>&lt;/pre>&lt;p>Add a rule:&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli analysis-archive rules add 90 1 archive --registry-selector docker.io --repository-selector &amp;quot;library/*&amp;quot; --tag-selector latest
+Rule Id Global Analysis Age (Days) Tag Versions Newer Registry Repository Tag Last Updated
+4ce89022ceea48f697410cb651c090bd False 90 1 docker.io library/* latest 2019-04-30T23:35:57Z
+&lt;/code>&lt;/pre>&lt;p>The required parameters are: minimum age of analysis in days, number of tag versions newer, and the transition to use.&lt;/p>
+&lt;p>There is also an optional &lt;code>--is-global&lt;/code> flag available for admin account users that makes the rule apply to all accounts
+in the system.&lt;/p>
+&lt;p>As a non-admin user you can see global rules but you cannot update/delete them (will get a 404):&lt;/p>
+&lt;pre>&lt;code>:~# anchore-cli --u test1 --p password analysis-archive rules list
+Rule Id Global Analysis Age (Days) Tag Versions Newer Registry Repository Tag Last Updated
+01a97699ed4b40cdb256e58a03d9cef2 True 90 1 docker.io library/* latest 2019-04-30T23:39:33Z
+root@37a8b1e75d0a:~# anchore-cli --u test1 --p password analysis-archive rules del 01a97699ed4b40cdb256e58a03d9cef2
+Error: Rule not found
+HTTP Code: 404
+Detail: {'error_codes': []}
+root@37a8b1e75d0a:~# anchore-cli --u test1 --p password analysis-archive rules get 01a97699ed4b40cdb256e58a03d9cef2
+Rule Id Global Analysis Age (Days) Tag Versions Newer Registry Repository Tag Last Updated
+01a97699ed4b40cdb256e58a03d9cef2 True 90 1 docker.io library/* latest 2019-04-30T23:39:33Z
+&lt;/code>&lt;/pre>&lt;p>Delete a rule:&lt;/p>
+&lt;pre>&lt;code>root@37a8b1e75d0a:~# anchore-cli analysis-archive rules del 134d7f8b36e44c1893d98bc9ee50d9c6
+Success
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Analyzing Images</title><link>/docs/usage/cli_usage/images/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/images/</guid><description>
+&lt;h3 id="adding-an-image">Adding An Image&lt;/h3>
+&lt;p>The &lt;code>image add&lt;/code> command instructs the Anchore Engine to pull (download) and analyze an image from a registry.&lt;/p>
+&lt;p>&lt;code>anchore-cli image add docker.io/library/nginx:latest&lt;/code>&lt;/p>
+&lt;p>The Anchore Engine will attempt to retrieve metadata about the image from the Docker registry and if successful will initiate a pull of the image and queue the image for analysis. The command will output details about the image including the image digest, image ID, and full name of the image.&lt;/p>
+&lt;pre>&lt;code>Image Digest: sha256:2b0e9b0e40202e2a6a0619f327c9acb9d0adc39d7dc292fefc1a886fc8cefee3
+Parent Digest: sha256:811483efcd38de17d93193b4b4bc4ba290a931215c4c8512cbff624e5967a7dd
+Analysis Status: not_analyzed
+Image Type: docker
+Image ID: 2dd01afbe8df1fe326f6609c56b08beefc6bf254d28993263da188b8fbf1254d
+Dockerfile Mode: None
+Distro: None
+Distro Version: None
+Size: None
+Architecture: None
+Layer Count: None
+Full Tag: docker.io/mysql:latest
+&lt;/code>&lt;/pre>&lt;p>For an image that has not yet been analyzed, the status will appear as &lt;em>not_analyzed&lt;/em>. Once the image has been downloaded it will be queued for analysis. When the analysis begins the status will be updated to &lt;em>analyzing&lt;/em>, after which te status will update to &lt;em>analyzed&lt;/em>.&lt;/p>
+&lt;p>The image type is shown as &lt;code>docker&lt;/code>, future release will support the analysis of OCI formatted images.&lt;/p>
+&lt;h3 id="adding-images-that-you-own">Adding Images That You Own&lt;/h3>
+&lt;p>For images that you are building yourself, the Dockerfile used to build the image should always be passsed to the Anchore Engine at the time of image addition. This is achieved by adding the image as above, but with the additional option to pass the Dockerfile contents to be stored with the engine alongside the image analysis data.&lt;/p>
+&lt;p>&lt;code>anchore-cli image add myrepo.example.com:5000/app/webapp:latest --dockerfile=/path/to/Dockerfile&lt;/code>&lt;/p>
+&lt;p>To update an image&amp;rsquo;s Dockerfile, simply run the same command again with the path to the updated Dockerfile. Note that running &lt;code>add&lt;/code> without &lt;code>--force&lt;/code> (see below) will not re-add an image if it already exists.&lt;/p>
+&lt;h3 id="additional-options">Additional Options&lt;/h3>
+&lt;p>When adding an image, there are some additional (optional) parameters that can be used. We show some examples below.
+&lt;code>anchore-cli image add alpine:latest --force&lt;/code>&lt;/p>
+&lt;p>the &lt;code>--force&lt;/code> option can be used to reset the image analysis status of any image to &lt;em>not_analyzed&lt;/em>, which is the base analysis state for an image. This option should be be necessary to use in normal circumstancesm but can be useful if image re-analysis is needed for any reason desired.&lt;/p>
+&lt;p>&lt;code>anchore-cli image add myrepo.example.com:5000/app/webapp:latest --dockerfile /path/to/dockerfile --annotation owner=someperson --annotation owneremail=someperson@somewhere.com&lt;/code>&lt;/p>
+&lt;p>the &lt;code>--annotation&lt;/code> parameter can be used to specify &amp;lsquo;key=value&amp;rsquo; pairs to associate with the image at the time of image addition. These annotations will then be carried along with the tag, and will appear in image records when fetched, and in webhook notification payloads that contain image information when they are sent from the engine. To change an annotation, simply run the add command again with the updated annotation and the old annotation will be overriden.&lt;/p>
+&lt;p>&lt;code>anchore-cli image add alpine:latest --noautosubscribe&lt;/code>&lt;/p>
+&lt;p>the &amp;lsquo;&amp;ndash;noautosubscribe&amp;rsquo; flag can be used if you do not wish for the engine to automatically subscribe the input tag to the &amp;lsquo;tag_update&amp;rsquo; subscription, which controls whether or not the engine will automatically watch the added tag for image content updates and pull in the latest content for analysis. See Subscriptions for more information about using subscriptions and notifications in Anchore.&lt;/p>
+&lt;h3 id="image-tags">Image Tags&lt;/h3>
+&lt;p>In the previous example we added &lt;code>docker.io/mysql:latest&lt;/code>, if we attempted to add a tag that mapped to the same image, for example &lt;code>docker.io/mysql:5&lt;/code> the Anchore Engine will detect the duplicate image identifiers and return a detail of all tags matching that image.&lt;/p>
+&lt;pre>&lt;code>Image Digest: sha256:2b0e9b0e40202e2a6a0619f327c9acb9d0adc39d7dc292fefc1a886fc8cefee3
+Parent Digest: sha256:811483efcd38de17d93193b4b4bc4ba290a931215c4c8512cbff624e5967a7dd
+Analysis Status: analyzed
+Image Type: docker
+Image ID: 2dd01afbe8df1fe326f6609c56b08beefc6bf254d28993263da188b8fbf1254d
+Dockerfile Mode: Guessed
+Distro: debian
+Distro Version: 9
+Size: 138302512
+Architecture: amd64
+Layer Count: 12
+Full Tag: docker.io/mysql:latest
+Full Tag: docker.io/mysql:5
+&lt;/code>&lt;/pre>&lt;h3 id="deleting-an-image">Deleting An Image&lt;/h3>
+&lt;p>The &lt;code>image del&lt;/code> command instructs the Anchore Engine to delete the image from the repository.&lt;/p>
+&lt;h4 id="get-the-image-digest">Get The Image Digest&lt;/h4>
+&lt;p>To delete the image, first get the image digest from &lt;code>anchore-cli image list&lt;/code>.&lt;/p>
+&lt;pre>&lt;code>anchore-cli image list
+Full Tag Image Digest Analysis Status
+docker.io/alpine:latest sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f analyzed
+&lt;/code>&lt;/pre>&lt;h4 id="deactivate-image-subscriptions">Deactivate Image Subscriptions&lt;/h4>
+&lt;p>Check if the image has any active subscriptions.&lt;/p>
+&lt;pre>&lt;code>anchore-cli subscription list
+Tag Subscription Type Active
+docker.io/alpine:latest analysis_update True
+docker.io/alpine:latest policy_eval False
+docker.io/alpine:latest tag_update True
+docker.io/alpine:latest vuln_update False
+&lt;/code>&lt;/pre>&lt;p>If it the image has an active subscription(s), deactivate the subscription(s).&lt;/p>
+&lt;pre>&lt;code>anchore-cli subscription deactivate analysis_update docker.io/alpine:latest
+Success
+anchore-cli subscription deactivate tag_update docker.io/alpine:latest
+Success
+&lt;/code>&lt;/pre>&lt;h4 id="delete-the-image">Delete The Image&lt;/h4>
+&lt;p>Once no subscriptions are active and the image digest has been obtained, delete the image.&lt;/p>
+&lt;pre>&lt;code>anchore-cli image del sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
+Success
+&lt;/code>&lt;/pre>&lt;h3 id="advanced">Advanced&lt;/h3>
+&lt;p>Anchore engine also allows adding images directly by digest / tag / timestamp tuple, which can be useful to add images that are still available in a registry but not associated with a current tag any longer. This functionality is available via the anchore engine API directly for advanced use cases, by constructing a message body that has &amp;lsquo;digest&amp;rsquo;, &amp;lsquo;tag&amp;rsquo; and &amp;lsquo;created_at&amp;rsquo; fields populated - see the API for more details.&lt;/p></description></item><item><title>Docs: Working with Policies</title><link>/docs/usage/cli_usage/policies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/policies/</guid><description>
+&lt;h2 id="overview">Overview&lt;/h2>
+&lt;p>Policies are central to the concept of Anchore Engine, this article provides information on how to create, delete, update, and describe policies using the Anchore CLI to interact with a running Anchore Engine deployment.&lt;/p>
+&lt;p>At a high-level Anchore Engine consumes policies store in a Policy Bundle that contain:&lt;/p>
+&lt;ul>
+&lt;li>Policies&lt;/li>
+&lt;li>Whitelists&lt;/li>
+&lt;li>Mappings&lt;/li>
+&lt;li>Whitelisted Images&lt;/li>
+&lt;li>Blacklisted Images&lt;/li>
+&lt;/ul>
+&lt;p>The Anchore Engine can store multiple policy bundles for each user, but only one bundle can be active at any point in time. It is common to store historic bundles to allow previous policies and evaluations to be inspected. The active bundle is the one used for evaluation for notifications, incoming kubernetes webhooks (unless configured otherwise), and other automatic system functions, but a user may request evaluation of any bundle stored in the system using that bundle&amp;rsquo;s id.&lt;/p>
+&lt;p>For more information on the content and semantics of policy bundles see: Policy Bundles and Evaluation&lt;/p>
+&lt;h3 id="creating-policies">Creating Policies&lt;/h3>
+&lt;p>Policy bundles are just JSON documents. Anchore Engine includes a default policy configured at installation that performs basic CVE checks as well as some Dockerfile checks.&lt;/p>
+&lt;p>To create custom polices, you may:&lt;/p>
+&lt;ul>
+&lt;li>Edit JSON manually and upload a file&lt;/li>
+&lt;li>Use the Anchore Enterprise UI to edit policies&lt;/li>
+&lt;/ul>
+&lt;h3 id="managing-policies">Managing Policies&lt;/h3>
+&lt;p>Policies can be managed directly using the REST API or the &lt;code>anchore-cli policy&lt;/code> command.&lt;/p>
+&lt;h4 id="adding-policies-from-the-cli">Adding Policies from the CLI&lt;/h4>
+&lt;p>The &lt;code>anchore-cli&lt;/code> tool allows you to upload policy bundles to the Anchore Engine.&lt;/p>
+&lt;p>&lt;code>anchore-cli policy add /path/to/policy/bundle.json&lt;/code>&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Adding a policy bundle will &lt;strong>not&lt;/strong> automatically set the bundle to be active, you will need to activate the bundle using the &lt;em>activate&lt;/em> command.&lt;/p>
+&lt;h4 id="listing-policies">Listing Policies&lt;/h4>
+&lt;p>The Anchore Engine may store multiple policy bundles however at a given time only one bundle may be active. Policy bundles can be listed using the &lt;code>policy list&lt;/code> command.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli policy list
+Policy ID Active Created Updated
+715a6056-87ab-49fb-abef-f4b4198c67bf True 2017-09-02T12:33:28 2017-09-02T12:33:28
+2170857d-b660-4b56-a1a7-06550bf02eb2 False 2017-09-02T12:33:14 2017-09-02T12:33:28
+&lt;/code>&lt;/pre>&lt;p>Each policy has a unique ID that will be reference in policy evaluation reports.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Times are reported in UTC.&lt;/p>
+&lt;h4 id="viewing-policies">Viewing Policies&lt;/h4>
+&lt;p>Using the &lt;code>policy get&lt;/code> command, summary or detailed information about a policy can be retrieved. The policy is referenced using its unique id.&lt;/p>
+&lt;pre>&lt;code>$ policy get 715a6056-87ab-49fb-abef-f4b4198c67bf
+Policy ID: 715a6056-87ab-49fb-abef-f4b4198c67bf
+Active: True
+Created: 2017-09-03T12:33:28
+Updated: 2017-09-03T12:33:28
+&lt;/code>&lt;/pre>&lt;p>The policy bundle can be downloaded in JSON format by passing the &lt;code>--detail&lt;/code> parameter.&lt;/p>
+&lt;p>&lt;code>anchore-cli policy get 715a6056-87ab-49fb-abef-f4b4198c67bf --detail &amp;gt; policybundle.json&lt;/code>&lt;/p>
+&lt;h4 id="activating-policies">Activating Policies&lt;/h4>
+&lt;p>The &lt;code>policy activate&lt;/code> command can be used to activate a policy bundle. The policy bundle is referenced using its unique id which can be retrieved using the &lt;code>policy list&lt;/code> command.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli policy activate 2170857d-b660-4b56-a1a7-06550bf02eb2&lt;/code>&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> If the Anchore Engine has been configured to automatically synchronize policy bundles from the Anchore Cloud then the active policy may be overridden automatically during the next sync.&lt;/p>
+&lt;h4 id="deleting-policies">Deleting Policies&lt;/h4>
+&lt;p>Policies can be deleted from the Anchore Engine using the &lt;code>policy del&lt;/code> command The policy is referenced using its unique id. A policy marked as &lt;em>active&lt;/em> cannot be deleted, another policy has to be marked active before deleting the currently active policy.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli policy del 715a6056-87ab-49fb-abef-f4b4198c67bf&lt;/code>&lt;/p>
+&lt;h4 id="describe-policies">Describe Policies&lt;/h4>
+&lt;p>The list of available policy items (Gates and Triggers) can be displayed using the policy describe command.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli policy describe
++-----------------+------------------------------------------------------------+
+| Gate | Description |
++-----------------+------------------------------------------------------------+
+| always | Triggers that fire unconditionally if present in policy, |
+| | useful for things like testing and blacklisting. |
++-----------------+------------------------------------------------------------+
+| dockerfile | Checks against the content of a dockerfile if provided, or |
+| | a guessed dockerfile based on docker layer history if the |
+| | dockerfile is not provided. |
++-----------------+------------------------------------------------------------+
+| files | Checks against files in the analyzed image including file |
+| | content, file names, and filesystem attributes. |
++-----------------+------------------------------------------------------------+
+| licenses | License checks against found software licenses in the |
+| | container image |
++-----------------+------------------------------------------------------------+
+| metadata | Checks against image metadata, such as size, OS, distro, |
+| | architecture, etc. |
++-----------------+------------------------------------------------------------+
+| npms | NPM Checks |
++-----------------+------------------------------------------------------------+
+| packages | Distro package checks |
++-----------------+------------------------------------------------------------+
+| passwd_file | Content checks for /etc/passwd for things like usernames, |
+| | group ids, shells, or full entries. |
++-----------------+------------------------------------------------------------+
+| ruby_gems | Ruby Gem Checks |
++-----------------+------------------------------------------------------------+
+| secret_scans | Checks for secrets found in the image using configured |
+| | regexes found in the &amp;quot;secret_search&amp;quot; section of |
+| | analyzer_config.yaml. |
++-----------------+------------------------------------------------------------+
+| vulnerabilities | CVE/Vulnerability checks |
++-----------------+------------------------------------------------------------+
+&lt;/code>&lt;/pre>&lt;p>Without any other parameters the command will output a list of the policy gates.&lt;/p>
+&lt;p>Each policy gate may include one or more triggers (policy checks). The optional &lt;code>--gate&lt;/code> parameter is used to request a list of all triggers supported by a gate.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli policy describe --gate=licenses
++-------------------------+----------------------------------------+------------+
+| Trigger | Description | Parameters |
++-------------------------+----------------------------------------+------------+
+| blacklist_exact_match | Triggers if the evaluated image has a | licenses |
+| | package installed with software | |
+| | distributed under the specified (exact | |
+| | match) license(s). | |
++-------------------------+----------------------------------------+------------+
+| blacklist_partial_match | triggers if the evaluated image has a | licenses |
+| | package installed with software | |
+| | distributed under the specified | |
+| | (substring match) license(s) | |
++-------------------------+----------------------------------------+------------+
+&lt;/code>&lt;/pre>&lt;p>In this example we can see that the licenses gate has two triggers: blacklist_exact_match and blacklist_partial_match.&lt;/p>
+&lt;p>The optional &lt;code>--trigger&lt;/code> parameter may be used in conjunction with the &lt;code>--gate&lt;/code> parameter to return detailed information about specific gates.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli policy describe --gate=licenses --trigger=blacklist_exact_match
++-----------+------------------------------------+----------+----------------------------+
+| Parameter | Description | Required | Example |
++-----------+------------------------------------+----------+----------------------------+
+| licenses | List of license names to blacklist | True | GPLv2+,GPL-3+,BSD-2-clause |
+| | exactly. | | |
++-----------+------------------------------------+----------+----------------------------+
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Working with Registries</title><link>/docs/usage/cli_usage/registries/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/registries/</guid><description>
+&lt;p>Using the API or CLI the Anchore Engine can be instructed to download an image from a public or private container registry.&lt;/p>
+&lt;p>The Anchore Engine will attempt to download images from any registry without requiring further configuration. However if
+your registry requires authentication then the registry and corresponding credentials will need to be defined.
+Anchore Engine can analyze images from any Docker V2 compatible registry.&lt;/p>
+&lt;p>&lt;img src="RegistryAccess.png" alt="alt text">&lt;/p>
+&lt;p>Jump to the registry configuring guide for your registry:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/usage/cli_usage/registries/ecr_configuration/">Amazon Web Services ECR&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/registries/acr_configuration/">Azure Container Registry ACR&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/registries/gcr_configuration/">Google Container Registry GCR&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Working with Subscriptions</title><link>/docs/usage/cli_usage/subscriptions/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/subscriptions/</guid><description>
+&lt;h2 id="working-with-subscriptions">Working with Subscriptions&lt;/h2>
+&lt;p>The Anchore Engine supports 4 types of subscriptions: Image Updates, Policy Updates, CVE Updates and Analysis Updates.&lt;/p>
+&lt;p>Notifications will be sent over a webhook to an endpoint specified in the Anchore Engine configuration file.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> A fifth notification type, repo_update, is not used for notifications but is instead used as a mechanism for tracking repository updates. Please see the repository scanning documentation for details.&lt;/p>
+&lt;h3 id="tag-updates">Tag Updates&lt;/h3>
+&lt;p>This class of notification is triggered if a new image is tagged with the tag to which you have subscribed.&lt;/p>
+&lt;p>For example, if you had a subscription to the docker.io/library/node:latest tag and a new image was built, tagged as library/note:latest and pushed to the registry.&lt;/p>
+&lt;p>This subscription is activated automatically when a new tag is added to the Anchore Engine.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> If this subscription is disabled the Anchore Engine will not monitor the registry for new images.&lt;/p>
+&lt;h3 id="policy-updates">Policy Updates&lt;/h3>
+&lt;p>This class of notification is triggered if a Tag to which a user has subscribed has a change in its policy evaluation status. The policy evaluation status of an image can be one of two states: &lt;em>Pass&lt;/em> or &lt;em>Fail&lt;/em>. If an image that was previously marked as Pass changes status to Fail or vice-versa then the policy update notification will be triggered.&lt;/p>
+&lt;p>The policy status of a Tag may be changed by a number of methods.&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>Change to policy If an policy was changed, for example adding, editing or removing a policy check, then the policy status of an image may be effected. For example adding policy rule that blacklists a specific package that is present in a given Tag may cause the Tag’s policy status to move to Fail.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Changes to whitelist If a whitelist is changed to add or remove a CVE then this may cause a policy status change. For example if an image contains a package that is vulnerable to Crticial Severity CVE-2017-9999 then this image may fail in it’s policy evaluation. If CVE-2017-9999 is added to a CVE Whitelist that is mapped to the subscribed Tag then the policy status may change from Fail to Pass.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Change in Policy / Whitelist Mapping If the policy mapping is changed then a new policy or whitelist may be applied to an image which may change the status of the image. For example changing the mapping to add a more restrictive policy may change an Tag’s status from Pass to Fail.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Change in Package or Vulnerability Data Some policy checks make use of data from external feeds. For example vulnerability checks use CVE data feeds. Changes in data within these feed may change the policy status, such as adding a new CVE vulnerability.&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="vulnerability--cve-update">Vulnerability / CVE Update&lt;/h3>
+&lt;p>This class of notification is triggered if the list of CVEs or other security vulnerabilities in the image changes.&lt;/p>
+&lt;p>For example, a user was subscribed to the library/nginx:latest tag. On the 12th of September 2017 a new vulnerability was added to the Debian 9 vulnerability feed which matched a package in the library/nginx:latest image, triggering the email notification.&lt;/p>
+&lt;p>Based on the changes made by the upstream providers of CVE data (operating system vendors and NIST) CVEs may be added, removed or modified – for example a CVE initially marked as severity level Unknown may be upgraded to a higher severity level.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> A change to the CVE list in a Tag may not trigger a policy status change based on the policy rules configured for an image. In the example below the CVE had a unknown severity level which may not be tested by the policy mapped to this image.&lt;/p>
+&lt;h3 id="analysis-update">Analysis Update&lt;/h3>
+&lt;p>This class of notification is triggered when an image has been analyzed. Typically this is triggered when a new TAG has been added to the system.
+A common use case for this trigger is to alert an external system that a new TAG was added and has been successfully analyzed.&lt;/p>
+&lt;h3 id="managing-subscriptions">Managing Subscriptions&lt;/h3>
+&lt;p>Subscriptions are managed through the REST API or through the anchore-cli. The current subscription types are:&lt;/p>
+&lt;ul>
+&lt;li>tag_update : Tag update&lt;/li>
+&lt;li>policy_eval : Policy status update&lt;/li>
+&lt;li>vuln_update : CVE / Vulnerability updated (added/removed/changed)&lt;/li>
+&lt;li>analysis_update: New Tag analyzed&lt;/li>
+&lt;/ul>
+&lt;p>&lt;strong>Note:&lt;/strong> A fifth notification type, repo_update, is not used for notifications but is instead used as a mechanism for tracking repository updates. Please see the repository scanning documentation for details.&lt;/p>
+&lt;h3 id="listing-subscriptions">Listing Subscriptions&lt;/h3>
+&lt;p>Running the &lt;code>subscription list&lt;/code> command will output a table showing the status of each Tag&amp;rsquo;s subscriptions.&lt;/p>
+&lt;pre>&lt;code>anchore-cli subscription list
+Tag Subscription Type Active
+docker.io/library/alpine:latest analysis_update True
+docker.io/library/alpine:latest policy_eval False
+docker.io/library/alpine:latest tag_update True
+docker.io/library/alpine:latest vuln_update False
+docker.io/library/centos:latest analysis_update True
+docker.io/library/centos:latest policy_eval False
+docker.io/library/centos:latest tag_update True
+docker.io/library/centos:latest vuln_update False
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> Subscriptions are tied to &lt;em>registry/repo:tag&lt;/em> and not to image IDs.&lt;/p>
+&lt;h3 id="activating-subscriptions">Activating Subscriptions&lt;/h3>
+&lt;p>The &lt;code>subscription activate&lt;/code> command is used to enable a subscription type for a given image. The command takes the following form:&lt;/p>
+&lt;p>&lt;code>anchore-cli subscription activate SUBSCRIPTION_TYPE SUBSCRIPTION_KEY&lt;/code>&lt;/p>
+&lt;p>SUBSCRIPTION_TYPE should be either:&lt;/p>
+&lt;ul>
+&lt;li>tag_update&lt;/li>
+&lt;li>vuln_update&lt;/li>
+&lt;li>policy_eval&lt;/li>
+&lt;li>analysis_update&lt;/li>
+&lt;/ul>
+&lt;p>SUBSCRIPTION_KEY should be the name of the subscribed tag. eg. &lt;code>docker.io/ubuntu:latest&lt;/code>&lt;/p>
+&lt;h3 id="webhook-configuration">Webhook Configuration&lt;/h3>
+&lt;p>Webhooks are configured in the Anchore Engine configuration file &lt;code>config.yaml&lt;/code> In the sample configuration file webhooks are disabled (commented) out.&lt;/p>
+&lt;pre>&lt;code>webhooks:
+webhook_user: 'user'
+webhook_pass: 'pass'
+ssl_verify: False
+&lt;/code>&lt;/pre>&lt;p>The webhooks can, optionally, pass basic credentials to the webhook endpoint, if these are not required the the &lt;code>webhook_user&lt;/code> and &lt;code>webhool_pass&lt;/code> entries can be commented out. By default TLS/SSL connections will validate the certificate provided. This can be suppressed by uncommenting the &lt;code>ssl_verify&lt;/code> option.&lt;/p>
+&lt;pre>&lt;code class="language-general:" data-lang="general:"> url: 'http://localhost:9090/general/&amp;lt;notification_type&amp;gt;/&amp;lt;userId&amp;gt;'
+&lt;/code>&lt;/pre>&lt;p>If configured, the general webook will receive all notifications (policy_eval, tag_update, vuln_update) for each user.In this case &lt;em>&amp;lt;notification_type&amp;gt;&lt;/em> will be replaced by the appropriate type. will be replaced by the configured user which is, by default, admin. eg. http://localhost:9090/general/vuln_update/admin'&lt;/p>
+&lt;pre>&lt;code>policy_eval:
+url: 'http://localhost:9090/somepath/&amp;lt;userId&amp;gt;'
+webhook_user: 'mehuser'
+webhook_pass: 'mehpass'
+&lt;/code>&lt;/pre>&lt;p>Specific endpoints for each event type can be configured, for example an endpoint for policy_eval notifications. In these cases the url, username, password and SSL/TLS verification can be specified.&lt;/p>
+&lt;pre>&lt;code>error_event:
+url: 'http://localhost:9090/error_event/'
+&lt;/code>&lt;/pre>&lt;p>This webook, if configured, will send a webhook if any FATAL system events are logged.&lt;/p></description></item><item><title>Docs: Scanning Repositories</title><link>/docs/usage/cli_usage/repositories/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/repositories/</guid><description>
+&lt;p>Individual images can be added to the Anchore Engine engine using the &lt;code>image add&lt;/code> command. This may be performed by a CI/CD plugin such as Jenkins or manually by a user with the CLI or API.&lt;/p>
+&lt;p>The Anchore Engine can also be configured to scan repositories and automatically add any tags found in the repository. Once added, the Anchore Engine will poll the registry to look for changes at a user configurable interval.
+This interval is specified in the Anchore Engine configuration file: config.yaml within the services -&amp;gt; Catalog configuration stanza.&lt;/p>
+&lt;pre>&lt;code>cycle_timers:
+image_watcher: 3600
+repo_watcher: 60
+&lt;/code>&lt;/pre>&lt;p>In this example the repo is polled for updates every minute (60 seconds).&lt;/p>
+&lt;h2 id="adding-repositories">Adding Repositories&lt;/h2>
+&lt;p>The &lt;code>repo add&lt;/code> command instructs the Anchore Engine to add the specified repository watch list.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli repo add repo.example.com/apps&lt;/code>&lt;/p>
+&lt;p>By default the Anchore Engine will automatically add the discovered tags to the list of subscribed tags (see &lt;a href="/docs/usage/cli_usage/subscriptions/">Working with Subscriptions&lt;/a> this behavior can be overridden by passing the &lt;code>--noautosubscribe&lt;/code> option.&lt;/p>
+&lt;p>The Anchore Engine needs to find a single TAG in the repository before the repository can be added to the watch list. By default the Anchore Engine will look for a tag named latest this behavior can be overridden using the &lt;code>--lookuptag&lt;/code> option.&lt;/p>
+&lt;p>In the following example the &lt;em>apps&lt;/em> repo is known to contain a dev tag.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli repo add repo.example.com/apps --lookuptag dev&lt;/code>&lt;/p>
+&lt;h2 id="listing-repositories">Listing Repositories&lt;/h2>
+&lt;p>The &lt;code>repo list&lt;/code> command will show the repositories monitored by the Anchore Engine.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli repo list
+Repository Watched TagCount
+docker.io/anchore/test True 15
+docker.io/anchore/prod True 25
+&lt;/code>&lt;/pre>&lt;h2 id="deleting-repositories">Deleting Repositories&lt;/h2>
+&lt;p>The &lt;code>del&lt;/code> option can be used to instruct the Anchore Engine to remove the repository from the watch list. Once the repository record has been deleted no further changes to the repository will be detected by the Anchore Engine.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> No existing image data will be removed from the Anchore Engine.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli repo del repo.example.com/myrepo&lt;/code>&lt;/p>
+&lt;h2 id="unwatching-repositories">Unwatching Repositories&lt;/h2>
+&lt;p>When a repository is added the Anchore Engine will monitor the repository for new and updated tags. This behavior can be disabled preventing the Anchore Engine from monitoring the repository for changes.&lt;/p>
+&lt;p>In this case the &lt;code>repo list&lt;/code> command will show false in the Watched column for this registry.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli repo unwatch repo.example.com/myrepo&lt;/code>&lt;/p>
+&lt;h2 id="watching-repositories">Watching Repositories&lt;/h2>
+&lt;p>The repo watch command instructs the Anchore Engine to monitor a repository for new and updated tags. By default repositories added to the Anchore Engine are automatically watched. This option is only required if a repository has been manually unwatched.&lt;/p>
+&lt;p>&lt;code>$ anchore-cli repo watch repo.example.com/myrepo&lt;/code>&lt;/p>
+&lt;h2 id="removing-a-repository-and-all-images">Removing a Repository and All Images&lt;/h2>
+&lt;p>There may be a time when you wish to stop a repository analysis when the analysis is running (e.g., accidentally watching an image with a large number of tags). There are several steps in the process which are outlined below. We will use &lt;code>docker.io/library/alpine&lt;/code> as an example.&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Be careful when deleting images. In this flow, Anchore deletes the image, not just the repository/tag combo. Because of this, deletes may impact more than the expected repository since an image may have tags in multiple repositories or even registries.&lt;/p>
+&lt;h3 id="check-the-state">Check the State&lt;/h3>
+&lt;p>Take a look at the repository list.&lt;/p>
+&lt;pre>&lt;code># anchore-cli repo list
+Repository Watched TagCount
+docker.io/library/alpine True 29
+&lt;/code>&lt;/pre>&lt;p>Also look at the image list.&lt;/p>
+&lt;pre>&lt;code># anchore-cli image list | grep 'docker.io/library/alpine'
+docker.io/library/alpine:20190228 sha256:1dd6a46eca0d7025920a8b3e3db7fdc33ad5c4e2e317c314e125d4141ce14a0f not_analyzed
+docker.io/library/alpine:20190408 sha256:00c76f80fd9298c831c4c5e799df6d7164b2a2692b10318c00ab217b381ba659 not_analyzed
+docker.io/library/alpine:20190707 sha256:c04b643dedaccae53e036f2bf72b0e792870f51708aff6ceaa6895de60e46257 not_analyzed
+docker.io/library/alpine:3.1 sha256:25fd8fc1aefcc8ae46aae23daefcd7dcb97f676fa0bc72bb0bf7cfb75df4f22e not_analyzed
+docker.io/library/alpine:3.10.1 sha256:57334c50959f26ce1ee025d08f136c2292c128f84e7b229d1b0da5dac89e9866 not_analyzed
+docker.io/library/alpine:3.5 sha256:f7d2b5725685826823bc6b154c0de02832e5e6daf7dc25a00ab00f1158fabfc8 not_analyzed
+docker.io/library/alpine:3.6.5 sha256:36c3a913e62f77a82582eb7ce30d255f805c3d1e11d58e1f805e14d33c2bc5a5 not_analyzed
+...
+...
+&lt;/code>&lt;/pre>&lt;h3 id="removing-the-repository-from-the-watched-list">Removing the Repository from the Watched List&lt;/h3>
+&lt;p>Unwatch &lt;code>docker.io/library/alpine&lt;/code> to prevent future automatic updates.&lt;/p>
+&lt;pre>&lt;code># anchore-cli repo unwatch docker.io/library/alpine
+Repository Watched TagCount
+docker.io/library/alpine False 29
+&lt;/code>&lt;/pre>&lt;h3 id="delete-the-repository">Delete the Repository&lt;/h3>
+&lt;p>Delete the repository. This may need to be done a couple times if the repository still shows in the repository list.&lt;/p>
+&lt;pre>&lt;code># anchore-cli repo del docker.io/library/alpine
+Success
+&lt;/code>&lt;/pre>&lt;h3 id="forcefully-delete-the-images">Forcefully Delete the Images&lt;/h3>
+&lt;p>Delete the analysis/images. This may need to be done several times to remove all images depending on how many there are.&lt;/p>
+&lt;pre>&lt;code># for i in `anchore-cli image list | grep 'docker.io/library/alpine' | awk '{print $1}' | sort | uniq`
+&amp;gt; do
+&amp;gt; anchore-cli image del ${i} --force
+&amp;gt; done
+Success
+Success
+Success
+...
+...
+&lt;/code>&lt;/pre>&lt;h3 id="verify-the-repository-and-all-images-are-deleted">Verify the Repository and All Images are Deleted&lt;/h3>
+&lt;p>Check the repository list.&lt;/p>
+&lt;pre>&lt;code># anchore-cli repo list
+&amp;lt;no output&amp;gt;
+&lt;/code>&lt;/pre>&lt;p>Check the image list.&lt;/p>
+&lt;pre>&lt;code># anchore-cli image list | grep 'docker.io/library/alpine'
+&amp;lt;no output&amp;gt;
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Event Log</title><link>/docs/usage/cli_usage/event/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/event/</guid><description>
+&lt;p>The event log subsystem is a new feature made available in the release 0.2.3 of anchore-engine. It provides the users with a mechanism to inspect asynchronous events occurring across various anchore-engine services. Anchore events include periodically triggered activities such as vulnerability data feed syncs in the policy-engine service, image analysis failures originating from the analyzer service, and other informational or system fault events. The catalog service may also generate events for any repositories or image tags that are being watched, when the engine encounters connectivity, authentication, authorization or other errors in the process of checking for updates. The event log is aimed at troubleshooting most common failure scenarios (especially those that happen during asynchronous engine operations) and to pinpoint the reasons for failures, that can be used subsequently to help with corrective actions. Events can be cleared from anchore-engine in bulk or individually.&lt;/p>
+&lt;p>The Anchore events (drawn from the event log) can be accessed through the Anchore Engine API and anchore-cli, or can be emitted as webhooks if your engine is configured to send webhook notifications. For API usage refer to the document on using the Anchore Engine API.&lt;/p>
+&lt;h3 id="accessing-events">Accessing Events&lt;/h3>
+&lt;p>The anchore-cli command can be used to list events and filter through the results, get the details for a specific event and delete events matching certain criteria.&lt;/p>
+&lt;pre>&lt;code>anchore-cli event --help
+Usage: anchore-cli event [OPTIONS] COMMAND [ARGS]...
+Options:
+--help Show this message and exit.
+Commands:
+delete Delete one or more events
+get Get an event
+list List events
+&lt;/code>&lt;/pre>&lt;p>For a list of the most recent events:&lt;/p>
+&lt;pre>&lt;code class="language-anchore-cli" data-lang="anchore-cli">
+Timestamp Level Service Host Event ID
+2018-06-28T22:36:37.250529Z INFO policy_engine dockerhostid-localhost feed_sync_complete 9b0078d22cca4a2fa677cdc0d632435a
+2018-06-28T22:36:26.512589Z ERROR catalog dockerhostid-localhost list_tags_fail 67946415c113488b8fff8b335272a45b
+2018-06-28T22:36:08.740953Z INFO policy_engine dockerhostid-localhost feed_sync_start 3b75967268824f4ca12c57d76c97d32c
+...
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> Events are ordered by the timestamp of their occurrence, the most recent events are at the top of the list and the least recent events at the bottom.&lt;/p>
+&lt;p>For troubleshooting events related to a specific tag:&lt;/p>
+&lt;pre>&lt;code>anchore-cli event list &amp;quot;docker.io/wazowskis/sixwheeldrive&amp;quot;
+Timestamp Level Service Host Event ID
+2018-06-30T03:56:27.711071Z ERROR catalog dockerhostid-localhost list_tags_fail d77736ac78a043a9b84b3a1b8171aa44
+&lt;/code>&lt;/pre>&lt;p>To filter events by level such as ERROR or INFO:&lt;/p>
+&lt;pre>&lt;code>anchore-cli event list --level ERROR
+Timestamp Level Service Host Event ID
+2018-06-28T22:36:26.512589Z ERROR catalog dockerhostid-localhost list_tags_fail 67946415c113488b8fff8b335272a45b
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> Event listing response is paginated, anchore-cli displays the first 100 events matching the filters. For all the results use the &amp;ndash;all flag.&lt;/p>
+&lt;p>All available options for listing events:&lt;/p>
+&lt;pre>&lt;code>anchore-cli event list --help
+Usage: anchore-cli event list [OPTIONS] [RESOURCE]
+RESOURCE: Value can be a tag, image digest or repository name. Displays
+results related to the specific resource
+Options:
+--since TEXT ISO8601 formatted UTC timestamp to filter events that occurred after the timestamp
+--before TEXT ISO8601 formatted UTC timestamp to filter events that occurred before the timestamp
+--level TEXT Filter results based on the level, supported levels are info and error
+--service TEXT Filter events based on the originating service
+--host TEXT Filter events based on the originating host
+--all Display all results. If not specified only the first 100 events are displayed
+--help Show this message and exit
+&lt;/code>&lt;/pre>&lt;p>Event listing displays a brief summary of the event, to get more detailed information about the event such as the host where the event has occurred or the underlying the error:&lt;/p>
+&lt;pre>&lt;code>anchore-cli event get d77736ac78a043a9b84b3a1b8171aa44
+details:
+SkopeoError:
+cmd: /bin/sh -c skopeo inspect --tls-verify=true --creds &amp;quot;${SKOPUSER}&amp;quot;:&amp;quot;${SKOPPASS}&amp;quot;
+docker://index.docker.io/wazowskis/sixwheeldrive:latest
+exitcode: 1
+msg: Error encountered in skopeo operation
+stderr: 'time=&amp;quot;2018-06-30T03:56:27Z&amp;quot; level=fatal msg=&amp;quot;Error reading manifest latest
+in docker.io/wazowskis/sixwheeldrive: errors: denied: requested access to the
+resource is denied unauthorized: authentication required &amp;quot;'
+stdout: null
+level: ERROR
+message: Failed to list tags in repository
+resource:
+id: docker.io/wazowskis/sixwheeldrive
+type: repository
+user_id: admin
+source:
+base_url: http://localhost:8082
+hostid: dockerhostid-localhost
+servicename: catalog
+timestamp: '2018-06-30T03:56:27.711071Z'
+type: list_tags_fail
+&lt;/code>&lt;/pre>&lt;h3 id="clearing-events">Clearing Events&lt;/h3>
+&lt;p>Events can be cleared/deleted from the system in bulk or individually. Bulk deletion allows for specifying filters to clear the events within a certain time window. To delete all events from the system:&lt;/p>
+&lt;pre>&lt;code>anchore-cli event delete
+Really delete (clear) all events? (y/N)
+&lt;/code>&lt;/pre>&lt;p>Delete events before a specified timestamp (can also use &lt;code>--since&lt;/code> instead of &lt;code>--before&lt;/code> to delete events that were generated after a specified timestamp):&lt;/p>
+&lt;pre>&lt;code>anchore-cli event delete --before 2018-06-30T03:56:27.711071Z
+Deleted 27 events
+&lt;/code>&lt;/pre>&lt;p>Delete a specific event:&lt;/p>
+&lt;p>&lt;code>anchore-cli event delete d77736ac78a043a9b84b3a1b8171aa44&lt;/code>&lt;/p>
+&lt;h3 id="sending-events-as-webhook-notifications">Sending Events as Webhook Notifications&lt;/h3>
+&lt;p>In addition to access via API and anchore-cli, the anchore engine may be configured to send notifications for events as they are generated in the system via its webhook subsystem. Webhook notifications for event log records is turned off by default. To turn enable the &amp;lsquo;event_update&amp;rsquo; webhook, uncomment the &amp;lsquo;event_log&amp;rsquo; section under &amp;lsquo;services-&amp;gt;catalog&amp;rsquo; in config.yaml, as in the following example:&lt;/p>
+&lt;pre>&lt;code>services:
+...
+catalog:
+...
+event_log:
+notification:
+enabled: True
+# (optional) notify events that match these levels. If this section is commented, notifications for all events are sent
+level:
+- error
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Note:&lt;/strong> In order for events to be sent via webhook notifications, you&amp;rsquo;ll need to ensure that the webhook subsystem is configured in config.yaml (if it isn&amp;rsquo;t already) - refer to the document on subscriptions and notifications for information on how to enable webhooks in anchore engine. Event notifications will be sent to &amp;lsquo;event_update&amp;rsquo; webhook endpoint if it is defined, and the &amp;lsquo;general&amp;rsquo; webhook endpoint otherwise.&lt;/p></description></item><item><title>Docs: Feeds Overview</title><link>/docs/usage/cli_usage/feeds/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/feeds/</guid><description>
+&lt;p>The Anchore Feed Service collects vulnerability and package data from the upstream sources and normalizes this data to be
+published as feeds that the Anchore Engine consumes.&lt;/p>
+&lt;p>The Anchore engine polls the feed service at a user defined interval, by default every six hours, and will download feed
+data updated since the last sync.&lt;/p>
+&lt;p>Anchore hosts a public service which provides access, for free, to all public feeds.&lt;/p>
+&lt;p>An on-premises feed service is available for commercial customers allowing the Anchore Engine to synchronize with a locally
+deployed feed service, without any reliance on the Anchore hosted service.&lt;/p>
+&lt;p>&lt;img src="FeedsOverview.png" alt="alt text">&lt;/p>
+&lt;p>Sources and types of data are organized into &lt;em>feeds&lt;/em> and &lt;em>groups&lt;/em>.&lt;/p>
+&lt;ul>
+&lt;li>Feed - A grouping of similar types of data&lt;/li>
+&lt;li>Feed Group - A namespace within each feed to allow more granular control of the sync process&lt;/li>
+&lt;/ul>
+&lt;p>Each feed can be independently configured to synchronize or not depending on what data your deployment needs. See &lt;a href="/docs/usage/cli_usage/feeds/feed_configuration/">configuration&lt;/a> for more details.&lt;/p>
+&lt;p>Anchore Engine uses security vulnerability and package data from a number of sources:&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>&lt;strong>vulnerabilities&lt;/strong> - security advisories from specific Linux Distribution vendors against Distribution specific packages.&lt;/p>
+&lt;ul>
+&lt;li>Alpine Linux&lt;/li>
+&lt;li>CentOS&lt;/li>
+&lt;li>Debian&lt;/li>
+&lt;li>Oracle Linux&lt;/li>
+&lt;li>Red Hat Enterprise Linux&lt;/li>
+&lt;li>Red Hat Universal Base Image (UBI)&lt;/li>
+&lt;li>Ubuntu&lt;/li>
+&lt;li>Amazon Linux 2&lt;/li>
+&lt;li>Google Distroless&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;strong>packages&lt;/strong> - Software Package Repositories&lt;/p>
+&lt;ul>
+&lt;li>RubyGems.org&lt;/li>
+&lt;li>NPMJS.org&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;strong>nvdv2&lt;/strong> - NIST National Vulnerability Database (NVD)&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;strong>github&lt;/strong> - &lt;a href="https://github.com/advisories">GitHub Advisories&lt;/a> data retrieved by the GitHub API and used for matches against application packages&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Third party feeds - additional data feeds are available for Anchore Enterprise Customers, see On-Premises Feeds Overview for more information.&lt;/p>
+&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Accounts and Users</title><link>/docs/usage/cli_usage/accounts/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/accounts/</guid><description>
+&lt;h3 id="system-initialization">System Initialization&lt;/h3>
+&lt;p>When the system first initializes it creates a system service account (invisible to users) and a administrator account (admin) with a single administrator user (admin). The password for this user is set at bootstrap using a default value or an override available in the config.yaml on the catalog service (which is what initializes the db). There are two top-level keys in the config.yaml that control this bootstrap:&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>&lt;em>default_admin_password&lt;/em> - To set the initial password (can be updated by using the API once the system is bootstrapped). Defaults to foobar if omitted or unset.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;em>default_admin_email&lt;/em> - To set the initial admin account email on bootstrap. Defaults to &lt;em>admin@myanchore&lt;/em> if unset&lt;/p>
+&lt;/li>
+&lt;/ul>
+&lt;h3 id="managing-accounts-using-anchore-cli">Managing Accounts Using Anchore CLI&lt;/h3>
+&lt;p>These operations must be executed by a user in the &lt;em>admin&lt;/em> account. These examples are executed from within the &lt;em>engine-api&lt;/em> container if using the quickstart guide:&lt;/p>
+&lt;p>First, &lt;code>exec&lt;/code> into the &lt;em>engine-api&lt;/em> container, if using the quickstart docker-compose. For other deployment types (eg. helm chart into kubernetes), execute these commands anywhere you have the Anchore CLI installed that can reach the external API endpoint for you deployment.&lt;/p>
+&lt;p>&lt;code>docker-compose exec engine-api /bin/bash&lt;/code>&lt;/p>
+&lt;h3 id="getting-account-and-user-information">Getting Account and User Information&lt;/h3>
+&lt;pre>&lt;code>anchore-cli account whoami
+Username: admin
+AccountName: admin
+AccountEmail: admin@myanchore
+AccountType: admin
+&lt;/code>&lt;/pre>&lt;p>This shows the username and enclosing account of the requester. In this case, the &lt;em>admin&lt;/em> user of the &lt;em>admin&lt;/em> account.&lt;/p>
+&lt;h3 id="adding-a-new-account">Adding a New Account&lt;/h3>
+&lt;pre>&lt;code>anchore-cli account add account1 --email account1admin@anchorexample.com
+Name: account1
+Email: account1admin@anchorexample.com
+Type: user
+State: enabled
+Created: 2018-11-05T23:23:55Z
+&lt;/code>&lt;/pre>&lt;p>Note that the email address is optional and can be omitted.&lt;/p>
+&lt;p>At this point the account exists but contains no users. To create a user with a password, see below in the &lt;em>Managing Users&lt;/em> section.&lt;/p>
+&lt;h3 id="disabling-account">Disabling Account&lt;/h3>
+&lt;p>Disabling an account prevents any of that account&amp;rsquo;s users from being able to perform any actions in the system. It also disabled all asynchronous updates on resources in that account, effectively freezing the state of the account and all of its resources. Disabling an account is idempotent, if it is already disabled the operation has no effect. Accounts may be re-enabled after being disabled.&lt;/p>
+&lt;pre>&lt;code>anchore-cli account disable account1
+Success
+&lt;/code>&lt;/pre>&lt;h3 id="enabling-an-account">Enabling an Account&lt;/h3>
+&lt;p>To restore a disabled account to allow user operations and resource updates, simply enable it. This is idempotent, enabling an already enabled account has no effect.&lt;/p>
+&lt;pre>&lt;code>anchore-cli account enable account1
+Success
+&lt;/code>&lt;/pre>&lt;h3 id="deleting-an-account">Deleting an Account&lt;/h3>
+&lt;p>&lt;strong>Note:&lt;/strong> Deleting an account is irreversible and will delete all of its resources (images, policies, evaluations, etc).&lt;/p>
+&lt;p>Deleting an account will synchronously delete all users and credentials for the account and transition the account to the deleting state. At this point the system will begin reaping all resources for the account. Once that reaping process is complete, the account record itself is deleted. An account must be in a disabled state prior to deletion. Failure to be in this state results in an error:&lt;/p>
+&lt;pre>&lt;code>anchore-cli account del account1
+This operation is irreversible. Really delete account account1 along with *all* users and resources associated with this account? (y/N)y
+Error: Invalid account state change requested. Cannot go from state enabled to state deleting
+HTTP Code: 400
+NOTE: accounts must be disabled (anchore-cli account disable &amp;lt;account&amp;gt;) in order to be deleted
+&lt;/code>&lt;/pre>&lt;p>So, first you must disable the account, as shown above. Once disabled:&lt;/p>
+&lt;pre>&lt;code>anchore-cli account del account1
+This operation is irreversible. Really delete account account1 along with *all* users and resources associated with this account? (y/N)y
+Success
+root@1309ecbad8c1:~# anchore-cli account list
+Name Email Type State Created
+admin admin@myanchore admin enabled 2018-11-03T18:35:42Z
+account1 account1admin@anchorexample.com user deleting 2018-11-05T23:23:55Z
+&lt;/code>&lt;/pre>&lt;h3 id="managing-users-using-anchore-cli">Managing Users Using Anchore CLI&lt;/h3>
+&lt;p>Users exist within accounts, but usernames themselves are globally unique since they are used for authenticating api requests. User management can be performed by any user in the &lt;em>admin&lt;/em> account in the default Anchore Engine configuration using the native authorizer. For more information on configuring other authorization plugins see: &lt;em>Authorization Plugins&lt;/em> and &lt;em>Configuration&lt;/em>.&lt;/p>
+&lt;h3 id="create-user-in-a-user-type-account">Create User in a User-Type Account&lt;/h3>
+&lt;pre>&lt;code>anchore-cli account user add --account account1 user1 password123
+Name: user1
+Created: 2018-11-05T23:38:11Z
+root@1309ecbad8c1:~# anchore-cli account user list --account account1
+Name Created
+user1 2018-11-05T23:38:11Z
+&lt;/code>&lt;/pre>&lt;p>That user may now use the API:&lt;/p>
+&lt;pre>&lt;code>anchore-cli --u user1 --p password123 account whoami
+Username: user1
+AccountName: account1
+AccountEmail: account1admin@anchorexample.com
+AccountType: user
+&lt;/code>&lt;/pre>&lt;h3 id="create-user-in-the-admin-account-or-the-account-making-the-request">Create User in the admin Account (or the account making the request)&lt;/h3>
+&lt;pre>&lt;code>anchore-cli account user add admin2 password123
+Name: admin2
+Created: 2018-11-05T23:41:24Z
+root@1309ecbad8c1:~# anchore-cli --u admin2 --p password123 account whoami
+Username: admin2
+AccountName: admin
+AccountEmail: admin@myanchore
+AccountType: admin
+&lt;/code>&lt;/pre>&lt;h3 id="deleting-a-user">Deleting a User&lt;/h3>
+&lt;pre>&lt;code>anchore-cli account user del admin2
+Success
+&lt;/code>&lt;/pre>&lt;h3 id="updating-a-user-password">Updating a User Password&lt;/h3>
+&lt;p>Note that only system admins can execute this for a different user/account.&lt;/p>
+&lt;p>As an admin, to reset another users credentials:&lt;/p>
+&lt;pre>&lt;code>anchore-cli account user setpassword --account account1 --username user1 password456
+Password (re)set success
+NOTE: Be sure to change the password you're using for this client if you have reset your own password
+&lt;/code>&lt;/pre>&lt;p>To update your own password:&lt;/p>
+&lt;pre>&lt;code>anchore-cli --u user1 --p password456 account user setpassword password123_456
+Password (re)set success
+NOTE: Be sure to change the password you're using for this client if you have reset your own password
+root@1309ecbad8c1:~# anchore-cli --u user1 --p password456 account whoami
+Error: Unauthorized
+HTTP Code: 401
+root@1309ecbad8c1:~# anchore-cli --u user1 --p password123_456 account whoami
+Username: user1
+AccountName: account1
+AccountEmail: account1admin@anchorexample.com
+AccountType: user
+&lt;/code>&lt;/pre></description></item></channel></rss>

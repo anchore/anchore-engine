@@ -1,0 +1,146 @@
+# This is a docker-compose file for development purposes. It refereneces unstable developer builds from the HEAD of master branch in https://github.com/anchore/anchore-engine
+# For a compose file intended for use with a released version, see https://docs.anchore.com/current/docs/quickstart/
+#
+---
+version: '2.1'
+volumes:
+  anchore-db-volume:
+    # Set this to 'true' to use an external volume. In which case, it must be created manually with "docker volume create anchore-db-volume"
+    external: false
+
+services:
+  # The primary API endpoint service
+  api:
+    image: anchore/anchore-engine:v0.8.2
+    depends_on:
+      - db
+      - catalog
+    ports:
+      - "8228:8228"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+      - ANCHORE_ENDPOINT_HOSTNAME=api
+      - ANCHORE_DB_HOST=db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "apiext"]
+
+  # Catalog is the primary persistence and state manager of the system
+  catalog:
+    image: anchore/anchore-engine:v0.8.2
+    depends_on:
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    expose:
+      - 8228
+    environment:
+      - ANCHORE_ENDPOINT_HOSTNAME=catalog
+      - ANCHORE_DB_HOST=db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "catalog"]
+  queue:
+    image: anchore/anchore-engine:v0.8.2
+    depends_on:
+      - db
+      - catalog
+    expose:
+      - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+      - ANCHORE_ENDPOINT_HOSTNAME=queue
+      - ANCHORE_DB_HOST=db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "simplequeue"]
+  policy-engine:
+    image: anchore/anchore-engine:v0.8.2
+    depends_on:
+      - db
+      - catalog
+    expose:
+      - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+      - ANCHORE_ENDPOINT_HOSTNAME=policy-engine
+      - ANCHORE_DB_HOST=db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+    command: ["anchore-manager", "service", "start", "policy_engine"]
+  analyzer:
+    image: anchore/anchore-engine:v0.8.2
+    depends_on:
+      - db
+      - catalog
+    expose:
+      - 8228
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    environment:
+      - ANCHORE_ENDPOINT_HOSTNAME=analyzer
+      - ANCHORE_DB_HOST=db
+      - ANCHORE_DB_PASSWORD=mysecretpassword
+    volumes:
+      - /analysis_scratch
+    command: ["anchore-manager", "service", "start", "analyzer"]
+  db:
+    image: "postgres:9"
+    volumes:
+      - anchore-db-volume:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+    expose:
+      - 5432
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+#  # Uncomment this section to add a prometheus instance to gather metrics. This is mostly for quickstart to demonstrate prometheus metrics exported
+#  prometheus:
+#    image: docker.io/prom/prometheus:latest
+#    depends_on:
+#      - api
+#    volumes:
+#      - ./anchore-prometheus.yml:/etc/prometheus/prometheus.yml:z
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: 100m
+#    ports:
+#      - "9090:9090"
+#
+#  # Uncomment this section to run a swagger UI service, for inspecting and interacting with the anchore engine API via a browser (http://localhost:8080 by default, change if needed in both sections below)
+#  swagger-ui-nginx:
+#    image: docker.io/nginx:latest
+#    depends_on:
+#      - api
+#      - swagger-ui
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - ./anchore-swaggerui-nginx.conf:/etc/nginx/nginx.conf:z
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: 100m
+#  swagger-ui:
+#    image: docker.io/swaggerapi/swagger-ui
+#    environment:
+#      - URL=http://localhost:8080/v1/swagger.json
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: 100m
+#

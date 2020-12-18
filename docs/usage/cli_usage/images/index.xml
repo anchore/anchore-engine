@@ -1,0 +1,72 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Analyzing Images</title><link>/docs/usage/cli_usage/images/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/cli_usage/images/</link></image><atom:link href="/docs/usage/cli_usage/images/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Inspecting Image Content</title><link>/docs/usage/cli_usage/images/inspecting_image_content/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/images/inspecting_image_content/</guid><description>
+&lt;p>During the analysis of container images the Anchore Engine performs deep inspection, collecting data on all artifacts in the image including files, operating system packages and software artifacts such as Ruby GEMs and Node.JS NPM modules.&lt;/p>
+&lt;p>The &lt;code>image content&lt;/code> command can be used to return detailed information about the content of the container image.&lt;/p>
+&lt;p>&lt;code>anchore-cli image content INPUT_IMAGE CONTENT_TYPE&lt;/code>&lt;/p>
+&lt;p>The INPUT_IMAGE can be specified in one of the following formats:&lt;/p>
+&lt;ul>
+&lt;li>Image Digest&lt;/li>
+&lt;li>Image ID&lt;/li>
+&lt;li>registry/repo:tag&lt;/li>
+&lt;/ul>
+&lt;p>the CONTENT_TYPE can be one of the following types:&lt;/p>
+&lt;ul>
+&lt;li>os: Operating System Packages&lt;/li>
+&lt;li>files: All files in the image&lt;/li>
+&lt;li>npm: Node.JS NPM Modules&lt;/li>
+&lt;li>gem: Ruby GEMs&lt;/li>
+&lt;li>java: Java Archives&lt;/li>
+&lt;li>python: Python Artifacts&lt;/li>
+&lt;li>nuget: .NET NuGet Artifacts&lt;/li>
+&lt;li>malware: malware findings from scanners (default is ClamAV)&lt;/li>
+&lt;li>binary: specific binaries that are statically checked for metadata (e.g. python and go runtime)&lt;/li>
+&lt;/ul>
+&lt;p>For example: &lt;code>anchore-cli image content debian:latest files&lt;/code>&lt;/p>
+&lt;p>The CLI will output a subset of fields from the content view, for example for &lt;code>files&lt;/code> on the file name and size are displayed. To retrieve the full output the &lt;code>--json&lt;/code> parameter should be passed.&lt;/p>
+&lt;p>For example: &lt;code>anchore-cli --json image content debian:latest files&lt;/code>&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/usage/cli_usage/images/viewing_security_vulnerabilities/">View security vulnerabilities in the image&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/usage/cli_usage/policies/evaluating_images_against_policies/">Evaluate the image&lt;/a> against policies you create&lt;/li>
+&lt;li>Subscribe to receive &lt;a href="/docs/usage/cli_usage/subscriptions/">notifications&lt;/a> when the image is updated, when the policy status changes, or when new vulnerabilities are detected.&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Viewing Security Vulnerabilities</title><link>/docs/usage/cli_usage/images/viewing_security_vulnerabilities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/images/viewing_security_vulnerabilities/</guid><description>
+&lt;p>The &lt;code>image vuln&lt;/code> command can be used to return a list of vulnerabilities found in the container image.&lt;/p>
+&lt;p>&lt;code>anchore-cli image vuln INPUT_IMAGE VULN_TYPE&lt;/code>&lt;/p>
+&lt;p>The &lt;code>INPUT_IMAGE&lt;/code> can be specified in one of the following formats:&lt;/p>
+&lt;ul>
+&lt;li>Image Digest&lt;/li>
+&lt;li>Image ID&lt;/li>
+&lt;li>registry/repo:tag&lt;/li>
+&lt;/ul>
+&lt;p>The &lt;code>VULN_TYPE&lt;/code> currently supports:&lt;/p>
+&lt;ul>
+&lt;li>os: Vulnerabilities against operating system packages (RPM, DPKG, APK, etc.)&lt;/li>
+&lt;li>non-os: NPM, GEM, .NET (NuGet), Java Archive (jar, war, ear) and Python PIP CVEs.&lt;/li>
+&lt;li>all: Combination report containing both &amp;lsquo;os&amp;rsquo; and &amp;lsquo;non-os&amp;rsquo; vulnerability records.&lt;/li>
+&lt;/ul>
+&lt;p>The system has been designed to incorporate 3rd party feeds for other vulnerabilites.&lt;/p>
+&lt;h3 id="examples">Examples&lt;/h3>
+&lt;p>To generate a report of OS package (RPM/DEB/APK) vulnerabilities found in the image including CVE identifier, Vulnerable Package, Severity Level, Vulnerability details and version of fixed package (if available).&lt;/p>
+&lt;p>&lt;code>anchore-cli image vuln debian:latest os&lt;/code>&lt;/p>
+&lt;p>Currently the following the anchore-engine draws vulnerability data specifically matched to the following OS distros:&lt;/p>
+&lt;ul>
+&lt;li>Alpine&lt;/li>
+&lt;li>CentOS&lt;/li>
+&lt;li>Debian&lt;/li>
+&lt;li>Oracle Linux&lt;/li>
+&lt;li>Red Hat Enterprise Linux&lt;/li>
+&lt;li>Red Hat Universal Base Image (UBI)&lt;/li>
+&lt;li>Ubuntu&lt;/li>
+&lt;li>Amazon Linux 2&lt;/li>
+&lt;li>Google Distroless&lt;/li>
+&lt;/ul>
+&lt;p>To generate a report of language package (NPM/GEM/Java/Python/NuGet) vulnerabilities, the system draws vulnerability data from the NVD data feed, and vulnerability reports can be viewed using the &amp;lsquo;non-os&amp;rsquo; vulnerability type:&lt;/p>
+&lt;p>&lt;code>anchore-cli image vuln node:latest non-os&lt;/code>&lt;/p>
+&lt;p>To generate a list of all vulnerabilities that can be found, regardless of whether they are against an OS or non-OS package type, the &amp;lsquo;all&amp;rsquo; vulnerability type can be used:&lt;/p>
+&lt;p>&lt;code>anchore-cli image vuln node:latest all&lt;/code>&lt;/p>
+&lt;p>Finally, for any of the above queries, these commands (and other anchore-cli commands) can be passed the &lt;code>--json&lt;/code> flag to output the data in JSON format:&lt;/p>
+&lt;p>&lt;code>anchore-cli --json image vuln node:latest all&lt;/code>&lt;/p>
+&lt;h3 id="next-steps">Next Steps&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/usage/cli_usage/policies/evaluating_images_against_policies/">Evaluate the image&lt;/a> against policies you create.&lt;/li>
+&lt;li>Subscribe to receive &lt;a href="/docs/usage/cli_usage/subscriptions/">notifications&lt;/a> when the image is updated, when the policy status changes or when new vulnerabilities are detected.&lt;/li>
+&lt;/ul></description></item></channel></rss>

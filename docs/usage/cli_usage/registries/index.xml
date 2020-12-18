@@ -1,0 +1,111 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Working with Registries</title><link>/docs/usage/cli_usage/registries/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/cli_usage/registries/</link></image><atom:link href="/docs/usage/cli_usage/registries/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Configuring Registries</title><link>/docs/usage/cli_usage/registries/configuring_registries/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/registries/configuring_registries/</guid><description>
+&lt;p>The Anchore Engine will attempt to download images from any registry without requiring further configuration.
+However if your registry requires authentication then the registry and corresponding credentials will need to be defined.&lt;/p>
+&lt;h3 id="listing-registries">Listing Registries&lt;/h3>
+&lt;p>Running the following command lists the defined registries.&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli registry list
+Registry User
+docker.io anchore
+quay.io anchore
+registry.example.com johndoe
+192.168.1.200:5000 janedoe
+&lt;/code>&lt;/pre>&lt;p>Here we can see that 4 registries have been defined. If no registry was defined then the Anchore Engine would attempt to pull images without authentication but a registry is defined then all pulls for images from that registry will use the specified username and password.&lt;/p>
+&lt;h3 id="adding-a-registry">Adding a Registry&lt;/h3>
+&lt;p>Registries can be added using the following syntax.&lt;/p>
+&lt;p>&lt;code>anchore-cli registry add REGISTRY USERNAME PASSWORD&lt;/code>&lt;/p>
+&lt;p>The REGISTRY parameter should include the fully qualified hostname and port number of the registry. For example: registry.anchore.com:5000&lt;/p>
+&lt;p>Anchore Engine will only pull images from a TLS/SSL enabled registry. If the registry is protected with a self signed certificate or a certificated signed by an unknown certificate authority then the &lt;code>--insecure&lt;/code> parameter can be passed which instructs the Anchore Engine not to validate the certificate.&lt;/p>
+&lt;p>Most Docker V2 compatible registries require username and password for authentication. Amazon ECR, Google GCR and Microsoft Azure include support
+for their own native credentialing. See Working with &lt;a href="/docs/usage/cli_usage/registries/ecr_configuration/">AWS ECR Registry Credentials&lt;/a>,
+&lt;a href="/docs/usage/cli_usage/registries/gcr_configuration/">Working with Google GCR Registry Credentials&lt;/a> and
+&lt;a href="/docs/usage/cli_usage/registries/acr_configuration/">Working with Azure Registry Credentials&lt;/a> for more details.&lt;/p>
+&lt;h3 id="getting-registry-details">Getting Registry Details&lt;/h3>
+&lt;p>The &lt;em>registry get&lt;/em> command allows the user to retrieve details about a specific registry.&lt;/p>
+&lt;p>For example:&lt;/p>
+&lt;pre>&lt;code>$ anchore-cli registry get registry.example.com
+Registry: registry.example.com
+User: johndoe
+Verify TLS: False
+Created: 2017-09-02T18:25:34
+Updated: 2017-09-02T18:25:34
+&lt;/code>&lt;/pre>&lt;p>In this example we can see that the registry.example.com registry was added to the Anchore Engine on the 2nd September at 18:25 UTC. This registry. The password for the registry cannot be retrieved through the API or CLI.&lt;/p>
+&lt;h3 id="updating-registry-details">Updating Registry Details&lt;/h3>
+&lt;p>Once a registry had been defined the parameters can be updated using the &lt;em>update&lt;/em> command. This allows a registry&amp;rsquo;s username, password and insecure (validate TLS) parameters to be updated.&lt;/p>
+&lt;p>&lt;code>anchore-cli registry update REGISTRY USERNAME PASSWORD [--insecure]&lt;/code>&lt;/p>
+&lt;h3 id="deleting-registries">Deleting Registries&lt;/h3>
+&lt;p>A Registry can be deleted from Anchore&amp;rsquo;s configuration using the &lt;code>del&lt;/code> command.&lt;/p>
+&lt;p>For example to delete the configuration for registry.example.com the following command should be issued:&lt;/p>
+&lt;p>&lt;code>anchore-cli registry delete registry.example.com&lt;/code>&lt;/p>
+&lt;p>&lt;strong>Note:&lt;/strong> Deleting a registry record does not delete the records of images/tags associated with that registry.&lt;/p>
+&lt;h3 id="advanced">Advanced&lt;/h3>
+&lt;p>Anchore engine attempts to perform a credential validation upon registry addition, but there are cases where a credential can be valid but the validation routine can fail (in particular, credential validation methods are changing for public registries over time). If you are unable to add a registry but believe that the credential you are providing is valid, or you wish to add a credential to anchore before it is in place in the registry, you can bypass the registry credential validation process using the &lt;code>--skip-validation&lt;/code> option to the &lt;code>registry add&lt;/code> command.&lt;/p></description></item><item><title>Docs: Working with Amazon ECR Registry Credentials</title><link>/docs/usage/cli_usage/registries/ecr_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/registries/ecr_configuration/</guid><description>
+&lt;p>Amazon AWS typically uses keys instead of traditional usernames &amp;amp; passwords. These keys consist of an access key ID and a secret access key. While it is possible to use the aws ecr get-login command to create an access token, this will expire after 12 hours so it is not appropriate for use with Anchore Engine, otherwise a user would need to update their registry credentials regularly. So when adding an Amazon ECR registry to Anchore Engine you should pass the aws_access_key_id and aws_secret_access_key.&lt;/p>
+&lt;pre>&lt;code>anchore-cli registry add /
+1234567890.dkr.ecr.us-east-1.amazonaws.com /
+MY_AWS_ACCESS_KEY_ID /
+MY_AWS_SECRET_ACCESS_KEY /
+--registry-type=awsecr
+&lt;/code>&lt;/pre>&lt;p>The registry-type parameter instructs Anchore Engine to handle these credentials as AWS credentials rather than traditional usernames and passwords. Currently the Anchore Engine supports two types of registry authentication standard username and password for most Docker V2 registries and Amazon ECR. In this example we specified the registry type on the command line however if this parameter is omitted then the CLI will attempt to guess the registry type from the URL which uses a standard format.&lt;/p>
+&lt;p>The Anchore Engine will use the AWS access key and secret access keys to generate authentication tokens to access the Amazon ECR registry, the Anchore Engine will manage regeneration of these tokens which typically expire after 12 hours.&lt;/p>
+&lt;p>In addition to supporting AWS access key credentials Anchore also supports the use of IAM roles for authenticating with Amazon ECR if the Anchore Engine is run on an EC2 instance.&lt;/p>
+&lt;p>In this case you can configure the Anchore Engine to inherit the IAM role from the EC2 instance hosting the engine.&lt;/p>
+&lt;p>When launching the EC2 instance that will run the Anchore Engine you need to specify a role that includes the &lt;em>AmazonEC2ContainerRegistryReadOnly&lt;/em> policy.&lt;/p>
+&lt;p>While this is best performed using a CloudFormation template, you can manually configure from the launch instance wizard.&lt;/p>
+&lt;p>&lt;strong>Step 1:&lt;/strong> Select &lt;em>Create new IAM role.&lt;/em>&lt;/p>
+&lt;p>&lt;img src="https://anchore.com/wp-content/uploads/2018/01/pasted-image-0.png" alt="logo">&lt;/p>
+&lt;p>&lt;strong>Step 2:&lt;/strong> Under type of trusted entity select &lt;em>EC2&lt;/em>.&lt;/p>
+&lt;p>&lt;img src="https://anchore.com/wp-content/uploads/2018/01/pasted-image-0-5.png" alt="logo">&lt;/p>
+&lt;p>Ensure that the &lt;em>AmazonEC2ContainerRegistryReadOnly&lt;/em> policy is selected.&lt;/p>
+&lt;p>&lt;strong>Step 3:&lt;/strong> Attach Permissions to the Role.&lt;/p>
+&lt;p>&lt;img src="https://anchore.com/wp-content/uploads/2018/01/pasted-image-0-2.png" alt="logo">&lt;/p>
+&lt;p>&lt;strong>Step 4:&lt;/strong> Name the role.&lt;/p>
+&lt;p>Give a name to the role and add this role to the Instance you are launching.&lt;/p>
+&lt;p>On the running EC2 instance you can manually verify that the instance has inherited the correct role by running the following command:&lt;/p>
+&lt;pre>&lt;code># curl http://169.254.169.254/latest/meta-data/iam/info
+{
+&amp;quot;Code&amp;quot; : &amp;quot;Success&amp;quot;,
+&amp;quot;LastUpdated&amp;quot; : &amp;quot;2018-01-1218:45:12Z&amp;quot;,
+&amp;quot;InstanceProfileArn&amp;quot; : &amp;quot;arn:aws:iam::123456789012:instance-profile/ECR-ReadOnly&amp;quot;,
+&amp;quot;InstanceProfileId&amp;quot; : &amp;quot;ABCDEFGHIJKLMNOP”
+}
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Step 5:&lt;/strong> Enable IAM Authentication in the Anchore Engine.&lt;/p>
+&lt;p>By default the support for inheriting the IAM role is disabled.&lt;/p>
+&lt;p>To enable IAM based authentication add the following entry to the top of the Anchore Engine config.yaml file:&lt;/p>
+&lt;p>&lt;code>allow_awsecr_iam_auto: True&lt;/code>&lt;/p>
+&lt;p>&lt;strong>Step 6:&lt;/strong> Add the Registry using the &lt;em>AWSAUTO&lt;/em> user.&lt;/p>
+&lt;p>When IAM support is enabled instead of passing the access key and secret access key use “awsauto” for both username and password. This will instruct the Anchore Engine to inherit the role from the underlying EC2 instance.&lt;/p>
+&lt;pre>&lt;code>anchore-cli registry add /
+1234567890.dkr.ecr.us-east-1.amazonaws.com /
+awsauto /
+awsauto /
+--registry-type=awsecr
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Working with Azure Registry Credentials</title><link>/docs/usage/cli_usage/registries/acr_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/registries/acr_configuration/</guid><description>
+&lt;p>To use an Azure Registry, you can configure Anchore to use either the admin credential(s) or a service principal. Refer to Azure documentation for differences and how to setup each. When you&amp;rsquo;ve chosen a credential type, use the following to determine which registry command options correspond to each value for your credential type&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>Admin Account&lt;/p>
+&lt;ul>
+&lt;li>Registry: The login server (Ex. myregistry1.azurecr.io)&lt;/li>
+&lt;li>Type: Set to docker_v2&lt;/li>
+&lt;li>Username: The username in the &amp;lsquo;az acr credentials show &amp;ndash;name &lt;!-- raw HTML omitted -->&amp;rsquo; output&lt;/li>
+&lt;li>Password: The password or password2 value from the &amp;lsquo;az acr credentials show&amp;rsquo; command result&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>
+&lt;p>Service Principle&lt;/p>
+&lt;ul>
+&lt;li>Registry: The login server (Ex. myregistry1.azurecr.io)
+Type: Set to docker_v2
+Username: The service principal app id
+Password: The service principal password&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>To add an azure registry credential, invoke anchore-cli as follows:&lt;/p>
+&lt;p>&lt;code>anchore-cli registry add --registry-type &amp;lt;Type&amp;gt; &amp;lt;Registry&amp;gt; &amp;lt;Username&amp;gt; &amp;lt;Password&amp;gt;&lt;/code>&lt;/p>
+&lt;p>Once a registry has been added, any image that is added (e.g. &lt;code>anchore-cli image add &amp;lt;Registry&amp;gt;/some/repo:sometag&lt;/code>) will use the provided credential to download/inspect and analyze the image.&lt;/p></description></item><item><title>Docs: Working with Google Container Registry (GCR) Credentials</title><link>/docs/usage/cli_usage/registries/gcr_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/registries/gcr_configuration/</guid><description>
+&lt;p>When working with Google Container Registry it is recommended that you use JSON keys rather than the short lived access tokens.&lt;/p>
+&lt;p>JSON key files are long-lived and are tightly scoped to individual projects and resources. You can read more about JSON credentials in Google&amp;rsquo;s documentation at the following URL: &lt;a href="https://cloud.google.com/container-registry/docs/advanced-authentication#using_a_json_key_file">Google Container Registry advanced authentication&lt;/a>&lt;/p>
+&lt;p>Once a JSON key file has been created with permissions to read from the container registry then the registry should be added with the username &lt;strong>_json_key&lt;/strong> and the password should be the contents of the key file.&lt;/p>
+&lt;p>In the following example a file named key.json in the current directory contains the JSON key with readonly access to the my-repo repository within the my-project Google Cloud project.&lt;/p>
+&lt;p>&lt;code>anchore-cli registry add us.gcr.io _json_key &amp;quot;$(cat key.json)&amp;quot;&lt;/code>&lt;/p></description></item></channel></rss>

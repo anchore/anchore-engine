@@ -1,0 +1,20 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Considerations</title><link>/docs/install/considerations/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/considerations/</link></image><atom:link href="/docs/install/considerations/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Considerations for Mac</title><link>/docs/install/considerations/mac_special_considerations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/considerations/mac_special_considerations/</guid><description>
+&lt;h2 id="special-considerations-for-installing-on-docker-for-mac">Special Considerations for installing on Docker for Mac&lt;/h2>
+&lt;p>If you are running Anchore Engine using Docker for Mac the default memory allocation will be insufficient to run the Anchore Engine. It is recommended that a minimum of 4GB of RAM is allocated to Docker for Mac&amp;rsquo;s virtual machine.&lt;/p>
+&lt;ul>
+&lt;li>Click on the Moby (Whale) icon on the right side of the menu bar.&lt;/li>
+&lt;li>Select Preferences&lt;/li>
+&lt;li>Select Advanced&lt;/li>
+&lt;li>Increase Memory to at least 4GB&lt;/li>
+&lt;li>Press Apply &amp;amp; Restart&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Considerations for RHEL</title><link>/docs/install/considerations/rhel_special_considerations/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/considerations/rhel_special_considerations/</guid><description>
+&lt;h3 id="special-considerations-for-installing-on-red-hat-enterprise-linux-andor-any-docker-host-using-overlayfs-as-storage-drivers">Special Considerations for installing on Red Hat Enterprise Linux (and/or any docker host using OverlayFS* as storage drivers)&lt;/h3>
+&lt;p>If the Anchore Engine container is run on a Red Hat Enterprise Linux (RHEL) system or derivative such as CentOS or Oracle Linux (or any docker host configured to use the OverlayFS* storage drivers) then special consideration should be taken with configuring storage.&lt;/p>
+&lt;p>Red Hat Enterprise Linux 7.5 defaults to using OverlayFS for storage of container images including ephemeral container storage. Previous versions of Red Hat Enterprise Linux used the devicemapper storage driver.&lt;/p>
+&lt;p>There is a bug in the OverlayFS driver in kernels older than 4.13 that may result in errors during image analysis. During the image extraction process the following error may be logged:&lt;/p>
+&lt;p>&lt;code>Directory renamed before its status could be extracted&lt;/code>&lt;/p>
+&lt;p>This error is seen during the extraction of the image layer tar files.&lt;/p>
+&lt;p>To work around this error, until the appropriate fix can be backported into Red Hat Enterprise Linux&amp;rsquo;s 3.1 kernel it is recommended that an external volume is used to during image extraction.&lt;/p>
+&lt;p>By default the Anchore Engine uses the /tmp directory within the container to download and extract images. Configure a volume to be mounted into the container at a specified path and configure this path in config.yaml&lt;/p>
+&lt;p>&lt;code>tmp_dir: '/scratch'&lt;/code>&lt;/p>
+&lt;p>In this example a volume has been mounted as /scratch within the container and config.yaml updated to use /scratch as the temporary directory for image analysis. This volume should be sized to at least 3 times the uncompressed image size to be analyzed.&lt;/p></description></item></channel></rss>

@@ -1,0 +1,19 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Integrations</title><link>/docs/general/concepts/integrations/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/general/concepts/integrations/</link></image><atom:link href="/docs/general/concepts/integrations/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: CI / CD Integration</title><link>/docs/general/concepts/integrations/ci_cd/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/integrations/ci_cd/</guid><description>
+&lt;p>&lt;img src="ci-cd.png" alt="alt text">&lt;/p>
+&lt;p>The Anchore Engine can be integrated into CI/CD pipelines such as Jenkins to secure the CI/CD pipeline by adding image scanning including not just CVE based security scans but policy based scans that can include checks around security, compliance and operational best practices.&lt;/p>
+&lt;p>As part of the CI/CD workflow images are submitted to the Anchore Engine for analysis. If an image does not pass the policy checks then the build can be failed.&lt;/p>
+&lt;p>Images that pass the policy check can be promoted to the production registry.&lt;/p>
+&lt;p>Some users may implement a gating workflow where policy violations fail the build, other users may prefer to allow the build to proceed but provide a warning to the developer and operations team about the violations present in the image.&lt;/p>
+&lt;p>A plugin is available for Jenkins that supports Freestyle jobs and Pipeline jobs.&lt;/p>
+&lt;p>For other CI/CD systems Integration is as simple as making two API or CLI calls to the engine&lt;/p>
+&lt;ol>
+&lt;li>Submit image for analysis&lt;/li>
+&lt;li>Retrieve image policy status.&lt;/li>
+&lt;/ol>
+&lt;p>These calls can be made using the Anchore CLI or through the Anchore REST API.&lt;/p></description></item><item><title>Docs: Kubernetes Integration</title><link>/docs/general/concepts/integrations/kubernetes/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/integrations/kubernetes/</guid><description>
+&lt;p>Anchore Engine can be integrated with Kubernetes to ensure that only certified images are started within a Kubernetes POD.&lt;/p>
+&lt;p>Kubernetes can be configured to use an Admission Controller to validate that the container image is compliant with the user&amp;rsquo;s policy.&lt;/p>
+&lt;p>The admission controller can be configured to make a webhook call into the Anchore Engine. The Anchore Engine exports a Kubernetes-specific API endpoint and will return the pass of fail response in the form of an ImageReview response.&lt;/p>
+&lt;p>&lt;img src="k8s.png" alt="alt text">&lt;/p>
+&lt;p>This approach allows the Kubernetes system to make the final decision on running an container image and does not require installation of any per-node plugins into Kubernetes.&lt;/p>
+&lt;p>Using native Kubernetes features allows this approach to be used in both on-prem and cloud hosted Kubernetes environments.&lt;/p></description></item></channel></rss>

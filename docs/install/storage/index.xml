@@ -1,0 +1,141 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Storage Overview</title><link>/docs/install/storage/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/storage/</link></image><atom:link href="/docs/install/storage/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Analysis Archive Storage Configuration</title><link>/docs/install/storage/analysis_archive/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/analysis_archive/</guid><description>
+&lt;p>For information on what the analysis archive is and how it works, see &lt;a href="/docs/general/concepts/analysis_archive/">Concepts: Analysis Archive&lt;/a>&lt;/p>
+&lt;p>The Analysis Archive is an &lt;a href="../object_store">object store&lt;/a> with specific semantics and thus is configured as an object store using the same
+configuration options, just with a different config key: &lt;code>analysis_archive&lt;/code>&lt;/p>
+&lt;p>Example configuration snippet for using the db for working set object store and S3 for the analysis archive:&lt;/p>
+&lt;pre>&lt;code>...
+services:
+...
+catalog:
+...
+object_store:
+compression:
+enabled: false
+min_size_kbytes: 100
+storage_driver:
+name: db
+config: {}
+analysis_archive:
+compression:
+enabled: False
+min_size_kbytes: 100
+storage_driver:
+name: 's3'
+config:
+access_key: 'MY_ACCESS_KEY'
+secret_key: 'MY_SECRET_KEY'
+#iamauto: True
+url: 'https://S3-end-point.example.com'
+region: False
+bucket: 'anchorearchive'
+create_bucket: True
+&lt;/code>&lt;/pre>&lt;h2 id="default-configuration">Default Configuration&lt;/h2>
+&lt;p>By default, if no &lt;code>analysis_archive&lt;/code> config is found or the property is not present in the config.yaml, the analysis archive
+will use the &lt;code>object_store&lt;/code> or &lt;code>archive&lt;/code> (for backwards compatibility) config sections and those defaults (e.g. db if found).&lt;/p>
+&lt;p>Anchore stores all of the analysis archive objects in an internal logical bucket: &lt;em>analysis_archive&lt;/em> that is distinct in
+the configured backends (e.g a key prefix in the s3 bucket or swift container)&lt;/p>
+&lt;h2 id="changing-configuration">Changing Configuration&lt;/h2>
+&lt;p>Unless there are image analyses actually in the archive, there is no data to move if you need to update the configuration
+to use a different backend, but once an image analysis has been archived to update the configuration you must follow
+the object storage data migration process found &lt;a href="../object_store/migration">here&lt;/a>. As noted in that guide, if you need
+to migrate to/from an &lt;code>analysis_archive&lt;/code> config you&amp;rsquo;ll need to use the &amp;ndash;from-analysis-archive/&amp;ndash;to-analysis-archive
+options as needed to tell the migration process which configuration to use in the source and destination config files
+used for the migration.&lt;/p>
+&lt;h2 id="common-configurations">Common Configurations&lt;/h2>
+&lt;ol>
+&lt;li>
+&lt;p>Single shared object store backend: omit the analysis_archive config, or set it to &lt;em>null&lt;/em> or &lt;em>{}&lt;/em>&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Different bucket/container: the object_store and analysis_archive configurations are both specified and identical
+with the exception of the &lt;em>bucket&lt;/em> or &lt;em>container&lt;/em> values for the analysis_archive so that its data is split into a
+different backend bucket to allow for lifecycle controls or cost optimization since its access is much less frequent (if ever).&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>Primary object store in DB, analysis_archive in external S3/Swift: this keeps latency low as no external service is
+needed for the object store and active data but lets you use more scalable external object storage for archive data. This
+approach is most beneficial if you can keep the working set of images small and quickly transition old analysis to the
+archive to ensure the db is kept small and the analysis archive handles the data scaling over time.&lt;/p>
+&lt;/li>
+&lt;/ol></description></item><item><title>Docs: Database Storage</title><link>/docs/install/storage/database/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/database/</guid><description>
+&lt;p>Anchore stores all metadata in a structured format in a PostgreSQL database to support API operations and searches.&lt;/p>
+&lt;p>Examples of data persisted in the database:&lt;/p>
+&lt;ul>
+&lt;li>Image metadata (distro, version, layer counts, &amp;hellip;)&lt;/li>
+&lt;li>Image digests to tag mapping (docker.io/nginx:latest is hash sha256:abcd at time &lt;em>t&lt;/em>)&lt;/li>
+&lt;li>Image analysis content indexed for policy evaluation (files, packages, ..)&lt;/li>
+&lt;li>Feed data
+&lt;ul>
+&lt;li>vulnerability info&lt;/li>
+&lt;li>package info from upstream (gem/npm)&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>Accounts, users&amp;hellip;&lt;/li>
+&lt;li>&amp;hellip;&lt;/li>
+&lt;/ul>
+&lt;p>If the &lt;a href="../object_store">object store&lt;/a> is not explicitly set to an external provider, then that data is also persisted in
+the database but can be &lt;a href="../object_store/migration">migrated&lt;/a>&lt;/p></description></item><item><title>Docs: Layer Caching</title><link>/docs/install/storage/layer_caching/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/layer_caching/</guid><description>
+&lt;p>Once an image is submitted to the Anchore Engine for analysis the Engine will attempt to retrieve metadata about the image from the Docker registry and if successful will download the image and queue the image for analysis.&lt;/p>
+&lt;p>The Anchore Engine can run one or more analyzer services to scale out processing of images. The next available analyzer worker will process the image.&lt;/p>
+&lt;p>Docker Images are made up of one or more layers, which are described in the manifest. The manifest lists the layers which are typically stored as gzipped compressed TAR files.&lt;/p>
+&lt;p>As part of image analysis the Anchore Engine will:&lt;/p>
+&lt;ul>
+&lt;li>Download all layers that comprise an image&lt;/li>
+&lt;li>Extract the layers to a temporary file system location&lt;/li>
+&lt;li>Perform analysis on the contents of the image including:
+&lt;ul>
+&lt;li>Digest of every file (SHA1, SHA256 and MD5)&lt;/li>
+&lt;li>File attributes (size, owner, permissions, etc)&lt;/li>
+&lt;li>Operating System package manifest&lt;/li>
+&lt;li>Software library package manifest (NPM, GEM, Java, Python, NuGet)&lt;/li>
+&lt;li>Scan for secret materials (api keys, private keys, etc&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;/ul>
+&lt;p>Following the analysis the extracted layers and downloaded layer tar files are deleted.&lt;/p>
+&lt;p>In many cases the images will share a number of common layers, especially if images are built form a consistent set of base images. To speed up the Anchore Engine can be configure to cache image layers to eliminate the need to download the same layer for many different images. The layer cache is displayed in the default Anchore Engine configuration. To enable the cache the following changes should be made:&lt;/p>
+&lt;ol>
+&lt;li>Define temporary directory for cache data&lt;/li>
+&lt;/ol>
+&lt;p>It is recommended that the cache data is stored in an external volume to ensure that the cache does not use up the ephemeral storage space allocated to the container host.&lt;/p>
+&lt;p>By default the Anchore Engine uses the /tmp directory within the container to download and extract images. Configure a volume to be mounted into the container at a specified path and configure this path in config.yaml&lt;/p>
+&lt;p>&lt;code>tmp_dir: '/scratch'&lt;/code>&lt;/p>
+&lt;p>In this example a volume has been mounted as /scratch within the container and config.yaml updated to use /scratch as the temporary directory for image analysis.&lt;/p>
+&lt;p>With the cache disabled the temporary directory should be sized to at least 3 times the uncompressed image size to be analyzed.
+To enable layer caching the layer_cache_enable parameter and layer_cache_max_gigabytes parameter should be added to the analyzer section of the Anchore Engine configuration file config.yaml.&lt;/p>
+&lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">analyzer&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">enabled&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">require_auth&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">cycle_timer_seconds&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">1&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">max_threads&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">1&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">analyzer_driver&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;nodocker&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">endpoint_hostname&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_HOST_ID}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">listen&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;0.0.0.0&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">port&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">8084&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">layer_cache_enable&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">True&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#204a87;font-weight:bold">layer_cache_max_gigabytes&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#0000cf;font-weight:bold">4&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
+&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>In this example the cache is set to 4 gigabytes. The temporary volume should be sized to at least 3 times the uncompressed image size + 4 gigabytes.&lt;/p>
+&lt;ul>
+&lt;li>The minimum size for the cache is 1 gigabyte.&lt;/li>
+&lt;li>The cache users a least recently used (LRU) policy.&lt;/li>
+&lt;li>The cache files will be stored in the anchore_layercache directory of the /tmp_dir volume.&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Object Storage</title><link>/docs/install/storage/object_store/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/storage/object_store/</guid><description>
+&lt;p>Anchore Engine uses a PostgreSQL database to store structured data for images, tags, policies, subscriptions and metdata
+about images, but other types of data in the system are less structured and tend to be larger pieces of data. Because of
+that, there are benefits to supporting key-value access patterns for things like image manifests, analysis reports, and
+policy evaluations. For such data, Anchore has an internal object storage interface that, while defaulted to use the
+same postgres db for storage, can be configured to use external object storage providers to support simpler capacity
+management and lower costs. The options are:&lt;/p>
+&lt;ul>
+&lt;li>PostgreSQL database (default)&lt;/li>
+&lt;li>Filesystem&lt;/li>
+&lt;li>S3 Object Store&lt;/li>
+&lt;li>Swift Object Store&lt;/li>
+&lt;/ul>
+&lt;p>The configuration for the object store is set in the catalog&amp;rsquo;s service configuration in the config.yaml.&lt;/p>
+&lt;h3 id="changed-in-040-of-anchore-engine">Changed in 0.4.0 of Anchore Engine&lt;/h3>
+&lt;p>In releases before 0.4.0 of Anchore Engine, the configuration key was &lt;code>archive&lt;/code>. As of 0.4.0 that has been changed to
+&lt;code>object_store&lt;/code> but will still support &lt;code>archive&lt;/code> for backwards compatibility, though that key is now deprecated. The
+reason for the change is the new in 0.4.0 analysis archive feature, which uses the configuration key &lt;code>analysis_archive&lt;/code>.&lt;/p>
+&lt;p>The change helps differentiate the analysis archive, which is an object store with specific lifecycle semantics, from
+the more generic object store configuration.&lt;/p></description></item></channel></rss>

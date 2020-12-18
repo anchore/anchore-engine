@@ -1,0 +1,29 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Requirements</title><link>/docs/install/requirements/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/install/requirements/</link></image><atom:link href="/docs/install/requirements/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Database</title><link>/docs/install/requirements/database/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/database/</guid><description>
+&lt;p>The Anchore Engine requires PostgreSQL version 9.6 or higher database to provide persistent storage for image, policy and analysis data.&lt;/p>
+&lt;p>This database can be run in a container, as configured in the example Docker Compose file or can be provided as an external service to the Anchore Engine.
+PostgreSQL compatible databases such as Amazon RDS for PostgreSQL can be used for highly scalable cloud deployments.&lt;/p></description></item><item><title>Docs: Memory</title><link>/docs/install/requirements/memory/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/memory/</guid><description>
+&lt;p>The Anchore Engine container will typically operate at a steady state using less than 2 GB of memory. However under load and during large feed synchronization operations, memory usage may burst above 4GB. Anchore recommends a minimum of 8GB for each service, for production deployments.&lt;/p></description></item><item><title>Docs: Network</title><link>/docs/install/requirements/network/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/network/</guid><description>
+&lt;p>The Anchore Engine requires two categories of network access:&lt;/p>
+&lt;ul>
+&lt;li>Registry Access
+Network connectivity, including DNS resolution, to the registries from which the Anchore Engine needs to download images.&lt;/li>
+&lt;li>Feed Service
+The Anchore Engine synchronizes feed data such as operating system vulnerabilities (CVEs) from the Anchore Cloud Service. The initial synchronization may take 5 to 10 minutes, based on network speed, after which time the Anchore Engine will download updated feed data at a user configurable interval, by default every 4 hours. Only a single end point is required for this synchronization, host: ancho.re TCP port: 443&lt;/li>
+&lt;/ul>
+&lt;p>Notes:&lt;/p>
+&lt;ul>
+&lt;li>No data is uploaded to Anchore, the synchronization is one-way.&lt;/li>
+&lt;li>An optional on-premises feed service and policy editor is available to commercial users.&lt;/li>
+&lt;li>A Network Proxy can be used to provide external connectivity to the Anchore Engine. See: &lt;a href="/docs/install/configuration/network_proxies/">Network Proxy documentation&lt;/a>.&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Security</title><link>/docs/install/requirements/security/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/security/</guid><description>
+&lt;p>The Anchore Engine is deployed as container images that can be run manually, using Docker Compose, Kubernetes or any container platform that supports Docker compatible images.&lt;/p>
+&lt;p>By default, the Anchore Engine does not require any special permissions and can be run as an unprivileged container with no access to the underlying Docker host. &lt;em>Note:&lt;/em> The Engine can be configured to pull images through the Docker Socket however this is not a recommended configuration as it grants the Anchore container added privileges and may incur a performance impact on the Docker Host.&lt;/p></description></item><item><title>Docs: Storage</title><link>/docs/install/requirements/storage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/requirements/storage/</guid><description>
+&lt;p>The Anchore Engine uses a PostgreSQL database to store persistent data for images, tags, policies, subscriptions and other artifacts. One persistent storage volume is required for configuration information and two optional storage volumes may be provided as described below.&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>Configuration volume&lt;/strong>
+This volume is used to provide persistent storage to the container from which it will read its configuration files and optionally certificates. &lt;em>Requirement&lt;/em>: Less than 1MB&lt;/li>
+&lt;li>[Optional] &lt;strong>Temporary storage&lt;/strong>
+The temporary storage volume is recommended but not required. During the analysis of images Anchore Engine downloads and extracts all of the layers required for an image. These layers are extracted and analyzed after which the layers and extracted data are deleted. If a temporary storage is not configured then the container&amp;rsquo;s ephemeral storage will be used to store temporary files, however performance is likely be improved by using a dedicated volume. A temporary storage volume may also be used for image layer caching to speed up analysis. Requirement: 3 times the uncompressed image size to be analyzed. &lt;em>Note&lt;/em>: For container hosts using OverlayFS or OverlayFS2 storage with a kernel older than 4.13 a temporary volume is required to work around a kernel driver bug.&lt;/li>
+&lt;li>[Optional] &lt;strong>Object storage&lt;/strong>
+The Anchore Engine stores documents containing archives of image analysis data and policies as JSON documents. By default these documents are be stored within the PostgreSQL database however the Anchore Engine can be configured to store archive documents in a filesystem (volume), S3 Object store, or Swift Object Store. &lt;em>Requirement&lt;/em>: Number of images x 10MB (estimated).&lt;/li>
+&lt;/ul></description></item></channel></rss>

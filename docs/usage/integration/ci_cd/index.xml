@@ -1,0 +1,349 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – CI / CD Integration</title><link>/docs/usage/integration/ci_cd/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/usage/integration/ci_cd/</link></image><atom:link href="/docs/usage/integration/ci_cd/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: CircleCI</title><link>/docs/usage/integration/ci_cd/circleci/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/circleci/</guid><description>
+&lt;p>Integrating Anchore engine into your CircleCI pipeline can be accomplished seamlessly using the official Anchore Engine Orb.&lt;/p>
+&lt;p>Orb source code &amp;amp; usage examples can be found on our &lt;a href="https://github.com/anchore/ci-tools/tree/master/circleci-orbs/anchore-engine">GitHub Repository&lt;/a>.&lt;/p>
+&lt;p>To read more about CircleCI orbs, view the official documentation - &lt;a href="https://circleci.com/docs/2.0/orb-intro/">CircleCi Orbs&lt;/a>&lt;/p></description></item><item><title>Docs: Jenkins</title><link>/docs/usage/integration/ci_cd/jenkins/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/jenkins/</guid><description>
+&lt;p>We keep the latest Anchore/Jenkins integration documentation hosted alongside the official Anchore Jenkins plugin module, &lt;a href="https://plugins.jenkins.io/anchore-container-scanner">here&lt;/a>.&lt;/p></description></item><item><title>Docs: GitHub</title><link>/docs/usage/integration/ci_cd/github/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/github/</guid><description>
+&lt;p>Image Scanning can be easily integrated into your GitHub Actions pipeline using the official Anchore Engine Scan Action.&lt;/p>
+&lt;p>Documentation on how to use the action can be found in the official GitHub repository &lt;a href="https://github.com/anchore/scan-action">anchore scan-action&lt;/a>&lt;/p>
+&lt;p>Check out our Anchore Scan Action &lt;a href="https://www.brighttalk.com/webcast/17878/378430?utm_source=brighttalk-portal&amp;amp;utm_medium=web&amp;amp;utm_content=anchore%20github&amp;amp;utm_campaign=webcasts-search-results-feed">webinar demo&lt;/a>&lt;/p></description></item><item><title>Docs: Anchore Engine Inline Image Analysis/Engine Import</title><link>/docs/usage/integration/ci_cd/inline_analysis/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_analysis/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>For use cases where it is desirable to perform image analysis for a locally build container image, and import the image analysis to an existing Anchore Engine installation, we support a methodology using the inline_scan tool. With this technique, you can &amp;lsquo;add&amp;rsquo; an image to your anchore engine service by analyzing any image that is available locally (say, on the docker host on which the image was built). You can then import the analysis data into anchore engine, rather than the regular method where images are pulled from a registry when added to anchore engine.&lt;/p>
+&lt;p>The only requirements to run the inline_scan script with the &amp;lsquo;analyze&amp;rsquo; operation is the ability to execute Docker commands, network connectivity to an anchore engine API endpoint &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
+&lt;ul>
+&lt;li>&lt;em>Note - For the rest of this document, &lt;code>USER&lt;/code>, &lt;code>PASS&lt;/code>, and &lt;code>URL&lt;/code> refer to an anchore engine user, password, and engine endpoint URL (http://&lt;!-- raw HTML omitted -->:&lt;!-- raw HTML omitted -->/v1) respectively.&lt;/em>&lt;/li>
+&lt;/ul>
+&lt;p>To run the script on your workstation, use the following command syntax.&lt;/p>
+&lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- analyze -u &amp;lt;USER&amp;gt; -p &amp;lt;PASS&amp;gt; -r &amp;lt;URL&amp;gt; [ OPTIONS ] &amp;lt;FULL_IMAGE_TAG&amp;gt;&lt;/code>&lt;/p>
+&lt;h3 id="inline-analysis-options">Inline Analysis Options&lt;/h3>
+&lt;pre>&lt;code>-r &amp;lt;TEXT&amp;gt; [required] URL to remote Anchore Engine API endpoint (ex: -r 'https://anchore.example.com:8228/v1')
+-u &amp;lt;TEXT&amp;gt; [required] Username for remote Anchore Engine auth (ex: -u 'admin')
+-p &amp;lt;TEXT&amp;gt; [required] Password for remote Anchore Engine auth (ex: -p 'foobar')
+-a &amp;lt;TEXT&amp;gt; [optional] Add annotations (ex: -a 'key=value,key=value')
+-d &amp;lt;PATH&amp;gt; [optional] Specify image digest (ex: -d 'sha256:&amp;lt;64 hex characters&amp;gt;')
+-f &amp;lt;PATH&amp;gt; [optional] Path to Dockerfile (ex: -f ./Dockerfile)
+-i &amp;lt;TEXT&amp;gt; [optional] Specify image ID used within Anchore Engine (ex: -i '&amp;lt;64 hex characters&amp;gt;')
+-m &amp;lt;PATH&amp;gt; [optional] Path to Docker image manifest (ex: -m ./manifest.json)
+-t &amp;lt;TEXT&amp;gt; [optional] Specify timeout for image analysis in seconds. Defaults to 300s. (ex: -t 500)
+-g [optional] Generate an image digest from docker save tarball
+-P [optional] Pull docker image from registry
+-V [optional] Increase verbosity
+&lt;/code>&lt;/pre>&lt;h3 id="image-identity-selection">Image Identity Selection&lt;/h3>
+&lt;p>In order to perform local analysis and import the image correctly into your existing anchore engine deployment, special attention should be paid to the image identifiers (image id, digest, manifest, full tag name) when performing local analysis. Since image digests are generated from an image &amp;lsquo;manifest&amp;rsquo; which is generated by a container registry, this technique requires that you either specify a digest, ask for one to be randomly &amp;lsquo;generated&amp;rsquo;, or supply a valid manifest alongside the image when it is being imported. An image ID can also be supplied if one is available that you would prefer to use. Best practice is to supply these identifiers in whichever way is most appropriate for your use case, resulting in the information being associated with the imported image correctly such that you can refer to it later using these identifiers.&lt;/p>
+&lt;h3 id="analyzing-a-local-image">Analyzing a local image&lt;/h3>
+&lt;p>For a simple example, we show here how to perform a local docker build, then analyze the image (specifying the Dockerfile) and upload the analysis results to a remote anchore engine installation. The end result is that the image is &amp;lsquo;added&amp;rsquo; to the specified anchore engine service as if it were &amp;lsquo;added&amp;rsquo; using the regular &lt;code>anchore-cli image add&lt;/code> process.&lt;/p>
+&lt;p>Note that in this scenario, the image has never been pushed to any container image registry, meaning that this technique is an alternate path for ensuring that images are added to anchore engine for later vulnerability scanning, policy evaluations, and any other functionality of anchore engine that can be performed against analyzed images.&lt;/p>
+&lt;pre>&lt;code># docker build -t localbuild/example-image:latest -f Dockerfile .
+# curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- analyze -u &amp;lt;USER&amp;gt; -p &amp;lt;PASS&amp;gt; -r &amp;lt;URL&amp;gt; -f ./Dockerfile -g localbuild/example-image:latest
+&lt;/code>&lt;/pre>&lt;p>Alternatively, we can specify a digest and image ID, instead of asking the analyzer to generate one randomly:&lt;/p>
+&lt;pre>&lt;code># docker build -t localbuild/example-image:latest -f Dockerfile .
+# docker images localbuild/example-image:latest --digests --no-trunc
+...get the full image ID of the image, in this case 363f10f9...
+...get the image digest from the local image if available, in this case sha256:d212a12aa....
+# curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- analyze -u &amp;lt;USER&amp;gt; -p &amp;lt;PASS&amp;gt; -r &amp;lt;URL&amp;gt; -f ./Dockerfile -i 363f10f920d05943659ffa0b9ac9a98582bd71841b58c0a50fd596d6285404b2 -d sha256:d212a12aa728ccb4baf06fcc83dc77392d90018d13c9b40717cf455e09aeeef3 localbuild/example-image:latest
+# anchore-cli image get localbuild/example-image:latest
+Image Digest: sha256:d212a12aa728ccb4baf06fcc83dc77392d90018d13c9b40717cf455e09aeeef3
+...
+&lt;/code>&lt;/pre>&lt;h4 id="analyzing-an-image-from-a-registry">Analyzing an image from a registry&lt;/h4>
+&lt;p>Here we show an example of an image (docker.io/alpine:latest) that is available in a registry (thus the manifest is accessible). We get the manifest from the registry, using skopeo, by first getting the parent digest - which will be used to get the digest of the image that matches your desired architecture- then getting the actual image digest. Finally, we perform analysis/import using the inline_scan tool.&lt;/p>
+&lt;pre>&lt;code># skopeo inspect --raw docker://docker.io/alpine:latest &amp;gt; alpine_parent_digest.json
+# cat ./alpine_parent_digest.json
+...find and note the digest for the image with the architecture we want (sha256:acd3... in this example)
+# skopeo inspect --raw docker://docker.io/alpine@sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f &amp;gt; alpine_manifest.json
+# curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- analyze -u &amp;lt;USER&amp;gt; -p &amp;lt;PASS&amp;gt; -r &amp;lt;URL&amp;gt; -P -m ./alpine_manifest.json docker.io/alpine:latest
+# anchore-cli image get docker.io/alpine:latest
+Image Digest: sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Anchore Engine Inline Scanning</title><link>/docs/usage/integration/ci_cd/inline_scanning/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_scanning/</guid><description>
+&lt;h2 id="introduction">Introduction&lt;/h2>
+&lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -p alpine:latest&lt;/code>&lt;/p>
+&lt;p>To make using our inline-scan container as easy as possible, we have provided a simple wrapper script called inline_scan. The only requirements to run the inline_scan script is the ability to execute Docker commands &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
+&lt;p>To run the script on your workstation, use the following command syntax.&lt;/p>
+&lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- [options] IMAGE_NAME(s)&lt;/code>&lt;/p>
+&lt;h3 id="inline-scan-options">Inline Scan Options&lt;/h3>
+&lt;pre>&lt;code>-b &amp;lt;PATH&amp;gt; [optional] Path to local Anchore policy bundle (ex: -b ./policy_bundle.json)
+-d &amp;lt;PATH&amp;gt; [optional] Path to local Dockerfile (ex: -d ./dockerfile)
+-v &amp;lt;PATH&amp;gt; [optional] Path to directory, all image archives in directory will be scanned (ex: -v /tmp/scan_images/)
+-t &amp;lt;TEXT&amp;gt; [optional] Specify timeout for image scanning in seconds. Defaults to 300s. (ex: -t 500)
+-f [optional] Exit script upon failed Anchore policy evaluation
+-p [optional] Pull remote docker images
+-r [optional] Generate analysis reports in your current working directory
+-V [optional] Increase verbosity
+&lt;/code>&lt;/pre>&lt;h3 id="usage">Usage&lt;/h3>
+&lt;p>Pull multiple images from DockerHub, scan them all and generate individual reports in ./anchore-reports.&lt;/p>
+&lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -p -r alpine:latest ubuntu:latest centos:latest&lt;/code>&lt;/p>
+&lt;p>Perform a local docker build, then pass the Dockerfile to anchore inline scan. Use a custom policy bundle to ensure Dockerfile compliance, failing the script if anchore policy evaluation does not pass.&lt;/p>
+&lt;pre>&lt;code>docker build -t example-image:latest -f Dockerfile .
+curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -f -d Dockerfile -b .anchore-policy.json example-image:latest
+&lt;/code>&lt;/pre>&lt;p>Save multiple docker image archives to a directory, then mount the entire directory for analysis using a timeout of 500s.&lt;/p>
+&lt;pre>&lt;code>cd example1/
+docker build -t example1:latest .
+cd ../example2
+docker build -t example2:latest .
+cd ..
+mkdir images/
+docker save example1:latest -o images/example1+latest.tar
+docker save example2:latest -o images/example2+latest.tar
+curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -v ./images -t 500
+&lt;/code>&lt;/pre>&lt;h3 id="ci-implementations">CI Implementations&lt;/h3>
+&lt;p>All of the following examples can be found in this Github repository - &lt;a href="https://github.com/Btodhunter/ci-demos">https://github.com/Btodhunter/ci-demos&lt;/a>&lt;/p>
+&lt;h4 id="circleci">CircleCI&lt;/h4>
+&lt;p>This workflow requires the $DOCKER_USER &amp;amp; $DOCKER_PASS environment variables to be set in a context called dockerhub in your CircleCI account settings at settings -&amp;gt; context -&amp;gt; create&lt;/p>
+&lt;p>config.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/.circleci/config.yml">https://github.com/Btodhunter/ci-demos/blob/master/.circleci/config.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>version: 2.1
+jobs:
+build_scan_image:
+docker:
+- image: docker:stable
+environment:
+IMAGE_NAME: btodhunter/anchore-ci-demo
+IMAGE_TAG: circleci
+steps:
+- checkout
+- setup_remote_docker
+- run:
+name: Build image
+command: docker build -t &amp;quot;${IMAGE_NAME}:ci&amp;quot; .
+- run:
+name: Scan image
+command: |
+apk add curl bash
+curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -r &amp;quot;${IMAGE_NAME}:ci&amp;quot;
+- run:
+name: Push to DockerHub
+command: |
+echo &amp;quot;$DOCKER_PASS&amp;quot; | docker login -u &amp;quot;$DOCKER_USER&amp;quot; --password-stdin
+docker tag &amp;quot;${IMAGE_NAME}:ci&amp;quot; &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot;
+docker push &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot;
+- store_artifacts:
+path: anchore-reports/
+workflows:
+scan_image:
+jobs:
+- build_scan_image:
+context: dockerhub
+&lt;/code>&lt;/pre>&lt;h4 id="gitlab">GitLab&lt;/h4>
+&lt;p>GitLab allows docker command execution through a docker:dind service container. This job pushes the image to the GitLab registry, using built-in environment variables for specifying the image name and registry login credentials.&lt;/p>
+&lt;p>.gitlab-ci.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/.gitlab-ci.yml">https://github.com/Btodhunter/ci-demos/blob/master/.gitlab-ci.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>variables:
+IMAGE_NAME: ${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+stages:
+- build
+container_build:
+stage: build
+image: docker:stable
+services:
+- docker:stable-dind
+variables:
+DOCKER_DRIVER: overlay2
+script:
+- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
+- docker build -t &amp;quot;$IMAGE_NAME&amp;quot; .
+- apk add bash curl
+- curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -r -t 500 &amp;quot;$IMAGE_NAME&amp;quot;
+- docker push &amp;quot;$IMAGE_NAME&amp;quot;
+artifacts:
+name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
+paths:
+- anchore-reports/*
+&lt;/code>&lt;/pre>&lt;h4 id="codeship">CodeShip&lt;/h4>
+&lt;p>This job requires creating an encrypted environment variable file for loading the $DOCKER_USER &amp;amp; $DOCKER_PASS variables into your job. See - &lt;a href="https://documentation.codeship.com/pro/builds-and-configuration/environment-variables/#encrypted-environment-variables">https://documentation.codeship.com/pro/builds-and-configuration/environment-variables/#encrypted-environment-variables&lt;/a>&lt;/p>
+&lt;p>codeship-services.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/codeship-services.yml">https://github.com/Btodhunter/ci-demos/blob/master/codeship-services.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>anchore:
+add_docker: true
+image: docker:stable-git
+environment:
+IMAGE_NAME: btodhunter/anchore-ci-demo
+IMAGE_TAG: codeship
+encrypted_env_file: env.encrypted
+&lt;/code>&lt;/pre>&lt;p>codeship-steps.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/codeship-steps.yml">https://github.com/Btodhunter/ci-demos/blob/master/codeship-steps.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>- name: build-scan
+service: anchore
+command: sh -c 'apk add bash curl &amp;amp;&amp;amp;
+mkdir -p /build &amp;amp;&amp;amp;
+cd /build &amp;amp;&amp;amp;
+git clone https://github.com/Btodhunter/ci-demos.git . &amp;amp;&amp;amp;
+docker build -t &amp;quot;${IMAGE_NAME}:ci&amp;quot; . &amp;amp;&amp;amp;
+curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -f -b .anchore_policy.json &amp;quot;${IMAGE_NAME}:ci&amp;quot; &amp;amp;&amp;amp;
+echo &amp;quot;$DOCKER_PASS&amp;quot; | docker login -u &amp;quot;$DOCKER_USER&amp;quot; --password-stdin &amp;amp;&amp;amp;
+docker tag &amp;quot;${IMAGE_NAME}:ci&amp;quot; &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot; &amp;amp;&amp;amp;
+docker push &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot;'
+&lt;/code>&lt;/pre>&lt;h4 id="jenkins-pipeline">Jenkins pipeline&lt;/h4>
+&lt;p>To allow pushing to a private registry, the dockerhub-creds credentials must be created in the Jenkins server settings at - Jenkins -&amp;gt; Credentials -&amp;gt; System -&amp;gt; Global credentials -&amp;gt; Add Credentials&lt;/p>
+&lt;p>This example was tested against the Jenkins installation detailed here, using the declarative pipeline syntax - &lt;a href="https://jenkins.io/doc/tutorials/build-a-multibranch-pipeline-project/#run-jenkins-in-docker">https://jenkins.io/doc/tutorials/build-a-multibranch-pipeline-project/#run-jenkins-in-docker&lt;/a>&lt;/p>
+&lt;p>Jenkinsfile - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/Jenkinsfile">https://github.com/Btodhunter/ci-demos/blob/master/Jenkinsfile&lt;/a>&lt;/p>
+&lt;pre>&lt;code>pipeline{
+agent {
+docker {
+image 'docker:stable'
+}
+}
+environment {
+IMAGE_NAME = 'btodhunter/anchore-ci-demo'
+IMAGE_TAG = 'jenkins'
+}
+stages {
+stage('Build Image') {
+steps {
+sh 'docker build -t ${IMAGE_NAME}:ci .'
+}
+}
+stage('Scan') {
+steps {
+sh 'apk add bash curl'
+sh 'curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -d Dockerfile -b .anchore_policy.json ${IMAGE_NAME}:ci'
+}
+}
+stage('Push Image') {
+steps {
+withDockerRegistry([credentialsId: &amp;quot;dockerhub-creds&amp;quot;, url: &amp;quot;&amp;quot;]){
+sh 'docker tag ${IMAGE_NAME}:ci ${IMAGE_NAME}:${IMAGE_TAG}'
+sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
+}
+}
+}
+}
+}
+&lt;/code>&lt;/pre>&lt;h4 id="travisci">TravisCI&lt;/h4>
+&lt;p>The $DOCKER_USER &amp;amp; $DOCKER_PASS environment variables must be setup in the TravisCI console at repository -&amp;gt; settings -&amp;gt; environment variables&lt;/p>
+&lt;p>.travis.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/.travis.yml">https://github.com/Btodhunter/ci-demos/blob/master/.travis.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>language: node_js
+services:
+- docker
+env:
+- IMAGE_NAME=&amp;quot;btodhunter/anchore-ci-demo&amp;quot; IMAGE_TAG=&amp;quot;travisci&amp;quot;
+script:
+- docker build -t &amp;quot;${IMAGE_NAME}:ci&amp;quot; .
+- curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- &amp;quot;${IMAGE_NAME}:ci&amp;quot;
+- echo &amp;quot;$DOCKER_PASS&amp;quot; | docker login -u &amp;quot;$DOCKER_USER&amp;quot; --password-stdin
+- docker tag &amp;quot;${IMAGE_NAME}:ci&amp;quot; &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot;
+- docker push &amp;quot;${IMAGE_NAME}:${IMAGE_TAG}&amp;quot;
+&lt;/code>&lt;/pre>&lt;h4 id="aws-codebuild">AWS CodeBuild&lt;/h4>
+&lt;p>The $DOCKER_USER, $DOCKER_PASS, $IMAGE_NAME, &amp;amp; $IMAGE_TAG environment variables must be set in the CodeBuild console at Build Projects -&amp;gt; &amp;lt;PROJECT_NAME&amp;gt; -&amp;gt; Edit Environment -&amp;gt; Additional Config -&amp;gt; Environment Variables&lt;/p>
+&lt;p>buildspec.yml - &lt;a href="https://github.com/Btodhunter/ci-demos/blob/master/buildspec.yml">https://github.com/Btodhunter/ci-demos/blob/master/buildspec.yml&lt;/a>&lt;/p>
+&lt;pre>&lt;code>version: 0.2
+phases:
+build:
+commands:
+- docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+post_build:
+commands:
+- curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- ${IMAGE_NAME}:${IMAGE_TAG}
+- echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+- docker push ${IMAGE_NAME}:${IMAGE_TAG}
+&lt;/code>&lt;/pre></description></item><item><title>Docs: Gitlab</title><link>/docs/usage/integration/ci_cd/gitlab/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/gitlab/</guid><description>
+&lt;h3 id="adding-anchore-scanning-to-gitlab">Adding Anchore Scanning to Gitlab&lt;/h3>
+&lt;p>There are two different solutions for adding Anchore Engine image scanning to your GitLab CI/CD pipelines. The &amp;lsquo;on premises&amp;rsquo; solution requires a functional installation of Anchore Engine running on a system that is accessible from your GitLab runners. The &amp;lsquo;integrated&amp;rsquo; solution allows you to run Anchore Engine directly on your GitLab docker runner and utilizes a pre-populated vulnerability database image. This solution does not require any external systems.&lt;/p>
+&lt;p>A container scanning job can be added to the CI/CD pipeline to allow any image to be scanned for vulnerabilities and policy compliance.&lt;/p>
+&lt;h4 id="integrated-solution">Integrated Solution:&lt;/h4>
+&lt;p>This sample pipeline runs directly on a GitLab runner, including shared runners on gitlab.com&lt;/p>
+&lt;p>The Docker executor is required for this job, as it utilizes the official Anchore Engine container.&lt;/p>
+&lt;p>A fully functional pipeline can be viewed at &lt;a href="https://gitlab.com/anchore/gitlab-demo/blob/master/.gitlab-ci.yml">gitlab.com/anchore/gitlab-demo&lt;/a>&lt;/p>
+&lt;p>To be a thorough as possible, this document will provide an entire Docker build/scan/publish pipeline. This is just one example of a pipeline utilizing the integrated Anchore Engine solution, users are free to tweak it to their needs. The &amp;lsquo;container_scan&amp;rsquo; job is responsible for the actual Anchore Engine image scanning, the only requirement of this job is that the image to be scanned is pushed to the GitLab registry.&lt;/p>
+&lt;pre>&lt;code>variables:
+IMAGE_NAME: ${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+stages:
+- build
+- scan
+- publish
+container_build:
+stage: build
+image: docker:stable
+services:
+- docker:stable-dind
+variables:
+DOCKER_DRIVER: overlay2
+script:
+- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
+- docker build -t &amp;quot;$IMAGE_NAME&amp;quot; .
+container_scan_service:
+stage: scan
+variables:
+ANCHORE_CLI_URL: &amp;quot;http://anchore-engine:8228/v1&amp;quot;
+GIT_STRATEGY: none
+image: docker.io/anchore/inline-scan:v0.6.0
+services:
+- name: docker.io/anchore/inline-scan:v0.6.0
+alias: anchore-engine
+command: [&amp;quot;start&amp;quot;]
+script:
+- source /opt/rh/rh-python36/enable
+- anchore-cli system wait
+- anchore-cli registry add &amp;quot;$CI_REGISTRY&amp;quot; gitlab-ci-token &amp;quot;$CI_JOB_TOKEN&amp;quot; --skip-validate
+- anchore_ci_tools.py -a -r --timeout 500 --image $IMAGE_NAME
+artifacts:
+name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
+paths:
+- anchore-reports/*
+container_publish:
+stage: publish
+image: docker:stable
+services:
+- docker:stable-dind
+variables:
+DOCKER_DRIVER: overlay2
+GIT_STRATEGY: none
+script:
+- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
+- docker pull &amp;quot;$IMAGE_NAME&amp;quot;
+- docker tag &amp;quot;$IMAGE_NAME&amp;quot; &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
+- docker push &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
+&lt;/code>&lt;/pre>&lt;h4 id="on-premises-solution">On Premises Solution:&lt;/h4>
+&lt;p>This sample job can run a Gitlab Runner including shared runners on Gitlab.com.
+The Docker executor is not required and no special privileges are required for scanning.&lt;/p>
+&lt;p>The runner will require network access to two end points:&lt;/p>
+&lt;p>Registry that contains the anchore/anchore-cli:latest
+By default that is hosted on DockerHub however the image can be pushed to any registry&lt;/p>
+&lt;p>Network access to communicate to an Anchore Engine service. Typically on port 8228&lt;/p>
+&lt;p>A running Anchore Engine is required, this does not need to be run within the Gitlab infrastructure as long as the HTTP(s) endpoint of the Anchore Engine is accessible by the Github runner.&lt;/p>
+&lt;p>If the Anchore Engine will require credentials to pull the image to be analyzed from a Docker registry then the credentials should be added to Anchore Engine using the following procedures.&lt;/p>
+&lt;p>An example job is shown below and is attached at the bottom of this page named anchore-on-prem-gitlab.txt&lt;/p>
+&lt;pre>&lt;code>anchore_scan:
+image: anchore/engine-cli:latest
+variables:
+ANCHORE_CLI_URL: &amp;quot;http://anchore.example.com:8228/v1&amp;quot;
+ANCHORE_CLI_USER: &amp;quot;admin&amp;quot;
+ANCHORE_CLI_PASS: &amp;quot;foobar&amp;quot;
+ANCHORE_CLI_SSL_VERIFY: &amp;quot;false&amp;quot;
+ANCHORE_SCAN_IMAGE: docker.io/library/debian
+ANCHORE_TIMEOUT: 300
+ANCHORE_FAIL_ON_POLICY: &amp;quot;false&amp;quot;
+script:
+- echo &amp;quot;Adding image to Anchore engine at ${ANCHORE_CLI_URL}&amp;quot;
+- anchore-cli image add ${ANCHORE_SCAN_IMAGE}
+- echo &amp;quot;Waiting for analysis to complete&amp;quot;
+- anchore-cli image wait ${ANCHORE_SCAN_IMAGE} --timeout ${ANCHORE_TIMEOUT}
+- echo &amp;quot;Analysis complete&amp;quot;
+- echo &amp;quot;Producing reports&amp;quot;
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} os &amp;gt; image-packages.json
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} npm &amp;gt; image-npm.json
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} gem &amp;gt; image-gem.json
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} python &amp;gt; image-python.json
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} java &amp;gt; image-java.json
+- anchore-cli --json image content ${ANCHORE_SCAN_IMAGE} nuget &amp;gt; image-nuget.json
+- anchore-cli --json image vuln ${ANCHORE_SCAN_IMAGE} all &amp;gt; image-vulnerabilities.json
+- anchore-cli --json image get ${ANCHORE_SCAN_IMAGE} &amp;gt; image-details.json
+- anchore-cli --json evaluate check ${ANCHORE_SCAN_IMAGE} --detail &amp;gt; image-policy.json || true
+- if [ &amp;quot;${ANCHORE_FAIL_ON_POLICY}&amp;quot; == &amp;quot;true&amp;quot; ] ; then anchore-cli evaluate check ${ANCHORE_SCAN_IMAGE} ; fi
+artifacts:
+name: &amp;quot;$CI_JOB_NAME&amp;quot;
+paths:
+- image-policy.json
+- image-details.json
+- image-vulnerabilities.json
+- image-java.json
+- image-nuget.json
+- image-python.json
+- image-gem.json
+- image-npm.json
+- image-packages.json
+&lt;/code>&lt;/pre>&lt;p>The container to be scanned should have been pushed to a registry from which the Anchore Engine can pull the image.&lt;/p>
+&lt;p>The first step of the job uses the Anchore CLI to instruct the Anchore Engine to analyze the image. The analysis process may take anywhere from 20 second to a few minutes depending on the size of the image, storage performance and network connectivity. During this period the Anchore Engine will:&lt;/p>
+&lt;ul>
+&lt;li>Download all the layers of the image to the Anchore Engine&lt;/li>
+&lt;li>Extract the layers to a temporary location&lt;/li>
+&lt;li>Analyze the image including reading package data, scanning for secrets or other sensitive information, recording file data such as a digests (checksum) of all files in the image including details such as file size and ownership&lt;/li>
+&lt;li>Add analysis data to the Anchore database&lt;/li>
+&lt;li>Delete temporary files&lt;/li>
+&lt;/ul>
+&lt;p>The job will poll the Anchore Engine every 10 seconds to check if the image has been analyzed and will repeat this until the maximum number of retries specified has been reached.&lt;/p>
+&lt;p>The job will output 8 JSON artifacts for storage within the Job&amp;rsquo;s workspace.&lt;/p>
+&lt;p>If the ANCHORE_FAIL_ON_POLICY is set to true then if the policy evaluation result is fail the entire job will fail.&lt;/p></description></item></channel></rss>
