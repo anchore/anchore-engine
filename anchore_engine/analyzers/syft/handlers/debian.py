@@ -43,8 +43,10 @@ def _all_package_info(findings, artifact):
     source_version = dig(artifact, "metadata", "sourceVersion")
 
     # Normalize this for downstream consumption etc. Eventually we want to leave it split out, but for now needs a join
-    if source:
-        source = source + "- " + source_version
+    if source and source_version:
+        source = source + "-" + source_version
+    elif source:
+        source = source + "-" + version
     else:
         source = "N/A"
 
