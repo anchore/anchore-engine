@@ -35,11 +35,11 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Build
-      - run: cd docs && npm ci
-      - run: |
-          git submodule update --init --recursive
-          hugo -s docs --minify 
-          mv docs/public .
+        - run: cd docs && npm ci
+        - run: |
+            git submodule update --init --recursive
+            hugo -s docs --minify 
+            mv docs/public .
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
