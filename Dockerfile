@@ -46,7 +46,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.9.2
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.11.0
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
