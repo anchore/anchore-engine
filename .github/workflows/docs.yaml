@@ -34,13 +34,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - run: npm ci
-      - run: hugo --minify
-
-      - name: Build
-        run: |
+      - run: cd docs && npm ci
+      - run: |
           git submodule update --init --recursive
-          hugo -s docs --minify 
+          hugo -s docs --minify
           mv docs/public .
 
       - name: Deploy
