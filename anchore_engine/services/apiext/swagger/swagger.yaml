@@ -3274,6 +3274,7 @@ definitions:
       expires_on:
         type: string
         format: "date-time"
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:\:\d+)?[A-Z]?$
   PolicyRule:
     type: object
     description: A rule that defines and decision value if the match is found true for a given image.
