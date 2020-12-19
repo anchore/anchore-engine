@@ -50,7 +50,7 @@ def _all_package_info(findings, artifact):
     else:
         source = "N/A"
 
-    license = dig(artifact, "licenses") or dig(artifact, "license")
+    license = dig(artifact, "licenses")
     if license:
         license = " ".join(license)
     else:
