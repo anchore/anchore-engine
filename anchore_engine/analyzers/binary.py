@@ -119,7 +119,7 @@ def _get_golang_evidence(tfl, member, memberhash, evidence):
                     break
 
 
-def _get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
+def _get_busybox_evidence(tfl, member, memberhash, evidence):
     global binary_package_el
 
     fullpath = "/{}".format(member.name)
@@ -127,20 +127,24 @@ def _get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
 
     if filename == "busybox" and (member.isreg() or member.islnk()):
         # Perform any specific checks using prior metadata
-        if distrodict.get("flavor", "") == "BUSYB":
-            patt = re.match(
-                ".*([0-9]+\.[0-9]+\.[0-9]+).*", distrodict.get("fullversion", "")
-            )
-            if patt:
-                version = anchore_engine.utils.ensure_str(patt.group(1))
-                el = {}
-                el.update(binary_package_el)
+        with tfl.extractfile(member) as FH:
+            for line in FH.readlines():
+                subline = line
+                try:
+                    patt = re.match(anchore_engine.utils.ensure_bytes(".*BusyBox\s+v([0-9]+\.[0-9]+\.[0-9]+).*"), subline)
+                    if patt:
+                        version = anchore_engine.utils.ensure_str(patt.group(1))
+                        el = {}
+                        el.update(binary_package_el)
 
-                el["name"] = "busybox"
-                el["version"] = version
-                el["location"] = fullpath
-
-                evidence["busybox"]["binary"].append(el)
+                        el['name'] = 'busybox'
+                        el['version'] = version
+                        el['location'] = fullpath
+                        
+                        evidence['busybox']['binary'].append(el)
+                        break
+                except Exception as err:
+                    raise err
 
 # this is a direct port of the binary analyzer module to here... this should be refactored
 def catalog_image(allpkgfiles, unpackdir):
@@ -157,14 +161,6 @@ def catalog_image(allpkgfiles, unpackdir):
         )
         with open(unpackdir + "/anchore_allfiles.json", "w") as OFH:
             OFH.write(json.dumps(allfiles))
-
-    # get distro information from the squashtar
-    meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(
-        os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir
-    )
-    distrodict = anchore_engine.analyzers.utils.get_distro_flavor(
-        meta["DISTRO"], meta["DISTROVERS"], likedistro=meta["LIKEDISTRO"]
-    )
 
     # set up ordered dictionary structure for the runtimes and evidence types
     evidence = collections.OrderedDict()
@@ -203,7 +199,7 @@ def catalog_image(allpkgfiles, unpackdir):
                 )
 
             try:
-                _get_busybox_evidence(tfl, member, memberhash, distrodict, evidence)
+                _get_busybox_evidence(tfl, member, memberhash, evidence)
             except Exception as err:
                 print(
                     "WARN: caught exception evaluating file ({}) for busybox runtime evidence: {}".format(
