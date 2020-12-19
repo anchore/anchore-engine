@@ -77,7 +77,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": '{"evidence_type": "devel"}',
+        "metadata": {"evidence_type": "devel"},
     },
     "/staged/positive/python3.6": {
         "name": "python",

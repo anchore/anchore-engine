@@ -20,10 +20,7 @@ import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
-import anchore_engine.analyzers.utils
-import anchore_engine.analyzers.syft
-import anchore_engine.analyzers.binary
-from anchore_engine.analyzers.utils import dig
+import anchore_engine.analyzers
 from anchore_engine.utils import AnchoreException
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
@@ -888,16 +885,7 @@ def list_analyzers():
     :return: list of str that are the names of the analyzer modules
     """
 
-    anchore_module_root = resource_filename("anchore_engine", "analyzers")
-    analyzer_root = os.path.join(anchore_module_root, "modules")
-    result = []
-    for f in os.listdir(analyzer_root):
-        thecmd = os.path.join(analyzer_root, f)
-        if re.match(r".*\.py$", thecmd):
-            result.append(thecmd)
-
-    result.sort()
-    return result
+    return anchore_engine.analyzers.list_modules()
 
 
 def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
@@ -912,70 +900,9 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
         with open(os.path.join(unpackdir, "anchore_hints.json"), "w") as OFH:
             OFH.write(json.dumps({}))
 
-    # run analyzers
-    anchore_module_root = resource_filename("anchore_engine", "analyzers")
-    analyzer_root = os.path.join(anchore_module_root, "modules")
-    for f in list_analyzers():
-        cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
-        if True:
-            logger.info("Executing analyzer %s", f)
-            timer = time.time()
-            try:
-                rc, sout, serr = utils.run_command(cmdstr)
-                sout = utils.ensure_str(sout)
-                serr = utils.ensure_str(serr)
-                if rc != 0:
-                    raise Exception(
-                        "command failed: cmd="
-                        + str(cmdstr)
-                        + " exitcode="
-                        + str(rc)
-                        + " stdout="
-                        + str(sout).strip()
-                        + " stderr="
-                        + str(serr).strip()
-                    )
-                else:
-                    logger.debug(
-                        "command succeeded: cmd="
-                        + str(cmdstr)
-                        + " stdout="
-                        + str(sout).strip()
-                        + " stderr="
-                        + str(serr).strip()
-                    )
-            except Exception as err:
-                logger.error("command failed with exception - " + str(err))
-            logger.debug(
-                "timing: specific analyzer time: {} - {}".format(f, time.time() - timer)
-            )
-
-    analyzer_report = collections.defaultdict(dict)
-    for analyzer_output in os.listdir(os.path.join(outputdir, "analyzer_output")):
-        for analyzer_output_el in os.listdir(
-            os.path.join(outputdir, "analyzer_output", analyzer_output)
-        ):
-            data = anchore_engine.analyzers.utils.read_kvfile_todict(
-                os.path.join(
-                    outputdir, "analyzer_output", analyzer_output, analyzer_output_el
-                )
-            )
-            if data:
-                analyzer_report[analyzer_output][analyzer_output_el] = {"base": data}
-
-    syft_results = anchore_engine.analyzers.syft.catalog_image(
-        imagedir=copydir, unpackdir=unpackdir
+    analyzer_report = anchore_engine.analyzers.run(
+        configdir, imageId, unpackdir, outputdir, copydir
     )
-
-    anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, syft_results)
-
-    allpkgfiles = dig(syft_results, "package_list", "pkgfiles.all", "base", force_default=[])
-    
-    binary_results = anchore_engine.analyzers.binary.catalog_image(
-        allpkgfiles=allpkgfiles, unpackdir=unpackdir
-    )
-
-    anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, binary_results)
 
     return dict(analyzer_report)
 

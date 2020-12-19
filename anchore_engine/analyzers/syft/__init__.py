@@ -47,7 +47,7 @@ def convert_syft_to_engine(all_results, unpackdir):
         handler.translate_and_save_entry(findings, artifact)
 
     # apply content hints, overriding values that are there
-    # note: upstream of this processing overwrites the hints file location if 
+    # note: upstream of this processing overwrites the hints file location if
     # the config does not explicitly enable hints processing, effectively disabling
     # hints processing.
     for engine_entry in content_hints(unpackdir=unpackdir):

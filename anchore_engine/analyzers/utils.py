@@ -692,7 +692,7 @@ def _hints_to_binary(pkg):
     pkg_license = anchore_engine.utils.ensure_str(pkg.get("license", ""))
     pkg_origin = anchore_engine.utils.ensure_str(pkg.get("origin", ""))
     pkg_files = pkg.get("files", [])
-    pkg_metadata = json.dumps(pkg.get("metadata", {}))
+    pkg_metadata = pkg.get("metadata", {})
 
     if not pkg_name or not pkg_version or not pkg_type:
         raise Exception(
