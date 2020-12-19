@@ -22,6 +22,8 @@ import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
 import anchore_engine.analyzers.utils
 import anchore_engine.analyzers.syft
+import anchore_engine.analyzers.binary
+from anchore_engine.analyzers.utils import dig
 from anchore_engine.utils import AnchoreException
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
@@ -962,10 +964,18 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
                 analyzer_report[analyzer_output][analyzer_output_el] = {"base": data}
 
     syft_results = anchore_engine.analyzers.syft.catalog_image(
-        image=copydir, unpackdir=unpackdir
+        imagedir=copydir, unpackdir=unpackdir
     )
 
     anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, syft_results)
+
+    allpkgfiles = dig(syft_results, "package_list", "pkgfiles.all", "base", force_default=[])
+    
+    binary_results = anchore_engine.analyzers.binary.catalog_image(
+        allpkgfiles=allpkgfiles, unpackdir=unpackdir
+    )
+
+    anchore_engine.analyzers.utils.merge_nested_dict(analyzer_report, binary_results)
 
     return dict(analyzer_report)
 

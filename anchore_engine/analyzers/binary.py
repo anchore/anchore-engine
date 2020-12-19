@@ -1,18 +1,25 @@
-#!/usr/bin/env python3
-
 import sys
 import os
 import re
 import json
-import traceback
-import pkg_resources
 import tarfile
-from collections import OrderedDict
+import collections
 
-import anchore_engine.analyzers.utils, anchore_engine.utils
+import anchore_engine.analyzers.utils
+import anchore_engine.utils
 
+binary_package_el = {
+    "name": None,
+    "version": None,
+    "location": None,
+    "type": "binary",
+    "files": [],
+    "license": "N/A",
+    "origin": "N/A",
+    "metadata": {},
+}
 
-def get_python_evidence(tfl, member, memberhash, evidence):
+def _get_python_evidence(tfl, member, memberhash, evidence):
     global binary_package_el
 
     fullpath = "/{}".format(member.name)
@@ -62,7 +69,7 @@ def get_python_evidence(tfl, member, memberhash, evidence):
                     break
 
 
-def get_golang_evidence(tfl, member, memberhash, evidence):
+def _get_golang_evidence(tfl, member, memberhash, evidence):
     global binary_package_el
 
     fullpath = "/{}".format(member.name)
@@ -112,7 +119,7 @@ def get_golang_evidence(tfl, member, memberhash, evidence):
                     break
 
 
-def get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
+def _get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
     global binary_package_el
 
     fullpath = "/{}".format(member.name)
@@ -135,36 +142,11 @@ def get_busybox_evidence(tfl, member, memberhash, distrodict, evidence):
 
                 evidence["busybox"]["binary"].append(el)
 
+# this is a direct port of the binary analyzer module to here... this should be refactored
+def catalog_image(allpkgfiles, unpackdir):
+    squashtar = os.path.join(unpackdir, "squashed.tar")
 
-analyzer_name = "package_list"
-
-try:
-    config = anchore_engine.analyzers.utils.init_analyzer_cmdline(
-        sys.argv, analyzer_name
-    )
-except Exception as err:
-    print(str(err))
-    sys.exit(1)
-
-imgname = config["imgid"]
-imgid = config["imgid_full"]
-outputdir = config["dirs"]["outputdir"]
-unpackdir = config["dirs"]["unpackdir"]
-squashtar = os.path.join(unpackdir, "squashed.tar")
-
-resultlist = {}
-version_found_map = {}
-binary_package_el = {
-    "name": None,
-    "version": None,
-    "location": None,
-    "type": "binary",
-    "files": [],
-    "license": "N/A",
-    "origin": "N/A",
-    "metadata": json.dumps({}),
-}
-try:
+    # get a listing of all files from either a previous run or the squashtar
     allfiles = {}
     if os.path.exists(unpackdir + "/anchore_allfiles.json"):
         with open(unpackdir + "/anchore_allfiles.json", "r") as FH:
@@ -176,10 +158,7 @@ try:
         with open(unpackdir + "/anchore_allfiles.json", "w") as OFH:
             OFH.write(json.dumps(allfiles))
 
-    # read in previous analyzer output for helping to increase accuracy of findings
-    fname = os.path.join(outputdir, "pkgfiles.all")
-    pkgfilesall = anchore_engine.analyzers.utils.read_kvfile_todict(fname)
-
+    # get distro information from the squashtar
     meta = anchore_engine.analyzers.utils.get_distro_from_squashtar(
         os.path.join(unpackdir, "squashed.tar"), unpackdir=unpackdir
     )
@@ -188,13 +167,13 @@ try:
     )
 
     # set up ordered dictionary structure for the runtimes and evidence types
-    evidence = OrderedDict()
+    evidence = collections.OrderedDict()
     for runtime in ["python", "go", "busybox"]:
-        evidence[runtime] = OrderedDict()
+        evidence[runtime] = collections.OrderedDict()
         for etype in ["binary", "devel"]:
             evidence[runtime][etype] = []
-
-    # Perform a per file routine to evaluate files for gathering binary package version evidence
+    
+    # perform a per file routine to evaluate files for gathering binary package version evidence
     with tarfile.open(
         os.path.join(unpackdir, "squashed.tar"), mode="r", format=tarfile.PAX_FORMAT
     ) as tfl:
@@ -206,7 +185,7 @@ try:
         memberhash = anchore_engine.analyzers.utils.get_memberhash(tfl)
         for member in list(memberhash.values()):
             try:
-                get_python_evidence(tfl, member, memberhash, evidence)
+                _get_python_evidence(tfl, member, memberhash, evidence)
             except Exception as err:
                 print(
                     "WARN: caught exception evaluating file ({}) for python runtime evidence: {}".format(
@@ -215,7 +194,7 @@ try:
                 )
 
             try:
-                get_golang_evidence(tfl, member, memberhash, evidence)
+                _get_golang_evidence(tfl, member, memberhash, evidence)
             except Exception as err:
                 print(
                     "WARN: caught exception evaluating file ({}) for golang runtime evidence: {}".format(
@@ -224,7 +203,7 @@ try:
                 )
 
             try:
-                get_busybox_evidence(tfl, member, memberhash, distrodict, evidence)
+                _get_busybox_evidence(tfl, member, memberhash, distrodict, evidence)
             except Exception as err:
                 print(
                     "WARN: caught exception evaluating file ({}) for busybox runtime evidence: {}".format(
@@ -232,7 +211,9 @@ try:
                     )
                 )
 
+    # write evidence back to a results data structure
     resultlist = {}
+    version_found_map = {}
     for runtime in evidence.keys():  # ['python', 'go']:
         for e in evidence[runtime].keys():  # ['binary', 'devel']:
             for t in evidence[runtime][e]:
@@ -240,7 +221,7 @@ try:
                 version = t.get("version")
                 location = t.get("location")
 
-                if location in pkgfilesall:
+                if location in allpkgfiles:
                     print(
                         "INFO: Skipping evidence {} - file is owned by OS package".format(
                             location
@@ -252,42 +233,23 @@ try:
                         result = {}
                         result.update(binary_package_el)
                         result.update(t)
-                        result["metadata"] = json.dumps({"evidence_type": e})
-                        resultlist[location] = json.dumps(result)
+                        result["metadata"] = {"evidence_type": e}
+                        resultlist[location] = result
                         version_found_map[key] = True
 
-    try:
-        squashtar = os.path.join(unpackdir, "squashed.tar")
-        hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
-        for pkg in hints.get("packages", []):
-            pkg_type = pkg.get("type", "").lower()
+    # process hints file ...
+    # note: upstream of this has already wiped out the hints file contents if the service
+    # doesn't have hints processing enabled.
+    hints = anchore_engine.analyzers.utils.get_hintsfile(unpackdir, squashtar)
+    for pkg in hints.get("packages", []):
+        pkg_type = pkg.get("type", "").lower()
+        if pkg_type == "binary":
+            pkg_key, el = anchore_engine.analyzers.utils._hints_to_binary(pkg)
 
-            if pkg_type == "binary":
-                try:
-                    pkg_key, el = anchore_engine.analyzers.utils._hints_to_binary(pkg)
-                    try:
-                        resultlist[pkg_key] = json.dumps(el)
-                    except Exception as err:
-                        print(
-                            "WARN: unable to add binary package ({}) from hints - excpetion: {}".format(
-                                pkg_key, err
-                            )
-                        )
-                except Exception as err:
-                    print(
-                        "WARN: bad hints record encountered - exception: {}".format(err)
-                    )
-    except Exception as err:
-        print("WARN: problem honoring hints file - exception: {}".format(err))
-except Exception as err:
-    import traceback
+    # transform output into analyzer-module/service "raw" analyzer json document
+    nested_dict = lambda: collections.defaultdict(nested_dict)
+    findings = nested_dict()
 
-    traceback.print_exc()
-    print("WARN: analyzer unable to complete - exception: " + str(err))
+    findings["package_list"]["pkgs.binary"]["base"] = resultlist
 
-if resultlist:
-    ofile = os.path.join(outputdir, "pkgs.binary")
-    anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
-    # print ("RESULT: {}".format(resultlist))
-
-sys.exit(0)
+    return anchore_engine.analyzers.utils.defaultdict_to_dict(findings)
