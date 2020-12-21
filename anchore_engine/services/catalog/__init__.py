@@ -773,7 +773,10 @@ def handle_repo_watcher(*args, **kwargs):
                                     anchore_engine.configuration.localconfig.get_config()
                                 )
                                 raise Exception(
-                                    f"Image size of {new_image_info['compressed_size']} exceeds configured maximum of {localconfig.get('max_compressed_image_size')}"
+                                    "Image size of "
+                                    + str(new_image_info["compressed_size"])
+                                    + " exceeds configured maximum of "
+                                    + str(localconfig.get("max_compressed_image_size"))
                                 )
 
                             with db.session_scope() as dbsession:
@@ -985,7 +988,10 @@ def handle_image_watcher(*args, **kwargs):
                 if not catalog_impl.is_image_valid_size(image_info):
                     localconfig = anchore_engine.configuration.localconfig.get_config()
                     raise Exception(
-                        f"Image size of {image_info['compressed_size']} exceeds configured maximum size of {localconfig.get('max_compressed_image_size')}"
+                        "Image size of "
+                        + str(image_info["compressed_size"])
+                        + " exceeds configured maximum size of "
+                        + str(localconfig.get("max_compressed_image_size"))
                     )
 
                 parent_manifest = json.dumps(image_info.get("parentmanifest", {}))
