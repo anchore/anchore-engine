@@ -79,6 +79,15 @@ pre_baked_images = {
         "image_source": "registry",
         "schema_version": "v2",
     },
+    # skopeo inspect --override-os linux  docker://anchore/test_images@sha256:bf25131f6f6ba5ca531b2075424bfb25c36cc01f8e83cc3c759c404870a64e38 --raw
+    "bin": {
+        "registry": "docker.io",
+        "repo": "anchore/test_images",
+        "tag": "bin",
+        "digest": "sha256:bf25131f6f6ba5ca531b2075424bfb25c36cc01f8e83cc3c759c404870a64e38",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
 }
 
 

@@ -146,9 +146,7 @@ def process_import(
         }
 
         try:
-            syft_results = convert_syft_to_engine(
-                syft_packages, None, handle_hints=False
-            )
+            syft_results = convert_syft_to_engine(syft_packages)
             merge_nested_dict(analyzer_report, syft_results)
         except Exception as err:
             raise anchore_engine.clients.localanchore_standalone.AnalysisError(
