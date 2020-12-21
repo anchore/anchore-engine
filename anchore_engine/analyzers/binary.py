@@ -17,7 +17,7 @@ binary_package_el = {
     "files": [],
     "license": "N/A",
     "origin": "N/A",
-    "metadata": {},
+    "metadata": json.dumps({}),
 }
 
 
@@ -104,7 +104,7 @@ def catalog_image(allpkgfiles, unpackdir):
                         result = {}
                         result.update(binary_package_el)
                         result.update(t)
-                        result["metadata"] = {"evidence_type": e}
+                        result["metadata"] = json.dumps({"evidence_type": e})
                         resultlist[location] = result
                         version_found_map[key] = True
 

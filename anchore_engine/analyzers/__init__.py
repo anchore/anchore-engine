@@ -14,9 +14,24 @@ from . import utils
 def run(configdir, imageId, unpackdir, outputdir, copydir):
     analyzer_report = collections.defaultdict(dict)
     _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir)
-    _run_syft(analyzer_report, copydir, unpackdir)
+    _run_syft(analyzer_report, copydir)
     _run_internal_analyzers(analyzer_report, unpackdir)
+
+    apply_hints(analyzer_report, unpackdir)
+
     return analyzer_report
+
+
+def apply_hints(analyzer_report, unpackdir):
+    # apply content hints, overriding values that are there
+    # note: upstream of this processing overwrites the hints file location if
+    # the config does not explicitly enable hints processing, effectively disabling
+    # hints processing.
+    for engine_entry in utils.content_hints(unpackdir=unpackdir):
+        pkg_type = engine_entry.get("type")
+        if pkg_type:
+            handler = syft.modules_by_engine_type[pkg_type]
+            handler.save_entry(analyzer_report, engine_entry)
 
 
 def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir):
@@ -46,7 +61,7 @@ def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, output
                             repr(cmdstr), repr(sout.strip()), repr(serr.strip())
                         )
                     )
-            except Exception as err:
+            except Exception:
                 logger.exception(
                     "Unexpected exception while running analyzer module (%s)", repr(f)
                 )
@@ -73,8 +88,8 @@ def _run_internal_analyzers(analyzer_report, unpackdir):
     utils.merge_nested_dict(analyzer_report, results)
 
 
-def _run_syft(analyzer_report, copydir, unpackdir):
-    results = syft.catalog_image(imagedir=copydir, unpackdir=unpackdir)
+def _run_syft(analyzer_report, copydir):
+    results = syft.catalog_image(imagedir=copydir)
 
     utils.merge_nested_dict(analyzer_report, results)
 

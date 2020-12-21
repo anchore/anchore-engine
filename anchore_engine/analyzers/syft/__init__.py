@@ -9,15 +9,15 @@ def filter_artifacts(artifact):
     return artifact["type"] in modules_by_artifact_type
 
 
-def catalog_image(imagedir, unpackdir):
+def catalog_image(imagedir):
     """
     Catalog the given image with syft, keeping only select artifacts in the returned results.
     """
     all_results = run_syft(imagedir)
-    return convert_syft_to_engine(all_results, unpackdir)
+    return convert_syft_to_engine(all_results)
 
 
-def convert_syft_to_engine(all_results, unpackdir):
+def convert_syft_to_engine(all_results):
     """
     Do the conversion from syft format to engine format
 
@@ -45,15 +45,5 @@ def convert_syft_to_engine(all_results, unpackdir):
     for artifact in filter(filter_artifacts, all_results["artifacts"]):
         handler = modules_by_artifact_type[artifact["type"]]
         handler.translate_and_save_entry(findings, artifact)
-
-    # apply content hints, overriding values that are there
-    # note: upstream of this processing overwrites the hints file location if
-    # the config does not explicitly enable hints processing, effectively disabling
-    # hints processing.
-    for engine_entry in content_hints(unpackdir=unpackdir):
-        pkg_type = engine_entry.get("type")
-        if pkg_type:
-            handler = modules_by_engine_type[pkg_type]
-            handler.save_entry(findings, engine_entry)
 
     return defaultdict_to_dict(findings)

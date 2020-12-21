@@ -7,7 +7,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/copy/go": {
         "name": "go",
@@ -17,7 +17,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/copy/libpython2.7.so.1.0": {
         "name": "python",
@@ -27,7 +27,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/positive/VERSION": {
         "name": "go",
@@ -37,7 +37,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "devel"},
+        "metadata": '{"evidence_type": "devel"}',
     },
     "/staged/positive/busybox": {
         "name": "busybox",
@@ -47,7 +47,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/positive/go": {
         "name": "go",
@@ -57,7 +57,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/positive/libpython3.7.so": {
         "name": "python",
@@ -67,7 +67,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
     "/staged/positive/patchlevel.h": {
         "name": "python",
@@ -77,7 +77,7 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "devel"},
+        "metadata": '{"evidence_type": "devel"}',
     },
     "/staged/positive/python3.6": {
         "name": "python",
@@ -87,6 +87,6 @@ all_info = {
         "files": [],
         "license": "N/A",
         "origin": "N/A",
-        "metadata": {"evidence_type": "binary"},
+        "metadata": '{"evidence_type": "binary"}',
     },
 }
