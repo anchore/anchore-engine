@@ -4,7 +4,6 @@ import pytest
 
 
 class TestRpm:
-    @pytest.mark.skip(reason="Waiting on completed functionality.")
     @pytest.mark.parametrize("path", path_params(centos.pkgfiles_all))
     def test_pkgfiles_all(self, analyzed_data, path):
         result = analyzed_data("rpm")
