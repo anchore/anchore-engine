@@ -4,13 +4,13 @@ import pytest
 
 
 class TestRpm:
-    @pytest.mark.skip(reason="Waiting on completed functionality.")
     @pytest.mark.parametrize("path", path_params(centos.pkgfiles_all))
     def test_pkgfiles_all(self, analyzed_data, path):
         result = analyzed_data("rpm")
         pkgs = result["image"]["imagedata"]["analysis_report"]["package_list"][
             "pkgfiles.all"
         ]["base"]
+        # import ipdb; ipdb.set_trace()
         assert pkgs.get(path) == "RPMFILE"
 
     @pytest.mark.parametrize(

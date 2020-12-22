@@ -1,15 +1,13 @@
 pkgfiles_all = {
-    "/usr/share/man/lu/man8": "RPMFILE",
-    "/usr/share/man/km/man4x": "RPMFILE",
     "/usr/bin/db_hotbackup": "RPMFILE",
-    "/usr/share/locale/ca_AD/LC_MESSAGES": "RPMFILE",
-    "/usr/share/man/cpf/man4": "RPMFILE",
-    "/usr/share/man/arp/man1": "RPMFILE",
     "/usr/lib64/python3.6/email/_encoded_words.py": "RPMFILE",
     "/usr/lib64/python3.6/urllib/response.py": "RPMFILE",
-    "/usr/share/locale/en@cyrillic": "RPMFILE",
+    "/etc/profile.d/gawk.csh": "RPMFILE",
+    "/usr/bin/chacl": "RPMFILE",
+    "/usr/bin/find": "RPMFILE",
     "/usr/lib64/gconv/ISO8859-3.so": "RPMFILE",
     "/bin": "RPMFILE",
+    "/etc/libaudit.conf": "RPMFILE",
 }
 
 pkgs_all = {
