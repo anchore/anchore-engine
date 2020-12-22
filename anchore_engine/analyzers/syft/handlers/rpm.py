@@ -14,7 +14,7 @@ def translate_and_save_entry(findings, artifact):
     """
     Handler function to map syft results for an alpine package type into the engine "raw" document format.
     """
-    # _all_package_files(findings, artifact)
+    _all_package_files(findings, artifact)
     _all_packages(findings, artifact)
     _all_package_info(findings, artifact)
 
