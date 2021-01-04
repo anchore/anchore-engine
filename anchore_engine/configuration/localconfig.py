@@ -514,6 +514,11 @@ def validate_config(config, validate_params=None):
         if "keys" in validate_params and validate_params["keys"]:
             validate_key_config(config, required=False)
 
+        if config["max_compressed_image_size"] and not isinstance(
+            config["max_compressed_image_size"], int
+        ):
+            raise Exception("max_compressed_image_size must be an integer")
+
     except Exception as err:
         logger.error(str(err))
         raise err
