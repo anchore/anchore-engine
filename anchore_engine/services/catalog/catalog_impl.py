@@ -2630,6 +2630,7 @@ def is_image_valid_size(image_info):
 
     if (
         max_compressed_image_size
+        and max_compressed_image_size > -1
         and compressed_image_size
         and compressed_image_size > max_compressed_image_size
     ):
