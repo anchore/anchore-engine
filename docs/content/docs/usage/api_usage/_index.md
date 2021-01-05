@@ -54,7 +54,7 @@ http://localhost:8228/v1/swagger.json
 1. Download the nginx configuration into the same directory as the docker-compose.yaml file, with name _anchore-swaggerui-nginx.conf_
 
     ```
-    curl -O https://docs.anchore.com/current/docs/quickstart/anchore-swaggerui-nginx.conf
+    curl -O https://engine.anchore.io/docs/quickstart/anchore-swaggerui-nginx.conf
     docker-compose up -d
     ```
 
