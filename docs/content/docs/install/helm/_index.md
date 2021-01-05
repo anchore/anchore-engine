@@ -26,21 +26,6 @@ The following guide requires:
 - Helm binary installed and available in your path
 
 ### Installation
-First, the official stable repository needs to be added to your helm client.
-
-```
-helm repo add stable https://kubernetes-charts.storage.googleapis.com
-```
-
-Next we need to ensure that we have an up to date list of Helm Charts.
-
-```
-$ helm repo update
-Hang tight while we grab the latest from your chart repositories...
-...Skip local chart repository
-...Successfully got an update from the "stable" chart repository
-Update Complete. ⎈ Happy Helming!⎈
-```
 
 By default, the Anchore Engine chart will deploy a single pod for each Anchore Engine service along with a PostgreSQL database container. This behavior can be overridden if you have an existing PostgreSQL service available, see the [README](https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md) for more details.
 
