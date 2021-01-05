@@ -52,7 +52,7 @@ See [documentation](https://docs.anchore.com/current/docs/engine/quickstart/) fo
 To quickly bring up an installation of Anchore Engine on a system with docker (and docker-compose) installed, follow these simple steps:
 
 ```
-curl https://docs.anchore.com/current/docs/engine/quickstart/docker-compose.yaml > docker-compose.yaml
+curl https://engine.anchore.io/docs/quickstart/docker-compose.yaml > docker-compose.yaml
 docker-compose up -d
 ```
 
