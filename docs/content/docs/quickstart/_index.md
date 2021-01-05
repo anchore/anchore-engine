@@ -28,7 +28,7 @@ The following instructions assume you are using a system running Docker v1.12 or
 ### Step 1: Download the docker-compose.yaml file and start.
 
 ```
-# curl -O https://docs.anchore.com/current/docs/quickstart/docker-compose.yaml
+# curl -O https://engine.anchore.io/docs/quickstart/docker-compose.yaml
 # docker-compose up -d
 ```
 
