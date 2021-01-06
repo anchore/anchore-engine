@@ -2123,7 +2123,8 @@ LATEST: 0.2.0
 &lt;span style="color:#000;font-weight:bold">{&lt;/span>
 &lt;span style="color:#204a87;font-weight:bold">&amp;#34;gate&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;vulnerabilities&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
 &lt;span style="color:#204a87;font-weight:bold">&amp;#34;trigger_id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;CVE-2018-0737+*&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
-&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;rule1&amp;#34;&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;id&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;rule1&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">,&lt;/span>
+&lt;span style="color:#204a87;font-weight:bold">&amp;#34;expires_on&amp;#34;&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span> &lt;span style="color:#4e9a06">&amp;#34;2019-12-30T12:00:00Z&amp;#34;&lt;/span>
 &lt;span style="color:#000;font-weight:bold">}&lt;/span>
 &lt;span style="color:#000;font-weight:bold">]&lt;/span>
 &lt;span style="color:#000;font-weight:bold">}&lt;/span>
@@ -2132,6 +2133,7 @@ LATEST: 0.2.0
 &lt;li>Gate: The gate to whitelist matches from (ensures trigger_ids are not matched in the wrong context)&lt;/li>
 &lt;li>Trigger Id: The specific trigger result to match and whitelists. This id is gate/trigger specific as each trigger may have its own trigger_id format. We&amp;rsquo;ll use the most common for this example: the CVE trigger ids produced by the vulnerability-&amp;gt;package gate-trigger. The trigger_id specified may include wildcards for partial matches.&lt;/li>
 &lt;li>id: an identifier for the rule, must only be unique within the whitelist object itself&lt;/li>
+&lt;li>Expires On: (optional) specifies when a particular whitelist item expires. This is a UTC RFC3339 date-time string. If the rule matches, but is expired, the policy engine will NOT whitelist according to that match.&lt;/li>
 &lt;/ul>
 &lt;p>The whitelist is processed if it is specified in the mapping rule that was matched during bundle evaluation and is applied to the results of the policy evaluation defined in that same mapping rule. If a whitelist item matches a specific policy trigger output, then the action for that output is set to go and the policy evaluation result notes that the trigger output was matched for a whitelist item by associating it with the whitelist id and item id of the match.&lt;/p>
 &lt;p>An example of a whitelisted match from a snippet of a policy evaluation result (See Policies for more information on the format of the policy evaluation result). This a single row entry from the result:&lt;/p>

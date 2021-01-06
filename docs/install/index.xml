@@ -15,15 +15,7 @@
 &lt;li>Helm binary installed and available in your path&lt;/li>
 &lt;/ul>
 &lt;h3 id="installation">Installation&lt;/h3>
-&lt;p>First, the official stable repository needs to be added to your helm client.&lt;/p>
-&lt;pre>&lt;code>helm repo add stable https://kubernetes-charts.storage.googleapis.com
-&lt;/code>&lt;/pre>&lt;p>Next we need to ensure that we have an up to date list of Helm Charts.&lt;/p>
-&lt;pre>&lt;code>$ helm repo update
-Hang tight while we grab the latest from your chart repositories...
-...Skip local chart repository
-...Successfully got an update from the &amp;quot;stable&amp;quot; chart repository
-Update Complete. ⎈ Happy Helming!⎈
-&lt;/code>&lt;/pre>&lt;p>By default, the Anchore Engine chart will deploy a single pod for each Anchore Engine service along with a PostgreSQL database container. This behavior can be overridden if you have an existing PostgreSQL service available, see the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> for more details.&lt;/p>
+&lt;p>By default, the Anchore Engine chart will deploy a single pod for each Anchore Engine service along with a PostgreSQL database container. This behavior can be overridden if you have an existing PostgreSQL service available, see the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> for more details.&lt;/p>
 &lt;p>In this example we will deploy the database, and a single pod of every Open Source Anchore Engine service. Please refer to the &lt;a href="https://github.com/anchore/anchore-charts/blob/master/stable/anchore-engine/README.md">README&lt;/a> for more sophisticated deployments including scaling options.&lt;/p>
 &lt;p>The installation can be completed with the following commands:&lt;/p>
 &lt;pre>&lt;code>$ helm repo add anchore https://charts.anchore.io
@@ -203,7 +195,7 @@ Engine Code Version: 0.7.0
 &lt;/code>&lt;/pre>&lt;ol start="4">
 &lt;li>Download the latest docker-compose.yaml&lt;/li>
 &lt;/ol>
-&lt;pre>&lt;code># curl https://docs.anchore.com/current/docs/quickstart/docker-compose.yaml
+&lt;pre>&lt;code># curl https://engine.anchore.io/docs/quickstart//docker-compose.yaml
 &lt;/code>&lt;/pre>&lt;ol start="5">
 &lt;li>
 &lt;p>Review the latest docker-compose.yaml and merge any edits/changes from your original docker-compose.yaml.backup to the latest docker-compose.yaml&lt;/p>

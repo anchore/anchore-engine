@@ -119,7 +119,7 @@ has value for audit or historical reasons.&lt;/p>
 &lt;li>Ensure the working set is images you actively need to monitor without losing old data by sending it to the archive&lt;/li>
 &lt;/ol>
 &lt;h2 id="automatic-archiving">Automatic Archiving&lt;/h2>
-&lt;p>The help facilitate data management automatically, Anchore supports rules to define which data to archive and when
+&lt;p>To help facilitate data management automatically, Anchore supports rules to define which data to archive and when
 based on a few qualities of the image analysis itself. These rules are evaluated periodically by the system.&lt;/p>
 &lt;p>Anchore supports both account-scoped rules, editable by users in the account, and global system rules, editable only by
 the system admin account users. All users can view system global rules such that they can understand what will affect
@@ -166,9 +166,18 @@ system observed the mapping of a tag to a specific image manifest digest)&lt;/li
 &amp;quot;repository&amp;quot;: &amp;quot;*&amp;quot;,
 &amp;quot;tag&amp;quot;: &amp;quot;*&amp;quot;
 },
-&amp;quot;system_global&amp;quot;: false,
+&amp;quot;system_global&amp;quot;: true,
 &amp;quot;tag_versions_newer&amp;quot;: 10,
-&amp;quot;transition&amp;quot;: &amp;quot;archive&amp;quot;
+&amp;quot;transition&amp;quot;: &amp;quot;archive&amp;quot;,
+&amp;quot;exclude&amp;quot;: {
+&amp;quot;expiration_days&amp;quot;: -1,
+&amp;quot;selector&amp;quot;: {
+&amp;quot;registry&amp;quot;: &amp;quot;docker.io&amp;quot;,
+&amp;quot;repository&amp;quot;: &amp;quot;alpine&amp;quot;,
+&amp;quot;tag&amp;quot;: &amp;quot;latest&amp;quot;
+}
+},
+&amp;quot;max_images_per_account&amp;quot;: 1000
 }
 &lt;/code>&lt;/pre>&lt;ul>
 &lt;li>selector: a json object defining a set of filters on registry, repository, and tag that this rule will apply to.
@@ -186,6 +195,15 @@ archive creation. Specifically: the analysis will &amp;ldquo;move&amp;rdquo; to 
 &lt;li>&lt;em>delete&lt;/em>: works on the archive set and deletes the archived record on a match&lt;/li>
 &lt;/ul>
 &lt;/li>
+&lt;li>exclude: a json object defining a set of filters on registry, repository, and tag, that will exclude a subset of image(s)
+from the selector defined above.
+&lt;ul>
+&lt;li>expiration_days: This allows the exclusion filter to expire. When set to -1, the exclusion filter does not expire&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>max_images_per_account: This setting may only be applied on a single &amp;ldquo;system_global&amp;rdquo; rule, and controls the maximum number of images
+allows in the anchore deployment (that are not archived). If this number is exceeded, anchore will transition (according to the transition field value)
+the oldest images exceeding this maximum count.&lt;/li>
 &lt;/ul>
 &lt;h3 id="rule-conflicts-and-application">Rule conflicts and application:&lt;/h3>
 &lt;p>For an image to be transitioned by a rule it must:&lt;/p>
