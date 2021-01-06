@@ -17,7 +17,8 @@ Example whitelist:
     {
       "gate": "vulnerabilities",
       "trigger_id": "CVE-2018-0737+*",
-      "id": "rule1"
+      "id": "rule1",
+      "expires_on": "2019-12-30T12:00:00Z"
     }
   ]
 }
@@ -28,6 +29,7 @@ The components:
 - Gate: The gate to whitelist matches from (ensures trigger_ids are not matched in the wrong context)
 - Trigger Id: The specific trigger result to match and whitelists. This id is gate/trigger specific as each trigger may have its own trigger_id format. We'll use the most common for this example: the CVE trigger ids produced by the vulnerability->package gate-trigger. The trigger_id specified may include wildcards for partial matches.
 - id: an identifier for the rule, must only be unique within the whitelist object itself
+- Expires On: (optional) specifies when a particular whitelist item expires. This is a UTC RFC3339 date-time string. If the rule matches, but is expired, the policy engine will NOT whitelist according to that match. 
 
 The whitelist is processed if it is specified in the mapping rule that was matched during bundle evaluation and is applied to the results of the policy evaluation defined in that same mapping rule. If a whitelist item matches a specific policy trigger output, then the action for that output is set to go and the policy evaluation result notes that the trigger output was matched for a whitelist item by associating it with the whitelist id and item id of the match.
 

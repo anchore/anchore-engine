@@ -78,7 +78,7 @@ has value for audit or historical reasons.
 
 ## Automatic Archiving
 
-The help facilitate data management automatically, Anchore supports rules to define which data to archive and when 
+To help facilitate data management automatically, Anchore supports rules to define which data to archive and when 
 based on a few qualities of the image analysis itself. These rules are evaluated periodically by the system.
 
 Anchore supports both account-scoped rules, editable by users in the account, and global system rules, editable only by
@@ -126,9 +126,18 @@ Example Rule:
         "repository": "*",
         "tag": "*"
     },
-    "system_global": false,
+    "system_global": true,
     "tag_versions_newer": 10,
-    "transition": "archive"
+    "transition": "archive",
+    "exclude": {
+        "expiration_days": -1,
+        "selector": {
+            "registry": "docker.io",
+            "repository": "alpine",
+            "tag": "latest"
+        }
+    },
+    "max_images_per_account": 1000
 }
 ```
 
@@ -141,7 +150,12 @@ match an image tag.
   * _archive_: works on the working set and transitions to archive, while deleting the source analysis upon successful
   archive creation. Specifically: the analysis will "move" to the archive and no longer be in the working set.
   * _delete_: works on the archive set and deletes the archived record on a match
-
+* exclude: a json object defining a set of filters on registry, repository, and tag, that will exclude a subset of image(s) 
+from the selector defined above.
+  * expiration_days: This allows the exclusion filter to expire. When set to -1, the exclusion filter does not expire
+* max_images_per_account: This setting may only be applied on a single "system_global" rule, and controls the maximum number of images 
+allows in the anchore deployment (that are not archived). If this number is exceeded, anchore will transition (according to the transition field value)
+the oldest images exceeding this maximum count.
 
 ### Rule conflicts and application:
 
