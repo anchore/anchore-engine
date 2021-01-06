@@ -1,5 +1,5 @@
 # This is a docker-compose file for development purposes. It refereneces unstable developer builds from the HEAD of master branch in https://github.com/anchore/anchore-engine
-# For a compose file intended for use with a released version, see https://docs.anchore.com/current/docs/quickstart/
+# For a compose file intended for use with a released version, see https://engine.anchore.io/docs/quickstart/
 #
 ---
 version: '2.1'
