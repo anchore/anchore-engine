@@ -33,9 +33,11 @@ def _all_package_info(findings, artifact):
         "version": version,
         "arch": dig(artifact, "metadata", "architecture", force_default="x86_64"),
         "sourcepkg": dig(artifact, "metadata", "sourceRpm", force_default="N/A"),
-        "origin": dig(artifact, "metadata", "vendor", force_default="Centos"),
+        # "(none)" is consistent with the rpm query format result for no value
+        "origin": dig(artifact, "metadata", "vendor", force_default="(none)"),
         "release": release,
-        "size": str(dig(artifact, "metadata", "size", force_default="N/A")),
+        # if we have a size of 0, which is falsy, we should use the result. Only when missing we should have N/A
+        "size": str(dig(artifact, "metadata", "size", default="N/A")),
         "license": dig(artifact, "metadata", "license", force_default="N/A"),
         "cpes": artifact.get("cpes", []),
     }
