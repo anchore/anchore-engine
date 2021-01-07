@@ -23,4 +23,4 @@ RUN groupadd -g ${GID_CI} ci -f && \
 
 USER anchore
 
-RUN pip3 install --user tox
+RUN pip3 install --user tox pytest

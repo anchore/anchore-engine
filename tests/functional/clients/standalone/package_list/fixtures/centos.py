@@ -1,15 +1,13 @@
 pkgfiles_all = {
-    "/usr/share/man/lu/man8": "RPMFILE",
-    "/usr/share/man/km/man4x": "RPMFILE",
     "/usr/bin/db_hotbackup": "RPMFILE",
-    "/usr/share/locale/ca_AD/LC_MESSAGES": "RPMFILE",
-    "/usr/share/man/cpf/man4": "RPMFILE",
-    "/usr/share/man/arp/man1": "RPMFILE",
     "/usr/lib64/python3.6/email/_encoded_words.py": "RPMFILE",
     "/usr/lib64/python3.6/urllib/response.py": "RPMFILE",
-    "/usr/share/locale/en@cyrillic": "RPMFILE",
+    "/etc/profile.d/gawk.csh": "RPMFILE",
+    "/usr/bin/chacl": "RPMFILE",
+    "/usr/bin/find": "RPMFILE",
     "/usr/lib64/gconv/ISO8859-3.so": "RPMFILE",
     "/bin": "RPMFILE",
+    "/etc/libaudit.conf": "RPMFILE",
 }
 
 pkgs_all = {
@@ -36,8 +34,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libmnl:1.0.4-6.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libmnl:libmnl:1.0.4-6.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libmnl:1.0.4-6.el8:*:*:*:*:*:*:*",
         ],
     },
     "libdb": {
@@ -50,8 +48,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libdb:5.3.28-37.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libdb:libdb:5.3.28-37.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libdb:5.3.28-37.el8:*:*:*:*:*:*:*",
         ],
     },
     "libseccomp": {
@@ -64,8 +62,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libseccomp:2.4.1-1.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libseccomp:libseccomp:2.4.1-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libseccomp:2.4.1-1.el8:*:*:*:*:*:*:*",
         ],
     },
     "libsepol": {
@@ -78,8 +76,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libsepol:2.9-1.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libsepol:libsepol:2.9-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libsepol:2.9-1.el8:*:*:*:*:*:*:*",
         ],
     },
     "libunistring": {
@@ -92,8 +90,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libunistring:0.9.9-3.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libunistring:libunistring:0.9.9-3.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libunistring:0.9.9-3.el8:*:*:*:*:*:*:*",
         ],
     },
     "libkcapi": {
@@ -106,8 +104,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libkcapi:1.1.1-16_1.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libkcapi:libkcapi:1.1.1-16_1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libkcapi:1.1.1-16_1.el8:*:*:*:*:*:*:*",
         ],
     },
     "tzdata": {
@@ -120,8 +118,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:tzdata:2020a-1.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:tzdata:tzdata:2020a-1.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:tzdata:2020a-1.el8:*:*:*:*:*:*:*",
         ],
     },
     "cracklib": {
@@ -134,8 +132,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:cracklib:2.9.6-15.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:cracklib:cracklib:2.9.6-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:cracklib:2.9.6-15.el8:*:*:*:*:*:*:*",
         ],
     },
     "bash": {
@@ -148,8 +146,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:bash:4.4.19-10.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:bash:bash:4.4.19-10.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:bash:4.4.19-10.el8:*:*:*:*:*:*:*",
         ],
     },
     "libnsl2": {
@@ -162,8 +160,8 @@ pkgs_allinfo = {
         "origin": "CentOS",
         "type": "rpm",
         "cpes": [
-            "cpe:2.3:a:*:libnsl2:1.2.0-2.20180605git4a062cf.el8:*:*:*:*:*:*:*",
             "cpe:2.3:a:libnsl2:libnsl2:1.2.0-2.20180605git4a062cf.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libnsl2:1.2.0-2.20180605git4a062cf.el8:*:*:*:*:*:*:*",
         ],
     },
 }

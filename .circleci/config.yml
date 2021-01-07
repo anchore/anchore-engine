@@ -8,7 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  LATEST_RELEASE_MAJOR_VERSION: 0.8
+  LATEST_RELEASE_MAJOR_VERSION: 0.9
   TERM: xterm
 
 .attach_workspace: &attach_workspace

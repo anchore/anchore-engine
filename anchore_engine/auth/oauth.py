@@ -127,8 +127,12 @@ class TokenVerifier(object):
 
     __claim_params__ = {}
 
-    def __init__(self, key: bytes, alg: str, issuers=[ANCHORE_ISSUER]):
-        assert alg in SUPPORTED_ALGORITHMS
+    def __init__(self, key: bytes, alg: str, issuers=None):
+        if issuers is None:
+            issuers = [ANCHORE_ISSUER]
+        if alg not in SUPPORTED_ALGORITHMS:
+            raise ValueError(alg)
+
         self.claim_options = copy.deepcopy(TokenVerifier.__claim_options__)
         self.claim_params = copy.deepcopy(TokenVerifier.__claim_params__)
 
