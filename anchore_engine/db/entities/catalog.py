@@ -756,7 +756,7 @@ class ImportState(enum.Enum):
 class ImageImportOperation(Base, UtilMixin):
     __tablename__ = "image_imports"
 
-    uuid = Column(String, primary_key=True, default=uuid.uuid4)
+    uuid = Column(String, primary_key=True, default=anchore_uuid)
     account = Column(String, index=True)
     expires_at = Column(DateTime)
     status = Column(Enum(ImportState))

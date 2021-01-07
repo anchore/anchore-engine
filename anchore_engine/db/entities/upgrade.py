@@ -1,6 +1,6 @@
 import json
 import time
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Enum
+from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Enum, Text
 
 import anchore_engine.db.entities.common
 import anchore_engine.subsys.object_store.manager
@@ -1865,9 +1865,119 @@ def remove_policy_engine_sizes():
             raise ex
 
 
+def upgrade_oauth_client_014():
+    """
+    Changes required in db model for moving from authlib 0.12.3 -> 0.15.2
+    New column in db as defined in the Authlib oauth2 client mixin type
+
+    :return:
+    """
+
+    # TODO: should probably just drop and re-create this table for upgrade
+    # Would only affect sessions/tokens that can be reset after a system upgrade anyway.
+
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    new_columns = [
+        {
+            "table_name": "oauth2_clients",
+            "columns": [
+                Column(
+                    "client_metadata",
+                    Text,
+                ),
+                Column(
+                    "client_id_issued_at",
+                    Integer,
+                ),
+                Column(
+                    "client_secret_expires_at",
+                    Integer,
+                ),
+            ],
+        }
+    ]
+
+    log.err("creating new table columns")
+    for table in new_columns:
+        for column in table["columns"]:
+            log.err(
+                "creating new column ({}) in table ({})".format(
+                    column.name, table.get("table_name", "")
+                )
+            )
+            try:
+                cn = column.compile(dialect=engine.dialect)
+                ct = column.type.compile(engine.dialect)
+                engine.execute(
+                    "ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s"
+                    % (table["table_name"], cn, ct)
+                )
+            except Exception as e:
+                log.err(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+                raise Exception(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+
+    drop_columns = [
+        {
+            "table_name": "oauth2_clients",
+            "columns": [
+                "issued_at",
+                "expires_at",
+                "redirect_url",
+                "token_endpoint_auth_method",
+                "grant_type",
+                "response_type",
+                "scope",
+                "logo_uri",
+                "contact",
+                "tos_uri",
+                "policy_uri",
+                "jwks_uri",
+                "jwks_text",
+                "i18n_metadata",
+                "software_id",
+                "software_version",
+            ],
+        }
+    ]
+    log.err("creating new table columns")
+    for table in drop_columns:
+        for column in table["columns"]:
+            log.err(
+                "creating dropping column ({}) in table ({})".format(
+                    column, table.get("table_name", "")
+                )
+            )
+            try:
+                engine.execute(
+                    "ALTER TABLE %s DROP COLUMN IF EXISTS %s"
+                    % (table["table_name"], column)
+                )
+            except Exception as e:
+                log.err(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+                raise Exception(
+                    "failed to perform DB upgrade on {} adding column - exception: {}".format(
+                        table, str(e)
+                    )
+                )
+
+
 def db_upgrade_013_014():
     remove_policy_engine_sizes()
     upgrade_014_archive_rules()
+    upgrade_oauth_client_014()
 
 
 # Global upgrade definitions. For a given version these will be executed in order of definition here

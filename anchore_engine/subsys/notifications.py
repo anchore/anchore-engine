@@ -291,8 +291,6 @@ def notify(user_record, notification):
 
     logger.debug("sending notification: " + json.dumps(notification, indent=4))
 
-    validate_schema(notification)
-
     for notification_mode in notification_modes:
         if notification_mode == "webhook":
             rc = do_notify_webhook(user_record, notification)
@@ -300,6 +298,8 @@ def notify(user_record, notification):
     return True
 
 
+# TODO: this is not currently invoked anywhere and needs and update to not require a specific API schema but load
+# the notification schemas from another location
 def validate_schema(notification):
     """
     Check if the notification conforms to the Schema outlined in the Swagger Spec.

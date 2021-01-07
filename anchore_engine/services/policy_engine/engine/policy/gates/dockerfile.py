@@ -107,7 +107,7 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
         sort_order=2,
     )
 
-    _sanitize_regex = "\s*USER\s+\[?([^\]]+)\]?\s*"
+    _sanitize_regex = r"\s*USER\s+\[?([^\]]+)\]?\s*"
 
     def _evaluate(self, image_obj, context):
         rule_users = self.user.value()
@@ -267,9 +267,9 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
         for line in expose_lines:
             matchstr = None
             line = line.strip()
-            if re.match("^\s*(EXPOSE|" + "EXPOSE".lower() + ")\s+(.*)", line):
+            if re.match(r"^\s*(EXPOSE|" + "EXPOSE".lower() + r")\s+(.*)", line):
                 matchstr = re.match(
-                    "^\s*(EXPOSE|" + "EXPOSE".lower() + ")\s+(.*)", line
+                    r"^\s*(EXPOSE|" + "EXPOSE".lower() + r")\s+(.*)", line
                 ).group(2)
 
             if matchstr:
@@ -392,9 +392,9 @@ class DockerfileGate(Gate):
             for line in image_obj.dockerfile_contents.splitlines():
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    patt = re.match(".*\\\$", line)
+                    patt = re.match(r".*\\\$", line)
                     if patt:
-                        line = re.sub("\\\$", "", line)
+                        line = re.sub(r"\\\$", "", line)
                         linebuf = linebuf + line
                     else:
                         linebuf = linebuf + line
