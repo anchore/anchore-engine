@@ -1,4 +1,4 @@
-Authlib==0.12.1
+Authlib==0.15.2
 boto3==1.11.6
 Click==7.0
 connexion==2.5.1
@@ -36,3 +36,4 @@ ijson==2.5.1
 # Optional and third-party/integration dependencies
 python-keystoneclient==3.22.0
 pg8000==1.10.6
+

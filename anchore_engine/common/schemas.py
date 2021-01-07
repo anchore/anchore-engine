@@ -193,7 +193,7 @@ class AnalysisQueueMessage(JsonSerializable):
         account = fields.String(data_key="userId")
         image_digest = fields.String(data_key="imageDigest")
         manifest = fields.String(required=True)
-        parent_manifest = fields.String()
+        parent_manifest = fields.String(allow_none=True)
         type = fields.String(default="analysis")
 
         @post_load

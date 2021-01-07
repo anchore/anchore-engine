@@ -6,8 +6,9 @@ from . import python
 from . import rpm
 from . import debian
 
-# this is a mapping of syft artifact types to handler functions to transform syft output into engine-compliant output
-handlers_by_artifact_type = {
+# This is a mapping of **syft** artifact types to modules to transform syft output into engine-compliant output.
+# Each module has two functions: translate_and_save_entry & save_entry
+modules_by_artifact_type = {
     "gem": gem,
     "python": python,
     "npm": npm,
@@ -18,8 +19,9 @@ handlers_by_artifact_type = {
     "deb": debian,
 }
 
-# this is a mapping of engine artifact types to handler functions to transform syft output into engine-compliant output
-handlers_by_engine_type = {
+# This is a mapping of **engine** artifact types to modules to transform syft output into engine-compliant output
+# Each module has two functions: translate_and_save_entry & save_entry
+modules_by_engine_type = {
     "gem": gem,
     "python": python,
     "npm": npm,
