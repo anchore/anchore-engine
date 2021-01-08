@@ -7,7 +7,7 @@ a new API is also added to support uploads of Syft results into the system but w
 also involves an API update to 0.1.16 and a db schema update to 0.0.14, and resolves a long-standing issue with db varchar field lengths in the
 policy engine.
 
-+ Added - New APIs for uploading externally run Syft analysis of an image to generate an SBoM and importing results as an image into engine. Fixes #
++ Added - New APIs for uploading externally run Syft analysis of an image to generate an SBoM and importing results as an image into engine. Fixes #783
 + Added - Support for analysis archive rules to trigger based on total number of images in each account. Fixes #700
 + Added - Exclusion filters for analysis archive rules. Fixes #699
 + Added - Ability to exclude paths from vulnerability.packages rules using path regex. Fixes #229
