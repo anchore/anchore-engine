@@ -12,44 +12,40 @@ from anchore_engine.subsys.caching import (
 )
 
 
+@pytest.fixture
+def ttl_cache(request):
+    cache: TTLCache = TTLCache()
+    value: str = "test_value"
+    cache.cache_it("test_key", value, request.param)
+    return cache
+
+
 class TestTTLCache:
-    def test_cache_hit(self):
-        ttl_cache: TTLCache = TTLCache()
-        value: str = "test_value"
-        ttl_cache.cache_it("test_key", value)
+    @pytest.mark.parametrize(
+        "ttl_cache, sleep_time, expected_type",
+        [
+            (None, 0, str),
+            (-1, 0, str),
+            (1, 1, type(None)),
+            (0, 0, type(None)),
+        ],
+        indirect=["ttl_cache"],
+    )
+    def test_cache(self, ttl_cache, sleep_time, expected_type):
+        time.sleep(sleep_time)
         cached: Optional[str] = ttl_cache.lookup("test_key")
-        assert id(cached) == id(value)
+        assert isinstance(cached, expected_type)
+        if expected_type != type(None):
+            assert id(cached) == id("test_value")
 
-    def test_cache_miss(self):
-        ttl_cache: TTLCache = TTLCache()
-        ttl_cache.cache_it("test_key", "test_value", 1)
-        time.sleep(1)
-        cached: Optional[str] = ttl_cache.lookup("test_key")
-        assert isinstance(cached, type(None))
-
-    def test_negative_ttl(self):
-        ttl_cache: TTLCache = TTLCache()
-        value: str = "test_value"
-        ttl_cache.cache_it("test_key", value, -1)
-        cached: Optional[str] = ttl_cache.lookup("test_key")
-        assert id(cached) == id(value)
-
-    def test_zero_ttl(self):
-        ttl_cache: TTLCache = TTLCache()
-        ttl_cache.cache_it("test_key", "test_value", 0)
-        cached: Optional[str] = ttl_cache.lookup("test_key")
-        assert isinstance(cached, type(None))
-
-    def test_cache_flush(self):
-        ttl_cache: TTLCache = TTLCache()
-        ttl_cache.cache_it("test_key", "test_value")
+    @pytest.mark.parametrize("ttl_cache", [(None)], indirect=["ttl_cache"])
+    def test_cache_flush(self, ttl_cache):
         ttl_cache.flush()
         cached: Optional[str] = ttl_cache.lookup("test_key")
         assert isinstance(cached, type(None))
 
-    def test_cache_delete(self):
-        ttl_cache: TTLCache = TTLCache()
-        ttl_cache.cache_it("test_key", "test_value")
+    @pytest.mark.parametrize("ttl_cache", [(None)], indirect=["ttl_cache"])
+    def test_cache_delete(self, ttl_cache):
         ttl_cache.delete("test_key")
         cached: Optional[str] = ttl_cache.lookup("test_key")
         assert isinstance(cached, type(None))
