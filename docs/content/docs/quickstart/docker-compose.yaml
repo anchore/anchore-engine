@@ -11,7 +11,7 @@ volumes:
 services:
   # The primary API endpoint service
   api:
-    image: anchore/anchore-engine:v0.8.2
+    image: anchore/anchore-engine:v0.9.0
     depends_on:
       - db
       - catalog
@@ -29,7 +29,7 @@ services:
 
   # Catalog is the primary persistence and state manager of the system
   catalog:
-    image: anchore/anchore-engine:v0.8.2
+    image: anchore/anchore-engine:v0.9.0
     depends_on:
       - db
     logging:
@@ -44,7 +44,7 @@ services:
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "catalog"]
   queue:
-    image: anchore/anchore-engine:v0.8.2
+    image: anchore/anchore-engine:v0.9.0
     depends_on:
       - db
       - catalog
@@ -60,7 +60,7 @@ services:
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "simplequeue"]
   policy-engine:
-    image: anchore/anchore-engine:v0.8.2
+    image: anchore/anchore-engine:v0.9.0
     depends_on:
       - db
       - catalog
@@ -76,7 +76,7 @@ services:
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "policy_engine"]
   analyzer:
-    image: anchore/anchore-engine:v0.8.2
+    image: anchore/anchore-engine:v0.9.0
     depends_on:
       - db
       - catalog
