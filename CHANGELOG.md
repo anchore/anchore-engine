@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.9.0)
+
+0.9.0 is a big step towards full integration of Syft and Grype into Anchore Engine as planned for 1.0. In this release, Syft is used for all package identification, and
+a new API is also added to support uploads of Syft results into the system but with less analysis depth than an in-deployment analysis. This release 
+also involves an API update to 0.1.16 and a db schema update to 0.0.14, and resolves a long-standing issue with db varchar field lengths in the
+policy engine.
+
++ Added - New APIs for uploading externally run Syft analysis of an image to generate an SBoM and importing results as an image into engine. Fixes #783
++ Added - Support for analysis archive rules to trigger based on total number of images in each account. Fixes #700
++ Added - Exclusion filters for analysis archive rules. Fixes #699
++ Added - Ability to exclude paths from vulnerability.packages rules using path regex. Fixes #229
++ Added - Integrates new Syft tool (https://github.com/anchore/syft) as package bill of materials analyzer. Fixes #679, #685, #682
++ Added - Ability to set an expiration for individual whitelist rules. Fixes #178, 
++ Added - Ability to test webhook delivery via API call and provide schemas for webhook payloads. Fixes #489, #490
++ Added - Success and error counters in prometheus metrics exported by analyzers ("anchore_analysis_success" and "anchore_analysis_error")  
++ Added - Ability to bootstrap system and accounts with more than one policy bundle. Fixes #720
++ Improved - Better swagger spec for oauth token route
++ Fix - Update Authlib to 0.15.2 from 0.12.1 to update cryptography dependency to 3.3.1 to resolve GHSA-hggm-jpg3-v476. Fixes #733
++ Fix - Remove varchar db column widths in policy engine tables. Fixes #712, #649
++ Fix - Allow pulling signed images by setting proper flag in skopeo call. Fixes #711
++ Fix - NPM and Gem policy gates (version checks etc) failed to handle results properly and were short-circuiting. Fixes #725
++ Fix - files.content_search policy trigger not checking b64 encoded values consistently. Fixes #756
++ Fix - Move from python 3.6 to python 3.8. Fixes #605
++ Fix - Raise exception to log error and abort malware scan if image is larger than configured max malware scan size. Do not return a valid scan result. Fixes #677
++ Fix - Include fix version in check_output of policy evaluation if one is available, not just if the user specified it. Fixes #774  
++ Fix - List archives API with no entries returns error. Fixes #588  
++ Fix - Update urllib3 version to version 1.25.9
++ Additional minor fixes and enhancements
+
 ## 0.8.2 (2020-10-9)
 + Added - Ability to set pool_recycle and other SQLAlchemy engine parameters via config. Fixes #641 
 + Malware scan fails to find EICAR string in image over 25Mb. Fixes #615 

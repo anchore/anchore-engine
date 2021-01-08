@@ -55,8 +55,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "alpine-baselayout",
         "cpes": [
-            "cpe:2.3:a:*:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
             "cpe:2.3:a:alpine-baselayout:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
         ],
         "files": [
             "/dev",
@@ -168,8 +168,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "alpine-keys",
         "cpes": [
-            "cpe:2.3:a:*:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
             "cpe:2.3:a:alpine-keys:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
         ],
         "files": [
             "/etc",
@@ -219,8 +219,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "busybox",
         "cpes": [
-            "cpe:2.3:a:*:busybox:1.31.1-r16:*:*:*:*:*:*:*",
             "cpe:2.3:a:busybox:busybox:1.31.1-r16:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:busybox:1.31.1-r16:*:*:*:*:*:*:*",
         ],
         "files": [
             "/bin/busybox",
@@ -264,8 +264,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "ca-certificates-bundle",
         "cpes": [
-            "cpe:2.3:a:*:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
             "cpe:2.3:a:ca-certificates-bundle:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
         ],
         "files": [
             "/etc",
@@ -286,8 +286,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "libcrypto1.1",
         "cpes": [
-            "cpe:2.3:a:*:libcrypto1.1:1.1.1g-r0:*:*:*:*:*:*:*",
             "cpe:2.3:a:libcrypto1.1:libcrypto1.1:1.1.1g-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libcrypto1.1:1.1.1g-r0:*:*:*:*:*:*:*",
         ],
         "files": [
             "/etc",
@@ -324,8 +324,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "libtls-standalone",
         "cpes": [
-            "cpe:2.3:a:*:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
             "cpe:2.3:a:libtls-standalone:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
         ],
         "files": [
             "/usr",
@@ -345,8 +345,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "musl",
         "cpes": [
-            "cpe:2.3:a:*:musl:1.1.24-r8:*:*:*:*:*:*:*",
             "cpe:2.3:a:musl:musl:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:musl:1.1.24-r8:*:*:*:*:*:*:*",
         ],
         "files": ["/lib/ld-musl-x86_64.so.1", "/lib/libc.musl-x86_64.so.1", "/lib"],
     },
@@ -361,8 +361,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "musl-utils",
         "cpes": [
-            "cpe:2.3:a:*:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
             "cpe:2.3:a:musl-utils:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
         ],
         "files": [
             "/sbin/ldconfig",
@@ -386,8 +386,8 @@ pkgs_allinfo = {
         "type": "APKG",
         "name": "zlib",
         "cpes": [
-            "cpe:2.3:a:*:zlib:1.2.11-r3:*:*:*:*:*:*:*",
             "cpe:2.3:a:zlib:zlib:1.2.11-r3:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:zlib:1.2.11-r3:*:*:*:*:*:*:*",
         ],
         "files": ["/lib/libz.so.1", "/lib/libz.so.1.2.11", "/lib"],
     },

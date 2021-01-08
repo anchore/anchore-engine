@@ -30,9 +30,17 @@ def translate_and_save_entry(findings, artifact):
 
     # anchore engine always uses the name, however, the name may not be a top-level package
     # instead default to the first top-level package unless the name is listed among the
-    # top level packages explicitly defined in the metadata
-    pkg_key_name = artifact["metadata"]["topLevelPackages"][0]
-    if name in artifact["metadata"]["topLevelPackages"]:
+    # top level packages explicitly defined in the metadata. Note that the top-level package
+    # is optional!
+    pkg_key_names = dig(artifact, "metadata", "topLevelPackages", force_default=[])
+    pkg_key_name = None
+    for key_name in pkg_key_names:
+        if name in key_name:
+            pkg_key_name = name
+        else:
+            pkg_key_name = key_name
+
+    if not pkg_key_name:
         pkg_key_name = name
 
     pkg_key = os.path.join(site_pkg_root, pkg_key_name)
