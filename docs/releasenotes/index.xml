@@ -155,6 +155,46 @@ allow those images to be returned in those calls if desired (&lt;code>image_stat
 &lt;h3 id="upgrading">Upgrading&lt;/h3>
 &lt;ul>
 &lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.0</title><link>/docs/releasenotes/090/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/090/</guid><description>
+&lt;h2 id="anchore-engine-090">Anchore Engine 0.9.0&lt;/h2>
+&lt;p>Anchore Engine 0.9.0, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;p>&lt;em>NOTE: this release does involve a database schema update including column updates for some tables that may be quite large for some deployments, schedule
+downtime appropriately as it may take minutes to an hour depending on your database size and number of images you&amp;rsquo;ve analyzed and are present in the DB&lt;/em>&lt;/p>
+&lt;p>Engine 0.9.0 begins the migration of image inspection and vulnerability scanning to the &lt;a href="https://github.com/anchore/Syft">Syft&lt;/a> and &lt;a href="https://github.com/anchore/Grype">Grype&lt;/a> tools
+which allow re-use of that logic outside of a deployed stateful system. Engine now consumes Syft internally for generating container bills-of-materials for all
+OS and application packages.&lt;/p>
+&lt;h3 id="new-api-revision">New API Revision&lt;/h3>
+&lt;p>The API is updated to version &lt;a href="https://github.com/anchore/anchore-engine/blob/v0.9.0/anchore_engine/services/apiext/swagger/swagger.yaml">0.1.16&lt;/a>&lt;/p>
+&lt;h3 id="update-to-python-version">Update to Python Version&lt;/h3>
+&lt;p>Engine 0.9.0 is built and tested against Python 3.8, and that is what is installed in the container image as well. Previous release used Python 3.6.&lt;/p>
+&lt;h2 id="changes-of-note">Changes of Note&lt;/h2>
+&lt;h3 id="added">Added&lt;/h3>
+&lt;ul>
+&lt;li>New APIs for uploading externally run Syft analysis of an image to generate an SBoM and importing results as an image into engine. Fixes #783&lt;/li>
+&lt;li>Support for analysis archive rules to trigger based on total number of images in each account. Fixes #700&lt;/li>
+&lt;li>Exclusion filters for analysis archive rules to allow specific registries or repos to be excluded from a broader rule. Fixes #699&lt;/li>
+&lt;li>Ability to exclude paths from vulnerability.packages rules using path regex. Fixes #229&lt;/li>
+&lt;li>Integrates new Syft tool (&lt;a href="https://github.com/anchore/syft">https://github.com/anchore/syft&lt;/a>) as package bill of materials analyzer. Fixes #679, #685, #682&lt;/li>
+&lt;li>Ability to set an expiration for individual whitelist rules. Fixes #178,&lt;/li>
+&lt;li>Ability to test webhook delivery via API call and provide schemas for webhook payloads. Fixes #489, #490&lt;/li>
+&lt;li>Success and error counters in prometheus metrics exported by analyzers (&amp;ldquo;anchore_analysis_success&amp;rdquo; and &amp;ldquo;anchore_analysis_error&amp;rdquo;)&lt;/li>
+&lt;/ul>
+&lt;h3 id="fixed">Fixed&lt;/h3>
+&lt;ul>
+&lt;li>Update Authlib to 0.15.2 from 0.12.1 to update cryptography dependency to 3.3.1 to resolve GHSA-hggm-jpg3-v476. Fixes #733&lt;/li>
+&lt;li>Remove varchar db column widths in policy engine tables. Fixes #712, #649&lt;/li>
+&lt;li>Allow pulling signed images by setting proper flag in skopeo call. Fixes #711&lt;/li>
+&lt;li>NPM and Gem policy gates (version checks etc) failed to handle results properly and were short-circuiting. Fixes #725&lt;/li>
+&lt;li>files.content_search policy trigger not checking b64 encoded values consistently. Fixes #756&lt;/li>
+&lt;li>Raise exception to log error and abort malware scan if image is larger than configured max malware scan size. Do not return a valid scan result. Fixes #677&lt;/li>
+&lt;li>Include fix version in check_output of policy evaluation if one is available, not just if the user specified it. Fixes #774&lt;/li>
+&lt;li>List archives API with no entries returns error. Fixes #588&lt;/li>
+&lt;li>Update urllib3 version to version 1.25.9&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
 &lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.7.0</title><link>/docs/releasenotes/0.7.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0.7.0/</guid><description>
 &lt;h2 id="anchore-engine-070">Anchore Engine 0.7.0&lt;/h2>
 &lt;p>NOTE: This version of Anchore Engine is not compatible with Anchore Enterprise 2.2.x. If you are an Enterprise user you should not upgrade to this version, but instead wait for the Enterprise 2.3 release.&lt;/p>
