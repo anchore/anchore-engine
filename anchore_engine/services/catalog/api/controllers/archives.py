@@ -177,16 +177,20 @@ def create_analysis_archive_rule(rule):
     try:
         with session_scope() as session:
             # Validate that only one system_global rule has max_images_per_account set
-            qry = session.query(ArchiveTransitionRule).filter(
-                ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(),
-                ArchiveTransitionRule.system_global == True,
-                ArchiveTransitionRule.max_images_per_account != None,
-            )
-            if qry.first() is not None:
-                raise BadRequest(
-                    "A system_global Archive Transition Rule already exists with max_images_per_account set",
-                    {"existingRule": repr(qry.first())},
+            if (
+                rule.get("system_global", False)
+                and rule.get("max_images_per_account", None) is not None
+            ):
+                qry = session.query(ArchiveTransitionRule).filter(
+                    ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(),
+                    ArchiveTransitionRule.system_global.is_(True),
+                    ArchiveTransitionRule.max_images_per_account.isnot(None),
                 )
+                if qry.first() is not None:
+                    raise BadRequest(
+                        "A system_global Archive Transition Rule already exists with max_images_per_account set",
+                        {"existingRule": repr(qry.first())},
+                    )
 
             r = ArchiveTransitionRule()
             r.account = ApiRequestContextProxy.namespace()

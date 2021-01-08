@@ -46,7 +46,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /anchore_engine/bin v0.9.2
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.12.2
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -62,14 +62,11 @@ FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.8.2"
+ARG ANCHORE_ENGINE_VERSION="0.9.0"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
 COPY --from=anchore-engine-builder /build_output /build_output
-
-# Copy syft from build step
-COPY --from=anchore-engine-builder /anchore_engine/bin/syft /anchore_engine/bin/syft
 
 # Container metadata section
 
@@ -176,6 +173,7 @@ RUN set -ex && \
 RUN set -ex && \
     pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
+    cp /build_output/deps/syft /usr/bin/syft && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
     yum install -y /build_output/deps/*.rpm && \
@@ -188,6 +186,5 @@ HEALTHCHECK --start-period=20s \
 
 USER 1000
 
-ENV PATH="/anchore_engine/bin:${PATH}"
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]

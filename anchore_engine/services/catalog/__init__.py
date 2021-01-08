@@ -32,6 +32,8 @@ from anchore_engine.db import (
     db_subscriptions,
     db_anchore,
     db_services,
+    db_archivemetadata,
+    db_policyeval,
     AccountStates,
     AccountTypes,
 )
@@ -85,7 +87,14 @@ from anchore_engine.utils import AnchoreException
 # monitor section
 
 
-def do_user_resources_delete(userId):
+def do_account_resources_delete(account_name: str):
+    """
+    Delete resources associated with the given account name
+
+    :param account_name:
+    :return:
+    """
+
     return_object = {}
     httpcode = 500
 
@@ -112,6 +121,7 @@ def do_user_resources_delete(userId):
             db.db_archivemetadata.list_all_byuserId,
             catalog_impl.do_archive_delete,
         ),
+        ("imports", list_account_import_ops, delete_image_import_resource),
     ]
 
     limit = 2048
@@ -122,26 +132,28 @@ def do_user_resources_delete(userId):
             deleted = 0
             total = 0
             with db.session_scope() as dbsession:
-                records = getfunc(userId, session=dbsession, limit=limit)
+                records = getfunc(account_name, session=dbsession, limit=limit)
                 total = len(records)
+                return_object["total_{}".format(resourcename)] = total
+
                 for record in records:
-                    delfunc(userId, record, dbsession, force=True)
+                    delfunc(account_name, record, dbsession, force=True)
                     deleted = deleted + 1
-            return_object["total_{}".format(resourcename)] = total
+
             return_object["total_{}_deleted".format(resourcename)] = deleted
             all_total = all_total + total
             all_deleted = all_deleted + deleted
             if total or deleted:
                 logger.debug(
-                    "deleted {} / {} {} records for user {}".format(
-                        deleted, total, resourcename, userId
+                    "deleted {} / {} {} records for account {}".format(
+                        deleted, total, resourcename, account_name
                     )
                 )
 
         except Exception as err:
             logger.warn(
-                "failed to delete resources in {} for user {}, will continue and try again - exception: {}".format(
-                    resourcename, userId, err
+                "failed to delete resources in {} for account {}, will continue and try again - exception: {}".format(
+                    resourcename, account_name, err
                 )
             )
 
@@ -168,13 +180,13 @@ def handle_account_resource_cleanup(*args, **kwargs):
             )
 
         for account in accounts:
-            userId = account["name"]
+            account_name = account["name"]
 
             logger.debug(
-                "Inspecting account {} for resource cleanup tasks".format(userId)
+                "Inspecting account {} for resource cleanup tasks".format(account_name)
             )
             try:
-                return_object, httpcode = do_user_resources_delete(userId)
+                return_object, httpcode = do_account_resources_delete(account_name)
                 logger.debug(
                     "Resources for deleted account cleaned-up: {} - {}".format(
                         return_object, httpcode
@@ -185,24 +197,24 @@ def handle_account_resource_cleanup(*args, **kwargs):
                     and return_object.get("all_deleted", None) == 0
                 ):
                     logger.debug(
-                        "Resources for pending deleted user {} cleared - deleting account".format(
-                            userId
+                        "Resources for pending deleted account {} cleared - deleting account".format(
+                            account_name
                         )
                     )
                     with db.session_scope() as session:
                         mgr = manager_factory.for_session(session)
-                        mgr.delete_account(userId)
+                        mgr.delete_account(account_name)
 
                 else:
                     logger.debug(
-                        "resources for pending deleted user {} not entirely cleared this cycle".format(
-                            userId
+                        "resources for pending deleted account {} not entirely cleared this cycle".format(
+                            account_name
                         )
                     )
             except Exception as err:
                 raise Exception(
-                    "failed to delete user {} resources - exception: {}".format(
-                        userId, err
+                    "failed to delete account {} resources - exception: {}".format(
+                        account_name, err
                     )
                 )
 
@@ -2463,6 +2475,7 @@ def delete_import_operation(dbsession, operation: ImageImportOperation):
 
     obj_mgr = object_store.get_manager()
     failed = False
+    uuid = operation.uuid
 
     for content in operation.contents:
         try:
@@ -2494,12 +2507,11 @@ def delete_import_operation(dbsession, operation: ImageImportOperation):
             failed = True
 
     if not failed:
-        uuid = operation.uuid
         dbsession.delete(operation)
     else:
         return operation
 
-    logger.info("garbage collection of import operation %s complete", operation.uuid)
+    logger.info("garbage collection of import operation %s complete", uuid)
     return None
 
 
@@ -2532,6 +2544,52 @@ def garbage_collect_imports():
                 delete_import_operation(dbsession, op)
             except:
                 logger.exception("Error deleting image, may retry on next cycle")
+
+
+def list_account_import_ops(account: str, session=None, limit: int = 1000):
+    """
+    Return list of import operations for the given account, but only the first limit count to keep memory use reasonable.
+
+    :param account:
+    :param session:
+    :param limit:
+    :return: list of ImageImportOperations objects
+    """
+
+    if session is None:
+        raise ValueError("session is None")
+
+    return (
+        session.query(ImageImportOperation)
+        .filter(ImageImportOperation.account == account)
+        .limit(limit)
+        .all()
+    )
+
+
+def delete_image_import_resource(
+    account_name: str, record: ImageImportOperation, dbsession=None, force=True
+):
+    """
+    A function with the correct signature for use in do_account_resources_delete but that wraps the existing
+    delete_import_operation function
+
+    :param account_name: the string name of the account owning the record
+    :param record: the record to delete and its content
+    :param force: bool included for function signature parity with other cleanup functions, but ignored as meaningless
+    :return:
+    """
+
+    # Yes, weird, but function interface for the caller loop that calls this expects kwarg for dbsession
+    if not dbsession:
+        raise ValueError("Must have non-None db session")
+
+    # Ensure that there isn't an unexpected mismatch here. This should definitely no be triggered unless there are
+    # bugs elsewhere in the call chain
+    if record.account != account_name:
+        raise ValueError("account name does not match requested record to delete")
+
+    delete_import_operation(dbsession, record)
 
 
 def expire_imports():

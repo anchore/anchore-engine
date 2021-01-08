@@ -67,7 +67,7 @@ class FilenameMatchTrigger(BaseTrigger):
     regex = TriggerParameter(
         validator=TypeValidator("string"),
         name="regex",
-        example_str=".*\.pem",
+        example_str=r".*\.pem",
         description="Regex to apply to file names for match.",
         is_required=True,
     )
