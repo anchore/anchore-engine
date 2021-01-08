@@ -3,6 +3,7 @@
 import threading
 import time
 from typing import Optional
+
 import pytest
 from anchore_engine.subsys.caching import (
     TTLCache,
@@ -77,6 +78,7 @@ class TestLocalCaches:
         def thread_func():
             nonlocal thread_cache_id
             thread_cache_id = id(thread_local_cache().general)
+
         t1: threading.Thread = threading.Thread(target=thread_func)
         t1.start()
         t1.join()
