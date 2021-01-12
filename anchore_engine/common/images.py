@@ -75,6 +75,10 @@ def get_image_info(
             image_info["manifest"] = manifest
             image_info["parentmanifest"] = parentmanifest
             image_info["parentdigest"] = parentdigest
+            if manifest and manifest.get("layers"):
+                image_info["compressed_size"] = sum(
+                    layer["size"] for layer in manifest["layers"]
+                )
 
             # if we got a manifest, and the image_info does not yet contain an imageId, try to get it from the manifest
             if manifest and not image_info["imageId"]:
