@@ -591,6 +591,23 @@ def image(dbsession, request_inputs, bodycontent=None):
                             "could not fetch/parse manifest - exception: " + str(err)
                         )
 
+                    # fail add if image is too large
+                    if not is_image_valid_size(image_info):
+                        localconfig = (
+                            anchore_engine.configuration.localconfig.get_config()
+                        )
+                        raise BadRequest(
+                            "Image size is too large based on max size specified in the configuration",
+                            detail={
+                                "requested_image_compressed_size": image_info[
+                                    "compressed_size"
+                                ],
+                                "max_compressed_image_size": localconfig.get(
+                                    "max_compressed_image_size"
+                                ),
+                            },
+                        )
+
                     parent_manifest = json.dumps(image_info.get("parentmanifest", {}))
 
                     logger.debug(
@@ -651,7 +668,7 @@ def image(dbsession, request_inputs, bodycontent=None):
     except AnchoreApiError as err:
         logger.exception("Error processing image request")
         return_object = anchore_engine.common.helpers.make_response_error(
-            err.message, in_httpcode=err.__response_code__
+            err.message, in_httpcode=err.__response_code__, details=err.detail
         )
         httpcode = err.__response_code__
     except Exception as err:
@@ -2604,3 +2621,19 @@ def upsert_eval(dbsession, userId, record):
 
 
 ################################################################################
+
+# return true or false if image is a valid size based upon max_compressed_image_size specified in config
+def is_image_valid_size(image_info):
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    max_compressed_image_size = localconfig.get("max_compressed_image_size")
+    compressed_image_size = image_info.get("compressed_size")
+
+    if (
+        max_compressed_image_size
+        and max_compressed_image_size > -1
+        and compressed_image_size
+        and compressed_image_size > max_compressed_image_size
+    ):
+        return False
+    else:
+        return True
