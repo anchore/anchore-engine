@@ -105,7 +105,7 @@ clean-all: ## Clean everything (without prompts)
 
 test: test-unit test-integration setup-and-test-functional setup-and-test-e2e ## Run unit, integration, functional, and end-to-end tests
 
-test-unit: export TOX_ENV = py36 ## Run unit tests (tox)
+test-unit: export TOX_ENV = py38 ## Run unit tests (tox)
 test-unit: venv setup-test-infra
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-unit
 
