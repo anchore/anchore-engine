@@ -127,7 +127,9 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_ENABLED=false \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
-    AUTHLIB_INSECURE_TRANSPORT=true
+    AUTHLIB_INSECURE_TRANSPORT=true \
+    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE=null
+
 # Insecure transport required in case for things like tls sidecars
 
 # Container run environment settings
