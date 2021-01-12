@@ -780,6 +780,17 @@ def handle_repo_watcher(*args, **kwargs):
                                 )
                                 raise
 
+                            if not catalog_impl.is_image_valid_size(new_image_info):
+                                localconfig = (
+                                    anchore_engine.configuration.localconfig.get_config()
+                                )
+                                raise Exception(
+                                    "Image size of "
+                                    + str(new_image_info["compressed_size"])
+                                    + " exceeds configured maximum of "
+                                    + str(localconfig.get("max_compressed_image_size"))
+                                )
+
                             with db.session_scope() as dbsession:
                                 # One last check for repo subscription status before adding image
                                 if not db_subscriptions.is_active(
@@ -985,6 +996,17 @@ def handle_image_watcher(*args, **kwargs):
                         user_id=userId, tag=fulltag, error=e.to_dict()
                     )
                     raise
+
+                if not catalog_impl.is_image_valid_size(image_info):
+                    localconfig = anchore_engine.configuration.localconfig.get_config()
+                    raise Exception(
+                        "Image ("
+                        + str(fulltag)
+                        + ") size of "
+                        + str(image_info["compressed_size"])
+                        + " exceeds configured maximum size of "
+                        + str(localconfig.get("max_compressed_image_size"))
+                    )
 
                 parent_manifest = json.dumps(image_info.get("parentmanifest", {}))
 
@@ -1741,7 +1763,7 @@ def handle_notifications(*args, **kwargs):
                                         db_subscriptions.get_byfilter(
                                             account["name"],
                                             session=dbsession,
-                                            **dbfilter
+                                            **dbfilter,
                                         )
                                     )
                                     if subscription_records:
@@ -2122,7 +2144,7 @@ def watcher_func(*args, **kwargs):
                             handler,
                             ttl=default_lease_ttl,
                             *args,
-                            **kwargs
+                            **kwargs,
                         )
 
                 else:

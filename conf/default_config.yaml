@@ -184,3 +184,7 @@ services:
     cycle_timers:
       feed_sync: ${ANCHORE_FEED_SYNC_INTERVAL_SEC} # 6 hours between feed syncs
       feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
+
+
+# Defines a maximum compressed image size (bytes) to be added for analysis
+max_compressed_image_size: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE}
