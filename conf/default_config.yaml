@@ -186,5 +186,7 @@ services:
       feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
 
 
-# Defines a maximum compressed image size (bytes) to be added for analysis
+# Defines a maximum compressed image size (MB) to be added for analysis
+# Value < 0 disables feature
+# Disabled by default
 max_compressed_image_size: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE}
