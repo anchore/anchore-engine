@@ -55,7 +55,7 @@ DEFAULT_CONFIG = {
         },
     },
     "policy_bundles_dir": "bundles/",
-    "max_compressed_image_size": None,
+    "max_compressed_image_size": -1,
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50

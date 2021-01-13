@@ -68,7 +68,7 @@ services:
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_OAUTH_ENABLED=true
       - ANCHORE_AUTH_SECRET=supersharedsecret
-      - ANCHORE_MAX_COMPRESSED_IMAGE_SIZE=700000000
+      - ANCHORE_MAX_COMPRESSED_IMAGE_SIZE=700
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
     image: ${TEST_IMAGE_NAME}
