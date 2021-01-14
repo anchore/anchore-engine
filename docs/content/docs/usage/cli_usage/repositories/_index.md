@@ -66,6 +66,8 @@ The repo watch command instructs the Anchore Engine to monitor a repository for 
 
 `$ anchore-cli repo watch repo.example.com/myrepo`
 
+Note that [max image size]({{< ref "/docs/usage/cli_usage/images/_index.md#adding-an-image" >}}) applies to the repository watcher. Images that exceed the max configured size in the repo being watched will not be added and a message will be logged in the catalog service. 
+
 ## Removing a Repository and All Images
 
 There may be a time when you wish to stop a repository analysis when the analysis is running (e.g., accidentally watching an image with a large number of tags).  There are several steps in the process which are outlined below.  We will use `docker.io/library/alpine` as an example.
