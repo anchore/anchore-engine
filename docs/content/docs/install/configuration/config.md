@@ -12,7 +12,7 @@ Each environment variable (starting with ANCHORE_) in the default config.yaml is
 
 Some examples of useful initial settings follow.
 
-* Default admin credentials: by default, the **admin** has a password of **foobar** and email **admin@myanchore**, set using the **ANCHORE_ADMIN_PASSWORD** and **ANCHORE_ADMIN_EMAIL** environment variables, respectively, in the Dockerfile.  To change these settings, simply add overrides for **ANCHORE_ADMIN_PASSWORD** and **ANCHORE_ADMIN_EMAIL** environment variables, set to your preferred values prior to deploying anchore engine.
+* Default admin credentials: A default admin email and password is required for the initial bootstrap of engine to succeed, which are both set through the default config file using the **ANCHORE_ADMIN_PASSWORD** and **ANCHORE_ADMIN_EMAIL** environment variables respectively. The Dockerfile defines a default email **admin@myanchore**, but does not define a default password. If using the default config file, the user must set a value for **ANCHORE_ADMIN_PASSWORD** in order to succeed the initial bootstrap of the system. To set the default password or to override the default email, simply add overrides for **ANCHORE_ADMIN_PASSWORD** and **ANCHORE_ADMIN_EMAIL** environment variables, set to your preferred values prior to deploying anchore engine.
 ```YAML
 default_admin_password: '${ANCHORE_ADMIN_PASSWORD}'
 default_admin_email: '${ANCHORE_ADMIN_EMAIL}'
