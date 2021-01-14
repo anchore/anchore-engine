@@ -332,7 +332,9 @@ def load_config(configdir=None, configfile=None, validate_params=None):
         if ext_config.get("metadata_types", []):
             localconfig["image_metadata_types"].extend(ext_config.get("metadata_types"))
 
-    localconfig["services"]["analyzer"]["analyzer_driver"] = "nodocker"
+    analyzer_config = localconfig.get("services", {}).get("analyzer", {})
+    if analyzer_config:
+        localconfig["services"]["analyzer"]["analyzer_driver"] = "nodocker"
 
     return localconfig
 

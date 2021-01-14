@@ -65,9 +65,8 @@ paths:
         - name: domain
           in: query
           required: true
-          schema:
-            type: string
-            description: The name of a domain
+          type: string
+          description: The name of a domain
       responses:
         200:
           description: Deletion successful
@@ -96,9 +95,8 @@ paths:
         - name: principal
           in: query
           required: true
-          schema:
-            type: string
-            description: The name of a principal
+          type: string
+          description: The name of a principal
       responses:
         200:
           description: Deletion successful
