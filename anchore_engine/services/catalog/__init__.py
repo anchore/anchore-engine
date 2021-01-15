@@ -789,9 +789,9 @@ def handle_repo_watcher(*args, **kwargs):
                                     + str(new_image_info["compressed_size"])
                                     + " bytes exceeds configured maximum of "
                                     + str(
-                                        localconfig.get("max_compressed_image_size")
-                                        * 1000000
+                                        localconfig.get("max_compressed_image_size_mb")
                                     )
+                                    + " MB"
                                 )
 
                             with db.session_scope() as dbsession:
@@ -1008,7 +1008,8 @@ def handle_image_watcher(*args, **kwargs):
                         + ") size of "
                         + str(image_info["compressed_size"])
                         + " bytes exceeds configured maximum size of "
-                        + str(localconfig.get("max_compressed_image_size") * 1000000)
+                        + str(localconfig.get("max_compressed_image_size_mb"))
+                        + " MB"
                     )
 
                 parent_manifest = json.dumps(image_info.get("parentmanifest", {}))

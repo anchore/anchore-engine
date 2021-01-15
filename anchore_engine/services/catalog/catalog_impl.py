@@ -599,13 +599,12 @@ def image(dbsession, request_inputs, bodycontent=None):
                         raise BadRequest(
                             "Image size is too large based on max size specified in the configuration",
                             detail={
-                                "requested_image_compressed_size": image_info[
+                                "requested_image_compressed_size_bytes": image_info[
                                     "compressed_size"
                                 ],
-                                "max_compressed_image_size": localconfig.get(
-                                    "max_compressed_image_size"
-                                )
-                                * 1000000,
+                                "max_compressed_image_size_mb": localconfig.get(
+                                    "max_compressed_image_size_mb"
+                                ),
                             },
                         )
 
@@ -2623,17 +2622,17 @@ def upsert_eval(dbsession, userId, record):
 
 ################################################################################
 
-# return true or false if image is a valid size based upon max_compressed_image_size specified in config
+# return true or false if image is a valid size based upon max_compressed_image_size_mb specified in config
 def is_image_valid_size(image_info):
     localconfig = anchore_engine.configuration.localconfig.get_config()
-    max_compressed_image_size = localconfig.get("max_compressed_image_size", -1)
+    max_compressed_image_size_mb = localconfig.get("max_compressed_image_size_mb", -1)
     compressed_image_size = image_info.get("compressed_size")
 
     if (
-        max_compressed_image_size
-        and max_compressed_image_size > -1
+        max_compressed_image_size_mb
+        and max_compressed_image_size_mb > -1
         and compressed_image_size
-        and compressed_image_size > (max_compressed_image_size * 1000000)
+        and compressed_image_size > (max_compressed_image_size_mb * 1000000)
     ):
         return False
     else:

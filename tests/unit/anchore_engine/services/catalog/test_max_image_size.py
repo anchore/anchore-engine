@@ -5,22 +5,22 @@ from anchore_engine.services.catalog.catalog_impl import is_image_valid_size
 max_image_size_tests = [
     {
         "image_info": {"compressed_size": 300000000},
-        "get_config": lambda: {"max_compressed_image_size": 700},
+        "get_config": lambda: {"max_compressed_image_size_mb": 700},
         "is_valid": True,
     },
     {
         "image_info": {"compressed_size": 300000000},
-        "get_config": lambda: {"max_compressed_image_size": 200},
+        "get_config": lambda: {"max_compressed_image_size_mb": 200},
         "is_valid": False,
     },
     {
         "image_info": {"compressed_size": 300000000},
-        "get_config": lambda: {"max_compressed_image_size": None},
+        "get_config": lambda: {"max_compressed_image_size_mb": None},
         "is_valid": True,
     },
     {
         "image_info": {"compressed_size": 300000000},
-        "get_config": lambda: {"max_compressed_image_size": -1},
+        "get_config": lambda: {"max_compressed_image_size_mb": -1},
         "is_valid": True,
     },
     {
@@ -31,7 +31,7 @@ max_image_size_tests = [
     {"image_info": {}, "get_config": lambda: {}, "is_valid": True},
     {
         "image_info": {},
-        "get_config": lambda: {"max_compressed_image_size": 300},
+        "get_config": lambda: {"max_compressed_image_size_mb": 300},
         "is_valid": True,
     },
 ]

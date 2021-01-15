@@ -170,10 +170,10 @@ def test_load_policy_bundles(
     assert len(exceptions) == expected_exceptions
 
 
-def test_validate_max_compressed_image_size():
-    validate_config({"max_compressed_image_size": 54}, {})
+def test_validate_max_compressed_image_size_mb():
+    validate_config({"max_compressed_image_size_mb": 54}, {})
 
-    validate_config({"max_compressed_image_size": -1}, {})
+    validate_config({"max_compressed_image_size_mb": -1}, {})
 
     with pytest.raises(Exception):
-        validate_config({"max_compressed_image_size": "Test"}, {})
+        validate_config({"max_compressed_image_size_mb": "Test"}, {})
