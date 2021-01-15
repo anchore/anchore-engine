@@ -13,7 +13,7 @@ class TestOversizedImageReturns400:
         )
         assert (
             details["requested_image_compressed_size"]
-            > details["max_compressed_image_size"]
+            > details["max_compressed_image_size_mb"]
         )
 
 

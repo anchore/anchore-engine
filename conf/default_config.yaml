@@ -189,4 +189,4 @@ services:
 # Defines a maximum compressed image size (MB) to be added for analysis
 # Value < 0 disables feature
 # Disabled by default
-max_compressed_image_size: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE}
+max_compressed_image_size_mb: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB}
