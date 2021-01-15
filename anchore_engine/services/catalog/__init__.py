@@ -79,7 +79,7 @@ from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
 )
-from anchore_engine.utils import AnchoreException
+from anchore_engine.utils import AnchoreException, bytes_to_mb
 
 
 ##########################################################
@@ -787,10 +787,9 @@ def handle_repo_watcher(*args, **kwargs):
                                 raise Exception(
                                     "Image size of "
                                     + str(
-                                        round(
-                                            new_image_info["compressed_size"]
-                                            / (2 ** 20),
-                                            2,
+                                        bytes_to_mb(
+                                            new_image_info["compressed_size"],
+                                            round_to=2,
                                         )
                                     )
                                     + " MB exceeds configured maximum of "
@@ -1012,7 +1011,7 @@ def handle_image_watcher(*args, **kwargs):
                         "Image ("
                         + str(fulltag)
                         + ") size of "
-                        + str(round(image_info["compressed_size"] / (2 ** 20), 2))
+                        + str(bytes_to_mb(image_info["compressed_size"], round_to=2))
                         + " MB exceeds configured maximum size of "
                         + str(localconfig.get("max_compressed_image_size_mb"))
                         + " MB"
