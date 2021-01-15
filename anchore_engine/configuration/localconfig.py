@@ -55,6 +55,7 @@ DEFAULT_CONFIG = {
         },
     },
     "policy_bundles_dir": "bundles/",
+    "max_compressed_image_size": None,
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50
@@ -99,6 +100,17 @@ default_required_config_params = {
 
 CRED_CACHE_TTL = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_TTL", 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC", 3))
+
+ANALYZER_SEARCH_PATHS = ["anchore_engine.analyzers"]
+
+
+def register_analyzers(module_path):
+    global ANALYZER_SEARCH_PATHS
+    ANALYZER_SEARCH_PATHS.append(module_path)
+
+
+def analyzer_paths():
+    return ANALYZER_SEARCH_PATHS
 
 
 def update_merge(base, override):
@@ -320,21 +332,9 @@ def load_config(configdir=None, configfile=None, validate_params=None):
         if ext_config.get("metadata_types", []):
             localconfig["image_metadata_types"].extend(ext_config.get("metadata_types"))
 
-    # any special overrides/deprecation handling here
-    try:
-        analyzer_config = localconfig.get("services", {}).get("analyzer", {})
-        if (
-            analyzer_config
-            and analyzer_config.get("analyzer_driver", "localanchore") != "nodocker"
-        ):
-            if not os.path.exists("/usr/bin/anchore"):
-                logger.warn(
-                    "the 'localanchore' analyzer driver has been removed from anchore-engine - defaulting to 'nodocker' analyzer driver"
-                )
-                localconfig["services"]["analyzer"]["analyzer_driver"] = "nodocker"
-    except Exception as err:
-        logger.warn(str(err))
-        pass
+    analyzer_config = localconfig.get("services", {}).get("analyzer", {})
+    if analyzer_config:
+        localconfig["services"]["analyzer"]["analyzer_driver"] = "nodocker"
 
     return localconfig
 
@@ -512,6 +512,11 @@ def validate_config(config, validate_params=None):
 
         if "keys" in validate_params and validate_params["keys"]:
             validate_key_config(config, required=False)
+
+        if config["max_compressed_image_size"] and not isinstance(
+            config["max_compressed_image_size"], int
+        ):
+            raise Exception("max_compressed_image_size must be an integer")
 
     except Exception as err:
         logger.error(str(err))

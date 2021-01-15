@@ -9,6 +9,7 @@ from anchore_engine.configuration.localconfig import (
     load_filepath_to_config,
     load_policy_bundle_paths,
     load_policy_bundles,
+    validate_config,
 )
 from pathlib import Path
 
@@ -167,3 +168,10 @@ def test_load_policy_bundles(
     assert len(policy_bundles) == expected_bundles
     assert len(bundles) == expected_bundles
     assert len(exceptions) == expected_exceptions
+
+
+def test_validate_max_compressed_image_size():
+    validate_config({"max_compressed_image_size": 54}, {})
+
+    with pytest.raises(Exception):
+        validate_config({"max_compressed_image_size": "Test"}, {})
