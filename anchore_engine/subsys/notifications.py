@@ -3,7 +3,6 @@ import uuid
 import jsonschema
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.apis.context import ApiRequestContextProxy
 import anchore_engine.configuration.localconfig
 from anchore_engine.clients.services import http
 from anchore_engine.clients.services import internal_client_for
@@ -300,12 +299,13 @@ def notify(user_record, notification):
 
 # TODO: this is not currently invoked anywhere and needs and update to not require a specific API schema but load
 # the notification schemas from another location
-def validate_schema(notification):
+def validate_schema(notification, api_spec):
     """
     Check if the notification conforms to the Schema outlined in the Swagger Spec.
     Also only do this for the types we know (policy_eval, vuln_update, tag_update, analysis_update)
 
     :param notification: notification object to deliver
+    :param api_spec: API service object (from ApiRequestContextNamespace.get_service().api_spec)
     """
     ret = False
 
@@ -325,8 +325,7 @@ def validate_schema(notification):
         notification_type, "NotificationBase"
     )
 
-    spec = ApiRequestContextProxy.get_service().api_spec
-    schema = spec.get("definitions", {}).get(notification_schema_definition)
+    schema = api_spec.get("definitions", {}).get(notification_schema_definition)
     try:
         jsonschema.validate(notification, schema)
         ret = True
