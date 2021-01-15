@@ -68,7 +68,6 @@ SYSTEM_ACCOUNT_NAME = "anchore-system"
 SYSTEM_USERNAME = "anchore-system"
 ADMIN_ACCOUNT_NAME = "admin"
 ADMIN_USERNAME = "admin"
-ADMIN_USER_DEFAULT_PASSWORD = "foobar"  # This is used if the config doesn't include a value for the key referenced by DEFAULT_ADMIN_PASSWORD_KEY
 DEFAULT_ADMIN_PASSWORD_KEY = "default_admin_password"
 DEFAULT_ADMIN_EMAIL_KEY = "default_admin_email"
 GLOBAL_RESOURCE_DOMAIN = "system"  # Used as the domain for things like accounts
