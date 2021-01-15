@@ -786,8 +786,14 @@ def handle_repo_watcher(*args, **kwargs):
                                 )
                                 raise Exception(
                                     "Image size of "
-                                    + str(new_image_info["compressed_size"])
-                                    + " bytes exceeds configured maximum of "
+                                    + str(
+                                        round(
+                                            new_image_info["compressed_size"]
+                                            / (2 ** 20),
+                                            2,
+                                        )
+                                    )
+                                    + " MB exceeds configured maximum of "
                                     + str(
                                         localconfig.get("max_compressed_image_size_mb")
                                     )
@@ -1006,8 +1012,8 @@ def handle_image_watcher(*args, **kwargs):
                         "Image ("
                         + str(fulltag)
                         + ") size of "
-                        + str(image_info["compressed_size"])
-                        + " bytes exceeds configured maximum size of "
+                        + str(round(image_info["compressed_size"] / (2 ** 20), 2))
+                        + " MB exceeds configured maximum size of "
                         + str(localconfig.get("max_compressed_image_size_mb"))
                         + " MB"
                     )

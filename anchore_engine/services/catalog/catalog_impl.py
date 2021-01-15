@@ -599,9 +599,9 @@ def image(dbsession, request_inputs, bodycontent=None):
                         raise BadRequest(
                             "Image size is too large based on max size specified in the configuration",
                             detail={
-                                "requested_image_compressed_size_bytes": image_info[
-                                    "compressed_size"
-                                ],
+                                "requested_image_compressed_size_mb": round(
+                                    image_info["compressed_size"] / (2 ** 20), 2
+                                ),
                                 "max_compressed_image_size_mb": localconfig.get(
                                     "max_compressed_image_size_mb"
                                 ),
@@ -2632,7 +2632,7 @@ def is_image_valid_size(image_info):
         max_compressed_image_size_mb
         and max_compressed_image_size_mb > -1
         and compressed_image_size
-        and compressed_image_size > (max_compressed_image_size_mb * 1000000)
+        and compressed_image_size > (max_compressed_image_size_mb * (2 ** 20))
     ):
         return False
     else:
