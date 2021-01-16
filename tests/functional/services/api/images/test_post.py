@@ -12,8 +12,8 @@ class TestOversizedImageReturns400:
             == "Image size is too large based on max size specified in the configuration"
         )
         assert (
-            details["requested_image_compressed_size"]
-            > details["max_compressed_image_size"]
+            details["requested_image_compressed_size_mb"]
+            > details["max_compressed_image_size_mb"]
         )
 
 
