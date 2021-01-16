@@ -1,7 +1,7 @@
 import pytest
 from anchore_engine.db import session_scope, AccountTypes, UserAccessCredentialTypes
 from anchore_engine.subsys import identities, logger
-from anchore_engine.configuration.localconfig import SYSTEM_ACCOUNT_NAME
+from anchore_engine.configuration import localconfig
 from tests.fixtures import anchore_db
 
 
@@ -13,7 +13,11 @@ def tearDown():
             mgr.delete_account(accnt["name"])
 
 
-def test_initialize_identities(anchore_db):
+def test_initialize_identities(anchore_db, monkeypatch):
+    monkeypatch.setattr(
+        localconfig, "localconfig", {"default_admin_password": "foobar"}
+    )
+
     try:
         with session_scope() as session:
             bootstrapper = identities.IdentityBootstrapper(
@@ -23,19 +27,32 @@ def test_initialize_identities(anchore_db):
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
-            accnt1 = mgr.get_account(SYSTEM_ACCOUNT_NAME)
+            accnt1 = mgr.get_account(localconfig.SYSTEM_ACCOUNT_NAME)
             logger.info(str(accnt1))
             assert AccountTypes.service == accnt1["type"]
 
         with session_scope() as session:
             mgr = identities.manager_factory.for_session(session)
-            user1, creds1 = mgr.get_credentials_for_username(SYSTEM_ACCOUNT_NAME)
+            user1, creds1 = mgr.get_credentials_for_username(
+                localconfig.SYSTEM_ACCOUNT_NAME
+            )
 
         logger.info(creds1)
         assert user1 is not None
         assert creds1 is not None
     finally:
         tearDown()
+
+
+def test_unset_default_password(anchore_db, monkeypatch):
+    with pytest.raises(Exception) as excinfo:
+        with session_scope() as session:
+            bootstrapper = identities.IdentityBootstrapper(
+                identities.IdentityManager, session
+            )
+            bootstrapper.initialize_system_identities()
+
+    assert "No default admin password provided" in str(excinfo.value)
 
 
 def test_initialize_users(anchore_db):
