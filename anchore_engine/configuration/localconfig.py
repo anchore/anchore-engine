@@ -55,7 +55,7 @@ DEFAULT_CONFIG = {
         },
     },
     "policy_bundles_dir": "bundles/",
-    "max_compressed_image_size": None,
+    "max_compressed_image_size_mb": -1,
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50
@@ -68,7 +68,6 @@ SYSTEM_ACCOUNT_NAME = "anchore-system"
 SYSTEM_USERNAME = "anchore-system"
 ADMIN_ACCOUNT_NAME = "admin"
 ADMIN_USERNAME = "admin"
-ADMIN_USER_DEFAULT_PASSWORD = "foobar"  # This is used if the config doesn't include a value for the key referenced by DEFAULT_ADMIN_PASSWORD_KEY
 DEFAULT_ADMIN_PASSWORD_KEY = "default_admin_password"
 DEFAULT_ADMIN_EMAIL_KEY = "default_admin_email"
 GLOBAL_RESOURCE_DOMAIN = "system"  # Used as the domain for things like accounts
@@ -513,10 +512,10 @@ def validate_config(config, validate_params=None):
         if "keys" in validate_params and validate_params["keys"]:
             validate_key_config(config, required=False)
 
-        if config["max_compressed_image_size"] and not isinstance(
-            config["max_compressed_image_size"], int
+        if config.get("max_compressed_image_size_mb") and not isinstance(
+            config["max_compressed_image_size_mb"], int
         ):
-            raise Exception("max_compressed_image_size must be an integer")
+            raise Exception("max_compressed_image_size_mb must be an integer")
 
     except Exception as err:
         logger.error(str(err))
