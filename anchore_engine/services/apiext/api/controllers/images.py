@@ -147,7 +147,6 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         "package_path": "Package_Path",
         "package_version": "Package_Version",
     }
-    id_cves_map = {}
     scan_result = vulnerability_data["legacy_report"]
     try:
         for imageId in list(scan_result.keys()):
@@ -181,8 +180,6 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
                     el["vendor_data"] = make_cvss_scores(
                         all_data.get("vendor_data", [])
                     )
-                    for nvd_el in el["nvd_data"]:
-                        id_cves_map[nvd_el.get("id")] = el.get("vuln")
 
     except Exception as err:
         logger.exception("could not prepare query response")
@@ -204,7 +201,25 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         "feed_group": "feed_namespace",
     }
     scan_result = vulnerability_data["cpe_report"]
+    # gather a map of package path->CVE IDs referred by vulndb entries, dedup logic copied from policy engine
+    dedup_hash = {}
     for vuln in scan_result:
+        if vuln.get("feed_name") == "vulndb":
+            pkg_path = vuln.get("pkg_path")
+            for nvd_item in vuln.get("nvd_data", []):
+                if pkg_path not in dedup_hash:
+                    dedup_hash[pkg_path] = set()
+                dedup_hash[pkg_path].add(nvd_item.get("id"))
+
+    for vuln in scan_result:
+        # dedup pass: skip nvd record if vulndb covers it
+        if dedup_hash and vuln.get("feed_name") != "vulndb":
+            pkg_path = vuln.get("pkg_path")
+            if (
+                pkg_path in dedup_hash
+                and vuln.get("vulnerability_id") in dedup_hash[pkg_path]
+            ):
+                continue
 
         el = {}
         el.update(eltemplate)
@@ -230,39 +245,14 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
         fixed_in = vuln.get("fixed_in", [])
         el["fix"] = ", ".join(fixed_in) if fixed_in else "None"
 
-        # dedup logic for filtering nvd cpes that are referred by vulndb
-        if vuln.get("feed_name") == "vulndb":
-            for nvd_item in vuln.get("nvd_data", []):
-                try:
-                    id_cves_map[nvd_item.get("id")] = el.get("vuln")
-                except Exception as err:
-                    logger.warn(
-                        "failure during vulnerability dedup check (vulndbs over nvd) with {}".format(
-                            err
-                        )
-                    )
-
         nonosvulns.append(el)
-
-    # perform a de-dup pass
-    final_nonosvulns = []
-    for v in nonosvulns:
-        include = True
-        try:
-            if v.get("vuln") in id_cves_map:
-                include = False
-        except Exception as err:
-            logger.warn("failure during vulnerability dedup check: {}".format(str(err)))
-
-        if include:
-            final_nonosvulns.append(v)
 
     if vulnerability_type == "os":
         ret = osvulns
     elif vulnerability_type == "non-os":
-        ret = final_nonosvulns
+        ret = nonosvulns
     elif vulnerability_type == "all":
-        ret = osvulns + final_nonosvulns
+        ret = osvulns + nonosvulns
     else:
         ret = vulnerability_data
 
