@@ -23,6 +23,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=api
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "apiext"]
@@ -40,6 +41,7 @@ services:
       - 8228
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=catalog
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "catalog"]
@@ -56,6 +58,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=queue
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "simplequeue"]
@@ -72,6 +75,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=policy-engine
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     command: ["anchore-manager", "service", "start", "policy_engine"]
@@ -88,6 +92,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=analyzer
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=db
       - ANCHORE_DB_PASSWORD=mysecretpassword
     volumes:

@@ -20,7 +20,7 @@ import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
 import anchore_engine.common.images
-import anchore_engine.analyzers
+from anchore_engine.analyzers import manager as analyzer_manager
 from anchore_engine.utils import AnchoreException
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
@@ -885,7 +885,7 @@ def list_analyzers():
     :return: list of str that are the names of the analyzer modules
     """
 
-    return anchore_engine.analyzers.list_modules()
+    return analyzer_manager.list_modules()
 
 
 def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
@@ -900,7 +900,7 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
         with open(os.path.join(unpackdir, "anchore_hints.json"), "w") as OFH:
             OFH.write(json.dumps({}))
 
-    analyzer_report = anchore_engine.analyzers.run(
+    analyzer_report = analyzer_manager.run(
         configdir, imageId, unpackdir, outputdir, copydir
     )
 

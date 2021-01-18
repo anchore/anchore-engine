@@ -385,7 +385,7 @@ def rfc3339str_to_datetime(rfc3339_str):
 
     if ret is None:
         raise Exception(
-            "could not convert input created_at value ({}) into datetime using formats in {}".format(
+            "could not convert input value ({}) into datetime using formats in {}".format(
                 rfc3339_str, rfc3339_date_input_fmts
             )
         )
@@ -883,3 +883,11 @@ def mapped_parser_item_iterator(input_stream, item_path):
     """
     events = map(ijson_decimal_to_float, ijpython.parse(input_stream))
     return ijcommon.items(events, item_path)
+
+
+def bytes_to_mb(value, round_to=None):
+    mb = value / M_BYTES
+    if round_to:
+        mb = round(mb, round_to)
+
+    return mb

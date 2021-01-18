@@ -45,6 +45,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=engine-api
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_OAUTH_ENABLED=true
@@ -64,11 +65,12 @@ services:
       - 8228
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=engine-catalog
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_OAUTH_ENABLED=true
       - ANCHORE_AUTH_SECRET=supersharedsecret
-      - ANCHORE_MAX_COMPRESSED_IMAGE_SIZE=700000000
+      - ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=700
     command: ["anchore-manager", "service", "start", "catalog"]
   engine-simpleq:
     image: ${TEST_IMAGE_NAME}
@@ -83,6 +85,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=engine-simpleq
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_OAUTH_ENABLED=true
@@ -101,6 +104,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=engine-policy-engine
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_FEEDS_ENABLED=false
@@ -120,6 +124,7 @@ services:
         max-size: 100m
     environment:
       - ANCHORE_ENDPOINT_HOSTNAME=engine-analyzer
+      - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
       - ANCHORE_OAUTH_ENABLED=true
