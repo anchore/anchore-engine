@@ -289,10 +289,11 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             for image_cpe, vulnerability_cpe in cpevulns[sev]:
                                 parameter_data = OrderedDict()
 
+                                # use normalized ID for trigger
+                                normalized_id = vulnerability_cpe.parent.normalized_id
+
                                 parameter_data["severity"] = sev.upper()
-                                parameter_data[
-                                    "vulnerability_id"
-                                ] = vulnerability_cpe.vulnerability_id
+                                parameter_data["vulnerability_id"] = normalized_id
                                 parameter_data["pkg_class"] = "non-os"
                                 parameter_data["pkg_type"] = image_cpe.pkg_type
 
@@ -589,9 +590,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                     parameter_data["link"],
                                 )
                                 self._fire(
-                                    instance_id=vulnerability_cpe.vulnerability_id
-                                    + "+"
-                                    + trigger_fname,
+                                    instance_id=normalized_id + "+" + trigger_fname,
                                     msg=msg,
                                 )
 
@@ -1004,7 +1003,8 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
                 cpevulns = context.data.get("loaded_cpe_vulnerabilities")
                 for sev in list(cpevulns.keys()):
                     for image_cpe, vulnerability_cpe in cpevulns[sev]:
-                        if vid == vulnerability_cpe.vulnerability_id:
+                        # use normalized ID for evaluating match
+                        if vid == vulnerability_cpe.parent.normalized_id:
                             found = True
                             break
                     if found:

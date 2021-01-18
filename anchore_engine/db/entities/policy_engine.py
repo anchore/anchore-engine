@@ -649,6 +649,10 @@ class NvdMetadata(Base):
         )
 
     @property
+    def normalized_id(self):
+        return self.name
+
+    @property
     def description(self):
         return self.summary if self.summary else ""
 
@@ -802,6 +806,10 @@ class NvdV2Metadata(Base):
             self.__class__, self.name, self.created_at
         )
 
+    @property
+    def normalized_id(self):
+        return self.name
+
     def _get_score(self, metric, score_key):
         if metric:
             score = metric.get(base_metrics_key).get(score_key, -1.0)
@@ -942,6 +950,21 @@ class VulnDBMetadata(Base):
         return "<{} name={}, created_at={}>".format(
             self.__class__, self.name, self.created_at
         )
+
+    @property
+    def normalized_id(self):
+        """normalized_id will inspect the in coming external
+        references and return a cve id in the case of a single
+        match against vulndb information.
+        """
+        res = _get_one_or_none("source", "CVE ID", self.references)
+        if res and res.get("url"):
+            # findall should return a single id list ['2020-11989']
+            cve_id_col = re.findall(r"\=(\d+\-\d+)", res.get("url"))
+            if cve_id_col:
+                return "CVE-" + cve_id_col[0]
+
+        return self.name
 
     def _get_max_cvss_v3_metric_nvd(self):
         cvss_v3 = None
@@ -3033,3 +3056,33 @@ def select_nvd_classes(db=None):
 
     log.debug("selected {}/{} nvd classes".format(_nvd_cls, _cpe_cls))
     return _nvd_cls, _cpe_cls
+
+
+def _get_one_or_none(key, val, collection):
+    """
+    Find a match for the object in the collection using the key-value pair,
+    return the result only if 1 match is found.
+
+    Example instance of collection
+    [
+        {
+          "source": "CVE ID",
+          "url": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=2000-0089"
+        },
+        {
+          "source": "Bugtraq ID",
+          "url": "http://www.securityfocus.com/bid/947"
+        },
+    ]
+    """
+    if not key or not val:
+        return None
+    result = None
+
+    for entry in collection:
+        if entry.get(key) == val:
+            if result:
+                return None
+            else:
+                result = entry
+    return result

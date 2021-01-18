@@ -999,7 +999,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                         )
 
                     cpe_vuln_el = {
-                        "vulnerability_id": vulnerability_cpe.vulnerability_id,
+                        "vulnerability_id": vulnerability_cpe.parent.normalized_id,
                         "severity": vulnerability_cpe.parent.severity,
                         "link": link,
                         "pkg_type": image_cpe.pkg_type,
