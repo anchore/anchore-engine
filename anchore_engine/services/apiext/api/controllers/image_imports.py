@@ -228,7 +228,7 @@ def list_import_image_configs(operation_id):
         client = internal_client_for(
             CatalogClient, userId=ApiRequestContextProxy.namespace()
         )
-        resp = client.list_import_content(operation_id, "parent_manifest")
+        resp = client.list_import_content(operation_id, "image_config")
         return resp, 200
     except api_exceptions.AnchoreApiError as ex:
         return (
