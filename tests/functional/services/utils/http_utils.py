@@ -1,6 +1,8 @@
 import json
-import requests
 import os
+from typing import Dict, List, Optional, Union
+
+import requests
 
 CONTENT_TYPE_HEADER = {"Content-Type": "application/json"}
 DEFAULT_API_CONF = {
@@ -91,6 +93,44 @@ def http_post(path_parts, payload, query=None, config: callable = get_api_conf):
     resp = requests.post(
         build_url(path_parts, api_conf),
         data=json.dumps(payload),
+        auth=(api_conf["ANCHORE_API_USER"], api_conf["ANCHORE_API_PASS"]),
+        headers=get_headers(api_conf),
+        params=query,
+    )
+
+    return APIResponse(resp.status_code, response=resp)
+
+
+def http_post_bytes(
+    path_parts: List[str],
+    payload: bytes,
+    query: Optional[Union[Dict, List, bytes]] = None,
+    config: callable = get_api_conf,
+) -> APIResponse:
+    """
+    Send HTTP POST request with byte payload.
+    http_utils.http_post does not support this.
+
+    :param path_parts: list of URI path parts
+    :type path_parts: List[str]
+    :param payload: byte array payload
+    :type payload: bytes
+    :param query: Dictionary, list of tuples or bytes to send in the query string, defaults to None
+    :type query: Optional[Union[Dict, List, bytes]], optional
+    :param config: [description], defaults to get_api_conf
+    :type config: callable, optional
+    :raises InsufficientRequestDetailsError: if path_parts is empty
+    :return: api response
+    :rtype: APIResponse
+    """
+    api_conf = config()
+
+    if path_parts is None:
+        raise InsufficientRequestDetailsError(["path_parts"])
+
+    resp = requests.post(
+        build_url(path_parts, api_conf),
+        data=payload,
         auth=(api_conf["ANCHORE_API_USER"], api_conf["ANCHORE_API_PASS"]),
         headers=get_headers(api_conf),
         params=query,
