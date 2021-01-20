@@ -829,11 +829,11 @@ def handle_repo_watcher(*args, **kwargs):
                                 )
                                 # add the subscription records with the configured default activations
 
-                                for stype in anchore_engine.common.subscription_types:
+                                for (
+                                    stype
+                                ) in anchore_engine.common.tag_subscription_types:
                                     activate = False
-                                    if stype == "repo_update":
-                                        continue
-                                    elif stype in autosubscribes:
+                                    if stype in autosubscribes:
                                         activate = True
                                     db_subscriptions.add(
                                         userId,
