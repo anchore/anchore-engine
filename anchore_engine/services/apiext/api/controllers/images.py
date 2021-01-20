@@ -1436,10 +1436,8 @@ def initialize_subscriptions(
             if subscription_record["subscription_key"] == fulltag:
                 foundtypes.append(subscription_record["subscription_type"])
 
-        sub_types = anchore_engine.common.subscription_types
+        sub_types = anchore_engine.common.tag_subscription_types
         for sub_type in sub_types:
-            if sub_type in ["repo_update"]:
-                continue
             if sub_type not in foundtypes:
                 try:
                     default_active = False
