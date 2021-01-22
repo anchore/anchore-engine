@@ -242,7 +242,7 @@ def get_tag_histories(session, userId, registries=None, repositories=None, tags=
                 CatalogImageDocker.imageDigest == CatalogImage.imageDigest,
             ),
         )
-        .filter(CatalogImage.userId == userId)
+        .filter(CatalogImage.userId == userId, CatalogImage.analyzed_at.isnot(None))
         .order_by(*order_by_fields)
     )
 
