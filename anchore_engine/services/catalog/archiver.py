@@ -560,7 +560,11 @@ class ImageAnalysisArchiver(object):
 
             # If the image matches the exclude selector, we do not consider it to be a candidate for transition,
             # therefore, we should skip it
-            if self._is_exclude_match(rule, catalog_image, catalog_image_docker):
+            # Note: if an image doesn't have a value for analyzed_at, we cannot evaluate the exclude because we don't
+            # know if the exclude is expired
+            if catalog_image.analyzed_at and self._is_exclude_match(
+                rule, catalog_image, catalog_image_docker
+            ):
                 logger.debug(
                     "Image is excluded from archive transition rule: {}".format(
                         catalog_image_docker
