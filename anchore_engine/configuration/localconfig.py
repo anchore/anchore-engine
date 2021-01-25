@@ -101,7 +101,11 @@ CRED_CACHE_TTL = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_TTL", 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC", 3))
 
 ANALYZER_SEARCH_PATHS = ["anchore_engine.analyzers"]
-POLICY_BUNDLE_SOURCE_DIRS = ["conf/bundles/"]
+POLICY_BUNDLE_SOURCE_DIRS = [
+    os.path.join(
+        resource_filename("anchore_engine", "conf/bundles/")
+    )
+]
 
 
 def register_analyzers(module_path):
@@ -188,13 +192,7 @@ def load_policy_bundle_paths(src_dirs=None):
 
     # This value will typically == None, outside of automated tests
     if src_dirs == None:
-        src_dirs = []
-        for policy_bundles_source_dir in POLICY_BUNDLE_SOURCE_DIRS:
-            src_dirs.append(
-                os.path.join(
-                resource_filename("anchore_engine", policy_bundles_source_dir)
-                )
-            )
+        src_dirs = policy_bundle_source_dirs()
 
     try:
         if src_dirs is not None and len(src_dirs) > 0 and policy_bundles_dir is not None:
