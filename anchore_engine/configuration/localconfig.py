@@ -101,6 +101,7 @@ CRED_CACHE_TTL = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_TTL", 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC", 3))
 
 ANALYZER_SEARCH_PATHS = ["anchore_engine.analyzers"]
+POLICY_BUNDLE_SOURCE_DIRS = ["conf/bundles/"]
 
 
 def register_analyzers(module_path):
@@ -110,6 +111,15 @@ def register_analyzers(module_path):
 
 def analyzer_paths():
     return ANALYZER_SEARCH_PATHS
+
+
+def register_policy_bundle_source_dir(source_dir):
+    global POLICY_BUNDLE_SOURCE_DIRS
+    POLICY_BUNDLE_SOURCE_DIRS.append(source_dir)
+
+
+def policy_bundle_source_dirs():
+    return POLICY_BUNDLE_SOURCE_DIRS
 
 
 def update_merge(base, override):
@@ -168,7 +178,7 @@ def load_defaults(configdir=None):
     return localconfig
 
 
-def load_policy_bundle_paths(src_dir=None):
+def load_policy_bundle_paths(src_dirs=None):
     global localconfig
 
     default_bundle_name = "anchore_default_bundle.json"
@@ -176,35 +186,42 @@ def load_policy_bundle_paths(src_dir=None):
     # Get the dir containing policy bundles to put in the config
     policy_bundles_dir = localconfig["policy_bundles_dir"]
 
+    # This value will typically == None, outside of automated tests
+    if src_dirs == None:
+        src_dirs = []
+        for policy_bundles_source_dir in POLICY_BUNDLE_SOURCE_DIRS:
+            src_dirs.append(
+                os.path.join(
+                resource_filename("anchore_engine", policy_bundles_source_dir)
+                )
+            )
+
     try:
-        if policy_bundles_dir is not None:
+        if src_dirs is not None and len(src_dirs) > 0 and policy_bundles_dir is not None:
             policy_bundles_dir_full_path = os.path.join(
                 localconfig["service_dir"], policy_bundles_dir
             )
             if not os.path.exists(policy_bundles_dir_full_path):
                 os.mkdir(policy_bundles_dir_full_path)
 
-            if src_dir == None:
-                src_dir = os.path.join(
-                    resource_filename("anchore_engine", "conf/bundles/")
-                )
             policy_bundles = []
-            for file_name in os.listdir(src_dir):
-                try:
-                    file = os.path.join(policy_bundles_dir_full_path, file_name)
-                    policy_bundles.append(
-                        {
-                            "active": file_name == default_bundle_name,
-                            "bundle_path": file,
-                        }
-                    )
-                    copy_config_file(file, file_name, src_dir)
-                except Exception as e:
-                    logger.warn(
-                        "Policy bundle {} not found, unable to load. Exception: {}".format(
-                            file_name, e
+            for src_dir in src_dirs:
+                for file_name in os.listdir(src_dir):
+                    try:
+                        file = os.path.join(policy_bundles_dir_full_path, file_name)
+                        policy_bundles.append(
+                            {
+                                "active": file_name == default_bundle_name,
+                                "bundle_path": file,
+                            }
                         )
-                    )
+                        copy_config_file(file, file_name, src_dir)
+                    except Exception as e:
+                        logger.warn(
+                            "Policy bundle {} from dir {} not found, unable to load. Exception: {}".format(
+                                file_name, src_dir, e
+                            )
+                        )
             localconfig["policy_bundles"] = policy_bundles
             return
     except Exception as e:
