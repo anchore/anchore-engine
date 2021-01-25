@@ -2,6 +2,7 @@ import os
 import pytest
 import pathlib
 import json
+import tarfile
 from anchore_engine.clients import skopeo_wrapper
 
 
@@ -173,3 +174,28 @@ def test_ensure_no_nondistributable_media_types(tmpdir, oci_index, oci_manifest)
 
     with open(oci_manifest_file_path, "r") as _f:
         assert _f.read() == oci_manifest(layer_media_type=expected_layer_media_type)
+
+
+class TestIsGzip:
+    def test_false(self):
+        result = skopeo_wrapper.is_gzip("")
+        assert result is False
+
+    def test_false_with_existent_path(self, tmp_path):
+        print(tmp_path)
+        result = skopeo_wrapper.is_gzip(tmp_path)
+        assert result is False
+
+    def test_false_real_tar(self, tmpdir):
+        file_name = tmpdir.join("blob")
+        file_name.write("I'm a file")
+        tar_file_name = tmpdir.join("test.tar")
+
+        with tarfile.open(tar_file_name.strpath, "w") as _f:
+            _f.addfile(tarfile.TarInfo(file_name.strpath), open(file_name))
+
+        result = skopeo_wrapper.is_gzip(tar_file_name.strpath)
+        assert result is False
+
+
+class TestLayerMediaTypes:
