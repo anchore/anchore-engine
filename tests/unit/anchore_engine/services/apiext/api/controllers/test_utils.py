@@ -5,6 +5,7 @@ import base64
 import json
 import yaml
 import pytest
+from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.services.apiext.api.controllers import utils as api_utils
 from anchore_engine.subsys import logger
 
@@ -164,7 +165,7 @@ def test_tag_normalization():
     for test_input, result in matrix:
         if type(result) == type and issubclass(result, Exception):
             with pytest.raises(result):
-                normalized = api_utils.normalize_image_add_source(test_input)
+                api_utils.normalize_image_add_source(test_input)
         else:
             assert api_utils.normalize_image_add_source(test_input) == result
 
@@ -209,8 +210,9 @@ def test_digest_normalization():
         assert api_utils.normalize_image_add_source(test_input) == result
 
 
-def test_normalization_and_validation():
-    good_requests = [
+@pytest.mark.parametrize(
+    "test_input, result",
+    [
         # Basic Tag Case
         ({"tag": "nginx"}, {"source": {"tag": {"pullstring": "nginx"}}}),
         # Basic Tag w/Dockerfile
@@ -312,30 +314,38 @@ def test_normalization_and_validation():
                 }
             },
         ),
-    ]
-
-    bad_requests = [
-        # Malformed tag
-        ({"tag": "docker.io/library/nginx@sha123"}, Exception),
         # Tag + Digest only (no ts)
-        ({"tag": "docker.io/library/nginx:latest", "digest": "sh256:abc"}, Exception),
+        (
+            {
+                "tag": "docker.io/library/nginx:latest",
+                "digest": test_digest,
+            },
+            {
+                "source": {
+                    "digest": {
+                        "pullstring": "docker.io/library/nginx@{}".format(test_digest),
+                        "tag": "docker.io/library/nginx:latest",
+                    }
+                }
+            },
+        ),
+        # Malformed tag
+        ({"tag": "docker.io/library/nginx@{}".format(test_digest)}, BadRequest),
         # Digest Only
-        ({"digest": "sh256:abc"}, Exception),
+        ({"digest": test_digest}, ValueError),
         # Digest pullstring only
-        ({"digest": "docker.io/nginx@sha256:abc"}, Exception),
-    ]
-
-    matrix = good_requests + bad_requests
-
-    for test_input, result in matrix:
-        if type(result) == type and issubclass(result, Exception):
-            with pytest.raises(result):
-                normalized = api_utils.normalize_image_add_source(test_input)
-                api_utils.validate_image_add_source(normalized, api_spec)
-        else:
+        ({"digest": "docker.io/nginx@{}".format(test_digest)}, BadRequest),
+    ],
+)
+def test_normalization_and_validation(test_input, result):
+    if type(result) == type and issubclass(result, Exception):
+        with pytest.raises(result):
             normalized = api_utils.normalize_image_add_source(test_input)
             api_utils.validate_image_add_source(normalized, api_spec)
-            assert normalized == result
+    else:
+        normalized = api_utils.normalize_image_add_source(test_input)
+        api_utils.validate_image_add_source(normalized, api_spec)
+        assert normalized == result
 
 
 def test_archive_source_validator():
