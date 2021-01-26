@@ -102,9 +102,7 @@ CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC",
 
 ANALYZER_SEARCH_PATHS = ["anchore_engine.analyzers"]
 POLICY_BUNDLE_SOURCE_DIRS = [
-    os.path.join(
-        resource_filename("anchore_engine", "conf/bundles/")
-    )
+    os.path.join(resource_filename("anchore_engine", "conf/bundles/"))
 ]
 
 
@@ -196,7 +194,11 @@ def load_policy_bundle_paths(src_dirs=None):
         src_dirs = policy_bundle_source_dirs()
 
     try:
-        if src_dirs is not None and len(src_dirs) > 0 and policy_bundles_dir is not None:
+        if (
+            src_dirs is not None
+            and len(src_dirs) > 0
+            and policy_bundles_dir is not None
+        ):
             policy_bundles_dir_full_path = os.path.join(
                 localconfig["service_dir"], policy_bundles_dir
             )

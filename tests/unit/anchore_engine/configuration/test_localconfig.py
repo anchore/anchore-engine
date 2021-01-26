@@ -78,7 +78,12 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
         ([[]]),
         ([["anchore_default_bundle.json"]]),
         ([["anchore_default_bundle.json", "second_bundle.json"]]),
-        ([["anchore_default_bundle.json", "second_bundle.json"], ["third_bundle.json", "fourth_bundle.json"], ["fifth_bundle.json"]]),
+        (
+            [
+                ["anchore_default_bundle.json", "second_bundle.json"],
+                ["third_bundle.json", "fourth_bundle.json"],
+                ["fifth_bundle.json"]]
+        ),
     ],
 )
 def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filename_sets):
@@ -94,7 +99,9 @@ def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filename_s
     # setup the expected output. We will expect to see output_dir_name contain the
     # files in config_filenames_flat
     output_dir_name = tmpdir.strpath + "/bundles"
-    config_filenames_flat = [filename for set in config_filename_sets for filename in set]
+    config_filenames_flat = [
+        filename for set in config_filename_sets for filename in set
+    ]
 
     # setup the default config
     load_defaults(configdir=tmpdir)
