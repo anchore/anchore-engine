@@ -215,9 +215,7 @@ def load_policy_bundle_paths(src_dirs=None):
             localconfig["policy_bundles"] = policy_bundles
             return
         else:
-            logger.warn(
-                "No configured policy bundle dir was found, unable to load."
-            )
+            logger.warn("No configured policy bundle dir was found, unable to load.")
             localconfig["policy_bundles"] = None
     except Exception as e:
         logger.warn(
