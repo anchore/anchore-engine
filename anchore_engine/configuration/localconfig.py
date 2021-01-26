@@ -120,6 +120,7 @@ def analyzer_paths():
 def register_policy_bundle_source_dir(source_dir):
     global POLICY_BUNDLE_SOURCE_DIRS
     POLICY_BUNDLE_SOURCE_DIRS.append(source_dir)
+    load_policy_bundle_paths()
 
 
 def policy_bundle_source_dirs():
