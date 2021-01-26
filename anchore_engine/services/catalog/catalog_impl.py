@@ -2180,13 +2180,10 @@ def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False
     return dodelete, msgdelete, image_ids, image_fulltags
 
 
-def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
+def _delete_image_artifacts(account_id, image_digest, image_ids, full_tags, db_session):
+    error = None
+    rcs = []
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
-    imageDigest = image_record["imageDigest"]
-
-    logger.debug("DELETEing image from catalog")
-    rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
-
     # digest-based archiveId buckets
     for bucket in [
         "analysis_data",
@@ -2196,32 +2193,105 @@ def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_ful
         "manifest_data",
         "parent_manifest_data",
     ]:
-        archiveId = imageDigest
-        logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-        rc = obj_store.delete(userId, bucket, archiveId)
+        # try-except block ensures an attempt to delete every artifact despite errors
+        try:
+            logger.debug("DELETEing image from archive %s/%s", bucket, image_digest)
+            rc = obj_store.delete(account_id, bucket, image_digest)
+            rcs.append(rc)
+        except Exception as e:
+            error = e
+            logger.exception(
+                "Error deleting image from archive %s/%s", bucket, image_digest
+            )
 
     # digest/tag-based archiveId buckets
     for bucket in ["vulnerability_scan"]:
-        for fulltag in image_fulltags:
-            archiveId = "{}/{}".format(imageDigest, fulltag)
-            logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-            rc = obj_store.delete(userId, bucket, archiveId)
-
-    logger.debug("DELETEing image from policy_engine")
-
-    # prepare inputs
-    try:
-        pe_client = internal_client_for(PolicyEngineClient, userId=userId)
-        for img_id in set(image_ids):
-            logger.debug(
-                "DELETING image from policy engine userId = {} imageId = {}".format(
-                    userId, img_id
+        for full_tag in full_tags:
+            archive_id = "{}/{}".format(image_digest, full_tag)
+            # try-except block ensures an attempt to delete every artifact despite errors
+            try:
+                logger.debug("DELETEing image from archive %s/%s", bucket, archive_id)
+                rc = obj_store.delete(account_id, bucket, archive_id)
+                rcs.append(rc)
+            except Exception as e:
+                error = e
+                logger.exception(
+                    "Error deleting image from archive %s/%s", bucket, archive_id
                 )
+
+    if error:
+        raise error
+    else:
+        return rcs
+
+
+def _delete_image_catalog(account_id, image_digest, image_ids, full_tags, db_session):
+    logger.debug("DELETEing image from catalog")
+    rc = db_catalog_image.delete(image_digest, account_id, session=db_session)
+
+    return rc
+
+
+def _delete_image_policy_engine(
+    account_id, image_digest, image_ids, full_tags, db_session
+):
+    error = None
+    rcs = []
+    pe_client = internal_client_for(PolicyEngineClient, userId=account_id)
+
+    for img_id in set(image_ids):
+        # try-except block ensures an attempt to delete every image id despite errors
+        try:
+            logger.debug(
+                "DELETING image from policy engine account_id=%s image_id=%s",
+                account_id,
+                img_id,
             )
-            rc = pe_client.delete_image(user_id=userId, image_id=img_id)
-    except:
-        logger.exception("Failed deleting image from policy engine")
-        raise
+            rc = pe_client.delete_image(user_id=account_id, image_id=img_id)
+            rcs.append(rc)
+        except Exception as e:
+            error = e
+            logger.exception(
+                "Error deleting image id %s from policy engine", image_digest
+            )
+
+    if error:
+        raise error
+    else:
+        return rcs
+
+
+# collection of description and delete function tuples. Each delete that take account_id, image_digest, image_ids, full_tags and db_session as arguments
+# TODO hack to support extensions, come up with a better (oo) solution to override and extend behaviour
+image_gc_functions = [
+    ("artifacts", _delete_image_artifacts),
+    ("catalog record", _delete_image_catalog),
+    ("policy-engine record", _delete_image_policy_engine),
+]
+
+
+def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
+    image_digest = image_record["imageDigest"]
+    logger.debug(
+        "Begin image deletion for account_id=%s, digest=%s, tags=%s, ids=%s",
+        userId,
+        image_digest,
+        image_fulltags,
+        image_ids,
+    )
+    for desc, delete_func in image_gc_functions:
+        try:
+            logger.debug("Executing delete for image %s", desc)
+            delete_func(
+                account_id=userId,
+                image_digest=image_digest,
+                image_ids=image_ids,
+                full_tags=image_fulltags,
+                db_session=dbsession,
+            )
+        except Exception:
+            # swallow the error for now and continue with the image clean up
+            logger.exception("Error executing image %s", desc)
 
 
 def _queue_image_for_deletion(account_id, digest, db_session, force=False):
