@@ -82,7 +82,7 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
             [
                 ["anchore_default_bundle.json", "second_bundle.json"],
                 ["third_bundle.json", "fourth_bundle.json"],
-                ["fifth_bundle.json"]]
+                ["fifth_bundle.json"]],
         ),
     ],
 )
