@@ -5,7 +5,6 @@ import re
 import tarfile
 
 from connexion import request
-import typing
 
 import anchore_engine.apis
 import anchore_engine.common
@@ -25,7 +24,6 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db.entities.common import anchore_now
-from anchore_engine.services.apiext.api import helpers
 from anchore_engine.services.apiext.api.controllers.utils import (
     normalize_image_add_source,
     validate_image_add_source,
