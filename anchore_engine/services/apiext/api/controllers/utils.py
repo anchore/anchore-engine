@@ -157,8 +157,9 @@ def normalize_image_add_source(analysis_request_dict):
         source["digest"] = {
             "pullstring": digest_pullstring,
             "tag": tag,
-            "creation_timestamp_override": created_at,
         }
+        if created_at:
+            source["digest"]["creation_timestamp_override"] = created_at
         if dockerfile:
             source["digest"]["dockerfile"] = dockerfile
 
