@@ -72,6 +72,18 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
     return {"policy_bundles": policy_bundles}
 
 
+def test_empty_src_dirs(mock_default_config, tmpdir):
+    # setup the default config
+    load_defaults(configdir=tmpdir)
+
+    # function under test
+    load_policy_bundle_paths(src_dirs=[])
+
+    # get and validate the relevant config bits
+    config = get_config()
+    assert config["policy_bundles"] is None
+
+
 @pytest.mark.parametrize(
     "config_filename_sets",
     [

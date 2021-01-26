@@ -194,11 +194,7 @@ def load_policy_bundle_paths(src_dirs=None):
         src_dirs = policy_bundle_source_dirs()
 
     try:
-        if (
-            src_dirs is not None
-            and len(src_dirs) > 0
-            and policy_bundles_dir is not None
-        ):
+        if policy_bundles_dir and src_dirs:
             policy_bundles_dir_full_path = os.path.join(
                 localconfig["service_dir"], policy_bundles_dir
             )
@@ -208,23 +204,21 @@ def load_policy_bundle_paths(src_dirs=None):
             policy_bundles = []
             for src_dir in src_dirs:
                 for file_name in os.listdir(src_dir):
-                    try:
-                        file = os.path.join(policy_bundles_dir_full_path, file_name)
-                        policy_bundles.append(
-                            {
-                                "active": file_name == default_bundle_name,
-                                "bundle_path": file,
-                            }
-                        )
-                        copy_config_file(file, file_name, src_dir)
-                    except Exception as e:
-                        logger.warn(
-                            "Policy bundle {} from dir {} not found, unable to load. Exception: {}".format(
-                                file_name, src_dir, e
-                            )
-                        )
+                    file = os.path.join(policy_bundles_dir_full_path, file_name)
+                    policy_bundles.append(
+                        {
+                            "active": file_name == default_bundle_name,
+                            "bundle_path": file,
+                        }
+                    )
+                    copy_config_file(file, file_name, src_dir)
             localconfig["policy_bundles"] = policy_bundles
             return
+        else:
+            logger.warn(
+                "No configured policy bundle dir was found, unable to load."
+            )
+            localconfig["policy_bundles"] = None
     except Exception as e:
         logger.warn(
             "Configured policy bundle dir at {} not found, unable to load. Exception: {}".format(
