@@ -177,10 +177,16 @@ def create_analysis_archive_rule(rule):
     try:
         with session_scope() as session:
             # Validate that only one system_global rule has max_images_per_account set
+            selector = rule.get("selector", {})
             if (
                 rule.get("system_global", False)
                 and rule.get("max_images_per_account", None) is not None
             ):
+                if selector or rule.get("exclude", {}):
+                    raise BadRequest(
+                        "Cannot set a selector or exclude on a rule with max_images_per_account",
+                        {},
+                    )
                 qry = session.query(ArchiveTransitionRule).filter(
                     ArchiveTransitionRule.account == ApiRequestContextProxy.namespace(),
                     ArchiveTransitionRule.system_global.is_(True),
@@ -191,13 +197,19 @@ def create_analysis_archive_rule(rule):
                         "A system_global Archive Transition Rule already exists with max_images_per_account set",
                         {"existingRule": repr(qry.first())},
                     )
+            elif (
+                not selector.get("registry", "")
+                or not selector.get("repository", "")
+                or not selector.get("tag", "")
+            ):
+                raise BadRequest("Selector fields cannot be empty", {})
 
             r = ArchiveTransitionRule()
             r.account = ApiRequestContextProxy.namespace()
             r.rule_id = uuid.uuid4().hex
-            r.selector_registry = rule.get("selector", {}).get("registry", "*")
-            r.selector_repository = rule.get("selector", {}).get("repository", "*")
-            r.selector_tag = rule.get("selector", {}).get("tag", "*")
+            r.selector_registry = selector.get("registry", "*")
+            r.selector_repository = selector.get("repository", "*")
+            r.selector_tag = selector.get("tag", "*")
             r.analysis_age_days = int(rule.get("analysis_age_days", -1))
             r.tag_versions_newer = int(rule.get("tag_versions_newer", -1))
             r.transition = ArchiveTransitions(rule.get("transition"))

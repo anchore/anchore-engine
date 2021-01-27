@@ -486,7 +486,7 @@ def delete(imageDigest, userId, session=None):
     return True
 
 
-def get_oldest_images_with_limit(session, account, max_images, excluded_digests):
+def get_oldest_images_with_limit(session, account, max_images):
     """
     This method will return the oldest images which exceed the max_images limit
 
@@ -537,7 +537,6 @@ def get_oldest_images_with_limit(session, account, max_images, excluded_digests)
         .filter(
             CatalogImage.analysis_status == "analyzed",
             CatalogImage.userId == account,
-            CatalogImage.imageDigest.notin_(excluded_digests),
         )
         .order_by(CatalogImage.analyzed_at.asc())
         .limit(limit)

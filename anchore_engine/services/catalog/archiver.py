@@ -478,45 +478,7 @@ class ImageAnalysisArchiver(object):
         :return: list of tuples (CatalogImageDocer, CatalogImage) that match the rule
         """
 
-        # Filter by analyzed_at timestamp first
-        if rule.analysis_age_days >= 0:
-            # Do analysis age check.
-            min_time = int(time.time()) - (rule.analysis_age_days * 86400)
-        else:
-            min_time = 0
-
-        if rule.selector_registry:
-            registries = [rule.selector_registry]
-        else:
-            registries = None
-
-        if rule.selector_repository:
-            repositories = [rule.selector_repository]
-        else:
-            repositories = None
-
-        if rule.selector_tag:
-            tags = [rule.selector_tag]
-        else:
-            tags = None
-
-        # This will load all the images matched by the selector of the rule for archiving
-        tag_histories_qry = db_catalog_image_docker.get_tag_histories(
-            session,
-            self.account,
-            registries=registries,
-            repositories=repositories,
-            tags=tags,
-        )
-
-        if min_time > 0:
-            tag_histories_qry = tag_histories_qry.filter(
-                CatalogImage.analyzed_at < min_time
-            )
-
-        candidates, excluded_digests = self._evaluate_tag_history_and_exclude(
-            rule, tag_histories_qry
-        )
+        candidates = []
 
         # Do an additional query to retrieve images which exceed the max image count
         # NOTE: only applies to system rules that have the max_images_per_account set to a positive integer
@@ -527,7 +489,7 @@ class ImageAnalysisArchiver(object):
         ):
             old_images_exceeding_max_count = (
                 db_catalog_image.get_oldest_images_with_limit(
-                    session, self.account, rule.max_images_per_account, excluded_digests
+                    session, self.account, rule.max_images_per_account
                 )
             )
             if old_images_exceeding_max_count:
@@ -543,11 +505,48 @@ class ImageAnalysisArchiver(object):
                         images_exceeding_max_count
                     )
                 )
+        else:
+            # Filter by analyzed_at timestamp first
+            if rule.analysis_age_days >= 0:
+                # Do analysis age check.
+                min_time = int(time.time()) - (rule.analysis_age_days * 86400)
+            else:
+                min_time = 0
+
+            if rule.selector_registry:
+                registries = [rule.selector_registry]
+            else:
+                registries = None
+
+            if rule.selector_repository:
+                repositories = [rule.selector_repository]
+            else:
+                repositories = None
+
+            if rule.selector_tag:
+                tags = [rule.selector_tag]
+            else:
+                tags = None
+
+            # This will load all the images matched by the selector of the rule for archiving
+            tag_histories_qry = db_catalog_image_docker.get_tag_histories(
+                session,
+                self.account,
+                registries=registries,
+                repositories=repositories,
+                tags=tags,
+            )
+
+            if min_time > 0:
+                tag_histories_qry = tag_histories_qry.filter(
+                    CatalogImage.analyzed_at < min_time
+                )
+
+            candidates = self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
         return candidates
 
     def _evaluate_tag_history_and_exclude(self, rule, image_tuple_generator):
         candidates = []
-        excluded_digests = []
         current_tag = None
         history_depth = 0
 
@@ -570,7 +569,6 @@ class ImageAnalysisArchiver(object):
                         catalog_image_docker
                     )
                 )
-                excluded_digests.append(catalog_image.imageDigest)
                 continue
 
             if not current_tag:
@@ -592,7 +590,7 @@ class ImageAnalysisArchiver(object):
             history_depth += 1
             current_tag = catalog_image_docker
 
-        return candidates, excluded_digests
+        return candidates
 
     def _is_exclude_match(self, rule, catalog_image, catalog_image_docker):
         """
