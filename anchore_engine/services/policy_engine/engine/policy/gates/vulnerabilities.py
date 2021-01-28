@@ -892,7 +892,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
 class FeedOutOfDateTrigger(BaseTrigger):
     __trigger_name__ = "stale_feed_data"
-    __description__ = "Triggers if the CVE data is older than the window specified by the parameter MAXAGE (unit is number of days)."
+    __description__ = "Triggers if the CVE data for the image's distro is older than the window specified by the parameter MAXAGE (unit is number of days)."
     max_age = IntegerStringParameter(
         name="max_days_since_sync",
         example_str="10",
@@ -948,15 +948,13 @@ class FeedOutOfDateTrigger(BaseTrigger):
 
 class UnsupportedDistroTrigger(BaseTrigger):
     __trigger_name__ = "vulnerability_data_unavailable"
-    __description__ = (
-        "Triggers if vulnerability data is unavailable for the image's distro."
-    )
+    __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
     def evaluate(self, image_obj, context):
         if not have_vulnerabilities_for(DistroNamespace.for_obj(image_obj)):
             self._fire(
-                msg="Feed data unavailable, cannot perform CVE scan for distro: "
-                + str(image_obj.distro_namespace)
+                msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"
+                % image_obj.distro_namespace
             )
 
 
