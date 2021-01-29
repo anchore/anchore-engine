@@ -739,7 +739,7 @@ class ArchivedAnalysisDeleter(ImageAnalysisArchiver):
                 ArchivedImage.created_at < min_time
             )
 
-        return self._evaluate_tag_history(rule, tag_histories_qry)
+        return self._evaluate_tag_history_and_exclude(rule, tag_histories_qry)
 
 
 class ArchiveTransitionTask(object):
