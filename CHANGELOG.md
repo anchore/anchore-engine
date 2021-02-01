@@ -1,6 +1,29 @@
 # Changelog
 
-## 0.9.0)
+## 0.9.1
+
+NOTE: To ensure that Anchore Engine cannot be accidentally deployed with a weak default password for the admin user, this release includes
+a change that requires the default_admin_password configuration value to be set at system bootstrap. After bootstrap it is no longer needed. This
+may break previous deployment configurations that relied on the code using a default value if none specified by the configuration. We have updated
+our quick-start docker-compose.yaml file in the Engine docs and helm chart to accomodate this change. It will *not* impact upgrading deployments
+since the database bootstrap is already completed.
+
++ Added - Ability to block image analysis operations if the image's compressed size is above a configured value. Fixes #786 
++ Improved - Updated output messages and description for vulnerability_data_unavailable trigger and stale_feeds_data trigger to clarify only OS packages impacted. Fixes #879
++ Improved - Do not allow selectors to be empty unless using max_images_per_account_rule. Fixes #863
++ Improved - Updates Syft to version 0.12.4 to fix several issues in image analysis including empty package names/versions in invalid package.json files and java jar parent references being Nil.
++ Improved - Require user to set explicit default admin password at bootstrap instead of defaulting to a value if none found. Fixes #810
++ Improved - Update PyYAML to 5.4.1
++ Improved - Update Passlib to 1.7.4
++ Improved - Update to use Python 3.8
++ Improved - Update base image to UBI 8.3. Fixes #888
++ Fixed - Failed analysis due to incorrect manifest mime types due to bug in buildah. Fixes #850
++ Fixed - External API service swagger spec for GetRegistry inconsistent consistent with return type. Fixes #846
++ Fixed - Fixed analysis archive rules that did not fire if delete transition rule present. Fixes #883
++ Fixed - Force re-analysis of tag and digest rejected if create_at_override timestamp not provided. Fixes #861
++ Additional minor fixes and improvements
+
+## 0.9.0
 
 0.9.0 is a big step towards full integration of Syft and Grype into Anchore Engine as planned for 1.0. In this release, Syft is used for all package identification, and
 a new API is also added to support uploads of Syft results into the system but with less analysis depth than an in-deployment analysis. This release 
