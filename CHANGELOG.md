@@ -18,7 +18,7 @@ since the database bootstrap is already completed.
 + Improved - Update to use Python 3.8
 + Improved - Update base image to UBI 8.3. Fixes #888
 + Fixed - Failed analysis due to incorrect manifest mime types due to bug in buildah. Fixes #850
-+ Fixed - External API service swagger spec for GetRegistry inconsistent consistent with return type. Fixes #846
++ Fixed - External API service swagger spec for GetRegistry response is inconsistent with actual returned JSON. Fixes #846
 + Fixed - Fixed analysis archive rules that did not fire if delete transition rule present. Fixes #883
 + Fixed - Force re-analysis of tag and digest rejected if create_at_override timestamp not provided. Fixes #861
 + Additional minor fixes and improvements
