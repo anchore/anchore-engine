@@ -154,7 +154,7 @@ RUN set -ex && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
     mkdir /config && \
     mkdir /licenses && \
-    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav/db && \
+    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles ${ANCHORE_SERVICE_DIR}/bundles /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
