@@ -52,7 +52,7 @@ class DefaultVulnScanner:
         """
         Compares the cpes based on business logic and returns -1, 0 or 1 if the lhs is lower than, equal to or greater than the rhs respectively
 
-        Business logic here is to compare vendor, name and version fields in that order
+        Business logic here is to compare vendor, name, version, update and meta fields in that order
         """
         vendor_cmp = self.compare_fields(lhs.vendor, rhs.vendor)
         if vendor_cmp != 0:
@@ -65,6 +65,14 @@ class DefaultVulnScanner:
         version_cmp = self.compare_fields(lhs.version, rhs.version)
         if version_cmp != 0:
             return version_cmp
+
+        update_cmp = self.compare_fields(lhs.update, rhs.update)
+        if update_cmp != 0:
+            return update_cmp
+
+        meta_cmp = self.compare_fields(lhs.meta, rhs.meta)
+        if meta_cmp != 0:
+            return meta_cmp
 
         # all avenues of comparison have been depleted, the two cpes are same for all practical purposes
         return 0

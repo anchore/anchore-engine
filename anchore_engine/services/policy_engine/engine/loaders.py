@@ -186,7 +186,9 @@ class ImageLoader(object):
 
         # CPEs
         logger.info("Loading image cpes")
-        image.cpes = self.load_cpes_from_syft_output_with_fallback(analysis_report, image)
+        image.cpes = self.load_cpes_from_syft_output_with_fallback(
+            analysis_report, image
+        )
 
         analysis_artifact_loaders = [
             self.load_retrieved_files,
