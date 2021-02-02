@@ -357,3 +357,273 @@ def test_archive_source_validator():
         },
         api_schema=api_spec,
     )
+
+
+class TestMakeVulnerabilityResponse:
+    @pytest.mark.parametrize(
+        "test_input, expected",
+        [
+            # same id as nvd, different namespaces
+            (
+                {
+                    "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+                    "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+                    "feed_name": "blah",
+                    "feed_namespace": "blah:vulnerabilities",
+                    "fixed_in": ["4.5.2"],
+                    "link": "http://api:8228/v1/query/vulnerabilities?id=BLAH-123456",
+                    "name": "foo",
+                    "nvd_data": [
+                        {"cvss_v2": {}, "cvss_v3": {}, "id": "CVE-0000-0000"}
+                    ],  # connecting data! id should match nvd
+                    "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+                    "pkg_type": "python",
+                    "severity": "Medium",
+                    "vendor_data": [
+                        {"cvss_v2": {}, "cvss_v3": None, "id": "BLAH-123456"}
+                    ],
+                    "version": "4.0",
+                    "vulnerability_id": "CVE-0000-0000",
+                },
+                {
+                    "vuln": "CVE-0000-0000",
+                    "url": "http://api:8228/v1/query/vulnerabilities?id=BLAH-123456",
+                    "feed": "blah",
+                    "feed_group": "blah:vulnerabilities",
+                },
+            ),
+            # different id than nvd, different namespaces
+            (
+                {
+                    "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+                    "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+                    "feed_name": "meh",
+                    "feed_namespace": "meh:vulnerabilities",
+                    "fixed_in": ["4.5.2"],
+                    "link": "http://api:8228/v1/query/vulnerabilities?id=MEH-123456",
+                    "name": "foo",
+                    "nvd_data": [
+                        {"cvss_v2": {}, "cvss_v3": {}, "id": "CVE-0000-0000"}
+                    ],  # connecting data! id should match nvd
+                    "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+                    "pkg_type": "python",
+                    "severity": "Medium",
+                    "vendor_data": [
+                        {"cvss_v2": {}, "cvss_v3": None, "id": "MEH-123456"}
+                    ],
+                    "version": "4.0",
+                    "vulnerability_id": "MEH-123456",
+                },
+                {
+                    "vuln": "MEH-123456",
+                    "url": "http://api:8228/v1/query/vulnerabilities?id=MEH-123456",
+                    "feed": "meh",
+                    "feed_group": "meh:vulnerabilities",
+                },
+            ),
+        ],
+    )
+    def test_non_os_vulns_dedup(self, test_input, expected):
+        """
+        Given nvd and non-os vulnerabilities affecting the same package, test that dedup prioritizes non-nvd record if they are the same.
+        A non-nvd vulnerability is considered the same as an nvd vulnerability if it contains a reference to the CVE
+
+        """
+        nvd_vuln = {
+            "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+            "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+            "feed_name": "nvdv2",
+            "feed_namespace": "nvdv2:cves",
+            "fixed_in": [],
+            "link": "https://nvd.nist.gov/vuln/detail/CVE-0000-0000",
+            "name": "foo",
+            "nvd_data": [{"cvss_v2": {}, "cvss_v3": None, "id": "CVE-0000-0000"}],
+            "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+            "pkg_type": "python",
+            "severity": "Critical",
+            "vendor_data": [],
+            "version": "4.0",
+            "vulnerability_id": "CVE-0000-0000",
+        }
+        a = {
+            "cpe_report": [test_input, nvd_vuln],
+            "image_id": "xyz",
+            "legacy_report": {},
+        }
+
+        results = api_utils.make_response_vulnerability("all", a)
+        assert results and len(results) == 1
+        result = results[0]
+        assert result
+        for key, value in expected.items():
+            assert result.get(key) == value
+
+    @pytest.mark.parametrize(
+        "test_input, expected",
+        [
+            (
+                [
+                    "GHSA-abcd-efgh-1234",
+                    "High",
+                    1,
+                    "foo-4.0",
+                    "4.1.3",
+                    "xyz",
+                    "None",
+                    "https://github.com/advisories/GHSA-abcd-efgh-1234",
+                    "python",
+                    "vulnerabilities",
+                    "github:python",
+                    "foo",
+                    "/usr/lib/python2.7/dist-packages/foo",
+                    "4.0",
+                    '{"nvd_data": [{"id": "CVE-1111-1111", "cvss_v2": {}, "cvss_v3": {}}], "vendor_data": []}',
+                ],
+                {
+                    "vuln": "GHSA-abcd-efgh-1234",
+                    "url": "https://github.com/advisories/GHSA-abcd-efgh-1234",
+                    "feed": "vulnerabilities",
+                    "feed_group": "github:python",
+                },
+            )
+        ],
+    )
+    def test_vulns_dedup_1(self, test_input, expected):
+        """
+        Given nvd and os vulnerabilities affecting the same package, test that dedup prioritizes non-nvd record if they are the same.
+        A non-nvd vulnerability is considered the same as an nvd vulnerability if it contains a reference to the CVE
+
+        """
+        a = {
+            "cpe_report": [
+                {
+                    "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+                    "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+                    "feed_name": "nvdv2",
+                    "feed_namespace": "nvdv2:cves",
+                    "fixed_in": [],
+                    "link": "https://nvd.nist.gov/vuln/detail/CVE-1111-1111",
+                    "name": "foo",
+                    "nvd_data": [{"cvss_v2": {}, "cvss_v3": {}, "id": "CVE-1111-1111"}],
+                    "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+                    "pkg_type": "python",
+                    "severity": "High",
+                    "vendor_data": [],
+                    "version": "4.0",
+                    "vulnerability_id": "CVE-1111-1111",
+                }
+            ],
+            "image_id": "xyz",
+            "legacy_report": {
+                "multi": {
+                    "result": {
+                        "colcount": 15,
+                        "header": [
+                            "CVE_ID",
+                            "Severity",
+                            "*Total_Affected",
+                            "Vulnerable_Package",
+                            "Fix_Available",
+                            "Fix_Images",
+                            "Rebuild_Images",
+                            "URL",
+                            "Package_Type",
+                            "Feed",
+                            "Feed_Group",
+                            "Package_Name",
+                            "Package_Path",
+                            "Package_Version",
+                            "CVES",
+                        ],
+                        "rowcount": 1,
+                        "rows": [test_input],
+                    }
+                }
+            },
+        }
+
+        results = api_utils.make_response_vulnerability("all", a)
+        assert results and len(results) == 1
+        result = results[0]
+        assert result
+        for key, value in expected.items():
+            assert result.get(key) == value
+
+    @pytest.mark.parametrize(
+        "test_input, test_repeats, expected",
+        [
+            # same id as nvd, different namespaces
+            (
+                {
+                    "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+                    "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+                    "feed_name": "blah",
+                    "feed_namespace": "blah:vulnerabilities",
+                    "fixed_in": ["4.5.2"],
+                    "link": "http://api:8228/v1/query/vulnerabilities?id=BLAH-123456",
+                    "name": "foo",
+                    "nvd_data": [{"cvss_v2": {}, "cvss_v3": {}, "id": "CVE-0000-0000"}],
+                    "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+                    "pkg_type": "python",
+                    "severity": "Medium",
+                    "vendor_data": [
+                        {"cvss_v2": {}, "cvss_v3": None, "id": "BLAH-123456"}
+                    ],
+                    "version": "4.0",
+                    "vulnerability_id": "CVE-0000-0000",
+                },
+                3,
+                {
+                    "vuln": "CVE-0000-0000",
+                    "url": "http://api:8228/v1/query/vulnerabilities?id=BLAH-123456",
+                    "feed": "blah",
+                    "feed_group": "blah:vulnerabilities",
+                },
+            ),
+            # different id than nvd, different namespaces
+            (
+                {
+                    "cpe": "cpe:/a:-:foo:4.0:-:~~~python~~",
+                    "cpe23": "cpe:2.3:a:-:foo:4.0:-:-:-:-:-:-:~~~python~~",
+                    "feed_name": "meh",
+                    "feed_namespace": "meh:vulnerabilities",
+                    "fixed_in": ["4.5.2"],
+                    "link": "http://api:8228/v1/query/vulnerabilities?id=MEH-123456",
+                    "name": "foo",
+                    "nvd_data": [{"cvss_v2": {}, "cvss_v3": {}, "id": "CVE-0000-0000"}],
+                    "pkg_path": "/usr/lib/python2.7/dist-packages/foo",
+                    "pkg_type": "python",
+                    "severity": "Medium",
+                    "vendor_data": [
+                        {"cvss_v2": {}, "cvss_v3": None, "id": "MEH-123456"}
+                    ],
+                    "version": "4.0",
+                    "vulnerability_id": "MEH-123456",
+                },
+                7,
+                {
+                    "vuln": "MEH-123456",
+                    "url": "http://api:8228/v1/query/vulnerabilities?id=MEH-123456",
+                    "feed": "meh",
+                    "feed_group": "meh:vulnerabilities",
+                },
+            ),
+        ],
+    )
+    def test_repeats(self, test_input, test_repeats, expected):
+        """
+        Given a non-os vulnerability repeated multiple times, test that dedup filters out all but one instance
+        A vulnerability is considered the same as another vulnerability if it has the same id, feed namespace and package path
+        """
+        a = {
+            "cpe_report": [test_input.copy() for counter in range(test_repeats)],
+            "image_id": "xyz",
+            "legacy_report": {},
+        }
+
+        results = api_utils.make_response_vulnerability("all", a)
+        assert results and len(results) == 1
+        result = results[0]
+        assert result
+        for key, value in expected.items():
+            assert result.get(key) == value
