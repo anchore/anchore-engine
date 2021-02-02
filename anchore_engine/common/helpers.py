@@ -276,6 +276,8 @@ def extract_python_content(image_data):
         ]["base"]
         for k in list(adata.keys()):
             ret[k] = safe_extract_json_value(adata[k])
+            # Set the location to the module path itself. The Python "Location" field from analysis is the parent install directory so can be the same for many packages, this ensures the location is specific to that package
+            ret[k]["location"] = k
     return ret
 
 
