@@ -33,9 +33,10 @@ feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None
 feed_sync_msg = {"task_type": "feed_sync", "enabled": True}
 
+# These are user-configurable but mostly for debugging and testing purposes
 try:
     FEED_SYNC_RETRIES = int(os.getenv("ANCHORE_FEED_SYNC_CHECK_RETRIES", 5))
-except:
+except ValueError:
     logger.exception(
         "Error parsing env value ANCHORE_FEED_SYNC_CHECK_RETRIES into int, using default value of 5"
     )
@@ -45,7 +46,7 @@ try:
     FEED_SYNC_RETRY_BACKOFF = int(
         os.getenv("ANCHORE_FEED_SYNC_CHECK_FAILURE_BACKOFF", 5)
     )
-except:
+except ValueError:
     logger.exception(
         "Error parsing env value ANCHORE_FEED_SYNC_CHECK_FAILURE_BACKOFF into int, using default value of 5"
     )
@@ -53,7 +54,7 @@ except:
 
 try:
     feed_config_check_retries = int(os.getenv("FEED_CLIENT_CHECK_RETRIES", 3))
-except:
+except ValueError:
     logger.exception(
         "Error parsing env value FEED_CLIENT_CHECK_RETRIES into int, using default value of 3"
     )
@@ -61,7 +62,7 @@ except:
 
 try:
     feed_config_check_backoff = int(os.getenv("FEED_CLIENT_CHECK_BACKOFF", 5))
-except:
+except ValueError:
     logger.exception(
         "Error parsing env FEED_CLIENT_CHECK_BACKOFF value into int, using default value of 5"
     )
@@ -411,8 +412,8 @@ class PolicyEngineService(ApiService):
         },
     }
 
-    __lifecycle_handlers__ = {LifeCycleStages.pre_register: [(process_preflight, None)]}
-
-    def get_cpe_vulnerabilities(self, image, nvd_cls, cpe_cls):
-        with timer("Image vulnerability cpe lookups", log_level="debug"):
-            return image.cpe_vulnerabilities(_nvd_cls=nvd_cls, _cpe_cls=cpe_cls)
+    __lifecycle_handlers__ = {
+        LifeCycleStages.pre_register: [
+            (process_preflight, None),
+        ]
+    }

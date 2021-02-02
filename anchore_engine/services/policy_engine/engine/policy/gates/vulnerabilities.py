@@ -29,6 +29,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common import nonos_package_types
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
+from anchore_engine.services.policy_engine.engine.scanner import get_scanner
 
 
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
@@ -1031,18 +1032,19 @@ class VulnerabilitiesGate(Gate):
 
         :rtype:
         """
-        # Load the package vulnerability info up front
-        pkg_vulns = image_obj.vulnerabilities()
-        context.data["loaded_vulnerabilities"] = pkg_vulns
 
         # select the nvd classes once and be done, load them into context for eval
         _nvd_cls, _cpe_cls = select_nvd_classes()
         context.data["nvd_cpe_cls"] = (_nvd_cls, _cpe_cls)
 
+        scanner = get_scanner(_nvd_cls, _cpe_cls)
+
+        # Load the package vulnerability info up front
+        pkg_vulns = scanner.get_vulnerabilities(image_obj)
+        context.data["loaded_vulnerabilities"] = pkg_vulns
+
         # Load the non-package (CPE) vulnerability info up front
-        all_cpe_matches = image_obj.cpe_vulnerabilities(
-            _nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls
-        )
+        all_cpe_matches = scanner.get_cpe_vulnerabilities(image_obj)
         if not all_cpe_matches:
             all_cpe_matches = []
 
