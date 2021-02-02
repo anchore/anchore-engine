@@ -5,8 +5,12 @@ These functions may raise/use api exception types
 
 """
 import copy
+import json
+
 import jsonschema
 import re
+
+import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.utils import parse_dockerimage_string
 from anchore_engine.subsys import logger
@@ -225,3 +229,245 @@ def validate_image_add_source(analysis_request_dict, api_schema):
 
     else:
         raise ValueError('Expected a "source" property in the input dict')
+
+
+def make_cvss_scores(metrics):
+    """
+     [
+        {
+          "cvss_v2": {
+            "base_metrics": {
+              ...
+            },
+            "vector_string": "AV:N/AC:L/Au:N/C:P/I:P/A:P",
+            "version": "2.0"
+          },
+          "cvss_v3": {
+            "base_metrics": {
+             ...
+            },
+            "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "version": "3.0"
+          },
+          "id": "CVE-2019-1234"
+        },
+        {
+          "cvss_v2": {
+            "base_metrics": {
+              ...
+            },
+            "vector_string": "AV:N/AC:L/Au:N/C:P/I:P/A:P",
+            "version": "2.0"
+          },
+          "cvss_v3": {
+            "base_metrics": {
+             ...
+            },
+            "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            "version": "3.0"
+          },
+          "id": "CVE-2019-3134"
+        },
+     ]
+    :param metrics:
+    :return:
+    """
+    score_list = []
+
+    for metric in metrics:
+        new_score_packet = {
+            "id": metric.get("id"),
+        }
+        score_list.append(new_score_packet)
+
+        for i in [3, 2]:
+            cvss_dict = metric.get("cvss_v{}".format(i), {})
+            base_metrics = cvss_dict.get("base_metrics", {}) if cvss_dict else {}
+
+            tmp = base_metrics.get("base_score", -1.0)
+            base_score = float(tmp) if tmp else -1.0
+            tmp = base_metrics.get("exploitability_score", -1.0)
+            exploitability_score = float(tmp) if tmp else -1.0
+            tmp = base_metrics.get("impact_score", -1.0)
+            impact_score = float(tmp) if tmp else -1.0
+
+            new_score_packet["cvss_v{}".format(i)] = {
+                "base_score": base_score,
+                "exploitability_score": exploitability_score,
+                "impact_score": impact_score,
+            }
+
+    return score_list
+
+
+def make_response_vulnerability(vulnerability_type, vulnerability_data):
+    ret = []
+
+    if not vulnerability_data:
+        logger.warn("empty query data given to format - returning empty result")
+        return ret
+
+    eltemplate = {
+        "vuln": "None",
+        "severity": "None",
+        "url": "None",
+        "fix": "None",
+        "package": "None",
+        "package_name": "None",
+        "package_version": "None",
+        "package_type": "None",
+        "package_cpe": "None",
+        "package_cpe23": "None",
+        "package_path": "None",
+        "feed": "None",
+        "feed_group": "None",
+        "nvd_data": "None",
+        "vendor_data": "None",
+    }
+
+    osvulns = []
+    nonosvulns = []
+    dedup_hash = {}
+
+    keymap = {
+        "vuln": "CVE_ID",
+        "severity": "Severity",
+        "package": "Vulnerable_Package",
+        "fix": "Fix_Available",
+        "url": "URL",
+        "package_type": "Package_Type",
+        "feed": "Feed",
+        "feed_group": "Feed_Group",
+        "package_name": "Package_Name",
+        "package_path": "Package_Path",
+        "package_version": "Package_Version",
+    }
+    scan_result = vulnerability_data["legacy_report"]
+    try:
+        for imageId in list(scan_result.keys()):
+            header = scan_result[imageId]["result"]["header"]
+            rows = scan_result[imageId]["result"]["rows"]
+            for row in rows:
+                el = {}
+                el.update(eltemplate)
+                for k in list(keymap.keys()):
+                    try:
+                        el[k] = row[header.index(keymap[k])]
+                    except:
+                        el[k] = "None"
+
+                    # conversions
+                    if el[k] == "N/A":
+                        el[k] = "None"
+
+                if el["package_type"].lower() in anchore_engine.common.os_package_types:
+                    osvulns.append(el)
+                else:
+                    nonosvulns.append(el)
+
+                el["nvd_data"] = []
+                el["vendor_data"] = []
+                if row[header.index("CVES")]:
+                    all_data = json.loads(
+                        row[header.index("CVES")]
+                    )  # {'nvd_data': [], 'vendor_data': []}
+                    el["nvd_data"] = make_cvss_scores(all_data.get("nvd_data", []))
+                    el["vendor_data"] = make_cvss_scores(
+                        all_data.get("vendor_data", [])
+                    )
+                    # gather nvd references and build package-path->CVE-IDs map. to be used by dedup
+                    pkg_path = el.get("package_path")
+                    if pkg_path not in dedup_hash:
+                        dedup_hash[pkg_path] = set()
+                    for nvd_el in el["nvd_data"]:
+                        dedup_hash[pkg_path].add(nvd_el.get("id"))
+    except Exception as err:
+        logger.exception("could not prepare query response")
+        logger.warn("could not prepare query response - exception: " + str(err))
+        ret = []
+
+    # non-os CPE search
+    keymap = {
+        "vuln": "vulnerability_id",
+        "severity": "severity",
+        "package_name": "name",
+        "package_version": "version",
+        "package_path": "pkg_path",
+        "package_type": "pkg_type",
+        "package_cpe": "cpe",
+        "package_cpe23": "cpe23",
+        "url": "link",
+        "feed": "feed_name",
+        "feed_group": "feed_namespace",
+    }
+    scan_result = vulnerability_data["cpe_report"]
+    # gather nvd references of non-nvd vulnerabilities and build package-path->CVE-IDs map. to be used by dedup
+    for vuln in scan_result:
+        if vuln.get("feed_name") not in ["nvdv2", "nvd"]:
+            pkg_path = vuln.get("pkg_path")
+            if pkg_path not in dedup_hash:
+                dedup_hash[pkg_path] = set()
+            for nvd_item in vuln.get("nvd_data", []):
+                dedup_hash[pkg_path].add(nvd_item.get("id"))
+
+    # hash of non-os vulnerabilities in the final result, represented by a tuple containing feed, vuln_id and pkg_path
+    included = set()
+    for vuln in scan_result:
+        feed_name = vuln.get("feed_name")
+        vuln_id = vuln.get("vulnerability_id")
+        pkg_path = vuln.get("pkg_path")
+
+        # dedup pass for nvd vulnerabilities
+        if (
+            feed_name in ["nvdv2", "nvd"]
+            and pkg_path in dedup_hash
+            and vuln_id in dedup_hash[pkg_path]
+        ):
+            # non-nvd sources get priority, skip nvd record if non-nvd vuln exists
+            continue
+
+        # dedup pass for uniqueness, issue may be caused by fp corrections introducing repeats
+        if (feed_name, vuln_id, pkg_path) in included:
+            # Allow only one record for vulnerability per namespace affecting a package.
+            # This will still allow dups (same vulnerability ID and package) across non-nvd namespaces such as github and vulndb
+            continue
+
+        # add the record to included hash
+        included.add((feed_name, vuln_id, pkg_path))
+
+        el = {}
+        el.update(eltemplate)
+
+        for k in list(keymap.keys()):
+            el[k] = vuln[keymap[k]]
+
+        if vuln["name"] != vuln["version"]:
+            pkg_final = "{}-{}".format(vuln["name"], vuln["version"])
+        else:
+            pkg_final = vuln["name"]
+
+        el["package"] = pkg_final
+
+        # get nvd scores
+        el["nvd_data"] = []
+        el["nvd_data"] = make_cvss_scores(vuln.get("nvd_data", []))
+
+        # get vendor scores
+        el["vendor_data"] = []
+        el["vendor_data"] = make_cvss_scores(vuln.get("vendor_data", []))
+
+        fixed_in = vuln.get("fixed_in", [])
+        el["fix"] = ", ".join(fixed_in) if fixed_in else "None"
+
+        nonosvulns.append(el)
+
+    if vulnerability_type == "os":
+        ret = osvulns
+    elif vulnerability_type == "non-os":
+        ret = nonosvulns
+    elif vulnerability_type == "all":
+        ret = osvulns + nonosvulns
+    else:
+        ret = vulnerability_data
+
+    return ret
