@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -46,7 +46,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.12.4
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.12.5
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -56,13 +56,13 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.9.0"
+ARG ANCHORE_ENGINE_VERSION="0.9.1"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -154,7 +154,7 @@ RUN set -ex && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
     mkdir /config && \
     mkdir /licenses && \
-    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav/db && \
+    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles ${ANCHORE_SERVICE_DIR}/bundles /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
