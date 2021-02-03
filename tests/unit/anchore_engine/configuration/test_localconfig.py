@@ -22,7 +22,7 @@ ANALYZER_CONFIG_TEXT = "analyzer\n"
 POLICY_BUNDLE_TEXT = "policy bundle\n"
 
 INPUT_CONFIG_DIR = "input_config"
-INPUT_BUNDLES_DIR = "input_bundles"
+INPUT_BUNDLES_DIR_ROOT = "input_bundles"
 OUTPUT_BUNDLES_DIR = "bundles"
 
 
@@ -72,31 +72,61 @@ def get_mock_config_with_policy_bundles(dir, bundle_filenames, simulate_exceptio
     return {"policy_bundles": policy_bundles}
 
 
+def test_empty_src_dirs(mock_default_config, tmpdir):
+    # setup the default config
+    load_defaults(configdir=tmpdir)
+
+    # function under test
+    load_policy_bundle_paths(src_dirs=[])
+
+    # get and validate the relevant config bits
+    config = get_config()
+    assert config["policy_bundles"] is None
+
+
 @pytest.mark.parametrize(
-    "config_filenames",
+    "config_filename_sets",
     [
-        ([]),
-        (["anchore_default_bundle.json"]),
-        (["anchore_default_bundle.json", "second_bundle.json"]),
+        ([[]]),
+        ([["anchore_default_bundle.json"]]),
+        ([["anchore_default_bundle.json", "second_bundle.json"]]),
+        (
+            [
+                ["anchore_default_bundle.json", "second_bundle.json"],
+                ["third_bundle.json", "fourth_bundle.json"],
+                ["fifth_bundle.json"],
+            ]
+        ),
     ],
 )
-def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filenames):
+def test_load_policy_bundle_paths(mock_default_config, tmpdir, config_filename_sets):
     # setup files to read
-    input_dir = tmpdir.mkdir(INPUT_BUNDLES_DIR)
-    mock_test_files(input_dir, config_filenames)
+    src_dirs = []
+    i = 0
+    for set in config_filename_sets:
+        input_dir = tmpdir.mkdir(INPUT_BUNDLES_DIR_ROOT + "_" + str(i))
+        i += 1
+        mock_test_files(input_dir, set)
+        src_dirs.append(input_dir.strpath)
+
+    # setup the expected output. We will expect to see output_dir_name contain the
+    # files in config_filenames_flat
     output_dir_name = tmpdir.strpath + "/bundles"
+    config_filenames_flat = [
+        filename for set in config_filename_sets for filename in set
+    ]
 
     # setup the default config
     load_defaults(configdir=tmpdir)
 
     # function under test
-    load_policy_bundle_paths(src_dir=input_dir.strpath)
+    load_policy_bundle_paths(src_dirs=src_dirs)
 
     # get and validate the relevant config bits
     config = get_config()
     assert config["policy_bundles"] is not None
-    assert len(config["policy_bundles"]) == len(config_filenames)
-    for config_filename in config_filenames:
+    assert len(config["policy_bundles"]) == len(config_filenames_flat)
+    for config_filename in config_filenames_flat:
         policy_bundle = next(
             policy_bundle
             for policy_bundle in config["policy_bundles"]
