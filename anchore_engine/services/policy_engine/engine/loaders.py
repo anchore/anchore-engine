@@ -1136,7 +1136,7 @@ class ImageLoader(object):
         return ret_names, ret_versions
 
     def load_cpes_from_syft_output_with_fallback(self, analysis_json, image):
-        allcpes = []
+        allcpes = {}
         cpes = []
         package_list = analysis_json.get("package_list", {})
 
@@ -1175,9 +1175,10 @@ class ImageLoader(object):
 
     def extract_syft_cpes(self, allcpes, package_dict, image, pkg_type):
         cpes = []
-        for pkg_key, pkg in package_dict.items():
-            cpes = pkg.get("cpes", [])
-            for cpe in cpes:
+        for pkg_key, pkg_json_str in package_dict.items():
+            pkg = safe_extract_json_value(pkg_json_str)
+            pkg_cpes = pkg.get("cpes", [])
+            for cpe in pkg_cpes:
                 decomposed_cpe = self.decompose_cpe(cpe)
                 cpekey = ":".join(decomposed_cpe + [pkg_key])
 
@@ -1198,7 +1199,7 @@ class ImageLoader(object):
         return cpes
 
     @staticmethod
-    def decompose_cpe(rawcpe):
+    def decompose_cpe(rawcpe: str):
         """
         Simplified decomposition method borrowed from the the ImageLoader
         """
@@ -1222,7 +1223,6 @@ class ImageLoader(object):
         if java_json_raw:
             for path, java_str in list(java_json_raw.items()):
                 java_json = safe_extract_json_value(java_str)
-
                 try:
                     guessed_names, guessed_versions = self._fuzzy_java(java_json)
                 except Exception as err:
@@ -1243,7 +1243,6 @@ class ImageLoader(object):
                             except:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
-
                         if cpekey not in allcpes:
                             allcpes[cpekey] = True
 
