@@ -1173,7 +1173,7 @@ class ImageLoader(object):
         cpes.extend(self.get_fuzzy_go_cpes(analysis_json, allcpes, image))
         cpes.extend(self.get_fuzzy_binary_cpes(analysis_json, allcpes, image))
 
-        return cpes, allcpes
+        return cpes
 
     def extract_syft_cpes(self, allcpes, package_dict, image, pkg_type):
         cpes = []
