@@ -1,3 +1,6 @@
+anchoreGlobal:
+  defaultAdminPassword: foobar
+
 postgresql:
   # image: anchore/engine-db-preload
   # imageTag: latest
