@@ -1,4 +1,5 @@
 Authlib==0.15.2
+cryptography==3.3.2
 boto3==1.11.6
 Click==7.0
 connexion==2.5.1
