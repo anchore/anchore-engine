@@ -4998,6 +4998,10 @@ definitions:
         "$ref": "#/definitions/ImportDescriptor"
       schema:
         "$ref": "#/definitions/ImportSchema"
+      artifactRelationships:
+        items:
+          "$ref": "#/definitions/ImportPackageRelationship"
+        type: array
     additionalProperties: true
     type: object
   ImportDescriptor:
@@ -5009,7 +5013,7 @@ definitions:
         type: string
       version:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportDistribution:
     required:
@@ -5023,7 +5027,7 @@ definitions:
         type: string
       idLike:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportPackageLocation:
     required:
@@ -5033,7 +5037,7 @@ definitions:
         type: string
       layerID:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportPackage:
     required:
@@ -5046,6 +5050,8 @@ definitions:
       - cpes
       - metadataType
     properties:
+      id:
+        type: string
       name:
         type: string
       version:
@@ -5075,9 +5081,8 @@ definitions:
         type: string
       metadata:
         type: object
-    additionalProperties: false
+    additionalProperties: true
     type: object
-
   ImportSchema:
     required:
       - version
@@ -5087,7 +5092,7 @@ definitions:
         type: string
       url:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportSource:
     required:
@@ -5098,5 +5103,22 @@ definitions:
         type: string
       target:
         additionalProperties: true
-    additionalProperties: false
+    additionalProperties: true
+    type: object
+  ImportPackageRelationship:
+    required:
+      - parent
+      - child
+      - type
+    properties:
+      parent:
+        type: string
+      child:
+        type: string
+      type:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    additionalProperties: true
     type: object
