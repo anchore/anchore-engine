@@ -1,3 +1,4 @@
+import copy
 from yosai.core.authc.authc import UsernamePasswordToken
 import time
 from anchore_engine.configuration import localconfig
@@ -12,6 +13,13 @@ from anchore_engine.configuration.localconfig import (
     OauthNotConfiguredError,
     InvalidOauthConfigurationError,
 )
+
+
+# System uses an anonymous client, so that users do not have to register specific clients
+# This could be extended in the future to add client registration and auth support in OAuth2 flows
+
+ANONYMOUS_CLIENT_ID = "anonymous"
+CLIENT_GRANT_KEY = "grant_types"
 
 
 class User(object):
@@ -57,6 +65,10 @@ def generate_token(client, grant_type, user, scope):
 def init_oauth(app, grant_types, expiration_config):
     """
     Configure the oauth routes and handlers via authlib
+
+    :param app:
+    :param grant_types:
+    :param expiration_config:
     :return:
     """
     logger.debug("Initializing oauth routes")
@@ -97,24 +109,43 @@ def init_oauth(app, grant_types, expiration_config):
             raise
 
     try:
+        expected_metadata = {
+            "token_endpoint_auth_method": "none",  # This should be a function of the grant type input but all of our types are this currently
+            "client_name": "anonymous",
+            "grant_types": [grant.GRANT_TYPE for grant in grant_types],
+        }
+
         # Initialize an anonymous client record
         with session_scope() as db:
-            f = db.query(OAuth2Client).filter_by(client_id="anonymous").first()
-            if not f:
-                c = OAuth2Client()
-                c.client_id = "anonymous"
-                c.user_id = None
-                c.client_secret = None
-                c.client_id_issued_at = time.time() - 100
-                c.client_secret_expires_at = time.time() + 1000
-                c.set_client_metadata(
-                    {
-                        "token_endpoint_auth_method": "none",
-                        "client_name": "anonymous",
-                        "grant_types": ["password"],
-                    }
-                )
-                db.add(c)
+            found = (
+                db.query(OAuth2Client)
+                .filter_by(client_id=ANONYMOUS_CLIENT_ID)
+                .one_or_none()
+            )
+
+            logger.info("Creating new oauth client record for %s", ANONYMOUS_CLIENT_ID)
+            to_merge = OAuth2Client()
+            to_merge.client_id = ANONYMOUS_CLIENT_ID
+            to_merge.user_id = None
+            to_merge.client_secret = None
+            # These are no-ops effectively since the client isn't authenticated itself
+            to_merge.client_id_issued_at = time.time() - 100
+            to_merge.client_secret_expires_at = time.time() + 1000
+            to_merge.set_client_metadata(
+                {
+                    "token_endpoint_auth_method": "none",  # This should be a function of the grant type input but all of our types are this currently
+                    "client_name": ANONYMOUS_CLIENT_ID,
+                    "grant_types": [grant.GRANT_TYPE for grant in grant_types],
+                }
+            )
+
+            merged = setup_oauth_client(found, to_merge)
+            merged = db.merge(merged)
+            logger.info(
+                "Initializing db record for oauth client %s with grants %s",
+                merged.client_id,
+                merged.client_metadata.get("grant_types"),
+            )
     except Exception as e:
         logger.debug("Default client record init failed: {}".format(e))
 
@@ -143,3 +174,51 @@ def init_oauth(app, grant_types, expiration_config):
 
     logger.debug("Oauth init complete")
     return authz
+
+
+def merge_client_metadata(found_meta: dict, expected_metadata: dict) -> dict:
+    """
+    Merge the client metadata from what is found and what is needed to create a single metadata record.
+
+    Typically this is just a merging of the grant_types lists.
+
+    :param found_client:
+    :param client_metadata:
+    :return: dict of merged information
+    """
+    merged = copy.copy(found_meta) if found_meta else {}
+
+    # Merge the new grant types in, defaulting to empty grant lists if not found
+    grants = merged.get(CLIENT_GRANT_KEY, [])
+    grants.extend(expected_metadata.get(CLIENT_GRANT_KEY, []))
+    merged[CLIENT_GRANT_KEY] = list(set(grants))
+
+    return merged
+
+
+def setup_oauth_client(found: OAuth2Client, to_merge: OAuth2Client) -> OAuth2Client:
+    """
+    Evaluate and merge the two records into a single record with the correct grants
+
+    :param found:
+    :param to_add_merge:
+    :return:
+    """
+    if found:
+        logger.info("Checking existing client record for %s", found.client_id)
+        logger.info("Checking client record %s", found.client_metadata)
+
+        # Ensure the client record has the right set of grant types, not one grant per client, since we have a single client_id
+        found_meta = found.client_metadata
+
+        merged = merge_client_metadata(found_meta, to_merge.client_metadata)
+        found.set_client_metadata(merged)
+
+        logger.info(
+            "Updated %s OAuth client record with grants %s",
+            found.client_id,
+            found.client_metadata.get("grant_types"),
+        )
+        return found
+    else:
+        return to_merge

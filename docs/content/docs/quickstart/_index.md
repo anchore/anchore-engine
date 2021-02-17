@@ -263,5 +263,5 @@ Now that you have Anchore Engine running, you can begin to learning more about A
     docker-compose up -d
     ```
 
-    You should see a new container started and can access prometheus via your browser on `http://localhost:8080/ui/`
+    You should see a new container started and can access swagger via your browser on `http://localhost:8080`
 

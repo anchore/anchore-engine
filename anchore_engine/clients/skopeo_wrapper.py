@@ -1,3 +1,4 @@
+import gzip
 import json
 import os
 import re
@@ -236,6 +237,7 @@ def download_image(
 
                 index_file_path = os.path.join(copydir, "index.json")
                 ensure_no_nondistributable_media_types(index_file_path)
+                ensure_layer_media_types_are_correct(copydir)
 
                 break
         if not success:
@@ -267,6 +269,39 @@ def fetch_oci_blobs(blobs_dir: str, blobs_to_fetch: list):
 
 def get_digest_value(digest_with_algorithm_prefix: str):
     return digest_with_algorithm_prefix.split(":")[-1]
+
+
+def ensure_layer_media_types_are_correct(oci_dir_path: str):
+    index_path = os.path.join(oci_dir_path, "index.json")
+    manifest_file_path = get_manifest_path_from_index(index_path)
+    blobs_sha256_dir_path = os.path.join(oci_dir_path, "blobs", "sha256")
+
+    with open(manifest_file_path, "r") as _f:
+        manifest = json.load(_f)
+
+    layers = manifest.get("layers", [])
+    for layer in layers:
+        blob_file = get_digest_value(layer.get("digest", ""))
+        blob_path = os.path.join(blobs_sha256_dir_path, blob_file)
+
+        tar_media_type = "application/vnd.oci.image.layer.v1.tar"
+        tar_gzip_media_type = "application/vnd.oci.image.layer.v1.tar+gzip"
+
+        blob_media_type = tar_gzip_media_type if is_gzip(blob_path) else tar_media_type
+
+        layer["mediaType"] = blob_media_type
+
+    with open(manifest_file_path, "w") as _f:
+        json.dump(manifest, _f)
+
+
+def is_gzip(path: str):
+    try:
+        with gzip.open(path) as _f:
+            _f.read(1)
+            return True
+    except Exception:
+        return False
 
 
 def ensure_no_nondistributable_media_types(oci_index_file_path: str):

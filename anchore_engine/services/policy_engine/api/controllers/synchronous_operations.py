@@ -82,6 +82,7 @@ authorizer = get_authorizer()
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
+from anchore_engine.services.policy_engine.engine.scanner import get_scanner
 
 TABLE_STYLE_HEADER_LIST = [
     "CVE_ID",
@@ -979,11 +980,8 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         try:
             all_cpe_matches = []
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
-                all_cpe_matches = (
-                    ApiRequestContextProxy.get_service().get_cpe_vulnerabilities(
-                        img, _nvd_cls, _cpe_cls
-                    )
-                )
+                scanner = get_scanner(_nvd_cls, _cpe_cls)
+                all_cpe_matches = scanner.get_cpe_vulnerabilities(img)
 
                 if not all_cpe_matches:
                     all_cpe_matches = []
@@ -999,7 +997,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                         )
 
                     cpe_vuln_el = {
-                        "vulnerability_id": vulnerability_cpe.vulnerability_id,
+                        "vulnerability_id": vulnerability_cpe.parent.normalized_id,
                         "severity": vulnerability_cpe.parent.severity,
                         "link": link,
                         "pkg_type": image_cpe.pkg_type,
