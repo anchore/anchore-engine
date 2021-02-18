@@ -39,7 +39,6 @@ RUN set -ex && \
     echo "installing Skopeo" && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
-    make bin/skopeo DISABLE_CGO=1 && \
     make install-binary DISABLE_CGO=1 && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
