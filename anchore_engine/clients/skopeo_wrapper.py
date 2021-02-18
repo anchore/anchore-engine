@@ -339,7 +339,7 @@ def remove_nondistributable(layer: dict):
 
 
 def get_repo_tags_skopeo(
-    url, registry, repo, user=None, pw=None, verify=None, lookuptag=None
+    url, registry, repo, user=None, pw=None, verify=None
 ):
     try:
         proc_env = os.environ.copy()
@@ -370,15 +370,13 @@ def get_repo_tags_skopeo(
             global_timeout_str = ""
 
         pullstring = registry + "/" + repo
-        if lookuptag:
-            pullstring = pullstring + ":" + lookuptag
 
         repotags = []
 
         cmd = [
             "/bin/sh",
             "-c",
-            "skopeo {} inspect {} {} docker://{}".format(
+            "skopeo {} list-tags {} {} docker://{}".format(
                 global_timeout_str, tlsverifystr, credstr, pullstring
             ),
         ]
@@ -402,7 +400,7 @@ def get_repo_tags_skopeo(
             raise err
 
         data = json.loads(sout)
-        repotags = data.get("RepoTags", [])
+        repotags = data.get("Tags", [])
     except Exception as err:
         raise err
 
