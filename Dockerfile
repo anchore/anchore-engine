@@ -7,7 +7,7 @@ ARG CLI_COMMIT
 ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 ENV GOPATH=/go
-ENV SKOPEO_VERSION=v0.1.41
+ENV SKOPEO_VERSION=v1.2.1
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -39,8 +39,8 @@ RUN set -ex && \
     echo "installing Skopeo" && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
-    make binary-local DISABLE_CGO=1 && \
-    make install-binary && \
+    make bin/skopeo DISABLE_CGO=1 && \
+    make install-binary DISABLE_CGO=1 && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
