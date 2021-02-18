@@ -338,9 +338,7 @@ def remove_nondistributable(layer: dict):
     return layer
 
 
-def get_repo_tags_skopeo(
-    url, registry, repo, user=None, pw=None, verify=None
-):
+def get_repo_tags_skopeo(url, registry, repo, user=None, pw=None, verify=None):
     try:
         proc_env = os.environ.copy()
         if user and pw:
