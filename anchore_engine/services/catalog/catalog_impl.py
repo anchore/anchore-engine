@@ -150,8 +150,6 @@ def repo(dbsession, request_inputs, bodycontent={}):
         autosubscribe = params["autosubscribe"]
 
     lookuptag = "latest"
-    if params and "lookuptag" in params and params["lookuptag"]:
-        lookuptag = str(params["lookuptag"])
 
     dryrun = False
     if params and "dryrun" in params:

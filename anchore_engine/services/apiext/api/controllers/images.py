@@ -324,10 +324,6 @@ def repositories(request_inputs):
     if params and "autosubscribe" in params:
         autosubscribe = params["autosubscribe"]
 
-    lookuptag = None
-    if params and "lookuptag" in params:
-        lookuptag = params["lookuptag"]
-
     dryrun = False
     if params and "dryrun" in params:
         dryrun = params["dryrun"]
@@ -341,7 +337,6 @@ def repositories(request_inputs):
                 repo_records = client.add_repo(
                     regrepo=input_repo,
                     autosubscribe=autosubscribe,
-                    lookuptag=lookuptag,
                     dryrun=dryrun,
                 )
                 for repo_record in repo_records:
