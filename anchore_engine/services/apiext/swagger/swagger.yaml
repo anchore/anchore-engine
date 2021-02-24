@@ -3705,6 +3705,10 @@ definitions:
                 type: string
             location:
               type: string
+            cpes:
+              type: array
+              items:
+                type: string
   ContentMalwareResponse:
     type: object
     description: Malware listing response
@@ -3769,6 +3773,10 @@ definitions:
               type: string
             origin:
               type: string
+            cpes:
+              type: array
+              items:
+                type: string
   MetadataResponse:
     type: object
     description: "Generic wrapper for metadata listings from images"
