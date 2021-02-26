@@ -3709,6 +3709,7 @@ definitions:
               type: array
               items:
                 type: string
+              description: A list of Common Platform Enumerations that may uniquely identify the package
   ContentMalwareResponse:
     type: object
     description: Malware listing response
@@ -3777,6 +3778,7 @@ definitions:
               type: array
               items:
                 type: string
+              description: A list of Common Platform Enumerations that may uniquely identify the package
   MetadataResponse:
     type: object
     description: "Generic wrapper for metadata listings from images"
@@ -4485,6 +4487,9 @@ definitions:
     properties:
       selector:
         $ref: "#/definitions/ImageSelector"
+      rule_id:
+        type: string
+        description: Unique identifier for archive rule
       tag_versions_newer:
         type: integer
         description: Number of images mapped to the tag that are newer
