@@ -402,6 +402,18 @@ def handle_vulnerability_scan(*args, **kwargs):
     return True
 
 
+def generate_error_service_description(error_short_description: str) -> str:
+    service_status = {}
+    service_status["up"] = False
+    service_status["available"] = False
+    service_status["busy"] = False
+    service_status["message"] = error_short_description
+    service_status["detail"] = {}
+    service_status["version"] = "unknown"
+    service_status["db_version"] = "unknown"
+    return json.dumps(service_status)
+
+
 def handle_service_watcher(*args, **kwargs):
     # global latest_service_records
 
@@ -455,7 +467,7 @@ def handle_service_watcher(*args, **kwargs):
                         try:
                             status = json.loads(service["short_description"])
                         except:
-                            status = {"up": False, "available": False}
+                            status = json.loads(generate_error_service_description(""))
 
                         # set to down until the response can be parsed
                         service_update_record["status"] = False
@@ -464,7 +476,9 @@ def handle_service_watcher(*args, **kwargs):
                         )
                         service_update_record[
                             "short_description"
-                        ] = "could not get service status description"
+                        ] = generate_error_service_description(
+                            "could not get service status description"
+                        )
 
                         try:
                             # NOTE: this is where any service-specific decisions based on the 'status' record could happen - now all services are the same
@@ -482,8 +496,10 @@ def handle_service_watcher(*args, **kwargs):
                                     )
                                     service_update_record[
                                         "short_description"
-                                    ] = "no heartbeat from service in ({}) seconds".format(
-                                        max_service_heartbeat_timer
+                                    ] = generate_error_service_description(
+                                        "no heartbeat from service in ({}) seconds".format(
+                                            max_service_heartbeat_timer
+                                        )
                                     )
 
                                     # Trigger an event to log the down service
@@ -501,14 +517,9 @@ def handle_service_watcher(*args, **kwargs):
                                     service_update_record[
                                         "status_message"
                                     ] = taskstate.complete_state("service_status")
-                                    try:
-                                        service_update_record[
-                                            "short_description"
-                                        ] = json.dumps(status)
-                                    except:
-                                        service_update_record[
-                                            "short_description"
-                                        ] = str(status)
+                                    service_update_record[
+                                        "short_description"
+                                    ] = json.dumps(status)
                             else:
                                 # handle the down state transitions
                                 if (
@@ -573,8 +584,10 @@ def handle_service_watcher(*args, **kwargs):
                                     ] = taskstate.orphaned_state("service_status")
                                     service_update_record[
                                         "short_description"
-                                    ] = "no heartbeat from service in ({}) seconds".format(
-                                        max_service_orphaned_timer
+                                    ] = generate_error_service_description(
+                                        "no heartbeat from service in ({}) seconds".format(
+                                            max_service_orphaned_timer
+                                        )
                                     )
 
                                     if service[
@@ -613,7 +626,9 @@ def handle_service_watcher(*args, **kwargs):
                             ] = taskstate.fault_state("service_status")
                             service_update_record[
                                 "short_description"
-                            ] = "could not get service status"
+                            ] = generate_error_service_description(
+                                "could not get service status"
+                            )
                     finally:
                         if event:
                             catalog_impl.add_event(event, dbsession)
