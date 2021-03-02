@@ -2418,9 +2418,7 @@ paths:
           in: path
       responses:
         200:
-          description: Archive transition rule
-          schema:
-            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+          description: Analysis archive rule succesfuly deleted
         500:
           description: Internal error
           schema:
@@ -2524,9 +2522,7 @@ paths:
           type: boolean
       responses:
         200:
-          description: ArchivdImageAnalysis record but with status 'deleted'
-          schema:
-            $ref: "#/definitions/ArchivedAnalysis"
+          description: ArchivdImageAnalysis successfully deleted
         500:
           description: Internal error
           schema:
