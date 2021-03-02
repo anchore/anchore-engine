@@ -32,8 +32,6 @@ from anchore_engine.db import (
     db_subscriptions,
     db_anchore,
     db_services,
-    db_archivemetadata,
-    db_policyeval,
     AccountStates,
     AccountTypes,
 )
@@ -43,7 +41,6 @@ from anchore_engine.services.catalog import catalog_impl
 from anchore_engine.services.catalog.exceptions import (
     TagManifestParseError,
     TagManifestNotFoundError,
-    PolicyBundleValidationError,
 )
 from anchore_engine.services.catalog.image_content.get_image_content import (
     ImageManifestContentGetter,
@@ -51,7 +48,6 @@ from anchore_engine.services.catalog.image_content.get_image_content import (
     ImageContentGetter,
 )
 from anchore_engine.db.entities.catalog import (
-    ImageImportContent,
     ImageImportOperation,
     ImportState,
 )
@@ -63,18 +59,6 @@ from anchore_engine.subsys import (
     object_store,
 )
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.services.catalog import archiver
-from anchore_engine.subsys.object_store.config import (
-    DEFAULT_OBJECT_STORE_MANAGER_ID,
-    ANALYSIS_ARCHIVE_MANAGER_ID,
-    ALT_OBJECT_STORE_CONFIG_KEY,
-)
-from anchore_engine.common.schemas import (
-    QueueMessage,
-    AnalysisQueueMessage,
-    ImportQueueMessage,
-    ImportManifest,
-)
 from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
@@ -322,7 +306,7 @@ def handle_vulnerability_scan(*args, **kwargs):
                     try:
                         subscription_value = json.loads(value)
                         digests = set(subscription_value["digests"])
-                    except Exception as err:
+                    except Exception:
                         digests = set()
                 else:
                     digests = set()
@@ -361,7 +345,7 @@ def handle_vulnerability_scan(*args, **kwargs):
                             )
                             with db.session_scope() as dbsession:
                                 try:
-                                    rc = catalog_impl.perform_vulnerability_scan(
+                                    catalog_impl.perform_vulnerability_scan(
                                         userId,
                                         imageDigest,
                                         dbsession,
@@ -403,14 +387,15 @@ def handle_vulnerability_scan(*args, **kwargs):
 
 
 def generate_error_service_description(error_short_description: str) -> str:
-    service_status = {}
-    service_status["up"] = False
-    service_status["available"] = False
-    service_status["busy"] = False
-    service_status["message"] = error_short_description
-    service_status["detail"] = {}
-    service_status["version"] = "unknown"
-    service_status["db_version"] = "unknown"
+    service_status = {
+        "up": False,
+        "available": False,
+        "busy": False,
+        "message": error_short_description,
+        "detail": {},
+        "version": "unknown",
+        "db_version": "unknown",
+    }
     return json.dumps(service_status)
 
 
@@ -426,10 +411,8 @@ def handle_service_watcher(*args, **kwargs):
         logger.debug("FIRING: service watcher")
 
         localconfig = anchore_engine.configuration.localconfig.get_config()
-        verify = localconfig["internal_ssl_verify"]
 
         with db.session_scope() as dbsession:
-            mgr = manager_factory.for_session(dbsession)
             event_account = anchore_engine.configuration.localconfig.ADMIN_ACCOUNT_NAME
 
             anchore_services = db_services.get_all(session=dbsession)
@@ -831,7 +814,7 @@ def handle_repo_watcher(*args, **kwargs):
                                 )
 
                                 # add the image
-                                image_records = catalog_impl.add_or_update_image(
+                                catalog_impl.add_or_update_image(
                                     dbsession,
                                     userId,
                                     new_image_info["imageId"],
@@ -971,7 +954,7 @@ def handle_image_watcher(*args, **kwargs):
 
         for registry_record in registry_creds:
             try:
-                registry_status = docker_registry.ping_docker_registry(registry_record)
+                docker_registry.ping_docker_registry(registry_record)
             except Exception as err:
                 registry_record["record_state_key"] = "auth_failure"
                 registry_record["record_state_val"] = str(int(time.time()))
@@ -1059,7 +1042,7 @@ def handle_image_watcher(*args, **kwargs):
                     logger.debug(
                         "found empty/invalid stored manifest, storing new: " + str(err)
                     )
-                    rc = obj_mgr.put_document(
+                    obj_mgr.put_document(
                         userId, "manifest_data", image_info["digest"], manifest
                     )
 
@@ -1076,7 +1059,7 @@ def handle_image_watcher(*args, **kwargs):
                         "found empty/invalid stored parent manifest, storing new: "
                         + str(err)
                     )
-                    rc = obj_mgr.put_document(
+                    obj_mgr.put_document(
                         userId,
                         "parent_manifest_data",
                         image_info["digest"],
@@ -1119,7 +1102,6 @@ def handle_image_watcher(*args, **kwargs):
 
                         if last_image_records:
                             for last_image_record in last_image_records:
-                                imageDigest = last_image_record["imageDigest"]
                                 for image_detail in last_image_record["image_detail"]:
                                     last_digests.append(image_detail["digest"])
 
@@ -1181,7 +1163,7 @@ def handle_image_watcher(*args, **kwargs):
                         if last_annotations:
                             npayload["annotations"] = last_annotations
 
-                        rc = notifications.queue_notification(
+                        notifications.queue_notification(
                             userId, fulltag, "tag_update", npayload
                         )
                         logger.debug("queued image tag update notification: " + fulltag)
@@ -1305,7 +1287,6 @@ def handle_policyeval(*args, **kwargs):
             return True
 
         with db.session_scope() as dbsession:
-            feed_updated = check_feedmeta_update(dbsession)
             mgr = manager_factory.for_session(dbsession)
             accounts = mgr.list_accounts(
                 with_state=AccountStates.enabled, include_service=False
@@ -1358,7 +1339,7 @@ def handle_policyeval(*args, **kwargs):
                     try:
                         subscription_value = json.loads(value)
                         digests = set(subscription_value["digests"])
-                    except Exception as err:
+                    except Exception:
                         digests = set()
                 else:
                     digests = set()
@@ -1396,7 +1377,7 @@ def handle_policyeval(*args, **kwargs):
                             )
                             with db.session_scope() as dbsession:
                                 try:
-                                    rc = catalog_impl.perform_policy_evaluation(
+                                    catalog_impl.perform_policy_evaluation(
                                         userId, imageDigest, dbsession, evaltag=fulltag
                                     )
                                 except Exception as err:
@@ -1566,7 +1547,7 @@ def handle_analyzer_queue(*args, **kwargs):
                         parent_manifest = obj_mgr.get_document(
                             userId, "parent_manifest_data", image_record["imageDigest"]
                         )
-                    except Exception as err:
+                    except Exception:
                         parent_manifest = {}
 
                     qobj = {}
@@ -1924,7 +1905,7 @@ def handle_metrics(*args, **kwargs):
             try:
                 with anchore_engine.subsys.metrics.get_summary_obj(
                     "anchore_db_read_seconds"
-                ).time() as mtimer:
+                ).time() as _:
                     with db.session_scope() as dbsession:
                         anchore_record = db_anchore.get(session=dbsession)
             except Exception as err:
@@ -1934,12 +1915,10 @@ def handle_metrics(*args, **kwargs):
                 try:
                     with anchore_engine.subsys.metrics.get_summary_obj(
                         "anchore_db_write_seconds"
-                    ).time() as mtimer:
+                    ).time() as _:
                         with db.session_scope() as dbsession:
                             anchore_record["record_state_val"] = str(time.time())
-                            rc = db_anchore.update_record(
-                                anchore_record, session=dbsession
-                            )
+                            db_anchore.update_record(anchore_record, session=dbsession)
 
                 except Exception as err:
                     logger.warn(
@@ -1949,11 +1928,11 @@ def handle_metrics(*args, **kwargs):
             try:
                 with anchore_engine.subsys.metrics.get_summary_obj(
                     "anchore_db_readwrite_seconds"
-                ).time() as mtimer:
+                ).time() as _:
                     with db.session_scope() as dbsession:
                         anchore_record = db_anchore.get(session=dbsession)
                         anchore_record["record_state_val"] = str(time.time())
-                        rc = db_anchore.update_record(anchore_record, session=dbsession)
+                        db_anchore.update_record(anchore_record, session=dbsession)
             except Exception as err:
                 logger.warn(
                     "unable to perform DB read/write probe - exception: " + str(err)
@@ -2153,16 +2132,15 @@ def watcher_func(*args, **kwargs):
                     lease_id = watchers[watcher]["task_lease_id"]
 
                     # Old way
-                    timer = time.time()
                     if not lease_id:
                         logger.debug(
                             "No task lease defined for watcher {}, initiating without lock protection".format(
                                 watcher
                             )
                         )
-                        rc = handler(*args, **kwargs)
+                        handler(*args, **kwargs)
                     else:
-                        rc = simplequeue.run_target_with_lease(
+                        simplequeue.run_target_with_lease(
                             None,
                             lease_id,
                             handler,
