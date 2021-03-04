@@ -76,9 +76,14 @@ def test_merge_client_metadata(existing_metadata, meta_to_add, expected_output):
 def check_metadata(candidate: dict, expected: dict):
     for k, v in expected.items():
         if type(v) == list:
-            assert sorted(v) == sorted(candidate[k])
+            assert sorted(candidate.get(k)) == sorted(v)
+
         else:
-            assert v == candidate[k]
+            assert (
+                candidate.get(k) == v
+            ), "Key {} from candidate {} did not match expected {}".format(
+                k, candidate, v
+            )
 
 
 def password_oauth2_client():
@@ -96,6 +101,45 @@ def password_oauth2_client():
             "grant_types": ["password"],
         }
     )
+    return c
+
+
+def legacy_password_oauth2_client():
+    c = OAuth2Client()
+    c.client_id = ANONYMOUS_CLIENT_ID
+    c.user_id = None
+    c.client_secret = None
+    # These are no-ops effectively since the client isn't authenticated itself
+    c.client_id_issued_at = time.time() - 100
+    c.client_secret_expires_at = time.time() + 1000
+    c.set_client_metadata(
+        {
+            "grant_types": ["password"],
+        }
+    )
+    return c
+
+
+def no_metadata_oauth2_client():
+    c = OAuth2Client()
+    c.client_id = ANONYMOUS_CLIENT_ID
+    c.user_id = None
+    c.client_secret = None
+    # These are no-ops effectively since the client isn't authenticated itself
+    c.client_id_issued_at = time.time() - 100
+    c.client_secret_expires_at = time.time() + 1000
+    return c
+
+
+def empty_metadata_oauth2_client():
+    c = OAuth2Client()
+    c.client_id = ANONYMOUS_CLIENT_ID
+    c.user_id = None
+    c.client_secret = None
+    # These are no-ops effectively since the client isn't authenticated itself
+    c.client_id_issued_at = time.time() - 100
+    c.client_secret_expires_at = time.time() + 1000
+    c.set_client_metadata({})
     return c
 
 
@@ -140,7 +184,22 @@ def combined_oauth2_client():
             password_oauth2_client(),
             authorization_oauth2_client(),
             combined_oauth2_client(),
-        )
+        ),
+        (
+            legacy_password_oauth2_client(),
+            authorization_oauth2_client(),
+            combined_oauth2_client(),
+        ),
+        (
+            no_metadata_oauth2_client(),
+            authorization_oauth2_client(),
+            authorization_oauth2_client(),
+        ),
+        (
+            empty_metadata_oauth2_client(),
+            authorization_oauth2_client(),
+            authorization_oauth2_client(),
+        ),
     ],
 )
 def test_setup_oauth_client(found_client, add_client, expected_result):
@@ -153,7 +212,9 @@ def test_setup_oauth_client(found_client, add_client, expected_result):
     """
 
     assert found_client.client_id == expected_result.client_id
+    result = setup_oauth_client(found_client, add_client)
+    assert result is not None
     check_metadata(
-        setup_oauth_client(found_client, add_client).client_metadata,
+        result.client_metadata,
         expected_result.client_metadata,
     )
