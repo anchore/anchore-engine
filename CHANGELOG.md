@@ -3,7 +3,7 @@
 ## 0.9.2
 
 + Fixed - Fixes oauth2_clients table upgrade to include all needed keys in client_metadata field. Fixes #931
-+ Fixed - Updates syft to 0.13.1 and adds filtering of packages by new 'relationship' field to remove duplicate packages that are application packages provided by distro packages managers (e.g. RPMs that install python eggs, will only use the RPM version).
++ Fixed - Updates syft to 0.13.1 and adds filtering of packages by new 'relationship' field to remove duplicate packages that are application packages provided by distro packages managers (e.g. RPMs that install python eggs, will only use the RPM version). Fixes #460
 + Fixed - Updates syft to 0.12.7 to fix analysis failure due to malformed python egg files. Fixes #910
 + Fixed - Updates cryptography version from 3.3.1 to 3.3.2. Fixes #909
 + Fixed - Updates jsonschema version to avoid legacy validator import issues.
