@@ -88,6 +88,15 @@ pre_baked_images = {
         "image_source": "registry",
         "schema_version": "v2",
     },
+    # skopeo inspect --override-os linux  docker://anchore/test_images@sha256:bfbc9520743a4601da82c24958e194d55e45b8cab7c5b466f6ac81c90308749f --raw
+    "ownership-overlap": {
+        "registry": "docker.io",
+        "repo": "anchore/test_images",
+        "tag": "ownership-overlap",
+        "digest": "sha256:bfbc9520743a4601da82c24958e194d55e45b8cab7c5b466f6ac81c90308749f",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
 }
 
 

@@ -1,7 +1,7 @@
 ---
 title: "Anchore Engine Release Notes - Version 0.7.0"
 linkTitle: "0.7.0"
-weight: 70
+weight: 92
 ---
 
 ## Anchore Engine 0.7.0
