@@ -9,6 +9,7 @@
 + Fixed - Updates cryptography version from 3.3.1 to 3.3.2. Fixes #909
 + Fixed - Updates jsonschema version to avoid legacy validator import issues.
 
+
 ## 0.9.1
 
 NOTE: To ensure that Anchore Engine cannot be accidentally deployed with a weak default password for the admin user, this release includes

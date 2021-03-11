@@ -17,6 +17,8 @@ Jump to the following configuration guide below:
 - [Custom Certificates]({{< ref "/docs/install/configuration/custom_certs" >}})
 - [TLS / SSL]({{< ref "/docs/install/configuration/tls_ssl_config" >}})
 - [Network Proxies]({{< ref "/docs/install/configuration/network_proxies" >}})
+- [Max Image Size]({{< ref "/docs/install/configuration/max_image_size" >}})
+
 
 **NOTE** - The latest default configuration file can always be extracted from the Anchore Engine container to review the latest options and environment overrides using the following process:
 

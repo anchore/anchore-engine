@@ -32,7 +32,7 @@ For an image that has not yet been analyzed, the status will appear as *not_anal
 
 The image type is shown as `docker`, future release will support the analysis of OCI formatted images.
 
-As of v0.9.1, Anchore Engine can be configured to have a size limit for images being added for analysis. This is disabled by default, but can be configure through the configuration variable `max_compressed_image_size_mb`, which if using the default configuration file can be set through `ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB` env variable. This defines a size limit (MB) of the compressed size of the image and will prevent the image from being added for analysis in anchore if the image exceeds the given size. A value less than 0 disables this functionality and allows an image of any size to be added. Note that this size limit is also applied to [tag subscriptions]({{< ref "/docs/usage/cli_usage/subscriptions/_index.md#tag-updates" >}}) and [repository watchers]({{< ref "/docs/usage/cli_usage/repositories/_index.md#watching-repositories" >}}).
+As of v0.9.1, Anchore Engine can be configured to have a size limit for images being added for analysis. Attempting to add an image that exceeds the configured size will fail, return a 400 API error, and log an error message in the catalog service detailing the failure. This feature is disabled by default so see [documentation]({{< ref "docs/install/configuration/max_image_size.md" >}}) for additional details on the functionality of this feature and instructions on how to configure the limit
 
 ### Adding Images That You Own
 
