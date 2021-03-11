@@ -111,7 +111,7 @@ pre_baked_images = {
         "tag": "secrets",
         "digest": "sha256:0be667e0698fb204d2a6eaf42be8bf15db7edaf256c07e40caecbbcdbf6aad52",
         "image_source": "registry",
-        "schema_version": "2",
+        "schema_version": "v2",
     },
 }
 
