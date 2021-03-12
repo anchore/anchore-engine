@@ -1,5 +1,6 @@
 import json
 
+
 class TestGolangPackages:
     def test_go_packages(self, hints_image, analyzed_data):
         hints = {
