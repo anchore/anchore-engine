@@ -121,3 +121,6 @@ tags
 docs/node_modules/
 docs/public
 docs/resources/_gen
+
+
+.DS_Store

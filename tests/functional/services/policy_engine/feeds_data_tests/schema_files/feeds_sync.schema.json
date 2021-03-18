@@ -1,0 +1,63 @@
+{
+  "type": "array",
+  "$id": "feeds_sync.schema.json",
+  "definitions": {
+    "group": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "total_time_seconds": {
+          "type": "number"
+        },
+        "updated_image_count": {
+          "type": "number"
+        },
+        "updated_record_count": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "group",
+        "status",
+        "total_time_seconds",
+        "updated_image_count",
+        "updated_record_count"
+      ]
+    },
+    "feed": {
+      "type": "object",
+      "properties": {
+        "feed": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/group"
+          }
+        },
+        "status": {
+          "type": "string"
+        },
+        "total_time_seconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "feed",
+        "groups",
+        "status",
+        "total_time_seconds"
+      ]
+    }
+  },
+  "minItems": 3,
+  "items": {
+    "$ref": "#/definitions/feed"
+  }
+}

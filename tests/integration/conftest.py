@@ -9,27 +9,6 @@ top_dir = dirname(dir_path)
 test_data_env = os.path.join(top_dir, "data/test_data_env")
 
 
-@pytest.fixture(scope="session")
-def monkeysession(request):
-    """
-    This is an unfortunate kludge needed to force the monkeypatch fixture to
-    allow a specific scope (the whole test session in this case).
-
-    Without this, Pytest would raise an error explaining this is not possible.
-
-    See: https://github.com/pytest-dev/pytest/issues/363
-
-    If this ever stops working, then the `monkeypatch` needs to be done on
-    every test method *or* the scope needs to be removed, causing these to be
-    set for every test.
-    """
-    from _pytest.monkeypatch import MonkeyPatch
-
-    mpatch = MonkeyPatch()
-    yield mpatch
-    mpatch.undo()
-
-
 @pytest.fixture(autouse=True)
 def set_env_vars(monkeysession):
     env_vars = (
