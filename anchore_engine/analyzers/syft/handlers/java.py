@@ -55,6 +55,18 @@ def translate_and_save_entry(findings, artifact):
     if group_id:
         origin = group_id
 
+    # synthesize a part of the pom.properties
+    pom_artifact_id = dig(artifact, "metadata", "pomProperties", "artifactId")
+    pom_version = dig(artifact, "metadata", "pomProperties", "version")
+
+    pomProperties = """
+groupId={}
+artifactId={}
+version={}
+""".format(
+        group_id, pom_artifact_id, pom_version
+    )
+
     pkg_value = {
         "name": artifact["name"],
         "specification-version": values.get("Specification-Version", "N/A"),
@@ -66,6 +78,7 @@ def translate_and_save_entry(findings, artifact):
         "location": pkg_key,  # this should be related to full path
         "type": "java-" + java_ext,
         "cpes": artifact.get("cpes", []),
+        "metadata": {"pom.properties": pomProperties},
     }
 
     # inject the artifact document into the "raw" analyzer document
