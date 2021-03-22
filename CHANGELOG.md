@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3
+
++ Fixed - Fixes issue where java artifacts are not being matched against records from GHSA feed - synthesize pom properties contents in syft mapper.  Fixes #950
++ Fixed - Updates syft to 0.14.0 to fix missing java elements from image SBOM, for embedded java artifacts combined with malformed pom.properties metadata (see https://github.com/anchore/syft Issue #349)
+
 ## 0.9.2
 
 + Fixed - Fixes empty string value for "metadata" field which should be empty array in response for GET /images/{digest}/metadata/dockerfile when no actual dockerfile is presented. Fixes #937
