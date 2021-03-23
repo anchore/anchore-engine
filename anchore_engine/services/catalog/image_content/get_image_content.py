@@ -112,13 +112,13 @@ class ImageDockerfileContentGetter(ImageContentGetter):
         if image_content_data.get("dockerfile", None):
             # Nothing to do here
             return helpers.make_image_content_response(
-                self.content_type, image_content_data
+                self.content_type, image_content_data[self.content_type]
             )
         try:
             if image_report.get("dockerfile_mode", None) != "Actual":
                 # Nothing to do here
                 return helpers.make_image_content_response(
-                    self.content_type, image_content_data
+                    self.content_type, image_content_data[self.content_type]
                 )
 
             for image_detail in image_report.get("image_detail", []):
@@ -149,5 +149,5 @@ class ImageDockerfileContentGetter(ImageContentGetter):
                 )
             )
         return helpers.make_image_content_response(
-            self.content_type, image_content_data
+            self.content_type, image_content_data[self.content_type]
         )

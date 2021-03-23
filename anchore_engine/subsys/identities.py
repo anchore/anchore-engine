@@ -107,8 +107,11 @@ class IdentityBootstrapper(object):
 
                 init_password = localconfig.get_config().get(
                     localconfig.DEFAULT_ADMIN_PASSWORD_KEY,
-                    localconfig.ADMIN_USER_DEFAULT_PASSWORD,
                 )
+
+                if not init_password:
+                    raise Exception("No default admin password provided")
+
                 self.mgr.add_user_credential(
                     username=localconfig.ADMIN_USERNAME,
                     credential_type=UserAccessCredentialTypes.password,

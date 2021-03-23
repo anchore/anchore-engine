@@ -170,8 +170,6 @@ distros_no_vulns = [
     ("alpine", "3.1.1", "alpine"),
     ("busybox", "3", "busybox"),
     ("linuxmint", "16", "debian"),
-    ("redhat", "4", "rhel"),
-    ("redhat", "5", "rhel"),
     ("ubuntu", "1.0", "ubuntu"),
     ("centos", "1.0", "ubuntu"),
     ("debian", "1.0", "ubuntu"),
@@ -234,11 +232,12 @@ def test_distromappings(initialized_mappings):
     assert c7.like_namespace_names == ["rhel:7"]
 
     r7 = DistroNamespace(name="rhel", version="7", like_distro="rhel")
-    assert set(r7.mapped_names()) == {"centos", "fedora", "rhel"}
+    assert set(r7.mapped_names()) == {"centos", "fedora", "rhel", "redhat"}
     assert r7.like_namespace_names == ["rhel:7"]
 
     assert sorted(DistroMapping.distros_mapped_to("rhel", "7")) == sorted(
         [
+            DistroTuple("redhat", "7", "RHEL"),
             DistroTuple("rhel", "7", "RHEL"),
             DistroTuple("centos", "7", "RHEL"),
             DistroTuple("fedora", "7", "RHEL"),

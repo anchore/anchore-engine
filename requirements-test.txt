@@ -2,3 +2,4 @@ pytest
 Flask-Testing
 memory_profiler
 docker==4.3.1
+coverage==5.3.1

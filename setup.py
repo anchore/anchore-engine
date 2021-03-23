@@ -42,6 +42,7 @@ setup(
     description=description,
     long_description=long_description,
     url=url,
+    python_requires="==3.8.*",
     packages=packages,
     version=version,
     data_files=data_files,
