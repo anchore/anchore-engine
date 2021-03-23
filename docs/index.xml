@@ -1249,7 +1249,7 @@ dockerfile instruction Dockerfile directive 'HEALTHCHECK' not found, matching co
 &lt;p>Each environment variable (starting with ANCHORE_) in the default config.yaml is set (either the baseline as set in the Dockerfile, or an override in docker-compose or Helm) to ensure that the system comes up with a fully populated configuration.&lt;/p>
 &lt;p>Some examples of useful initial settings follow.&lt;/p>
 &lt;ul>
-&lt;li>Default admin credentials: by default, the &lt;strong>admin&lt;/strong> has a password of &lt;strong>foobar&lt;/strong> and email &lt;strong>admin@myanchore&lt;/strong>, set using the &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables, respectively, in the Dockerfile. To change these settings, simply add overrides for &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables, set to your preferred values prior to deploying anchore engine.&lt;/li>
+&lt;li>Default admin credentials: A default admin email and password is required for the initial bootstrap of engine to succeed, which are both set through the default config file using the &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables respectively. The Dockerfile defines a default email &lt;strong>admin@myanchore&lt;/strong>, but does not define a default password. If using the default config file, the user must set a value for &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> in order to succeed the initial bootstrap of the system. To set the default password or to override the default email, simply add overrides for &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> and &lt;strong>ANCHORE_ADMIN_EMAIL&lt;/strong> environment variables, set to your preferred values prior to deploying anchore engine. After the initial bootstrap, this can be removed if desired. The docker-compose file referenced in the quickstart installation guide has set &lt;strong>ANCHORE_ADMIN_PASSWORD&lt;/strong> to &lt;code>foobar&lt;/code>&lt;/li>
 &lt;/ul>
 &lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-YAML" data-lang="YAML">&lt;span style="color:#204a87;font-weight:bold">default_admin_password&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_ADMIN_PASSWORD}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
 &lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">&lt;/span>&lt;span style="color:#204a87;font-weight:bold">default_admin_email&lt;/span>&lt;span style="color:#000;font-weight:bold">:&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>&lt;span style="color:#4e9a06">&amp;#39;${ANCHORE_ADMIN_EMAIL}&amp;#39;&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
@@ -2864,7 +2864,10 @@ to view the &lt;code>musl&lt;/code> and &lt;code>wicked&lt;/code> package record
 and installing, or removing an anchore_hints.json file from all containers being built. It is not meant to be enabled when the container image builds
 are not explicitly controlled, as the entity that is building container images could override any SBOM entry that Anchore would normally discover, which
 affects the vulnerability/policy status of an image. For this reason, the feature is disabled by default and must be explicitly enabled in configuration
-only if appropriate for your use case .&lt;/p></description></item><item><title>Docs: Network Proxies</title><link>/docs/install/configuration/network_proxies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/network_proxies/</guid><description>
+only if appropriate for your use case .&lt;/p></description></item><item><title>Docs: Max Image Size</title><link>/docs/install/configuration/max_image_size/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/max_image_size/</guid><description>
+&lt;h2 id="setting-size-filter">Setting Size Filter&lt;/h2>
+&lt;p>As of v0.9.1, Anchore Engine can be configured to have a size limit for images being added for analysis. Images that exceed the configured maximum size will not be added to Anchore and the catalog service will log an error message providing details of the failure. This size limit is applied when adding images to anchore via the &lt;a href="/docs/usage/cli_usage/images/#adding-an-image">api/cli&lt;/a>, &lt;a href="/docs/usage/cli_usage/subscriptions/#tag-updates">tag subscriptions&lt;/a>, and &lt;a href="/docs/usage/cli_usage/repositories/#watching-repositories">repository watchers&lt;/a>.&lt;/p>
+&lt;p>The max size feature is disabled by default but can be enabled via &lt;code>max_compressed_image_size_mb&lt;/code> in the configuration file, which represents the size limit in MB of the compressed image. Values less than 0 will disable the feature and allow images of any size to be added to Anchore. A value of 0 will be enforced and prevent any images from being added. Non-integer values will cause bootstrap of the service to fail. If using compose with the default config, this can be set through the &lt;code>ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB&lt;/code> env variable on the catalog service. If using helm, it can be defined in the values file via &lt;code>anchoreGlobal.maxCompressedImageSizeMB&lt;/code>&lt;/p></description></item><item><title>Docs: Network Proxies</title><link>/docs/install/configuration/network_proxies/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/network_proxies/</guid><description>
 &lt;p>As covered in the Network sections of the requirements document the Anchore Engine requires three categories of network connectivity.&lt;/p>
 &lt;ul>
 &lt;li>
@@ -3774,46 +3777,113 @@ If you would like to override any of the default values of those commands or rep
 &lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">datadir=/tmp/different/datadir&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
 &lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>Please note that the value above will be passed &lt;em>directly&lt;/em> to the corresponding commands, e.g.:&lt;/p>
 &lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-shell" data-lang="shell">clamscan --suppress-ok-results --infected --recursive --allmatch --archive-verbose --tempdir&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>tempdir&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --database&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>database&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --max-filesize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m --max-scansize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m &amp;lt;path_to_tar&amp;gt;
-&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.8.1</title><link>/docs/releasenotes/081/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/081/</guid><description>
-&lt;h2 id="anchore-engine-081">Anchore Engine 0.8.1&lt;/h2>
-&lt;p>Anchore Engine 0.8.1, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
-&lt;h3 id="added">Added&lt;/h3>
-&lt;ul>
-&lt;li>Additional trigger &amp;lsquo;scan_not_run&amp;rsquo; in &amp;lsquo;malware&amp;rsquo; trigger that fires if no scan was performed for the image. Implements &lt;a href="https://github.com/anchore/anchore-engine/issues/576">576&lt;/a>&lt;/li>
-&lt;/ul>
-&lt;h3 id="improved">Improved&lt;/h3>
-&lt;ul>
-&lt;li>Do not always require a created_timestamp_override field for analysis by digest. Fixes &lt;a href="https://github.com/anchore/anchore-engine/552">552&lt;/a>&lt;/li>
-&lt;/ul>
-&lt;h3 id="fixes">Fixes&lt;/h3>
-&lt;ul>
-&lt;li>Image analysis scratch space cleanup may fail if image files have non-readable modes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/579">579&lt;/a>&lt;/li>
-&lt;li>Prevent &amp;lsquo;admin&amp;rsquo; account from being disabled. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/522">522&lt;/a>&lt;/li>
-&lt;li>Make permissions consistent for /account and /accounts/&lt;!-- raw HTML omitted --> routes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/565">565&lt;/a>&lt;/li>
-&lt;/ul>
-&lt;p>Additional minor bug fixes and enhancements&lt;/p>
-&lt;h3 id="upgrading">Upgrading&lt;/h3>
-&lt;ul>
-&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
-&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.8.2</title><link>/docs/releasenotes/082/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/082/</guid><description>
-&lt;h2 id="anchore-engine-082">Anchore Engine 0.8.2&lt;/h2>
-&lt;p>Anchore Engine 0.8.2, features, bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
-&lt;h3 id="added">Added&lt;/h3>
-&lt;ul>
-&lt;li>Ability to set pool_recycle and other SQLAlchemy engine parameters via config. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/641">#641&lt;/a>&lt;/li>
-&lt;li>Updates image build to support dynamic UID mapping in OpenShift. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/586">#586&lt;/a>&lt;/li>
-&lt;/ul>
-&lt;h3 id="fixes">Fixes&lt;/h3>
-&lt;ul>
-&lt;li>Malware scan fails to find EICAR string in image over 25Mb. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/615">#615&lt;/a>&lt;/li>
-&lt;li>Policy engine should return HTTP 400 with instructive message on invalid bundle upload instead of HTTP 500. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/634">#634&lt;/a>&lt;/li>
-&lt;li>Vulnerability fix version not correct for vulnerabilities with multiple fixes. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/639">#639&lt;/a>&lt;/li>
-&lt;li>npm and gem packages not matching GHSA sources properly. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/633">#633&lt;/a>&lt;/li>
-&lt;li>Update urllib3 to 1.25.9 to address CVE-2020-26137. Engine not affected. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/662">#662&lt;/a>&lt;/li>
-&lt;li>Deactivating repo subscription does not halt repo scan. Fixes &lt;a href="https://github.com/anchore/anchore-engine/issues/635">#635&lt;/a>&lt;/li>
-&lt;/ul>
-&lt;p>Additional minor bug fixes and enhancements&lt;/p>
-&lt;h3 id="upgrading">Upgrading&lt;/h3>
-&lt;ul>
-&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
-&lt;/ul></description></item></channel></rss>
+&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: Reverting Back to use RHSA Data</title><link>/docs/releasenotes/0.7.0/data_matching_rollback/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0.7.0/data_matching_rollback/</guid><description>
+&lt;p>&lt;em>NOTE: This section is only for very specific situations where you absolutely must revert the matching system to use the RHSA data. This should not be done lightly. The newer CVE-based data is more accurate, specific, and provides a more consistent experience with other distros.&lt;/em>&lt;/p>
+&lt;p>If your processing of anchore output relies on RHSA keys as vulnerability matches, or you have large RHSA-based whitelists that cannot be converted to CVE-based,
+then it is possible, though not recommended, to migrate your system back to using the RHSA-based feeds (centos:* groups).&lt;/p>
+&lt;p>Here is the process. It requires the Anchore CLI with access to the API as well as direct access to the internal policy engine API endpoint. That may require a &lt;code>docker exec&lt;/code> or &lt;code>kubectl exec&lt;/code> call
+to achieve and will be deployment/environment specific.&lt;/p>
+&lt;ol>
+&lt;li>
+&lt;p>Revert the distro mapping records that map centos, fedora, and rhel to use the RHEL vuln data.&lt;/p>
+&lt;ol>
+&lt;li>With API access to the policy engine directly (output omitted for brevity), remove the existing &lt;em>distro mappings&lt;/em> to RHEL data. These are the used by Anchore:&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=centos
+curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=rhel
+curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=fedora
+&lt;/code>&lt;/pre>&lt;ol>
+&lt;li>Continuing with API access to the policy engine directly, replace the removed mappings with new mappings to the &lt;em>centos&lt;/em> feeds:&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
+curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;fedora&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
+curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;rhel&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
+&lt;/code>&lt;/pre>&lt;p>Note: if something went wrong and you want to undo the progress you&amp;rsquo;ve made, just make the same set of calls as the last two steps in the same order but with the &lt;code>to_distro&lt;/code> values set to &amp;lsquo;rhel&amp;rsquo;.&lt;/p>
+&lt;ol>
+&lt;li>Now, ensure you are back where you have access to the main Anchore API and the Anchore CLI installed. Disable the existing rhel feed groups&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>anchore-cli system feeds config vulnerabilities --disable --group rhel:5
+anchore-cli system feeds config vulnerabilities --disable --group rhel:6
+anchore-cli system feeds config vulnerabilities --disable --group rhel:7
+anchore-cli system feeds config vulnerabilities --disable --group rhel:8
+&lt;/code>&lt;/pre>&lt;pre>&lt;code>anchore-cli system feeds delete vulnerabilities --group rhel:8
+anchore-cli system feeds delete vulnerabilities --group rhel:7
+anchore-cli system feeds delete vulnerabilities --group rhel:6
+anchore-cli system feeds delete vulnerabilities --group rhel:5
+&lt;/code>&lt;/pre>&lt;ol>
+&lt;li>Enable the centos feed groups that have the RHSA vulnerability data&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>anchore-cli system feeds config vulnerabilities --enable --group centos:8
+anchore-cli system feeds config vulnerabilities --enable --group centos:7
+anchore-cli system feeds config vulnerabilities --enable --group centos:6
+anchore-cli system feeds config vulnerabilities --enable --group centos:5
+&lt;/code>&lt;/pre>&lt;p>NOTE: if you already have centos data in your feeds (verify with &lt;code>anchore-cli system feeds list&lt;/code>) then you&amp;rsquo;ll need to delete the centos data groups as well
+to ensure a clean re-syncin the next steps. This is accomplished with:&lt;/p>
+&lt;pre>&lt;code>anchore-cli system feeds delete vulnerabilities --group centos:5
+anchore-cli system feeds delete vulnerabilities --group centos:6
+anchore-cli system feeds delete vulnerabilities --group centos:7
+anchore-cli system feeds delete vulnerabilities --group centos:8
+&lt;/code>&lt;/pre>&lt;ol>
+&lt;li>Now do a sync to re-match any images using rhel/centos to the RHSA data&lt;/li>
+&lt;/ol>
+&lt;pre>&lt;code>[root@d64b49fe951c ~]# anchore-cli system feeds sync
+WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
+Really perform a manual feed data sync/flush? (y/N)y
+Feed Group Status Records Updated Sync Duration
+github github:composer success 0 0.28s
+github github:gem success 0 0.34s
+github github:java success 0 0.33s
+github github:npm success 0 0.23s
+github github:nuget success 0 0.23s
+github github:python success 0 0.29s
+nvdv2 nvdv2:cves success 0 60.59s
+vulnerabilities alpine:3.10 success 0 0.27s
+vulnerabilities alpine:3.11 success 0 0.31s
+vulnerabilities alpine:3.3 success 0 0.31s
+vulnerabilities alpine:3.4 success 0 0.25s
+vulnerabilities alpine:3.5 success 0 0.26s
+vulnerabilities alpine:3.6 success 0 0.25s
+vulnerabilities alpine:3.7 success 0 0.26s
+vulnerabilities alpine:3.8 success 0 0.35s
+vulnerabilities alpine:3.9 success 0 0.28s
+vulnerabilities amzn:2 success 0 0.26s
+vulnerabilities centos:7 success 1003 34.91s
+vulnerabilities centos:8 success 199 9.15s
+vulnerabilities debian:10 success 2 0.50s
+vulnerabilities debian:11 success 4 60.53s
+vulnerabilities debian:7 success 0 0.30s
+vulnerabilities debian:8 success 3 0.34s
+vulnerabilities debian:9 success 2 0.38s
+vulnerabilities debian:unstable success 4 0.39s
+vulnerabilities ol:5 success 0 0.31s
+vulnerabilities ol:6 success 0 0.29s
+vulnerabilities ol:7 success 0 0.41s
+vulnerabilities ol:8 success 0 0.28s
+vulnerabilities rhel:5 success 0 0.28s
+vulnerabilities rhel:6 success 0 0.43s
+vulnerabilities ubuntu:12.04 success 0 0.45s
+vulnerabilities ubuntu:12.10 success 0 0.25s
+vulnerabilities ubuntu:13.04 success 0 0.24s
+vulnerabilities ubuntu:14.04 success 0 0.37s
+vulnerabilities ubuntu:14.10 success 0 0.25s
+vulnerabilities ubuntu:15.04 success 0 0.42s
+vulnerabilities ubuntu:15.10 success 0 0.23s
+vulnerabilities ubuntu:16.04 success 0 0.35s
+vulnerabilities ubuntu:16.10 success 0 0.33s
+vulnerabilities ubuntu:17.04 success 0 0.33s
+vulnerabilities ubuntu:17.10 success 0 0.31s
+vulnerabilities ubuntu:18.04 success 0 0.42s
+vulnerabilities ubuntu:18.10 success 0 0.37s
+vulnerabilities ubuntu:19.04 success 0 0.45s
+vulnerabilities ubuntu:19.10 success 0 0.32s
+[root@d64b49fe951c ~]# anchore-cli image vuln centos os
+Vulnerability ID Package Severity Fix CVE Refs Vulnerability URL Type Feed Group Package Path
+RHSA-2020:0271 libarchive-3.3.2-7.el8 High 0:3.3.2-8.el8_1 CVE-2019-18408 https://access.redhat.com/errata/RHSA-2020:0271 rpm centos:8 pkgdb
+RHSA-2020:0273 sqlite-libs-3.26.0-3.el8 High 0:3.26.0-4.el8_1 CVE-2019-13734 https://access.redhat.com/errata/RHSA-2020:0273 rpm centos:8 pkgdb
+RHSA-2020:0575 systemd-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
+RHSA-2020:0575 systemd-libs-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
+RHSA-2020:0575 systemd-pam-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
+RHSA-2020:0575 systemd-udev-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
+&lt;/code>&lt;/pre>&lt;/li>
+&lt;/ol>
+&lt;p>Note in the last command output that the OS vulnerabilities are again showing &amp;lsquo;RHSA&amp;rsquo; matches. The restoration to RHSA-based vuln data is complete.&lt;/p></description></item></channel></rss>

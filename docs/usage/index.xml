@@ -48,7 +48,7 @@
 &lt;p>Download the nginx configuration into the same directory as the docker-compose.yaml file, with name &lt;em>anchore-swaggerui-nginx.conf&lt;/em>&lt;/p>
 &lt;pre>&lt;code>curl -O https://engine.anchore.io/docs/quickstart/anchore-swaggerui-nginx.conf
 docker-compose up -d
-&lt;/code>&lt;/pre>&lt;p>You should see a new container started and can access prometheus via your browser on &lt;code>http://localhost:8080/ui/&lt;/code>&lt;/p>
+&lt;/code>&lt;/pre>&lt;p>You should see a new container started and can access swagger via your browser on &lt;code>http://localhost:8080&lt;/code>&lt;/p>
 &lt;/li>
 &lt;/ol>
 &lt;p>~

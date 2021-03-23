@@ -128,6 +128,7 @@ The Anchore Engine stores documents containing archives of image analysis data a
 &lt;li>&lt;a href="/docs/install/configuration/custom_certs/">Custom Certificates&lt;/a>&lt;/li>
 &lt;li>&lt;a href="/docs/install/configuration/tls_ssl_config/">TLS / SSL&lt;/a>&lt;/li>
 &lt;li>&lt;a href="/docs/install/configuration/network_proxies/">Network Proxies&lt;/a>&lt;/li>
+&lt;li>&lt;a href="/docs/install/configuration/max_image_size/">Max Image Size&lt;/a>&lt;/li>
 &lt;/ul>
 &lt;p>&lt;strong>NOTE&lt;/strong> - The latest default configuration file can always be extracted from the Anchore Engine container to review the latest options and environment overrides using the following process:&lt;/p>
 &lt;pre>&lt;code># docker pull docker.io/anchore/anchore-engine:latest
