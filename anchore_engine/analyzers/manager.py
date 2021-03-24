@@ -30,7 +30,7 @@ def apply_hints(analyzer_report, unpackdir):
     # hints processing.
     for engine_entry in utils.content_hints(unpackdir=unpackdir):
         pkg_type = engine_entry.get("type")
-        if pkg_type:
+        if pkg_type and pkg_type in syft.modules_by_engine_type:
             handler = syft.modules_by_engine_type[pkg_type]
             handler.save_entry(analyzer_report, engine_entry)
 
