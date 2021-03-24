@@ -866,6 +866,10 @@ class ImageLoader(object):
             n.distro_version = "N/A"
             n.like_distro = "java"
 
+            m = pkg_json.get("metadata")
+            m["java_versions"] = versions_json
+            n.metadata_json = m
+
             fullname = n.name
             pomprops = n.get_pom_properties()
             pomversion = None
