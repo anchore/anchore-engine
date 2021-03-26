@@ -978,7 +978,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
-            all_cpe_matches = []
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
                 scanner = get_scanner(_nvd_cls, _cpe_cls)
                 all_cpe_matches = scanner.get_cpe_vulnerabilities(img)
@@ -986,7 +985,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                 if not all_cpe_matches:
                     all_cpe_matches = []
 
-                cpe_hashes = {}
                 api_endpoint = get_api_endpoint()
 
                 for image_cpe, vulnerability_cpe in all_cpe_matches:
@@ -1012,12 +1010,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                         "vendor_data": vulnerability_cpe.parent.get_cvss_data_vendor(),
                         "fixed_in": vulnerability_cpe.get_fixed_in(),
                     }
-                    cpe_hash = hashlib.sha256(
-                        utils.ensure_bytes(json.dumps(cpe_vuln_el))
-                    ).hexdigest()
-                    if not cpe_hashes.get(cpe_hash, False):
-                        cpe_vuln_listing.append(cpe_vuln_el)
-                        cpe_hashes[cpe_hash] = True
+                    cpe_vuln_listing.append(cpe_vuln_el)
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 
