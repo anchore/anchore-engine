@@ -2168,7 +2168,7 @@ class ImageCpe(Base):
                 "-",
                 "-",
             ]
-            final_cpe[2] = self.cpetype[1]
+            final_cpe[2] = self.cpetype
             final_cpe[3] = self.vendor
             final_cpe[4] = self.name
             final_cpe[5] = self.version
