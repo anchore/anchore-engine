@@ -1873,12 +1873,21 @@ def perform_policy_evaluation(
 
 ImageKey = collections.namedtuple("ImageKey", ["tag", "digest"])
 
+def get_input_string(image_key: ImageKey) -> str:
+    if image_key.digest:
+        if image_key.digest == "unknown":
+            return image_key.tag
+        else:
+            return "{}@{}".format(image_key.tag.split(":")[0], image_key.digest)
+    else:
+        return image_key.tag
+
 
 def add_or_update_image_by_key(account_id: str, image_key: ImageKey, dbsession):
-    input_string = "{}@{}".format(image_key.tag.split(":")[0], image_key.digest)
+    input_string = get_input_string(image_key)
     registry_creds = get_and_refresh_registry_creds(account_id, dbsession)
     image_info = resolve_final_image_info(
-        account_id, input_string, registry_creds, dbsession, {}
+        account_id, input_string, registry_creds, dbsession, {"fulltag": image_key.tag}
     )
 
     validate_image_size(image_info)
@@ -1921,7 +1930,6 @@ def add_or_update_image(
     )
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
-    # input to this section is imageId, list of digests and list of tags (full dig/tag strings with reg/repo[:@]bleh)
     image_ids = {}
     for d in digests:
         image_info = anchore_engine.utils.parse_dockerimage_string(d)
@@ -1967,7 +1975,7 @@ def add_or_update_image(
             dockerfile = None
             dockerfile_mode = None
 
-    # logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
+    #logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
     addlist = {}
     for registry in list(image_ids.keys()):
         for repo in list(image_ids[registry].keys()):
