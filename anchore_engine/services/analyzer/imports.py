@@ -132,12 +132,17 @@ def process_import(
 
         timer = time.time()
 
+        distro = syft_packages.get("distro", {}).get("name")
+        # Map 'redhat' distro to 'rhel' distro for consistency between internal metadata fetch from squashtar and the syft implementation used for import
+        if distro == "redhat":
+            distro = "rhel"
+
         # Move data from the syft sbom into the analyzer output
         analyzer_report = {
             "analyzer_meta": {
                 "analyzer_meta": {
                     "base": {
-                        "DISTRO": syft_packages.get("distro", {}).get("name"),
+                        "DISTRO": distro,
                         "DISTROVERS": syft_packages.get("distro", {}).get("version"),
                         "LIKEDISTRO": syft_packages.get("distro", {}).get("idLike"),
                     }

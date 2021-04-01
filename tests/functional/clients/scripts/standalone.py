@@ -13,14 +13,15 @@ all downloaded files/layers from skopeo.
 This is *not* a substitue for the `anchore-manager analyze` command that produces
 a tarball for analyzing.
 """
-import os
-from os.path import dirname, abspath, join
-import pprint
-import subprocess
-from uuid import uuid4
 import json
-import click
+import os
+import pprint
+import shutil
+import subprocess
+from os.path import abspath, dirname, join
+from uuid import uuid4
 
+import click
 from anchore_engine.clients.localanchore_standalone import analyze_image
 
 current = dirname(abspath(__file__))
@@ -162,10 +163,15 @@ def create_directories(work_dir):
 
     os.makedirs(work_dir, exist_ok=True)
 
-    sub_directories = ["service_dir", "cache_dir"]
+    service_dir = "service_dir"
+    sub_directories = [service_dir, "cache_dir"]
     for _dir in sub_directories:
         os.makedirs(join(work_dir, _dir), exist_ok=True)
-
+    # add analyzer config file
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    config_source = join(current_path, "analyzer_config.yaml")
+    config_dest = join(work_dir, service_dir, "analyzer_config.yaml")
+    shutil.copyfile(config_source, config_dest)
     # if work_dir changed, return it so that it can be re-used
     return work_dir
 

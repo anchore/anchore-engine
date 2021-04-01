@@ -136,7 +136,7 @@ class TestTypeValidator(unittest.TestCase, ValidatorTestMixin):
         matrix = [
             ("blah", False),
             (1, True),
-            (1.0, False),
+            (1.0, True),
             (["a"], False),
             ({}, False),
             ({"a": "b"}, False),

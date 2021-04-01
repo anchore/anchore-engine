@@ -3,7 +3,7 @@ boto3==1.11.6
 Click==7.0
 connexion==2.5.1
 Flask==1.1.1
-jsonschema==2.6.0
+jsonschema==3.1.1
 passlib==1.7.4
 pathlib==1.0.1
 prettytable==0.7.2
@@ -31,6 +31,7 @@ yosai==0.3.2
 zope.component==4.6
 zope.interface==4.7.2
 ijson==2.5.1
+cryptography==3.3.2
 
 # Optional and third-party/integration dependencies
 python-keystoneclient==3.22.0

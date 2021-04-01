@@ -180,18 +180,27 @@ def merge_client_metadata(found_meta: dict, expected_metadata: dict) -> dict:
     """
     Merge the client metadata from what is found and what is needed to create a single metadata record.
 
-    Typically this is just a merging of the grant_types lists.
+    This includes a merge of the grant_types via a union operation, and replacement of any conflicting keys in the found_meta with values from expected_meta.
 
-    :param found_client:
-    :param client_metadata:
+    :param found_meta: The metadata dict from the existing record
+    :param expected_metadata: The metadata dict to merge in
     :return: dict of merged information
     """
-    merged = copy.copy(found_meta) if found_meta else {}
 
     # Merge the new grant types in, defaulting to empty grant lists if not found
-    grants = merged.get(CLIENT_GRANT_KEY, [])
-    grants.extend(expected_metadata.get(CLIENT_GRANT_KEY, []))
-    merged[CLIENT_GRANT_KEY] = list(set(grants))
+    if found_meta is None:
+        found_meta = {}
+
+    found_grants = set(found_meta.get(CLIENT_GRANT_KEY, []))
+    new_grants = set(expected_metadata.get(CLIENT_GRANT_KEY, []))
+    new_grants = new_grants.union(found_grants)
+
+    # Create a copy to ensure we don't modify the state of anything passed in
+    merged = copy.copy(found_meta)
+
+    # Merge in the non-grant keys
+    merged.update(expected_metadata)
+    merged[CLIENT_GRANT_KEY] = list(new_grants)
 
     return merged
 
@@ -210,9 +219,17 @@ def setup_oauth_client(found: OAuth2Client, to_merge: OAuth2Client) -> OAuth2Cli
 
         # Ensure the client record has the right set of grant types, not one grant per client, since we have a single client_id
         found_meta = found.client_metadata
-
         merged = merge_client_metadata(found_meta, to_merge.client_metadata)
+
+        # Try a simple set first, if it doesn't work, the update the dict content directly. This is necessary
+        # due to the implementation of the client_metadata property
         found.set_client_metadata(merged)
+
+        # Have to clear because the "set_client_metadata" doesn't work properly once the data is initialized.
+        # So use an in-place update, and the 'merged' state will replace all the state.
+        if found.client_metadata != merged:
+            found.client_metadata.clear()
+            found.client_metadata.update(merged)
 
         logger.info(
             "Updated %s OAuth client record with grants %s",
