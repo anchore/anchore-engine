@@ -287,15 +287,10 @@ def get_repo_tags(userId, image_info, registry_creds=None):
         url = "https://" + registry
         repo = image_info["repo"]
 
-    lookuptag = "latest"
-    if image_info["tag"]:
-        lookuptag = image_info["tag"]
-
     alltags = get_repo_tags_skopeo(
         url,
         registry,
         repo,
-        lookuptag=lookuptag,
         user=user,
         pw=pw,
         verify=registry_verify,
