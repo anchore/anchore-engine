@@ -9,7 +9,9 @@ from anchore_engine.services.catalog import catalog_impl
 from tests.fixtures import anchore_db
 
 
-@pytest.mark.skip(reason="hard to install skopeo (which is needed for this test) in the integration test environment")
+@pytest.mark.skip(
+    reason="hard to install skopeo (which is needed for this test) in the integration test environment"
+)
 class TestImageAddWorkflow:
     """
     This verifies that getting image info with full registry lookup (manifest, etc.) works well via skopeo
