@@ -190,36 +190,46 @@ class TestImageAddWorkflow:
             actual_manifest = catalog_impl.get_manifest(param["image_info"])
             assert actual_manifest == param["expected_manifest"]
 
-    @pytest.mark.parametrize("param", [
-        pytest.param(
-            {
-                "image_key": catalog_impl.ImageKey(tag="docker.io/anchore/test_images:centos8", digest=""),
-                "expected": "docker.io/anchore/test_images:centos8",
-            },
-            id="no-digest"
-        ),
-        pytest.param(
-            {
-                "image_key": catalog_impl.ImageKey(tag="docker.io/anchore/test_images:centos8", digest="unknown"),
-                "expected": "docker.io/anchore/test_images:centos8",
-            },
-            id="digest-unknown"
-        ),
-        pytest.param(
-            {
-                "image_key": catalog_impl.ImageKey(tag="", digest=""),
-                "expected": "",
-            },
-            id="no-digest-no-tag"
-        ),
-        pytest.param(
-            {
-                "image_key": catalog_impl.ImageKey(tag="docker.io/anchore/test_images:centos8", digest="sha256:1234abcd"),
-                "expected": "docker.io/anchore/test_images@sha256:1234abcd",
-            },
-            id="valid-digest-valid-tag"
-        )
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(
+                        tag="docker.io/anchore/test_images:centos8", digest=""
+                    ),
+                    "expected": "docker.io/anchore/test_images:centos8",
+                },
+                id="no-digest",
+            ),
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(
+                        tag="docker.io/anchore/test_images:centos8", digest="unknown"
+                    ),
+                    "expected": "docker.io/anchore/test_images:centos8",
+                },
+                id="digest-unknown",
+            ),
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(tag="", digest=""),
+                    "expected": "",
+                },
+                id="no-digest-no-tag",
+            ),
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(
+                        tag="docker.io/anchore/test_images:centos8",
+                        digest="sha256:1234abcd",
+                    ),
+                    "expected": "docker.io/anchore/test_images@sha256:1234abcd",
+                },
+                id="valid-digest-valid-tag",
+            ),
+        ],
+    )
     def test_get_input_string(self, param):
         actual = catalog_impl.get_input_string(param["image_key"])
         assert actual == param["expected"]
