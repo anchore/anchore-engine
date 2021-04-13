@@ -1,28 +1,25 @@
 import abc
 import copy
+import datetime
+import json
+import typing
+from dataclasses import dataclass
+from io import BytesIO
 
+import ijson
 import requests
 import requests.exceptions
-import json
-import datetime
-import typing
 
-from io import BytesIO
-import ijson
-
+from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.utils import ensure_str, ensure_bytes, AnchoreException
 from anchore_engine.services.policy_engine.engine.feeds import (
-    IFeedSource,
     FeedGroupList,
     FeedList,
     GroupData,
+    IFeedSource,
 )
-from anchore_engine.common.schemas import (
-    FeedAPIRecord,
-    FeedAPIGroupRecord,
-)
+from anchore_engine.subsys import logger
+from anchore_engine.utils import AnchoreException, ensure_bytes, ensure_str
 
 FEED_DATA_ITEMS_PATH = "data.item"
 FEED_DATA_NEXT_TOKEN_PATH = "next_token"
@@ -346,6 +343,14 @@ class IAuthenticatedHTTPClientBase(abc.ABC):
         pass
 
 
+@dataclass
+class HTTPClientResponse:
+    content_type: str
+    status_code: int = 1
+    content: bytes = ""
+    success: bool = False
+
+
 class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
     """
     Simple base client type for operations with no auth needed
@@ -434,7 +439,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
 
         verify = self.auth_config["verify"]
 
-        ret = {"status_code": 1, "content": "", "success": False}
+        client_response = HTTPClientResponse()
 
         success = False
         count = 0
@@ -465,15 +470,17 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                     r.raise_for_status()
                 elif r.status_code == 200:
                     success = True
-                    ret["success"] = True
+                    client_response.success = True
                 elif r.status_code in [403, 404]:
                     r.raise_for_status()
 
-                ret["status_code"] = r.status_code
-                ret["content"] = r.content
+                client_response.status_code = r.status_code
+                client_response.content = r.content
             except requests.exceptions.ConnectTimeout as err:
                 logger.debug("attempt failed: " + str(err))
-                ret["content"] = ensure_bytes("server error: timed_out: " + str(err))
+                client_response.content = ensure_bytes(
+                    "server error: timed_out: " + str(err)
+                )
                 # return(ret)
 
             except requests.HTTPError as e:
@@ -482,12 +489,12 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                     # raise e
                 else:
                     logger.debug("attempt failed: " + str(e))
-                    ret["content"] = ensure_bytes("server error: " + str(e))
+                    client_response.content = ensure_bytes("server error: " + str(e))
             except Exception as err:
                 logger.debug("attempt failed: " + str(err))
-                ret["content"] = ensure_bytes("server error: " + str(err))
+                client_response.content = ensure_bytes("server error: " + str(err))
 
-        return ret
+        return client_response
 
 
 class AnchoreIOClientError(AnchoreException):
