@@ -1,5 +1,5 @@
 from anchore_engine.db import db_locks
-from threading import RLock
+from threading import RLock, Lock, Condition
 
 _lease_manager = None
 mgr_lock = RLock()
@@ -73,3 +73,50 @@ class DbLeaseManager(object):
         :return:
         """
         return db_locks.refresh_lease(lease_id, client_id, epoch, ttl)
+
+
+class ManyReadOneWriteLock(object):
+    """
+    A lock implementation that allows multiple parallel reads, but blocks on a single
+    thread performing a write.
+    """
+
+    def __init__(self):
+        self.read_lock = Condition(Lock())
+        self.read_counter = 0
+
+    def acquire_read_lock(self):
+        """
+        Acquire a read lock. Blocks if a thread has the write lock.
+        """
+        self.read_lock.acquire()
+        try:
+            self.read_counter += 1
+        finally:
+            self.read_lock.release()
+
+    def release_read_lock(self):
+        """
+        Release a read lock.
+        """
+        self.read_lock.acquire()
+        try:
+            self.read_counter -= 1
+            if not self.read_counter:
+                self.read_lock.notifyAll()
+        finally:
+            self.read_lock.release()
+
+    def acquire_write_lock(self):
+        """
+        Acquire the write lock. Blocks until no threads have the read or write lock.
+        """
+        self.read_lock.acquire()
+        while self.read_counter > 0:
+            self.read_lock.wait()
+
+    def release_write_lock(self):
+        """
+        Release the write lock.
+        """
+        self.read_lock.release()
