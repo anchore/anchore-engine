@@ -142,8 +142,15 @@ class GrypeDBMetadata(Base):
 
     checksum = Column(String, primary_key=True)
     date_generated = Column(DateTime, nullable=False)
-    feed_name = Column(String, ForeignKey("feeds.name"), nullable=False)
-    group_name = Column(String, ForeignKey("feed_groups.name"), nullable=False)
+    feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
+    group_name = Column(String, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(feed_name, group_name),
+            refcolumns=(FeedGroupMetadata.feed_name, FeedGroupMetadata.name),
+        ),
+    )
 
 
 class GenericFeedDataRecord(Base):
