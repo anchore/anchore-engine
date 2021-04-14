@@ -1,0 +1,1 @@
+{"feeds": [{"access_tier": 0, "description": "Feed record for type github", "name": "github"}, {"access_tier": 0, "description": "Feed record for type nvdv2", "name": "nvdv2"}, {"access_tier": 0, "description": "Feed record for type vulnerabilities", "name": "vulnerabilities"}], "next_token": ""}

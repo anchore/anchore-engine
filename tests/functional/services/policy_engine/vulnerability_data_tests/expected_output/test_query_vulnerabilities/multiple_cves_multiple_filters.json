@@ -1,0 +1,126 @@
+[
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-11164",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-11164",
+    "namespace": "debian:10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "COMPLETE",
+            "base_score": 7.8,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 6.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "High",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:C",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "HIGH",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "NONE",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-11164"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  }
+]

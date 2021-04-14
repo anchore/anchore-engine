@@ -22,9 +22,12 @@ services:
       ANCHORE_TEST_DOCKER_REGISTRY_PASS: ${ANCHORE_TEST_DOCKER_REGISTRY_PASS:-foobar}
       ANCHORE_TEST_DOCKER_REGISTRY_HOST: localhost:5000 # note: for volumes, this must be relative to where the docker daemon is running, not where the registry service is accessible by (dns)
       ANCHORE_BASE_URL: http://engine-api:8228/v1
+      ANCHORE_CATALOG_URL: http://engine-catalog:8228/v1
+      ANCHORE_POLICY_ENGINE_URL: http://engine-policy-engine:8228/v1
       ANCHORE_CLI_URL: http://engine-api:8228/v1
       ANCHORE_CLI_USER: admin
       ANCHORE_CLI_PASS: foobar
+      ANCHORE_TEST_DB_URL: postgresql://postgres:mysecretpassword@anchore-db:5432/postgres
     working_dir: /job-workspace
     volumes:
       - ../../:/job-workspace
@@ -61,6 +64,8 @@ services:
       driver: "json-file"
       options:
         max-size: 100m
+    ports:
+      - "8330:8228"
     expose:
       - 8228
     environment:
@@ -96,6 +101,8 @@ services:
     depends_on:
       - anchore-db
       - engine-catalog
+    ports:
+      - "8331:8228"
     expose:
       - 8228
     logging:
@@ -107,9 +114,12 @@ services:
       - ANCHORE_ADMIN_PASSWORD=foobar
       - ANCHORE_DB_HOST=anchore-db
       - ANCHORE_DB_PASSWORD=mysecretpassword
-      - ANCHORE_FEEDS_ENABLED=false
       - ANCHORE_OAUTH_ENABLED=true
       - ANCHORE_AUTH_SECRET=supersharedsecret
+      - ANCHORE_FEEDS_URL="http://mock-feeds-nginx:8080/v1/service/feeds"
+      - ANCHORE_FEEDS_ENABLED=true
+      - ANCHORE_FEEDS_CLIENT_URL=null
+      - ANCHORE_FEEDS_TOKEN_URL=null
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: ${TEST_IMAGE_NAME}
@@ -158,6 +168,17 @@ services:
     volumes:
       - ../../tests/functional/artifacts/registry/auth:/auth
       - ../../tests/functional/artifacts/registry/certs:/certs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 100m
+  mock-feeds-nginx:
+    image: docker.io/nginx:latest
+    ports:
+      - "8448:8080"
+    volumes:
+      - ../../tests/functional/services/policy_engine/feeds_data_tests/expected_output/test_feed_sync/mock-feeds-nginx.conf:/etc/nginx/nginx.conf:z
+      - ../../tests/functional/services/policy_engine/feeds_data_tests/expected_output/test_feed_sync/data:/www/data
     logging:
       driver: "json-file"
       options:

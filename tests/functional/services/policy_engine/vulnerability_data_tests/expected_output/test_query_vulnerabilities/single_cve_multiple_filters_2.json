@@ -1,0 +1,74 @@
+[
+  {
+    "affected_packages": [
+      {
+        "name": "coreutils",
+        "type": "*",
+        "version": "8.9"
+      }
+    ],
+    "description": "In GNU Coreutils through 8.29, chown-core.c in chown and chgrp does not prevent replacement of a plain file with a symlink during use of the POSIX \"-R -L\" options, which allows local users to modify the ownership of arbitrary files by leveraging a race condition.",
+    "id": "CVE-2017-18018",
+    "link": "https://nvd.nist.gov/vuln/detail/CVE-2017-18018",
+    "namespace": "nvdv2:cves",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "LOCAL",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 1.9,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.4,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Low",
+          "vector_string": "AV:L/AC:M/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "HIGH",
+            "attack_vector": "LOCAL",
+            "availability_impact": "NONE",
+            "base_score": 4.7,
+            "base_severity": "Medium",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 1.0,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "LOW",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-18018"
+      }
+    ],
+    "references": [
+      {
+        "source": "MISC",
+        "tags": [
+          "Exploit",
+          "Issue Tracking",
+          "Third Party Advisory"
+        ],
+        "url": "http://lists.gnu.org/archive/html/coreutils/2017-12/msg00045.html"
+      }
+    ],
+    "severity": "Medium",
+    "vendor_data": []
+  }
+]
