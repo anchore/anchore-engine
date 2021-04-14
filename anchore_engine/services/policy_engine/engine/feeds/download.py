@@ -4,6 +4,7 @@ import os
 import datetime
 import shutil
 import typing
+from dataclasses import dataclass
 
 from anchore_engine.utils import mapped_parser_item_iterator
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
@@ -12,8 +13,6 @@ from anchore_engine.common.schemas import (
     DownloadOperationConfiguration,
     DownloadOperationResult,
     GroupDownloadOperationConfiguration,
-    FeedAPIGroupRecord,
-    FeedAPIRecord,
     GroupDownloadResult,
 )
 
@@ -127,9 +126,48 @@ class LocalFeedDataRepo(object):
         ]
         return FileListJsonIterator(files, start_index)
 
+    def read_files(self, feed, group):
+        files = [
+            os.path.join(self.root_dir, feed, group, x)
+            for x in os.listdir(os.path.join(self.root_dir, feed, group))
+        ]
+        return FileListIterator(files)
+
     def teardown(self):
         shutil.rmtree(self.root_dir)
 
+@dataclass
+class FileData:
+    data: bytes
+    name: str
+
+class FileListIterator(object):
+    """
+    Iterator that will return a FileData object from files listed in order handling the open/close between files.
+    """
+
+    def __init__(self, ordered_path_list: list):
+        self.files = ordered_path_list
+        self.current_file_index = 0
+
+    def __iter__(self):
+        return self
+
+    def _read_file(self, file) -> FileData:
+        name = os.path.split(file)[1]
+        with open(file, "rb") as f:
+            return FileData(f.read(), name)
+
+    def _get_currentfile(self):
+        return self.files[self.current_file_index]
+
+    def __next__(self) -> FileData:
+        if self.current_file_index < len(self.files):
+            file_data = self._read_file(self._get_currentfile())
+            self.current_file_index += 1
+            return file_data
+        else:
+            raise StopIteration()
 
 class FeedDataFileJsonIterator(object):
     """
@@ -431,8 +469,11 @@ class FeedDownloader(object):
             next_token = group_data.next_token
             count += group_data.record_count
             if group_data.data is not None:
+                file_name = chunk_number
+                if "Checksum" in group_data.response_metadata:
+                    file_name = group_data.response_metadata["Checksum"]
                 self.local_repo.write_data(
-                    group.feed, group.group, chunk_number, ensure_bytes(group_data.data)
+                    group.feed, group.group, file_name, ensure_bytes(group_data.data)
                 )
             chunk_number += 1
             yield group_data.record_count

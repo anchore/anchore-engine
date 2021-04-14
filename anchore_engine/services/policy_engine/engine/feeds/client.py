@@ -2,9 +2,9 @@ import abc
 import copy
 import datetime
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import ijson
 import requests
@@ -31,6 +31,7 @@ class HTTPClientResponse:
     status_code: int = 1
     content: bytes = b""
     success: bool = False
+    headers: Dict[str, Any] = field(default_factory=dict)
 
 
 class FeedServiceClient(IFeedSource):
@@ -172,7 +173,8 @@ class FeedServiceClient(IFeedSource):
                         data=record.content,
                         next_token=None,
                         since=since,
-                        record_count=1
+                        record_count=1,
+                        response_metadata=record.headers,
                     )
                 else:
                     raise Exception("Feed list operation failed. Unrecognized MIME type in feed response.")
@@ -482,6 +484,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                 client_response.status_code = r.status_code
                 client_response.content_type = r.headers["Content-Type"]
                 client_response.content = r.content
+                client_response.headers = r.headers
             except requests.exceptions.ConnectTimeout as err:
                 logger.debug("attempt failed: " + str(err))
                 client_response.content = ensure_bytes(

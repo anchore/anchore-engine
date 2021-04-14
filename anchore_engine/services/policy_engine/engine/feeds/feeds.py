@@ -29,6 +29,7 @@ from anchore_engine.common.schemas import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
+    FileData
 )
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
     GenericFeedDataMapper,
@@ -557,6 +558,241 @@ class AnchoreServiceFeed(DataFeed):
             return found[0]
         else:
             return None
+
+
+class GrypeDBFeed(AnchoreServiceFeed):
+    __feed_name__ = "grypedb"
+    _cve_key = None
+    __group_data_mappers__ = {}
+
+    def _sync_group(
+        self,
+        group_download_result: GroupDownloadResult,
+        full_flush=False,
+        local_repo=None,
+        operation_id=None,
+        event_client: CatalogClient = None,
+    ):
+        """
+        Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
+
+        :param group_obj:
+        :return:
+        """
+        total_updated_count = 0
+        result = build_group_sync_result()
+        result["group"] = group_download_result.group
+        sync_started = None
+
+        db = get_session()
+        group_db_obj = None
+        if self.metadata:
+            db.refresh(self.metadata)
+            group_db_obj = self.group_by_name(group_download_result.group)
+
+        if not group_db_obj:
+            logger.error(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Skipping sync for feed group {}, not found in db, record should have been synced already",
+                )
+            )
+            return result
+
+        download_started = group_download_result.started.replace(
+            tzinfo=datetime.timezone.utc
+        )
+        sync_started = time.time()
+
+        try:
+            if full_flush:
+                logger.info(
+                    log_msg_ctx(
+                        operation_id,
+                        group_download_result.feed,
+                        group_download_result.group,
+                        "Performing data flush prior to sync as requested",
+                    )
+                )
+                self._flush_group(group_db_obj, operation_id=operation_id)
+
+            # Iterate thru the records and commit
+
+            logger.info(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Syncing {} total update records into db in sets of {}".format(
+                        group_download_result.total_records, self.RECORDS_PER_CHUNK
+                    ),
+                )
+            )
+            count = 0
+            for record in local_repo.read_files(
+                group_download_result.feed, group_download_result.group
+            ):
+                # insert document into catalog
+                event_client.put_binary_document(group_download_result.group, record.name, record.data)
+                # TODO: insert db with checksum detailing current grype DB
+                # TODO: throw exception if more than one result
+                total_updated_count += 1
+                count += 1
+
+            else:
+                group_db_obj.count = self.record_count(group_db_obj.name, db)
+                db.commit()
+                db = get_session()
+                logger.info(
+                    log_msg_ctx(
+                        operation_id,
+                        group_download_result.feed,
+                        group_download_result.group,
+                        "DB Update Progress: {}/{}".format(
+                            total_updated_count, group_download_result.total_records
+                        ),
+                    )
+                )
+
+            logger.debug(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Updating last sync timestamp to {}".format(download_started),
+                )
+            )
+            group_db_obj = self.group_by_name(group_download_result.group)
+            # There is potential failures that could happen when downloading,
+            # skipping updating the `last_sync` allows the system to retry
+            if group_download_result.status == "complete":
+                group_db_obj.last_sync = download_started
+            group_db_obj.count = self.record_count(group_db_obj.name, db)
+            db.add(group_db_obj)
+            db.commit()
+        except Exception as e:
+            logger.exception(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Error syncing",
+                )
+            )
+            db.rollback()
+            raise e
+        finally:
+            sync_time = time.time() - sync_started
+            total_group_time = time.time() - download_started.timestamp()
+            logger.info(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Sync to db duration: {} sec".format(sync_time),
+                )
+            )
+            logger.info(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Total sync, including download, duration: {} sec".format(
+                        total_group_time
+                    ),
+                )
+            )
+
+        result["updated_record_count"] = total_updated_count
+        result["status"] = "success"
+        result["total_time_seconds"] = total_group_time
+        result["updated_image_count"] = 0
+        return result
+
+    def sync(
+        self,
+        fetched_data: LocalFeedDataRepo,
+        full_flush: bool = False,
+        event_client: CatalogClient = None,
+        operation_id=None,
+        group=None,
+    ) -> dict:
+        """
+        Sync data with the feed source. This may be *very* slow if there are lots of updates.
+
+        Returns a dict with the following structure:
+        {
+        'group_name': [ record1, record2, ..., recordN],
+        'group_name2': [ record1, record2, ...., recordM],
+        ...
+        }
+
+        :param: fetched_data
+        :param: full_flush
+        :param: event_client
+        :param: operation_id
+        :return: changed data updated in the sync as a list of records
+        """
+        result = build_feed_sync_results()
+        result["feed"] = self.__feed_name__
+        failed_count = 0
+
+        # Each group update is a unique session and can roll itself back.
+        t = time.time()
+
+        logger.info(
+            log_msg_ctx(operation_id, self.__feed_name__, None, "Starting feed sync")
+        )
+
+        # Only iterate thru what was fetched
+        for group_download_result in filter(
+            lambda x: x.feed == self.__feed_name__ and (not group or group == x.name),
+            fetched_data.metadata.download_result.results,
+        ):
+            logger.info(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Processing group for db update",
+                )
+            )
+
+            try:
+                new_data = self._sync_group(
+                    group_download_result,
+                    full_flush=full_flush,
+                    local_repo=fetched_data,
+                    operation_id=operation_id,
+                    event_client=CatalogClient
+                )  # Each group sync is a transaction
+                result["groups"].append(new_data)
+            except Exception as e:
+                logger.exception(
+                    log_msg_ctx(
+                        operation_id,
+                        group_download_result.feed,
+                        group_download_result.group,
+                        "Failed syncing group data",
+                    )
+                )
+                failed_count += 1
+                fail_result = build_group_sync_result()
+                fail_result["group"] = group_download_result.group
+                result["groups"].append(fail_result)
+
+        sync_time = time.time() - t
+        self._update_last_full_sync_timestamp()
+
+        # This is the merge/update only time, not including download time. Caller can compute total from this return value
+        result["total_time_seconds"] = sync_time
+
+        if failed_count == 0:
+            result["status"] = "success"
+
+        return result
 
 
 class VulnerabilityFeed(AnchoreServiceFeed):
@@ -1235,23 +1471,6 @@ class GithubFeed(VulnerabilityFeed):
     __group_data_mappers__ = SingleTypeMapperFactory(
         __feed_name__, GithubFeedDataMapper, _cve_key
     )
-
-
-class GrypeDBFeed(AnchoreServiceFeed):
-    __feed_name__ = "grypedb"
-    _cve_key = None
-    __group_data_mappers__ = {}
-
-    def sync(
-        self,
-        fetched_data: LocalFeedDataRepo,
-        full_flush: bool = False,
-        event_client: CatalogClient = None,
-        operation_id=None,
-        group=None,
-    ) -> dict:
-        # Read from the local data feed repo
-        pass
 
 
 def feed_instance_by_name(name: str) -> DataFeed:
