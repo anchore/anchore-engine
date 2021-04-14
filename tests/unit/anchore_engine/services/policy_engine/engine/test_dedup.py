@@ -1,4 +1,6 @@
-from anchore_engine.services.policy_engine.engine.scanner import DefaultVulnScanner
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    DefaultVulnScanner,
+)
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.db.entities.policy_engine import ImageCpe
 import pytest

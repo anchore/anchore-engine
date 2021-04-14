@@ -3,7 +3,12 @@ Module for returning vulnerability reports for images
 """
 from anchore_engine.utils import timer
 from collections import defaultdict
-from anchore_engine.db.entities.policy_engine import ImageCpe
+from anchore_engine.db.entities.policy_engine import ImageCpe, Image
+import os
+import json
+import shlex
+
+from anchore_engine.utils import run_check
 
 
 class DefaultVulnScanner:
@@ -114,6 +119,23 @@ class DefaultVulnScanner:
         final_results = list(dedup_hash.values())
 
         return final_results
+
+
+class GrypeVulnScanner:
+    """"""
+
+    def get_vulnerabilities(self, image: Image):
+
+        # TODO check if grype db needs to be updated
+
+        # TODO replace this with a call to grype facade
+        cmd = "grype -o json docker.io/library/ubuntu:20.04"
+
+        stdout, _ = run_check(shlex.split(cmd))
+
+        results = json.loads(stdout)
+
+        return results
 
 
 scanner_type = DefaultVulnScanner

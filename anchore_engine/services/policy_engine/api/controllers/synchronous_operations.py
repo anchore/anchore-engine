@@ -70,6 +70,9 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 )
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
+from anchore_engine.services.policy_engine.engine.vulns.cache_managers import (
+    get_cache_manager,
+)
 from anchore_engine.subsys import logger as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
@@ -78,12 +81,16 @@ from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.utils import ensure_str, ensure_bytes, timer
 
-authorizer = get_authorizer()
-
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.services.policy_engine.engine.scanner import get_scanner
+from anchore_engine.services.policy_engine.engine.vulns.scanners import get_scanner
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
+)
+
+authorizer = get_authorizer()
+
 
 TABLE_STYLE_HEADER_LIST = [
     "CVE_ID",
@@ -115,6 +122,11 @@ feed_sync_locking_enabled = True
 
 evaluation_cache_enabled = (
     os.getenv("ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED", "true").lower()
+    == "true"
+)
+
+vulnerabilities_cache_enabled = (
+    os.getenv("ANCHORE_POLICY_ENGINE_VULNERABILITIES_CACHE_ENABLED", "true").lower()
     == "true"
 )
 
@@ -1028,6 +1040,85 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
     except Exception as e:
         log.exception(
             "Error checking image {}, {} for vulnerabiltiies. Rolling back".format(
+                user_id, image_id
+            )
+        )
+        db.rollback()
+        return make_response_error(e, in_httpcode=500), 500
+    finally:
+        db.close()
+
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def get_image_vulnerabilities_new(
+    user_id, image_id, force_refresh=False, vendor_only=True
+):
+    """
+    Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
+    to do so.
+
+
+    Example json output:
+    {
+       "multi" : {
+          "url_column_index" : 7,
+          "result" : {
+             "rows" : [],
+             "rowcount" : 0,
+             "colcount" : 8,
+             "header" : [
+                "CVE_ID",
+                "Severity",
+                "*Total_Affected",
+                "Vulnerable_Package",
+                "Fix_Available",
+                "Fix_Images",
+                "Rebuild_Images",
+                "URL"
+             ]
+          },
+          "querycommand" : "/usr/lib/python2.7/site-packages/anchore/anchore-modules/multi-queries/cve-scan.py /ebs_data/anchore/querytmp/queryimages.7026386 /ebs_data/anchore/data /ebs_data/anchore/querytmp/query.59057288 all",
+          "queryparams" : "all",
+          "warns" : [
+             "0005b136f0fb (prom/prometheus:master) cannot perform CVE scan: no CVE data is currently available for the detected base distro type (busybox:unknown_version,busybox:v1.26.2)"
+          ]
+       }
+    }
+
+    :param user_id: user id of image to evaluate
+    :param image_id: image id to evaluate
+    :param force_refresh: if true, flush and recompute vulnerabilities rather than returning current values
+    :param vendor_only: if true, filter out the vulnerabilities that vendors will explicitly not address
+    :return:
+    """
+
+    # Has image?
+    db = get_session()
+
+    try:
+        img = db.query(Image).get((image_id, user_id))
+        if not img:
+            return make_response_error("Image not found", in_httpcode=404), 404
+
+        provider = get_vulnerabilities_provider()
+        report = provider.get_report_for_image(
+            image=img,
+            vendor_only=vendor_only,
+            db_session=db,
+            force_refresh=force_refresh,
+            cache=vulnerabilities_cache_enabled,
+        )
+
+        db.commit()
+        return report
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        log.exception(
+            "Error checking for vulnerabilities account {} image {}. Rolling back".format(
                 user_id, image_id
             )
         )

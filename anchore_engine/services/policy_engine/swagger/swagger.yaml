@@ -376,6 +376,40 @@ paths:
           description: "Image not found"
         500:
           description: "Internal Error"
+  /users/{user_id}/images/{image_id}/vulnerabilities/grype:
+    get:
+      x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
+      operationId: get_image_vulnerabilities_new
+      summary: "Return the vulnerabilitiy report for the image"
+      description: "Returns the latest vulnerability listing for the requested image"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "user_id"
+        in: "path"
+        type: string
+        required: true
+      - name: "image_id"
+        in: path
+        type: string
+        required: true
+      - name: "force_refresh"
+        in: "query"
+        type: boolean
+        required: false
+      - name: "vendor_only"
+        in: "query"
+        type: boolean
+        required: false
+      responses:
+        200:
+          description: "Vulnerability listing"
+          schema:
+            $ref: "#/definitions/ImageVulnerabilityListing"
+        404:
+          description: "Image not found"
+        500:
+          description: "Internal Error"
   /users/{user_id}/images/{image_id}/check_inline:
     post:
       x-swagger-router-controller: anchore_engine.services.policy_engine.api.controllers.synchronous_operations
