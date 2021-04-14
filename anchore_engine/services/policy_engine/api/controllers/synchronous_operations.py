@@ -65,7 +65,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
+
 from anchore_engine.subsys import logger as log
+
 
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
@@ -87,6 +89,11 @@ feed_sync_locking_enabled = True
 
 evaluation_cache_enabled = (
     os.getenv("ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED", "true").lower()
+    == "true"
+)
+
+vulnerabilities_cache_enabled = (
+    os.getenv("ANCHORE_POLICY_ENGINE_VULNERABILITIES_CACHE_ENABLED", "true").lower()
     == "true"
 )
 
@@ -850,7 +857,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             return make_response_error("Image not found", in_httpcode=404), 404
 
         provider = get_vulnerabilities_provider()
-        report = provider.get_image_vulnerabilities(
+        report = provider.get_image_vulnerabilities_json(
             image=img,
             vendor_only=vendor_only,
             db_session=db,
@@ -859,7 +866,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         )
 
         db.commit()
-        return report.to_json(), 200
+        return report, 200
 
     except HTTPException:
         db.rollback()
