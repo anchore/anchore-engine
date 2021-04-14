@@ -29,6 +29,7 @@ from sqlalchemy import (
     event,
 )
 from sqlalchemy.orm import relationship, synonym, joinedload
+from sqlalchemy.dialects.postgresql import JSONB
 
 from anchore_engine.utils import ensure_str, ensure_bytes
 
@@ -2961,42 +2962,13 @@ class DistroNamespace(object):
         ]
 
 
-class CachedPolicyEvaluation(Base):
-    __tablename__ = "policy_engine_evaluation_cache"
-
-    user_id = Column(String, primary_key=True)
-    image_id = Column(String, primary_key=True)
-    eval_tag = Column(String, primary_key=True)
-    bundle_id = Column(
-        String, primary_key=True
-    )  # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
-    bundle_digest = Column(String, primary_key=True)
-
-    result = Column(
-        StringJSON, nullable=False
-    )  # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
-
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    last_modified = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
+class CacheInterface(object):
+    """
+    Interface for a cached obect in policy engine stored in persistence. Expects a member/column called result
+    """
 
     def key_tuple(self):
-        return (
-            self.user_id,
-            self.image_id,
-            self.eval_tag,
-            self.bundle_id,
-            self.bundle_digest,
-        )
+        raise NotImplementedError()
 
     def _constuct_raw_result(self, result_json):
         return {"type": "direct", "result": result_json}
@@ -3041,6 +3013,68 @@ class CachedPolicyEvaluation(Base):
             return bucket, key
         else:
             raise ValueError("Result type is not an archive")
+
+
+class CachedVulnerabilities(Base, CacheInterface):
+    __tablename__ = "policy_engine_vulnerabilities_cache"
+
+    account_id = Column(String, primary_key=True)
+    image_digest = Column(String, primary_key=True)
+    # defining a very generic cache key on purpose to allow whatever is necessary based on the engine vs enterprise
+    cache_key = Column(JSONB, nullable=False)
+    result = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    def key_tuple(self):
+        return (
+            self.account_id,
+            self.image_digest,
+            self.cache_key,
+        )
+
+
+class CachedPolicyEvaluation(Base, CacheInterface):
+    __tablename__ = "policy_engine_evaluation_cache"
+
+    user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    eval_tag = Column(String, primary_key=True)
+    bundle_id = Column(
+        String, primary_key=True
+    )  # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
+    bundle_digest = Column(String, primary_key=True)
+
+    result = Column(
+        StringJSON, nullable=False
+    )  # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
+
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    def key_tuple(self):
+        return (
+            self.user_id,
+            self.image_id,
+            self.eval_tag,
+            self.bundle_id,
+            self.bundle_digest,
+        )
 
 
 def select_nvd_classes(db=None):
