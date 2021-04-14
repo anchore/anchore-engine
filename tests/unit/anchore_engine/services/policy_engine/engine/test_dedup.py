@@ -1,4 +1,6 @@
-from anchore_engine.services.policy_engine.engine.scanner import DefaultVulnScanner
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    LegacyScanner,
+)
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.db.entities.policy_engine import ImageCpe
 import pytest
@@ -38,7 +40,7 @@ def cpe_builder():
     ],
 )
 def test_cpe_field_comparison(lhs, rhs, result):
-    assert DefaultVulnScanner(None, None).compare_fields(lhs, rhs) == result
+    assert LegacyScanner().compare_fields(lhs, rhs) == result
 
 
 @pytest.mark.parametrize(
@@ -104,4 +106,4 @@ def test_image_cpe_comparison(lhs, rhs, result, cpe_builder):
     lhs_cpe = cpe_builder(lhs)
     rhs_cpe = cpe_builder(rhs)
 
-    assert DefaultVulnScanner(None, None).compare_cpes(lhs_cpe, rhs_cpe) == result
+    assert LegacyScanner().compare_cpes(lhs_cpe, rhs_cpe) == result

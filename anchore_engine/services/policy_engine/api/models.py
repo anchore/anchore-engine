@@ -378,7 +378,6 @@ class VulnerabilityScanProblem(JsonSerializable):
 class ImageIngressResponse(JsonSerializable):
     class ImageIngressResponseV1Schema(Schema):
         status = fields.Str()
-        vulnerability_report = fields.Dict()
         problems = fields.List(
             fields.Nested(VulnerabilityScanProblem.VulnerabilityScanProblemV1Schema)
         )
@@ -389,9 +388,8 @@ class ImageIngressResponse(JsonSerializable):
 
     __schema__ = ImageIngressResponseV1Schema()
 
-    def __init__(self, status=None, vulnerability_report=None, problems=None):
+    def __init__(self, status=None, problems=None):
         self.status = status
-        self.vulnerability_report = vulnerability_report
         self.problems = problems
 
 

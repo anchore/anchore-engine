@@ -5,37 +5,28 @@ Async operations are handled by teh async_operations controller.
 
 """
 import base64
-import connexion
 import datetime
 import enum
-import json
-import time
 import hashlib
+import json
 import os
 import re
+import time
+
+import connexion
 from sqlalchemy import or_, asc, func, orm
 from werkzeug.exceptions import HTTPException
 
-
 import anchore_engine.subsys.servicestatus
 from anchore_engine import utils, apis
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.clients.services import internal_client_for, catalog
+from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 
-# API models
-from anchore_engine.services.policy_engine.api.models import (
-    Image as ImageMsg,
-    PolicyEvaluationProblem,
-    PolicyEvaluation,
-    ImageIngressRequest,
-    ImageIngressResponse,
-    PolicyValidationResponse,
-    TriggerParamSpec,
-    TriggerSpec,
-    GateSpec,
-    VulnerabilityScanProblem,
-)
-
 from anchore_engine.db import (
+    AnalysisArtifact,
     Image,
     get_thread_scoped_session as get_session,
     ImagePackageVulnerability,
@@ -48,6 +39,20 @@ from anchore_engine.db import (
     VulnDBMetadata,
     VulnDBCpe,
 )
+
+# API models
+from anchore_engine.services.policy_engine.api.models import (
+    Image as ImageMsg,
+    PolicyEvaluationProblem,
+    PolicyEvaluation,
+    ImageIngressRequest,
+    ImageIngressResponse,
+    PolicyValidationResponse,
+    TriggerParamSpec,
+    TriggerSpec,
+    GateSpec,
+)
+from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     build_bundle,
     build_empty_error_execution,
@@ -63,45 +68,19 @@ from anchore_engine.services.policy_engine.engine.policy.gate import (
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
-    merge_nvd_metadata_image_packages,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    have_vulnerabilities_for,
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
 )
-from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
-from anchore_engine.db import DistroNamespace, AnalysisArtifact
 from anchore_engine.subsys import logger as log
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
-from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
-from anchore_engine.clients.services import internal_client_for, catalog
-from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.clients.services.common import get_service_endpoint
-from anchore_engine.utils import ensure_str, ensure_bytes, timer
-
-authorizer = get_authorizer()
 
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.services.policy_engine.engine.scanner import get_scanner
+from anchore_engine.utils import ensure_str, ensure_bytes
 
-TABLE_STYLE_HEADER_LIST = [
-    "CVE_ID",
-    "Severity",
-    "*Total_Affected",
-    "Vulnerable_Package",
-    "Fix_Available",
-    "Fix_Images",
-    "Rebuild_Images",
-    "URL",
-    "Package_Type",
-    "Feed",
-    "Feed_Group",
-    "Package_Name",
-    "Package_Path",
-    "Package_Version",
-    "CVES",
-]
+authorizer = get_authorizer()
+
 
 DEFAULT_CACHE_CONN_TIMEOUT = (
     -1
@@ -871,156 +850,23 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
     # Has image?
     db = get_session()
+
     try:
         img = db.query(Image).get((image_id, user_id))
-        vulns = []
         if not img:
             return make_response_error("Image not found", in_httpcode=404), 404
-        else:
-            if force_refresh:
-                log.info(
-                    "Forcing refresh of vulnerabilities for {}/{}".format(
-                        user_id, image_id
-                    )
-                )
-                try:
-                    vulns = rescan_image(img, db_session=db)
-                    db.commit()
-                except Exception as e:
-                    log.exception(
-                        "Error refreshing cve matches for image {}/{}".format(
-                            user_id, image_id
-                        )
-                    )
-                    db.rollback()
-                    return make_response_error(
-                        "Error refreshing vulnerability listing for image.",
-                        in_httpcode=500,
-                    )
 
-                db = get_session()
-                db.refresh(img)
+        provider = get_vulnerabilities_provider()
+        report = provider.get_image_vulnerabilities(
+            image=img,
+            vendor_only=vendor_only,
+            db_session=db,
+            force_refresh=force_refresh,
+            cache=True,
+        )
 
-            with timer("Image vulnerability primary lookup", log_level="debug"):
-                vulns = img.vulnerabilities()
-
-        # Has vulnerabilities?
-        warns = []
-        if not vulns:
-            vulns = []
-            ns = DistroNamespace.for_obj(img)
-            if not have_vulnerabilities_for(ns):
-                warns = [
-                    "No vulnerability data available for image distro: {}".format(
-                        ns.namespace_name
-                    )
-                ]
-
-        # select the nvd class once and be done
-        _nvd_cls, _cpe_cls = select_nvd_classes(db)
-
-        rows = []
-        with timer("Image vulnerability nvd metadata merge", log_level="debug"):
-            vulns = merge_nvd_metadata_image_packages(db, vulns, _nvd_cls, _cpe_cls)
-
-        with timer("Image vulnerability output formatting", log_level="debug"):
-            for vuln, nvd_records in vulns:
-                # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
-                if vendor_only and vuln.fix_has_no_advisory():
-                    continue
-
-                # rennovation this for new CVSS references
-                cves = ""
-                nvd_list = []
-                all_data = {"nvd_data": nvd_list, "vendor_data": []}
-
-                for nvd_record in nvd_records:
-                    nvd_list.extend(nvd_record.get_cvss_data_nvd())
-
-                cves = json.dumps(all_data)
-
-                if vuln.pkg_name != vuln.package.fullversion:
-                    pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
-                else:
-                    pkg_final = vuln.pkg_name
-
-                rows.append(
-                    [
-                        vuln.vulnerability_id,
-                        vuln.vulnerability.severity,
-                        1,
-                        pkg_final,
-                        str(vuln.fixed_in()),
-                        vuln.pkg_image_id,
-                        "None",  # Always empty this for now
-                        vuln.vulnerability.link,
-                        vuln.pkg_type,
-                        "vulnerabilities",
-                        vuln.vulnerability.namespace_name,
-                        vuln.pkg_name,
-                        vuln.pkg_path,
-                        vuln.package.fullversion,
-                        cves,
-                    ]
-                )
-
-        vuln_listing = {
-            "multi": {
-                "url_column_index": 7,
-                "result": {
-                    "header": TABLE_STYLE_HEADER_LIST,
-                    "rowcount": len(rows),
-                    "colcount": len(TABLE_STYLE_HEADER_LIST),
-                    "rows": rows,
-                },
-                "warns": warns,
-            }
-        }
-
-        cpe_vuln_listing = []
-        try:
-            with timer("Image vulnerabilities cpe matches", log_level="debug"):
-                scanner = get_scanner(_nvd_cls, _cpe_cls)
-                all_cpe_matches = scanner.get_cpe_vulnerabilities(img)
-
-                if not all_cpe_matches:
-                    all_cpe_matches = []
-
-                api_endpoint = get_api_endpoint()
-
-                for image_cpe, vulnerability_cpe in all_cpe_matches:
-                    link = vulnerability_cpe.parent.link
-                    if not link:
-                        link = "{}/query/vulnerabilities?id={}".format(
-                            api_endpoint, vulnerability_cpe.vulnerability_id
-                        )
-
-                    cpe_vuln_el = {
-                        "vulnerability_id": vulnerability_cpe.parent.normalized_id,
-                        "severity": vulnerability_cpe.parent.severity,
-                        "link": link,
-                        "pkg_type": image_cpe.pkg_type,
-                        "pkg_path": image_cpe.pkg_path,
-                        "name": image_cpe.name,
-                        "version": image_cpe.version,
-                        "cpe": image_cpe.get_cpestring(),
-                        "cpe23": image_cpe.get_cpe23string(),
-                        "feed_name": vulnerability_cpe.feed_name,
-                        "feed_namespace": vulnerability_cpe.namespace_name,
-                        "nvd_data": vulnerability_cpe.parent.get_cvss_data_nvd(),
-                        "vendor_data": vulnerability_cpe.parent.get_cvss_data_vendor(),
-                        "fixed_in": vulnerability_cpe.get_fixed_in(),
-                    }
-                    cpe_vuln_listing.append(cpe_vuln_el)
-        except Exception as err:
-            log.warn("could not fetch CPE matches - exception: " + str(err))
-
-        return {
-            "user_id": user_id,
-            "image_id": image_id,
-            "legacy_report": vuln_listing,
-            "cpe_report": cpe_vuln_listing,
-        }
+        db.commit()
+        return report
 
     except HTTPException:
         db.rollback()
@@ -1072,13 +918,7 @@ def ingress_image(ingress_request):
         else:
             # We're doing a sync call above, so just send loaded. It should be 'accepted' once async works.
             resp.status = "loaded"
-        resp.vulnerability_report = get_image_vulnerabilities(req.user_id, req.image_id)
-        resp.problems = []
-        if isinstance(resp.vulnerability_report, list):
-            if "httpcode" in resp.vulnerability_report[0]:
-                resp.problems.append(
-                    VulnerabilityScanProblem(resp.vulnerability_report[0]["message"])
-                )
+        resp.problems = list()
         return resp.to_json(), 200
     except Exception as e:
         log.exception("Error loading image into policy engine")

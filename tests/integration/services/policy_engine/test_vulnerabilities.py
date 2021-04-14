@@ -6,7 +6,9 @@ from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.db import get_thread_scoped_session, end_session, Image
 from anchore_engine.services.policy_engine.engine.tasks import (
     ImageLoadTask,
-    rescan_image,
+)
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from tests.integration.services.policy_engine.utils import reset_feed_sync_time
@@ -93,9 +95,9 @@ def _rescan_cve(img_id):
     db = get_thread_scoped_session()
     try:
         img = db.query(Image).filter_by(user_id="0", id=img_id).one_or_none()
-        v = rescan_image(db, img)
+        get_vulnerabilities_provider().load_image(db, img)
         db.commit()
-        return v
+        return
     except:
         db.rollback()
         raise
