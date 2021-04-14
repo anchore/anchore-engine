@@ -2,10 +2,13 @@
 Scanners are responsible for finding vulnerabilities in an image.
 A scanner may use persistence context or an external tool to match image content with vulnerability data and return those matches
 """
+import json
+
+from anchore_engine.clients import grype_wrapper
 from anchore_engine.db.entities.policy_engine import ImageCpe
+from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-from anchore_engine.services.policy_engine.engine import vulnerabilities
 
 
 class LegacyScanner:
@@ -125,3 +128,25 @@ class LegacyScanner:
         final_results = list(dedup_hash.values())
 
         return final_results
+
+
+class GrypeVulnScanner:
+    """
+    The scanner sits a level above the grype_wrapper. It orchestrates dependencies such as grype-db for the wrapper
+    and interacts with the wrapper for all things vulnerabilities
+
+    Scanners are typically used by a provider to serve data They are engine-agnostic components and therefore require
+    higher order functions for transforming input/output to/from underlying tool format
+    """
+
+    def get_vulnerabilities(self, image_id, sbom):
+
+        # TODO check if grype db needs to be updated
+
+        # TODO saving sbom for debugging purposes, remove this
+        file_path = "/tmp/e2g_sbom_{}".format(image_id)
+        logger.info("Writing grype sbom to {}".format(image_id))
+        with open(file_path, "w") as fp:
+            json.dump(sbom, fp, indent=2)
+
+        return grype_wrapper.get_vulnerabilities(file_path)
