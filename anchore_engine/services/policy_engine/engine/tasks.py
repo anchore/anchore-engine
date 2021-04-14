@@ -17,10 +17,6 @@ from anchore_engine.db import (
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-    vulnerabilities_for_image,
-    rescan_image,
-)
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
@@ -40,6 +36,10 @@ from anchore_engine.subsys import identities, logger
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
+from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
+)
 
 
 def construct_task_from_json(json_obj):
@@ -330,7 +330,9 @@ class FeedsUpdateTask(IAsyncTask):
                                     img, self.uuid
                                 )
                             )
-                            vulns = rescan_image(image_obj, db_session=db)
+                            get_vulnerabilities_provider().load_image(
+                                image_obj, db_session=db
+                            )
                             count += 1
                         else:
                             logger.warn(
@@ -373,9 +375,8 @@ class FeedsUpdateTask(IAsyncTask):
 
 
 class ImageLoadResult(object):
-    def __init__(self, img, vulnerabilities):
+    def __init__(self, img):
         self.loaded_img_obj = img
-        self.img_vulnerabilities = vulnerabilities
 
 
 class ImageLoadTask(IAsyncTask):
@@ -464,8 +465,8 @@ class ImageLoadTask(IAsyncTask):
                             self.user_id, self.image_id
                         )
                     )
-                    for pkg_vuln in img.vulnerabilities():
-                        db.delete(pkg_vuln)
+                    # for pkg_vuln in img.vulnerabilities():
+                    #     db.delete(pkg_vuln)
                     db.delete(img)
 
             # Close the session during the data fetch.
@@ -485,20 +486,20 @@ class ImageLoadTask(IAsyncTask):
                 logger.info("Adding image to db")
                 db.add(image_obj)
 
-                ts = time.time()
-                logger.info("Adding image package vulnerabilities to db")
-                vulns = vulnerabilities_for_image(image_obj)
-                for vuln in vulns:
-                    db.add(vuln)
+                with timer("Generating vulnerability matches", log_level="info"):
+                    get_vulnerabilities_provider().load_image(
+                        image=image_obj,
+                        db_session=db,
+                        cache=True,  # save results to cache
+                    )
 
                 db.commit()
-                # log.debug("TIMER TASKS: {}".format(time.time() - ts))
             except:
                 logger.exception("Error adding image to db")
                 db.rollback()
                 raise
 
-            return ImageLoadResult(image_obj, vulns)
+            return ImageLoadResult(image_obj)
         except Exception as e:
             logger.exception(
                 "Error loading and scanning image: {}".format(self.image_id)

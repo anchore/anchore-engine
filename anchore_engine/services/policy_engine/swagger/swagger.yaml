@@ -1049,8 +1049,6 @@ definitions:
         - accepted
         - failed
         - loaded
-      vulnerability_report:
-        $ref: "#/definitions/ImageVulnerabilityListing"
       problems:
         type: array
         description: list of error objects indicating errors encountered during vulnerability scan

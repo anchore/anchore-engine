@@ -1,27 +1,38 @@
 """
-Module for returning vulnerability reports for images
+Scanners are responsible for finding vulnerabilities in an image.
+A scanner may use persistence context or an external tool to match image content with vulnerability data and return those matches
 """
-from anchore_engine.utils import timer
-from collections import defaultdict
 from anchore_engine.db.entities.policy_engine import ImageCpe
+from anchore_engine.subsys import logger
+from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.engine import vulnerabilities
 
 
-class DefaultVulnScanner:
+class LegacyScanner:
     """
-    Scanner object for scanning an image
+    Scanner wrapping the legacy vulnerabilities subsystem.
     """
 
-    def __init__(self, nvd_cls: type, cpe_cls: type):
-        self.nvd_cls = nvd_cls
-        self.cpe_cls = cpe_cls
+    def flush_and_recompute_vulnerabilities(self, image_obj, db_session):
+        """
+        Wrapper for rescan_image function.
+        """
+        vulnerabilities.rescan_image(image_obj, db_session)
+
+    def compute_vulnerabilities(self, image_obj):
+        """
+        Wrapper for vulnerabilities_for_image function
+        """
+
+        vulnerabilities.vulnerabilities_for_image(image_obj)
 
     def get_vulnerabilities(self, image):
         return image.vulnerabilities()
 
-    def get_cpe_vulnerabilities(self, image):
+    def get_cpe_vulnerabilities(self, image, nvd_cls: type, cpe_cls: type):
         with timer("Image vulnerability cpe lookups", log_level="debug"):
             return self.dedup_cpe_vulnerabilities(
-                image.cpe_vulnerabilities(_nvd_cls=self.nvd_cls, _cpe_cls=self.cpe_cls)
+                image.cpe_vulnerabilities(_nvd_cls=nvd_cls, _cpe_cls=cpe_cls)
             )
 
     def compare_fields(self, lhs, rhs):
@@ -116,15 +127,8 @@ class DefaultVulnScanner:
         return final_results
 
 
-scanner_type = DefaultVulnScanner
+default_type = LegacyScanner
 
 
-def get_scanner(nvd_cls, cpe_cls):
-    """
-    Return
-    :param nvd_cls:
-    :param cpe_cls:
-    :return:
-    """
-    # Instantiate type defined in global config
-    return scanner_type(nvd_cls, cpe_cls)
+def get_scanner():
+    return default_type()

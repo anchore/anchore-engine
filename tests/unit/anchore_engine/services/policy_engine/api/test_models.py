@@ -144,14 +144,12 @@ def test_ingress_response():
 
     r = ImageIngressResponse()
     r.status = "ok"
-    r.vulnerability_report = {}
     r.problems = []
-    assert r.to_json() == {"status": "ok", "vulnerability_report": {}, "problems": []}
+    assert r.to_json() == {"status": "ok", "problems": []}
 
     r = ImageIngressResponse()
     assert r.to_json() == {
         "status": None,
-        "vulnerability_report": None,
         "problems": None,
     }
 
