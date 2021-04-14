@@ -1237,6 +1237,23 @@ class GithubFeed(VulnerabilityFeed):
     )
 
 
+class GrypeDBFeed(AnchoreServiceFeed):
+    __feed_name__ = "grypedb"
+    _cve_key = None
+    __group_data_mappers__ = {}
+
+    def sync(
+        self,
+        fetched_data: LocalFeedDataRepo,
+        full_flush: bool = False,
+        event_client: CatalogClient = None,
+        operation_id=None,
+        group=None,
+    ) -> dict:
+        # Read from the local data feed repo
+        pass
+
+
 def feed_instance_by_name(name: str) -> DataFeed:
     """
     Returns an instance of the feed using the given name, raises KeyError if name not found

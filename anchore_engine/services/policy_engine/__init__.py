@@ -23,6 +23,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GithubFeed,
     feed_registry,
     NvdFeed,
+    GrypeDBFeed,
 )
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
@@ -205,6 +206,7 @@ def init_feed_registry():
         (PackagesFeed, False),
         (GithubFeed, False),
         (NvdFeed, False),
+        (GrypeDBFeed, True),
     ]:
         logger.info("Registering feed handler {}".format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
