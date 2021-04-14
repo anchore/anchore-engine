@@ -88,12 +88,16 @@ class ManyReadOneWriteLock(object):
     def acquire_read_lock(self):
         """
         Acquire a read lock. Blocks if a thread has the write lock.
+
+        :return: The function to release the lock
         """
         self.read_lock.acquire()
         try:
             self.read_counter += 1
         finally:
             self.read_lock.release()
+
+        return self.release_read_lock
 
     def release_read_lock(self):
         """
@@ -110,10 +114,14 @@ class ManyReadOneWriteLock(object):
     def acquire_write_lock(self):
         """
         Acquire the write lock. Blocks until no threads have the read or write lock.
+
+        :return: The function to release the lock
         """
         self.read_lock.acquire()
         while self.read_counter > 0:
             self.read_lock.wait()
+
+        return self.release_write_lock()
 
     def release_write_lock(self):
         """

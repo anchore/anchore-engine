@@ -32,7 +32,7 @@ DEFAULT_CONFIG = {
     "docker_conn_timeout": 600,
     "allow_awsecr_iam_auto": False,
     "skopeo_global_timeout": 0,
-    "grype_db_cache_location": "",
+    "grype_db_cache_dir": "grype_db/",
     "global_client_read_timeout": 0,
     "global_client_connect_timeout": 0,
     "user_authentication": {
