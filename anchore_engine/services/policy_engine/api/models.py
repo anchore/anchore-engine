@@ -183,8 +183,12 @@ class CvssScore(JsonSerializable):
 class CvssCombined(JsonSerializable):
     class CvssCombinedV1Schema(Schema):
         id = fields.Str()
-        cvss_v2 = fields.Nested(CvssScore.CvssScoreV1Schema)
-        cvss_v3 = fields.Nested(CvssScore.CvssScoreV1Schema)
+        cvss_v2 = fields.Nested(
+            CvssScore.CvssScoreV1Schema, allow_none=True, missing=None
+        )
+        cvss_v3 = fields.Nested(
+            CvssScore.CvssScoreV1Schema, allow_none=True, missing=None
+        )
 
         @post_load
         def make(self, data, **kwargs):
@@ -577,7 +581,7 @@ class PolicyValidationResponse(JsonSerializable):
 class Vulnerability(JsonSerializable):
     class VulnerabilityV1Schema(Schema):
         vulnerability_id = fields.Str()
-        description = fields.Str()
+        description = fields.Str(allow_none=True, missing=None)
         severity = fields.Str()
         link = fields.Str()
         feed = fields.Str()
@@ -656,7 +660,10 @@ class FixedArtifact(JsonSerializable):
     class FixedArtifactV1Schema(Schema):
         version = fields.Str()
         wont_fix = fields.Bool()
-        observed_at = RFC3339DateTime()
+        observed_at = RFC3339DateTime(
+            allow_none=True,
+            missing=None,
+        )
 
         @post_load
         def make(self, data, **kwargs):
@@ -710,9 +717,9 @@ class VulnerabilitiesReportMetadata(JsonSerializable):
         uuid = fields.Str()
         generated_by = fields.Dict()
 
-    @post_load
-    def make(self, data, **kwargs):
-        return VulnerabilitiesReportMetadata(**data)
+        @post_load
+        def make(self, data, **kwargs):
+            return VulnerabilitiesReportMetadata(**data)
 
     __schema__ = VulnerabilitiesReportMetadataV1Schema()
 
