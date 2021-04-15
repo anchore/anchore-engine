@@ -75,7 +75,7 @@ def _init_grype_db_session(grype_db_engine):
     return grype_db_session
 
 
-def _init_grype_db_engine(lastest_grype_db: str):
+def _init_grype_db(lastest_grype_db: str):
     """
     Write the db string to file, create the engine, and create the session
     Return the file and session
@@ -109,7 +109,7 @@ def update_grype_db(lastest_grype_db):
     with grype_db_lock.write_lock():
         # Store the db locally and
         # Create the sqlalchemy engine for the new db
-        latest_grype_db_file, latest_grype_db_session = _init_grype_db_engine(lastest_grype_db)
+        latest_grype_db_file, latest_grype_db_session = _init_grype_db(lastest_grype_db)
 
         # Store the file and session variables globally
         # For use during reads and to remove in the next update
