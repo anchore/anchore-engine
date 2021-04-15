@@ -567,6 +567,17 @@ class GrypeDBFeed(AnchoreServiceFeed):
     _cve_key = None
     __group_data_mappers__ = {}
 
+    def record_count(self, group_name, db):
+        try:
+            return (
+                db.query(GrypeDBMetadata).count()
+            )
+        except Exception:
+            logger.exception(
+                "Error getting feed data group record count in package feed for group: {}".format(group_name)
+            )
+            raise
+
     def _sync_group(
         self,
         group_download_result: GroupDownloadResult,
@@ -648,6 +659,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 # TODO: throw exception if more than one result
                 grypedb_meta = GrypeDBMetadata(
                     checksum=record.name,
+                    date_generated=datetime.datetime.now(),
                     feed_name=GrypeDBFeed.__feed_name__,
                     group_name=group_download_result.group,
                 )

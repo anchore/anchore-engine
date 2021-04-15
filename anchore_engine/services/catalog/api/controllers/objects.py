@@ -104,8 +104,7 @@ def create_raw_object(bucket, archiveid, bodycontent):
         account_name = ApiRequestContextProxy.namespace()
         obj_mgr = anchore_engine.subsys.object_store.manager.get_manager()
 
-        # jsonbytes = anchore_utils.ensure_bytes(json.dumps(bodycontent))
-        rc = obj_mgr.put(account_name, bucket, archiveid, bodycontent)
+        obj_mgr.put(account_name, bucket, archiveid, bodycontent)
 
         my_svc = ApiRequestContextProxy.get_service()
         if my_svc is not None:

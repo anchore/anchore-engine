@@ -730,7 +730,8 @@ paths:
         200:
           description: "success"
           schema:
-            type: object
+            type: string
+            format: binary
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
     post:
       tags:
@@ -754,7 +755,8 @@ paths:
       - name: 'bodycontent'
         in: body
         schema:
-          type: object
+          type: string
+          format: binary
         description: "document to object store"
         required: true
       produces:

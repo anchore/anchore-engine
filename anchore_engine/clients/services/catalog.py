@@ -672,4 +672,5 @@ class CatalogClient(InternalServiceClient):
             "objects/raw/{bucket}/{name}",
             path_params={"bucket": bucket, "name": name},
             body=inobj,
+            extra_headers={'Content-Type': 'application/octet-stream'}
         )
