@@ -23,12 +23,17 @@ def get_api_conf():
 
 
 class APIResponse(object):
-    def __init__(self, status_code, response=None):
+    def __init__(self, status_code, response=None, binary=False):
         self.code = status_code
+        self.binary = binary
         if response is not None:
             self.url = response.url
+
             try:
-                self.body = response.json()
+                if self.binary:
+                    self.body = response.content
+                else:
+                    self.body = response.json()
             except ValueError:
                 self.body = response.text or ""
 
@@ -139,7 +144,13 @@ def http_post_bytes(
     return APIResponse(resp.status_code, response=resp)
 
 
-def http_get(path_parts, query=None, config: callable = get_api_conf):
+def http_get(
+    path_parts,
+    query=None,
+    config: callable = get_api_conf,
+    extra_headers=None,
+    binary=False,
+):
 
     api_conf = config()
 
@@ -149,11 +160,11 @@ def http_get(path_parts, query=None, config: callable = get_api_conf):
     resp = requests.get(
         build_url(path_parts, api_conf),
         auth=(api_conf["ANCHORE_API_USER"], api_conf["ANCHORE_API_PASS"]),
-        headers=get_headers(api_conf),
+        headers=get_headers(api_conf, extra_headers),
         params=query,
     )
 
-    return APIResponse(resp.status_code, response=resp)
+    return APIResponse(resp.status_code, response=resp, binary=binary)
 
 
 def http_del(path_parts, query=None, config: callable = get_api_conf):

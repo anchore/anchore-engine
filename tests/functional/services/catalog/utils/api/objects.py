@@ -45,3 +45,51 @@ def delete_document(bucket: str, archiveid: str) -> http_utils.APIResponse:
         )
 
     return del_document_resp
+
+
+def add_raw_document(
+    bucket: str, archiveid: str, content: str
+) -> http_utils.APIResponse:
+    if not bucket:
+        raise ValueError("Cannot create document to object store without bucket")
+
+    if not archiveid:
+        raise ValueError("Cannot create document to object store without archiveid")
+
+    if not content:
+        raise ValueError("Cannot create document to object store without content")
+
+    create_document_resp = http_utils.http_post_bytes(
+        ["objects", "raw", bucket, archiveid], content, config=catalog_api_conf
+    )
+
+    if create_document_resp.code != 200:
+        raise http_utils.RequestFailedError(
+            create_document_resp.url,
+            create_document_resp.code,
+            create_document_resp.body,
+        )
+
+    return create_document_resp
+
+
+def get_raw_document(bucket: str, archiveid: str) -> http_utils.APIResponse:
+    if not bucket:
+        raise ValueError("Cannot get document from object store without bucket")
+
+    if not archiveid:
+        raise ValueError("Cannot fet document from object store without archiveid")
+
+    get_document_resp = http_utils.http_get(
+        ["objects", "raw", bucket, archiveid],
+        config=catalog_api_conf,
+        extra_headers={"Content-Type": "application/octet-stream"},
+        binary=True,
+    )
+
+    if get_document_resp.code != 200:
+        raise http_utils.RequestFailedError(
+            get_document_resp.url, get_document_resp.code, get_document_resp.body
+        )
+
+    return get_document_resp

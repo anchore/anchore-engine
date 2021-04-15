@@ -648,6 +648,10 @@ paths:
           description: "success"
           schema:
             type: object
+        400:
+          description: "Failed to find object"
+          schema:
+            type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
     post:
       tags:
@@ -732,6 +736,10 @@ paths:
           schema:
             type: string
             format: binary
+        400:
+          description: "Failed to find object"
+          schema:
+            type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
     post:
       tags:

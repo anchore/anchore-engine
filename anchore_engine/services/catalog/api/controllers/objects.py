@@ -140,7 +140,8 @@ def get_raw_object(bucket, archiveid):
         account_name = ApiRequestContextProxy.namespace()
         try:
             return_object = obj_mgr.get(account_name, bucket, archiveid)
-
+            if not return_object:
+                raise TypeError("No document found at given path")
             httpcode = 200
         except Exception as err:
             httpcode = 404
