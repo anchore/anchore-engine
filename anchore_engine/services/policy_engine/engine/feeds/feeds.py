@@ -570,13 +570,21 @@ class GrypeDBFeed(AnchoreServiceFeed):
     def record_count(self, group_name, db):
         try:
             return (
-                db.query(GrypeDBMetadata).count()
+                self._find_match(db).count()
             )
         except Exception:
             logger.exception(
                 "Error getting feed data group record count in package feed for group: {}".format(group_name)
             )
             raise
+
+    def _find_match(self, db, checksum=None, active=None):
+        results = db.query(GrypeDBMetadata)
+        if checksum:
+            results = results.filter(GrypeDBMetadata.checksum == checksum)
+        if not isinstance(active, type(None)):
+            results = results.filter(GrypeDBMetadata.active == active)
+        return results
 
     def _sync_group(
         self,
@@ -649,23 +657,34 @@ class GrypeDBFeed(AnchoreServiceFeed):
             for record in local_repo.read_files(
                 group_download_result.feed, group_download_result.group
             ):
+                # TODO create custom exception
                 if count >= 1:
                     raise Exception("Should only be one instance of grype db")
-                # insert document into catalog
-                url = catalog_client.create_raw_document(
-                    group_download_result.group, record.name, record.data
-                )
-                # TODO: insert db with checksum detailing current grype DB
-                # TODO: throw exception if more than one result
-                grypedb_meta = GrypeDBMetadata(
-                    checksum=record.name,
-                    date_generated=datetime.datetime.now(),
-                    feed_name=GrypeDBFeed.__feed_name__,
-                    group_name=group_download_result.group,
-                )
-                db.add(grypedb_meta)
-                total_updated_count += 1
-                count += 1
+                # delete all records not active
+                # search for active and unmark
+                # insert new as active
+                checksum, date_generated = record.name.split("__")
+                if self._find_match(db, checksum).count() == 0:
+                    inactive_records = self._find_match(db, active=False)
+                    for inactive_record in inactive_records.all():
+                        catalog_client.delete_document(inactive_record.group_name, inactive_record.checksum)
+                    inactive_records.delete(synchronize_session='evaluate')
+                    self._find_match(db, active=True).update({GrypeDBMetadata.active: False},
+                                                             synchronize_session='evaluate')
+                    url = catalog_client.create_raw_document(
+                        group_download_result.group, checksum, record.data
+                    )
+                    grypedb_meta = GrypeDBMetadata(
+                        checksum=checksum,
+                        feed_name=GrypeDBFeed.__feed_name__,
+                        group_name=group_download_result.group,
+                        date_generated=date_generated,
+                        object_url=url,
+                        active=True,
+                    )
+                    db.add(grypedb_meta)
+                    total_updated_count += 1
+                    count += 1
 
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)

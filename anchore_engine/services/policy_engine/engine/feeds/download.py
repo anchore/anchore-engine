@@ -470,8 +470,8 @@ class FeedDownloader(object):
             count += group_data.record_count
             if group_data.data is not None:
                 file_name = chunk_number
-                if "Checksum" in group_data.response_metadata:
-                    file_name = group_data.response_metadata["Checksum"]
+                if "Checksum" in group_data.response_metadata and "Date-Created" in group_data.response_metadata:
+                    file_name = f"{group_data.response_metadata['Checksum']}__{group_data.response_metadata['Date-Created']}"
                 self.local_repo.write_data(
                     group.feed, group.group, file_name, ensure_bytes(group_data.data)
                 )

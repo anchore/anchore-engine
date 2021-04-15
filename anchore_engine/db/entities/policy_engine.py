@@ -141,9 +141,11 @@ class GrypeDBMetadata(Base):
     __tablename__ = "grype_db_metadata"
 
     checksum = Column(String, primary_key=True)
-    date_generated = Column(DateTime, nullable=False)
     feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
     group_name = Column(String, nullable=False)
+    date_generated = Column(DateTime, nullable=False)
+    object_url = Column(String, nullable=False)
+    active = Column(Boolean, nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(
