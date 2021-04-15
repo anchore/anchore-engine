@@ -128,7 +128,7 @@ def get_vulnerabilities(grype_sbom: str):
     global grype_db_file
 
     # Get the read lock
-    with grype_db_lock.read_lock():
+    with grype_db_lock.read_access():
         # Set grype env variables, including the grype db location
         grype_env = {
             "GRYPE_CHECK_FOR_APP_UPDATE": "0",
@@ -191,7 +191,7 @@ def query_vulnerabilities(
     global grype_db_session
 
     # Get and release read locks
-    with grype_db_lock.read_lock():
+    with grype_db_lock.read_access():
         if type(vuln_id) == str:
             vuln_id = [vuln_id]
 
