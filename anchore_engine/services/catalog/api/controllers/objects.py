@@ -94,3 +94,62 @@ def delete_object(bucket, archiveid):
         )
 
     return return_object, httpcode
+
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def create_raw_object(bucket, archiveid, bodycontent):
+    httpcode = 500
+    try:
+        account_name = ApiRequestContextProxy.namespace()
+        obj_mgr = anchore_engine.subsys.object_store.manager.get_manager()
+
+        # jsonbytes = anchore_utils.ensure_bytes(json.dumps(bodycontent))
+        rc = obj_mgr.put(account_name, bucket, archiveid, bodycontent)
+
+        my_svc = ApiRequestContextProxy.get_service()
+        if my_svc is not None:
+            resource_url = (
+                my_svc.service_record["base_url"]
+                + "/"
+                + my_svc.service_record["version"]
+                + "/archive/"
+                + bucket
+                + "/"
+                + archiveid
+            )
+        else:
+            resource_url = "N/A"
+
+        return_object = resource_url
+        httpcode = 200
+
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+
+    return return_object, httpcode
+
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def get_raw_object(bucket, archiveid):
+    httpcode = 500
+    try:
+        obj_mgr = anchore_engine.subsys.object_store.manager.get_manager()
+        account_name = ApiRequestContextProxy.namespace()
+        try:
+            return_object = anchore_utils.ensure_str(
+                obj_mgr.get(account_name, bucket, archiveid)
+            )
+            httpcode = 200
+        except Exception as err:
+            httpcode = 404
+            raise err
+    except Exception as err:
+        return_object = anchore_engine.common.helpers.make_response_error(
+            err, in_httpcode=httpcode
+        )
+
+    return return_object, httpcode

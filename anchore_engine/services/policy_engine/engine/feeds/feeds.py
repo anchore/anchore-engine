@@ -20,6 +20,7 @@ from anchore_engine.db import (
     get_thread_scoped_session,
     NvdMetadata,
     CpeVulnerability,
+    GrypeDBMetadata,
 )
 
 from anchore_engine.common.schemas import (
@@ -29,7 +30,7 @@ from anchore_engine.common.schemas import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
-    FileData
+    FileData,
 )
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
     GenericFeedDataMapper,
@@ -58,6 +59,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_json,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.clients.services import internal_client_for
 
 
 def build_group_sync_result(group=None, status="failure"):
@@ -583,6 +585,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         result = build_group_sync_result()
         result["group"] = group_download_result.group
         sync_started = None
+        catalog_client = internal_client_for(event_client, userId=None)
 
         db = get_session()
         group_db_obj = None
@@ -616,6 +619,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         "Performing data flush prior to sync as requested",
                     )
                 )
+                # TODO flushing grypedb would work differently
                 self._flush_group(group_db_obj, operation_id=operation_id)
 
             # Iterate thru the records and commit
@@ -634,10 +638,20 @@ class GrypeDBFeed(AnchoreServiceFeed):
             for record in local_repo.read_files(
                 group_download_result.feed, group_download_result.group
             ):
+                if count >= 1:
+                    raise Exception("Should only be one instance of grype db")
                 # insert document into catalog
-                event_client.put_binary_document(group_download_result.group, record.name, record.data)
+                url = catalog_client.create_raw_document(
+                    group_download_result.group, record.name, record.data
+                )
                 # TODO: insert db with checksum detailing current grype DB
                 # TODO: throw exception if more than one result
+                grypedb_meta = GrypeDBMetadata(
+                    checksum=record.name,
+                    feed_name=GrypeDBFeed.__feed_name__,
+                    group_name=group_download_result.group,
+                )
+                db.add(grypedb_meta)
                 total_updated_count += 1
                 count += 1
 
@@ -766,7 +780,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     full_flush=full_flush,
                     local_repo=fetched_data,
                     operation_id=operation_id,
-                    event_client=CatalogClient
+                    event_client=CatalogClient,
                 )  # Each group sync is a transaction
                 result["groups"].append(new_data)
             except Exception as e:

@@ -657,3 +657,19 @@ class CatalogClient(InternalServiceClient):
             path_params={"operation": operation_id},
             body=json.dumps({"status": status}),
         )
+
+    def get_raw_document(self, bucket, name):
+        # TODO fix lambda reference
+        return self.call_api(
+            lambda **kwargs: http.anchy_get(raw=True, **kwargs),
+            "objects/raw/{bucket}/{name}",
+            path_params={"bucket": bucket, "name": name},
+        )
+
+    def create_raw_document(self, bucket, name, inobj):
+        return self.call_api(
+            http.anchy_post,
+            "objects/raw/{bucket}/{name}",
+            path_params={"bucket": bucket, "name": name},
+            body=inobj,
+        )
