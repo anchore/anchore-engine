@@ -83,56 +83,69 @@ class ManyReadsOneWriteLock(object):
     """
 
     def __init__(self):
-        self.read_lock = Condition(Lock())
+        self.lock = Condition(Lock())
         self.read_counter = 0
 
-    def _acquire_read_lock(self):
+    def _acquire_read_access(self):
         """
-        Acquire a read lock. Blocks if a thread has the write lock.
+        Acquire read access. Blocks if a thread has write access.
+        Avoid calling this directly outside of tests, use read_access() instead.
         """
-        self.read_lock.acquire()
+        self.lock.acquire()
         try:
             self.read_counter += 1
         finally:
-            self.read_lock.release()
+            self.lock.release()
 
-    def _release_read_lock(self):
+    def _release_read_access(self):
         """
-        Release a read lock.
+        Release the calling thread's read access.
+        If no other threads have read access, notify any waiting for write access.
+        Avoid calling this directly outside of tests, use read_access() instead.
         """
-        self.read_lock.acquire()
+        self.lock.acquire()
         try:
             self.read_counter -= 1
             if not self.read_counter:
-                self.read_lock.notifyAll()
+                self.lock.notifyAll()
         finally:
-            self.read_lock.release()
+            self.lock.release()
 
     @contextmanager
-    def read_lock(self):
+    def read_access(self):
+        """
+        Context manager for read access to a resource. Allows (unlimited) multiple threads
+        to have read access to the resource.
+        """
         try:
-            yield self._acquire_read_lock
+            yield self._acquire_read_access()
         finally:
-            yield self._release_read_lock
+            self._release_read_access()
 
     @contextmanager
     def _acquire_write_lock(self):
         """
-        Acquire the write lock. Blocks until no threads have the read or write lock.
+        Acquire write access. Blocks until no threads have read or write access.
+        Avoid calling this directly outside of tests, use read_access() instead.
         """
-        self.read_lock.acquire()
+        self.lock.acquire()
         while self.read_counter > 0:
-            self.read_lock.wait()
+            self.lock.wait()
 
     def _release_write_lock(self):
         """
-        Release the write lock.
+        Release the calling thread's write access.
+        Avoid calling this directly outside of tests, use read_access() instead.
         """
-        self.read_lock.release()
+        self.lock.release()
 
     @contextmanager
     def write_lock(self):
+        """
+        Context manager for write access to a resource. Limits access to the resource to a single
+        thread at a time.
+        """
         try:
-            yield self._acquire_write_lock
+            yield self._acquire_write_lock()
         finally:
-            yield self._release_write_lock
+            self._release_write_lock()
