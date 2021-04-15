@@ -140,9 +140,8 @@ def get_raw_object(bucket, archiveid):
         obj_mgr = anchore_engine.subsys.object_store.manager.get_manager()
         account_name = ApiRequestContextProxy.namespace()
         try:
-            return_object = anchore_utils.ensure_str(
-                obj_mgr.get(account_name, bucket, archiveid)
-            )
+            return_object = obj_mgr.get(account_name, bucket, archiveid)
+
             httpcode = 200
         except Exception as err:
             httpcode = 404
