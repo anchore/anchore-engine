@@ -31,7 +31,6 @@ class TestObjectsRaw:
         """
         Returns a function that
         """
-        x = 2
 
         def _post_raw_document(bucket, archive_id, filename):
             content = expected_content(filename)
@@ -49,10 +48,10 @@ class TestObjectsRaw:
         # content, create_doc_resp = post_raw_document(bucket, archive_id, filename)
 
         assert create_doc_resp == http_utils.APIResponse(200)
-        assert (
-            create_doc_resp.body
-            == f"http://catalog:8228/v1/archive/{bucket}/{archive_id}"
-        )
+
+        resp_bucket, resp_archive = create_doc_resp.body.split("/")[-2::1]
+        assert resp_bucket == bucket
+        assert resp_archive == archive_id
 
     def test_get_raw_object(self, expected_content, bucket, archive_id, filename):
         content = expected_content(filename)
