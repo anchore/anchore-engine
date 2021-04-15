@@ -1,0 +1,3999 @@
+[
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.0.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.1.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.1.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.1.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.1.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.10"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.11"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.12"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.13"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.14"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.15"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.16"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.17"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.18"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.19"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.8"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.2.9"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.3.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.4.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.10"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.11"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.8"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "0.9.9"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.0.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.1.90"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.1.91"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.1.92"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.2.8"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.90"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.91"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.92"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.3.93"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.0"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.10"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.11"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.12"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.13"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.14"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.15"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.16"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.2"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.8"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "1.4.9"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.10"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.11"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.12"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.13"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.14"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.15"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.16"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.17"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.18"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.19"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.20"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.21"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.22"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.23"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.3"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.5"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.6"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.7"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0.8"
+      },
+      {
+        "name": "gnupg",
+        "type": "*",
+        "version": "2.0"
+      },
+      {
+        "name": "debian_linux",
+        "type": "*",
+        "version": "7.0"
+      },
+      {
+        "name": "opensuse",
+        "type": "*",
+        "version": "12.3"
+      },
+      {
+        "name": "opensuse",
+        "type": "*",
+        "version": "13.1"
+      }
+    ],
+    "description": "The do_uncompress function in g10/compress.c in GnuPG 1.x before 1.4.17 and 2.x before 2.0.24 allows context-dependent attackers to cause a denial of service (infinite loop) via malformed compressed packets, as demonstrated by an a3 01 5b ff byte sequence.",
+    "id": "CVE-2014-4617",
+    "link": "https://nvd.nist.gov/vuln/detail/CVE-2014-4617",
+    "namespace": "nvdv2:cves",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": [
+      {
+        "source": "CONFIRM",
+        "tags": [
+          "Issue Tracking",
+          "Patch"
+        ],
+        "url": "http://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=commit;h=014b2103fcb12f261135e3954f26e9e07b39e342"
+      },
+      {
+        "source": "CONFIRM",
+        "tags": [
+          "Issue Tracking",
+          "Patch"
+        ],
+        "url": "http://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=commit;h=11fdfcf82bd8d2b5bc38292a29876e10770f4b0a"
+      },
+      {
+        "source": "MLIST",
+        "tags": [
+          "Mailing List",
+          "Vendor Advisory"
+        ],
+        "url": "http://lists.gnupg.org/pipermail/gnupg-announce/2014q2/000344.html"
+      },
+      {
+        "source": "MLIST",
+        "tags": [
+          "Mailing List",
+          "Vendor Advisory"
+        ],
+        "url": "http://lists.gnupg.org/pipermail/gnupg-announce/2014q2/000345.html"
+      },
+      {
+        "source": "SUSE",
+        "tags": [
+          "Third Party Advisory"
+        ],
+        "url": "http://lists.opensuse.org/opensuse-updates/2014-07/msg00010.html"
+      },
+      {
+        "source": "SECUNIA",
+        "tags": [],
+        "url": "http://secunia.com/advisories/59213"
+      },
+      {
+        "source": "SECUNIA",
+        "tags": [],
+        "url": "http://secunia.com/advisories/59351"
+      },
+      {
+        "source": "SECUNIA",
+        "tags": [],
+        "url": "http://secunia.com/advisories/59534"
+      },
+      {
+        "source": "SECUNIA",
+        "tags": [],
+        "url": "http://secunia.com/advisories/59578"
+      },
+      {
+        "source": "DEBIAN",
+        "tags": [],
+        "url": "http://www.debian.org/security/2014/dsa-2967"
+      },
+      {
+        "source": "DEBIAN",
+        "tags": [
+          "Third Party Advisory"
+        ],
+        "url": "http://www.debian.org/security/2014/dsa-2968"
+      },
+      {
+        "source": "CONFIRM",
+        "tags": [],
+        "url": "http://www.oracle.com/technetwork/topics/security/bulletinapr2015-2511959.html"
+      },
+      {
+        "source": "UBUNTU",
+        "tags": [],
+        "url": "http://www.ubuntu.com/usn/USN-2258-1"
+      }
+    ],
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre",
+        "type": "*",
+        "version": "8.40"
+      }
+    ],
+    "description": "Stack-based buffer overflow in the pcre32_copy_substring function in pcre_get.c in libpcre1 in PCRE 8.40 allows remote attackers to cause a denial of service (WRITE of size 4) or possibly have unspecified other impact via a crafted file.",
+    "id": "CVE-2017-7245",
+    "link": "https://nvd.nist.gov/vuln/detail/CVE-2017-7245",
+    "namespace": "nvdv2:cves",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": [
+      {
+        "source": "BID",
+        "tags": [
+          "Third Party Advisory",
+          "VDB Entry"
+        ],
+        "url": "http://www.securityfocus.com/bid/97067"
+      },
+      {
+        "source": "REDHAT",
+        "tags": [],
+        "url": "https://access.redhat.com/errata/RHSA-2018:2486"
+      },
+      {
+        "source": "MISC",
+        "tags": [
+          "Third Party Advisory",
+          "VDB Entry"
+        ],
+        "url": "https://blogs.gentoo.org/ago/2017/03/20/libpcre-two-stack-based-buffer-overflow-write-in-pcre32_copy_substring-pcre_get-c/"
+      },
+      {
+        "source": "GENTOO",
+        "tags": [],
+        "url": "https://security.gentoo.org/glsa/201710-25"
+      }
+    ],
+    "severity": "High",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "kerberos",
+        "type": "*",
+        "version": "5-1.16"
+      }
+    ],
+    "description": "An issue was discovered in MIT Kerberos 5 (aka krb5) through 1.16. There is a variable \"dbentry->n_key_data\" in kadmin/dbutil/dump.c that can store 16-bit data but unknowingly the developer has assigned a \"u4\" variable to it, which is for 32-bit data. An attacker can use this vulnerability to affect other artifacts of the database as we know that a Kerberos database dump file contains trusted data.",
+    "id": "CVE-2018-5709",
+    "link": "https://nvd.nist.gov/vuln/detail/CVE-2018-5709",
+    "namespace": "nvdv2:cves",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": [
+      {
+        "source": "MISC",
+        "tags": [
+          "Third Party Advisory"
+        ],
+        "url": "https://github.com/poojamnit/Kerberos-V5-1.16-Vulnerabilities/tree/master/Integer%20Overflow"
+      },
+      {
+        "source": "MLIST",
+        "tags": [],
+        "url": "https://lists.apache.org/thread.html/rf9fa47ab66495c78bb4120b0754dd9531ca2ff0430f6685ac9b07772@%3Cdev.mina.apache.org%3E"
+      }
+    ],
+    "severity": "High",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre",
+        "type": "apk",
+        "version": "8.41-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-7245",
+    "namespace": "alpine:3.6",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.24-1"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.24-1"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:11",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:11",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:11",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.19-2+deb7u2"
+      },
+      {
+        "name": "gnupg",
+        "type": "dpkg",
+        "version": "1.4.12-7+deb7u4"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.24-1"
+      },
+      {
+        "name": "gnupg",
+        "type": "dpkg",
+        "version": "1.4.16-1.2"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:8",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:8",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:8",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.24-1"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:9",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:9",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:9",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.24-1"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2014-4617",
+    "namespace": "debian:unstable",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2018-5709",
+    "namespace": "debian:unstable",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://security-tracker.debian.org/tracker/CVE-2017-7245",
+    "namespace": "debian:unstable",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://access.redhat.com/security/cve/CVE-2017-7245",
+    "namespace": "rhel:5",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Low",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg",
+        "type": "rpm",
+        "version": "*"
+      },
+      {
+        "name": "gnupg2",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://access.redhat.com/security/cve/CVE-2014-4617",
+    "namespace": "rhel:5",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "glib2",
+        "type": "rpm",
+        "version": "*"
+      },
+      {
+        "name": "pcre",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://access.redhat.com/security/cve/CVE-2017-7245",
+    "namespace": "rhel:6",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Low",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://access.redhat.com/security/cve/CVE-2014-4617",
+    "namespace": "rhel:6",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "glib2",
+        "type": "rpm",
+        "version": "*"
+      },
+      {
+        "name": "virtuoso-opensource",
+        "type": "rpm",
+        "version": "*"
+      },
+      {
+        "name": "pcre",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "https://access.redhat.com/security/cve/CVE-2017-7245",
+    "namespace": "rhel:7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Low",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "rpm",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "https://access.redhat.com/security/cve/CVE-2014-4617",
+    "namespace": "rhel:7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.17-2ubuntu2.12.04.4"
+      },
+      {
+        "name": "gnupg",
+        "type": "dpkg",
+        "version": "1.4.11-3ubuntu2.6"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2014-4617",
+    "namespace": "ubuntu:12.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:14.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "gnupg2",
+        "type": "dpkg",
+        "version": "2.0.22-3ubuntu1.1"
+      },
+      {
+        "name": "gnupg",
+        "type": "dpkg",
+        "version": "1.4.16-1ubuntu2.1"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2014-4617",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2014-4617",
+    "namespace": "ubuntu:14.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "NONE"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": null,
+        "id": "CVE-2014-4617"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:14.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:16.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:16.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:17.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:17.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:18.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:18.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:18.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:18.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:19.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.7",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:16.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:12.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:17.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.8",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:19.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:19.10",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.9",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "pcre3",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:19.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [],
+    "description": null,
+    "id": "CVE-2017-7245",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2017-7245",
+    "namespace": "ubuntu:20.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": null,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": true
+          },
+          "base_metrics": {
+            "access_complexity": "MEDIUM",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "PARTIAL",
+            "base_score": 6.8,
+            "confidentiality_impact": "PARTIAL",
+            "exploitability_score": 8.6,
+            "impact_score": 6.4,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "REQUIRED"
+          },
+          "vector_string": "CVSS:3.0/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+          "version": "3.0"
+        },
+        "id": "CVE-2017-7245"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "dpkg",
+        "version": "*"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://people.ubuntu.com/~ubuntu-security/cve/CVE-2018-5709",
+    "namespace": "ubuntu:20.04",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Negligible",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.11",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.12",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  },
+  {
+    "affected_packages": [
+      {
+        "name": "krb5",
+        "type": "apk",
+        "version": "1.15.3-r0"
+      }
+    ],
+    "description": null,
+    "id": "CVE-2018-5709",
+    "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5709",
+    "namespace": "alpine:3.13",
+    "nvd_data": [
+      {
+        "cvss_v2": {
+          "additional_information": {
+            "ac_insuf_info": true,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "NETWORK",
+            "authentication": "NONE",
+            "availability_impact": "NONE",
+            "base_score": 5.0,
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 10.0,
+            "impact_score": 2.9,
+            "integrity_impact": "PARTIAL"
+          },
+          "severity": "Medium",
+          "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+          "version": "2.0"
+        },
+        "cvss_v3": {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "NONE",
+            "base_score": 7.5,
+            "base_severity": "High",
+            "confidentiality_impact": "NONE",
+            "exploitability_score": 3.9,
+            "impact_score": 3.6,
+            "integrity_impact": "HIGH",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+          "version": "3.0"
+        },
+        "id": "CVE-2018-5709"
+      }
+    ],
+    "references": null,
+    "severity": "Medium",
+    "vendor_data": []
+  }
+]

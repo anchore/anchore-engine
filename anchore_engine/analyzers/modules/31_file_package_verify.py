@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-import base64
-import binascii
-import sys
-import os
-import re
 import json
-import subprocess
-import copy
+import os
+import sys
 
 import anchore_engine.analyzers.utils
 

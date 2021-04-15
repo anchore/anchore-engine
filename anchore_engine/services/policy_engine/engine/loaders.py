@@ -186,7 +186,9 @@ class ImageLoader(object):
 
         # CPEs
         logger.info("Loading image cpes")
-        image.cpes = self.load_cpes(analysis_report, image)
+        image.cpes = self.load_cpes_from_syft_output_with_fallback(
+            analysis_report, image
+        )
 
         analysis_artifact_loaders = [
             self.load_retrieved_files,
@@ -864,6 +866,10 @@ class ImageLoader(object):
             n.distro_version = "N/A"
             n.like_distro = "java"
 
+            m = pkg_json.get("metadata")
+            m["java_versions"] = versions_json
+            n.metadata_json = m
+
             fullname = n.name
             pomprops = n.get_pom_properties()
             pomversion = None
@@ -1135,18 +1141,94 @@ class ImageLoader(object):
 
         return ret_names, ret_versions
 
-    def load_cpes(self, analysis_json, containing_image):
+    def load_cpes_from_syft_output_with_fallback(self, analysis_json, image):
         allcpes = {}
         cpes = []
+        package_list = analysis_json.get("package_list", {})
 
-        # do java first (from analysis)
+        java_base = package_list.get("pkgs.java", {}).get("base", {})
+        if java_base:
+            java_cpes = self.extract_syft_cpes(allcpes, java_base, image, "java")
+            if not java_cpes:
+                java_cpes = self.get_fuzzy_java_cpes(analysis_json, allcpes, image)
+            cpes.extend(java_cpes)
+
+        python_base = package_list.get("pkgs.python", {}).get("base", {})
+        if python_base:
+            python_cpes = self.extract_syft_cpes(allcpes, python_base, image, "python")
+            if not python_cpes:
+                python_cpes = self.get_fuzzy_python_cpes(analysis_json, allcpes, image)
+            cpes.extend(python_cpes)
+
+        gems_base = package_list.get("pkgs.gems", {}).get("base", {})
+        if gems_base:
+            gems_cpes = self.extract_syft_cpes(allcpes, gems_base, image, "gem")
+            if not gems_cpes:
+                gems_cpes = self.get_fuzzy_gem_cpes(analysis_json, allcpes, image)
+            cpes.extend(gems_cpes)
+
+        npms_base = package_list.get("pkgs.npms", {}).get("base", {})
+        if npms_base:
+            npms_cpes = self.extract_syft_cpes(allcpes, npms_base, image, "npm")
+            if not npms_cpes:
+                npms_cpes = self.get_fuzzy_npm_cpes(analysis_json, allcpes, image)
+            cpes.extend(npms_cpes)
+
+        cpes.extend(self.get_fuzzy_go_cpes(analysis_json, allcpes, image))
+        cpes.extend(self.get_fuzzy_binary_cpes(analysis_json, allcpes, image))
+
+        return cpes
+
+    def extract_syft_cpes(self, allcpes, package_dict, image, pkg_type):
+        cpes = []
+        for pkg_key, pkg_json_str in package_dict.items():
+            pkg = safe_extract_json_value(pkg_json_str)
+            pkg_cpes = pkg.get("cpes", [])
+            for cpe in pkg_cpes:
+                decomposed_cpe = self.decompose_cpe(cpe)
+                cpekey = ":".join(decomposed_cpe + [pkg_key])
+
+                if cpekey not in allcpes:
+                    allcpes[cpekey] = True
+                    image_cpe = ImageCpe()
+                    image_cpe.pkg_type = pkg_type
+                    image_cpe.pkg_path = pkg_key
+                    image_cpe.cpetype = decomposed_cpe[2]
+                    image_cpe.vendor = decomposed_cpe[3]
+                    image_cpe.name = decomposed_cpe[4]
+                    image_cpe.version = decomposed_cpe[5]
+                    image_cpe.update = decomposed_cpe[6]
+                    image_cpe.meta = decomposed_cpe[7]
+                    image_cpe.image_user_id = image.user_id
+                    image_cpe.image_id = image.id
+                    cpes.append(image_cpe)
+        return cpes
+
+    @staticmethod
+    def decompose_cpe(rawcpe: str):
+        """
+        Simplified decomposition method borrowed from the the ImageLoader
+        """
+        toks = rawcpe.split(":")
+        final_cpe = ["cpe", "-", "-", "-", "-", "-", "-", "-"]
+        for i in range(1, len(final_cpe)):
+            try:
+                if toks[i]:
+                    final_cpe[i] = toks[i]
+                else:
+                    final_cpe[i] = "-"
+            except IndexError:
+                final_cpe[i] = "-"
+        return final_cpe
+
+    def get_fuzzy_java_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         java_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.java", {}).get("base")
         )
         if java_json_raw:
             for path, java_str in list(java_json_raw.items()):
                 java_json = safe_extract_json_value(java_str)
-
                 try:
                     guessed_names, guessed_versions = self._fuzzy_java(java_json)
                 except Exception as err:
@@ -1167,7 +1249,6 @@ class ImageLoader(object):
                             except:
                                 final_cpe[i] = "-"
                         cpekey = ":".join(final_cpe + [path])
-
                         if cpekey not in allcpes:
                             allcpes[cpekey] = True
 
@@ -1184,7 +1265,10 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+        return cpes
 
+    def get_fuzzy_python_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         python_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.python", {}).get("base")
         )
@@ -1226,7 +1310,10 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+        return cpes
 
+    def get_fuzzy_gem_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         gem_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.gems", {}).get("base")
         )
@@ -1267,7 +1354,10 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+        return cpes
 
+    def get_fuzzy_npm_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         npm_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.npms", {}).get("base")
         )
@@ -1308,7 +1398,10 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+        return cpes
 
+    def get_fuzzy_go_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         go_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.go", {}).get("base")
         )
@@ -1352,7 +1445,10 @@ class ImageLoader(object):
                             cpe.image_id = containing_image.id
 
                             cpes.append(cpe)
+        return cpes
 
+    def get_fuzzy_binary_cpes(self, analysis_json, allcpes, containing_image):
+        cpes = []
         bin_json_raw = (
             analysis_json.get("package_list", {}).get("pkgs.binary", {}).get("base")
         )

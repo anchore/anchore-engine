@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -7,7 +7,7 @@ ARG CLI_COMMIT
 ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 ENV GOPATH=/go
-ENV SKOPEO_VERSION=v0.1.41
+ENV SKOPEO_VERSION=v1.2.1
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -39,14 +39,13 @@ RUN set -ex && \
     echo "installing Skopeo" && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
-    make binary-local DISABLE_CGO=1 && \
-    make install-binary && \
+    make install-binary DISABLE_CGO=1 && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.12.2
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.14.0
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -56,13 +55,13 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.2 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.9.0"
+ARG ANCHORE_ENGINE_VERSION="0.9.3"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -105,7 +104,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_EXTERNAL_TLS=false \
     ANCHORE_AUTHZ_HANDLER=native \
     ANCHORE_EXTERNAL_AUTHZ_ENDPOINT=null \
-    ANCHORE_ADMIN_PASSWORD=foobar \
+    ANCHORE_ADMIN_PASSWORD=null \
     ANCHORE_ADMIN_EMAIL=admin@myanchore \
     ANCHORE_HOST_ID="anchore-quickstart" \
     ANCHORE_DB_PORT=5432 \
@@ -128,7 +127,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
     AUTHLIB_INSECURE_TRANSPORT=true \
-    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE=null
+    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1
 
 # Insecure transport required in case for things like tls sidecars
 
@@ -154,7 +153,7 @@ RUN set -ex && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
     mkdir /config && \
     mkdir /licenses && \
-    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore/clamav/db && \
+    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles ${ANCHORE_SERVICE_DIR}/bundles /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \

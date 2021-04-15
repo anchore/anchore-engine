@@ -1,3 +1,4 @@
+import collections
 import json
 import hashlib
 import time
@@ -150,8 +151,6 @@ def repo(dbsession, request_inputs, bodycontent={}):
         autosubscribe = params["autosubscribe"]
 
     lookuptag = "latest"
-    if params and "lookuptag" in params and params["lookuptag"]:
-        lookuptag = str(params["lookuptag"])
 
     dryrun = False
     if params and "dryrun" in params:
@@ -349,7 +348,6 @@ def image(dbsession, request_inputs, bodycontent=None):
 
     httpcode = 500
     input_string = None
-    image_reference = None
     try:
         for t in ["tag", "digest", "imageId"]:
             if t in params:
@@ -363,7 +361,6 @@ def image(dbsession, request_inputs, bodycontent=None):
                         registry_lookup=False,
                         registry_creds=(None, None),
                     )
-                    image_reference = DockerImageReference.from_info_dict(image_info)
                     break
 
         image_status_filter = (
@@ -483,188 +480,15 @@ def image(dbsession, request_inputs, bodycontent=None):
                     raise Exception("image not found in DB")
 
         elif method == "POST":
-            timer = time.time()
-
-            if input_type == "digest":
-                raise Exception(
-                    "catalog add requires a tag string to determine registry/repo"
-                )
-
-            allow_dockerfile_update = params.get("allow_dockerfile_update", False)
-
-            # body
-            jsondata = {}
-            if bodycontent:
-                jsondata = bodycontent
-
-            dockerfile = None
-            dockerfile_mode = None
-            if "dockerfile" in jsondata:
-                dockerfile = jsondata["dockerfile"]
-                try:
-                    # this is a check to ensure the input is b64 encoded
-                    base64.decodebytes(dockerfile.encode("utf-8"))
-                    dockerfile_mode = "Actual"
-                except Exception as err:
-                    raise Exception(
-                        "input dockerfile data must be base64 encoded - exception on decode: "
-                        + str(err)
-                    )
-
-            annotations = {}
-            if "annotations" in jsondata:
-                annotations = jsondata["annotations"]
-
-            image_record = {}
-            try:
-                registry_creds = db_registries.get_byuserId(userId, session=dbsession)
-                try:
-                    refresh_registry_creds(registry_creds, dbsession)
-                except Exception as err:
-                    logger.warn(
-                        "failed to refresh registry credentials - exception: "
-                        + str(err)
-                    )
-
-                image_info_overrides = {}
-
-                input_tag = params.get("tag", None)
-                input_digest = params.get("digest", None)
-                if input_tag and input_digest:
-                    input_fulldigest = "{}/{}@{}".format(
-                        image_info["registry"], image_info["repo"], input_digest
-                    )
-                    image_info_overrides["fulltag"] = input_tag
-                    image_info_overrides["tag"] = image_info["tag"]
-                    if params.get("created_at", None):
-                        image_info_overrides["created_at_override"] = params.get(
-                            "created_at"
-                        )
-
-                    input_string = input_fulldigest
-
-                input_strings = [input_string]
-
-                for input_string in input_strings:
-                    logger.debug("INPUT STRING: {}".format(input_string))
-                    logger.debug("INPUT IMAGE INFO: {}".format(image_info))
-                    logger.debug(
-                        "INPUT IMAGE INFO OVERRIDES: {}".format(image_info_overrides)
-                    )
-                    try:
-                        image_info = anchore_engine.common.images.get_image_info(
-                            userId,
-                            "docker",
-                            input_string,
-                            registry_lookup=True,
-                            registry_creds=registry_creds,
-                        )
-                    except Exception as err:
-                        fail_event = (
-                            anchore_engine.subsys.events.ImageRegistryLookupFailed(
-                                user_id=userId,
-                                image_pull_string=input_string,
-                                data=err.__dict__,
-                            )
-                        )
-                        try:
-                            add_event(fail_event, dbsession)
-                        except:
-                            logger.warn(
-                                "Ignoring error creating image registry lookup event"
-                            )
-                        raise err
-
-                    if image_info_overrides:
-                        image_info.update(image_info_overrides)
-
-                    logger.debug("INPUT FINAL IMAGE INFO: {}".format(image_info))
-
-                    manifest = None
-                    try:
-                        if "manifest" in image_info:
-                            manifest = json.dumps(image_info["manifest"])
-                        else:
-                            raise Exception("no manifest from get_image_info")
-                    except Exception as err:
-                        raise Exception(
-                            "could not fetch/parse manifest - exception: " + str(err)
-                        )
-
-                    # fail add if image is too large
-                    if not is_image_valid_size(image_info):
-                        localconfig = (
-                            anchore_engine.configuration.localconfig.get_config()
-                        )
-                        raise BadRequest(
-                            "Image size is too large based on max size specified in the configuration",
-                            detail={
-                                "requested_image_compressed_size": image_info[
-                                    "compressed_size"
-                                ],
-                                "max_compressed_image_size": localconfig.get(
-                                    "max_compressed_image_size"
-                                ),
-                            },
-                        )
-
-                    parent_manifest = json.dumps(image_info.get("parentmanifest", {}))
-
-                    logger.debug(
-                        "ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info)
-                    )
-
-                    # Check for dockerfile updates to an existing image
-                    if (
-                        not allow_dockerfile_update
-                        and dockerfile
-                        and dockerfile_mode.lower() == "actual"
-                    ):
-                        found_img = db_catalog_image.get(
-                            imageDigest=image_info["digest"],
-                            userId=userId,
-                            session=dbsession,
-                        )
-                        if found_img:
-                            raise BadRequest(
-                                "Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis",
-                                detail={
-                                    "digest": image_info["digest"],
-                                    "tag": image_info["fulltag"],
-                                },
-                            )
-
-                    image_records = add_or_update_image(
-                        dbsession,
-                        userId,
-                        image_info["imageId"],
-                        tags=[image_info["fulltag"]],
-                        digests=[image_info["fulldigest"]],
-                        parentdigest=image_info.get("parentdigest", None),
-                        created_at=image_info.get("created_at_override", None),
-                        dockerfile=dockerfile,
-                        dockerfile_mode=dockerfile_mode,
-                        manifest=manifest,
-                        parent_manifest=parent_manifest,
-                        annotations=annotations,
-                    )
-                    if image_records:
-                        image_record = image_records[0]
-
-            except AnchoreApiError:
-                raise
-            except Exception as err:
-                logger.exception("Error adding image")
-                httpcode = 404
-                raise err
-
-            if image_record:
-                httpcode = 200
-                return_object = image_record
-            else:
-                httpcode = 404
-                raise Exception("could not add input image")
-
+            return_object, httpcode = image_post(
+                userId,
+                input_type,
+                params,
+                bodycontent,
+                dbsession,
+                image_info,
+                input_string,
+            )
     except AnchoreApiError as err:
         logger.exception("Error processing image request")
         return_object = anchore_engine.common.helpers.make_response_error(
@@ -678,6 +502,206 @@ def image(dbsession, request_inputs, bodycontent=None):
         )
 
     return return_object, httpcode
+
+
+def image_post(
+    account_id, input_type, params, bodycontent, dbsession, image_info, input_string
+):
+    """
+    :param account_id: the account id string
+    :param input_type: a string that describes what type of input we're processing. Possible values: [tag, digest, imageId], Must be tag or imageId for this method to work
+    :param params: dict containing the following keys:
+        - allow_dockerfile_update
+        - tag
+        - digest
+        - created_at
+    :param bodycontent: dict containing the following keys:
+        - dockerfile (b64 encoded)
+        - annotations
+    :param dbsession: sqlalchemy database session object
+    :param image_info: dict containing the following required keys:
+        - registry
+        - repo
+        - tag
+        - manifest
+        - compressed_size
+        - parentmanifest
+        - digest
+        - fulltag
+        - imageId
+        - created_at_override
+    :param input_string: the tag or imageId of the image being added
+
+    """
+    if input_type == "digest":
+        raise Exception("catalog add requires a tag string to determine registry/repo")
+
+    allow_dockerfile_update = params.get("allow_dockerfile_update", False)
+
+    jsondata = {}
+    if bodycontent:
+        jsondata = bodycontent
+
+    dockerfile, dockerfile_mode = get_dockerfile_info(jsondata)
+
+    annotations = jsondata.get("annotations", {})
+
+    image_record = {}
+    registry_creds = get_and_refresh_registry_creds(account_id, dbsession)
+
+    (
+        image_info_overrides,
+        input_string,
+    ) = resolve_image_info_overrides_and_input_string(params, image_info, input_string)
+    logger.debug("INPUT STRING: {}".format(input_string))
+    logger.debug("INPUT IMAGE INFO: {}".format(image_info))
+    logger.debug("INPUT IMAGE INFO OVERRIDES: {}".format(image_info_overrides))
+    image_info = resolve_final_image_info(
+        account_id, input_string, registry_creds, dbsession, image_info_overrides
+    )
+
+    logger.debug("INPUT FINAL IMAGE INFO: {}".format(image_info))
+
+    manifest = get_manifest(image_info)
+
+    # fail add if image is too large
+    validate_image_size(image_info)
+
+    parent_manifest = json.dumps(image_info.get("parentmanifest", {}))
+
+    logger.debug("ADDING/UPDATING IMAGE IN IMAGE POST: " + str(image_info))
+
+    # Check for dockerfile updates to an existing image
+    if (
+        not allow_dockerfile_update
+        and dockerfile
+        and dockerfile_mode.lower() == "actual"
+    ):
+        found_img = db_catalog_image.get(
+            imageDigest=image_info["digest"],
+            userId=account_id,
+            session=dbsession,
+        )
+        if found_img:
+            raise BadRequest(
+                "Cannot specify dockerfile for an image that already exists unless using force=True for re-analysis",
+                detail={
+                    "digest": image_info["digest"],
+                    "tag": image_info["fulltag"],
+                },
+            )
+
+    image_records = add_or_update_image(
+        dbsession,
+        account_id,
+        image_info["imageId"],
+        tags=[image_info["fulltag"]],
+        digests=[image_info["fulldigest"]],
+        parentdigest=image_info.get("parentdigest", None),
+        created_at=image_info.get("created_at_override", None),
+        dockerfile=dockerfile,
+        dockerfile_mode=dockerfile_mode,
+        manifest=manifest,
+        parent_manifest=parent_manifest,
+        annotations=annotations,
+    )
+    if image_records:
+        image_record = image_records[0]
+
+    if image_record:
+        httpcode = 200
+        return_object = image_record
+    else:
+        raise Exception("could not add input image")
+
+    return return_object, httpcode
+
+
+def get_dockerfile_info(jsondata):
+    dockerfile = None
+    dockerfile_mode = None
+    if "dockerfile" in jsondata:
+        dockerfile = jsondata["dockerfile"]
+        try:
+            # this is a check to ensure the input is b64 encoded
+            base64.decodebytes(dockerfile.encode("utf-8"))
+            dockerfile_mode = "Actual"
+        except Exception as err:
+            raise Exception(
+                "input dockerfile data must be base64 encoded - exception on decode: "
+                + str(err)
+            )
+    return dockerfile, dockerfile_mode
+
+
+def resolve_image_info_overrides_and_input_string(params, image_info, input_string):
+    image_info_overrides = {}
+
+    input_tag = params.get("tag", None)
+    input_digest = params.get("digest", None)
+    if input_tag and input_digest:
+        input_fulldigest = "{}/{}@{}".format(
+            image_info["registry"], image_info["repo"], input_digest
+        )
+        image_info_overrides["fulltag"] = input_tag
+        image_info_overrides["tag"] = image_info["tag"]
+        if params.get("created_at", None):
+            image_info_overrides["created_at_override"] = params.get("created_at")
+        input_string = input_fulldigest
+    return image_info_overrides, input_string
+
+
+def resolve_final_image_info(
+    account_id, input_string, registry_creds, dbsession, image_info_overrides
+):
+    try:
+        image_info = anchore_engine.common.images.get_image_info(
+            account_id,
+            "docker",
+            input_string,
+            registry_lookup=True,
+            registry_creds=registry_creds,
+        )
+    except Exception as err:
+        fail_event = anchore_engine.subsys.events.ImageRegistryLookupFailed(
+            user_id=account_id,
+            image_pull_string=input_string,
+            data=err.__dict__,
+        )
+        try:
+            add_event(fail_event, dbsession)
+        except Exception:
+            logger.warn("Ignoring error creating image registry lookup event")
+        raise err
+
+    if image_info_overrides:
+        image_info.update(image_info_overrides)
+
+    return image_info
+
+
+def validate_image_size(image_info):
+    if not is_image_valid_size(image_info):
+        localconfig = anchore_engine.configuration.localconfig.get_config()
+        raise BadRequest(
+            "Image size is too large based on max size specified in the configuration",
+            detail={
+                "requested_image_compressed_size_mb": anchore_utils.bytes_to_mb(
+                    image_info["compressed_size"], round_to=2
+                ),
+                "max_compressed_image_size_mb": localconfig.get(
+                    "max_compressed_image_size_mb"
+                ),
+            },
+        )
+
+
+def get_manifest(image_info):
+    if "manifest" in image_info:
+        manifest = json.dumps(image_info["manifest"])
+    else:
+        raise Exception("no manifest from get_image_info")
+    return manifest
 
 
 def image_imageDigest(dbsession, request_inputs, imageDigest, bodycontent=None):
@@ -1337,6 +1361,15 @@ def system_registries(dbsession, request_inputs, bodycontent={}):
     return return_object, httpcode
 
 
+def get_and_refresh_registry_creds(account_id, dbsession):
+    registry_creds = db_registries.get_byuserId(account_id, session=dbsession)
+    try:
+        refresh_registry_creds(registry_creds, dbsession)
+    except Exception as err:
+        logger.warn("failed to refresh registry credentials - exception: " + str(err))
+    return registry_creds
+
+
 def refresh_registry_creds(registry_records, dbsession):
 
     for registry_record in registry_records:
@@ -1826,6 +1859,40 @@ def perform_policy_evaluation(
     return curr_evaluation_record, curr_evaluation_result
 
 
+ImageKey = collections.namedtuple("ImageKey", ["tag", "digest"])
+
+
+def get_input_string(image_key: ImageKey) -> str:
+    if image_key.digest:
+        if image_key.digest == "unknown":
+            return image_key.tag
+        else:
+            return "{}@{}".format(image_key.tag.split(":")[0], image_key.digest)
+    else:
+        return image_key.tag
+
+
+def add_or_update_image_by_key(account_id: str, image_key: ImageKey, dbsession):
+    input_string = get_input_string(image_key)
+    registry_creds = get_and_refresh_registry_creds(account_id, dbsession)
+    image_info = resolve_final_image_info(
+        account_id, input_string, registry_creds, dbsession, {"fulltag": image_key.tag}
+    )
+
+    validate_image_size(image_info)
+    add_or_update_image(
+        dbsession,
+        account_id,
+        image_info["imageId"],
+        tags=[image_info["fulltag"]],
+        digests=[image_info["fulldigest"]],
+        parentdigest=image_info.get("parentdigest", None),
+        created_at=image_info.get("created_at_override", None),
+        manifest=json.dumps(image_info["manifest"]),
+        parent_manifest=json.dumps(image_info.get("parentmanifest", {})),
+    )
+
+
 def add_or_update_image(
     dbsession,
     userId,
@@ -1852,7 +1919,6 @@ def add_or_update_image(
     )
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
 
-    # input to this section is imageId, list of digests and list of tags (full dig/tag strings with reg/repo[:@]bleh)
     image_ids = {}
     for d in digests:
         image_info = anchore_engine.utils.parse_dockerimage_string(d)
@@ -2180,13 +2246,10 @@ def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False
     return dodelete, msgdelete, image_ids, image_fulltags
 
 
-def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
+def _delete_image_artifacts(account_id, image_digest, image_ids, full_tags, db_session):
+    error = None
+    rcs = []
     obj_store = anchore_engine.subsys.object_store.manager.get_manager()
-    imageDigest = image_record["imageDigest"]
-
-    logger.debug("DELETEing image from catalog")
-    rc = db_catalog_image.delete(imageDigest, userId, session=dbsession)
-
     # digest-based archiveId buckets
     for bucket in [
         "analysis_data",
@@ -2196,32 +2259,105 @@ def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_ful
         "manifest_data",
         "parent_manifest_data",
     ]:
-        archiveId = imageDigest
-        logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-        rc = obj_store.delete(userId, bucket, archiveId)
+        # try-except block ensures an attempt to delete every artifact despite errors
+        try:
+            logger.debug("DELETEing image from archive %s/%s", bucket, image_digest)
+            rc = obj_store.delete(account_id, bucket, image_digest)
+            rcs.append(rc)
+        except Exception as e:
+            error = e
+            logger.exception(
+                "Error deleting image from archive %s/%s", bucket, image_digest
+            )
 
     # digest/tag-based archiveId buckets
     for bucket in ["vulnerability_scan"]:
-        for fulltag in image_fulltags:
-            archiveId = "{}/{}".format(imageDigest, fulltag)
-            logger.debug("DELETEing image from archive {}/{}".format(bucket, archiveId))
-            rc = obj_store.delete(userId, bucket, archiveId)
-
-    logger.debug("DELETEing image from policy_engine")
-
-    # prepare inputs
-    try:
-        pe_client = internal_client_for(PolicyEngineClient, userId=userId)
-        for img_id in set(image_ids):
-            logger.debug(
-                "DELETING image from policy engine userId = {} imageId = {}".format(
-                    userId, img_id
+        for full_tag in full_tags:
+            archive_id = "{}/{}".format(image_digest, full_tag)
+            # try-except block ensures an attempt to delete every artifact despite errors
+            try:
+                logger.debug("DELETEing image from archive %s/%s", bucket, archive_id)
+                rc = obj_store.delete(account_id, bucket, archive_id)
+                rcs.append(rc)
+            except Exception as e:
+                error = e
+                logger.exception(
+                    "Error deleting image from archive %s/%s", bucket, archive_id
                 )
+
+    if error:
+        raise error
+    else:
+        return rcs
+
+
+def _delete_image_catalog(account_id, image_digest, image_ids, full_tags, db_session):
+    logger.debug("DELETEing image from catalog")
+    rc = db_catalog_image.delete(image_digest, account_id, session=db_session)
+
+    return rc
+
+
+def _delete_image_policy_engine(
+    account_id, image_digest, image_ids, full_tags, db_session
+):
+    error = None
+    rcs = []
+    pe_client = internal_client_for(PolicyEngineClient, userId=account_id)
+
+    for img_id in set(image_ids):
+        # try-except block ensures an attempt to delete every image id despite errors
+        try:
+            logger.debug(
+                "DELETING image from policy engine account_id=%s image_id=%s",
+                account_id,
+                img_id,
             )
-            rc = pe_client.delete_image(user_id=userId, image_id=img_id)
-    except:
-        logger.exception("Failed deleting image from policy engine")
-        raise
+            rc = pe_client.delete_image(user_id=account_id, image_id=img_id)
+            rcs.append(rc)
+        except Exception as e:
+            error = e
+            logger.exception(
+                "Error deleting image id %s from policy engine", image_digest
+            )
+
+    if error:
+        raise error
+    else:
+        return rcs
+
+
+# collection of description and delete function tuples. Each delete that take account_id, image_digest, image_ids, full_tags and db_session as arguments
+# TODO hack to support extensions, come up with a better (oo) solution to override and extend behaviour
+image_gc_functions = [
+    ("artifacts", _delete_image_artifacts),
+    ("catalog record", _delete_image_catalog),
+    ("policy-engine record", _delete_image_policy_engine),
+]
+
+
+def _delete_image_for_real(userId, image_record, dbsession, image_ids, image_fulltags):
+    image_digest = image_record["imageDigest"]
+    logger.debug(
+        "Begin image deletion for account_id=%s, digest=%s, tags=%s, ids=%s",
+        userId,
+        image_digest,
+        image_fulltags,
+        image_ids,
+    )
+    for desc, delete_func in image_gc_functions:
+        try:
+            logger.debug("Executing delete for image %s", desc)
+            delete_func(
+                account_id=userId,
+                image_digest=image_digest,
+                image_ids=image_ids,
+                full_tags=image_fulltags,
+                db_session=dbsession,
+            )
+        except Exception:
+            # swallow the error for now and continue with the image clean up
+            logger.exception("Error executing image %s", desc)
 
 
 def _queue_image_for_deletion(account_id, digest, db_session, force=False):
@@ -2622,17 +2758,18 @@ def upsert_eval(dbsession, userId, record):
 
 ################################################################################
 
-# return true or false if image is a valid size based upon max_compressed_image_size specified in config
+# return true or false if image is a valid size based upon max_compressed_image_size_mb specified in config
 def is_image_valid_size(image_info):
     localconfig = anchore_engine.configuration.localconfig.get_config()
-    max_compressed_image_size = localconfig.get("max_compressed_image_size")
+    max_compressed_image_size_mb = localconfig.get("max_compressed_image_size_mb", -1)
     compressed_image_size = image_info.get("compressed_size")
 
     if (
-        max_compressed_image_size
-        and max_compressed_image_size > -1
+        max_compressed_image_size_mb
+        and max_compressed_image_size_mb > -1
         and compressed_image_size
-        and compressed_image_size > max_compressed_image_size
+        and anchore_utils.bytes_to_mb(compressed_image_size, round_to=2)
+        > max_compressed_image_size_mb
     ):
         return False
     else:

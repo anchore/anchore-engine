@@ -25,14 +25,13 @@ class CatalogClient(InternalServiceClient):
             query_params={"digest": digest, "tag": tag},
         )
 
-    def add_repo(self, regrepo=None, autosubscribe=False, lookuptag=None, dryrun=False):
+    def add_repo(self, regrepo=None, autosubscribe=False, dryrun=False):
         return self.call_api(
             http.anchy_post,
             "repo",
             query_params={
                 "regrepo": regrepo,
                 "autosubscribe": autosubscribe,
-                "lookuptag": lookuptag,
                 "dryrun": dryrun,
             },
         )

@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.16"
+  version: "0.1.17"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -1161,11 +1161,6 @@ paths:
           type: boolean
           description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
           required: false
-        - name: 'lookuptag'
-          in: query
-          type: string
-          description: "use specified existing tag to perform repo scan (default is 'latest')"
-          required: false
         - name: 'dryrun'
           in: query
           type: boolean
@@ -1243,7 +1238,7 @@ paths:
         200:
           description: Registry configuration
           schema:
-            $ref: "#/definitions/RegistryConfiguration"
+            $ref: "#/definitions/RegistryConfigurationList"
     put:
       tags:
         - Registries
@@ -2418,9 +2413,7 @@ paths:
           in: path
       responses:
         200:
-          description: Archive transition rule
-          schema:
-            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+          description: Analysis archive rule succesfuly deleted
         500:
           description: Internal error
           schema:
@@ -2524,9 +2517,7 @@ paths:
           type: boolean
       responses:
         200:
-          description: ArchivdImageAnalysis record but with status 'deleted'
-          schema:
-            $ref: "#/definitions/ArchivedAnalysis"
+          description: ArchivdImageAnalysis successfully deleted
         500:
           description: Internal error
           schema:
@@ -3705,6 +3696,11 @@ definitions:
                 type: string
             location:
               type: string
+            cpes:
+              type: array
+              items:
+                type: string
+              description: A list of Common Platform Enumerations that may uniquely identify the package
   ContentMalwareResponse:
     type: object
     description: Malware listing response
@@ -3769,6 +3765,11 @@ definitions:
               type: string
             origin:
               type: string
+            cpes:
+              type: array
+              items:
+                type: string
+              description: A list of Common Platform Enumerations that may uniquely identify the package
   MetadataResponse:
     type: object
     description: "Generic wrapper for metadata listings from images"
@@ -4477,6 +4478,9 @@ definitions:
     properties:
       selector:
         $ref: "#/definitions/ImageSelector"
+      rule_id:
+        type: string
+        description: Unique identifier for archive rule
       tag_versions_newer:
         type: integer
         description: Number of images mapped to the tag that are newer
@@ -4998,6 +5002,10 @@ definitions:
         "$ref": "#/definitions/ImportDescriptor"
       schema:
         "$ref": "#/definitions/ImportSchema"
+      artifactRelationships:
+        items:
+          "$ref": "#/definitions/ImportPackageRelationship"
+        type: array
     additionalProperties: true
     type: object
   ImportDescriptor:
@@ -5009,7 +5017,7 @@ definitions:
         type: string
       version:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportDistribution:
     required:
@@ -5023,7 +5031,7 @@ definitions:
         type: string
       idLike:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportPackageLocation:
     required:
@@ -5033,7 +5041,7 @@ definitions:
         type: string
       layerID:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportPackage:
     required:
@@ -5046,6 +5054,8 @@ definitions:
       - cpes
       - metadataType
     properties:
+      id:
+        type: string
       name:
         type: string
       version:
@@ -5075,9 +5085,8 @@ definitions:
         type: string
       metadata:
         type: object
-    additionalProperties: false
+    additionalProperties: true
     type: object
-
   ImportSchema:
     required:
       - version
@@ -5087,7 +5096,7 @@ definitions:
         type: string
       url:
         type: string
-    additionalProperties: false
+    additionalProperties: true
     type: object
   ImportSource:
     required:
@@ -5098,6 +5107,22 @@ definitions:
         type: string
       target:
         additionalProperties: true
-    additionalProperties: false
+    additionalProperties: true
     type: object
-
+  ImportPackageRelationship:
+    required:
+      - parent
+      - child
+      - type
+    properties:
+      parent:
+        type: string
+      child:
+        type: string
+      type:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    additionalProperties: true
+    type: object

@@ -23,7 +23,7 @@ def make_image_content_response(content_type, content_data):
         return []
 
     if not content_data:
-        logger.warn("empty content data given to format - returning empty result")
+        logger.debug("empty content data given to format - returning empty result")
         return []
 
     builder = CONTENT_RESPONSE_BUILDER_DISPATCH.get(

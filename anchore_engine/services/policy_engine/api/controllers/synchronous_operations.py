@@ -32,6 +32,7 @@ from anchore_engine.services.policy_engine.api.models import (
     TriggerParamSpec,
     TriggerSpec,
     GateSpec,
+    VulnerabilityScanProblem,
 )
 
 from anchore_engine.db import (
@@ -82,6 +83,7 @@ authorizer = get_authorizer()
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
+from anchore_engine.services.policy_engine.engine.scanner import get_scanner
 
 TABLE_STYLE_HEADER_LIST = [
     "CVE_ID",
@@ -977,18 +979,13 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
 
         cpe_vuln_listing = []
         try:
-            all_cpe_matches = []
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
-                all_cpe_matches = (
-                    ApiRequestContextProxy.get_service().get_cpe_vulnerabilities(
-                        img, _nvd_cls, _cpe_cls
-                    )
-                )
+                scanner = get_scanner(_nvd_cls, _cpe_cls)
+                all_cpe_matches = scanner.get_cpe_vulnerabilities(img)
 
                 if not all_cpe_matches:
                     all_cpe_matches = []
 
-                cpe_hashes = {}
                 api_endpoint = get_api_endpoint()
 
                 for image_cpe, vulnerability_cpe in all_cpe_matches:
@@ -999,7 +996,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                         )
 
                     cpe_vuln_el = {
-                        "vulnerability_id": vulnerability_cpe.vulnerability_id,
+                        "vulnerability_id": vulnerability_cpe.parent.normalized_id,
                         "severity": vulnerability_cpe.parent.severity,
                         "link": link,
                         "pkg_type": image_cpe.pkg_type,
@@ -1014,12 +1011,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
                         "vendor_data": vulnerability_cpe.parent.get_cvss_data_vendor(),
                         "fixed_in": vulnerability_cpe.get_fixed_in(),
                     }
-                    cpe_hash = hashlib.sha256(
-                        utils.ensure_bytes(json.dumps(cpe_vuln_el))
-                    ).hexdigest()
-                    if not cpe_hashes.get(cpe_hash, False):
-                        cpe_vuln_listing.append(cpe_vuln_el)
-                        cpe_hashes[cpe_hash] = True
+                    cpe_vuln_listing.append(cpe_vuln_el)
         except Exception as err:
             log.warn("could not fetch CPE matches - exception: " + str(err))
 
@@ -1080,6 +1072,13 @@ def ingress_image(ingress_request):
         else:
             # We're doing a sync call above, so just send loaded. It should be 'accepted' once async works.
             resp.status = "loaded"
+        resp.vulnerability_report = get_image_vulnerabilities(req.user_id, req.image_id)
+        resp.problems = []
+        if isinstance(resp.vulnerability_report, list):
+            if "httpcode" in resp.vulnerability_report[0]:
+                resp.problems.append(
+                    VulnerabilityScanProblem(resp.vulnerability_report[0]["message"])
+                )
         return resp.to_json(), 200
     except Exception as e:
         log.exception("Error loading image into policy engine")

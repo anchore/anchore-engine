@@ -55,7 +55,7 @@ DEFAULT_CONFIG = {
         },
     },
     "policy_bundles_dir": "bundles/",
-    "max_compressed_image_size": None,
+    "max_compressed_image_size_mb": -1,
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50
@@ -68,7 +68,6 @@ SYSTEM_ACCOUNT_NAME = "anchore-system"
 SYSTEM_USERNAME = "anchore-system"
 ADMIN_ACCOUNT_NAME = "admin"
 ADMIN_USERNAME = "admin"
-ADMIN_USER_DEFAULT_PASSWORD = "foobar"  # This is used if the config doesn't include a value for the key referenced by DEFAULT_ADMIN_PASSWORD_KEY
 DEFAULT_ADMIN_PASSWORD_KEY = "default_admin_password"
 DEFAULT_ADMIN_EMAIL_KEY = "default_admin_email"
 GLOBAL_RESOURCE_DOMAIN = "system"  # Used as the domain for things like accounts
@@ -102,6 +101,9 @@ CRED_CACHE_TTL = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_TTL", 600))
 CRED_CACHE_LOCK_WAIT_SEC = int(os.getenv("ANCHORE_INTERNAL_CRED_CACHE_WAIT_SEC", 3))
 
 ANALYZER_SEARCH_PATHS = ["anchore_engine.analyzers"]
+POLICY_BUNDLE_SOURCE_DIRS = [
+    os.path.join(resource_filename("anchore_engine", "conf/bundles/"))
+]
 
 
 def register_analyzers(module_path):
@@ -111,6 +113,16 @@ def register_analyzers(module_path):
 
 def analyzer_paths():
     return ANALYZER_SEARCH_PATHS
+
+
+def register_policy_bundle_source_dir(source_dir):
+    global POLICY_BUNDLE_SOURCE_DIRS
+    POLICY_BUNDLE_SOURCE_DIRS.append(source_dir)
+    load_policy_bundle_paths()
+
+
+def policy_bundle_source_dirs():
+    return POLICY_BUNDLE_SOURCE_DIRS
 
 
 def update_merge(base, override):
@@ -169,7 +181,7 @@ def load_defaults(configdir=None):
     return localconfig
 
 
-def load_policy_bundle_paths(src_dir=None):
+def load_policy_bundle_paths(src_dirs=None):
     global localconfig
 
     default_bundle_name = "anchore_default_bundle.json"
@@ -177,21 +189,21 @@ def load_policy_bundle_paths(src_dir=None):
     # Get the dir containing policy bundles to put in the config
     policy_bundles_dir = localconfig["policy_bundles_dir"]
 
+    # This value will typically == None, outside of automated tests
+    if src_dirs == None:
+        src_dirs = policy_bundle_source_dirs()
+
     try:
-        if policy_bundles_dir is not None:
+        if policy_bundles_dir and src_dirs:
             policy_bundles_dir_full_path = os.path.join(
                 localconfig["service_dir"], policy_bundles_dir
             )
             if not os.path.exists(policy_bundles_dir_full_path):
                 os.mkdir(policy_bundles_dir_full_path)
 
-            if src_dir == None:
-                src_dir = os.path.join(
-                    resource_filename("anchore_engine", "conf/bundles/")
-                )
             policy_bundles = []
-            for file_name in os.listdir(src_dir):
-                try:
+            for src_dir in src_dirs:
+                for file_name in os.listdir(src_dir):
                     file = os.path.join(policy_bundles_dir_full_path, file_name)
                     policy_bundles.append(
                         {
@@ -200,14 +212,11 @@ def load_policy_bundle_paths(src_dir=None):
                         }
                     )
                     copy_config_file(file, file_name, src_dir)
-                except Exception as e:
-                    logger.warn(
-                        "Policy bundle {} not found, unable to load. Exception: {}".format(
-                            file_name, e
-                        )
-                    )
             localconfig["policy_bundles"] = policy_bundles
             return
+        else:
+            logger.warn("No configured policy bundle dir was found, unable to load.")
+            localconfig["policy_bundles"] = None
     except Exception as e:
         logger.warn(
             "Configured policy bundle dir at {} not found, unable to load. Exception: {}".format(
@@ -513,10 +522,10 @@ def validate_config(config, validate_params=None):
         if "keys" in validate_params and validate_params["keys"]:
             validate_key_config(config, required=False)
 
-        if config["max_compressed_image_size"] and not isinstance(
-            config["max_compressed_image_size"], int
+        if config.get("max_compressed_image_size_mb") and not isinstance(
+            config["max_compressed_image_size_mb"], int
         ):
-            raise Exception("max_compressed_image_size must be an integer")
+            raise Exception("max_compressed_image_size_mb must be an integer")
 
     except Exception as err:
         logger.error(str(err))
