@@ -1,4 +1,5 @@
 from anchore_engine.db import db_locks
+from contextlib import contextmanager
 from threading import RLock, Lock, Condition
 
 _lease_manager = None
@@ -75,7 +76,7 @@ class DbLeaseManager(object):
         return db_locks.refresh_lease(lease_id, client_id, epoch, ttl)
 
 
-class ManyReadOneWriteLock(object):
+class ManyReadsOneWriteLock(object):
     """
     A lock implementation that allows multiple parallel reads, but blocks on a single
     thread performing a write.
@@ -85,11 +86,9 @@ class ManyReadOneWriteLock(object):
         self.read_lock = Condition(Lock())
         self.read_counter = 0
 
-    def acquire_read_lock(self):
+    def _acquire_read_lock(self):
         """
         Acquire a read lock. Blocks if a thread has the write lock.
-
-        :return: The function to release the lock
         """
         self.read_lock.acquire()
         try:
@@ -97,9 +96,7 @@ class ManyReadOneWriteLock(object):
         finally:
             self.read_lock.release()
 
-        return self.release_read_lock
-
-    def release_read_lock(self):
+    def _release_read_lock(self):
         """
         Release a read lock.
         """
@@ -111,20 +108,31 @@ class ManyReadOneWriteLock(object):
         finally:
             self.read_lock.release()
 
-    def acquire_write_lock(self):
+    @contextmanager
+    def read_lock(self):
+        try:
+            yield self._acquire_read_lock
+        finally:
+            yield self._release_read_lock
+
+    @contextmanager
+    def _acquire_write_lock(self):
         """
         Acquire the write lock. Blocks until no threads have the read or write lock.
-
-        :return: The function to release the lock
         """
         self.read_lock.acquire()
         while self.read_counter > 0:
             self.read_lock.wait()
 
-        return self.release_write_lock()
-
-    def release_write_lock(self):
+    def _release_write_lock(self):
         """
         Release the write lock.
         """
         self.read_lock.release()
+
+    @contextmanager
+    def write_lock(self):
+        try:
+            yield self._acquire_write_lock
+        finally:
+            yield self._release_write_lock

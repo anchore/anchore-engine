@@ -6,149 +6,130 @@ import sqlalchemy
 import uuid
 
 from anchore_engine.db.entities.common import UtilMixin
-from anchore_engine.subsys.locking import ManyReadOneWriteLock
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.locking import ManyReadsOneWriteLock
 from anchore_engine.utils import run_check
-from enum import Enum
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from threading import Lock
 
 
 grype_db_file = None
 grype_db_session = None
-grype_db_lock = ManyReadOneWriteLock()
+grype_db_lock = ManyReadsOneWriteLock()
+grype_db_write_lock = Lock()
 
 Base = declarative_base()
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
 
 
-# TODO Dummy stub function, implement
-def _get_latest_grype_db_metadata():
-    # Return the latest grype db version and a catalog link to get it
-    return None, None
-
-
-# TODO Dummy stub function, implement
-def _get_local_grype_db_version():
-    # Return the local grype db version
-    return None
-
-
 def _get_default_cache_dir_from_config():
+    """
+    Get the default grype db dir from config.
+    """
     localconfig = anchore_engine.configuration.localconfig.get_config()
     if "grype_db_cache_dir" in localconfig:
-        return localconfig["grype_db_cache_dir"]
+        full_path = os.path.join(localconfig["service_dir"], localconfig["grype_db_cache_dir"])
     else:
-        return "grype_db/"
+        full_path = os.path.join("/tmp/anchoretmp", "grype_db/")
+
+    if not os.path.exists(full_path):
+        # TODO makedirs (plural) is probably wrong. Outside of unit tests service dir should already exist at this point.
+        os.makedirs(full_path)
+
+    return full_path
 
 
-# TODO Dummy stub function, implement
-def _get_lastest_grype_db_from_catalog(catalog_url):
-    # Get the latest grype db from catalog, using the provided url, and return it
-    return None
-
-
-def _init_grype_db_engine(lastest_grype_db: str):
-    # Get the file location for the new local grype db file
+def _write_grype_db_to_file(lastest_grype_db):
+    """
+    Write the new grype db definition to file, and return the file
+    """
     local_db_dir = _get_default_cache_dir_from_config()
-    # TODO If there is a unique file name we can get for each db version when we get it, tht would be preferable
+    # TODO If there is a unique and identifying file name we can get or derive upstream from the db metadata
+    # (ie something with the timestamp) that would be much preferable to a unique but meaningless uuid.
     uuid_file_name = str(uuid.uuid4())
     latest_grype_db_file = "{}{}".format(local_db_dir, uuid_file_name)
-
     # Write the passed grype db to that file
     with open(latest_grype_db_file, "w") as local_grype_db_output:
         local_grype_db_output.write(lastest_grype_db)
+    return latest_grype_db_file
 
-    # Create the sqlalchemy engine object
-    db_connect = "sqlite:///{}{}".format(local_grype_db_output)
+
+def _init_grype_db_engine(latest_grype_db_file):
+    """
+    Create and return the sqlalchemy engine object
+    """
+    db_connect = "sqlite:///{}".format(latest_grype_db_file)
     latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
-
-    # Return the engine
-    return latest_grype_db_file, latest_grype_db_engine
-
-
-def _validate_grype_db(engine) -> bool:
-    return engine.has_table(VULNERABILITY_TABLE_NAME) and engine.has_table(VULNERABILITY_METADATA_TABLE_NAME)
+    return latest_grype_db_engine
 
 
 def _init_grype_db_session(grype_db_engine):
-    # Create the db session
+    """
+    Create and return the db session
+    """
     SessionMaker = sessionmaker(bind=grype_db_engine)
     grype_db_session = SessionMaker()
     return grype_db_session
 
 
-# TODO Dummy stub function, implement
-def remove_local_grype_db():
-    # Remove the local grype db, either because we've replaced it, or it is new but not well-structured
+def _init_grype_db_engine(lastest_grype_db: str):
+    """
+    Write the db string to file, create the engine, and create the session
+    Return the file and session
+    """
+    latest_grype_db_file = _write_grype_db_to_file(lastest_grype_db)
+    latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_file)
+    latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
+
+    # Return the engine
+    return latest_grype_db_file, latest_grype_db_session
+
+
+def _remove_local_grype_db(grype_db_file):
+    """
+    Remove the local grype db, either because we've replaced it, or it is new but not well-structured
+    """
+    if os.path.exists(grype_db_file):
+        os.remove(grype_db_file)
+    else:
+        logger.error("Failed to remove grype db at {} as it cannot be found.".format(grype_db_file))
     return
 
 
-def update_grype_db():
+def update_grype_db(lastest_grype_db):
+    """
+    Update the installed grype db with the provided definition, and remove the old grype db file.
+    This method does not validation of the db, and assumes it has passed any required validation upstream
+    """
     global grype_db_file, grype_db_session
 
-    # Get latest db version and catalog url
-    latest_db_version, catalog_url = _get_latest_grype_db_metadata()
+    with grype_db_lock.write_lock():
+        # Store the db locally and
+        # Create the sqlalchemy engine for the new db
+        latest_grype_db_file, latest_grype_db_session = _init_grype_db_engine(lastest_grype_db)
 
-    # Get grype_db_read_lock
-    release_lock_function = grype_db_lock.acquire_read_lock()
-    try:
-        # Get local db version
-        local_db_version = _get_local_grype_db_version()
-        if local_db_version != latest_db_version:
-            # Release the read lock, and get the write lock
-            release_lock_function()
-            release_lock_function = grype_db_lock.acquire_write_lock()
+        # Store the file and session variables globally
+        # For use during reads and to remove in the next update
+        old_grype_db_file = grype_db_file
+        grype_db_file = latest_grype_db_file
+        grype_db_session = latest_grype_db_session
 
-            # Get the new db from catalog
-            lastest_grype_db = _get_lastest_grype_db_from_catalog()
-
-            # Store the db locally and
-            # Create the sqlalchemy engine for the new db
-            local_grype_db_file, latest_grype_db_engine = _init_grype_db_engine(lastest_grype_db)
-
-            # Validate the new db
-            # TODO If this fails we should delete the new db, log this, and continue with the old db
-            if _validate_grype_db(latest_grype_db_engine):
-                latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
-
-                # Remove the old local db
-                remove_local_grype_db(grype_db_file)
-                grype_db_file = local_grype_db_file
-
-                grype_db_session = latest_grype_db_session
-
-    finally:
-        # Release the currently-held lock
-        release_lock_function()
+        # Remove the old local db
+        _remove_local_grype_db(old_grype_db_file)
 
 
-class GrypeImageScheme(Enum):
-    DOCKER = "docker"
-    DOCKER_ARCHIVE = "docker-archive"
-    OCI_ARCHIVE = "oci-archive"
-    OCI_DIR = "oci-dir"
-    DIR = "dir"
-    SBOM = "sbom"
-
-
-def get_vulnerabilities(image):
-    # TODO Get the sbom from the db
-    grype_sbom = None
-    return run_grype(grype_sbom, GrypeImageScheme.SBOM)
-
-
-def run_grype(image: str, image_scheme: GrypeImageScheme):
+def get_vulnerabilities(grype_sbom: str):
+    """
+    Use grype to scan the provided sbom for vulnerabilites.
+    """
     global grype_db_file
 
-    # Update the grype db, if an update is available
-    update_grype_db()
-
     # Get the read lock
-    release_lock_function = grype_db_lock.acquire_read_lock()
-    try:
-        # Apply env variable, including the grype db location
+    with grype_db_lock.read_lock():
+        # Set grype env variables, including the grype db location
         grype_env = {
             "GRYPE_CHECK_FOR_APP_UPDATE": "0",
             "GRYPE_LOG_STRUCTURED": "1",
@@ -159,19 +140,17 @@ def run_grype(image: str, image_scheme: GrypeImageScheme):
         proc_env.update(grype_env)
 
         # Format and run the command
-        cmd = "grype -vv -o json {image_scheme}:{image}".format(
-            image_scheme=image_scheme.value,
-            image=image,
+        cmd = "grype -vv -o json sbom:{sbom}".format(
+            sbom=grype_sbom,
         )
         stdout, _ = run_check(shlex.split(cmd), env=proc_env)
 
+        # Return the output as json
         return json.loads(stdout)
 
-    finally:
-        # Release the read lock
-        release_lock_function()
 
-
+# Table definitions.
+# TODO Remove these if we end up using the query API instead of the ORM api
 class GrypeVulnerability(Base, UtilMixin):
     __tablename__ = VULNERABILITY_TABLE_NAME
 
@@ -205,15 +184,14 @@ def query_vulnerabilities(
         affected_package_version=None,
         namespace=None,
 ):
+    """
+    Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the
+    header of the existing function this is meant to replace.
+    """
     global grype_db_session
 
-    # Update the grype db, if an update is available
-    update_grype_db()
-
     # Get and release read locks
-    release_lock_function = grype_db_lock.acquire_read_lock()
-
-    try:
+    with grype_db_lock.read_lock():
         if type(vuln_id) == str:
             vuln_id = [vuln_id]
 
@@ -240,9 +218,6 @@ def query_vulnerabilities(
             )
 
         # TODO Query may/will need to be updated to return data that minimizes the downstream transformation cost
-        # The current return object data structure is sort of a kitchen sink approach and could be tidied up
+        # The current return object data structure takes a kitchen sink approach, returning everything, and
+        # could be streamlined and/or optimized
         return query.all()
-
-    finally:
-        # Release the read lock
-        release_lock_function()
