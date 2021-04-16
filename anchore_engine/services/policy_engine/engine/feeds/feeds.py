@@ -586,6 +586,32 @@ class GrypeDBFeed(AnchoreServiceFeed):
             results = results.filter(GrypeDBMetadata.active == active)
         return results
 
+    def _flush_group(self, group_obj, operation_id=None, catalog_client: CatalogClient = None):
+        """
+        Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
+
+        :param group_obj:
+        :return:
+        """
+        db = get_session()
+
+        logger.info(
+            log_msg_ctx(
+                operation_id,
+                group_obj.name,
+                group_obj.feed_name,
+                "Flushing group records",
+            )
+        )
+
+        records = self._find_match(db)
+        for record in records.all():
+            catalog_client.delete_document(record.group_name, record.checksum)
+        records.delete(synchronize_session='evaluate')
+        group_obj.last_sync = None  # Null the update timestamp to reflect the flush
+        group_obj.count = 0
+        db.flush()
+
     def _sync_group(
         self,
         group_download_result: GroupDownloadResult,
@@ -603,7 +629,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
         total_updated_count = 0
         result = build_group_sync_result()
         result["group"] = group_download_result.group
-        sync_started = None
         catalog_client = internal_client_for(event_client, userId=None)
 
         db = get_session()
@@ -638,8 +663,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         "Performing data flush prior to sync as requested",
                     )
                 )
-                # TODO flushing grypedb would work differently
-                self._flush_group(group_db_obj, operation_id=operation_id)
+                self._flush_group(group_db_obj, operation_id=operation_id, catalog_client=catalog_client)
 
             # Iterate thru the records and commit
 
