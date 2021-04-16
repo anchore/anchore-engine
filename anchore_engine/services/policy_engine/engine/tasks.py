@@ -14,6 +14,7 @@ from anchore_engine.db import (
     get_thread_scoped_session as get_session,
     Image,
     end_session,
+    GrypeDBMetadata,
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.exc import *
@@ -604,3 +605,57 @@ class ImageLoadTask(IAsyncTask):
     def _get_file(self, path):
         with open(path) as r:
             return json.load(r)
+
+
+class GrypeDBSyncTask(IAsyncTask):
+    """
+    Sync grype db to local instance of policy engine if it has been updated
+    """
+
+    __task_name__ = "grypedb_sync_task"
+
+    @classmethod
+    def sync_needed(cls):
+        # Get current global grypedb checksum
+        db = get_session()
+        active_grypedb = (
+            db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
+        )
+
+        if len(active_grypedb) == 0:
+            logger.info("No grypedb is available to be synced in the system")
+            return False
+        elif len(active_grypedb) > 1:
+            logger.error("Too many active grypdbs found in db")
+            return False
+        else:
+            active_grypedb = active_grypedb[0]
+
+        # get local grypedb checksum
+        # TODO Will use the gryppe_facade once implemented
+        local_chcksum = ""
+
+        return not local_chcksum == active_grypedb.checksum
+
+    @classmethod
+    def run_grypedb_sync(cls):
+        try:
+            result = []
+            if GrypeDBSyncTask.sync_needed():
+                task = GrypeDBSyncTask()
+                run_target_with_lease(
+                    account=None,
+                    lease_id="grypedb_sync",
+                    ttl=90,
+                    target=lambda: result.append(task.execute()),
+                )
+            else:
+                logger.info("Grypedb sync not needed at this time")
+        except Exception:
+            logger.exception("Error running grypedb sync")
+
+    def __init__(self):
+        self.created_at = datetime.datetime.utcnow()
+
+    def execute(self):
+        pass
