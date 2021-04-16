@@ -354,41 +354,29 @@ def handle_feed_sync_trigger(*args, **kwargs):
 
 def handle_grypedb_sync(*args, **kwargs):
     """
-    Checks to see if there is a task for a grypedb sync in the queue and if not, adds one.
-    Interval for firing this should be longer than the expected duration of sync
+    Calls function to run GrypeDBSyncTask
 
     :param args:
     :param kwargs:
     :return:
     """
+    system_user = _system_creds()
+    if "GrypeDBSyncTask" not in locals():
+        from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
+
+    logger.info("init args: {}".format(kwargs))
+    cycle_time = kwargs["mythread"]["cycle_timer"]
+
+    while True:
+        try:
+            result = GrypeDBSyncTask.run_grypedb_sync()
+
+            if result:
+                logger.info("Grype DB synced to local instance via handler")
+        except Exception as e:
+            logger.error("Caught escaped error in grype db sync: {}".format(e))
+        time.sleep(cycle_time)
     return True
-    # system_user = _system_creds()
-    # if "FeedsUpdateTask" not in locals():
-    #     from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
-    #
-    # logger.info("init args: {}".format(kwargs))
-    # cycle_time = kwargs["mythread"]["cycle_timer"]
-    #
-    # while True:
-    #     if GrypeDBSyncTask.sync_needed():
-    #         logger.info("Feed Sync task creator activated")
-    #         try:
-    #             push_sync_task(system_user)
-    #             logger.info("Feed Sync Trigger done, waiting for next cycle.")
-    #         except Exception as e:
-    #             logger.error(
-    #                 "Error caught in feed sync trigger handler after all retries. Will wait for next cycle"
-    #             )
-    #         finally:
-    #             logger.info("Feed Sync task creator complete")
-    #     else:
-    #         logger.info(
-    #             "No grype db sync needed at this time"
-    #         )
-    #
-    #     time.sleep(cycle_time)
-    #
-    # return True
 
 
 @retrying.retry(
@@ -457,8 +445,8 @@ class PolicyEngineService(ApiService):
             "taskType": "handle_grypedb_sync",
             "args": [],
             "cycle_timer": 60,
-            "min_cycle_timer": 1800,
-            "max_cycle_timer": 100000,
+            "min_cycle_timer": 60,
+            "max_cycle_timer": 60,
             "last_queued": 0,
             "last_return": False,
             "initialized": False,

@@ -9,6 +9,7 @@ import requests
 import time
 import urllib.request, urllib.parse, urllib.error
 import uuid
+import threading
 
 from anchore_engine.db import (
     get_thread_scoped_session as get_session,
@@ -29,7 +30,10 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import (
     get_selected_feeds_to_sync,
     DataFeeds,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import notify_event
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    notify_event,
+    GrypeDBFeed,
+)
 from anchore_engine.configuration import localconfig
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
 from anchore_engine.subsys.events import (
@@ -607,55 +611,118 @@ class ImageLoadTask(IAsyncTask):
             return json.load(r)
 
 
+class NoActiveGrypeDBException(Exception):
+    pass
+
+
 class GrypeDBSyncTask(IAsyncTask):
     """
-    Sync grype db to local instance of policy engine if it has been updated
+    Sync grype db to local instance of policy engine if it has been updated globally
     """
 
     __task_name__ = "grypedb_sync_task"
 
     @classmethod
-    def sync_needed(cls):
-        # Get current global grypedb checksum
+    def run_grypedb_sync(cls, grypedb_file_path=None):
+        """
+        Runs GrypeDBSyncTask if it is necessary. Determines this by comparing local db checksum with active one in DB
+        Returns true or false based upon whether db updated
+
+        :param grypedb_file_path: Can be passed a fie path to existing grypedb to use on local disk
+        return: Boolean to whether the db was updated or not
+        rtype: bool
+        """
+        try:
+            lock = threading.Lock()
+            with lock:
+                active_grypedb = cls.get_active_grypedb()
+                if not active_grypedb:
+                    logger.info("No active grypedb available in the system to sync")
+                    return False
+
+                local_grypedb_checksum = cls.get_local_grypedb_checksum()
+
+                if local_grypedb_checksum != active_grypedb.checksum:
+                    task = GrypeDBSyncTask(
+                        active_grypedb=active_grypedb,
+                        local_grypedb_checksum=local_grypedb_checksum,
+                        grypedb_file_path=grypedb_file_path,
+                    )
+                    task.execute()
+                    return True
+                else:
+                    logger.info("No grypedb sync needed at this time")
+                    return False
+        except Exception:
+            logger.exception("Error executing grypedb sync task")
+            raise
+
+    @classmethod
+    def get_active_grypedb(cls):
+        """
+        Returns active grybdb instance from db. Returns None if there are none and raises exception if more than one
+
+        return: Instance of active GrypeDBMetadata or None
+        rtype: [GrypeDBMetadata, None]
+        """
         db = get_session()
         active_grypedb = (
             db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
         )
 
         if len(active_grypedb) == 0:
-            logger.info("No grypedb is available to be synced in the system")
-            return False
+            return None
         elif len(active_grypedb) > 1:
-            logger.error("Too many active grypdbs found in db")
-            return False
+            logger.exception("Too many active grypdbs found in db")
+            raise NoActiveGrypeDBException(
+                "Could not determine correct grypedb to sync"
+            )
         else:
-            active_grypedb = active_grypedb[0]
-
-        # get local grypedb checksum
-        # TODO Will use the gryppe_facade once implemented
-        local_chcksum = ""
-
-        return not local_chcksum == active_grypedb.checksum
+            return active_grypedb[0]
 
     @classmethod
-    def run_grypedb_sync(cls):
-        try:
-            result = []
-            if GrypeDBSyncTask.sync_needed():
-                task = GrypeDBSyncTask()
-                run_target_with_lease(
-                    account=None,
-                    lease_id="grypedb_sync",
-                    ttl=90,
-                    target=lambda: result.append(task.execute()),
-                )
-            else:
-                logger.info("Grypedb sync not needed at this time")
-        except Exception:
-            logger.exception("Error running grypedb sync")
+    def get_local_grypedb_checksum(cls):
+        """
+        Returns checksum of grypedb on local instance
 
-    def __init__(self):
+        return: Checksum of local grypedb
+        rtype: str
+        """
+        # get local grypedb checksum
+        # TODO Will use the grype facade once implemented
+        local_checksum = ""
+        return local_checksum
+
+    def __init__(
+        self, active_grypedb=None, local_grypedb_checksum=None, grypedb_file_path=None
+    ):
+        self.active_grypedb = active_grypedb
+        self.local_grypedb_checksum = local_grypedb_checksum
+        self.grypedb_file_path = grypedb_file_path
         self.created_at = datetime.datetime.utcnow()
 
     def execute(self):
-        pass
+        """
+        Runs GrypeDBSyncTask on instance. If file_path present, passes this to grype facade to update
+        If not, it builds the catalog url, gets the raw document and saves it to tempfile and passes path to grype facade
+        """
+        try:
+            if self.grypedb_file_path:
+                # TODO Pass the path directly to the facade
+                logger.info("Pass to facade with file path")
+            else:
+                catalog_client = internal_client_for(CatalogClient, userId=None)
+
+                grypedb_document = catalog_client.get_raw_document(
+                    self.active_grypedb.group_name, self.active_grypedb.checksum
+                )
+
+                # TODO write to disk and pass path to grype facade
+                # write to disk
+                # pass path to grypedb facade
+                logger.info("Pass to facade with created file path")
+
+        #     TODO Use grype facade function to update the local instance with document
+        except Exception:
+            logger.exception("GrypeDBSyncTask failed to sync")
+            raise
