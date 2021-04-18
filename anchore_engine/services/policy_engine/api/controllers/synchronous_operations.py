@@ -70,9 +70,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 )
 from anchore_engine.services.policy_engine.engine.vulnerabilities import rescan_image
 from anchore_engine.db import DistroNamespace, AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.vulns.cache_managers import (
-    get_cache_manager,
-)
+
 from anchore_engine.subsys import logger as log
 from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds

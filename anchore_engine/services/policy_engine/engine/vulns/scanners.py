@@ -124,12 +124,12 @@ class DefaultVulnScanner:
 class GrypeVulnScanner:
     """"""
 
-    def get_vulnerabilities(self, image: Image):
+    def get_vulnerabilities(self, image_sbom_file_path):
 
         # TODO check if grype db needs to be updated
 
         # TODO replace this with a call to grype facade
-        cmd = "grype -o json docker.io/library/ubuntu:20.04"
+        cmd = "grype -o json sbom:{}".format(image_sbom_file_path)
 
         stdout, _ = run_check(shlex.split(cmd))
 
