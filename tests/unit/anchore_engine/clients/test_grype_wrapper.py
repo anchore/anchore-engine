@@ -46,7 +46,7 @@ def old_grype_db_file(tmp_path):
     return os.path.join(input_dir, "vulnerability.db")
 
 
-def get_test_ubuntu_sbom(sbom_file_name):
+def get_test_sbom(sbom_file_name):
     full_sbom_path = os.path.join(TEST_DATA_PATH, sbom_file_name)
     # with open(full_sbom_path, "r") as read_file:
     #     return read_file.read().replace('\n', '')
@@ -168,7 +168,7 @@ def test_update_grype_db(grype_db_dir, old_grype_db_file, grype_db_archive):
 # def test_get_vulnerabilities(grype_db_file, sbom_file_name, expected_output):
 #     # Setup test inputs
 #     grype_wrapper.grype_db_file = grype_db_file
-#     test_sbom = get_test_ubuntu_sbom(sbom_file_name)
+#     test_sbom = get_test_sbom(sbom_file_name)
 #
 #     # Function under test
 #     result = grype_wrapper.get_vulnerabilities(test_sbom)
