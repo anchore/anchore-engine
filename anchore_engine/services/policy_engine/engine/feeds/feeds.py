@@ -1,65 +1,52 @@
 import datetime
 import time
 
+from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.common.schemas import GroupDownloadResult
 from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
+    CpeV2Vulnerability,
+    CpeVulnerability,
     FeedMetadata,
-    GenericFeedDataRecord,
-    FeedGroupMetadata,
-    ImagePackageVulnerability,
-    Vulnerability,
     FixedArtifact,
     GemMetadata,
-    NpmMetadata,
-    NvdV2Metadata,
-    CpeV2Vulnerability,
-    VulnDBMetadata,
-    VulnDBCpe,
-    VulnerableArtifact,
-    get_thread_scoped_session,
-    NvdMetadata,
-    CpeVulnerability,
+    GenericFeedDataRecord,
     GrypeDBMetadata,
+    NpmMetadata,
+    NvdMetadata,
+    NvdV2Metadata,
+    VulnDBCpe,
+    VulnDBMetadata,
+    Vulnerability,
+    VulnerableArtifact,
 )
-
-from anchore_engine.common.schemas import (
-    DownloadOperationConfiguration,
-    GroupDownloadResult,
-    GroupDownloadOperationParams,
+from anchore_engine.db import get_thread_scoped_session
+from anchore_engine.db import get_thread_scoped_session as get_session
+from anchore_engine.services.policy_engine.engine.feeds.db import (
+    get_feed_json,
+    lookup_feed,
 )
 from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
-    FileData,
 )
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
-    GenericFeedDataMapper,
-    SingleTypeMapperFactory,
-    VulnerabilityFeedDataMapper,
     GemPackageDataMapper,
+    GenericFeedDataMapper,
+    GithubFeedDataMapper,
     NpmPackageDataMapper,
     NvdV2FeedDataMapper,
+    SingleTypeMapperFactory,
     VulnDBFeedDataMapper,
-    GithubFeedDataMapper,
+    VulnerabilityFeedDataMapper,
 )
-from anchore_engine.services.policy_engine.engine.feeds import mappers
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-    process_updated_vulnerability,
-    flush_vulnerability_matches,
     ThreadLocalFeedGroupNameCache,
-)
-from anchore_engine.subsys.events import (
-    FeedGroupSyncStarted,
-    FeedGroupSyncCompleted,
-    FeedGroupSyncFailed,
-    EventBase,
-)
-from anchore_engine.services.policy_engine.engine.feeds.db import (
-    lookup_feed,
-    get_feed_json,
+    flush_vulnerability_matches,
+    process_updated_vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.clients.services import internal_client_for
+from anchore_engine.subsys.events import EventBase
 
 
 def build_group_sync_result(group=None, status="failure"):
@@ -569,12 +556,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
     def record_count(self, group_name, db):
         try:
-            return (
-                self._find_match(db).count()
-            )
+            return self._find_match(db).count()
         except Exception:
             logger.exception(
-                "Error getting feed data group record count in package feed for group: {}".format(group_name)
+                "Error getting feed data group record count in package feed for group: {}".format(
+                    group_name
+                )
             )
             raise
 
@@ -586,7 +573,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
             results = results.filter(GrypeDBMetadata.active == active)
         return results
 
-    def _flush_group(self, group_obj, operation_id=None, catalog_client: CatalogClient = None):
+    def _flush_group(
+        self, group_obj, operation_id=None, catalog_client: CatalogClient = None
+    ):
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
@@ -607,10 +596,25 @@ class GrypeDBFeed(AnchoreServiceFeed):
         records = self._find_match(db)
         for record in records.all():
             catalog_client.delete_document(record.group_name, record.checksum)
-        records.delete(synchronize_session='evaluate')
+        records.delete(synchronize_session="evaluate")
         group_obj.last_sync = None  # Null the update timestamp to reflect the flush
         group_obj.count = 0
         db.flush()
+
+    def _enqueue_refresh_task(image_id: str):
+        q_client = internal_client_for(SimpleQueueClient, None)
+        subscription_type = "refresh_tasks"
+        rc = False
+        try:
+            nobj = {"image_id": image_id}
+            if not q_client.is_inqueue(subscription_type, nobj):
+                rc = q_client.enqueue(subscription_type, nobj)
+        # TODO FIX Exception
+        except Exception as err:
+            logger.warn("failed to create/enqueue refresh task")
+            raise err
+
+        return rc
 
     def _sync_group(
         self,
@@ -663,7 +667,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         "Performing data flush prior to sync as requested",
                     )
                 )
-                self._flush_group(group_db_obj, operation_id=operation_id, catalog_client=catalog_client)
+                self._flush_group(
+                    group_db_obj,
+                    operation_id=operation_id,
+                    catalog_client=catalog_client,
+                )
 
             # Iterate thru the records and commit
 
@@ -687,14 +695,18 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 # delete all records not active
                 # search for active and unmark
                 # insert new as active
-                checksum, date_generated = record.name.split("__")
+                checksum = record.metadata["Checksum"]
+                date_generated = record.metadata["Date-Created"]
                 if self._find_match(db, checksum).count() == 0:
                     inactive_records = self._find_match(db, active=False)
                     for inactive_record in inactive_records.all():
-                        catalog_client.delete_document(inactive_record.group_name, inactive_record.checksum)
-                    inactive_records.delete(synchronize_session='evaluate')
-                    self._find_match(db, active=True).update({GrypeDBMetadata.active: False},
-                                                             synchronize_session='evaluate')
+                        catalog_client.delete_document(
+                            inactive_record.group_name, inactive_record.checksum
+                        )
+                    inactive_records.delete(synchronize_session="evaluate")
+                    self._find_match(db, active=True).update(
+                        {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
+                    )
                     url = catalog_client.create_raw_document(
                         group_download_result.group, checksum, record.data
                     )
@@ -706,6 +718,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         object_url=url,
                         active=True,
                     )
+                    # TODO: check db integrity before calling grypefacade
                     db.add(grypedb_meta)
                     total_updated_count += 1
                     count += 1
