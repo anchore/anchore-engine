@@ -40,6 +40,7 @@ from anchore_engine.services.policy_engine.engine.feeds.mappers import (
     VulnDBFeedDataMapper,
     VulnerabilityFeedDataMapper,
 )
+from anchore_engine.services.policy_engine.engine.feeds.storage import GrypeDBStorage
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     ThreadLocalFeedGroupNameCache,
     flush_vulnerability_matches,
@@ -718,8 +719,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         object_url=url,
                         active=True,
                     )
-                    # TODO: check db integrity before calling grypefacade
                     db.add(grypedb_meta)
+                    with GrypeDBStorage() as grypedb_file:
+                        with grypedb_file.create_file(checksum) as f:
+                            f.write(record.data)
+                        grypedb_file.verify_integrity(checksum)
+                        # grypedb_file_path = grypedb_file.path
                     total_updated_count += 1
                     count += 1
 
