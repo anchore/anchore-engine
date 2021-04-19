@@ -1148,30 +1148,22 @@ class ImageLoader(object):
 
         java_base = package_list.get("pkgs.java", {}).get("base", {})
         if java_base:
-            java_cpes = self.extract_syft_cpes(allcpes, java_base, image, "java")
-            if not java_cpes:
-                java_cpes = self.get_fuzzy_java_cpes(analysis_json, allcpes, image)
+            java_cpes = self.get_fuzzy_java_cpes(analysis_json, allcpes, image)
             cpes.extend(java_cpes)
 
         python_base = package_list.get("pkgs.python", {}).get("base", {})
         if python_base:
-            python_cpes = self.extract_syft_cpes(allcpes, python_base, image, "python")
-            if not python_cpes:
-                python_cpes = self.get_fuzzy_python_cpes(analysis_json, allcpes, image)
+            python_cpes = self.get_fuzzy_python_cpes(analysis_json, allcpes, image)
             cpes.extend(python_cpes)
 
         gems_base = package_list.get("pkgs.gems", {}).get("base", {})
         if gems_base:
-            gems_cpes = self.extract_syft_cpes(allcpes, gems_base, image, "gem")
-            if not gems_cpes:
-                gems_cpes = self.get_fuzzy_gem_cpes(analysis_json, allcpes, image)
+            gems_cpes = self.get_fuzzy_gem_cpes(analysis_json, allcpes, image)
             cpes.extend(gems_cpes)
 
         npms_base = package_list.get("pkgs.npms", {}).get("base", {})
         if npms_base:
-            npms_cpes = self.extract_syft_cpes(allcpes, npms_base, image, "npm")
-            if not npms_cpes:
-                npms_cpes = self.get_fuzzy_npm_cpes(analysis_json, allcpes, image)
+            npms_cpes = self.get_fuzzy_npm_cpes(analysis_json, allcpes, image)
             cpes.extend(npms_cpes)
 
         cpes.extend(self.get_fuzzy_go_cpes(analysis_json, allcpes, image))
