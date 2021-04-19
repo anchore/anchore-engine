@@ -14,6 +14,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 
+grype_db_dir = None
 grype_db_file = None
 grype_db_session = None
 grype_db_lock = rwlock.RWLockWrite()
@@ -100,7 +101,7 @@ def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str) -
     _remove_grype_db_archive(grype_db_archive_copied_file_location)
 
     # Return the full path to the grype db file
-    return latest_grype_db_file
+    return local_db_dir, latest_grype_db_file
 
 
 def _init_grype_db_engine(latest_grype_db_file):
@@ -128,12 +129,18 @@ def _init_grype_db(lastest_grype_db_archive: str):
     Write the db string to file, create the engine, and create the session
     Return the file and session
     """
-    latest_grype_db_file = _move_and_open_grype_db_archive(lastest_grype_db_archive)
+    # TODO Further refine this, we should be extracting everything to a subdir, and letting the
+    # replacement logic operate at that level (ie always write and remove the contents of an
+    # archive file to a subdir under '<service-dir>/grype_db/', rather than operating on
+    # the specific vulnerability.db file.
+    # It sounds like we will also be getting the metata.json file, and the further contents
+    # of those archives could change if they needed to.
+    latest_grype_db_dir, latest_grype_db_file = _move_and_open_grype_db_archive(lastest_grype_db_archive)
     latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_file)
     latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
 
-    # Return the engine
-    return latest_grype_db_file, latest_grype_db_session
+    # Return the dir, file, and engine
+    return latest_grype_db_dir, latest_grype_db_file, latest_grype_db_session
 
 
 def _remove_local_grype_db(grype_db_file):
@@ -153,7 +160,7 @@ def update_grype_db(grype_db_archive_local_file_location:str):
     Update the installed grype db with the provided definition, and remove the old grype db file.
     This method does not validation of the db, and assumes it has passed any required validation upstream
     """
-    global grype_db_file, grype_db_session
+    global grype_db_dir, grype_db_file, grype_db_session
 
     logger.info("Updating grype with a new grype_db archive from {}".format(grype_db_archive_local_file_location))
 
@@ -163,10 +170,11 @@ def update_grype_db(grype_db_archive_local_file_location:str):
 
             # Store the db locally and
             # Create the sqlalchemy engine for the new db
-            latest_grype_db_file, latest_grype_db_session = _init_grype_db(grype_db_archive_local_file_location)
+            latest_grype_db_dir, latest_grype_db_file, latest_grype_db_session = _init_grype_db(grype_db_archive_local_file_location)
 
-            # Store the file and session variables globally
+            # Store the dir, file, and session variables globally
             # For use during reads and to remove in the next update
+            grype_db_dir = latest_grype_db_dir
             old_grype_db_file = grype_db_file
             grype_db_file = latest_grype_db_file
             grype_db_session = latest_grype_db_session
@@ -182,7 +190,7 @@ def get_vulnerabilities(grype_sbom: str) -> json:
     """
     Use grype to scan the provided sbom for vulnerabilites.
     """
-    global grype_db_file
+    global grype_db_dir
 
     # Get the read lock
     read_lock = grype_db_lock.gen_rlock()
@@ -193,7 +201,7 @@ def get_vulnerabilities(grype_sbom: str) -> json:
                 "GRYPE_CHECK_FOR_APP_UPDATE": "0",
                 "GRYPE_LOG_STRUCTURED": "1",
                 "GRYPE_DB_AUTO_UPDATE": "0",
-                "GRYPE_DB_CACHE_DIR": "{}".format(grype_db_file),
+                "GRYPE_DB_CACHE_DIR": "{}".format(grype_db_dir),
             }
 
             proc_env = os.environ.copy()

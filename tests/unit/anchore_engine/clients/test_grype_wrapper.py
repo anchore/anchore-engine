@@ -128,8 +128,9 @@ def test_init_grype_db(grype_db_dir, grype_db_archive):
     expected_output_file = os.path.join(grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
 
     # Function under test
-    latest_grype_db_file, latest_grype_db_session = grype_wrapper._init_grype_db(grype_db_archive)
+    latest_grype_db_dir, latest_grype_db_file, latest_grype_db_session = grype_wrapper._init_grype_db(grype_db_archive)
 
+    assert latest_grype_db_dir == grype_db_dir
     assert latest_grype_db_file == expected_output_file
     assert os.path.exists(latest_grype_db_file)
     assert latest_grype_db_session is not None
@@ -157,24 +158,22 @@ def test_update_grype_db(grype_db_dir, old_grype_db_file, grype_db_archive):
     assert grype_wrapper.grype_db_session is not None
 
 
-# TODO Disabling for now. Something in the test db file used here isn't playing nice with grype. It works ok for the query test below.
-# Googling it suggests the sqlite version used to read vs write the db can be a little touchy.
-# @pytest.mark.parametrize(
-#     "sbom_file_name, expected_output",
-#     [
-#         ("sbom-ubuntu-20.04--pruned.json", "ubuntu"),
-#     ],
-# )
-# def test_get_vulnerabilities(grype_db_file, sbom_file_name, expected_output):
-#     # Setup test inputs
-#     grype_wrapper.grype_db_file = grype_db_file
-#     test_sbom = get_test_sbom(sbom_file_name)
-#
-#     # Function under test
-#     result = grype_wrapper.get_vulnerabilities(test_sbom)
-#
-#     # TODO Assert expected results
-#     assert result["distro"]["name"] == expected_output
+@pytest.mark.parametrize(
+    "sbom_file_name, expected_output",
+    [
+        ("sbom-ubuntu-20.04--pruned.json", "ubuntu"),
+    ],
+)
+def test_get_vulnerabilities(grype_db_file, sbom_file_name, expected_output):
+    # Setup test inputs
+    grype_wrapper.grype_db_dir = "../../data/grype_db/"
+    test_sbom = get_test_sbom(sbom_file_name)
+
+    # Function under test
+    result = grype_wrapper.get_vulnerabilities(test_sbom)
+
+    # TODO Assert expected results
+    assert result["distro"]["name"] == expected_output
 
 
 @pytest.mark.parametrize(
