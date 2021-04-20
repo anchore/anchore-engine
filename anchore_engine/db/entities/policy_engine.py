@@ -146,6 +146,10 @@ class GrypeDBMetadata(Base):
     date_generated = Column(DateTime, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_update = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
