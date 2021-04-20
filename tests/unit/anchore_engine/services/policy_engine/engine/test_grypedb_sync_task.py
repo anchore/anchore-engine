@@ -63,7 +63,7 @@ class TestGrypeDBSyncTask:
         active_dbs = [GrypeDBMetadata(active=True), GrypeDBMetadata(active=True)]
         mock_query_active_dbs_with_data(active_dbs)
 
-        with pytest.raises(TooManyActiveGrypeDBs):
+        with pytest.raises(TooManyActiveGrypeDBs) as e:
             GrypeDBSyncTask.run_grypedb_sync()
 
     def test_matching_checksums(self, mock_calls_for_sync):

@@ -612,7 +612,11 @@ class ImageLoadTask(IAsyncTask):
             return json.load(r)
 
 
-class TooManyActiveGrypeDBs(Exception):
+class GrypeDBSyncError(Exception):
+    pass
+
+
+class TooManyActiveGrypeDBs(GrypeDBSyncError):
     pass
 
 
@@ -654,8 +658,8 @@ class GrypeDBSyncTask(IAsyncTask):
                 else:
                     logger.info("No grypedb sync needed at this time")
                     return False
-        except Exception:
-            logger.exception("Error executing grypedb sync task")
+        except GrypeDBSyncError as e:
+            logger.exception("Error executing grypedb sync task {}".format(str(e)))
             raise
 
     @classmethod
@@ -729,6 +733,6 @@ class GrypeDBSyncTask(IAsyncTask):
 
                     # TODO pass file path to grype facade
                     logger.info("Pass to facade with created file path")
-        except Exception:
+        except Exception as e:
             logger.exception("GrypeDBSyncTask failed to sync")
-            raise
+            raise GrypeDBSyncError from e
