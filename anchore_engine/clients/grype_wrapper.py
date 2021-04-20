@@ -253,7 +253,9 @@ def get_vulnerabilities(grype_sbom: str) -> json:
             proc_env.update(grype_env)
 
             # Format and run the command
-            cmd = "grype -vv -o json sbom:{sbom}".format(sbom=grype_sbom,)
+            cmd = "grype -vv -o json sbom:{sbom}".format(
+                sbom=grype_sbom,
+            )
 
             logger.debug("Running grype with command: {}".format(cmd))
 
@@ -303,7 +305,10 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
 
 
 def query_vulnerabilities(
-    vuln_id=None, affected_package=None, affected_package_version=None, namespace=None,
+    vuln_id=None,
+    affected_package=None,
+    affected_package_version=None,
+    namespace=None,
 ):
     """
     Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the
