@@ -205,7 +205,8 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
 
 
 @pytest.mark.parametrize(
-    "sbom_file_name, expected_output", [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
+    "sbom_file_name, expected_output",
+    [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
 )
 def test_get_vulnerabilities(grype_db_dir, sbom_file_name, expected_output):
     # Setup test inputs
@@ -282,7 +283,9 @@ def test_query_vulnerabilities(
 
     # Test and validate the query param combinations
     results = grype_wrapper.query_vulnerabilities(
-        vuln_id=vuln_id, affected_package=affected_package, namespace=namespace,
+        vuln_id=vuln_id,
+        affected_package=affected_package,
+        namespace=namespace,
     )
     assert len(results) == expected_result_length
     assert list(map(lambda result: result[0].id, results)) == expected_output
