@@ -662,7 +662,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
             feed_name=GrypeDBFeed.__feed_name__,
             group_name=group_download_result.group,
             date_generated=date_generated,
-            object_url=url,
+            bucket=group_download_result.group,
+            archive_id=checksum,
             active=True,
         )
         db.add(grypedb_meta)
