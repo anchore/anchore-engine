@@ -45,6 +45,7 @@ from anchore_engine.subsys import identities, logger
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
+from anchore_engine.services.policy_engine.engine.feeds.storage import GrypeDBStorage
 
 
 def construct_task_from_json(json_obj):
@@ -719,16 +720,15 @@ class GrypeDBSyncTask(IAsyncTask):
             else:
                 catalog_client = internal_client_for(CatalogClient, userId=None)
 
-                grypedb_document = catalog_client.get_raw_document(
-                    self.active_grypedb.group_name, self.active_grypedb.checksum
-                )
+                bucket, archive_id = self.active_grypedb.object_url.split("/")[-2::1]
+                grypedb_document = catalog_client.get_raw_document(bucket, archive_id)
+                with GrypeDBStorage() as grypedb_file:
+                    with grypedb_file.create_file(self.active_grypedb.checksum) as f:
+                        f.write(grypedb_document)
+                    grypedb_file.verify_integrity(self.active_grypedb.checksum)
 
-                # TODO write to disk and pass path to grype facade
-                # write to disk
-                # pass path to grypedb facade
-                logger.info("Pass to facade with created file path")
-
-        #     TODO Use grype facade function to update the local instance with document
+                    # TODO pass file path to grype facade
+                    logger.info("Pass to facade with created file path")
         except Exception:
             logger.exception("GrypeDBSyncTask failed to sync")
             raise
