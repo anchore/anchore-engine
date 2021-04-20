@@ -10,10 +10,9 @@ from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
 from anchore_engine.utils import run_check, CommandException
 from readerwriterlock import rwlock
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy.orm import sessionmaker, relationship
 
 grype_db_dir = None
 grype_db_session = None
@@ -253,6 +252,8 @@ def get_vulnerabilities(grype_sbom: str) -> json:
             proc_env.update(grype_env)
 
             # Format and run the command
+            # TODO This is currently expecting an sbom file reference, not the actual sbom string itself
+            # Should we support both, or just the string?
             cmd = "grype -vv -o json sbom:{sbom}".format(
                 sbom=grype_sbom,
             )
@@ -276,7 +277,6 @@ def get_vulnerabilities(grype_sbom: str) -> json:
 
 
 # Table definitions.
-# TODO Remove these if we end up using the query API instead of the ORM api
 class GrypeVulnerability(Base, UtilMixin):
     __tablename__ = VULNERABILITY_TABLE_NAME
 
@@ -290,13 +290,14 @@ class GrypeVulnerability(Base, UtilMixin):
     cpes = Column(String)
     proxy_vulnerabilities = Column(String)
     fixed_in_version = Column(String)
+    vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
 
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
 
-    id = Column(String, primary_key=True)
-    record_source = Column(String)
+    id = Column(String, ForeignKey(f"{VULNERABILITY_TABLE_NAME}.id"), primary_key=True)
+    record_source = Column(String, primary_key=True)
     severity = Column(String)
     links = Column(String)
     description = Column(String)
@@ -334,9 +335,9 @@ def query_vulnerabilities(
 
             query = grype_db_session.query(
                 GrypeVulnerability,
-                GrypeVulnerabilityMetadata
-                # TODO Join on id explicitly between the two tables
-            ).filter(GrypeVulnerability.id == GrypeVulnerabilityMetadata.id)
+            ).join(
+                GrypeVulnerabilityMetadata, GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+            )
 
             if vuln_id is not None:
                 query = query.filter(GrypeVulnerability.id.in_(vuln_id))
@@ -347,9 +348,6 @@ def query_vulnerabilities(
                     GrypeVulnerability.package_name == affected_package
                 )
 
-            # TODO Query may/will need to be updated to return data that minimizes the downstream transformation cost
-            # The current return object data structure takes a kitchen sink approach, returning everything, and
-            # could be streamlined and/or optimized
             return query.all()
         finally:
             read_lock.release()
