@@ -305,10 +305,12 @@ class CatalogClient(InternalServiceClient):
         self, subscription_key=None, subscription_type=None, subscription_id=None
     ):
         if subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
 
         return self.call_api(
@@ -325,22 +327,26 @@ class CatalogClient(InternalServiceClient):
         if subscription_id:
             pass
         elif subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         elif subscriptiondata.get("subscription_key", None) and subscriptiondata.get(
             "subscription_type", None
         ):
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [
                         self.request_namespace,
                         subscriptiondata.get("subscription_key"),
                         subscriptiondata.get("subscription_type"),
                     ]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         else:
             raise Exception(
