@@ -38,7 +38,7 @@ class GrypeDBFile:
     def _verify_integrity(self, expected_checksum):
         with open(self._file_path, "rb") as temp_file:
             data = temp_file.read()
-        self.verify_integrity_bytes(data, expected_checksum)
+        self.verify_integrity(data, expected_checksum)
 
     @property
     def path(self) -> Optional[str]:
