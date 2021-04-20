@@ -42,7 +42,9 @@ def _get_default_grype_db_dir_from_config():
     """
     localconfig = anchore_engine.configuration.localconfig.get_config()
     if "grype_db_dir" in localconfig:
-        grype_db_dir = os.path.join(localconfig["service_dir"], localconfig["grype_db_dir"])
+        grype_db_dir = os.path.join(
+            localconfig["service_dir"], localconfig["grype_db_dir"]
+        )
     else:
         grype_db_dir = os.path.join(localconfig["service_dir"], "grype_db/")
 
@@ -52,29 +54,41 @@ def _get_default_grype_db_dir_from_config():
     return grype_db_dir
 
 
-def _move_grype_db_archive(grype_db_archive_local_file_location: str, output_dir: str) -> str:
+def _move_grype_db_archive(
+    grype_db_archive_local_file_location: str, output_dir: str
+) -> str:
     # Get the location to move the archive to
     archive_file_name = os.path.basename(grype_db_archive_local_file_location)
     grype_db_archive_copied_file_location = os.path.join(output_dir, archive_file_name)
 
     # Move the archive file
-    logger.info("Moving the grype_db archive from {} to {}".format(grype_db_archive_local_file_location,
-                                                                   grype_db_archive_copied_file_location))
-    os.replace(grype_db_archive_local_file_location, grype_db_archive_copied_file_location)
+    logger.info(
+        "Moving the grype_db archive from {} to {}".format(
+            grype_db_archive_local_file_location, grype_db_archive_copied_file_location
+        )
+    )
+    os.replace(
+        grype_db_archive_local_file_location, grype_db_archive_copied_file_location
+    )
     return grype_db_archive_copied_file_location
 
 
-def _open_grype_db_archive(grype_db_archive_copied_file_location: str, parent_dir: str, version_name: str) -> str:
+def _open_grype_db_archive(
+    grype_db_archive_copied_file_location: str, parent_dir: str, version_name: str
+) -> str:
     output_dir = os.path.join(parent_dir, version_name)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    logger.info("Unpacking the grype_db archive at {} into {}".format(grype_db_archive_copied_file_location, output_dir))
+    logger.info(
+        "Unpacking the grype_db archive at {} into {}".format(
+            grype_db_archive_copied_file_location, output_dir
+        )
+    )
 
     # Put the extracted files in the same dir as the archive
     with tarfile.open(grype_db_archive_copied_file_location) as read_archive:
         read_archive.extractall(output_dir)
-
 
     # Return the full path to the grype_db dir
     logger.info("Returning the unpacked grype_db dir at {}".format(output_dir))
@@ -82,11 +96,17 @@ def _open_grype_db_archive(grype_db_archive_copied_file_location: str, parent_di
 
 
 def _remove_grype_db_archive(grype_db_archive_local_file_location: str):
-    logger.info("Removing the now-unpacked grype_db archive at {}".format(grype_db_archive_local_file_location))
+    logger.info(
+        "Removing the now-unpacked grype_db archive at {}".format(
+            grype_db_archive_local_file_location
+        )
+    )
     os.remove(grype_db_archive_local_file_location)
 
 
-def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str, version_name: str) -> str:
+def _move_and_open_grype_db_archive(
+    grype_db_archive_local_file_location: str, version_name: str
+) -> str:
     """
     This function moves a tarball containing the latest grype db from a location on the local file system
     into the configured grype db dir. It then extracts all files in the tarball and removes the then-unneeded
@@ -96,10 +116,14 @@ def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str, v
     local_db_dir = _get_default_grype_db_dir_from_config()
 
     # Copy the archive
-    grype_db_archive_copied_file_location = _move_grype_db_archive(grype_db_archive_local_file_location, local_db_dir)
+    grype_db_archive_copied_file_location = _move_grype_db_archive(
+        grype_db_archive_local_file_location, local_db_dir
+    )
 
     # Unpack the archive
-    latest_grype_db_dir = _open_grype_db_archive(grype_db_archive_copied_file_location, local_db_dir, version_name)
+    latest_grype_db_dir = _open_grype_db_archive(
+        grype_db_archive_copied_file_location, local_db_dir, version_name
+    )
 
     # Remove the unpacked archive
     _remove_grype_db_archive(grype_db_archive_copied_file_location)
@@ -112,7 +136,9 @@ def _init_grype_db_engine(latest_grype_db_dir):
     """
     Create and return the sqlalchemy engine object
     """
-    logger.info("Creating new db engine based on the grype_db at {}".format(latest_grype_db_dir))
+    logger.info(
+        "Creating new db engine based on the grype_db at {}".format(latest_grype_db_dir)
+    )
     latest_grype_db_file = os.path.join(latest_grype_db_dir, VULNERABILITY_FILE_NAME)
     db_connect = "sqlite:///{}".format(latest_grype_db_file)
     latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
@@ -123,7 +149,11 @@ def _init_grype_db_session(grype_db_engine):
     """
     Create and return the db session
     """
-    logger.info("Creating new grype_db session from engine based on {}".format(grype_db_engine.url))
+    logger.info(
+        "Creating new grype_db session from engine based on {}".format(
+            grype_db_engine.url
+        )
+    )
     SessionMaker = sessionmaker(bind=grype_db_engine)
     grype_db_session = SessionMaker()
     return grype_db_session
@@ -140,7 +170,9 @@ def _init_grype_db(lastest_grype_db_archive: str, version_name: str):
     # the specific vulnerability.db file.
     # It sounds like we will also be getting the metata.json file, and the further contents
     # of those archives could change if they needed to.
-    latest_grype_db_dir = _move_and_open_grype_db_archive(lastest_grype_db_archive, version_name)
+    latest_grype_db_dir = _move_and_open_grype_db_archive(
+        lastest_grype_db_archive, version_name
+    )
     latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_dir)
     latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
 
@@ -156,7 +188,11 @@ def _remove_local_grype_db(grype_db_dir):
         logger.info("Removing old grype_db at {}".format(grype_db_dir))
         shutil.rmtree(grype_db_dir)
     else:
-        logger.error("Failed to remove grype db at {} as it cannot be found.".format(grype_db_dir))
+        logger.error(
+            "Failed to remove grype db at {} as it cannot be found.".format(
+                grype_db_dir
+            )
+        )
     return
 
 
@@ -167,7 +203,11 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
     """
     global grype_db_dir, grype_db_session
 
-    logger.info("Updating grype with a new grype_db archive from {}".format(grype_db_archive_local_file_location))
+    logger.info(
+        "Updating grype with a new grype_db archive from {}".format(
+            grype_db_archive_local_file_location
+        )
+    )
 
     write_lock = grype_db_lock.gen_wlock()
     if write_lock.acquire(blocking=True, timeout=60):
@@ -175,7 +215,9 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
 
             # Store the db locally and
             # Create the sqlalchemy engine for the new db
-            latest_grype_db_dir, latest_grype_db_session = _init_grype_db(grype_db_archive_local_file_location, version_name)
+            latest_grype_db_dir, latest_grype_db_session = _init_grype_db(
+                grype_db_archive_local_file_location, version_name
+            )
 
             # Store the dir and session variables globally
             # For use during reads and to remove in the next update
@@ -211,9 +253,7 @@ def get_vulnerabilities(grype_sbom: str) -> json:
             proc_env.update(grype_env)
 
             # Format and run the command
-            cmd = "grype -vv -o json sbom:{sbom}".format(
-                sbom=grype_sbom,
-            )
+            cmd = "grype -vv -o json sbom:{sbom}".format(sbom=grype_sbom,)
 
             logger.debug("Running grype with command: {}".format(cmd))
 
@@ -222,11 +262,12 @@ def get_vulnerabilities(grype_sbom: str) -> json:
             try:
                 stdout, _ = run_check(shlex.split(cmd), env=proc_env)
             except CommandException as exc:
-                logger.error("Exception running command: {}, stderr: {}".format(cmd, exc.stderr))
+                logger.error(
+                    "Exception running command: {}, stderr: {}".format(cmd, exc.stderr)
+                )
                 raise exc
         finally:
             read_lock.release()
-
 
         # Return the output as json
         return json.loads(stdout)
@@ -253,19 +294,16 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
 
     id = Column(String, primary_key=True)
-    record_source= Column(String)
-    severity= Column(String)
-    links= Column(String)
-    description= Column(String)
-    cvss_v2= Column(String)
-    cvss_v3= Column(String)
+    record_source = Column(String)
+    severity = Column(String)
+    links = Column(String)
+    description = Column(String)
+    cvss_v2 = Column(String)
+    cvss_v3 = Column(String)
 
 
 def query_vulnerabilities(
-        vuln_id=None,
-        affected_package=None,
-        affected_package_version=None,
-        namespace=None,
+    vuln_id=None, affected_package=None, affected_package_version=None, namespace=None,
 ):
     """
     Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the
@@ -283,23 +321,22 @@ def query_vulnerabilities(
             if type(namespace) == str:
                 namespace = [namespace]
 
-            logger.debug("Querying grype_db for vuln_id: {}, namespace: {}, affected_package: {}".format(vuln_id, namespace, affected_package))
-
-            query = grype_db_session.query(
-                GrypeVulnerability, GrypeVulnerabilityMetadata
-            # TODO Join on id explicitly between the two tables
-            ).filter(
-                GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+            logger.debug(
+                "Querying grype_db for vuln_id: {}, namespace: {}, affected_package: {}".format(
+                    vuln_id, namespace, affected_package
+                )
             )
 
+            query = grype_db_session.query(
+                GrypeVulnerability,
+                GrypeVulnerabilityMetadata
+                # TODO Join on id explicitly between the two tables
+            ).filter(GrypeVulnerability.id == GrypeVulnerabilityMetadata.id)
+
             if vuln_id is not None:
-                query = query.filter(
-                    GrypeVulnerability.id.in_(vuln_id)
-                )
+                query = query.filter(GrypeVulnerability.id.in_(vuln_id))
             if namespace is not None:
-                query = query.filter(
-                    GrypeVulnerability.namespace.in_(namespace)
-                )
+                query = query.filter(GrypeVulnerability.namespace.in_(namespace))
             if affected_package is not None:
                 query = query.filter(
                     GrypeVulnerability.package_name == affected_package

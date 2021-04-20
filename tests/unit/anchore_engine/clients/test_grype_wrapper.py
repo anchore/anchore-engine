@@ -16,7 +16,9 @@ NEW_VERSION_NAME = "new_version"
 
 
 def get_test_file_path(basename: str) -> str:
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), TEST_DATA_RELATIVE_PATH, basename)
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), TEST_DATA_RELATIVE_PATH, basename
+    )
 
 
 def get_test_sbom(sbom_file_name):
@@ -89,11 +91,15 @@ def test_move_grype_db_archive(tmp_path, grype_db_archive):
     os.mkdir(output_dir)
 
     # Function under test
-    grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(grype_db_archive, output_dir)
+    grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
+        grype_db_archive, output_dir
+    )
 
     # Validate archive was copied and to the correct location
     assert os.path.exists(grype_db_archive_copied_file_location)
-    assert grype_db_archive_copied_file_location == os.path.join(output_dir, "grype_db_test_archive.tar.gz")
+    assert grype_db_archive_copied_file_location == os.path.join(
+        output_dir, "grype_db_test_archive.tar.gz"
+    )
 
 
 def test_open_grype_db_archive(grype_db_archive):
@@ -102,12 +108,16 @@ def test_open_grype_db_archive(grype_db_archive):
     expected_grype_db_file = os.path.join(parent_dir, NEW_VERSION_NAME)
 
     # Function under test
-    latest_grype_db_dir = grype_wrapper._open_grype_db_archive(grype_db_archive, parent_dir, NEW_VERSION_NAME)
+    latest_grype_db_dir = grype_wrapper._open_grype_db_archive(
+        grype_db_archive, parent_dir, NEW_VERSION_NAME
+    )
 
     # Validate expected dir contents and location
     assert os.path.exists(expected_grype_db_file)
     assert latest_grype_db_dir == os.path.join(parent_dir, NEW_VERSION_NAME)
-    assert os.path.exists(os.path.join(latest_grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME))
+    assert os.path.exists(
+        os.path.join(latest_grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+    )
 
 
 def test_remove_grype_db_archive(grype_db_archive):
@@ -137,7 +147,9 @@ def test_init_grype_db_session(grype_db_dir):
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
 
     # Function under test
-    latest_grype_db_session = grype_wrapper._init_grype_db_session(latest_grype_db_engine)
+    latest_grype_db_session = grype_wrapper._init_grype_db_session(
+        latest_grype_db_engine
+    )
 
     # Validate output
     assert latest_grype_db_session is not None
@@ -146,10 +158,14 @@ def test_init_grype_db_session(grype_db_dir):
 def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
     # Setup out vars
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
-    expected_output_file = os.path.join(expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+    expected_output_file = os.path.join(
+        expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME
+    )
 
     # Function under test
-    latest_grype_db_dir, latest_grype_db_session = grype_wrapper._init_grype_db(grype_db_archive, NEW_VERSION_NAME)
+    latest_grype_db_dir, latest_grype_db_session = grype_wrapper._init_grype_db(
+        grype_db_archive, NEW_VERSION_NAME
+    )
 
     # Validate expected output
     assert os.path.exists(latest_grype_db_dir)
@@ -171,7 +187,9 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
     # Setup
     grype_wrapper.grype_db_dir = old_grype_db_dir
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
-    expected_output_file = os.path.join(expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+    expected_output_file = os.path.join(
+        expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME
+    )
 
     # Function under test
     grype_wrapper.update_grype_db(grype_db_archive, NEW_VERSION_NAME)
@@ -187,10 +205,7 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
 
 
 @pytest.mark.parametrize(
-    "sbom_file_name, expected_output",
-    [
-        ("sbom-ubuntu-20.04--pruned.json", "ubuntu"),
-    ],
+    "sbom_file_name, expected_output", [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
 )
 def test_get_vulnerabilities(grype_db_dir, sbom_file_name, expected_output):
     # Setup test inputs
@@ -210,26 +225,64 @@ def test_get_vulnerabilities(grype_db_dir, sbom_file_name, expected_output):
         ("not_found", None, None, 0, []),
         (None, "not_found", None, 0, []),
         (None, None, "not_found", 0, []),
-        (None, None, None, 10, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776", "CVE-2020-10174", "CVE-2019-2391", "CVE-2020-7610", "CVE-2020-8518", "CVE-2019-9658", "CVE-2019-15690", "CVE-2019-20788"]),
+        (
+            None,
+            None,
+            None,
+            10,
+            [
+                "CVE-2019-16775",
+                "CVE-2019-16777",
+                "CVE-2019-16776",
+                "CVE-2020-10174",
+                "CVE-2019-2391",
+                "CVE-2020-7610",
+                "CVE-2020-8518",
+                "CVE-2019-9658",
+                "CVE-2019-15690",
+                "CVE-2019-20788",
+            ],
+        ),
         ("CVE-2019-16775", None, None, 1, ["CVE-2019-16775"]),
         (None, "npm", None, 3, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776"]),
-        (None, None, "debian:10", 10, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776", "CVE-2020-10174", "CVE-2019-2391", "CVE-2020-7610", "CVE-2020-8518", "CVE-2019-9658", "CVE-2019-15690", "CVE-2019-20788"]),
+        (
+            None,
+            None,
+            "debian:10",
+            10,
+            [
+                "CVE-2019-16775",
+                "CVE-2019-16777",
+                "CVE-2019-16776",
+                "CVE-2020-10174",
+                "CVE-2019-2391",
+                "CVE-2020-7610",
+                "CVE-2020-8518",
+                "CVE-2019-9658",
+                "CVE-2019-15690",
+                "CVE-2019-20788",
+            ],
+        ),
         ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
     ],
 )
 def test_query_vulnerabilities(
-        grype_db_dir, vuln_id, affected_package, namespace, expected_result_length, expected_output
+    grype_db_dir,
+    vuln_id,
+    affected_package,
+    namespace,
+    expected_result_length,
+    expected_output,
 ):
     # Setup the sqlalchemy artifacts on the test grype db
     test_grype_db_engine = grype_wrapper._init_grype_db_engine(grype_db_dir)
-    grype_wrapper.grype_db_session = grype_wrapper._init_grype_db_session(test_grype_db_engine)
+    grype_wrapper.grype_db_session = grype_wrapper._init_grype_db_session(
+        test_grype_db_engine
+    )
 
     # Test and validate the query param combinations
     results = grype_wrapper.query_vulnerabilities(
-        vuln_id=vuln_id,
-        affected_package=affected_package,
-        namespace=namespace,
-
+        vuln_id=vuln_id, affected_package=affected_package, namespace=namespace,
     )
     assert len(results) == expected_result_length
     assert list(map(lambda result: result[0].id, results)) == expected_output
