@@ -15,25 +15,30 @@ class ChecksumMismatchError(Exception):
 
 
 class GrypeDBFile:
-    def __init__(self, parent_directory_path):
+    @classmethod
+    def verify_integrity(cls, file_data: bytes, expected_checksum: str):
+        actual_checksum = hashlib.sha256(file_data).hexdigest()
+        if actual_checksum != expected_checksum:
+            raise ChecksumMismatchError
+
+    def __init__(self, parent_directory_path: str):
         self.root_directory = parent_directory_path
         self._file_path: Optional[str] = None
 
     @contextmanager
-    def create_file(self, file_name) -> Generator[io.BufferedIOBase, None, None]:
-        self._file_path = path.join(self.root_directory, f"{file_name}.tar.gz")
+    def create_file(self, checksum: str) -> Generator[io.BufferedIOBase, None, None]:
+        self._file_path = path.join(self.root_directory, f"{checksum}.tar.gz")
         temp_file = open(self._file_path, "wb")
         try:
             yield temp_file
         finally:
             temp_file.close()
+            self._verify_integrity(checksum)
 
-    def verify_integrity(self, expected_checksum):
+    def _verify_integrity(self, expected_checksum):
         with open(self._file_path, "rb") as temp_file:
             data = temp_file.read()
-        actual_checksum = hashlib.sha256(data).hexdigest()
-        if actual_checksum != expected_checksum:
-            raise ChecksumMismatchError
+        self.verify_integrity_bytes(data, expected_checksum)
 
     @property
     def path(self) -> Optional[str]:

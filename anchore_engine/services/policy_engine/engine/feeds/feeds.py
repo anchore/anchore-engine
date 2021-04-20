@@ -1,6 +1,9 @@
 import datetime
 import time
 
+from sqlalchemy.orm.session import Session
+
+# from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
@@ -28,6 +31,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     lookup_feed,
 )
 from anchore_engine.services.policy_engine.engine.feeds.download import (
+    FileData,
     LocalFeedDataRepo,
 )
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
@@ -40,7 +44,10 @@ from anchore_engine.services.policy_engine.engine.feeds.mappers import (
     VulnDBFeedDataMapper,
     VulnerabilityFeedDataMapper,
 )
-from anchore_engine.services.policy_engine.engine.feeds.storage import GrypeDBStorage
+from anchore_engine.services.policy_engine.engine.feeds.storage import (
+    GrypeDBFile,
+    GrypeDBStorage,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     ThreadLocalFeedGroupNameCache,
     flush_vulnerability_matches,
@@ -550,6 +557,13 @@ class AnchoreServiceFeed(DataFeed):
             return None
 
 
+class UnexpectedRawGrypeDBFile(Exception):
+    def __init__(self):
+        super().__init__(
+            "Unexpected Condition: More than one GrypeDB file downloaded during feed sync."
+        )
+
+
 class GrypeDBFeed(AnchoreServiceFeed):
     __feed_name__ = "grypedb"
     _cve_key = None
@@ -616,6 +630,42 @@ class GrypeDBFeed(AnchoreServiceFeed):
             raise err
 
         return rc
+
+    def _switch_active_grypedb(
+        self,
+        db: Session,
+        catalog_client: CatalogClient,
+        group_download_result: GroupDownloadResult,
+        record: FileData,
+        checksum: str,
+    ) -> None:
+        # delete all records not active
+        inactive_records = self._find_match(db, active=False)
+        for inactive_record in inactive_records.all():
+            catalog_client.delete_document(
+                inactive_record.group_name, inactive_record.checksum
+            )
+        inactive_records.delete(synchronize_session="evaluate")
+        # search for active and mark inactive
+        self._find_match(db, active=True).update(
+            {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
+        )
+        # insert new as active
+        url = catalog_client.create_raw_document(
+            group_download_result.group, checksum, record.data
+        )
+        date_generated = datetime.datetime.strptime(
+            record.metadata["Date-Created"], "%Y-%m-%dT%H:%M:%SZ"
+        )
+        grypedb_meta = GrypeDBMetadata(
+            checksum=checksum,
+            feed_name=GrypeDBFeed.__feed_name__,
+            group_name=group_download_result.group,
+            date_generated=date_generated,
+            object_url=url,
+            active=True,
+        )
+        db.add(grypedb_meta)
 
     def _sync_group(
         self,
@@ -686,48 +736,27 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     ),
                 )
             )
-            count = 0
             for record in local_repo.read_files(
                 group_download_result.feed, group_download_result.group
             ):
-                # TODO create custom exception
-                if count >= 1:
-                    raise Exception("Should only be one instance of grype db")
-                # delete all records not active
-                # search for active and unmark
-                # insert new as active
+                if total_updated_count >= 1:
+                    raise UnexpectedRawGrypeDBFile()
                 checksum = record.metadata["Checksum"]
-                date_generated = record.metadata["Date-Created"]
+                GrypeDBFile.verify_integrity(record.data, checksum)
                 if self._find_match(db, checksum).count() == 0:
-                    inactive_records = self._find_match(db, active=False)
-                    for inactive_record in inactive_records.all():
-                        catalog_client.delete_document(
-                            inactive_record.group_name, inactive_record.checksum
-                        )
-                    inactive_records.delete(synchronize_session="evaluate")
-                    self._find_match(db, active=True).update(
-                        {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
+                    self._switch_active_grypedb(
+                        db,
+                        catalog_client,
+                        group_download_result,
+                        record,
+                        checksum,
                     )
-                    url = catalog_client.create_raw_document(
-                        group_download_result.group, checksum, record.data
-                    )
-                    grypedb_meta = GrypeDBMetadata(
-                        checksum=checksum,
-                        feed_name=GrypeDBFeed.__feed_name__,
-                        group_name=group_download_result.group,
-                        date_generated=date_generated,
-                        object_url=url,
-                        active=True,
-                    )
-                    db.add(grypedb_meta)
+                    # cache to temporary storage
                     with GrypeDBStorage() as grypedb_file:
                         with grypedb_file.create_file(checksum) as f:
                             f.write(record.data)
-                        grypedb_file.verify_integrity(checksum)
-                        # grypedb_file_path = grypedb_file.path
+                        # grype_wrapper.update_grype_db(grypedb_file.path)
                     total_updated_count += 1
-                    count += 1
-
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)
                 db.commit()
