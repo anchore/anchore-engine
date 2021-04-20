@@ -1,3 +1,5 @@
+import shutil
+
 import anchore_engine.configuration.localconfig
 import os
 import json
@@ -15,7 +17,6 @@ from sqlalchemy.orm import sessionmaker
 
 
 grype_db_dir = None
-grype_db_file = None
 grype_db_session = None
 grype_db_lock = rwlock.RWLockWrite()
 
@@ -63,7 +64,11 @@ def _move_grype_db_archive(grype_db_archive_local_file_location: str, output_dir
     return grype_db_archive_copied_file_location
 
 
-def _open_grype_db_archive(grype_db_archive_copied_file_location: str, output_dir: str) -> str:
+def _open_grype_db_archive(grype_db_archive_copied_file_location: str, parent_dir: str, version_name: str) -> str:
+    output_dir = os.path.join(parent_dir, version_name)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
     logger.info("Unpacking the grype_db archive at {} into {}".format(grype_db_archive_copied_file_location, output_dir))
 
     # Put the extracted files in the same dir as the archive
@@ -71,10 +76,9 @@ def _open_grype_db_archive(grype_db_archive_copied_file_location: str, output_di
         read_archive.extractall(output_dir)
 
 
-    # Return the full path to the vulnerability file
-    output_path = os.path.join(output_dir, VULNERABILITY_FILE_NAME)
-    logger.info("Returning the unpacked grype_db file at {}".format(output_path))
-    return output_path
+    # Return the full path to the grype_db dir
+    logger.info("Returning the unpacked grype_db dir at {}".format(output_dir))
+    return output_dir
 
 
 def _remove_grype_db_archive(grype_db_archive_local_file_location: str):
@@ -82,7 +86,7 @@ def _remove_grype_db_archive(grype_db_archive_local_file_location: str):
     os.remove(grype_db_archive_local_file_location)
 
 
-def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str) -> str:
+def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str, version_name: str) -> str:
     """
     This function moves a tarball containing the latest grype db from a location on the local file system
     into the configured grype db dir. It then extracts all files in the tarball and removes the then-unneeded
@@ -95,20 +99,21 @@ def _move_and_open_grype_db_archive(grype_db_archive_local_file_location: str) -
     grype_db_archive_copied_file_location = _move_grype_db_archive(grype_db_archive_local_file_location, local_db_dir)
 
     # Unpack the archive
-    latest_grype_db_file = _open_grype_db_archive(grype_db_archive_copied_file_location, local_db_dir)
+    latest_grype_db_dir = _open_grype_db_archive(grype_db_archive_copied_file_location, local_db_dir, version_name)
 
     # Remove the unpacked archive
     _remove_grype_db_archive(grype_db_archive_copied_file_location)
 
     # Return the full path to the grype db file
-    return local_db_dir, latest_grype_db_file
+    return latest_grype_db_dir
 
 
-def _init_grype_db_engine(latest_grype_db_file):
+def _init_grype_db_engine(latest_grype_db_dir):
     """
     Create and return the sqlalchemy engine object
     """
-    logger.info("Creating new db engine based on the grype_db at {}".format(latest_grype_db_file))
+    logger.info("Creating new db engine based on the grype_db at {}".format(latest_grype_db_dir))
+    latest_grype_db_file = os.path.join(latest_grype_db_dir, VULNERABILITY_FILE_NAME)
     db_connect = "sqlite:///{}".format(latest_grype_db_file)
     latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
     return latest_grype_db_engine
@@ -118,13 +123,13 @@ def _init_grype_db_session(grype_db_engine):
     """
     Create and return the db session
     """
-    logger.info("Creating new db session from engine based on the grype_db at {}".format(grype_db_engine.url))
+    logger.info("Creating new grype_db session from engine based on {}".format(grype_db_engine.url))
     SessionMaker = sessionmaker(bind=grype_db_engine)
     grype_db_session = SessionMaker()
     return grype_db_session
 
 
-def _init_grype_db(lastest_grype_db_archive: str):
+def _init_grype_db(lastest_grype_db_archive: str, version_name: str):
     """
     Write the db string to file, create the engine, and create the session
     Return the file and session
@@ -135,32 +140,32 @@ def _init_grype_db(lastest_grype_db_archive: str):
     # the specific vulnerability.db file.
     # It sounds like we will also be getting the metata.json file, and the further contents
     # of those archives could change if they needed to.
-    latest_grype_db_dir, latest_grype_db_file = _move_and_open_grype_db_archive(lastest_grype_db_archive)
-    latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_file)
+    latest_grype_db_dir = _move_and_open_grype_db_archive(lastest_grype_db_archive, version_name)
+    latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_dir)
     latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
 
     # Return the dir, file, and engine
-    return latest_grype_db_dir, latest_grype_db_file, latest_grype_db_session
+    return latest_grype_db_dir, latest_grype_db_session
 
 
-def _remove_local_grype_db(grype_db_file):
+def _remove_local_grype_db(grype_db_dir):
     """
     Remove old the local grype db file
     """
-    if os.path.exists(grype_db_file):
-        logger.info("Removing old grype_db at {}".format(grype_db_file))
-        os.remove(grype_db_file)
+    if os.path.exists(grype_db_dir):
+        logger.info("Removing old grype_db at {}".format(grype_db_dir))
+        shutil.rmtree(grype_db_dir)
     else:
-        logger.error("Failed to remove grype db at {} as it cannot be found.".format(grype_db_file))
+        logger.error("Failed to remove grype db at {} as it cannot be found.".format(grype_db_dir))
     return
 
 
-def update_grype_db(grype_db_archive_local_file_location:str):
+def update_grype_db(grype_db_archive_local_file_location: str, version_name: str):
     """
     Update the installed grype db with the provided definition, and remove the old grype db file.
     This method does not validation of the db, and assumes it has passed any required validation upstream
     """
-    global grype_db_dir, grype_db_file, grype_db_session
+    global grype_db_dir, grype_db_session
 
     logger.info("Updating grype with a new grype_db archive from {}".format(grype_db_archive_local_file_location))
 
@@ -170,17 +175,16 @@ def update_grype_db(grype_db_archive_local_file_location:str):
 
             # Store the db locally and
             # Create the sqlalchemy engine for the new db
-            latest_grype_db_dir, latest_grype_db_file, latest_grype_db_session = _init_grype_db(grype_db_archive_local_file_location)
+            latest_grype_db_dir, latest_grype_db_session = _init_grype_db(grype_db_archive_local_file_location, version_name)
 
-            # Store the dir, file, and session variables globally
+            # Store the dir and session variables globally
             # For use during reads and to remove in the next update
+            old_grype_db_dir = grype_db_dir
             grype_db_dir = latest_grype_db_dir
-            old_grype_db_file = grype_db_file
-            grype_db_file = latest_grype_db_file
             grype_db_session = latest_grype_db_session
 
             # Remove the old local db
-            _remove_local_grype_db(old_grype_db_file)
+            _remove_local_grype_db(old_grype_db_dir)
         finally:
             write_lock.release()
 
