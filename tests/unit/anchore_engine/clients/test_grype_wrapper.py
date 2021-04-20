@@ -6,10 +6,25 @@ import sqlalchemy
 
 from anchore_engine.clients import grype_wrapper
 
-TEST_DATA_PATH = "../../data/grype_db/"
+
+TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
+GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
+
 GRYPE_DB_DIR = "grype_db/"
 OLD_VERSION_NAME = "old_version"
 NEW_VERSION_NAME = "new_version"
+
+
+def get_test_file_path(basename: str) -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), TEST_DATA_RELATIVE_PATH, basename)
+
+
+def get_test_sbom(sbom_file_name):
+    # TODO Pass the body as a string, not the file
+    full_sbom_path = get_test_file_path(sbom_file_name)
+    # with open(full_sbom_path, "r") as read_file:
+    #     return read_file.read().replace('\n', '')
+    return full_sbom_path
 
 
 @pytest.fixture
@@ -26,7 +41,7 @@ def grype_db_archive(tmp_path):
     input_dir = os.path.join(tmp_path, "input")
     if not os.path.exists(input_dir):
         os.mkdir(input_dir)
-    shutil.copy("../../data/grype_db/grype_db_test_archive.tar.gz", input_dir)
+    shutil.copy(get_test_file_path(GRYPE_ARCHIVE_FILE_NAME), input_dir)
     return os.path.join(input_dir, "grype_db_test_archive.tar.gz")
 
 
@@ -36,7 +51,7 @@ def grype_db_dir(tmp_path):
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
     input_dir = os.path.join(parent_dir, NEW_VERSION_NAME)
-    shutil.copytree("../../data/grype_db/new_verison/", input_dir)
+    shutil.copytree(get_test_file_path(NEW_VERSION_NAME), input_dir)
     return input_dir
 
 
@@ -46,15 +61,8 @@ def old_grype_db_dir(tmp_path):
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
     input_dir = os.path.join(parent_dir, OLD_VERSION_NAME)
-    shutil.copytree("../../data/grype_db/old_version/", input_dir)
+    shutil.copytree(get_test_file_path(OLD_VERSION_NAME), input_dir)
     return input_dir
-
-
-def get_test_sbom(sbom_file_name):
-    full_sbom_path = os.path.join(TEST_DATA_PATH, sbom_file_name)
-    # with open(full_sbom_path, "r") as read_file:
-    #     return read_file.read().replace('\n', '')
-    return full_sbom_path
 
 
 # TODO implement along with function under test

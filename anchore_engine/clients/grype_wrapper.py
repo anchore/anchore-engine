@@ -1,9 +1,8 @@
-import shutil
-
 import anchore_engine.configuration.localconfig
 import os
 import json
 import shlex
+import shutil
 import sqlalchemy
 import tarfile
 
@@ -18,9 +17,10 @@ from sqlalchemy.orm import sessionmaker
 
 grype_db_dir = None
 grype_db_session = None
-grype_db_lock = rwlock.RWLockWrite()
 
+grype_db_lock = rwlock.RWLockWrite()
 Base = declarative_base()
+
 VULNERABILITY_FILE_NAME = "vulnerability.db"
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
@@ -189,7 +189,6 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
             write_lock.release()
 
 
-
 def get_vulnerabilities(grype_sbom: str) -> json:
     """
     Use grype to scan the provided sbom for vulnerabilites.
@@ -231,8 +230,6 @@ def get_vulnerabilities(grype_sbom: str) -> json:
 
         # Return the output as json
         return json.loads(stdout)
-
-
 
 
 # Table definitions.
