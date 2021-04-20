@@ -1754,10 +1754,12 @@ def perform_policy_evaluation(
                 curr_evaluation_result["status"] = "fail"
 
         # set up the newest evaluation
-        evalId = hashlib.md5(
+        evalId = hashlib.new(
+            "md5",
             ":".join(
-                [policyId, userId, imageDigest, fulltag, str(curr_final_action)]
-            ).encode("utf8")
+                [policyId, userId, imageDigest, fulltag, str(curr_final_action)],
+            ).encode("utf8"),
+            usedforsecurity=False,
         ).hexdigest()
         curr_evaluation_record = anchore_engine.common.helpers.make_eval_record(
             userId,
