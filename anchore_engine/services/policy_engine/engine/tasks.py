@@ -611,7 +611,7 @@ class ImageLoadTask(IAsyncTask):
             return json.load(r)
 
 
-class NoActiveGrypeDBException(Exception):
+class TooManyActiveGrypeDBs(Exception):
     pass
 
 
@@ -620,6 +620,7 @@ class GrypeDBSyncTask(IAsyncTask):
     Sync grype db to local instance of policy engine if it has been updated globally
     """
 
+    lock = threading.Lock()
     __task_name__ = "grypedb_sync_task"
 
     @classmethod
@@ -633,8 +634,7 @@ class GrypeDBSyncTask(IAsyncTask):
         rtype: bool
         """
         try:
-            lock = threading.Lock()
-            with lock:
+            with cls.lock:
                 active_grypedb = cls.get_active_grypedb()
                 if not active_grypedb:
                     logger.info("No active grypedb available in the system to sync")
@@ -665,20 +665,26 @@ class GrypeDBSyncTask(IAsyncTask):
         return: Instance of active GrypeDBMetadata or None
         rtype: [GrypeDBMetadata, None]
         """
-        db = get_session()
-        active_grypedb = (
-            db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
-        )
+        active_grypedbs = cls._query_active_dbs()
 
-        if len(active_grypedb) == 0:
+        if len(active_grypedbs) == 0:
             return None
-        elif len(active_grypedb) > 1:
+        elif len(active_grypedbs) > 1:
             logger.exception("Too many active grypdbs found in db")
-            raise NoActiveGrypeDBException(
-                "Could not determine correct grypedb to sync"
-            )
+            raise TooManyActiveGrypeDBs("Could not determine correct grypedb to sync")
         else:
-            return active_grypedb[0]
+            return active_grypedbs[0]
+
+    @classmethod
+    def _query_active_dbs(cls):
+        """
+        Runs query against db to get active dbs
+
+        return: Array of GrypeDBMetadatas
+        rtype: list
+        """
+        db = get_session()
+        return db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
 
     @classmethod
     def get_local_grypedb_checksum(cls):
