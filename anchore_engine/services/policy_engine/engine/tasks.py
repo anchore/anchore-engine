@@ -45,7 +45,12 @@ from anchore_engine.subsys import identities, logger
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
-from anchore_engine.services.policy_engine.engine.feeds.storage import GrypeDBStorage
+from anchore_engine.services.policy_engine.engine.feeds.storage import (
+    GrypeDBStorage,
+    GrypeDBFile,
+)
+
+# from anchore_engine.clients import grype_wrapper
 
 
 def construct_task_from_json(json_obj):
@@ -617,7 +622,10 @@ class GrypeDBSyncError(Exception):
 
 
 class TooManyActiveGrypeDBs(GrypeDBSyncError):
-    pass
+    def __init__(self):
+        super().__init__(
+            "Could not determine correct grypedb to sync because too many active dbs found in database"
+        )
 
 
 class GrypeDBSyncTask(IAsyncTask):
@@ -676,7 +684,7 @@ class GrypeDBSyncTask(IAsyncTask):
             return None
         elif len(active_grypedbs) > 1:
             logger.exception("Too many active grypdbs found in db")
-            raise TooManyActiveGrypeDBs("Could not determine correct grypedb to sync")
+            raise TooManyActiveGrypeDBs
         else:
             return active_grypedbs[0]
 
@@ -701,8 +709,8 @@ class GrypeDBSyncTask(IAsyncTask):
         """
         # get local grypedb checksum
         # TODO Will use the grype facade once implemented
-        local_checksum = ""
-        return local_checksum
+        # return grype_wrapper.get_current_grype_db_checksum()
+        return ""
 
     def __init__(
         self, active_grypedb=None, local_grypedb_checksum=None, grypedb_file_path=None
@@ -721,18 +729,23 @@ class GrypeDBSyncTask(IAsyncTask):
             if self.grypedb_file_path:
                 # TODO Pass the path directly to the facade
                 logger.info("Pass to facade with file path")
+                # grype_wrapper.update_grype_db(self.grypedb_file_path, self.active_grypedb.checksum)
             else:
                 catalog_client = internal_client_for(CatalogClient, userId=None)
+                grypedb_document = catalog_client.get_raw_document(
+                    self.active_grypedb.bucket, self.active_grypedb.archive_id
+                )
 
-                bucket, archive_id = self.active_grypedb.object_url.split("/")[-2::1]
-                grypedb_document = catalog_client.get_raw_document(bucket, archive_id)
+                # verify integrity of data, create tempfile, and pass path to facade
+                GrypeDBFile.verify_integrity(
+                    grypedb_document, self.active_grypedb.checksum
+                )
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(self.active_grypedb.checksum) as f:
                         f.write(grypedb_document)
-                    grypedb_file.verify_integrity(self.active_grypedb.checksum)
-
                     # TODO pass file path to grype facade
+                    # grype_wrapper.update_grype_db((grypedb_file.path, self.active_grypedb.checksum)
                     logger.info("Pass to facade with created file path")
         except Exception as e:
             logger.exception("GrypeDBSyncTask failed to sync")
-            raise GrypeDBSyncError from e
+            raise GrypeDBSyncError(str(e)) from e
