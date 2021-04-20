@@ -144,7 +144,6 @@ class GrypeDBMetadata(Base):
     feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
     group_name = Column(String, nullable=False)
     date_generated = Column(DateTime, nullable=False)
-    object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
     bucket = Column(String, nullable=False)
     archive_id = Column(String, nullable=False)
