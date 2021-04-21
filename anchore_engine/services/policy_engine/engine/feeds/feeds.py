@@ -49,17 +49,16 @@ from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
 )
-# from anchore_engine.services.policy_engine.engine.tasks import (
-#     GrypeDBSyncError,
-#     GrypeDBSyncTask,
-# )
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncError,
+    GrypeDBSyncManager,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     ThreadLocalFeedGroupNameCache,
     flush_vulnerability_matches,
     process_updated_vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.events import EventBase
 
 
 def build_group_sync_result(group=None, status="failure"):
@@ -638,13 +637,13 @@ class GrypeDBFeed(AnchoreServiceFeed):
         subscription_type = "refresh_tasks"
         image_ids = db.query(Image.id).all()
         errors = []
-        for image_id in image_ids:
+        for result in image_ids:
             try:
-                task_body = {"image_id": image_id}
+                task_body = {"image_id": result.id}
                 # if not q_client.is_inqueue(subscription_type, task_body):
                 q_client.enqueue(subscription_type, task_body)
             except Exception as err:
-                errors.append((image_id, err))
+                errors.append((result.id, err))
         if len(errors) > 0:
             logger.error(
                 f"Failed to create/enqueue {len(errors)}/{len(image_ids)} refresh tasks."
@@ -777,17 +776,17 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         with grypedb_file.create_file(checksum) as f:
                             f.write(record.data)
                         # even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
-                        # try:
-                        #     GrypeDBSyncTask.run_grypedb_sync(grypedb_file.path)
-                        # except GrypeDBSyncError as e:
-                        #     logger.exception(
-                        #         log_msg_ctx(
-                        #             operation_id,
-                        #             group_download_result.feed,
-                        #             group_download_result.group,
-                        #             "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
-                        #         )
-                        #     )
+                        try:
+                            GrypeDBSyncManager.run_grypedb_sync(grypedb_file.path)
+                        except GrypeDBSyncError as e:
+                            logger.exception(
+                                log_msg_ctx(
+                                    operation_id,
+                                    group_download_result.feed,
+                                    group_download_result.group,
+                                    "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+                                )
+                            )
                     total_updated_count += 1
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)
@@ -1638,24 +1637,6 @@ def feed_instance_by_name(name: str) -> DataFeed:
     :return:
     """
     return feed_registry.get(name)()
-
-
-def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
-    """
-    Send an event or just log it if client is None
-    Always log the event to info level
-    """
-
-    if client:
-        try:
-            client.add_event(event)
-        except Exception as e:
-            logger.warn("Error adding feed start event: {}".format(e))
-
-    try:
-        logger.info("Event: {} (operation_id={})".format(event.to_json(), operation_id))
-    except:
-        logger.exception("Error logging event")
 
 
 def log_msg_ctx(operation_id, feed, group, msg):

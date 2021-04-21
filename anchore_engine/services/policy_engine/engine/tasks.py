@@ -2,52 +2,46 @@
 Long running tasks
 """
 
-import json
 import datetime
+import json
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+from typing import Optional
+
 import dateutil.parser
 import requests
-import time
-import urllib.request, urllib.parse, urllib.error
-import uuid
-import threading
 
-from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
-    Image,
-    end_session,
-    GrypeDBMetadata,
-)
-from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
-from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-    vulnerabilities_for_image,
-    rescan_image,
-)
-
-from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
-from anchore_engine.services.policy_engine.engine.feeds.sync import (
-    get_selected_feeds_to_sync,
-    DataFeeds,
-)
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    notify_event,
-    GrypeDBFeed,
-)
-from anchore_engine.configuration import localconfig
+from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
-from anchore_engine.subsys.events import (
-    FeedSyncTaskStarted,
-    FeedSyncTaskCompleted,
-    FeedSyncTaskFailed,
-)
-from anchore_engine.subsys import identities, logger
+from anchore_engine.configuration import localconfig
 
 # A hack to get admin credentials for executing api ops
+from anchore_engine.db import Image, end_session
+from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import session_scope
-from anchore_engine.services.policy_engine.engine.feeds.storage import (
-    GrypeDBStorage,
-    GrypeDBFile,
+from anchore_engine.services.policy_engine.engine.exc import *
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncManager,
+)
+from anchore_engine.services.policy_engine.engine.feeds.sync import (
+    DataFeeds,
+    get_selected_feeds_to_sync,
+    notify_event,
+)
+from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
+from anchore_engine.services.policy_engine.engine.vulnerabilities import (
+    rescan_image,
+    vulnerabilities_for_image,
+)
+from anchore_engine.subsys import identities, logger
+from anchore_engine.subsys.events import (
+    FeedSyncTaskCompleted,
+    FeedSyncTaskFailed,
+    FeedSyncTaskStarted,
 )
 
 # from anchore_engine.clients import grype_wrapper
@@ -617,135 +611,11 @@ class ImageLoadTask(IAsyncTask):
             return json.load(r)
 
 
-class GrypeDBSyncError(Exception):
-    pass
-
-
-class TooManyActiveGrypeDBs(GrypeDBSyncError):
-    def __init__(self):
-        super().__init__(
-            "Could not determine correct grypedb to sync because too many active dbs found in database"
-        )
-
-
 class GrypeDBSyncTask(IAsyncTask):
-    """
-    Sync grype db to local instance of policy engine if it has been updated globally
-    """
-
-    lock = threading.Lock()
     __task_name__ = "grypedb_sync_task"
 
-    @classmethod
-    def run_grypedb_sync(cls, grypedb_file_path=None):
-        """
-        Runs GrypeDBSyncTask if it is necessary. Determines this by comparing local db checksum with active one in DB
-        Returns true or false based upon whether db updated
+    def __init__(self, grypedb_file_path: Optional[str] = None):
+        self.grypedb_file_path: Optional[str] = grypedb_file_path
 
-        :param grypedb_file_path: Can be passed a fie path to existing grypedb to use on local disk
-        return: Boolean to whether the db was updated or not
-        rtype: bool
-        """
-        try:
-            with cls.lock:
-                active_grypedb = cls.get_active_grypedb()
-                if not active_grypedb:
-                    logger.info("No active grypedb available in the system to sync")
-                    return False
-
-                local_grypedb_checksum = cls.get_local_grypedb_checksum()
-
-                if local_grypedb_checksum != active_grypedb.checksum:
-                    task = GrypeDBSyncTask(
-                        active_grypedb=active_grypedb,
-                        local_grypedb_checksum=local_grypedb_checksum,
-                        grypedb_file_path=grypedb_file_path,
-                    )
-                    task.execute()
-                    return True
-                else:
-                    logger.info("No grypedb sync needed at this time")
-                    return False
-        except GrypeDBSyncError as e:
-            logger.exception("Error executing grypedb sync task {}".format(str(e)))
-            raise
-
-    @classmethod
-    def get_active_grypedb(cls):
-        """
-        Returns active grybdb instance from db. Returns None if there are none and raises exception if more than one
-
-        return: Instance of active GrypeDBMetadata or None
-        rtype: [GrypeDBMetadata, None]
-        """
-        active_grypedbs = cls._query_active_dbs()
-
-        if len(active_grypedbs) == 0:
-            return None
-        elif len(active_grypedbs) > 1:
-            logger.exception("Too many active grypdbs found in db")
-            raise TooManyActiveGrypeDBs
-        else:
-            return active_grypedbs[0]
-
-    @classmethod
-    def _query_active_dbs(cls):
-        """
-        Runs query against db to get active dbs
-
-        return: Array of GrypeDBMetadatas
-        rtype: list
-        """
-        db = get_session()
-        return db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
-
-    @classmethod
-    def get_local_grypedb_checksum(cls):
-        """
-        Returns checksum of grypedb on local instance
-
-        return: Checksum of local grypedb
-        rtype: str
-        """
-        # get local grypedb checksum
-        # TODO Will use the grype facade once implemented
-        # return grype_wrapper.get_current_grype_db_checksum()
-        return ""
-
-    def __init__(
-        self, active_grypedb=None, local_grypedb_checksum=None, grypedb_file_path=None
-    ):
-        self.active_grypedb = active_grypedb
-        self.local_grypedb_checksum = local_grypedb_checksum
-        self.grypedb_file_path = grypedb_file_path
-        self.created_at = datetime.datetime.utcnow()
-
-    def execute(self):
-        """
-        Runs GrypeDBSyncTask on instance. If file_path present, passes this to grype facade to update
-        If not, it builds the catalog url, gets the raw document and saves it to tempfile and passes path to grype facade
-        """
-        try:
-            if self.grypedb_file_path:
-                # TODO Pass the path directly to the facade
-                logger.info("Pass to facade with file path")
-                # grype_wrapper.update_grype_db(self.grypedb_file_path, self.active_grypedb.checksum)
-            else:
-                catalog_client = internal_client_for(CatalogClient, userId=None)
-                grypedb_document = catalog_client.get_raw_document(
-                    self.active_grypedb.bucket, self.active_grypedb.archive_id
-                )
-
-                # verify integrity of data, create tempfile, and pass path to facade
-                GrypeDBFile.verify_integrity(
-                    grypedb_document, self.active_grypedb.checksum
-                )
-                with GrypeDBStorage() as grypedb_file:
-                    with grypedb_file.create_file(self.active_grypedb.checksum) as f:
-                        f.write(grypedb_document)
-                    # TODO pass file path to grype facade
-                    # grype_wrapper.update_grype_db((grypedb_file.path, self.active_grypedb.checksum)
-                    logger.info("Pass to facade with created file path")
-        except Exception as e:
-            logger.exception("GrypeDBSyncTask failed to sync")
-            raise GrypeDBSyncError(str(e)) from e
+    def execute(self) -> bool:
+        return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)

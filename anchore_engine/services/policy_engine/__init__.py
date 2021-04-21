@@ -1,30 +1,30 @@
-import time
-import sys
-import pkg_resources
 import os
-import retrying
+import sys
+import time
 
+import pkg_resources
+import retrying
 from sqlalchemy.exc import IntegrityError
 
 # anchore modules
 import anchore_engine.clients.services.common
-import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.subsys import logger
-from anchore_engine.configuration import localconfig
-from anchore_engine.clients.services import simplequeue, internal_client_for
+import anchore_engine.subsys.servicestatus
+from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    VulnerabilityFeed,
+    GithubFeed,
+    GrypeDBFeed,
+    NvdFeed,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,
-    GithubFeed,
+    VulnerabilityFeed,
     feed_registry,
-    NvdFeed,
-    GrypeDBFeed,
 )
+from anchore_engine.subsys import logger
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
@@ -146,7 +146,7 @@ def process_preflight():
 
 
 def _init_distro_mappings():
-    from anchore_engine.db import session_scope, DistroMapping
+    from anchore_engine.db import DistroMapping, session_scope
 
     initial_mappings = [
         DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
@@ -369,7 +369,7 @@ def handle_grypedb_sync(*args, **kwargs):
 
     while True:
         try:
-            result = GrypeDBSyncTask.run_grypedb_sync()
+            result = GrypeDBSyncTask().execute()
 
             if result:
                 logger.info("Grype DB synced to local instance via handler")

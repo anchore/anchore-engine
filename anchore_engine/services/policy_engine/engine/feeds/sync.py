@@ -20,9 +20,7 @@ from anchore_engine.db import (
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     build_feed_sync_results,
-    build_group_sync_result,
     feed_instance_by_name,
-    notify_event,
     VulnerabilityFeed,
     VulnDBFeed,
     PackagesFeed,
@@ -31,7 +29,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.download import (
     FeedDownloader,
-    DownloadOperationConfiguration,
     LocalFeedDataRepo,
 )
 from anchore_engine.services.policy_engine.engine.feeds.db import (
@@ -44,7 +41,7 @@ from anchore_engine.subsys.events import (
     FeedSyncCompleted,
     FeedGroupSyncStarted,
     FeedGroupSyncCompleted,
-    FeedGroupSyncFailed,
+    FeedGroupSyncFailed, EventBase,
 )
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
@@ -733,3 +730,21 @@ def _sync_order(feed_name: str) -> int:
     else:
         # Anything else is less than packages but more than the vuln-related
         return 99
+
+
+def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
+    """
+    Send an event or just log it if client is None
+    Always log the event to info level
+    """
+
+    if client:
+        try:
+            client.add_event(event)
+        except Exception as e:
+            logger.warn("Error adding feed start event: {}".format(e))
+
+    try:
+        logger.info("Event: {} (operation_id={})".format(event.to_json(), operation_id))
+    except:
+        logger.exception("Error logging event")
