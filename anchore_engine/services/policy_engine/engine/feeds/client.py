@@ -177,7 +177,9 @@ class FeedServiceClient(IFeedSource):
                         response_metadata=record.headers,
                     )
                 else:
-                    raise Exception("Feed list operation failed. Unrecognized MIME type in feed response.")
+                    raise Exception(
+                        "Feed list operation failed. Unrecognized MIME type in feed response."
+                    )
             else:
                 raise Exception(
                     "Feed list operation failed. Msg: {}.".format(record.content)

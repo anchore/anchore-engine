@@ -41,7 +41,8 @@ from anchore_engine.subsys.events import (
     FeedSyncCompleted,
     FeedGroupSyncStarted,
     FeedGroupSyncCompleted,
-    FeedGroupSyncFailed, EventBase,
+    FeedGroupSyncFailed,
+    EventBase,
 )
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
