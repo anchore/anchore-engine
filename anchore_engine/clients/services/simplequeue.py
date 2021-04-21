@@ -313,7 +313,7 @@ def run_target_with_lease(
 
         if autorefresh:
             # Run the task thread and monitor it, refreshing the task lease as needed
-            while handler_thread.isAlive():
+            while handler_thread.is_alive():
                 # If we're halfway to the timeout, refresh to have a safe buffer
                 if time.time() - t > (ttl / 2):
                     # refresh the lease
