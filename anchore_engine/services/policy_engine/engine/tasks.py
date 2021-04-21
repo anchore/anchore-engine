@@ -41,6 +41,11 @@ from anchore_engine.subsys import identities, logger
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import session_scope
 
+from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
+)
+
 
 def construct_task_from_json(json_obj):
     """
@@ -490,6 +495,19 @@ class ImageLoadTask(IAsyncTask):
                 vulns = vulnerabilities_for_image(image_obj)
                 for vuln in vulns:
                     db.add(vuln)
+
+                with timer(
+                    "Generating and caching vulnerabilities report for the image",
+                    log_level="info",
+                ):
+                    provider = get_vulnerabilities_provider()
+                    report = provider.get_report_for_image(
+                        image=image_obj,
+                        vendor_only=False,
+                        db_session=db,
+                        force_refresh=True,
+                        cache=True,
+                    )
 
                 db.commit()
                 # log.debug("TIMER TASKS: {}".format(time.time() - ts))

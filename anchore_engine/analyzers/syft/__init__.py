@@ -54,6 +54,9 @@ def convert_syft_to_engine(all_results):
     nested_dict = lambda: collections.defaultdict(nested_dict)
     findings = nested_dict()
 
+    # save syft raw output as it is
+    findings["image_sbom"] = all_results
+
     # This is the only use case for consuming the top-level results from syft,
     # capturing the information needed for BusyBox. No artifacts should be
     # expected, and having outside of the artifacts loop ensure this will only

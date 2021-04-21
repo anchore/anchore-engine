@@ -14,6 +14,8 @@ from anchore_engine.db import (
     AnalysisArtifact,
     ImagePackageManifestEntry,
     ImageCpe,
+    ImageSbom,
+    AnalyzerType,
 )  # , ImageJava, ImagePython
 from anchore_engine.subsys import logger
 from anchore_engine.util.rpm import split_rpm_filename
@@ -204,8 +206,32 @@ class ImageLoader(object):
             for r in loader(analysis_report, image):
                 image.analysis_artifacts.append(r)
 
+        # sbom
+        image.sbom = self.load_sbom(analysis_report, image)
+
         image.state = "analyzed"
         return image
+
+    def load_sbom(self, analysis_report, image_obj):
+        """
+        Save image sbom as it is
+        """
+
+        logger.info("Loading image sbom")
+        content = analysis_report.get("image_sbom")
+        if content:
+            analyzer_meta = content.get("descriptor")
+            return ImageSbom(
+                account_id=image_obj.user_id,
+                image_id=image_obj.id,
+                image_digest=image_obj.digest,
+                analyzer_type=AnalyzerType.SYFT,
+                sbom=content,
+                analyzer_metadata=analyzer_meta,
+            )
+        else:
+            logger.warn("Image sbom not available")
+            return
 
     def load_package_verification(self, analysis_report, image_obj):
         """

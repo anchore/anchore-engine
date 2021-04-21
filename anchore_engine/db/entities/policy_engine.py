@@ -4,6 +4,7 @@ import json
 import re
 import time
 import zlib
+import enum
 from collections import namedtuple
 
 from sqlalchemy import (
@@ -45,7 +46,7 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-from .common import Base, UtilMixin, StringJSON
+from .common import Base, UtilMixin, StringJSON, StringEnum
 from .common import get_thread_scoped_session
 
 
@@ -2312,6 +2313,47 @@ class AnalysisArtifact(Base):
     )
 
 
+class AnalyzerType(enum.Enum):
+    LEGACY = "legacy"
+    SYFT = "syft"
+
+
+class ImageSbom(Base):
+    """
+    Generic table for raw output from the analyzer aka image sbom and metadata for the analyzer
+    """
+
+    __tablename__ = "image_sbom"
+
+    account_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    image_digest = Column(String, index=True)
+    analyzer_type = Column(StringEnum(AnalyzerType), nullable=False, index=True)
+    sbom = Column(JSON, nullable=True)
+    analyzer_metadata = Column(JSON)
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    image = relationship("Image", back_populates="sbom")
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(image_id, account_id),
+            refcolumns=("images.id", "images.user_id"),
+        ),
+        {},
+    )
+
+
 class Image(Base):
     """
     The core image analysis record. Contains metadata about the image itself.
@@ -2406,6 +2448,13 @@ class Image(Base):
         "AnalysisArtifact",
         back_populates="image",
         lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
+    )
+
+    sbom = relationship(
+        "ImageSbom",
+        uselist=False,
+        lazy="select",
         cascade=["all", "delete", "delete-orphan"],
     )
 

@@ -403,3 +403,31 @@ class StringJSON(types.TypeDecorator):
         if value is not None:
             value = json.loads(value)
         return value
+
+
+class StringEnum(types.TypeDecorator):
+    """
+    Custom type for handling a python enum as a string in database.
+    This type stores the values of the enum unlike the keys stored by the SQLAlchemy Enum implementation
+    """
+
+    impl = types.String
+
+    def __init__(self, enum_cls, *args, **kwargs):
+        super(StringEnum, self).__init__(*args, **kwargs)
+        self._enum_cls = enum_cls
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, self._enum_cls):
+            return value.value
+
+        return None
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            try:
+                value = self._enum_cls(value)
+            except:
+                pass
+
+        return value
