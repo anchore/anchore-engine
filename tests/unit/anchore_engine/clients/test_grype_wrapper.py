@@ -203,6 +203,7 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
 
     assert not os.path.exists(old_grype_db_dir)
 
+    
 # TODO This needs to move to a functional test to pass on the ci, as the container with grype
 # is not built before that. Disabling for now. Works locally if you have grype installed.
 # @pytest.mark.parametrize(
