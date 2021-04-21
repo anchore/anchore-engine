@@ -1,9 +1,9 @@
 import datetime
 import time
+from typing import Tuple
 
 from sqlalchemy.orm.session import Session
 
-# from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
@@ -16,6 +16,7 @@ from anchore_engine.db import (
     GemMetadata,
     GenericFeedDataRecord,
     GrypeDBMetadata,
+    Image,
     NpmMetadata,
     NvdMetadata,
     NvdV2Metadata,
@@ -48,6 +49,10 @@ from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
 )
+# from anchore_engine.services.policy_engine.engine.tasks import (
+#     GrypeDBSyncError,
+#     GrypeDBSyncTask,
+# )
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     ThreadLocalFeedGroupNameCache,
     flush_vulnerability_matches,
@@ -557,10 +562,22 @@ class AnchoreServiceFeed(DataFeed):
             return None
 
 
-class UnexpectedRawGrypeDBFile(Exception):
+class GrypeDBFeedSyncError(Exception):
+    pass
+
+
+class UnexpectedRawGrypeDBFile(GrypeDBFeedSyncError):
     def __init__(self):
         super().__init__(
             "Unexpected Condition: More than one GrypeDB file downloaded during feed sync."
+        )
+
+
+class RefreshTaskCreationError(GrypeDBFeedSyncError):
+    def __init__(self, errors: Tuple[str, Exception]):
+        self.errors = errors
+        super().__init__(
+            f"Failed to create {len(self.errors)} RefreshTasks in simple queue."
         )
 
 
@@ -569,7 +586,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
     _cve_key = None
     __group_data_mappers__ = {}
 
-    def record_count(self, group_name, db):
+    def record_count(self, group_name: str, db: Session):
         try:
             return self._find_match(db).count()
         except Exception:
@@ -580,7 +597,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             )
             raise
 
-    def _find_match(self, db, checksum=None, active=None):
+    def _find_match(self, db: Session, checksum: str = None, active: bool = None):
         results = db.query(GrypeDBMetadata)
         if checksum:
             results = results.filter(GrypeDBMetadata.checksum == checksum)
@@ -616,20 +633,23 @@ class GrypeDBFeed(AnchoreServiceFeed):
         group_obj.count = 0
         db.flush()
 
-    def _enqueue_refresh_task(image_id: str):
+    def _enqueue_refresh_tasks(self, db: Session):
         q_client = internal_client_for(SimpleQueueClient, None)
         subscription_type = "refresh_tasks"
-        rc = False
-        try:
-            nobj = {"image_id": image_id}
-            if not q_client.is_inqueue(subscription_type, nobj):
-                rc = q_client.enqueue(subscription_type, nobj)
-        # TODO FIX Exception
-        except Exception as err:
-            logger.warn("failed to create/enqueue refresh task")
-            raise err
-
-        return rc
+        image_ids = db.query(Image.id).all()
+        errors = []
+        for image_id in image_ids:
+            try:
+                task_body = {"image_id": image_id}
+                # if not q_client.is_inqueue(subscription_type, task_body):
+                q_client.enqueue(subscription_type, task_body)
+            except Exception as err:
+                errors.append((image_id, err))
+        if len(errors) > 0:
+            logger.error(
+                f"Failed to create/enqueue {len(errors)}/{len(image_ids)} refresh tasks."
+            )
+            raise RefreshTaskCreationError(errors)
 
     def _switch_active_grypedb(
         self,
@@ -651,7 +671,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
         )
         # insert new as active
-        url = catalog_client.create_raw_document(
+        catalog_client.create_raw_document(
             group_download_result.group, checksum, record.data
         )
         date_generated = datetime.datetime.strptime(
@@ -756,7 +776,18 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     with GrypeDBStorage() as grypedb_file:
                         with grypedb_file.create_file(checksum) as f:
                             f.write(record.data)
-                        # grype_wrapper.update_grype_db(grypedb_file.path)
+                        # even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
+                        # try:
+                        #     GrypeDBSyncTask.run_grypedb_sync(grypedb_file.path)
+                        # except GrypeDBSyncError as e:
+                        #     logger.exception(
+                        #         log_msg_ctx(
+                        #             operation_id,
+                        #             group_download_result.feed,
+                        #             group_download_result.group,
+                        #             "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+                        #         )
+                        #     )
                     total_updated_count += 1
             else:
                 group_db_obj.count = self.record_count(group_db_obj.name, db)
@@ -789,6 +820,15 @@ class GrypeDBFeed(AnchoreServiceFeed):
             group_db_obj.count = self.record_count(group_db_obj.name, db)
             db.add(group_db_obj)
             db.commit()
+            logger.debug(
+                log_msg_ctx(
+                    operation_id,
+                    group_download_result.feed,
+                    group_download_result.group,
+                    "Enqueuing image refresh tasks.",
+                )
+            )
+            self._enqueue_refresh_tasks(db)
         except Exception as e:
             logger.exception(
                 log_msg_ctx(
