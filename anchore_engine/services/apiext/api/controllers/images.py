@@ -188,6 +188,7 @@ def vulnerability_query(
     force_refresh=False,
     vendor_only=True,
     doformat=False,
+    grype=False,
 ):
     # user_auth = request_inputs['auth']
     # method = request_inputs['method']
@@ -236,12 +237,20 @@ def vulnerability_query(
             image_detail = image_report["image_detail"][0]
             imageId = image_detail["imageId"]
             client = internal_client_for(PolicyEngineClient, account)
-            resp = client.get_image_vulnerabilities(
-                user_id=account,
-                image_id=imageId,
-                force_refresh=force_refresh,
-                vendor_only=vendor_only,
-            )
+            if grype:
+                resp = client.get_image_vulnerabilities_grype(
+                    user_id=account,
+                    image_id=imageId,
+                    force_refresh=force_refresh,
+                    vendor_only=vendor_only,
+                )
+            else:
+                resp = client.get_image_vulnerabilities(
+                    user_id=account,
+                    image_id=imageId,
+                    force_refresh=force_refresh,
+                    vendor_only=vendor_only,
+                )
             if doformat:
                 ret = make_response_vulnerability(vulnerability_type, resp)
                 return_object[imageDigest] = ret
@@ -882,7 +891,7 @@ def get_image_vulnerability_types_by_imageId(imageId):
 @flask_metrics.do_not_track()
 @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
 def get_image_vulnerabilities_by_type(
-    imageDigest, vtype, force_refresh=False, vendor_only=True
+    imageDigest, vtype, force_refresh=False, vendor_only=True, grype=False
 ):
     try:
         vulnerability_type = vtype
@@ -894,6 +903,7 @@ def get_image_vulnerabilities_by_type(
             force_refresh,
             vendor_only,
             doformat=True,
+            grype=grype,
         )
         if httpcode == 200:
             return_object = {

@@ -63,6 +63,16 @@ class PolicyEngineClient(InternalServiceClient):
             query_params={"force_refresh": force_refresh, "vendor_only": vendor_only},
         )
 
+    def get_image_vulnerabilities_grype(
+        self, user_id, image_id, force_refresh=False, vendor_only=None
+    ):
+        return self.call_api(
+            anchy_get,
+            "users/{user_id}/images/{image_id}/vulnerabilities/grype",
+            path_params={"user_id": user_id, "image_id": image_id},
+            query_params={"force_refresh": force_refresh, "vendor_only": vendor_only},
+        )
+
     def query_vulnerabilities(
         self,
         vuln_id=None,

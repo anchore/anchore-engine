@@ -745,6 +745,10 @@ paths:
           in: query
           type: boolean
           required: false
+        - name: grype
+          in: query
+          type: boolean
+          required: false
         - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -801,6 +805,10 @@ paths:
           in: path
           type: string
           required: true
+        - name: grype
+          in: query
+          type: boolean
+          required: false
         - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
