@@ -1,14 +1,11 @@
 """
-Module for returning vulnerability reports for images
+Scanners are responsible for anything vulnerability related such as finding vulnerabilities in an image,
+getting the information for a vulnerability etc. A scanner may be implemented using internal data or a third party tool
+such as grype. The scanner has has the responsibility of orchestrating the dependencies such as grype-db prior to executing an op
 """
+from anchore_engine.clients import grype_wrapper
+from anchore_engine.db.entities.policy_engine import ImageCpe
 from anchore_engine.utils import timer
-from collections import defaultdict
-from anchore_engine.db.entities.policy_engine import ImageCpe, Image
-import os
-import json
-import shlex
-
-from anchore_engine.utils import run_check
 
 
 class DefaultVulnScanner:
@@ -128,14 +125,7 @@ class GrypeVulnScanner:
 
         # TODO check if grype db needs to be updated
 
-        # TODO replace this with a call to grype facade
-        cmd = "grype -o json sbom:{}".format(image_sbom_file_path)
-
-        stdout, _ = run_check(shlex.split(cmd))
-
-        results = json.loads(stdout)
-
-        return results
+        return grype_wrapper.get_vulnerabilities(image_sbom_file_path)
 
 
 scanner_type = DefaultVulnScanner
