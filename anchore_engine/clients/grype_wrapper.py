@@ -333,10 +333,9 @@ def query_vulnerabilities(
                 )
             )
 
-            query = grype_db_session.query(
-                GrypeVulnerability,
-            ).join(
-                GrypeVulnerabilityMetadata, GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+            query = grype_db_session.query(GrypeVulnerability).join(
+                GrypeVulnerabilityMetadata,
+                GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
             )
 
             if vuln_id is not None:
